@@ -109,8 +109,8 @@ static void read_neuromodulator_levels(
     }
 
     // Default: baseline levels (0.5 = neutral)
-    *da_level = 0.5f;
-    *ach_level = 0.5f;
+    *da_level = 0.5F;
+    *ach_level = 0.5F;
 
     // Guard: NULL brain
     if (!brain) {
@@ -146,14 +146,14 @@ static float compute_modulated_threshold(
     float ach_level
 ) {
     // Clamp inputs to [0,1]
-    if (da_level < 0.0f) da_level = 0.0f;
-    if (da_level > 1.0f) da_level = 1.0f;
-    if (ach_level < 0.0f) ach_level = 0.0f;
-    if (ach_level > 1.0f) ach_level = 1.0f;
+    if (da_level < 0.0F) da_level = 0.0F;
+    if (da_level > 1.0F) da_level = 1.0F;
+    if (ach_level < 0.0F) ach_level = 0.0F;
+    if (ach_level > 1.0F) ach_level = 1.0F;
 
     // Apply modulation formula
-    float da_factor = 1.0f - (da_level * DA_MODULATION_FACTOR);
-    float ach_factor = 1.0f + (ach_level * ACH_MODULATION_FACTOR);
+    float da_factor = 1.0F - (da_level * DA_MODULATION_FACTOR);
+    float ach_factor = 1.0F + (ach_level * ACH_MODULATION_FACTOR);
 
     return base_threshold * da_factor * ach_factor;
 }
@@ -327,7 +327,7 @@ uint32_t brain_neural_logic_apply_neuromodulation(brain_t brain) {
     uint32_t total_gates = 0;
     uint32_t total_vars = 0;
     uint64_t total_spikes = 0;
-    float avg_eval_time = 0.0f;
+    float avg_eval_time = 0.0F;
     uint64_t gpu_memory = 0;
 
     if (!neural_logic_get_stats(brain->logic, &total_gates, &total_vars,
@@ -621,7 +621,7 @@ uint32_t brain_neural_logic_build_circuit(
     // Full implementation would build AST and construct circuit
 
     // For now, create a simple AND gate as placeholder
-    uint32_t gate_id = neural_logic_create_gate(brain->logic, LOGIC_GATE_AND, 1.5f);
+    uint32_t gate_id = neural_logic_create_gate(brain->logic, LOGIC_GATE_AND, 1.5F);
 
     if (gate_id == UINT32_MAX) {
         LOG_ERROR("brain_neural_logic_build_circuit: failed to create gate");

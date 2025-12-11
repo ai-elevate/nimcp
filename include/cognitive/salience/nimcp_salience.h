@@ -78,6 +78,65 @@ extern "C" {
 typedef struct salience_evaluator_struct* salience_evaluator_t;
 
 //=============================================================================
+// Cross-Modal Salience Fusion (Multimodal Integration)
+//=============================================================================
+
+/**
+ * WHAT: Sensory modality types for cross-modal salience
+ * WHY: Different sensory channels have different salience contributions
+ * HOW: Enumerate all sensory modalities that feed into attention
+ *
+ * BIOLOGICAL BASIS:
+ * - Superior colliculus integrates visual, auditory, somatosensory salience
+ * - Parietal cortex performs cross-modal attention enhancement
+ * - Multimodal integration creates unified attention map
+ */
+typedef enum {
+    SALIENCE_MODALITY_VISUAL = 0,       /**< Visual salience (V1, V4, IT) */
+    SALIENCE_MODALITY_AUDIO = 1,        /**< Auditory salience (A1, auditory cortex) */
+    SALIENCE_MODALITY_SOMATOSENSORY = 2,/**< Touch/proprioception (S1, S2) */
+    SALIENCE_MODALITY_LINGUISTIC = 3,   /**< Language salience (Wernicke's, Broca's) */
+    SALIENCE_MODALITY_COUNT = 4         /**< Total number of modalities */
+} salience_modality_t;
+
+/**
+ * WHAT: Fusion strategy for combining modality saliences
+ * WHY: Different situations require different integration methods
+ * HOW: Strategy pattern - behavior changes based on strategy
+ *
+ * STRATEGIES:
+ * - MAX: Winner-take-all (most salient modality dominates)
+ * - WEIGHTED_AVG: Weighted average (balanced integration)
+ * - LEARNED: Tensor-based learned fusion (adaptive weights)
+ */
+typedef enum {
+    /**
+     * WHAT: Maximum fusion (winner-take-all)
+     * WHY: Dominant modality captures attention
+     * WHEN: Strong unimodal signal (e.g., loud noise, bright flash)
+     * BIOLOGICAL: Superior colliculus winner-take-all circuits
+     */
+    SALIENCE_FUSION_MAX,
+
+    /**
+     * WHAT: Weighted average fusion
+     * WHY: Balanced integration of all modalities
+     * WHEN: Multiple weak signals need combining
+     * BIOLOGICAL: Parietal cortex weighted integration
+     */
+    SALIENCE_FUSION_WEIGHTED_AVG,
+
+    /**
+     * WHAT: Learned tensor-based fusion
+     * WHY: Adaptive weights based on context
+     * WHEN: Complex multimodal scenes
+     * BIOLOGICAL: Prefrontal cortex context-dependent attention
+     */
+    SALIENCE_FUSION_LEARNED
+
+} salience_fusion_strategy_t;
+
+//=============================================================================
 // Salience Metrics and Structures
 //=============================================================================
 
@@ -223,6 +282,11 @@ typedef struct {
 
     // Bio-async communication
     bool enable_bio_async; /**< Enable bio-async communication */
+
+    // Cross-modal fusion configuration
+    bool enable_multimodal;         /**< Enable multimodal fusion? */
+    float default_modality_weight;  /**< Default weight for new modalities */
+    salience_fusion_strategy_t fusion_strategy; /**< Fusion strategy */
 
 } salience_config_t;
 
@@ -582,6 +646,193 @@ void salience_boost_threat_detection(salience_evaluator_t evaluator, float boost
  * @return Surprise level [0, 1]
  */
 float salience_get_surprise_level(salience_evaluator_t evaluator);
+
+//=============================================================================
+// Cross-Modal Salience Fusion Functions
+//=============================================================================
+
+/**
+ * @brief Register a modality with initial weight
+ *
+ * WHAT: Enable a sensory modality for salience evaluation
+ * WHY:  Multimodal integration requires registering each modality
+ * HOW:  Set modality as active with initial fusion weight
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ *
+ * @param evaluator Salience evaluator
+ * @param modality Modality to register
+ * @param weight Initial fusion weight (0-1, will be normalized)
+ * @return true on success, false on error
+ *
+ * USE CASE:
+ * @code
+ *   // Register visual and audio modalities
+ *   salience_register_modality(eval, SALIENCE_MODALITY_VISUAL, 0.6);
+ *   salience_register_modality(eval, SALIENCE_MODALITY_AUDIO, 0.4);
+ * @endcode
+ */
+bool salience_register_modality(salience_evaluator_t evaluator, salience_modality_t modality,
+                                float weight);
+
+/**
+ * @brief Evaluate salience for specific modality
+ *
+ * WHAT: Compute salience from single sensory modality
+ * WHY:  Separate evaluation before cross-modal fusion
+ * HOW:  Run salience evaluation, store in modality-specific slot
+ *
+ * COMPLEXITY: O(1) - same as normal salience evaluation
+ * THREAD-SAFE: Yes
+ *
+ * @param evaluator Salience evaluator
+ * @param modality Which modality these features belong to
+ * @param features Input feature vector from that modality
+ * @param num_features Size of feature vector
+ * @return Salience scores for this modality
+ *
+ * USE CASE:
+ * @code
+ *   // Evaluate visual salience
+ *   brain_salience_t visual_sal = salience_evaluate_modality(
+ *       eval, SALIENCE_MODALITY_VISUAL, visual_features, 512);
+ *
+ *   // Evaluate audio salience
+ *   brain_salience_t audio_sal = salience_evaluate_modality(
+ *       eval, SALIENCE_MODALITY_AUDIO, audio_features, 128);
+ * @endcode
+ */
+brain_salience_t salience_evaluate_modality(salience_evaluator_t evaluator,
+                                            salience_modality_t modality, const float* features,
+                                            uint32_t num_features);
+
+/**
+ * @brief Combine modality scores into unified salience
+ *
+ * WHAT: Fuse per-modality saliences into single attention score
+ * WHY:  Superior colliculus performs cross-modal integration
+ * HOW:  Apply fusion strategy (MAX, WEIGHTED_AVG, LEARNED)
+ *
+ * BIOLOGICAL BASIS:
+ * - Superior colliculus receives visual, auditory, somatosensory maps
+ * - Fuses into unified spatial attention map
+ * - Parietal cortex performs context-dependent weighting
+ *
+ * COMPLEXITY: O(m) where m = number of active modalities
+ * THREAD-SAFE: Yes
+ *
+ * @param evaluator Salience evaluator
+ * @return Fused salience score combining all active modalities
+ *
+ * FUSION STRATEGIES:
+ * - SALIENCE_FUSION_MAX: salience = max(visual, audio, ...)
+ * - SALIENCE_FUSION_WEIGHTED_AVG: salience = sum(weight_i * salience_i)
+ * - SALIENCE_FUSION_LEARNED: salience = learned_fusion_tensor(saliences)
+ *
+ * USE CASE:
+ * @code
+ *   // Evaluate each modality
+ *   salience_evaluate_modality(eval, SALIENCE_MODALITY_VISUAL, vis_feat, 512);
+ *   salience_evaluate_modality(eval, SALIENCE_MODALITY_AUDIO, aud_feat, 128);
+ *
+ *   // Fuse into unified salience
+ *   brain_salience_t fused = salience_fuse_modalities(eval);
+ *
+ *   if (fused.salience > 0.8) {
+ *       // High multimodal salience - pay attention!
+ *   }
+ * @endcode
+ */
+brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator);
+
+/**
+ * @brief Adjust fusion weight for modality
+ *
+ * WHAT: Change how much a modality contributes to attention
+ * WHY:  Context-dependent attention weighting (e.g., focus on audio in dark)
+ * HOW:  Update modality weight, will be normalized with others
+ *
+ * BIOLOGICAL BASIS:
+ * - Attention can bias toward specific modalities
+ * - Top-down control from prefrontal cortex
+ * - "Listen carefully" increases auditory weight
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ *
+ * @param evaluator Salience evaluator
+ * @param modality Modality to adjust
+ * @param weight New weight (0-1, will be normalized)
+ * @return true on success
+ *
+ * USE CASE:
+ * @code
+ *   // In dark environment, increase audio weight
+ *   if (is_dark) {
+ *       salience_set_modality_weight(eval, SALIENCE_MODALITY_AUDIO, 0.8);
+ *       salience_set_modality_weight(eval, SALIENCE_MODALITY_VISUAL, 0.2);
+ *   }
+ * @endcode
+ */
+bool salience_set_modality_weight(salience_evaluator_t evaluator, salience_modality_t modality,
+                                  float weight);
+
+/**
+ * @brief Get per-modality salience scores
+ *
+ * WHAT: Query salience for specific modality
+ * WHY:  Inspect which modality is driving attention
+ * HOW:  Return cached modality-specific salience
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ *
+ * @param evaluator Salience evaluator
+ * @param modality Which modality to query
+ * @return Salience scores for that modality (zeros if not active)
+ *
+ * USE CASE:
+ * @code
+ *   // Check which modality is most salient
+ *   brain_salience_t vis = salience_get_modality_salience(eval, SALIENCE_MODALITY_VISUAL);
+ *   brain_salience_t aud = salience_get_modality_salience(eval, SALIENCE_MODALITY_AUDIO);
+ *
+ *   if (vis.salience > aud.salience) {
+ *       printf("Visual dominates attention\n");
+ *   } else {
+ *       printf("Audio dominates attention\n");
+ *   }
+ * @endcode
+ */
+brain_salience_t salience_get_modality_salience(salience_evaluator_t evaluator,
+                                                salience_modality_t modality);
+
+/**
+ * @brief Set fusion strategy
+ *
+ * WHAT: Change how modalities are combined
+ * WHY:  Different strategies for different contexts
+ * HOW:  Update strategy enum in evaluator
+ *
+ * @param evaluator Salience evaluator
+ * @param strategy Fusion strategy (MAX, WEIGHTED_AVG, LEARNED)
+ * @return true on success
+ */
+bool salience_set_fusion_strategy(salience_evaluator_t evaluator,
+                                  salience_fusion_strategy_t strategy);
+
+/**
+ * @brief Get name string for modality
+ *
+ * WHAT: Convert modality enum to human-readable name
+ * WHY:  Logging and debugging
+ * HOW:  Return static string
+ *
+ * @param modality Modality enum
+ * @return String name ("visual", "audio", etc.)
+ */
+const char* salience_modality_name(salience_modality_t modality);
 
 #ifdef __cplusplus
 }

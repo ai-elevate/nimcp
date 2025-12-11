@@ -160,11 +160,11 @@ bool hilbert_apply(hilbert_transform_t* ht,
     // Zero-pad signal to FFT size
     for (uint32_t i = 0; i < n; i++) {
         ht->work_buffer[i].real = signal[i];
-        ht->work_buffer[i].imag = 0.0f;
+        ht->work_buffer[i].imag = 0.0F;
     }
     for (uint32_t i = n; i < fft_size; i++) {
-        ht->work_buffer[i].real = 0.0f;
-        ht->work_buffer[i].imag = 0.0f;
+        ht->work_buffer[i].real = 0.0F;
+        ht->work_buffer[i].imag = 0.0F;
     }
 
     // Compute Hilbert transform on padded signal
@@ -482,7 +482,7 @@ bool hilbert_instantaneous_frequency(const float* phase,
                                       float* frequency,
                                       uint32_t n,
                                       float sample_rate) {
-    if (phase == NULL || frequency == NULL || n < 3 || sample_rate <= 0.0f) {
+    if (phase == NULL || frequency == NULL || n < 3 || sample_rate <= 0.0F) {
         return false;
     }
 
@@ -496,25 +496,25 @@ bool hilbert_instantaneous_frequency(const float* phase,
     for (uint32_t i = 1; i < n; i++) {
         float diff = phase[i] - phase[i-1];
         // Wrap difference to [-π, π]
-        while (diff > M_PI) diff -= 2.0f * M_PI;
-        while (diff < -M_PI) diff += 2.0f * M_PI;
+        while (diff > M_PI) diff -= 2.0F * M_PI;
+        while (diff < -M_PI) diff += 2.0F * M_PI;
         unwrapped[i] = unwrapped[i-1] + diff;
     }
 
     // Compute derivative using central differences
     // dφ/dt ≈ (φ[i+1] - φ[i-1]) / (2·Δt)
-    float dt = 1.0f / sample_rate;
+    float dt = 1.0F / sample_rate;
 
     // First point (forward difference)
-    frequency[0] = (unwrapped[1] - unwrapped[0]) / dt / (2.0f * M_PI);
+    frequency[0] = (unwrapped[1] - unwrapped[0]) / dt / (2.0F * M_PI);
 
     // Central points (central difference)
     for (uint32_t i = 1; i < n - 1; i++) {
-        frequency[i] = (unwrapped[i+1] - unwrapped[i-1]) / (2.0f * dt) / (2.0f * M_PI);
+        frequency[i] = (unwrapped[i+1] - unwrapped[i-1]) / (2.0F * dt) / (2.0F * M_PI);
     }
 
     // Last point (backward difference)
-    frequency[n-1] = (unwrapped[n-1] - unwrapped[n-2]) / dt / (2.0f * M_PI);
+    frequency[n-1] = (unwrapped[n-1] - unwrapped[n-2]) / dt / (2.0F * M_PI);
 
     nimcp_free(unwrapped);
     return true;

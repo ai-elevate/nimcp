@@ -1049,10 +1049,10 @@ void quorum_logic_default_config(quorum_logic_config_t* config) {
     if (!config) return;
 
     config->gate_type = LOGIC_GATE_AND;  /* Default to unanimous */
-    config->threshold = 0.5f;             /* Majority threshold */
+    config->threshold = 0.5F;             /* Majority threshold */
     config->require_consistency = true;   /* Check for contradictions */
     config->min_agents = 3;               /* Minimum 3 agents */
-    config->confidence_threshold = 0.7f;  /* 70% confidence required */
+    config->confidence_threshold = 0.7F;  /* 70% confidence required */
 }
 
 /**
@@ -1115,14 +1115,14 @@ int quorum_validate_with_logic(
     switch (logic_cfg->gate_type) {
         case LOGIC_GATE_AND:
             /* Unanimous: All agents must agree */
-            validation_result = (winning_fraction >= 0.99f) ? 1 : 0;
+            validation_result = (winning_fraction >= 0.99F) ? 1 : 0;
             LOG_DEBUG("AND validation: fraction=%.2f, result=%d",
                      winning_fraction, validation_result);
             break;
 
         case LOGIC_GATE_OR:
             /* Permissive: Any significant support passes */
-            validation_result = (winning_fraction > 0.0f) ? 1 : 0;
+            validation_result = (winning_fraction > 0.0F) ? 1 : 0;
             LOG_DEBUG("OR validation: fraction=%.2f, result=%d",
                      winning_fraction, validation_result);
             break;
@@ -1292,8 +1292,8 @@ int quorum_evaluate_implication(
     /* IMPLIES logic: A → B = ¬A ∨ B */
     /* Implication is false only when A is true and B is false */
 
-    float antecedent_threshold = 0.5f;
-    float consequent_threshold = 0.5f;
+    float antecedent_threshold = 0.5F;
+    float consequent_threshold = 0.5F;
 
     bool antecedent_active = (antecedent_concentration >= antecedent_threshold);
     bool consequent_active = (consequent_concentration >= consequent_threshold);

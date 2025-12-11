@@ -51,25 +51,25 @@ static float compute_feature_entropy(
 {
     // Guard: Validate inputs
     if (!features || dim == 0 || num_samples == 0 || !config) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Check minimum samples
     if (num_samples < 2) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute mean and std for each dimension
-    float entropy_sum = 0.0f;
+    float entropy_sum = 0.0F;
 
     for (uint32_t d = 0; d < dim; d++) {
-        float mean = 0.0f;
+        float mean = 0.0F;
         for (uint32_t i = 0; i < num_samples; i++) {
             mean += features[i * dim + d];
         }
         mean /= (float)num_samples;
 
-        float std = 0.0f;
+        float std = 0.0F;
         for (uint32_t i = 0; i < num_samples; i++) {
             float diff = features[i * dim + d] - mean;
             std += diff * diff;
@@ -78,22 +78,22 @@ static float compute_feature_entropy(
 
         // Entropy of Gaussian: H = 0.5 * log2(2πeσ²)
         // Guard: Ensure positive entropy by clamping variance to minimum
-        if (std > 1e-6f) {
+        if (std > 1e-6F) {
             float variance = std * std;
             // Clamp variance to ensure positive entropy
             // For entropy > 0, need 2πeσ² > 1, so σ² > 1/(2πe) ≈ 0.0585
-            float min_variance = 0.1f;  // Conservative minimum for positive entropy
+            float min_variance = 0.1F;  // Conservative minimum for positive entropy
             if (variance < min_variance) {
                 variance = min_variance;
             }
-            float h = 0.5f * log2f(2.0f * M_PI * M_E * variance);
+            float h = 0.5F * log2f(2.0F * M_PI * M_E * variance);
             // Ensure non-negative entropy
-            if (h > 0.0f) {
+            if (h > 0.0F) {
                 entropy_sum += h;
             }
         } else {
             // Very low variance - use fixed small entropy
-            entropy_sum += 0.1f;
+            entropy_sum += 0.1F;
         }
     }
 
@@ -117,14 +117,14 @@ static float compute_mutual_information(
 {
     // Guard: Validate inputs
     if (!features_x || !features_y || num_samples == 0 || !config) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute joint entropy H(X,Y)
     uint32_t joint_dim = dim_x + dim_y;
     float* joint_features = (float*)nimcp_malloc(num_samples * joint_dim * sizeof(float));
     if (!joint_features) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Concatenate features
@@ -147,7 +147,7 @@ static float compute_mutual_information(
     float mi = entropy_x + entropy_y - joint_entropy;
 
     // Guard: Bound to [0, min(H(X), H(Y))]
-    mi = fmaxf(0.0f, fminf(mi, fminf(entropy_x, entropy_y)));
+    mi = fmaxf(0.0F, fminf(mi, fminf(entropy_x, entropy_y)));
 
     return mi;
 }
@@ -217,18 +217,18 @@ cross_modal_channel_t cross_modal_analyze_channel(
     );
 
     // Compute transfer efficiency
-    if (channel.source_entropy > 1e-6f) {
+    if (channel.source_entropy > 1e-6F) {
         channel.transfer_efficiency = channel.mutual_information / channel.source_entropy;
-        channel.transfer_efficiency = fminf(1.0f, fmaxf(0.0f, channel.transfer_efficiency));
+        channel.transfer_efficiency = fminf(1.0F, fmaxf(0.0F, channel.transfer_efficiency));
     }
 
     // Estimate channel capacity (Shannon-Hartley)
     // C = B * log2(1 + SNR), assume bandwidth ~ feature dim, SNR ~ 10
-    float snr = 10.0f;
-    channel.channel_capacity = (float)dest_dim * log2f(1.0f + snr);
+    float snr = 10.0F;
+    channel.channel_capacity = (float)dest_dim * log2f(1.0F + snr);
 
     // Information rate (bits/sec), assume 1000 samples/sec
-    channel.information_rate = channel.mutual_information * 1000.0f / (float)num_samples;
+    channel.information_rate = channel.mutual_information * 1000.0F / (float)num_samples;
 
     // Metadata
     channel.sample_count = num_samples;
@@ -252,7 +252,7 @@ bool cross_modal_is_bottleneck(
     }
 
     // Guard: Validate threshold
-    if (efficiency_threshold < 0.0f || efficiency_threshold > 1.0f) {
+    if (efficiency_threshold < 0.0F || efficiency_threshold > 1.0F) {
         nimcp_log_warning("cross_modal_is_bottleneck: Invalid threshold %.2f, using 0.5",
                          efficiency_threshold);
         efficiency_threshold = CROSS_MODAL_DEFAULT_BOTTLENECK_THRESHOLD;
@@ -262,10 +262,10 @@ bool cross_modal_is_bottleneck(
     bool is_bottleneck = (channel->transfer_efficiency < efficiency_threshold);
 
     // Compute severity (0 = no bottleneck, 1 = complete bottleneck)
-    float severity = 0.0f;
+    float severity = 0.0F;
     if (is_bottleneck) {
-        severity = 1.0f - (channel->transfer_efficiency / efficiency_threshold);
-        severity = fminf(1.0f, fmaxf(0.0f, severity));
+        severity = 1.0F - (channel->transfer_efficiency / efficiency_threshold);
+        severity = fminf(1.0F, fmaxf(0.0F, severity));
     }
 
     // Update channel (const_cast pattern)
@@ -323,7 +323,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
     }
 
     // Compute individual entropies
-    float sum_entropy = 0.0f;
+    float sum_entropy = 0.0F;
     for (uint32_t i = 0; i < num_modalities; i++) {
         integration.individual_entropy[i] = compute_feature_entropy(
             features[i], dims[i], num_samples, config
@@ -361,7 +361,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
     nimcp_free(joint_features);
 
     // Compute pairwise mutual information (total)
-    integration.total_mutual_info = 0.0f;
+    integration.total_mutual_info = 0.0F;
     for (uint32_t i = 0; i < num_modalities; i++) {
         for (uint32_t j = i + 1; j < num_modalities; j++) {
             float mi = compute_mutual_information(
@@ -378,17 +378,17 @@ multi_modal_integration_t cross_modal_analyze_integration(
 
     // Compute redundancy (how much information is shared)
     integration.redundancy = sum_entropy - integration.joint_entropy;
-    integration.redundancy = fmaxf(0.0f, integration.redundancy);
+    integration.redundancy = fmaxf(0.0F, integration.redundancy);
 
     // Integration efficiency
-    if (sum_entropy > 1e-6f) {
+    if (sum_entropy > 1e-6F) {
         integration.integration_efficiency = integration.joint_entropy / sum_entropy;
-        integration.integration_efficiency = fminf(1.0f, fmaxf(0.0f,
+        integration.integration_efficiency = fminf(1.0F, fmaxf(0.0F,
                                                     integration.integration_efficiency));
     }
 
     // Check if integrating well (efficiency > 0.7)
-    integration.is_integrating_well = (integration.integration_efficiency > 0.7f);
+    integration.is_integrating_well = (integration.integration_efficiency > 0.7F);
 
     return integration;
 }
@@ -402,13 +402,13 @@ float cross_modal_compute_synergy(const multi_modal_integration_t* integration)
     // Guard: Validate integration
     if (!integration) {
         nimcp_log_error("cross_modal_compute_synergy: NULL integration");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Validate modalities
     if (integration->num_modalities < 2) {
         nimcp_log_error("cross_modal_compute_synergy: Need at least 2 modalities");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Synergy = Redundancy - Mutual Info
@@ -533,7 +533,7 @@ bool cross_modal_detect_bottlenecks(
     }
 
     // Guard: Validate threshold
-    if (efficiency_threshold < 0.0f || efficiency_threshold > 1.0f) {
+    if (efficiency_threshold < 0.0F || efficiency_threshold > 1.0F) {
         efficiency_threshold = CROSS_MODAL_DEFAULT_BOTTLENECK_THRESHOLD;
     }
 
@@ -575,19 +575,19 @@ float cross_modal_find_optimal_route(
     // Guard: Validate inputs
     if (!graph || !path || !path_length) {
         nimcp_log_error("cross_modal_find_optimal_route: NULL parameters");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Validate indices
     if (source_id >= graph->num_modalities || dest_id >= graph->num_modalities) {
         nimcp_log_error("cross_modal_find_optimal_route: Invalid indices");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Validate path length
     if (max_path_length < 2) {
         nimcp_log_error("cross_modal_find_optimal_route: max_path_length too small");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Simple implementation: Direct path only (for now)
@@ -605,7 +605,7 @@ float cross_modal_find_optimal_route(
     }
 
     // No path found
-    return 0.0f;
+    return 0.0F;
 }
 
 void cross_modal_destroy_routing_graph(cross_modal_routing_graph_t* graph)

@@ -24,6 +24,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
@@ -134,10 +135,10 @@ struct predictive_protocol_struct {
 static uint32_t hash_pattern_key(const pattern_key_t* key) {
     if (!key) return 0;
 
-    uint32_t hash = 2166136261u;
-    hash = (hash ^ key->source) * 16777619u;
-    hash = (hash ^ key->target) * 16777619u;
-    hash = (hash ^ key->msg_type) * 16777619u;
+    uint32_t hash = 2166136261U;
+    hash = (hash ^ key->source) * 16777619U;
+    hash = (hash ^ key->target) * 16777619U;
+    hash = (hash ^ key->msg_type) * 16777619U;
     return hash;
 }
 
@@ -190,9 +191,9 @@ static void upsert_pattern(predictive_protocol_t proto, const pattern_key_t* key
 
         /* Update average interval with exponential moving average */
         if (entry->pattern.last_seen_us > 0) {
-            float interval_ms = (timestamp_us - entry->pattern.last_seen_us) / 1000.0f;
+            float interval_ms = (timestamp_us - entry->pattern.last_seen_us) / 1000.0F;
             float alpha = proto->config.learning_rate;
-            entry->pattern.avg_interval_ms = (1.0f - alpha) * entry->pattern.avg_interval_ms +
+            entry->pattern.avg_interval_ms = (1.0F - alpha) * entry->pattern.avg_interval_ms +
                                             alpha * interval_ms;
         }
 
@@ -215,7 +216,7 @@ static void upsert_pattern(predictive_protocol_t proto, const pattern_key_t* key
         entry->pattern.target_module = key->target;
         entry->pattern.msg_type = key->msg_type;
         entry->pattern.frequency = 1;
-        entry->pattern.avg_interval_ms = 0.0f;
+        entry->pattern.avg_interval_ms = 0.0F;
         entry->pattern.last_seen_us = timestamp_us;
 
         /* Insert into hash table */
@@ -284,7 +285,7 @@ static void update_transition(predictive_protocol_t proto,
         trans->from_state = *from;
         trans->to_state = *to;
         trans->count = 1;
-        trans->probability = 0.0f;  // Will be calculated later
+        trans->probability = 0.0F;  // Will be calculated later
         trans->last_updated_us = timestamp_us;
 
         proto->transition_count++;
@@ -661,7 +662,7 @@ float predictive_protocol_get_confidence(predictive_protocol_t proto,
                                          const bio_message_header_t* current_msg,
                                          bio_message_type_t next_type,
                                          bio_module_id_t next_target) {
-    if (!proto || proto->magic != PREDICTIVE_MAGIC || !current_msg) return -1.0f;
+    if (!proto || proto->magic != PREDICTIVE_MAGIC || !current_msg) return -1.0F;
 
     nimcp_platform_mutex_lock(&proto->mutex);
 
@@ -679,7 +680,7 @@ float predictive_protocol_get_confidence(predictive_protocol_t proto,
 
     markov_transition_t* trans = find_transition(proto, &from_key, &to_key);
 
-    float confidence = trans ? trans->probability : -1.0f;
+    float confidence = trans ? trans->probability : -1.0F;
 
     nimcp_platform_mutex_unlock(&proto->mutex);
 
@@ -781,9 +782,9 @@ void* predictive_protocol_get_prefetched(predictive_protocol_t proto,
 
             /* Calculate latency saved (estimate) */
             uint64_t age_us = entry->last_access_us - entry->prefetch_time_us;
-            float latency_saved_ms = age_us / 1000.0f;
-            proto->stats.avg_latency_saved_ms = (proto->stats.avg_latency_saved_ms * 0.9f) +
-                                               (latency_saved_ms * 0.1f);
+            float latency_saved_ms = age_us / 1000.0F;
+            proto->stats.avg_latency_saved_ms = (proto->stats.avg_latency_saved_ms * 0.9F) +
+                                               (latency_saved_ms * 0.1F);
         }
 
         LOG_TRACE("Cache HIT: target=%u, type=0x%04X", target, msg_type);
@@ -869,8 +870,8 @@ int predictive_protocol_get_stats(predictive_protocol_t proto, prefetch_result_t
     /* Calculate prediction accuracy (simplified estimate) */
     if (stats->predictions_made > 0) {
         stats->prediction_accuracy = (float)stats->cache_hits / (float)stats->predictions_made;
-        if (stats->prediction_accuracy > 1.0f) {
-            stats->prediction_accuracy = 1.0f;
+        if (stats->prediction_accuracy > 1.0F) {
+            stats->prediction_accuracy = 1.0F;
         }
     }
 

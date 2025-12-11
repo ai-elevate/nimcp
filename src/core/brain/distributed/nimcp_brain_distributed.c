@@ -440,7 +440,7 @@ bool brain_enable_distributed(brain_t brain, p2p_node_t p2p_node)
     distrib_cognition_config_t config;
     config.enable_neuromod_sync = true;
     config.neuromod_broadcast_interval_ms = 100;
-    config.neuromod_diffusion_rate = 0.5f;
+    config.neuromod_diffusion_rate = 0.5F;
     config.enable_glial_sync = true;
     config.glial_sync_interval_ms = 100;
     config.enable_region_sync = true;
@@ -496,10 +496,10 @@ bool brain_sync_neuromodulators(brain_t brain)
     // Broadcast all neuromodulator types with default concentrations
     // In a full implementation, these would be read from the brain's neuromodulator pool
     bool success = true;
-    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_DOPAMINE, 0.5f);
-    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_SEROTONIN, 0.5f);
-    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_NOREPINEPHRINE, 0.5f);
-    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_ACETYLCHOLINE, 0.5f);
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_DOPAMINE, 0.5F);
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_SEROTONIN, 0.5F);
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_NOREPINEPHRINE, 0.5F);
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_ACETYLCHOLINE, 0.5F);
 
     if (!success) {
         set_error("Failed to broadcast some neuromodulators");

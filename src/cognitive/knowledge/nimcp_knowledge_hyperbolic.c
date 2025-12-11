@@ -88,8 +88,8 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
     // Root concepts (level 0) → radius ≈ 0
     // Intermediate concepts → radius ≈ 0.5
     // Specific concepts → radius ≈ 0.8-0.9
-    float radius = tanhf(hierarchical_level * 0.5f);
-    radius = fminf(radius, 0.95f);  // Cap at 0.95 for numerical stability
+    float radius = tanhf(hierarchical_level * 0.5F);
+    radius = fminf(radius, 0.95F);  // Cap at 0.95 for numerical stability
 
     // Allocate coordinates
     float *coords = (float*)nimcp_malloc(dim * sizeof(float));
@@ -103,23 +103,23 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
         memcpy(coords, parent->hyperbolic_embedding->coords, dim * sizeof(float));
 
         // Add small random offset (0.1-0.2 in random direction)
-        float offset_magnitude = 0.1f + 0.1f * ((float)rand() / RAND_MAX);
+        float offset_magnitude = 0.1F + 0.1F * ((float)rand() / RAND_MAX);
         for (uint32_t i = 0; i < dim; i++) {
-            float offset = (2.0f * ((float)rand() / RAND_MAX) - 1.0f) * offset_magnitude;
+            float offset = (2.0F * ((float)rand() / RAND_MAX) - 1.0F) * offset_magnitude;
             coords[i] += offset;
         }
     } else {
         // No parent - initialize at random position on sphere of given radius
         // First generate random unit vector
-        float norm = 0.0f;
+        float norm = 0.0F;
         for (uint32_t i = 0; i < dim; i++) {
-            coords[i] = 2.0f * ((float)rand() / RAND_MAX) - 1.0f;
+            coords[i] = 2.0F * ((float)rand() / RAND_MAX) - 1.0F;
             norm += coords[i] * coords[i];
         }
         norm = sqrtf(norm);
 
         // Normalize and scale to target radius
-        if (norm > 1e-6f) {
+        if (norm > 1e-6F) {
             for (uint32_t i = 0; i < dim; i++) {
                 coords[i] = (coords[i] / norm) * radius;
             }
@@ -127,13 +127,13 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
             // Degenerate case - just use first axis
             coords[0] = radius;
             for (uint32_t i = 1; i < dim; i++) {
-                coords[i] = 0.0f;
+                coords[i] = 0.0F;
             }
         }
     }
 
     // Create Poincaré point
-    item->hyperbolic_embedding = poincare_point_create(dim, coords, -1.0f);
+    item->hyperbolic_embedding = poincare_point_create(dim, coords, -1.0F);
     nimcp_free(coords);
 
     if (!item->hyperbolic_embedding) {
@@ -156,17 +156,17 @@ float knowledge_hyperbolic_distance(const knowledge_item_t *item1,
                                     const knowledge_item_t *item2) {
     // Validate inputs
     if (!item1 || !item2) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Check both have hyperbolic embeddings
     if (!item1->hyperbolic_embedding || !item2->hyperbolic_embedding) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Check dimensions match
     if (item1->hyperbolic_embedding->dim != item2->hyperbolic_embedding->dim) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Compute hyperbolic distance
@@ -225,7 +225,7 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
         float dist = poincare_distance(query_item->hyperbolic_embedding,
                                       all_items[i].hyperbolic_embedding);
 
-        if (dist >= 0.0f) {  // Valid distance
+        if (dist >= 0.0F) {  // Valid distance
             candidates[valid_candidates].item = &all_items[i];
             candidates[valid_candidates].distance = dist;
             valid_candidates++;
@@ -279,7 +279,7 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
                                             uint32_t num_epochs,
                                             float learning_rate) {
     if (!system || num_epochs == 0) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Get all knowledge items
@@ -287,7 +287,7 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     uint32_t num_items = knowledge_get_all_ordered_by_confidence(system, &all_items);
 
     if (num_items < 2 || !all_items) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Count items with hyperbolic embeddings
@@ -299,7 +299,7 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     }
 
     if (num_hyperbolic < 2) {
-        return -1.0f;  // Need at least 2 items with embeddings
+        return -1.0F;  // Need at least 2 items with embeddings
     }
 
     // Get embedding dimension from first item
@@ -312,25 +312,25 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     }
 
     if (dim == 0) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Allocate gradient buffer
     float *gradient = (float*)nimcp_malloc(dim * sizeof(float));
     if (!gradient) {
-        return -1.0f;
+        return -1.0F;
     }
 
-    float total_loss = 0.0f;
+    float total_loss = 0.0F;
     float initial_lr = learning_rate;
 
     // Training loop
     for (uint32_t epoch = 0; epoch < num_epochs; epoch++) {
-        float epoch_loss = 0.0f;
+        float epoch_loss = 0.0F;
         uint32_t num_pairs = 0;
 
         // Decay learning rate
-        float current_lr = initial_lr * (1.0f / (1.0f + 0.01f * epoch));
+        float current_lr = initial_lr * (1.0F / (1.0F + 0.01F * epoch));
 
         // For each pair of items
         for (uint32_t i = 0; i < num_items; i++) {
@@ -344,19 +344,19 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
 
                 // If parent-child relationship
                 if (all_items[i].parent_index == j || all_items[j].parent_index == i) {
-                    target_distance = 1.0f;  // Parent-child should be close
+                    target_distance = 1.0F;  // Parent-child should be close
                 }
                 // If same hierarchical level (siblings)
-                else if (fabsf(all_items[i].hierarchical_level - all_items[j].hierarchical_level) < 0.5f) {
-                    target_distance = 2.0f;  // Siblings moderately close
+                else if (fabsf(all_items[i].hierarchical_level - all_items[j].hierarchical_level) < 0.5F) {
+                    target_distance = 2.0F;  // Siblings moderately close
                 }
                 // If different domains
                 else if (all_items[i].domain != all_items[j].domain) {
-                    target_distance = 5.0f;  // Different domains far apart
+                    target_distance = 5.0F;  // Different domains far apart
                 }
                 // Default
                 else {
-                    target_distance = 3.0f;  // Related but distinct
+                    target_distance = 3.0F;  // Related but distinct
                 }
 
                 // Compute current distance
@@ -373,10 +373,10 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
                 // grad_loss = 2 * error * grad_distance
                 // For now, use approximate gradient descent
 
-                if (fabsf(error) > 0.01f) {  // Only update if significant error
+                if (fabsf(error) > 0.01F) {  // Only update if significant error
                     // Move points closer or farther based on error
-                    float direction = (error > 0) ? -1.0f : 1.0f;
-                    float magnitude = fminf(fabsf(error) * 0.1f, 0.5f);
+                    float direction = (error > 0) ? -1.0F : 1.0F;
+                    float magnitude = fminf(fabsf(error) * 0.1F, 0.5F);
 
                     // Compute direction vector: (item_i - item_j)
                     for (uint32_t d = 0; d < dim; d++) {
@@ -445,7 +445,7 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
     }
 
     // Copy and normalize
-    float norm = 0.0f;
+    float norm = 0.0F;
     for (uint32_t i = 0; i < copy_dim; i++) {
         hyp_coords[i] = item->euclidean_embedding[i];
         norm += hyp_coords[i] * hyp_coords[i];
@@ -453,15 +453,15 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
 
     // Fill remaining dimensions with zeros
     for (uint32_t i = copy_dim; i < target_dim; i++) {
-        hyp_coords[i] = 0.0f;
+        hyp_coords[i] = 0.0F;
     }
 
     // Normalize to fit in ball (||x|| < 1)
     // Use tanh to squash to appropriate radius
     norm = sqrtf(norm);
-    if (norm > 1e-6f) {
-        float target_radius = tanhf(norm * 0.5f);  // Map R^n norm to ball
-        target_radius = fminf(target_radius, 0.95f);
+    if (norm > 1e-6F) {
+        float target_radius = tanhf(norm * 0.5F);  // Map R^n norm to ball
+        target_radius = fminf(target_radius, 0.95F);
 
         for (uint32_t i = 0; i < target_dim; i++) {
             hyp_coords[i] = (hyp_coords[i] / norm) * target_radius;
@@ -473,7 +473,7 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
         poincare_point_destroy(item->hyperbolic_embedding);
     }
 
-    item->hyperbolic_embedding = poincare_point_create(target_dim, hyp_coords, -1.0f);
+    item->hyperbolic_embedding = poincare_point_create(target_dim, hyp_coords, -1.0F);
     nimcp_free(hyp_coords);
 
     if (!item->hyperbolic_embedding) {

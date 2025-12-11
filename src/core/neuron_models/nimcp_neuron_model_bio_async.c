@@ -362,7 +362,7 @@ void neuron_model_publish_state(uint32_t neuron_id, float voltage) {
     msg.neuron_id = neuron_id;
     msg.membrane_potential = voltage;
     msg.spiked = false;
-    msg.spike_time_ms = 0.0f;
+    msg.spike_time_ms = 0.0F;
 
     // Broadcast
     bio_router_broadcast(g_neuron_async_ctx.module_ctx, &msg, sizeof(msg));

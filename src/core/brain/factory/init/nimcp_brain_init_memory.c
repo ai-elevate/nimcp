@@ -197,7 +197,7 @@ bool nimcp_brain_factory_init_curiosity_subsystem(brain_t brain)
 
     // Set baseline curiosity to moderate-high (like a curious adult learner)
     // Infants: 0.95, Children: 0.85, Adults: 0.6-0.7
-    curiosity_set_baseline(brain->curiosity, 0.7f);
+    curiosity_set_baseline(brain->curiosity, 0.7F);
 
     return true;
 }
@@ -333,7 +333,7 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
     if (brain->config.workspace_capacity_dim > 0) {
         gw_config.capacity_dim = brain->config.workspace_capacity_dim;
     }
-    if (brain->config.workspace_ignition_threshold > 0.0f) {
+    if (brain->config.workspace_ignition_threshold > 0.0F) {
         gw_config.ignition_threshold = brain->config.workspace_ignition_threshold;
     }
     if (brain->config.workspace_refractory_ms > 0) {
@@ -389,27 +389,27 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
             // Higher capacity = can handle more information flow
             if (brain->working_memory) {
                 global_workspace_set_subscriber_capacity(
-                    brain->global_workspace, MODULE_WORKING_MEMORY, 150.0f);
+                    brain->global_workspace, MODULE_WORKING_MEMORY, 150.0F);
             }
             if (brain->executive) {
                 global_workspace_set_subscriber_capacity(
-                    brain->global_workspace, MODULE_EXECUTIVE, 200.0f);
+                    brain->global_workspace, MODULE_EXECUTIVE, 200.0F);
             }
             if (brain->ethics) {
                 global_workspace_set_subscriber_capacity(
-                    brain->global_workspace, MODULE_ETHICS, 100.0f);
+                    brain->global_workspace, MODULE_ETHICS, 100.0F);
             }
             if (brain->introspection) {
                 global_workspace_set_subscriber_capacity(
-                    brain->global_workspace, MODULE_INTROSPECTION, 80.0f);
+                    brain->global_workspace, MODULE_INTROSPECTION, 80.0F);
             }
             if (brain->salience) {
                 global_workspace_set_subscriber_capacity(
-                    brain->global_workspace, MODULE_SALIENCE, 120.0f);
+                    brain->global_workspace, MODULE_SALIENCE, 120.0F);
             }
             if (brain->theory_of_mind) {
                 global_workspace_set_subscriber_capacity(
-                    brain->global_workspace, MODULE_THEORY_OF_MIND, 100.0f);
+                    brain->global_workspace, MODULE_THEORY_OF_MIND, 100.0F);
             }
         }
     }

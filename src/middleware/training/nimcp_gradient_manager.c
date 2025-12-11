@@ -81,7 +81,7 @@ nimcp_grad_accum_config_t nimcp_grad_accum_default_config(uint32_t accumulation_
 nimcp_grad_scale_config_t nimcp_grad_scale_default_config(float initial_scale) {
     nimcp_grad_scale_config_t config = {
         .strategy = NIMCP_GRAD_SCALE_DYNAMIC,
-        .initial_scale = initial_scale > 0.0f ? initial_scale : 65536.0f,
+        .initial_scale = initial_scale > 0.0F ? initial_scale : 65536.0F,
         .min_scale = NIMCP_GRAD_MIN_SCALE,
         .max_scale = NIMCP_GRAD_MAX_SCALE,
         .backoff_factor = NIMCP_GRAD_BACKOFF_FACTOR,
@@ -98,13 +98,13 @@ nimcp_gradient_manager_config_t nimcp_gradient_manager_default_config(void) {
     config.accumulation = nimcp_grad_accum_default_config(1);
     config.use_accumulation = false;
 
-    config.scaling = nimcp_grad_scale_default_config(65536.0f);
+    config.scaling = nimcp_grad_scale_default_config(65536.0F);
     config.use_scaling = false;
 
     config.check_nan_inf = true;
     config.skip_nan_gradients = true;
     config.replace_inf = true;
-    config.max_grad_value = 1e6f;
+    config.max_grad_value = 1e6F;
 
     config.preallocate_buffers = false;
     config.max_buffer_size = 0;
@@ -140,7 +140,7 @@ nimcp_gradient_manager_ctx_t* nimcp_gradient_manager_create(
     memcpy(&ctx->config, config, sizeof(nimcp_gradient_manager_config_t));
 
     /* Initialize scaling */
-    ctx->current_scale = config->use_scaling ? config->scaling.initial_scale : 1.0f;
+    ctx->current_scale = config->use_scaling ? config->scaling.initial_scale : 1.0F;
     ctx->steps_since_growth = 0;
     ctx->found_inf = false;
 
@@ -161,7 +161,7 @@ nimcp_gradient_manager_ctx_t* nimcp_gradient_manager_create(
     /* Initialize statistics */
     memset(&ctx->stats, 0, sizeof(nimcp_grad_stats_t));
     ctx->stats.min_grad_norm = FLT_MAX;
-    ctx->stats.max_grad_norm = 0.0f;
+    ctx->stats.max_grad_norm = 0.0F;
     ctx->stats.current_scale = ctx->current_scale;
 
     ctx->initialized = true;
@@ -330,11 +330,11 @@ float nimcp_gradient_scale(
     size_t num_gradients
 ) {
     if (!ctx || !gradients || num_gradients == 0) {
-        return 1.0f;
+        return 1.0F;
     }
 
     if (!ctx->config.use_scaling || ctx->config.scaling.strategy == NIMCP_GRAD_SCALE_NONE) {
-        return 1.0f;
+        return 1.0F;
     }
 
     float scale = ctx->current_scale;
@@ -352,14 +352,14 @@ float nimcp_gradient_unscale(
     size_t num_gradients
 ) {
     if (!ctx || !gradients || num_gradients == 0) {
-        return 1.0f;
+        return 1.0F;
     }
 
     if (!ctx->config.use_scaling || ctx->config.scaling.strategy == NIMCP_GRAD_SCALE_NONE) {
-        return 1.0f;
+        return 1.0F;
     }
 
-    float inv_scale = 1.0f / ctx->current_scale;
+    float inv_scale = 1.0F / ctx->current_scale;
 
     for (size_t i = 0; i < num_gradients; i++) {
         gradients[i] *= inv_scale;
@@ -415,7 +415,7 @@ void nimcp_gradient_update_scale(
 }
 
 float nimcp_gradient_get_scale(const nimcp_gradient_manager_ctx_t* ctx) {
-    return ctx ? ctx->current_scale : 1.0f;
+    return ctx ? ctx->current_scale : 1.0F;
 }
 
 nimcp_result_t nimcp_gradient_set_scale(
@@ -457,7 +457,7 @@ nimcp_grad_health_t nimcp_gradient_check_health(
         if (isinf(gradients[i])) {
             return NIMCP_GRAD_HAS_INF;
         }
-        if (gradients[i] != 0.0f) {
+        if (gradients[i] != 0.0F) {
             all_zero = false;
         }
     }
@@ -518,7 +518,7 @@ uint64_t nimcp_gradient_sanitize(
  */
 float nimcp_gradient_l2_norm(const float* gradients, size_t num_gradients) {
     if (!gradients || num_gradients == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Create tensor view of gradient data (no copy) */
@@ -526,7 +526,7 @@ float nimcp_gradient_l2_norm(const float* gradients, size_t num_gradients) {
     nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
     if (!t) {
         /* Fallback to scalar computation */
-        float sum_sq = 0.0f;
+        float sum_sq = 0.0F;
         for (size_t i = 0; i < num_gradients; i++) {
             sum_sq += gradients[i] * gradients[i];
         }
@@ -547,7 +547,7 @@ float nimcp_gradient_l2_norm(const float* gradients, size_t num_gradients) {
  */
 float nimcp_gradient_l1_norm(const float* gradients, size_t num_gradients) {
     if (!gradients || num_gradients == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Create tensor view of gradient data (no copy) */
@@ -555,7 +555,7 @@ float nimcp_gradient_l1_norm(const float* gradients, size_t num_gradients) {
     nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
     if (!t) {
         /* Fallback to scalar computation */
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (size_t i = 0; i < num_gradients; i++) {
             sum += fabsf(gradients[i]);
         }
@@ -576,7 +576,7 @@ float nimcp_gradient_l1_norm(const float* gradients, size_t num_gradients) {
  */
 float nimcp_gradient_max_norm(const float* gradients, size_t num_gradients) {
     if (!gradients || num_gradients == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Create tensor view of gradient data (no copy) */
@@ -584,7 +584,7 @@ float nimcp_gradient_max_norm(const float* gradients, size_t num_gradients) {
     nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
     if (!t) {
         /* Fallback to scalar computation */
-        float max_abs = 0.0f;
+        float max_abs = 0.0F;
         for (size_t i = 0; i < num_gradients; i++) {
             float abs_val = fabsf(gradients[i]);
             if (abs_val > max_abs) {
@@ -697,18 +697,18 @@ nimcp_result_t nimcp_gradient_manager_validate_config(
             return NIMCP_ERROR_INVALID_PARAM;
         }
         if (config->scaling.strategy != NIMCP_GRAD_SCALE_NONE) {
-            if (config->scaling.initial_scale <= 0.0f) {
+            if (config->scaling.initial_scale <= 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (config->scaling.min_scale <= 0.0f ||
+            if (config->scaling.min_scale <= 0.0F ||
                 config->scaling.max_scale <= config->scaling.min_scale) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (config->scaling.backoff_factor <= 0.0f ||
-                config->scaling.backoff_factor >= 1.0f) {
+            if (config->scaling.backoff_factor <= 0.0F ||
+                config->scaling.backoff_factor >= 1.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (config->scaling.growth_factor <= 1.0f) {
+            if (config->scaling.growth_factor <= 1.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
         }
@@ -897,7 +897,7 @@ float nimcp_gradient_tensor_norm(
     double p
 ) {
     if (!grad_tensor) {
-        return 0.0f;
+        return 0.0F;
     }
     return (float)nimcp_tensor_norm_p(grad_tensor, p);
 }
@@ -919,8 +919,8 @@ float nimcp_gradient_clip_norm_tensor(
     float max_norm,
     double norm_type
 ) {
-    if (!grad_tensor || max_norm <= 0.0f) {
-        return 0.0f;
+    if (!grad_tensor || max_norm <= 0.0F) {
+        return 0.0F;
     }
 
     /* Compute current norm */

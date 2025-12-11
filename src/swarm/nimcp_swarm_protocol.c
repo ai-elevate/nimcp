@@ -394,7 +394,7 @@ nimcp_error_t swarm_protocol_decode(
         // Determine actual payload length (how many non-zero floats)
         uint32_t actual_len = 0;
         for (uint32_t i = 0; i < SWARM_PAYLOAD_FLOATS; i++) {
-            if (msg->payload[i] != 0.0f || i == 0) {
+            if (msg->payload[i] != 0.0F || i == 0) {
                 // Always copy at least first element, even if zero
                 actual_len = i + 1;
             }
@@ -606,7 +606,7 @@ nimcp_error_t swarm_protocol_encode_vote_request(
     float option_count,
     float deadline)
 {
-    float payload[4] = {proposal_id, option_count, deadline, 0.0f};
+    float payload[4] = {proposal_id, option_count, deadline, 0.0F};
     return swarm_protocol_encode(msg, SWARM_MSG_VOTE_REQUEST, sender_id, payload, 4);
 }
 
@@ -617,6 +617,6 @@ nimcp_error_t swarm_protocol_encode_vote_response(
     float vote_choice,
     float confidence)
 {
-    float payload[4] = {proposal_id, vote_choice, confidence, 0.0f};
+    float payload[4] = {proposal_id, vote_choice, confidence, 0.0F};
     return swarm_protocol_encode(msg, SWARM_MSG_VOTE_RESPONSE, sender_id, payload, 4);
 }

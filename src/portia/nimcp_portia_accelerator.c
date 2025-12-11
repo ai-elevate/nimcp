@@ -134,8 +134,8 @@ static bool detect_nvidia_cuda(accelerator_info_t* info) {
 
     // Rough estimates for compute units and TFlops
     info->compute_units = 64; // Typical for mid-range GPU
-    info->peak_tflops = 10.0f; // Rough estimate
-    info->power_watts = 150.0f; // Typical GPU power
+    info->peak_tflops = 10.0F; // Rough estimate
+    info->power_watts = 150.0F; // Typical GPU power
 
     dlclose(handle);
 
@@ -182,8 +182,8 @@ static bool detect_amd_gpu(accelerator_info_t* info) {
                 info->type = ACCELERATOR_TYPE_GPU;
                 info->available = true;
                 info->compute_units = 40;
-                info->peak_tflops = 8.0f;
-                info->power_watts = 120.0f;
+                info->peak_tflops = 8.0F;
+                info->power_watts = 120.0F;
                 info->memory_bytes = 8ULL * 1024 * 1024 * 1024; // 8GB estimate
 
                 fclose(vendor_file);
@@ -224,8 +224,8 @@ static bool detect_intel_gpu(accelerator_info_t* info) {
     info->type = ACCELERATOR_TYPE_GPU;
     info->available = true;
     info->compute_units = 24;
-    info->peak_tflops = 2.0f;
-    info->power_watts = 30.0f;
+    info->peak_tflops = 2.0F;
+    info->power_watts = 30.0F;
     info->memory_bytes = 4ULL * 1024 * 1024 * 1024; // Shared memory
 
     LOG_INFO("Detected Intel GPU");
@@ -250,8 +250,8 @@ static bool detect_intel_movidius(accelerator_info_t* info) {
     info->type = ACCELERATOR_TYPE_NPU;
     info->available = true;
     info->compute_units = 16;
-    info->peak_tflops = 1.0f;
-    info->power_watts = 5.0f;
+    info->peak_tflops = 1.0F;
+    info->power_watts = 5.0F;
     info->memory_bytes = 512 * 1024 * 1024; // 512MB
 
     LOG_INFO("Detected Intel Movidius NPU");
@@ -272,8 +272,8 @@ static bool detect_qualcomm_hexagon(accelerator_info_t* info) {
     info->type = ACCELERATOR_TYPE_NPU;
     info->available = true;
     info->compute_units = 4;
-    info->peak_tflops = 0.5f;
-    info->power_watts = 2.0f;
+    info->peak_tflops = 0.5F;
+    info->power_watts = 2.0F;
     info->memory_bytes = 256 * 1024 * 1024;
 
     LOG_INFO("Detected Qualcomm Hexagon NPU");
@@ -349,8 +349,8 @@ static bool detect_ti_dsp(accelerator_info_t* info) {
     info->type = ACCELERATOR_TYPE_DSP;
     info->available = true;
     info->compute_units = 2;
-    info->peak_tflops = 0.2f;
-    info->power_watts = 1.0f;
+    info->peak_tflops = 0.2F;
+    info->power_watts = 1.0F;
     info->memory_bytes = 128 * 1024 * 1024;
 
     LOG_INFO("Detected TI DSP");
@@ -374,8 +374,8 @@ static bool detect_fpga(accelerator_info_t* info) {
         info->type = ACCELERATOR_TYPE_FPGA;
         info->available = true;
         info->compute_units = 32;
-        info->peak_tflops = 5.0f;
-        info->power_watts = 50.0f;
+        info->peak_tflops = 5.0F;
+        info->power_watts = 50.0F;
         info->memory_bytes = 2ULL * 1024 * 1024 * 1024;
 
         LOG_INFO("Detected FPGA");
@@ -403,8 +403,8 @@ static bool detect_edge_tpu(accelerator_info_t* info) {
     info->type = ACCELERATOR_TYPE_TPU;
     info->available = true;
     info->compute_units = 1;
-    info->peak_tflops = 4.0f; // 4 TOPS
-    info->power_watts = 2.0f;
+    info->peak_tflops = 4.0F; // 4 TOPS
+    info->power_watts = 2.0F;
     info->memory_bytes = 8 * 1024 * 1024; // 8MB
 
     LOG_INFO("Detected Google Edge TPU");
@@ -501,9 +501,9 @@ portia_accelerator_config_t portia_accelerator_default_config(void) {
         .detect_fpga = true,
         .detect_tpu = true,
         .auto_select = true,
-        .power_budget_watts = 300.0f,
-        .min_memory_gb = 0.0f,
-        .min_tflops = 0.0f,
+        .power_budget_watts = 300.0F,
+        .min_memory_gb = 0.0F,
+        .min_tflops = 0.0F,
         .prefer_low_power = false,
         .require_fp16 = false,
         .require_int8 = false
@@ -807,7 +807,7 @@ bool portia_accelerator_get_best(portia_accelerator_system_t system,
     }
 
     // Find best accelerator based on scoring
-    float best_score = -1.0f;
+    float best_score = -1.0F;
     uint32_t best_idx = 0;
 
     for (uint32_t i = 0; i < system->registry.count; i++) {
@@ -980,64 +980,64 @@ void portia_accelerator_print_all(portia_accelerator_system_t system) {
 float portia_accelerator_estimate_power(const accelerator_info_t* info,
                                         float utilization_percent) {
     if (!bbb_check_pointer(info, "portia_accelerator_estimate_power")) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (!bbb_validate_range_u((uint64_t)utilization_percent, 0, 100,
                               "portia_accelerator_estimate_power")) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Simple linear model: idle power + (peak_power - idle_power) * utilization
-    float idle_power = info->power_watts * 0.3f; // 30% at idle
-    float dynamic_power = info->power_watts * 0.7f; // 70% dynamic
+    float idle_power = info->power_watts * 0.3F; // 30% at idle
+    float dynamic_power = info->power_watts * 0.7F; // 70% dynamic
 
-    return idle_power + (dynamic_power * utilization_percent / 100.0f);
+    return idle_power + (dynamic_power * utilization_percent / 100.0F);
 }
 
 float portia_accelerator_calculate_score(const accelerator_info_t* info,
                                          const portia_accelerator_config_t* config) {
     if (!bbb_check_pointer(info, "portia_accelerator_calculate_score")) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (!bbb_check_pointer(config, "portia_accelerator_calculate_score")) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float score = 0.0f;
+    float score = 0.0F;
 
     // Check hard requirements
     if (config->min_memory_gb > 0) {
-        float memory_gb = info->memory_bytes / (1024.0f * 1024.0f * 1024.0f);
+        float memory_gb = info->memory_bytes / (1024.0F * 1024.0F * 1024.0F);
         if (memory_gb < config->min_memory_gb) {
-            return 0.0f; // Doesn't meet minimum
+            return 0.0F; // Doesn't meet minimum
         }
     }
 
     if (config->min_tflops > 0 && info->peak_tflops < config->min_tflops) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (config->power_budget_watts > 0 && info->power_watts > config->power_budget_watts) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Calculate score based on capabilities
-    score += info->peak_tflops * 10.0f; // Performance weight
-    score += (info->memory_bytes / (1024.0f * 1024.0f * 1024.0f)) * 5.0f; // Memory weight
+    score += info->peak_tflops * 10.0F; // Performance weight
+    score += (info->memory_bytes / (1024.0F * 1024.0F * 1024.0F)) * 5.0F; // Memory weight
 
     // Power efficiency bonus
     if (config->prefer_low_power) {
         float efficiency = info->peak_tflops / info->power_watts;
-        score += efficiency * 20.0f;
+        score += efficiency * 20.0F;
     }
 
     // Type preference
     if (info->type == ACCELERATOR_TYPE_GPU) {
-        score *= 1.2f; // Slight GPU preference
+        score *= 1.2F; // Slight GPU preference
     } else if (info->type == ACCELERATOR_TYPE_NPU) {
-        score *= 1.1f; // NPUs are efficient
+        score *= 1.1F; // NPUs are efficient
     }
 
     return score;

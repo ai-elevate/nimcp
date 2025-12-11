@@ -182,12 +182,12 @@ static int compute_weight_deltas(swarm_gateway_t* gateway,
 
         /* In production, get actual weights from brain */
         for (size_t i = 0; i < weight_count; i++) {
-            float current = 0.0f; /* Get from brain */
+            float current = 0.0F; /* Get from brain */
             float previous = gateway->learning_state.weight_snapshot[i];
             float delta = current - previous;
 
             /* Only include significant deltas (simple compression) */
-            if (fabsf(delta) > 1e-6f) {
+            if (fabsf(delta) > 1e-6F) {
                 deltas[significant_deltas++] = delta;
             }
         }
@@ -201,7 +201,7 @@ static int compute_weight_deltas(swarm_gateway_t* gateway,
     } else {
         /* First sync - send all weights */
         update->num_deltas = weight_count;
-        update->compression_ratio = 1.0f;
+        update->compression_ratio = 1.0F;
 
         LOG_INFO("First learning sync - sending full weights");
     }
@@ -394,11 +394,11 @@ static void simulate_telemetry_reception(swarm_gateway_t* gateway) {
             telemetry.timestamp = current_time;
             telemetry.num_drones = swarm->num_drones_total;
             telemetry.num_responsive = swarm->num_drones_active;
-            telemetry.avg_battery_level = 75.0f + (rand() % 20);
-            telemetry.avg_cpu_usage = 40.0f + (rand() % 30);
-            telemetry.avg_memory_usage = 50.0f + (rand() % 20);
-            telemetry.formation_coherence = 0.8f + (rand() % 20) / 100.0f;
-            telemetry.mission_progress = 0.5f;
+            telemetry.avg_battery_level = 75.0F + (rand() % 20);
+            telemetry.avg_cpu_usage = 40.0F + (rand() % 30);
+            telemetry.avg_memory_usage = 50.0F + (rand() % 20);
+            telemetry.formation_coherence = 0.8F + (rand() % 20) / 100.0F;
+            telemetry.mission_progress = 0.5F;
             telemetry.communication_health = 85 + (rand() % 15);
 
             update_telemetry(swarm, &telemetry);
@@ -983,10 +983,10 @@ int swarm_gateway_get_swarm_status(swarm_gateway_t* gateway,
     /* Compute overall health score */
     float drone_health = (float)swarm->num_drones_active /
                         (float)swarm->num_drones_total;
-    float connection_health = (swarm->status == SWARM_STATUS_CONNECTED) ? 1.0f :
-                             (swarm->status == SWARM_STATUS_DEGRADED) ? 0.7f : 0.0f;
+    float connection_health = (swarm->status == SWARM_STATUS_CONNECTED) ? 1.0F :
+                             (swarm->status == SWARM_STATUS_DEGRADED) ? 0.7F : 0.0F;
 
-    health->overall_health = (drone_health + connection_health) / 2.0f;
+    health->overall_health = (drone_health + connection_health) / 2.0F;
 
     nimcp_mutex_unlock(&gateway->mutex);
 
@@ -1156,9 +1156,9 @@ int swarm_gateway_aggregate_to_server(swarm_gateway_t* gateway) {
     nimcp_mutex_lock(&gateway->mutex);
 
     /* Aggregate telemetry from all swarms */
-    float total_battery = 0.0f;
-    float total_coherence = 0.0f;
-    float total_progress = 0.0f;
+    float total_battery = 0.0F;
+    float total_coherence = 0.0F;
+    float total_progress = 0.0F;
     uint32_t valid_swarms = 0;
 
     for (uint32_t i = 0; i < gateway->num_swarms; i++) {
@@ -1181,7 +1181,7 @@ int swarm_gateway_aggregate_to_server(swarm_gateway_t* gateway) {
 
         LOG_INFO("Aggregated metrics: battery=%.1f%%, coherence=%.2f, "
                       "progress=%.1f%% (from %u swarms)",
-                      avg_battery, avg_coherence, avg_progress * 100.0f,
+                      avg_battery, avg_coherence, avg_progress * 100.0F,
                       valid_swarms);
 
         /* Feed back to server brain for macro decisions */

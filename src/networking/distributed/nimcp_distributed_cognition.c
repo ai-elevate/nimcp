@@ -141,7 +141,7 @@ static uint32_t g_security_module_id = 0;
 static const distrib_cognition_config_t DEFAULT_CONFIG = {
     .enable_neuromod_sync = true,
     .neuromod_broadcast_interval_ms = 100,  // 10 Hz broadcast
-    .neuromod_diffusion_rate = 0.1f,        // 10% cross-node diffusion
+    .neuromod_diffusion_rate = 0.1F,        // 10% cross-node diffusion
 
     .enable_glial_sync = true,
     .glial_sync_interval_ms = 500,          // 2 Hz sync
@@ -426,7 +426,7 @@ bool distrib_cognition_broadcast_neuromod(
         return false;
     }
 
-    if (concentration < 0.0f || concentration > 1.0f) {
+    if (concentration < 0.0F || concentration > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid neuromodulator concentration: %.2f", concentration);
         return false;
     }
@@ -512,7 +512,7 @@ bool distrib_cognition_coordinate_pruning(
         return false;
     }
 
-    if (activity_score < 0.0f || activity_score > 1.0f) {
+    if (activity_score < 0.0F || activity_score > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid activity score: %.2f", activity_score);
         return false;
     }
@@ -555,7 +555,7 @@ bool distrib_cognition_propagate_calcium_wave(
         return false;
     }
 
-    if (calcium_level < 0.0f || calcium_level > 1.0f) {
+    if (calcium_level < 0.0F || calcium_level > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid calcium level: %.2f", calcium_level);
         return false;
     }
@@ -641,7 +641,7 @@ bool distrib_cognition_broadcast_region_activity(
         return false;
     }
 
-    if (avg_activity < 0.0f || avg_activity > 1.0f) {
+    if (avg_activity < 0.0F || avg_activity > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid average activity: %.2f", avg_activity);
         return false;
     }
@@ -1192,7 +1192,7 @@ nimcp_future_t distrib_cognition_broadcast_neuromod_async(
         return NULL;
     }
 
-    if (concentration < 0.0f || concentration > 1.0f) {
+    if (concentration < 0.0F || concentration > 1.0F) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: invalid concentration %.3f", concentration);
         return NULL;
     }
@@ -1252,7 +1252,7 @@ nimcp_future_t distrib_cognition_propagate_calcium_wave_async(
         return NULL;
     }
 
-    if (calcium_level < 0.0f || calcium_level > 1.0f) {
+    if (calcium_level < 0.0F || calcium_level > 1.0F) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: invalid calcium level %.3f", calcium_level);
         return NULL;
     }
@@ -1315,7 +1315,7 @@ nimcp_future_t distrib_cognition_coordinate_pruning_async(
         return NULL;
     }
 
-    if (activity_score < 0.0f || activity_score > 1.0f) {
+    if (activity_score < 0.0F || activity_score > 1.0F) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: invalid activity score %.3f", activity_score);
         return NULL;
     }

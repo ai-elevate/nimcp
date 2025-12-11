@@ -76,7 +76,7 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
     // Normalize attention weights
     float total = integration->visual_attention + integration->audio_attention +
                   integration->speech_attention + integration->direct_attention;
-    if (total > 0.0f) {
+    if (total > 0.0F) {
         integration->visual_attention /= total;
         integration->audio_attention /= total;
         integration->speech_attention /= total;
@@ -95,33 +95,33 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
         if (config->visual_dim > 0) {
             integration->visual_weights = nimcp_calloc(config->visual_dim * config->output_dim, sizeof(float));
             // Initialize with Xavier initialization
-            float scale = sqrtf(2.0f / (config->visual_dim + config->output_dim));
+            float scale = sqrtf(2.0F / (config->visual_dim + config->output_dim));
             for (uint32_t i = 0; i < config->visual_dim * config->output_dim; i++) {
-                integration->visual_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * scale;
+                integration->visual_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
 
         if (config->audio_dim > 0) {
             integration->audio_weights = nimcp_calloc(config->audio_dim * config->output_dim, sizeof(float));
-            float scale = sqrtf(2.0f / (config->audio_dim + config->output_dim));
+            float scale = sqrtf(2.0F / (config->audio_dim + config->output_dim));
             for (uint32_t i = 0; i < config->audio_dim * config->output_dim; i++) {
-                integration->audio_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * scale;
+                integration->audio_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
 
         if (config->speech_dim > 0) {
             integration->speech_weights = nimcp_calloc(config->speech_dim * config->output_dim, sizeof(float));
-            float scale = sqrtf(2.0f / (config->speech_dim + config->output_dim));
+            float scale = sqrtf(2.0F / (config->speech_dim + config->output_dim));
             for (uint32_t i = 0; i < config->speech_dim * config->output_dim; i++) {
-                integration->speech_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * scale;
+                integration->speech_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
 
         if (config->direct_dim > 0) {
             integration->direct_weights = nimcp_calloc(config->direct_dim * config->output_dim, sizeof(float));
-            float scale = sqrtf(2.0f / (config->direct_dim + config->output_dim));
+            float scale = sqrtf(2.0F / (config->direct_dim + config->output_dim));
             for (uint32_t i = 0; i < config->direct_dim * config->output_dim; i++) {
-                integration->direct_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * scale;
+                integration->direct_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
     }
@@ -178,7 +178,7 @@ static bool integrate_concatenate(
 
     // Pad remaining with zeros
     while (offset < integration->config.output_dim) {
-        output[offset++] = 0.0f;
+        output[offset++] = 0.0F;
     }
 
     return true;
@@ -236,7 +236,7 @@ static bool integrate_learned(
     // Apply learned projection: output = W_v·v + W_a·a + W_d·d
     if (input->visual_features && input->visual_dim > 0 && integration->visual_weights) {
         for (uint32_t i = 0; i < integration->config.output_dim; i++) {
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t j = 0; j < input->visual_dim; j++) {
                 sum += integration->visual_weights[j * integration->config.output_dim + i] *
                        input->visual_features[j];
@@ -247,7 +247,7 @@ static bool integrate_learned(
 
     if (input->audio_features && input->audio_dim > 0 && integration->audio_weights) {
         for (uint32_t i = 0; i < integration->config.output_dim; i++) {
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t j = 0; j < input->audio_dim; j++) {
                 sum += integration->audio_weights[j * integration->config.output_dim + i] *
                        input->audio_features[j];
@@ -259,7 +259,7 @@ static bool integrate_learned(
     // Phase 8.8: Speech learned projection
     if (input->speech_features && input->speech_dim > 0 && integration->speech_weights) {
         for (uint32_t i = 0; i < integration->config.output_dim; i++) {
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t j = 0; j < input->speech_dim; j++) {
                 sum += integration->speech_weights[j * integration->config.output_dim + i] *
                        input->speech_features[j];
@@ -270,7 +270,7 @@ static bool integrate_learned(
 
     if (input->direct_features && input->direct_dim > 0 && integration->direct_weights) {
         for (uint32_t i = 0; i < integration->config.output_dim; i++) {
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t j = 0; j < input->direct_dim; j++) {
                 sum += integration->direct_weights[j * integration->config.output_dim + i] *
                        input->direct_features[j];
@@ -357,7 +357,7 @@ bool multimodal_update_weights(
     // Re-normalize
     float total = integration->visual_attention + integration->audio_attention +
                   integration->speech_attention + integration->direct_attention;
-    if (total > 0.0f) {
+    if (total > 0.0F) {
         integration->visual_attention /= total;
         integration->audio_attention /= total;
         integration->speech_attention /= total;
@@ -365,10 +365,10 @@ bool multimodal_update_weights(
     }
 
     // Clamp to [0, 1]
-    integration->visual_attention = fmaxf(0.0f, fminf(1.0f, integration->visual_attention));
-    integration->audio_attention = fmaxf(0.0f, fminf(1.0f, integration->audio_attention));
-    integration->speech_attention = fmaxf(0.0f, fminf(1.0f, integration->speech_attention));
-    integration->direct_attention = fmaxf(0.0f, fminf(1.0f, integration->direct_attention));
+    integration->visual_attention = fmaxf(0.0F, fminf(1.0F, integration->visual_attention));
+    integration->audio_attention = fmaxf(0.0F, fminf(1.0F, integration->audio_attention));
+    integration->speech_attention = fmaxf(0.0F, fminf(1.0F, integration->speech_attention));
+    integration->direct_attention = fmaxf(0.0F, fminf(1.0F, integration->direct_attention));
 
     return true;
 }
@@ -390,10 +390,10 @@ multimodal_config_t multimodal_default_config(
         .direct_dim = direct_dim,
         .output_dim = visual_dim + audio_dim + speech_dim + direct_dim,
         .method = INTEGRATION_ATTENTION,
-        .visual_weight = 0.3f,      // Reduced from 0.4 to accommodate speech
-        .audio_weight = 0.3f,       // Reduced from 0.4 to accommodate speech
-        .speech_weight = 0.2f,      // Phase 8.8: Speech modality
-        .direct_weight = 0.2f
+        .visual_weight = 0.3F,      // Reduced from 0.4 to accommodate speech
+        .audio_weight = 0.3F,       // Reduced from 0.4 to accommodate speech
+        .speech_weight = 0.2F,      // Phase 8.8: Speech modality
+        .direct_weight = 0.2F
     };
     return config;
 }

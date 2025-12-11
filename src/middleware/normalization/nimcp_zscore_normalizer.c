@@ -72,10 +72,10 @@ zscore_normalizer_t* zscore_normalizer_create(
     }
 
     for (size_t i = 0; i < num_channels; i++) {
-        norm->channels[i].mean = 0.0f;
-        norm->channels[i].m2 = 0.0f;
-        norm->channels[i].variance = 0.0f;
-        norm->channels[i].stddev = 1.0f;
+        norm->channels[i].mean = 0.0F;
+        norm->channels[i].m2 = 0.0F;
+        norm->channels[i].variance = 0.0F;
+        norm->channels[i].stddev = 1.0F;
         norm->channels[i].count = 0;
         norm->channels[i].min_value = FLT_MAX;
         norm->channels[i].max_value = -FLT_MAX;
@@ -120,8 +120,8 @@ bool zscore_normalizer_fit(
 
         // Recalculate from window
         size_t size = circular_buffer_size(stats->window);
-        float sum = 0.0f;
-        float sum_sq = 0.0f;
+        float sum = 0.0F;
+        float sum_sq = 0.0F;
         stats->min_value = FLT_MAX;
         stats->max_value = -FLT_MAX;
 
@@ -136,8 +136,8 @@ bool zscore_normalizer_fit(
 
         stats->count = size;
         stats->mean = sum / size;
-        stats->variance = (size > 1) ? (sum_sq / size - stats->mean * stats->mean) : 0.0f;
-        stats->stddev = sqrtf(stats->variance > 0.0f ? stats->variance : 0.0001f);
+        stats->variance = (size > 1) ? (sum_sq / size - stats->mean * stats->mean) : 0.0F;
+        stats->stddev = sqrtf(stats->variance > 0.0F ? stats->variance : 0.0001F);
     } else {
         // Welford's online algorithm
         stats->count++;
@@ -148,7 +148,7 @@ bool zscore_normalizer_fit(
 
         if (stats->count > 1) {
             stats->variance = stats->m2 / (stats->count - 1);
-            stats->stddev = sqrtf(stats->variance > 0.0f ? stats->variance : 0.0001f);
+            stats->stddev = sqrtf(stats->variance > 0.0F ? stats->variance : 0.0001F);
         }
 
         if (value < stats->min_value) stats->min_value = value;
@@ -166,11 +166,11 @@ float zscore_normalizer_transform(
     if (!normalizer || channel >= normalizer->num_channels) return value;
 
     const channel_stats_t* stats = &normalizer->channels[channel];
-    if (stats->count == 0) return 0.0f;
+    if (stats->count == 0) return 0.0F;
 
     float z = (value - stats->mean) / stats->stddev;
 
-    if (normalizer->outlier_clip > 0.0f) {
+    if (normalizer->outlier_clip > 0.0F) {
         if (z > normalizer->outlier_clip) z = normalizer->outlier_clip;
         if (z < -normalizer->outlier_clip) z = -normalizer->outlier_clip;
     }
@@ -247,7 +247,7 @@ size_t zscore_normalizer_transform_batch(
             nimcp_tensor_mul_scalar_(t, 1.0 / (double)stats->stddev);
 
             /* Apply clipping if configured */
-            if (normalizer->outlier_clip > 0.0f) {
+            if (normalizer->outlier_clip > 0.0F) {
                 float* data = (float*)nimcp_tensor_data(t);
                 for (size_t i = 0; i < count; i++) {
                     if (data[i] > normalizer->outlier_clip) {
@@ -285,19 +285,19 @@ bool zscore_normalizer_get_stats(
     stats->variance = ch->variance;
     stats->stddev = ch->stddev;
     stats->sample_count = ch->count;
-    stats->min_value = (ch->min_value == FLT_MAX) ? 0.0f : ch->min_value;
-    stats->max_value = (ch->max_value == -FLT_MAX) ? 0.0f : ch->max_value;
+    stats->min_value = (ch->min_value == FLT_MAX) ? 0.0F : ch->min_value;
+    stats->max_value = (ch->max_value == -FLT_MAX) ? 0.0F : ch->max_value;
 
     return true;
 }
 
 float zscore_normalizer_mean(const zscore_normalizer_t* normalizer, size_t channel) {
-    if (!normalizer || channel >= normalizer->num_channels) return 0.0f;
+    if (!normalizer || channel >= normalizer->num_channels) return 0.0F;
     return normalizer->channels[channel].mean;
 }
 
 float zscore_normalizer_stddev(const zscore_normalizer_t* normalizer, size_t channel) {
-    if (!normalizer || channel >= normalizer->num_channels) return 1.0f;
+    if (!normalizer || channel >= normalizer->num_channels) return 1.0F;
     return normalizer->channels[channel].stddev;
 }
 
@@ -310,10 +310,10 @@ bool zscore_normalizer_reset_channel(zscore_normalizer_t* normalizer, size_t cha
     if (!normalizer || channel >= normalizer->num_channels) return false;
 
     channel_stats_t* stats = &normalizer->channels[channel];
-    stats->mean = 0.0f;
-    stats->m2 = 0.0f;
-    stats->variance = 0.0f;
-    stats->stddev = 1.0f;
+    stats->mean = 0.0F;
+    stats->m2 = 0.0F;
+    stats->variance = 0.0F;
+    stats->stddev = 1.0F;
     stats->count = 0;
     stats->min_value = FLT_MAX;
     stats->max_value = -FLT_MAX;
@@ -368,7 +368,7 @@ bool zscore_normalizer_transform_tensor(
     nimcp_tensor_mul_scalar_(tensor, 1.0 / (double)stats->stddev);
 
     /* Apply clipping if configured */
-    if (normalizer->outlier_clip > 0.0f) {
+    if (normalizer->outlier_clip > 0.0F) {
         size_t numel = nimcp_tensor_numel(tensor);
         float* data = (float*)nimcp_tensor_data(tensor);
         for (size_t i = 0; i < numel; i++) {
@@ -484,7 +484,7 @@ size_t zscore_normalizer_fit_tensor(
         stats->count = numel;
     }
 
-    stats->stddev = sqrtf(stats->variance > 0.0f ? stats->variance : 0.0001f);
+    stats->stddev = sqrtf(stats->variance > 0.0F ? stats->variance : 0.0001F);
 
     /* Update min/max */
     nimcp_tensor_t* min_t = nimcp_tensor_min(tensor);

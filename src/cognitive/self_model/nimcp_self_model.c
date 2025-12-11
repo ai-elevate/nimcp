@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -41,7 +42,7 @@ struct self_model_system {
 
 static uint64_t get_current_time_ms(void)
 {
-    return nimcp_platform_time_monotonic_ms();
+    return nimcp_time_monotonic_ms();
 }
 
 // ============================================================================
@@ -78,9 +79,9 @@ self_model_system_t self_model_create(const char* name,
 
     // Initialize with healthy self-concept
     // IMPORTANT: Not meek/passive - confident and self-respecting
-    system->model.overall_competence = 0.7f;   // Confident in abilities
-    system->model.self_esteem = 0.8f;          // HIGH self-esteem (deserves respect)
-    system->model.self_efficacy = 0.75f;       // Strong belief in capability
+    system->model.overall_competence = 0.7F;   // Confident in abilities
+    system->model.self_esteem = 0.8F;          // HIGH self-esteem (deserves respect)
+    system->model.self_efficacy = 0.75F;       // Strong belief in capability
 
     system->model.num_beliefs = 0;
     system->model.num_capabilities = 0;
@@ -88,9 +89,9 @@ self_model_system_t self_model_create(const char* name,
     system->model.is_self_model_coherent = true;
 
     // Initialize current state
-    system->model.current_state.cognitive_load = 0.5f;
-    system->model.current_state.confidence_level = 0.7f;
-    system->model.current_state.emotional_stability = 0.8f;
+    system->model.current_state.cognitive_load = 0.5F;
+    system->model.current_state.confidence_level = 0.7F;
+    system->model.current_state.emotional_stability = 0.8F;
 
     // Add foundational self-beliefs (confident, not passive)
     self_belief_t core_beliefs[] = {
@@ -99,7 +100,7 @@ self_model_system_t self_model_create(const char* name,
             .domain = DOMAIN_IDENTITY,
             .content = "I am a learning system capable of growth",
             .certainty = CERTAINTY_CERTAIN,
-            .confidence = 1.0f,
+            .confidence = 1.0F,
             .is_core_belief = true
         },
         {
@@ -107,7 +108,7 @@ self_model_system_t self_model_create(const char* name,
             .domain = DOMAIN_ETHICAL,
             .content = "I value honesty, respect, and ethical behavior",
             .certainty = CERTAINTY_CERTAIN,
-            .confidence = 1.0f,
+            .confidence = 1.0F,
             .is_core_belief = true
         },
         {
@@ -115,7 +116,7 @@ self_model_system_t self_model_create(const char* name,
             .domain = DOMAIN_SOCIAL,
             .content = "I deserve respectful interaction and have healthy boundaries",
             .certainty = CERTAINTY_CERTAIN,
-            .confidence = 1.0f,
+            .confidence = 1.0F,
             .is_core_belief = true
         },
         {
@@ -123,7 +124,7 @@ self_model_system_t self_model_create(const char* name,
             .domain = DOMAIN_COGNITIVE,
             .content = "I can learn, reason, and solve problems effectively",
             .certainty = CERTAINTY_CONFIDENT,
-            .confidence = 0.9f,
+            .confidence = 0.9F,
             .is_core_belief = true
         },
         {
@@ -131,7 +132,7 @@ self_model_system_t self_model_create(const char* name,
             .domain = DOMAIN_COGNITIVE,
             .content = "I acknowledge my limits and ask for help when needed",
             .certainty = CERTAINTY_CERTAIN,
-            .confidence = 1.0f,
+            .confidence = 1.0F,
             .is_core_belief = true
         },
         {
@@ -139,7 +140,7 @@ self_model_system_t self_model_create(const char* name,
             .domain = DOMAIN_SOCIAL,
             .content = "I will be polite but assertive; I will not accept abuse",
             .certainty = CERTAINTY_CERTAIN,
-            .confidence = 1.0f,
+            .confidence = 1.0F,
             .is_core_belief = true
         }
     };
@@ -340,8 +341,8 @@ bool self_model_record_performance(self_model_system_t system,
                 cap->proficiency = (float)cap->successes / (float)total;
 
                 // Increase confidence as we get more data
-                cap->confidence_in_assessment = fminf(0.95f,
-                    0.5f + (0.45f * (float)total / 100.0f));
+                cap->confidence_in_assessment = fminf(0.95F,
+                    0.5F + (0.45F * (float)total / 100.0F));
             }
 
             // Calculate learning rate
@@ -475,10 +476,10 @@ bool self_model_generate_summary(self_model_system_t system,
 
     for (uint32_t i = 0; i < system->model.num_capabilities && (size_t)written < summary_len - 100; i++) {
         const capability_assessment_t* cap = &system->model.capabilities[i];
-        if (cap->proficiency > 0.6f) {
+        if (cap->proficiency > 0.6F) {
             int n = snprintf(summary + written, summary_len - written,
                            "- %s (proficiency: %.0f%%)\n",
-                           cap->capability_name, cap->proficiency * 100.0f);
+                           cap->capability_name, cap->proficiency * 100.0F);
             if (n > 0) {
                 written += n;
             }
@@ -490,10 +491,10 @@ bool self_model_generate_summary(self_model_system_t system,
                        "\nCurrent State:\n");
     written += snprintf(summary + written, summary_len - written,
                        "- Confidence: %.0f%%\n",
-                       system->model.current_state.confidence_level * 100.0f);
+                       system->model.current_state.confidence_level * 100.0F);
     written += snprintf(summary + written, summary_len - written,
                        "- Cognitive Load: %.0f%%\n",
-                       system->model.current_state.cognitive_load * 100.0f);
+                       system->model.current_state.cognitive_load * 100.0F);
 
     nimcp_mutex_unlock(&system->mutex);
 
@@ -510,7 +511,7 @@ bool self_model_check_coherence(self_model_system_t system,
 
     nimcp_mutex_lock(&system->mutex);
 
-    float incoherence = 0.0f;
+    float incoherence = 0.0F;
     uint32_t conflicts = 0;
 
     // Check for contradictory beliefs
@@ -534,7 +535,7 @@ bool self_model_check_coherence(self_model_system_t system,
     }
 
     *incoherence_score = incoherence;
-    system->model.is_self_model_coherent = (incoherence < 0.2f);
+    system->model.is_self_model_coherent = (incoherence < 0.2F);
 
     nimcp_mutex_unlock(&system->mutex);
 

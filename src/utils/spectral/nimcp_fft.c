@@ -128,7 +128,7 @@ static uint32_t reverse_bits(uint32_t x, uint32_t bits)
 static void compute_hann_window(float* window, uint32_t size)
 {
     for (uint32_t n = 0; n < size; n++) {
-        window[n] = 0.5f * (1.0f - cosf(2.0f * M_PI * n / (size - 1)));
+        window[n] = 0.5F * (1.0F - cosf(2.0F * M_PI * n / (size - 1)));
     }
 }
 
@@ -138,7 +138,7 @@ static void compute_hann_window(float* window, uint32_t size)
 static void compute_hamming_window(float* window, uint32_t size)
 {
     for (uint32_t n = 0; n < size; n++) {
-        window[n] = 0.54f - 0.46f * cosf(2.0f * M_PI * n / (size - 1));
+        window[n] = 0.54F - 0.46F * cosf(2.0F * M_PI * n / (size - 1));
     }
 }
 
@@ -147,13 +147,13 @@ static void compute_hamming_window(float* window, uint32_t size)
  */
 static void compute_blackman_window(float* window, uint32_t size)
 {
-    const float a0 = 0.42f;
-    const float a1 = 0.5f;
-    const float a2 = 0.08f;
+    const float a0 = 0.42F;
+    const float a1 = 0.5F;
+    const float a2 = 0.08F;
 
     for (uint32_t n = 0; n < size; n++) {
-        float cos1 = cosf(2.0f * M_PI * n / (size - 1));
-        float cos2 = cosf(4.0f * M_PI * n / (size - 1));
+        float cos1 = cosf(2.0F * M_PI * n / (size - 1));
+        float cos2 = cosf(4.0F * M_PI * n / (size - 1));
         window[n] = a0 - a1 * cos1 + a2 * cos2;
     }
 }
@@ -237,7 +237,7 @@ fft_plan_t* fft_plan_create(uint32_t size, fft_type_t type)
 
     // Compute twiddle factors: W_N^k = e^(-2πik/N)
     for (uint32_t k = 0; k < size; k++) {
-        float angle = -2.0f * M_PI * k / size;
+        float angle = -2.0F * M_PI * k / size;
         plan->twiddle[k].real = cosf(angle);
         plan->twiddle[k].imag = sinf(angle);
     }
@@ -440,7 +440,7 @@ bool fft_execute_real(fft_plan_t* plan, const float* input, fft_complex_t* outpu
         if (plan->window_coeffs) {
             temp[i].real *= plan->window_coeffs[i];
         }
-        temp[i].imag = 0.0f;
+        temp[i].imag = 0.0F;
     }
 
     // Execute FFT
@@ -523,7 +523,7 @@ bool fft_execute_inverse_real(fft_plan_t* plan, const fft_complex_t* input,
     fft_cooley_tukey(temp, plan);
 
     // Conjugate and scale by 1/N
-    float scale = 1.0f / n;
+    float scale = 1.0F / n;
     for (uint32_t i = 0; i < n; i++) {
         output[i] = temp[i].real * scale;
     }
@@ -580,7 +580,7 @@ bool fft_execute_inverse_complex(
     fft_cooley_tukey(temp, plan);
 
     // Conjugate and scale output by 1/N
-    float scale = 1.0f / n;
+    float scale = 1.0F / n;
     for (uint32_t i = 0; i < n; i++) {
         output[i].real = temp[i].real * scale;
         output[i].imag = -temp[i].imag * scale;
@@ -630,7 +630,7 @@ bool fft_power_spectrum_db(const fft_complex_t* spectrum, float* psd_db,
         float power = re * re + im * im;
 
         // Convert to dB (with floor to avoid log(0))
-        psd_db[i] = 10.0f * log10f(fmaxf(power, 1e-10f));
+        psd_db[i] = 10.0F * log10f(fmaxf(power, 1e-10F));
     }
 
     return true;
@@ -683,8 +683,8 @@ bool fft_phase_spectrum(const fft_complex_t* spectrum, float* phase, uint32_t si
 float fft_dominant_frequency(const float* power, uint32_t size, float sampling_rate)
 {
     // Guard: Validate inputs
-    if (!power || size == 0 || sampling_rate <= 0.0f) {
-        return 0.0f;
+    if (!power || size == 0 || sampling_rate <= 0.0F) {
+        return 0.0F;
     }
 
     // Find peak
@@ -713,12 +713,12 @@ float fft_band_power(const float* power, uint32_t size, float sampling_rate,
                      float freq_low, float freq_high)
 {
     // Guard: Validate inputs
-    if (!power || size == 0 || sampling_rate <= 0.0f) {
-        return 0.0f;
+    if (!power || size == 0 || sampling_rate <= 0.0F) {
+        return 0.0F;
     }
 
-    if (freq_low < 0.0f || freq_high > sampling_rate / 2.0f || freq_low >= freq_high) {
-        return 0.0f;
+    if (freq_low < 0.0F || freq_high > sampling_rate / 2.0F || freq_low >= freq_high) {
+        return 0.0F;
     }
 
     // Convert frequencies to bins
@@ -729,11 +729,11 @@ float fft_band_power(const float* power, uint32_t size, float sampling_rate,
     int32_t bin_high = fft_frequency_to_bin(freq_high, fft_size, sampling_rate);
 
     if (bin_low < 0 || bin_high < 0 || (uint32_t)bin_high >= size) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Sum power in band
-    float total_power = 0.0f;
+    float total_power = 0.0F;
     for (int32_t i = bin_low; i <= bin_high; i++) {
         total_power += power[i];
     }
@@ -746,12 +746,12 @@ float fft_band_power(const float* power, uint32_t size, float sampling_rate,
  */
 int32_t fft_frequency_to_bin(float frequency, uint32_t fft_size, float sampling_rate)
 {
-    if (frequency < 0.0f || frequency > sampling_rate / 2.0f || sampling_rate <= 0.0f) {
+    if (frequency < 0.0F || frequency > sampling_rate / 2.0F || sampling_rate <= 0.0F) {
         return -1;
     }
 
     float bin_f = frequency * fft_size / sampling_rate;
-    int32_t bin = (int32_t)(bin_f + 0.5f);  // Round to nearest
+    int32_t bin = (int32_t)(bin_f + 0.5F);  // Round to nearest
 
     // Clamp to valid range
     if (bin >= (int32_t)(fft_size / 2 + 1)) {
@@ -783,27 +783,27 @@ float fft_brain_wave_power(const float* power, uint32_t size, float sampling_rat
 
     switch (band) {
         case BRAIN_WAVE_DELTA:
-            freq_low = 1.0f;
-            freq_high = 4.0f;
+            freq_low = 1.0F;
+            freq_high = 4.0F;
             break;
         case BRAIN_WAVE_THETA:
-            freq_low = 4.0f;
-            freq_high = 8.0f;
+            freq_low = 4.0F;
+            freq_high = 8.0F;
             break;
         case BRAIN_WAVE_ALPHA:
-            freq_low = 8.0f;
-            freq_high = 13.0f;
+            freq_low = 8.0F;
+            freq_high = 13.0F;
             break;
         case BRAIN_WAVE_BETA:
-            freq_low = 13.0f;
-            freq_high = 30.0f;
+            freq_low = 13.0F;
+            freq_high = 30.0F;
             break;
         case BRAIN_WAVE_GAMMA:
-            freq_low = 30.0f;
-            freq_high = 100.0f;
+            freq_low = 30.0F;
+            freq_high = 100.0F;
             break;
         default:
-            return 0.0f;
+            return 0.0F;
     }
 
     return fft_band_power(power, size, sampling_rate, freq_low, freq_high);

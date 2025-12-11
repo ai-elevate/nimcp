@@ -16,13 +16,13 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "cognitive.logic"
@@ -325,7 +325,7 @@ bool symbolic_logic_to_cnf(
                 clause->literals[0] = lit;
             }
         }
-        clause->confidence = 1.0f;
+        clause->confidence = 1.0F;
     }
 
     (*clauses)[0] = clause;
@@ -459,7 +459,7 @@ static logic_clause_t* logic_clause_create(uint32_t num_literals)
     }
 
     clause->num_literals = num_literals;
-    clause->confidence = 1.0f;
+    clause->confidence = 1.0F;
 
     return clause;
 }
@@ -639,7 +639,7 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
         return false;
     }
 
-    if (salience < 0.0f || salience > 1.0f) {
+    if (salience < 0.0F || salience > 1.0F) {
         LOG_ERROR("Invalid salience value: %f (must be [0,1])", salience);
         return false;
     }
@@ -978,7 +978,7 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
                         new_fact_derived = true;
 
                         // Add to knowledge base
-                        symbolic_logic_add_fact(logic, rule->conclusion, 0.7f);
+                        symbolic_logic_add_fact(logic, rule->conclusion, 0.7F);
 
                         logic->stats.rules_applied++;
                     }
@@ -1010,15 +1010,15 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
 float symbolic_logic_compute_novelty(symbolic_logic_t* logic, logic_clause_t* clause)
 {
     if (!logic || !clause) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (logic->num_facts == 0) {
-        return 1.0f;  // Completely novel if no facts exist
+        return 1.0F;  // Completely novel if no facts exist
     }
 
     // Check similarity to existing facts
-    float max_similarity = 0.0f;
+    float max_similarity = 0.0F;
 
     for (uint32_t i = 0; i < logic->num_facts; i++) {
         kb_entry_t* entry = logic->kb[i];
@@ -1026,11 +1026,11 @@ float symbolic_logic_compute_novelty(symbolic_logic_t* logic, logic_clause_t* cl
         // Simple similarity: do they share any predicates?
         if (clause->num_literals > 0 && entry->clause->num_literals > 0) {
             if (strcmp(clause->literals[0]->name, entry->clause->literals[0]->name) == 0) {
-                float similarity = 0.5f;  // Same predicate
+                float similarity = 0.5F;  // Same predicate
 
                 // Check arguments
                 if (atoms_equal(clause->literals[0], entry->clause->literals[0])) {
-                    similarity = 1.0f;  // Identical
+                    similarity = 1.0F;  // Identical
                 }
 
                 if (similarity > max_similarity) {
@@ -1040,7 +1040,7 @@ float symbolic_logic_compute_novelty(symbolic_logic_t* logic, logic_clause_t* cl
         }
     }
 
-    return 1.0f - max_similarity;
+    return 1.0F - max_similarity;
 }
 
 bool symbolic_logic_get_salient_facts(symbolic_logic_t* logic, int top_k,
@@ -1070,7 +1070,7 @@ bool symbolic_logic_get_salient_facts(symbolic_logic_t* logic, int top_k,
     // Sort by salience (simple selection sort for top-k)
     for (uint32_t i = 0; i < k; i++) {
         uint32_t max_idx = i;
-        float max_salience = (i < logic->num_facts) ? logic->kb[i]->salience : 0.0f;
+        float max_salience = (i < logic->num_facts) ? logic->kb[i]->salience : 0.0F;
 
         for (uint32_t j = i + 1; j < logic->num_facts; j++) {
             if (logic->kb[j]->salience > max_salience) {

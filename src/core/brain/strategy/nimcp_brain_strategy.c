@@ -93,7 +93,7 @@ void set_error(const char* format, ...);
  */
 static float strategy_classification_lr(void)
 {
-    return 0.01f;
+    return 0.01F;
 }
 
 static void strategy_classification_transform(float* output, uint32_t size)
@@ -105,7 +105,7 @@ static void strategy_classification_transform(float* output, uint32_t size)
             max_val = output[i];
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         output[i] = expf(output[i] - max_val);
         sum += output[i];
@@ -119,10 +119,10 @@ static void strategy_classification_transform(float* output, uint32_t size)
 static float strategy_classification_loss(const float* pred, const float* target, uint32_t size)
 {
     // Cross-entropy loss
-    float loss = 0.0f;
+    float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
-        if (target[i] > 0.0f) {
-            loss -= target[i] * logf(fmaxf(pred[i], 1e-10f));
+        if (target[i] > 0.0F) {
+            loss -= target[i] * logf(fmaxf(pred[i], 1e-10F));
         }
     }
     return loss;
@@ -141,7 +141,7 @@ static float strategy_classification_loss(const float* pred, const float* target
  */
 static float strategy_regression_lr(void)
 {
-    return 0.005f;
+    return 0.005F;
 }
 
 static void strategy_regression_transform(float* output, uint32_t size)
@@ -154,7 +154,7 @@ static void strategy_regression_transform(float* output, uint32_t size)
 static float strategy_regression_loss(const float* pred, const float* target, uint32_t size)
 {
     // Mean squared error
-    float loss = 0.0f;
+    float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         float diff = pred[i] - target[i];
         loss += diff * diff;
@@ -175,24 +175,24 @@ static float strategy_regression_loss(const float* pred, const float* target, ui
  */
 static float strategy_pattern_lr(void)
 {
-    return 0.02f;
+    return 0.02F;
 }
 
 static void strategy_pattern_transform(float* output, uint32_t size)
 {
     // Threshold to binary
     for (uint32_t i = 0; i < size; i++) {
-        output[i] = output[i] > 0.5f ? 1.0f : 0.0f;
+        output[i] = output[i] > 0.5F ? 1.0F : 0.0F;
     }
 }
 
 static float strategy_pattern_loss(const float* pred, const float* target, uint32_t size)
 {
     // Binary cross-entropy
-    float loss = 0.0f;
+    float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
-        float p = fmaxf(fminf(pred[i], 0.9999f), 0.0001f);
-        loss -= target[i] * logf(p) + (1.0f - target[i]) * logf(1.0f - p);
+        float p = fmaxf(fminf(pred[i], 0.9999F), 0.0001F);
+        loss -= target[i] * logf(p) + (1.0F - target[i]) * logf(1.0F - p);
     }
     return loss / size;
 }
@@ -210,19 +210,19 @@ static float strategy_pattern_loss(const float* pred, const float* target, uint3
  */
 static float strategy_association_lr(void)
 {
-    return 0.05f;
+    return 0.05F;
 }
 
 static void strategy_association_transform(float* output, uint32_t size)
 {
     // Normalize to unit range
-    float max_val = 0.0f;
+    float max_val = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         if (fabsf(output[i]) > max_val)
             max_val = fabsf(output[i]);
     }
 
-    if (max_val > 0.0f) {
+    if (max_val > 0.0F) {
         for (uint32_t i = 0; i < size; i++) {
             output[i] /= max_val;
         }
@@ -232,14 +232,14 @@ static void strategy_association_transform(float* output, uint32_t size)
 static float strategy_association_loss(const float* pred, const float* target, uint32_t size)
 {
     // Cosine distance
-    float dot = 0.0f, norm_p = 0.0f, norm_t = 0.0f;
+    float dot = 0.0F, norm_p = 0.0F, norm_t = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         dot += pred[i] * target[i];
         norm_p += pred[i] * pred[i];
         norm_t += target[i] * target[i];
     }
-    float cosine = dot / (sqrtf(norm_p) * sqrtf(norm_t) + 1e-10f);
-    return 1.0f - cosine;
+    float cosine = dot / (sqrtf(norm_p) * sqrtf(norm_t) + 1e-10F);
+    return 1.0F - cosine;
 }
 
 //=============================================================================
@@ -318,7 +318,7 @@ void strategy_destroy(task_strategy_t* strategy)
 float strategy_get_learning_rate(task_strategy_t* strategy)
 {
     if (!strategy || !strategy->get_learning_rate) {
-        return 0.01f;  // Default learning rate
+        return 0.01F;  // Default learning rate
     }
     return strategy->get_learning_rate();
 }
@@ -335,7 +335,7 @@ float strategy_compute_loss(task_strategy_t* strategy, const float* predicted,
                            const float* target, uint32_t size)
 {
     if (!strategy || !strategy->compute_loss || !predicted || !target) {
-        return -1.0f;  // Error indicator
+        return -1.0F;  // Error indicator
     }
     return strategy->compute_loss(predicted, target, size);
 }
@@ -735,7 +735,7 @@ bool brain_optimize_for_inference(brain_t brain)
     }
 
     // Aggressive pruning for target sparsity
-    float threshold = brain_recommend_pruning_threshold(brain, 0.90f);
+    float threshold = brain_recommend_pruning_threshold(brain, 0.90F);
     brain_prune(brain, threshold);
 
     brain_clear_error();
@@ -759,11 +759,11 @@ float brain_recommend_pruning_threshold(brain_t brain, float target_sparsity)
     // Guard: Validate brain
     if (!brain) {
         set_error("Null brain provided to brain_recommend_pruning_threshold");
-        return -1.0f;  // Return negative value to indicate error
+        return -1.0F;  // Return negative value to indicate error
     }
 
     // Heuristic: lower threshold for higher sparsity
-    float threshold = 0.1f * (1.0f - target_sparsity);
+    float threshold = 0.1F * (1.0F - target_sparsity);
 
     brain_clear_error();
     return threshold;

@@ -59,6 +59,12 @@
 
 #define LOG_MODULE "BRAIN_VALID"
 
+// External error function declaration
+extern void set_error(const char* format, ...);
+
+// External decision copy function declaration
+extern brain_decision_t* copy_decision(const brain_decision_t* decision);
+
 //=============================================================================
 // Validation Functions
 //=============================================================================

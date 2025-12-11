@@ -258,7 +258,7 @@ predictive_network_t predictive_create(const predictive_config_t* config)
         }
 
         layer->size = size;
-        layer->free_energy = 0.0f;
+        layer->free_energy = 0.0F;
 
         // Allocate layer vectors
         layer->state = (float*)nimcp_calloc(size, sizeof(float));
@@ -393,7 +393,7 @@ float predictive_forward(predictive_network_t net, const float* input,
         }
 
         // Update states to minimize precision-weighted error
-        float step_size = net->config.learning_rate / (1.0f + iter * 0.1f);
+        float step_size = net->config.learning_rate / (1.0F + iter * 0.1F);
         if (!update_states(net, step_size)) {
             return INFINITY;
         }
@@ -544,7 +544,7 @@ bool predictive_update_precision(predictive_network_t net, uint32_t layer_index)
         float error_sq = layer->prediction_error[i] * layer->prediction_error[i];
 
         // Move precision toward inverse error (with learning rate)
-        float target_precision = 1.0f / (error_sq + 1e-6f);
+        float target_precision = 1.0F / (error_sq + 1e-6F);
         layer->precision[i] += lr * (target_precision - layer->precision[i]);
 
         // Clip to valid range
@@ -624,9 +624,9 @@ bool predictive_get_statistics(predictive_network_t net, predictive_stats_t* sta
         return false;
     }
 
-    stats->total_free_energy = 0.0f;
-    stats->average_precision = 0.0f;
-    stats->max_prediction_error = 0.0f;
+    stats->total_free_energy = 0.0F;
+    stats->average_precision = 0.0F;
+    stats->max_prediction_error = 0.0F;
     uint32_t total_units = 0;
 
     for (uint32_t i = 0; i < net->num_layers; i++) {
@@ -682,8 +682,8 @@ void predictive_print_state(predictive_network_t net)
         predictive_layer_t* layer = net->layers[i];
 
         // Compute layer statistics
-        float avg_error = 0.0f;
-        float avg_precision = 0.0f;
+        float avg_error = 0.0F;
+        float avg_precision = 0.0F;
         for (uint32_t j = 0; j < layer->size; j++) {
             avg_error += fabsf(layer->prediction_error[j]);
             avg_precision += layer->precision[j];
@@ -718,7 +718,7 @@ bool predictive_reset(predictive_network_t net)
         memset(layer->state, 0, layer->size * sizeof(float));
         memset(layer->prediction, 0, layer->size * sizeof(float));
         memset(layer->prediction_error, 0, layer->size * sizeof(float));
-        layer->free_energy = 0.0f;
+        layer->free_energy = 0.0F;
     }
 
     net->prev_free_energy = INFINITY;
@@ -820,12 +820,12 @@ static bool generate_predictions(predictive_network_t net)
  */
 static float compute_free_energy(predictive_network_t net)
 {
-    float total_fe = 0.0f;
+    float total_fe = 0.0F;
 
     for (uint32_t i = 0; i < net->num_layers; i++) {
         predictive_layer_t* layer = net->layers[i];
 
-        float layer_fe = 0.0f;
+        float layer_fe = 0.0F;
         for (uint32_t j = 0; j < layer->size; j++) {
             float error = layer->prediction_error[j];
             layer_fe += layer->precision[j] * error * error;

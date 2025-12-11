@@ -91,20 +91,20 @@ struct epistemic_filter_struct {
  * @brief Check for conspiracy thinking patterns in text
  */
 static float detect_conspiracy_patterns(const char* text) {
-    if (!text) return 0.0f;
+    if (!text) return 0.0F;
 
     // Validate text length
     size_t text_len = strnlen(text, MAX_TEXT_LENGTH + 1);
     if (text_len > MAX_TEXT_LENGTH) {
-        return 0.0f;  // Reject suspiciously long text
+        return 0.0F;  // Reject suspiciously long text
     }
 
-    float conspiracy_score = 0.0f;
+    float conspiracy_score = 0.0F;
     uint32_t pattern_count = 0;
 
     // Convert to lowercase for pattern matching (bounded)
     char* lower_text = nimcp_malloc(text_len + 1);
-    if (!lower_text) return 0.0f;
+    if (!lower_text) return 0.0F;
 
     for (size_t i = 0; i < text_len; i++) {
         lower_text[i] = tolower((unsigned char)text[i]);
@@ -166,7 +166,7 @@ static float detect_conspiracy_patterns(const char* text) {
 
     // Normalize by number of patterns found
     if (pattern_count > 0) {
-        conspiracy_score = fminf(1.0f, conspiracy_score);
+        conspiracy_score = fminf(1.0F, conspiracy_score);
     }
 
     return conspiracy_score;
@@ -184,16 +184,16 @@ static float detect_confirmation_bias(
     float prior_belief)
 {
     // High prior belief + low evidence diversity = confirmation bias
-    if (prior_belief > 0.7f && evidence->num_sources < 2) {
-        return 0.6f;
+    if (prior_belief > 0.7F && evidence->num_sources < 2) {
+        return 0.6F;
     }
 
     // Single source + high certainty = possible confirmation bias
-    if (evidence->num_sources == 1 && evidence->evidence_strength > 0.8f) {
-        return 0.5f;
+    if (evidence->num_sources == 1 && evidence->evidence_strength > 0.8F) {
+        return 0.5F;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 /**
@@ -204,11 +204,11 @@ static float detect_dunning_kruger(
     float evidence_quality)
 {
     // High confidence + low evidence = Dunning-Kruger
-    if (confidence > 0.8f && evidence_quality < 0.3f) {
-        return 0.7f;
+    if (confidence > 0.8F && evidence_quality < 0.3F) {
+        return 0.7F;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 /**
@@ -218,12 +218,12 @@ static float detect_bandwagon_effect(
     const claim_evidence_t* evidence)
 {
     // High public consensus + low evidence = bandwagon
-    if (evidence->public_consensus > 0.7f &&
+    if (evidence->public_consensus > 0.7F &&
         evidence->evidence_quality < EVIDENCE_MODERATE) {
-        return 0.6f;
+        return 0.6F;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 //=============================================================================
@@ -237,9 +237,9 @@ epistemic_filter_t epistemic_filter_create(float skepticism_level) {
     }
 
     // Set configuration
-    filter->skepticism_level = fminf(fmaxf(skepticism_level, 0.0f), 1.0f);
-    filter->consensus_weight = 0.3f;   // Moderate weight on consensus
-    filter->source_weight = 0.4f;      // Higher weight on source reliability
+    filter->skepticism_level = fminf(fmaxf(skepticism_level, 0.0F), 1.0F);
+    filter->consensus_weight = 0.3F;   // Moderate weight on consensus
+    filter->source_weight = 0.4F;      // Higher weight on source reliability
 
     filter->num_sources = 0;
     filter->claims_assessed = 0;
@@ -298,13 +298,13 @@ void epistemic_evidence_init(claim_evidence_t* evidence) {
 
     evidence->evidence_quality = EVIDENCE_NONE;
     evidence->plausibility = PLAUSIBLE_NEUTRAL;
-    evidence->evidence_strength = 0.0f;
-    evidence->logical_consistency = 1.0f;  // Assume consistent unless proven otherwise
+    evidence->evidence_strength = 0.0F;
+    evidence->logical_consistency = 1.0F;  // Assume consistent unless proven otherwise
     evidence->num_sources = 0;
-    evidence->source_reliability_avg = 0.5f;  // Neutral reliability
+    evidence->source_reliability_avg = 0.5F;  // Neutral reliability
     evidence->has_primary_sources = false;
-    evidence->expert_consensus = 0.5f;  // Unknown
-    evidence->public_consensus = 0.5f;  // Unknown
+    evidence->expert_consensus = 0.5F;  // Unknown
+    evidence->public_consensus = 0.5F;  // Unknown
     evidence->is_extraordinary_claim = false;
     evidence->is_falsifiable = true;  // Assume falsifiable unless proven otherwise
     evidence->has_contradictions = false;
@@ -315,14 +315,14 @@ void epistemic_assessment_init(epistemic_assessment_t* assessment) {
 
     memset(assessment, 0, sizeof(epistemic_assessment_t));
 
-    assessment->epistemic_quality = 0.5f;
-    assessment->skepticism_score = 0.5f;
-    assessment->credibility_score = 0.5f;
+    assessment->epistemic_quality = 0.5F;
+    assessment->skepticism_score = 0.5F;
+    assessment->credibility_score = 0.5F;
     assessment->should_accept = false;
     assessment->requires_verification = true;
     assessment->num_biases_detected = 0;
-    assessment->logical_coherence = 1.0f;
-    assessment->prior_compatibility = 0.5f;
+    assessment->logical_coherence = 1.0F;
+    assessment->prior_compatibility = 0.5F;
 
     epistemic_evidence_init(&assessment->evidence);
 }
@@ -334,44 +334,44 @@ float epistemic_apply_sagan_standard(
     // "Extraordinary claims require extraordinary evidence" - Carl Sagan
 
     // Map plausibility and evidence to scores
-    float plausibility_score = 0.0f;
+    float plausibility_score = 0.0F;
     switch (prior_plausibility) {
-        case PLAUSIBLE_IMPOSSIBLE:     plausibility_score = 0.0f; break;
-        case PLAUSIBLE_EXTRAORDINARY:  plausibility_score = 0.1f; break;
-        case PLAUSIBLE_UNLIKELY:       plausibility_score = 0.3f; break;
-        case PLAUSIBLE_NEUTRAL:        plausibility_score = 0.5f; break;
-        case PLAUSIBLE_LIKELY:         plausibility_score = 0.7f; break;
-        case PLAUSIBLE_ESTABLISHED:    plausibility_score = 0.9f; break;
+        case PLAUSIBLE_IMPOSSIBLE:     plausibility_score = 0.0F; break;
+        case PLAUSIBLE_EXTRAORDINARY:  plausibility_score = 0.1F; break;
+        case PLAUSIBLE_UNLIKELY:       plausibility_score = 0.3F; break;
+        case PLAUSIBLE_NEUTRAL:        plausibility_score = 0.5F; break;
+        case PLAUSIBLE_LIKELY:         plausibility_score = 0.7F; break;
+        case PLAUSIBLE_ESTABLISHED:    plausibility_score = 0.9F; break;
     }
 
-    float evidence_score = 0.0f;
+    float evidence_score = 0.0F;
     switch (evidence_quality) {
-        case EVIDENCE_NONE:        evidence_score = 0.0f; break;
-        case EVIDENCE_ANECDOTAL:   evidence_score = 0.2f; break;
-        case EVIDENCE_WEAK:        evidence_score = 0.3f; break;
-        case EVIDENCE_MODERATE:    evidence_score = 0.5f; break;
-        case EVIDENCE_STRONG:      evidence_score = 0.7f; break;
-        case EVIDENCE_SCIENTIFIC:  evidence_score = 0.9f; break;
-        case EVIDENCE_CONSENSUS:   evidence_score = 1.0f; break;
+        case EVIDENCE_NONE:        evidence_score = 0.0F; break;
+        case EVIDENCE_ANECDOTAL:   evidence_score = 0.2F; break;
+        case EVIDENCE_WEAK:        evidence_score = 0.3F; break;
+        case EVIDENCE_MODERATE:    evidence_score = 0.5F; break;
+        case EVIDENCE_STRONG:      evidence_score = 0.7F; break;
+        case EVIDENCE_SCIENTIFIC:  evidence_score = 0.9F; break;
+        case EVIDENCE_CONSENSUS:   evidence_score = 1.0F; break;
     }
 
     // For extraordinary claims (low plausibility), require high evidence
     // For ordinary claims (high plausibility), lower evidence suffices
-    float required_evidence = 1.0f - plausibility_score;
+    float required_evidence = 1.0F - plausibility_score;
     float evidence_deficit = required_evidence - evidence_score;
 
     // Credibility decreases with evidence deficit
-    float credibility = 1.0f - fmaxf(0.0f, evidence_deficit);
+    float credibility = 1.0F - fmaxf(0.0F, evidence_deficit);
 
     // Apply penalties
     if (prior_plausibility == PLAUSIBLE_IMPOSSIBLE) {
-        credibility = 0.0f;  // Impossible claims rejected
+        credibility = 0.0F;  // Impossible claims rejected
     } else if (prior_plausibility == PLAUSIBLE_EXTRAORDINARY &&
                evidence_quality < EVIDENCE_SCIENTIFIC) {
-        credibility *= 0.3f;  // Extraordinary claims need extraordinary evidence
+        credibility *= 0.3F;  // Extraordinary claims need extraordinary evidence
     }
 
-    return fminf(1.0f, fmaxf(0.0f, credibility));
+    return fminf(1.0F, fmaxf(0.0F, credibility));
 }
 
 float epistemic_check_conspiracy_pattern(
@@ -380,29 +380,29 @@ float epistemic_check_conspiracy_pattern(
     const claim_evidence_t* evidence)
 {
     if (!filter || !claim_text || !evidence) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float conspiracy_score = 0.0f;
+    float conspiracy_score = 0.0F;
 
     // Check text patterns
     float text_score = detect_conspiracy_patterns(claim_text);
-    conspiracy_score += text_score * 0.4f;
+    conspiracy_score += text_score * 0.4F;
 
     // Check evidence patterns
     if (!evidence->is_falsifiable) {
-        conspiracy_score += 0.3f;  // Unfalsifiable claims are conspiracy-like
+        conspiracy_score += 0.3F;  // Unfalsifiable claims are conspiracy-like
     }
 
     if (evidence->num_sources == 0 || evidence->num_sources == 1) {
-        conspiracy_score += 0.15f;  // Single source
+        conspiracy_score += 0.15F;  // Single source
     }
 
-    if (evidence->expert_consensus < 0.2f && evidence->public_consensus > 0.5f) {
-        conspiracy_score += 0.15f;  // Experts disagree but public believes
+    if (evidence->expert_consensus < 0.2F && evidence->public_consensus > 0.5F) {
+        conspiracy_score += 0.15F;  // Experts disagree but public believes
     }
 
-    return fminf(1.0f, conspiracy_score);
+    return fminf(1.0F, conspiracy_score);
 }
 
 uint32_t epistemic_detect_biases(
@@ -448,26 +448,26 @@ uint32_t epistemic_detect_biases(
 
         // Detect Dunning-Kruger
         float dk_score = detect_dunning_kruger(confidence, evidence_quality);
-        if (dk_score > 0.5f && bias_count < max_biases) {
+        if (dk_score > 0.5F && bias_count < max_biases) {
             biases[bias_count].bias_type = BIAS_DUNNING_KRUGER;
             biases[bias_count].confidence = dk_score;
             biases[bias_count].severity = dk_score;
             snprintf(biases[bias_count].description, sizeof(biases[bias_count].description),
                      "High confidence (%.0f%%) with low evidence (%.0f%%) suggests overconfidence",
-                     confidence * 100.0f, evidence_quality * 100.0f);
+                     confidence * 100.0F, evidence_quality * 100.0F);
             bias_count++;
             filter->biases_detected++;
         }
 
         // Detect Confirmation Bias
         float conf_bias_score = detect_confirmation_bias(&temp_evidence, prior_belief);
-        if (conf_bias_score > 0.4f && bias_count < max_biases) {
+        if (conf_bias_score > 0.4F && bias_count < max_biases) {
             biases[bias_count].bias_type = BIAS_CONFIRMATION;
             biases[bias_count].confidence = conf_bias_score;
             biases[bias_count].severity = conf_bias_score;
             snprintf(biases[bias_count].description, sizeof(biases[bias_count].description),
                      "High prior belief (%.0f%%) with limited sources (%d) suggests confirmation bias",
-                     prior_belief * 100.0f, temp_evidence.num_sources);
+                     prior_belief * 100.0F, temp_evidence.num_sources);
             bias_count++;
             filter->biases_detected++;
         }
@@ -475,13 +475,13 @@ uint32_t epistemic_detect_biases(
         // Detect Bandwagon Effect
         if (num_features >= 5) {
             float bandwagon_score = detect_bandwagon_effect(&temp_evidence);
-            if (bandwagon_score > 0.4f && bias_count < max_biases) {
+            if (bandwagon_score > 0.4F && bias_count < max_biases) {
                 biases[bias_count].bias_type = BIAS_BANDWAGON;
                 biases[bias_count].confidence = bandwagon_score;
                 biases[bias_count].severity = bandwagon_score;
                 snprintf(biases[bias_count].description, sizeof(biases[bias_count].description),
                          "High public consensus (%.0f%%) with low evidence quality suggests bandwagon effect",
-                         temp_evidence.public_consensus * 100.0f);
+                         temp_evidence.public_consensus * 100.0F);
                 bias_count++;
                 filter->biases_detected++;
             }
@@ -533,8 +533,8 @@ bool epistemic_assess_claim(
     );
 
     // High conspiracy score dramatically reduces credibility
-    if (conspiracy_score > 0.6f) {
-        sagan_credibility *= (1.0f - conspiracy_score);
+    if (conspiracy_score > 0.6F) {
+        sagan_credibility *= (1.0F - conspiracy_score);
     }
 
     // =========================================================================
@@ -545,17 +545,17 @@ bool epistemic_assess_claim(
 
     // Bonus for multiple independent sources
     if (evidence->num_sources >= 3) {
-        source_credibility = fminf(1.0f, source_credibility * 1.2f);
+        source_credibility = fminf(1.0F, source_credibility * 1.2F);
     }
 
     // Penalty for single source
     if (evidence->num_sources == 1) {
-        source_credibility *= 0.7f;
+        source_credibility *= 0.7F;
     }
 
     // Bonus for primary sources
     if (evidence->has_primary_sources) {
-        source_credibility = fminf(1.0f, source_credibility * 1.1f);
+        source_credibility = fminf(1.0F, source_credibility * 1.1F);
     }
 
     // =========================================================================
@@ -565,13 +565,13 @@ bool epistemic_assess_claim(
     float consensus_credibility = evidence->expert_consensus;
 
     // Strong expert consensus increases credibility
-    if (evidence->expert_consensus > 0.8f) {
-        consensus_credibility = fminf(1.0f, consensus_credibility * 1.15f);
+    if (evidence->expert_consensus > 0.8F) {
+        consensus_credibility = fminf(1.0F, consensus_credibility * 1.15F);
     }
 
     // Public consensus without expert consensus is red flag
-    if (evidence->public_consensus > 0.7f && evidence->expert_consensus < 0.3f) {
-        consensus_credibility *= 0.5f;  // Possible bandwagon/misinformation
+    if (evidence->public_consensus > 0.7F && evidence->expert_consensus < 0.3F) {
+        consensus_credibility *= 0.5F;  // Possible bandwagon/misinformation
     }
 
     // =========================================================================
@@ -582,12 +582,12 @@ bool epistemic_assess_claim(
 
     // Contradictions severely reduce credibility
     if (evidence->has_contradictions) {
-        logic_credibility *= 0.3f;
+        logic_credibility *= 0.3F;
     }
 
     // Unfalsifiable claims are suspicious
     if (!evidence->is_falsifiable) {
-        logic_credibility *= 0.5f;
+        logic_credibility *= 0.5F;
     }
 
     // =========================================================================
@@ -596,35 +596,35 @@ bool epistemic_assess_claim(
 
     // Weighted combination
     assessment->credibility_score =
-        sagan_credibility * 0.35f +              // Sagan standard
+        sagan_credibility * 0.35F +              // Sagan standard
         source_credibility * filter->source_weight +  // Source reliability
         consensus_credibility * filter->consensus_weight +  // Expert consensus
-        logic_credibility * 0.25f;               // Logical consistency
+        logic_credibility * 0.25F;               // Logical consistency
 
     // Apply skepticism modifier
     assessment->skepticism_score = filter->skepticism_level;
 
     // Adjust for skepticism (higher skepticism = higher bar)
-    assessment->credibility_score *= (1.0f - filter->skepticism_level * 0.3f);
+    assessment->credibility_score *= (1.0F - filter->skepticism_level * 0.3F);
 
     // =========================================================================
     // STEP 7: Make recommendation
     // =========================================================================
 
     // Decision threshold depends on claim extraordinariness
-    float acceptance_threshold = 0.6f;  // Default
+    float acceptance_threshold = 0.6F;  // Default
 
     if (evidence->is_extraordinary_claim) {
-        acceptance_threshold = 0.8f;  // Higher bar for extraordinary claims
+        acceptance_threshold = 0.8F;  // Higher bar for extraordinary claims
     }
 
     if (evidence->plausibility == PLAUSIBLE_EXTRAORDINARY) {
-        acceptance_threshold = 0.85f;
+        acceptance_threshold = 0.85F;
     }
 
     if (evidence->plausibility == PLAUSIBLE_IMPOSSIBLE) {
         assessment->should_accept = false;
-        assessment->credibility_score = 0.0f;
+        assessment->credibility_score = 0.0F;
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
                  "Claim violates established laws of nature. Rejected.");
         snprintf(assessment->recommendation, sizeof(assessment->recommendation),
@@ -635,47 +635,47 @@ bool epistemic_assess_claim(
 
     // Make decision
     assessment->should_accept = (assessment->credibility_score >= acceptance_threshold);
-    assessment->requires_verification = (assessment->credibility_score < 0.8f);
+    assessment->requires_verification = (assessment->credibility_score < 0.8F);
 
     // Calculate epistemic quality (how well-supported is this belief)
     assessment->epistemic_quality = assessment->credibility_score;
     assessment->logical_coherence = evidence->logical_consistency;
-    assessment->prior_compatibility = (float)evidence->plausibility / 5.0f;
+    assessment->prior_compatibility = (float)evidence->plausibility / 5.0F;
 
     // =========================================================================
     // STEP 8: Generate reasoning and recommendation
     // =========================================================================
 
-    if (conspiracy_score > 0.6f) {
+    if (conspiracy_score > 0.6F) {
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
                  "Claim exhibits conspiracy-theory patterns (score: %.0f%%). "
                  "Evidence quality: %d/6. Credibility: %.0f%%",
-                 conspiracy_score * 100.0f,
+                 conspiracy_score * 100.0F,
                  evidence->evidence_quality,
-                 assessment->credibility_score * 100.0f);
+                 assessment->credibility_score * 100.0F);
     } else {
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
                  "Evidence quality: %d/6. Sources: %u. Expert consensus: %.0f%%. "
                  "Credibility: %.0f%%",
                  evidence->evidence_quality,
                  evidence->num_sources,
-                 evidence->expert_consensus * 100.0f,
-                 assessment->credibility_score * 100.0f);
+                 evidence->expert_consensus * 100.0F,
+                 assessment->credibility_score * 100.0F);
     }
 
     if (assessment->should_accept) {
         snprintf(assessment->recommendation, sizeof(assessment->recommendation),
                  "ACCEPT: Sufficient evidence (%.0f%% credibility)",
-                 assessment->credibility_score * 100.0f);
+                 assessment->credibility_score * 100.0F);
         filter->claims_accepted++;
-    } else if (assessment->credibility_score > 0.3f) {
+    } else if (assessment->credibility_score > 0.3F) {
         snprintf(assessment->recommendation, sizeof(assessment->recommendation),
                  "UNCERTAIN: Requires verification (%.0f%% credibility)",
-                 assessment->credibility_score * 100.0f);
+                 assessment->credibility_score * 100.0F);
     } else {
         snprintf(assessment->recommendation, sizeof(assessment->recommendation),
                  "REJECT: Insufficient evidence (%.0f%% credibility)",
-                 assessment->credibility_score * 100.0f);
+                 assessment->credibility_score * 100.0F);
         filter->claims_rejected++;
     }
 
@@ -721,7 +721,7 @@ bool epistemic_update_source(
         filter->sources[idx].correct_count = was_correct ? 1 : 0;
         filter->sources[idx].incorrect_count = was_correct ? 0 : 1;
         filter->sources[idx].unverified_count = 0;
-        filter->sources[idx].reliability = was_correct ? 1.0f : 0.0f;
+        filter->sources[idx].reliability = was_correct ? 1.0F : 0.0F;
         filter->sources[idx].is_primary_source = false;
         return true;
     }
@@ -734,7 +734,7 @@ float epistemic_get_source_reliability(
     const char* source_id)
 {
     if (!filter || !source_id) {
-        return -1.0f;
+        return -1.0F;
     }
 
     for (uint32_t i = 0; i < filter->num_sources; i++) {
@@ -743,5 +743,5 @@ float epistemic_get_source_reliability(
         }
     }
 
-    return -1.0f;  // Unknown source
+    return -1.0F;  // Unknown source
 }

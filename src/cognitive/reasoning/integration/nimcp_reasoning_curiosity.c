@@ -47,15 +47,15 @@ reasoning_curiosity_config_t reasoning_curiosity_default_config(void) {
         .enable_novel_fact_exploration = true,
         .proof_failed_curiosity_boost = REASONING_CURIOSITY_PROOF_FAILED_BOOST,
         .novel_fact_curiosity_boost = REASONING_CURIOSITY_NOVEL_FACT_BOOST,
-        .min_curiosity_threshold = 0.1f
+        .min_curiosity_threshold = 0.1F
     };
     return config;
 }
 
 bool reasoning_curiosity_validate_config(const reasoning_curiosity_config_t* config) {
     if (!config) return false;
-    if (config->proof_failed_curiosity_boost < 0.0f || config->proof_failed_curiosity_boost > 1.0f) return false;
-    if (config->novel_fact_curiosity_boost < 0.0f || config->novel_fact_curiosity_boost > 1.0f) return false;
+    if (config->proof_failed_curiosity_boost < 0.0F || config->proof_failed_curiosity_boost > 1.0F) return false;
+    if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F) return false;
     return true;
 }
 
@@ -140,7 +140,7 @@ void reasoning_curiosity_callback(const brain_event_t* event, void* context) {
     
     integration->stats.total_events_processed++;
     
-    float curiosity_boost = 0.0f;
+    float curiosity_boost = 0.0F;
     
     if (event->type == EVENT_PROOF_FAILED && integration->config.enable_proof_failure_exploration) {
         curiosity_boost = integration->config.proof_failed_curiosity_boost;
@@ -165,7 +165,7 @@ bool reasoning_curiosity_explore_unexplained_fact(reasoning_curiosity_t* integra
     if (!integration || !fact) return false;
     
     knowledge_gap_t gap = curiosity_detect_knowledge_gap(integration->curiosity, fact);
-    if (gap.gap_size > 0.3f) {
+    if (gap.gap_size > 0.3F) {
         integration->stats.exploration_triggers++;
         return true;
     }

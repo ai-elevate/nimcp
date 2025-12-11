@@ -161,7 +161,7 @@ static dialect_entry_t* create_dialect_entry(
     entry->dialect.target_region = target;
     entry->dialect.matrix_rows = dim;
     entry->dialect.matrix_cols = dim;
-    entry->dialect.compatibility_score = 0.0f;
+    entry->dialect.compatibility_score = 0.0F;
 
     // Allocate translation matrix
     size_t matrix_size = dim * dim * sizeof(float);
@@ -174,7 +174,7 @@ static dialect_entry_t* create_dialect_entry(
 
     // Initialize to identity matrix
     for (uint32_t i = 0; i < dim; i++) {
-        entry->dialect.translation_matrix[i * dim + i] = 1.0f;
+        entry->dialect.translation_matrix[i * dim + i] = 1.0F;
     }
 
     entry->last_used_us = get_time_us();
@@ -217,7 +217,7 @@ static void matrix_vector_mult(
     if (!matrix || !vector || !result || rows == 0 || cols == 0) return;
 
     for (uint32_t i = 0; i < rows; i++) {
-        result[i] = 0.0f;
+        result[i] = 0.0F;
         for (uint32_t j = 0; j < cols; j++) {
             result[i] += matrix[i * cols + j] * vector[j];
         }
@@ -261,9 +261,9 @@ static void update_matrix(
  */
 static float compute_mse(const float* predicted, const float* target, uint32_t dim) {
     // Guard clauses
-    if (!predicted || !target || dim == 0) return -1.0f;
+    if (!predicted || !target || dim == 0) return -1.0F;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         float diff = predicted[i] - target[i];
         sum += diff * diff;
@@ -429,7 +429,7 @@ int dialect_learn_from_pairs(
 
     // Learning loop
     float predicted[signal_size];
-    float total_error = 0.0f;
+    float total_error = 0.0F;
 
     for (uint32_t iter = 0; iter < num_pairs; iter++) {
         // Forward pass
@@ -448,7 +448,7 @@ int dialect_learn_from_pairs(
     }
 
     // Compute final compatibility score
-    entry->dialect.compatibility_score = 1.0f / (1.0f + total_error / (float)num_pairs);
+    entry->dialect.compatibility_score = 1.0F / (1.0F + total_error / (float)num_pairs);
     entry->update_count += num_pairs;
     entry->last_used_us = get_time_us();
 
@@ -643,12 +643,12 @@ bool dialect_exists(dialect_learner_t dl, uint32_t source, uint32_t target) {
 
 float dialect_get_compatibility(dialect_learner_t dl, uint32_t source, uint32_t target) {
     // Guard clause
-    if (!dl) return -1.0f;
+    if (!dl) return -1.0F;
 
     pthread_mutex_lock(&dl->lock);
 
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
-    float compat = entry ? entry->dialect.compatibility_score : -1.0f;
+    float compat = entry ? entry->dialect.compatibility_score : -1.0F;
 
     pthread_mutex_unlock(&dl->lock);
 
@@ -905,16 +905,16 @@ float dialect_compute_similarity(
     const neural_dialect_t* dialect2
 ) {
     // Guard clauses
-    if (!dialect1 || !dialect2) return -1.0f;
+    if (!dialect1 || !dialect2) return -1.0F;
 
     if (dialect1->matrix_rows != dialect2->matrix_rows ||
         dialect1->matrix_cols != dialect2->matrix_cols) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Compute Frobenius norm of difference
-    float sum_sq_diff = 0.0f;
-    float sum_sq_norm = 0.0f;
+    float sum_sq_diff = 0.0F;
+    float sum_sq_norm = 0.0F;
     uint32_t size = dialect1->matrix_rows * dialect1->matrix_cols;
 
     for (uint32_t i = 0; i < size; i++) {
@@ -923,10 +923,10 @@ float dialect_compute_similarity(
         sum_sq_norm += dialect1->translation_matrix[i] * dialect1->translation_matrix[i];
     }
 
-    if (sum_sq_norm < 1e-6f) return 0.0f;
+    if (sum_sq_norm < 1e-6F) return 0.0F;
 
     // Return normalized similarity (1.0 = identical, 0.0 = completely different)
-    return 1.0f - sqrtf(sum_sq_diff) / sqrtf(sum_sq_norm);
+    return 1.0F - sqrtf(sum_sq_diff) / sqrtf(sum_sq_norm);
 }
 
 const char* dialect_learner_get_last_error(void) {

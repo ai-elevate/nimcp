@@ -124,19 +124,19 @@ void vesicle_pool_init_with_config(
     pool->mobilization_rate = config->mobilization_rate;
 
     // === Facilitation State ===
-    pool->calcium_residual = 0.0f;
+    pool->calcium_residual = 0.0F;
     pool->ca_decay_tau = config->ca_decay_tau;
     pool->facilitation_gain = config->facilitation_gain;
 
     // === Depletion State ===
     pool->is_depleted = false;
-    pool->depletion_factor = 1.0f;
+    pool->depletion_factor = 1.0F;
 
     // === Statistics ===
     pool->total_releases = 0;
     pool->total_depleted_events = 0;
     pool->total_refills = 0;
-    pool->avg_release_per_spike = 0.0f;
+    pool->avg_release_per_spike = 0.0F;
 
     // === Timing ===
     pool->last_release_time_us = 0;
@@ -150,16 +150,16 @@ void vesicle_pool_reset(vesicle_pool_state_t* pool) {
     pool->reserve_pool = pool->reserve_capacity;
 
     // Reset accumulators
-    pool->refill_accumulator = 0.0f;
-    pool->mobilization_accumulator = 0.0f;
+    pool->refill_accumulator = 0.0F;
+    pool->mobilization_accumulator = 0.0F;
 
     // Reset facilitation
-    pool->calcium_residual = 0.0f;
+    pool->calcium_residual = 0.0F;
     pool->facilitated_pr = pool->release_probability;
 
     // Reset depletion
     pool->is_depleted = false;
-    pool->depletion_factor = 1.0f;
+    pool->depletion_factor = 1.0F;
 
     // Don't reset statistics - they track lifetime performance
 }
@@ -175,12 +175,12 @@ float vesicle_pool_release(
 ) {
     // === Guard: No action potential ===
     if (!action_potential) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // === Guard: Depleted state ===
     if (pool->is_depleted) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // === 1. Binomial Release from RRP ===
@@ -203,7 +203,7 @@ float vesicle_pool_release(
     pool->recycling_pool += vesicles_to_recycle;
 
     // === 3. Update Calcium Residual (for facilitation) ===
-    pool->calcium_residual += 1.0f;
+    pool->calcium_residual += 1.0F;
 
     // === 4. Check Depletion ===
     if (pool->readily_releasable_pool < VESICLE_DEPLETION_THRESHOLD) {
@@ -231,17 +231,17 @@ void vesicle_pool_update_facilitation(vesicle_pool_state_t* pool, float dt) {
     pool->calcium_residual *= decay_alpha;
 
     // Clamp to zero when very small
-    if (pool->calcium_residual < 0.001f) {
-        pool->calcium_residual = 0.0f;
+    if (pool->calcium_residual < 0.001F) {
+        pool->calcium_residual = 0.0F;
     }
 
     // === 2. Update Facilitated Release Probability ===
     // Pr_facilitated = Pr_base * (1 + gain * Ca_residual)
     pool->facilitated_pr = pool->release_probability *
-                          (1.0f + pool->facilitation_gain * pool->calcium_residual);
+                          (1.0F + pool->facilitation_gain * pool->calcium_residual);
 
     // Clamp to [0, 1]
-    pool->facilitated_pr = clamp(pool->facilitated_pr, 0.0f, 1.0f);
+    pool->facilitated_pr = clamp(pool->facilitated_pr, 0.0F, 1.0F);
 }
 
 // ============================================================================
@@ -362,7 +362,7 @@ void vesicle_pool_get_stats(
     if (rrp_count) *rrp_count = pool->readily_releasable_pool;
     if (recycling_count) *recycling_count = pool->recycling_pool;
     if (reserve_count) *reserve_count = pool->reserve_pool;
-    if (depletion_fraction) *depletion_fraction = 1.0f - pool->depletion_factor;
+    if (depletion_fraction) *depletion_fraction = 1.0F - pool->depletion_factor;
     if (facilitated_pr) *facilitated_pr = pool->facilitated_pr;
 }
 
@@ -384,18 +384,18 @@ void vesicle_pool_apply_botulinum(vesicle_pool_state_t* pool, float blockade) {
     // HOW:  Reduce release probability to near-zero
 
     // Clamp blockade to [0, 1]
-    blockade = clamp(blockade, 0.0f, 1.0f);
+    blockade = clamp(blockade, 0.0F, 1.0F);
 
     // Reduce Pr: 1.0 blockade = 99% reduction (leave 1% residual)
-    pool->release_probability *= (1.0f - 0.99f * blockade);
-    pool->facilitated_pr *= (1.0f - 0.99f * blockade);
+    pool->release_probability *= (1.0F - 0.99F * blockade);
+    pool->facilitated_pr *= (1.0F - 0.99F * blockade);
 
     // Ensure minimum Pr
-    if (pool->release_probability < 0.001f) {
-        pool->release_probability = 0.001f;
+    if (pool->release_probability < 0.001F) {
+        pool->release_probability = 0.001F;
     }
-    if (pool->facilitated_pr < 0.001f) {
-        pool->facilitated_pr = 0.001f;
+    if (pool->facilitated_pr < 0.001F) {
+        pool->facilitated_pr = 0.001F;
     }
 }
 
@@ -405,13 +405,13 @@ void vesicle_pool_apply_amphetamine(vesicle_pool_state_t* pool, float depletion)
     // HOW:  Rapidly deplete RRP and recycling pools
 
     // Clamp depletion to [0, 1]
-    depletion = clamp(depletion, 0.0f, 1.0f);
+    depletion = clamp(depletion, 0.0F, 1.0F);
 
     // Deplete RRP to 10% of current
-    pool->readily_releasable_pool = (uint32_t)((1.0f - 0.9f * depletion) * pool->readily_releasable_pool);
+    pool->readily_releasable_pool = (uint32_t)((1.0F - 0.9F * depletion) * pool->readily_releasable_pool);
 
     // Deplete recycling to 30% of current
-    pool->recycling_pool = (uint32_t)((1.0f - 0.7f * depletion) * pool->recycling_pool);
+    pool->recycling_pool = (uint32_t)((1.0F - 0.7F * depletion) * pool->recycling_pool);
 
     // Update depletion state
     if (pool->readily_releasable_pool < VESICLE_DEPLETION_THRESHOLD) {
@@ -427,13 +427,13 @@ void vesicle_pool_apply_4ap(vesicle_pool_state_t* pool, float potentiation) {
     // HOW:  Increase release probability
 
     // Clamp potentiation to [1, 3] (up to 3x increase)
-    potentiation = clamp(potentiation, 1.0f, 3.0f);
+    potentiation = clamp(potentiation, 1.0F, 3.0F);
 
     // Increase Pr
     pool->release_probability *= potentiation;
     pool->facilitated_pr *= potentiation;
 
     // Clamp to [0, 1]
-    pool->release_probability = clamp(pool->release_probability, 0.0f, 1.0f);
-    pool->facilitated_pr = clamp(pool->facilitated_pr, 0.0f, 1.0f);
+    pool->release_probability = clamp(pool->release_probability, 0.0F, 1.0F);
+    pool->facilitated_pr = clamp(pool->facilitated_pr, 0.0F, 1.0F);
 }

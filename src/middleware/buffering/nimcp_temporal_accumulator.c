@@ -59,7 +59,7 @@ struct temporal_accumulator {
  * HOW:  Weighted average of current and previous value
  */
 static float integrate_ema(float current, float input, float alpha) {
-    return alpha * input + (1.0f - alpha) * current;
+    return alpha * input + (1.0F - alpha) * current;
 }
 
 /**
@@ -92,10 +92,10 @@ static float integrate_adaptive(
 ) {
     // Increase alpha for rapid changes
     float change_magnitude = fabsf(rate_of_change);
-    float adaptive_alpha = alpha * (1.0f + change_magnitude);
+    float adaptive_alpha = alpha * (1.0F + change_magnitude);
 
     // Clamp to [0, 1]
-    if (adaptive_alpha > 1.0f) adaptive_alpha = 1.0f;
+    if (adaptive_alpha > 1.0F) adaptive_alpha = 1.0F;
 
     return integrate_leaky(current, input, adaptive_alpha, dt);
 }
@@ -110,7 +110,7 @@ temporal_accumulator_t* temporal_accumulator_create(
     integration_mode_t mode
 ) {
     // Guard: validate inputs
-    if (num_channels == 0 || alpha < 0.0f || alpha > 1.0f) return NULL;
+    if (num_channels == 0 || alpha < 0.0F || alpha > 1.0F) return NULL;
 
     // Allocate structure
     temporal_accumulator_t* acc = nimcp_calloc(1, sizeof(temporal_accumulator_t));
@@ -130,9 +130,9 @@ temporal_accumulator_t* temporal_accumulator_create(
 
     // Initialize channel states
     for (size_t i = 0; i < num_channels; i++) {
-        acc->channels[i].value = 0.0f;
-        acc->channels[i].prev_value = 0.0f;
-        acc->channels[i].rate_of_change = 0.0f;
+        acc->channels[i].value = 0.0F;
+        acc->channels[i].prev_value = 0.0F;
+        acc->channels[i].rate_of_change = 0.0F;
         acc->channels[i].peak_value = -FLT_MAX;
         acc->channels[i].valley_value = FLT_MAX;
         acc->channels[i].update_count = 0;
@@ -159,7 +159,7 @@ bool temporal_accumulator_update(
     float dt
 ) {
     // Guard: validate inputs
-    if (!accumulator || channel >= accumulator->num_channels || dt <= 0.0f) {
+    if (!accumulator || channel >= accumulator->num_channels || dt <= 0.0F) {
         return false;
     }
 
@@ -207,7 +207,7 @@ size_t temporal_accumulator_update_all(
     float dt
 ) {
     // Guard: validate inputs
-    if (!accumulator || !values || dt <= 0.0f) return 0;
+    if (!accumulator || !values || dt <= 0.0F) return 0;
 
     size_t updated = 0;
     for (size_t i = 0; i < accumulator->num_channels; i++) {
@@ -224,7 +224,7 @@ float temporal_accumulator_get_value(
     size_t channel
 ) {
     // Guard: validate inputs
-    if (!accumulator || channel >= accumulator->num_channels) return 0.0f;
+    if (!accumulator || channel >= accumulator->num_channels) return 0.0F;
 
     return accumulator->channels[channel].value;
 }
@@ -277,7 +277,7 @@ float temporal_accumulator_rate_of_change(
     size_t channel
 ) {
     // Guard: validate inputs
-    if (!accumulator || channel >= accumulator->num_channels) return 0.0f;
+    if (!accumulator || channel >= accumulator->num_channels) return 0.0F;
 
     return accumulator->channels[channel].rate_of_change;
 }
@@ -287,10 +287,10 @@ float temporal_accumulator_peak(
     size_t channel
 ) {
     // Guard: validate inputs
-    if (!accumulator || channel >= accumulator->num_channels) return 0.0f;
+    if (!accumulator || channel >= accumulator->num_channels) return 0.0F;
 
     float peak = accumulator->channels[channel].peak_value;
-    return (peak == -FLT_MAX) ? 0.0f : peak;
+    return (peak == -FLT_MAX) ? 0.0F : peak;
 }
 
 float temporal_accumulator_valley(
@@ -298,10 +298,10 @@ float temporal_accumulator_valley(
     size_t channel
 ) {
     // Guard: validate inputs
-    if (!accumulator || channel >= accumulator->num_channels) return 0.0f;
+    if (!accumulator || channel >= accumulator->num_channels) return 0.0F;
 
     float valley = accumulator->channels[channel].valley_value;
-    return (valley == FLT_MAX) ? 0.0f : valley;
+    return (valley == FLT_MAX) ? 0.0F : valley;
 }
 
 //=============================================================================
@@ -313,7 +313,7 @@ bool temporal_accumulator_set_alpha(
     float alpha
 ) {
     // Guard: validate inputs
-    if (!accumulator || alpha < 0.0f || alpha > 1.0f) return false;
+    if (!accumulator || alpha < 0.0F || alpha > 1.0F) return false;
 
     accumulator->alpha = alpha;
     return true;
@@ -323,7 +323,7 @@ float temporal_accumulator_get_alpha(
     const temporal_accumulator_t* accumulator
 ) {
     // Guard: validate input
-    if (!accumulator) return 0.0f;
+    if (!accumulator) return 0.0F;
 
     return accumulator->alpha;
 }
@@ -361,9 +361,9 @@ bool temporal_accumulator_reset_channel(
 
     channel_state_t* ch = &accumulator->channels[channel];
 
-    ch->value = 0.0f;
-    ch->prev_value = 0.0f;
-    ch->rate_of_change = 0.0f;
+    ch->value = 0.0F;
+    ch->prev_value = 0.0F;
+    ch->rate_of_change = 0.0F;
     ch->peak_value = -FLT_MAX;
     ch->valley_value = FLT_MAX;
     ch->update_count = 0;

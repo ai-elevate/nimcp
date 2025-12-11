@@ -16,6 +16,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"
@@ -127,7 +128,7 @@ static bool channels_conflict(motor_resonance_t resonance, uint32_t ch_a, uint32
  */
 static float compute_conflict_signal(motor_resonance_t resonance, uint32_t channel_id) {
     motor_channel_t* ch = &resonance->channels[channel_id];
-    float max_conflict = 0.0f;
+    float max_conflict = 0.0F;
     uint32_t conflicting_id = UINT32_MAX;
 
     // Check all other active channels for conflicts
@@ -165,30 +166,30 @@ motor_resonance_config_t motor_resonance_get_default_config(void) {
         // Resonance parameters
         .resonance_gain = NIMCP_RESONANCE_DEFAULT_GAIN,
         .tau_resonance_decay = NIMCP_RESONANCE_TAU_DECAY,
-        .tau_resonance_rise = 20.0f,
+        .tau_resonance_rise = 20.0F,
         .execution_threshold = NIMCP_RESONANCE_EXEC_THRESHOLD,
 
         // Basal ganglia parameters
         .bg_tonic_inhibition = NIMCP_RESONANCE_BG_TONIC_INHIB,
         .tau_bg_adaptation = NIMCP_RESONANCE_TAU_BG_ADAPT,
-        .bg_release_rate = 0.1f,
+        .bg_release_rate = 0.1F,
 
         // Conflict detection
         .conflict_threshold = NIMCP_RESONANCE_CONFLICT_THRESH,
-        .conflict_decay = 0.05f,
+        .conflict_decay = 0.05F,
 
         // Voluntary control
-        .pfc_gain = 1.0f,
+        .pfc_gain = 1.0F,
         .enable_voluntary_override = true,
 
         // Fatigue modeling
         .enable_fatigue = true,
-        .fatigue_threshold = 0.8f,
-        .tau_fatigue_recovery = 5000.0f,
+        .fatigue_threshold = 0.8F,
+        .tau_fatigue_recovery = 5000.0F,
 
         // Social modulation
         .enable_social_context = true,
-        .social_gain = 1.2f
+        .social_gain = 1.2F
     };
     return config;
 }
@@ -252,9 +253,9 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
 
     // Initialize global state
     resonance->bg_inhibition = resonance->config.bg_tonic_inhibition;
-    resonance->bg_adaptation_state = 0.0f;
-    resonance->social_context = 0.0f;
-    resonance->learning_context = 0.0f;
+    resonance->bg_adaptation_state = 0.0F;
+    resonance->social_context = 0.0F;
+    resonance->learning_context = 0.0F;
 
     LOG_INFO("Motor resonance system created successfully (channels=%u, conflicts=%u)",
              max_channels, resonance->max_conflicts);
@@ -307,21 +308,21 @@ uint32_t motor_resonance_create_channel(motor_resonance_t resonance, uint32_t ac
     // Initialize channel
     ch->channel_id = channel_id;
     ch->action_id = action_id;
-    ch->resonance_level = 0.0f;
-    ch->peak_resonance = 0.0f;
-    ch->target_resonance = 0.0f;
+    ch->resonance_level = 0.0F;
+    ch->peak_resonance = 0.0F;
+    ch->target_resonance = 0.0F;
     ch->suppression_level = resonance->bg_inhibition;
     ch->suppress_reason = RESONANCE_SUPPRESS_BG_TONIC;
     ch->release_reason = RESONANCE_RELEASE_NONE;
-    ch->motor_output = 0.0f;
+    ch->motor_output = 0.0F;
     ch->above_threshold = false;
-    ch->conflict_signal = 0.0f;
+    ch->conflict_signal = 0.0F;
     ch->conflicting_channel = UINT32_MAX;
-    ch->fatigue_level = 0.0f;
+    ch->fatigue_level = 0.0F;
     ch->last_activation_us = 0;
     ch->activation_count = 0;
     ch->suppression_count = 0;
-    ch->total_resonance_time = 0.0f;
+    ch->total_resonance_time = 0.0F;
 
     // Add to action map
     resonance->action_map[slot] = channel_id;
@@ -365,7 +366,7 @@ uint32_t motor_resonance_find_channel(motor_resonance_t resonance, uint32_t acti
 float motor_resonance_observe(motor_resonance_t resonance, uint32_t channel_id,
                                float observation_strength, uint64_t timestamp_us) {
     if (!resonance || channel_id >= resonance->num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     motor_channel_t* ch = &resonance->channels[channel_id];
@@ -377,23 +378,23 @@ float motor_resonance_observe(motor_resonance_t resonance, uint32_t channel_id,
     float scaled_obs = observation_strength * cfg->resonance_gain;
 
     // Apply social context boost
-    if (cfg->enable_social_context && resonance->social_context > 0.0f) {
-        scaled_obs *= (1.0f + resonance->social_context * (cfg->social_gain - 1.0f));
+    if (cfg->enable_social_context && resonance->social_context > 0.0F) {
+        scaled_obs *= (1.0F + resonance->social_context * (cfg->social_gain - 1.0F));
     }
 
     // Apply fatigue penalty
     if (cfg->enable_fatigue && ch->fatigue_level > cfg->fatigue_threshold) {
         float fatigue_penalty = (ch->fatigue_level - cfg->fatigue_threshold) /
-                               (1.0f - cfg->fatigue_threshold);
-        scaled_obs *= (1.0f - fatigue_penalty * 0.5f);  // Max 50% reduction
+                               (1.0F - cfg->fatigue_threshold);
+        scaled_obs *= (1.0F - fatigue_penalty * 0.5F);  // Max 50% reduction
     }
 
-    ch->target_resonance = clamp_f(scaled_obs, 0.0f, NIMCP_RESONANCE_MAX);
+    ch->target_resonance = clamp_f(scaled_obs, 0.0F, NIMCP_RESONANCE_MAX);
 
     // Instant update toward target (for responsiveness)
-    float rise_factor = 0.3f;  // Portion to move instantly
+    float rise_factor = 0.3F;  // Portion to move instantly
     ch->resonance_level += (ch->target_resonance - ch->resonance_level) * rise_factor;
-    ch->resonance_level = clamp_f(ch->resonance_level, 0.0f, NIMCP_RESONANCE_MAX);
+    ch->resonance_level = clamp_f(ch->resonance_level, 0.0F, NIMCP_RESONANCE_MAX);
 
     // Track peak
     if (ch->resonance_level > ch->peak_resonance) {
@@ -401,9 +402,9 @@ float motor_resonance_observe(motor_resonance_t resonance, uint32_t channel_id,
     }
 
     // Update fatigue
-    if (cfg->enable_fatigue && ch->resonance_level > 0.5f) {
-        ch->fatigue_level += 0.01f;
-        ch->fatigue_level = clamp_f(ch->fatigue_level, 0.0f, 1.0f);
+    if (cfg->enable_fatigue && ch->resonance_level > 0.5F) {
+        ch->fatigue_level += 0.01F;
+        ch->fatigue_level = clamp_f(ch->fatigue_level, 0.0F, 1.0F);
     }
 
     return ch->resonance_level;
@@ -428,7 +429,7 @@ void motor_resonance_observe_batch(motor_resonance_t resonance,
 void motor_resonance_set_bg_inhibition(motor_resonance_t resonance, float level) {
     if (!resonance) return;
 
-    resonance->bg_inhibition = clamp_f(level, 0.0f, 1.0f);
+    resonance->bg_inhibition = clamp_f(level, 0.0F, 1.0F);
 
     // Update all channels with BG suppression
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
@@ -436,7 +437,7 @@ void motor_resonance_set_bg_inhibition(motor_resonance_t resonance, float level)
         if (ch->suppress_reason == RESONANCE_SUPPRESS_BG_TONIC ||
             ch->suppress_reason == RESONANCE_SUPPRESS_NONE) {
             ch->suppression_level = resonance->bg_inhibition;
-            if (resonance->bg_inhibition > 0.1f) {
+            if (resonance->bg_inhibition > 0.1F) {
                 ch->suppress_reason = RESONANCE_SUPPRESS_BG_TONIC;
             }
         }
@@ -449,10 +450,10 @@ void motor_resonance_set_pfc_suppression(motor_resonance_t resonance,
 
     motor_channel_t* ch = &resonance->channels[channel_id];
 
-    level = clamp_f(level, 0.0f, 1.0f);
+    level = clamp_f(level, 0.0F, 1.0F);
 
     // PFC suppression takes priority over BG
-    if (level > 0.1f) {
+    if (level > 0.1F) {
         ch->suppression_level = fmaxf(ch->suppression_level, level * resonance->config.pfc_gain);
         ch->suppress_reason = RESONANCE_SUPPRESS_PFC_VOLUNTARY;
         ch->suppression_count++;
@@ -464,7 +465,7 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
                                            int32_t channel_id, float learning_context) {
     if (!resonance) return;
 
-    resonance->learning_context = clamp_f(learning_context, 0.0f, 1.0f);
+    resonance->learning_context = clamp_f(learning_context, 0.0F, 1.0F);
 
     // Reduce suppression proportional to learning context
     float release_amount = learning_context * resonance->config.bg_release_rate;
@@ -474,9 +475,9 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
         for (uint32_t i = 0; i < resonance->num_channels; i++) {
             motor_channel_t* ch = &resonance->channels[i];
             ch->suppression_level -= release_amount;
-            ch->suppression_level = clamp_f(ch->suppression_level, 0.0f, 1.0f);
+            ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
 
-            if (ch->suppression_level < 0.2f && learning_context > 0.5f) {
+            if (ch->suppression_level < 0.2F && learning_context > 0.5F) {
                 ch->release_reason = RESONANCE_RELEASE_LEARNING;
                 resonance->learning_releases++;
             }
@@ -484,9 +485,9 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
     } else if ((uint32_t)channel_id < resonance->num_channels) {
         motor_channel_t* ch = &resonance->channels[channel_id];
         ch->suppression_level -= release_amount;
-        ch->suppression_level = clamp_f(ch->suppression_level, 0.0f, 1.0f);
+        ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
 
-        if (ch->suppression_level < 0.2f && learning_context > 0.5f) {
+        if (ch->suppression_level < 0.2F && learning_context > 0.5F) {
             ch->release_reason = RESONANCE_RELEASE_LEARNING;
             resonance->learning_releases++;
         }
@@ -497,17 +498,17 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
                                          int32_t channel_id, float social_strength) {
     if (!resonance || !resonance->config.enable_social_context) return;
 
-    resonance->social_context = clamp_f(social_strength, 0.0f, 1.0f);
+    resonance->social_context = clamp_f(social_strength, 0.0F, 1.0F);
 
-    float release_amount = social_strength * resonance->config.bg_release_rate * 0.5f;
+    float release_amount = social_strength * resonance->config.bg_release_rate * 0.5F;
 
     if (channel_id < 0) {
         for (uint32_t i = 0; i < resonance->num_channels; i++) {
             motor_channel_t* ch = &resonance->channels[i];
             ch->suppression_level -= release_amount;
-            ch->suppression_level = clamp_f(ch->suppression_level, 0.0f, 1.0f);
+            ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
 
-            if (ch->suppression_level < 0.2f && social_strength > 0.5f) {
+            if (ch->suppression_level < 0.2F && social_strength > 0.5F) {
                 ch->release_reason = RESONANCE_RELEASE_SOCIAL;
                 resonance->social_releases++;
             }
@@ -515,9 +516,9 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
     } else if ((uint32_t)channel_id < resonance->num_channels) {
         motor_channel_t* ch = &resonance->channels[channel_id];
         ch->suppression_level -= release_amount;
-        ch->suppression_level = clamp_f(ch->suppression_level, 0.0f, 1.0f);
+        ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
 
-        if (ch->suppression_level < 0.2f && social_strength > 0.5f) {
+        if (ch->suppression_level < 0.2F && social_strength > 0.5F) {
             ch->release_reason = RESONANCE_RELEASE_SOCIAL;
             resonance->social_releases++;
         }
@@ -530,7 +531,7 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
 
 float motor_resonance_get_conflict(motor_resonance_t resonance, uint32_t channel_id) {
     if (!resonance || channel_id >= resonance->num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
     return resonance->channels[channel_id].conflict_signal;
 }
@@ -562,7 +563,7 @@ void motor_resonance_set_conflict(motor_resonance_t resonance,
 
 float motor_resonance_get_output(motor_resonance_t resonance, uint32_t channel_id) {
     if (!resonance || channel_id >= resonance->num_channels) {
-        return -1.0f;
+        return -1.0F;
     }
     return resonance->channels[channel_id].motor_output;
 }
@@ -602,7 +603,7 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
     // Compute decay factors
     float resonance_decay = exp_decay(dt_ms, cfg->tau_resonance_decay);
     float fatigue_recovery = exp_decay(dt_ms, cfg->tau_fatigue_recovery);
-    float conflict_decay = 1.0f - cfg->conflict_decay;
+    float conflict_decay = 1.0F - cfg->conflict_decay;
 
     // Update all channels
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
@@ -610,10 +611,10 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
 
         // Decay resonance toward target (or zero if no input)
         ch->resonance_level *= resonance_decay;
-        ch->resonance_level = fmaxf(ch->resonance_level, 0.0f);
+        ch->resonance_level = fmaxf(ch->resonance_level, 0.0F);
 
         // Also decay peak
-        ch->peak_resonance *= 0.999f;
+        ch->peak_resonance *= 0.999F;
 
         // Recover from fatigue
         if (cfg->enable_fatigue) {
@@ -636,13 +637,13 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
         // Restore BG tonic inhibition if no other suppression
         if (ch->suppression_level < resonance->bg_inhibition &&
             ch->release_reason == RESONANCE_RELEASE_NONE) {
-            ch->suppression_level += 0.01f;
+            ch->suppression_level += 0.01F;
             ch->suppression_level = fminf(ch->suppression_level, resonance->bg_inhibition);
         }
 
         // Compute final motor output
         ch->motor_output = ch->resonance_level - ch->suppression_level;
-        ch->motor_output = clamp_f(ch->motor_output, 0.0f, 1.0f);
+        ch->motor_output = clamp_f(ch->motor_output, 0.0F, 1.0F);
 
         // Check threshold
         bool was_above = ch->above_threshold;
@@ -661,7 +662,7 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
         }
 
         // Track suppression
-        if (ch->suppression_level > 0.5f && ch->resonance_level > 0.3f) {
+        if (ch->suppression_level > 0.5F && ch->resonance_level > 0.3F) {
             ch->suppression_count++;
             if (ch->suppress_reason == RESONANCE_SUPPRESS_BG_TONIC) {
                 resonance->bg_suppressions++;
@@ -669,14 +670,14 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
         }
 
         // Clear release reason if suppression restored
-        if (ch->suppression_level > 0.3f) {
+        if (ch->suppression_level > 0.3F) {
             ch->release_reason = RESONANCE_RELEASE_NONE;
         }
     }
 
     // Decay context signals
-    resonance->learning_context *= 0.99f;
-    resonance->social_context *= 0.99f;
+    resonance->learning_context *= 0.99F;
+    resonance->social_context *= 0.99F;
 }
 
 //=============================================================================
@@ -690,9 +691,9 @@ bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stat
 
     stats->num_channels = resonance->num_channels;
 
-    float sum_resonance = 0.0f;
-    float sum_suppression = 0.0f;
-    float sum_conflict = 0.0f;
+    float sum_resonance = 0.0F;
+    float sum_suppression = 0.0F;
+    float sum_conflict = 0.0F;
     uint32_t conflict_count = 0;
 
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
@@ -705,7 +706,7 @@ bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stat
             stats->active_channels++;
         }
 
-        if (ch->suppression_level > 0.5f) {
+        if (ch->suppression_level > 0.5F) {
             stats->suppressed_channels++;
         }
 
@@ -717,7 +718,7 @@ bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stat
             stats->max_resonance = ch->resonance_level;
         }
 
-        if (ch->conflict_signal > 0.1f) {
+        if (ch->conflict_signal > 0.1F) {
             sum_conflict += ch->conflict_signal;
             conflict_count++;
         }
@@ -761,7 +762,7 @@ void motor_resonance_reset_stats(motor_resonance_t resonance) {
         motor_channel_t* ch = &resonance->channels[i];
         ch->activation_count = 0;
         ch->suppression_count = 0;
-        ch->total_resonance_time = 0.0f;
-        ch->peak_resonance = 0.0f;
+        ch->total_resonance_time = 0.0F;
+        ch->peak_resonance = 0.0F;
     }
 }

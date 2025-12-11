@@ -109,7 +109,7 @@ static inline float safe_divide(float numerator, float denominator) {
  * COMPLEXITY: O(1)
  */
 static inline float decay_factor(float dt, float tau) {
-    return 1.0f - expf(-dt / (tau + EPSILON));
+    return 1.0F - expf(-dt / (tau + EPSILON));
 }
 
 /**
@@ -123,10 +123,10 @@ static inline float decay_factor(float dt, float tau) {
  *          At center (0.5): factor → 1.0
  */
 static inline float soft_bound_factor(float weight, float strength) {
-    float deviation = fabsf(weight - 0.5f);
-    float compression = (2.0f * deviation);
+    float deviation = fabsf(weight - 0.5F);
+    float compression = (2.0F * deviation);
     compression = compression * compression;
-    return 1.0f - strength * compression;
+    return 1.0F - strength * compression;
 }
 
 //=============================================================================
@@ -143,12 +143,12 @@ synaptic_scaling_params_t homeostatic_scaling_params_default(void) {
      * - Exponent: 1.0 for linear scaling (multiplicative)
      */
     synaptic_scaling_params_t params = {
-        .target_rate = 5.0f,              /* Hz - typical cortical rate */
-        .scaling_time_constant = 10000.0f, /* ms = 10 sec (accelerated from hours) */
-        .scaling_exponent = 1.0f,          /* Linear multiplicative scaling */
-        .min_scaling_factor = 0.1f,        /* 10x maximum down-scaling */
-        .max_scaling_factor = 10.0f,       /* 10x maximum up-scaling */
-        .rate_averaging_tau = 1000.0f      /* ms = 1 sec for rate averaging */
+        .target_rate = 5.0F,              /* Hz - typical cortical rate */
+        .scaling_time_constant = 10000.0F, /* ms = 10 sec (accelerated from hours) */
+        .scaling_exponent = 1.0F,          /* Linear multiplicative scaling */
+        .min_scaling_factor = 0.1F,        /* 10x maximum down-scaling */
+        .max_scaling_factor = 10.0F,       /* 10x maximum up-scaling */
+        .rate_averaging_tau = 1000.0F      /* ms = 1 sec for rate averaging */
     };
     return params;
 }
@@ -158,12 +158,12 @@ synaptic_scaling_params_t homeostatic_scaling_params_fast(void) {
      * WHY:  Useful for simulation speedup and testing
      */
     synaptic_scaling_params_t params = {
-        .target_rate = 5.0f,
-        .scaling_time_constant = 1000.0f,  /* 1 sec - 10x faster */
-        .scaling_exponent = 1.0f,
-        .min_scaling_factor = 0.2f,        /* Less aggressive bounds */
-        .max_scaling_factor = 5.0f,
-        .rate_averaging_tau = 200.0f       /* 200 ms - faster averaging */
+        .target_rate = 5.0F,
+        .scaling_time_constant = 1000.0F,  /* 1 sec - 10x faster */
+        .scaling_exponent = 1.0F,
+        .min_scaling_factor = 0.2F,        /* Less aggressive bounds */
+        .max_scaling_factor = 5.0F,
+        .rate_averaging_tau = 200.0F       /* 200 ms - faster averaging */
     };
     return params;
 }
@@ -177,14 +177,14 @@ intrinsic_plasticity_params_t homeostatic_ip_params_default(void) {
      * - Gain adaptation maximizes information transmission
      */
     intrinsic_plasticity_params_t params = {
-        .target_rate = 5.0f,              /* Hz */
-        .threshold_tau = 5000.0f,          /* ms = 5 sec for threshold */
-        .gain_tau = 10000.0f,              /* ms = 10 sec for gain */
-        .min_threshold = -1.0f,            /* Normalized units */
-        .max_threshold = 1.0f,
-        .min_gain = 0.1f,                  /* Minimum gain */
-        .max_gain = 10.0f,                 /* Maximum gain */
-        .learning_rate = 0.01f             /* η for IP updates */
+        .target_rate = 5.0F,              /* Hz */
+        .threshold_tau = 5000.0F,          /* ms = 5 sec for threshold */
+        .gain_tau = 10000.0F,              /* ms = 10 sec for gain */
+        .min_threshold = -1.0F,            /* Normalized units */
+        .max_threshold = 1.0F,
+        .min_gain = 0.1F,                  /* Minimum gain */
+        .max_gain = 10.0F,                 /* Maximum gain */
+        .learning_rate = 0.01F             /* η for IP updates */
     };
     return params;
 }
@@ -198,11 +198,11 @@ metaplasticity_params_t homeostatic_meta_params_default(void) {
      * - Higher activity → higher threshold → harder to potentiate
      */
     metaplasticity_params_t params = {
-        .theta_tau = 1000.0f,              /* ms = 1 sec for θ sliding */
-        .activity_tau = 500.0f,            /* ms for activity averaging */
-        .min_theta = 0.01f,                /* Minimum threshold */
-        .max_theta = 1.0f,                 /* Maximum threshold */
-        .theta_power = 2.0f                /* Squared activity (BCM) */
+        .theta_tau = 1000.0F,              /* ms = 1 sec for θ sliding */
+        .activity_tau = 500.0F,            /* ms for activity averaging */
+        .min_theta = 0.01F,                /* Minimum threshold */
+        .max_theta = 1.0F,                 /* Maximum threshold */
+        .theta_power = 2.0F                /* Squared activity (BCM) */
     };
     return params;
 }
@@ -219,8 +219,8 @@ homeostatic_config_t homeostatic_config_default(void) {
         .scaling_params = homeostatic_scaling_params_default(),
         .ip_params = homeostatic_ip_params_default(),
         .meta_params = homeostatic_meta_params_default(),
-        .global_stability_threshold = 0.9f,     /* 90% neurons stable */
-        .update_interval_ms = 100.0f            /* Update every 100ms */
+        .global_stability_threshold = 0.9F,     /* 90% neurons stable */
+        .update_interval_ms = 100.0F            /* Update every 100ms */
     };
     return config;
 }
@@ -235,8 +235,8 @@ synaptic_scaling_state_t synaptic_scaling_state_init(float initial_rate) {
      */
     synaptic_scaling_state_t state = {
         .average_rate = clamp_f(initial_rate, MIN_RATE, MAX_RATE),
-        .scaling_factor = 1.0f,
-        .rate_integral = 0.0f,
+        .scaling_factor = 1.0F,
+        .rate_integral = 0.0F,
         .spike_count = 0,
         .last_update_time = 0,
         .is_stable = false
@@ -258,10 +258,10 @@ void synaptic_scaling_update_rate(synaptic_scaling_state_t* state,
 
     /* Guard: Validate inputs */
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     /* Compute instantaneous rate (Hz) from spike */
-    float instantaneous = spike_occurred ? (1000.0f / dt) : 0.0f;
+    float instantaneous = spike_occurred ? (1000.0F / dt) : 0.0F;
 
     /* Exponential moving average */
     float decay = decay_factor(dt, params->rate_averaging_tau);
@@ -277,7 +277,7 @@ void synaptic_scaling_update_rate(synaptic_scaling_state_t* state,
 
     /* Check stability (within 20% of target) */
     float ratio = state->average_rate / params->target_rate;
-    state->is_stable = (ratio >= 0.8f && ratio <= 1.2f);
+    state->is_stable = (ratio >= 0.8F && ratio <= 1.2F);
 }
 
 float synaptic_scaling_compute_factor(const synaptic_scaling_state_t* state,
@@ -291,7 +291,7 @@ float synaptic_scaling_compute_factor(const synaptic_scaling_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return 1.0f;
+    if (!state || !params) return 1.0F;
 
     /* Compute ratio of target to actual rate */
     float ratio = safe_divide(params->target_rate, state->average_rate);
@@ -317,7 +317,7 @@ void synaptic_scaling_apply(float* weights,
 
     /* Guard: Validate inputs */
     if (!weights || num_weights == 0) return;
-    if (scaling_factor <= 0.0f) return;
+    if (scaling_factor <= 0.0F) return;
 
     /* Apply scaling to each weight */
     for (uint32_t i = 0; i < num_weights; i++) {
@@ -341,16 +341,16 @@ void synaptic_scaling_apply_soft_bounds(float* weights,
 
     /* Guard: Validate inputs */
     if (!weights || num_weights == 0) return;
-    if (scaling_factor <= 0.0f) return;
+    if (scaling_factor <= 0.0F) return;
 
     /* Clamp strength */
-    soft_bound_strength = clamp_f(soft_bound_strength, 0.0f, 1.0f);
+    soft_bound_strength = clamp_f(soft_bound_strength, 0.0F, 1.0F);
 
     /* Apply scaling with soft bounds */
     for (uint32_t i = 0; i < num_weights; i++) {
         float w = weights[i];
         float sb = soft_bound_factor(w, soft_bound_strength);
-        float effective_factor = 1.0f + sb * (scaling_factor - 1.0f);
+        float effective_factor = 1.0F + sb * (scaling_factor - 1.0F);
         float scaled = w * effective_factor;
         weights[i] = clamp_f(scaled, HOMEOSTATIC_MIN_WEIGHT, HOMEOSTATIC_MAX_WEIGHT);
     }
@@ -367,9 +367,9 @@ intrinsic_plasticity_state_t intrinsic_plasticity_state_init(float initial_thres
      */
     intrinsic_plasticity_state_t state = {
         .threshold = initial_threshold,
-        .gain = clamp_f(initial_gain, 0.1f, 10.0f),
-        .average_rate = 0.0f,
-        .average_input = 0.0f,
+        .gain = clamp_f(initial_gain, 0.1F, 10.0F),
+        .average_rate = 0.0F,
+        .average_input = 0.0F,
         .last_update_time = 0,
         .is_stable = false
     };
@@ -392,7 +392,7 @@ void intrinsic_plasticity_update_threshold(intrinsic_plasticity_state_t* state,
 
     /* Guard: Validate inputs */
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     /* Compute rate error (positive = too active) */
     float rate_error = current_rate - params->target_rate;
@@ -406,12 +406,12 @@ void intrinsic_plasticity_update_threshold(intrinsic_plasticity_state_t* state,
     state->threshold = clamp_f(state->threshold, params->min_threshold, params->max_threshold);
 
     /* Update average rate */
-    float rate_decay = decay_factor(dt, 1000.0f);  /* 1 sec averaging */
+    float rate_decay = decay_factor(dt, 1000.0F);  /* 1 sec averaging */
     state->average_rate += rate_decay * (current_rate - state->average_rate);
 
     /* Check stability */
     float ratio = state->average_rate / params->target_rate;
-    state->is_stable = (ratio >= 0.8f && ratio <= 1.2f);
+    state->is_stable = (ratio >= 0.8F && ratio <= 1.2F);
 }
 
 void intrinsic_plasticity_update_gain(intrinsic_plasticity_state_t* state,
@@ -431,10 +431,10 @@ void intrinsic_plasticity_update_gain(intrinsic_plasticity_state_t* state,
 
     /* Guard: Validate inputs */
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     /* Target variance (want unit variance output) */
-    float target_variance = 1.0f;
+    float target_variance = 1.0F;
 
     /* Compute variance error */
     float output_variance = state->gain * state->gain * (input_variance + EPSILON);
@@ -449,7 +449,7 @@ void intrinsic_plasticity_update_gain(intrinsic_plasticity_state_t* state,
     state->gain = clamp_f(state->gain, params->min_gain, params->max_gain);
 
     /* Update average input */
-    float input_decay = decay_factor(dt, 1000.0f);
+    float input_decay = decay_factor(dt, 1000.0F);
     state->average_input += input_decay * (input_mean - state->average_input);
 }
 
@@ -482,10 +482,10 @@ metaplasticity_state_t metaplasticity_state_init(float initial_theta) {
      * WHY:  Factory method ensures valid initial state
      */
     metaplasticity_state_t state = {
-        .theta = clamp_f(initial_theta, 0.01f, 1.0f),
+        .theta = clamp_f(initial_theta, 0.01F, 1.0F),
         .activity_squared_avg = initial_theta,
         .activity_avg = sqrtf(initial_theta),
-        .plasticity_rate = 1.0f
+        .plasticity_rate = 1.0F
     };
     return state;
 }
@@ -505,7 +505,7 @@ void metaplasticity_update_theta(metaplasticity_state_t* state,
 
     /* Guard: Validate inputs */
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     /* Compute activity to the power (typically squared) */
     float activity_power = powf(fabsf(current_activity), params->theta_power);
@@ -525,7 +525,7 @@ void metaplasticity_update_theta(metaplasticity_state_t* state,
     /* Update effective plasticity rate
      * Higher theta → harder to potentiate → lower effective rate
      */
-    state->plasticity_rate = safe_divide(1.0f, 1.0f + state->theta);
+    state->plasticity_rate = safe_divide(1.0F, 1.0F + state->theta);
 }
 
 float metaplasticity_get_effective_rate(const metaplasticity_state_t* state,
@@ -544,7 +544,7 @@ float metaplasticity_get_effective_rate(const metaplasticity_state_t* state,
     if (!state) return base_plasticity_rate;
 
     /* Modulate by theta: higher theta -> lower effective rate */
-    float theta_modulation = 1.0f - (0.8f * state->theta);  /* Range: 0.2 to 1.0 */
+    float theta_modulation = 1.0F - (0.8F * state->theta);  /* Range: 0.2 to 1.0 */
     return base_plasticity_rate * theta_modulation * state->plasticity_rate;
 }
 
@@ -598,7 +598,7 @@ homeostatic_controller_t homeostatic_controller_create(
             return NULL;
         }
         for (uint32_t i = 0; i < num_neurons; i++) {
-            ctrl->ip_states[i] = intrinsic_plasticity_state_init(0.0f, 1.0f);
+            ctrl->ip_states[i] = intrinsic_plasticity_state_init(0.0F, 1.0F);
         }
     }
 
@@ -610,7 +610,7 @@ homeostatic_controller_t homeostatic_controller_create(
             return NULL;
         }
         for (uint32_t i = 0; i < num_neurons; i++) {
-            ctrl->meta_states[i] = metaplasticity_state_init(0.1f);
+            ctrl->meta_states[i] = metaplasticity_state_init(0.1F);
         }
     }
 
@@ -661,13 +661,13 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
     if (controller->time_since_update < controller->config.update_interval_ms) {
         return;
     }
-    controller->time_since_update = 0.0f;
+    controller->time_since_update = 0.0F;
     controller->stats.total_updates++;
 
     /* Counters for statistics */
     uint32_t above = 0, below = 0, stable = 0;
-    float sum_rate = 0.0f, sum_rate_sq = 0.0f;
-    float sum_factor = 0.0f;
+    float sum_rate = 0.0F, sum_rate_sq = 0.0F;
+    float sum_factor = 0.0F;
 
     /* Update each neuron */
     for (uint32_t n = 0; n < controller->num_neurons; n++) {
@@ -680,13 +680,13 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
             synaptic_scaling_state_t* ss = &controller->scaling_states[n];
 
             /* Update rate estimate using actual firing rate directly */
-            float decay = 1.0f - expf(-dt / controller->config.scaling_params.rate_averaging_tau);
+            float decay = 1.0F - expf(-dt / controller->config.scaling_params.rate_averaging_tau);
             ss->average_rate += decay * (rate - ss->average_rate);
-            ss->average_rate = fmaxf(0.0f, fminf(ss->average_rate, 1000.0f));
+            ss->average_rate = fmaxf(0.0F, fminf(ss->average_rate, 1000.0F));
 
             /* Check stability (within 20% of target) */
             float ratio = ss->average_rate / controller->config.scaling_params.target_rate;
-            ss->is_stable = (ratio >= 0.8f && ratio <= 1.2f);
+            ss->is_stable = (ratio >= 0.8F && ratio <= 1.2F);
 
             /* Compute and apply scaling factor */
             float factor = synaptic_scaling_compute_factor(ss, &controller->config.scaling_params);
@@ -697,7 +697,7 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
             if (weights && num_synapses_per_neuron > 0) {
                 float* neuron_weights = weights + (n * num_synapses_per_neuron);
                 synaptic_scaling_apply_soft_bounds(neuron_weights, num_synapses_per_neuron,
-                                                   factor, 0.3f);
+                                                   factor, 0.3F);
                 controller->stats.scaling_events++;
             }
 
@@ -779,18 +779,18 @@ void homeostatic_controller_reset(homeostatic_controller_t controller) {
     /* Reset IP states */
     if (controller->ip_states) {
         for (uint32_t i = 0; i < controller->num_neurons; i++) {
-            controller->ip_states[i] = intrinsic_plasticity_state_init(0.0f, 1.0f);
+            controller->ip_states[i] = intrinsic_plasticity_state_init(0.0F, 1.0F);
         }
     }
 
     /* Reset metaplasticity states */
     if (controller->meta_states) {
         for (uint32_t i = 0; i < controller->num_neurons; i++) {
-            controller->meta_states[i] = metaplasticity_state_init(0.1f);
+            controller->meta_states[i] = metaplasticity_state_init(0.1F);
         }
     }
 
     /* Reset statistics */
     memset(&controller->stats, 0, sizeof(homeostatic_stats_t));
-    controller->time_since_update = 0.0f;
+    controller->time_since_update = 0.0F;
 }

@@ -176,12 +176,12 @@ NIMCP_EXPORT neural_logic_config_t neural_logic_default_config(uint32_t max_neur
     config.pin_host_memory = true;
     
     // Temporal parameters
-    config.timestep_us = 100.0f;             // 100μs = 0.1ms
-    config.integration_window_ms = 5.0f;     // 5ms integration window
+    config.timestep_us = 100.0F;             // 100μs = 0.1ms
+    config.integration_window_ms = 5.0F;     // 5ms integration window
     
     // Learning configuration
     config.enable_learning = false;          // Disable for now
-    config.learning_rate = 0.01f;
+    config.learning_rate = 0.01F;
     
     return config;
 }
@@ -216,7 +216,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     network->variables_count = 0;
     network->total_spikes = 0;
     network->total_evaluations = 0;
-    network->sum_eval_time_us = 0.0f;
+    network->sum_eval_time_us = 0.0F;
     network->brain = NULL;  // Initialize neuromodulator brain reference
     
     // Allocate host memory for neurons (64-byte aligned for cache line optimization)
@@ -470,50 +470,50 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
     memset(neuron, 0, sizeof(logic_neuron_state_t));
     neuron->neuron_id = neuron_id;
     neuron->gate_type = gate_type;
-    neuron->membrane_potential = 0.0f;
-    neuron->output_state = 0.0f;
+    neuron->membrane_potential = 0.0F;
+    neuron->output_state = 0.0F;
     neuron->integration_window = network->config.integration_window_ms;
 
     // Set gate-specific parameters
     switch (gate_type) {
         case LOGIC_GATE_AND:
             // AND: Requires both inputs (coincidence detection)
-            neuron->threshold = (threshold > 0.0f) ? threshold : 1.8f;  // Slightly less than 2.0
-            neuron->excitatory_weight = 1.0f;
-            neuron->inhibitory_weight = 0.0f;
+            neuron->threshold = (threshold > 0.0F) ? threshold : 1.8F;  // Slightly less than 2.0
+            neuron->excitatory_weight = 1.0F;
+            neuron->inhibitory_weight = 0.0F;
             neuron->refractory_period = 1000;  // 1ms
             break;
 
         case LOGIC_GATE_OR:
             // OR: Fires if any input active (low threshold)
-            neuron->threshold = (threshold > 0.0f) ? threshold : 0.6f;  // Less than 1.0
-            neuron->excitatory_weight = 1.0f;
-            neuron->inhibitory_weight = 0.0f;
+            neuron->threshold = (threshold > 0.0F) ? threshold : 0.6F;  // Less than 1.0
+            neuron->excitatory_weight = 1.0F;
+            neuron->inhibitory_weight = 0.0F;
             neuron->refractory_period = 500;   // 0.5ms
             break;
 
         case LOGIC_GATE_NOT:
             // NOT: Baseline firing, inhibited by input
-            neuron->threshold = (threshold > 0.0f) ? threshold : 0.5f;
-            neuron->excitatory_weight = 0.0f;
-            neuron->inhibitory_weight = -2.0f;  // Strong inhibition
-            neuron->membrane_potential = 1.0f;  // Baseline depolarization
+            neuron->threshold = (threshold > 0.0F) ? threshold : 0.5F;
+            neuron->excitatory_weight = 0.0F;
+            neuron->inhibitory_weight = -2.0F;  // Strong inhibition
+            neuron->membrane_potential = 1.0F;  // Baseline depolarization
             neuron->refractory_period = 1000;   // 1ms
             break;
 
         case LOGIC_GATE_XOR:
             // XOR: Fires if inputs differ (balanced)
-            neuron->threshold = (threshold > 0.0f) ? threshold : 0.5f;
-            neuron->excitatory_weight = 1.0f;
-            neuron->inhibitory_weight = -1.0f;
+            neuron->threshold = (threshold > 0.0F) ? threshold : 0.5F;
+            neuron->excitatory_weight = 1.0F;
+            neuron->inhibitory_weight = -1.0F;
             neuron->refractory_period = 1000;   // 1ms
             break;
 
         case LOGIC_GATE_IMPLIES:
             // IMPLIES: A → B (fires if A=0 OR B=1)
-            neuron->threshold = (threshold > 0.0f) ? threshold : 0.8f;
-            neuron->excitatory_weight = 1.0f;
-            neuron->inhibitory_weight = -0.5f;
+            neuron->threshold = (threshold > 0.0F) ? threshold : 0.8F;
+            neuron->excitatory_weight = 1.0F;
+            neuron->inhibitory_weight = -0.5F;
             neuron->refractory_period = 1000;   // 1ms
             break;
 
@@ -578,8 +578,8 @@ NIMCP_EXPORT uint32_t neural_logic_create_variable(
     memset(var, 0, sizeof(variable_binding_state_t));
     var->variable_id = hash;
     var->pattern_dim = network->config.variable_pattern_dim;
-    var->binding_strength = 0.0f;
-    var->decay_rate = 0.001f;  // Slow decay
+    var->binding_strength = 0.0F;
+    var->decay_rate = 0.001F;  // Slow decay
     var->is_bound = false;
     var->bound_pattern = NULL;  // Allocated on first bind
     
@@ -621,12 +621,12 @@ static float get_logic_threshold_modulation(brain_t brain)
 {
     // Guard: No brain available
     if (!brain) {
-        return 1.0f;
+        return 1.0F;
     }
 
     neuromodulator_system_t neuromod = brain_get_neuromodulator_system(brain);
     if (!neuromod) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Read neurotransmitter levels
@@ -636,13 +636,13 @@ static float get_logic_threshold_modulation(brain_t brain)
     // DA contribution: [0.3, 0.7] → [1.3, 0.7] (inverse)
     // High DA → lower threshold (permissive, exploratory)
     // Low DA → higher threshold (rigid, perseverative)
-    float da_multiplier = 1.3f - (da - 0.3f) * 1.5f;
+    float da_multiplier = 1.3F - (da - 0.3F) * 1.5F;
 
     // ACh contribution: [0.3, 0.7] → precision scaling
     // High ACh → maintains intended thresholds
     // Low ACh → adds noise/imprecision to reasoning
     // For simplicity, ACh primarily affects precision of DA effect
-    float ach_precision = 0.8f + (ach - 0.3f) * 0.5f;  // [0.8, 1.0]
+    float ach_precision = 0.8F + (ach - 0.3F) * 0.5F;  // [0.8, 1.0]
 
     // Combined: DA sets flexibility, ACh sharpens precision
     // Range: approximately [0.7, 1.3]
@@ -665,7 +665,7 @@ static inline float cpu_compute_and_gate(
     (void)integration_window;  // Unused in simplified model
     
     float sum = input_a + input_b;
-    return (sum >= threshold) ? 1.0f : 0.0f;
+    return (sum >= threshold) ? 1.0F : 0.0F;
 }
 
 /**
@@ -677,7 +677,7 @@ static inline float cpu_compute_or_gate(
     float threshold)
 {
     float sum = input_a + input_b;
-    return (sum >= threshold) ? 1.0f : 0.0f;
+    return (sum >= threshold) ? 1.0F : 0.0F;
 }
 
 /**
@@ -689,7 +689,7 @@ static inline float cpu_compute_not_gate(
     float inhibition_strength)
 {
     float output = baseline_rate - (input * inhibition_strength);
-    return (output > 0.5f) ? 1.0f : 0.0f;
+    return (output > 0.5F) ? 1.0F : 0.0F;
 }
 
 /**
@@ -704,7 +704,7 @@ static inline float cpu_compute_xor_gate(
     (void)balance_tolerance;  // Unused in simplified model
     
     float diff = fabsf(input_a - input_b);
-    return (diff >= threshold) ? 1.0f : 0.0f;
+    return (diff >= threshold) ? 1.0F : 0.0F;
 }
 
 /**
@@ -720,7 +720,7 @@ static inline float cpu_compute_implies_gate(
     bool a_active = (input_a >= antecedent_threshold);
     bool b_active = (input_b >= consequent_threshold);
     
-    return (!a_active || b_active) ? 1.0f : 0.0f;
+    return (!a_active || b_active) ? 1.0F : 0.0F;
 }
 
 /**
@@ -741,7 +741,7 @@ static void propagate_signals(
     uint32_t source_id,
     float output_activity)
 {
-    if (output_activity < 0.01f) {
+    if (output_activity < 0.01F) {
         return;  // No significant activity to propagate
     }
 
@@ -784,7 +784,7 @@ static void cpu_update_logic_neuron(
     float modulated_threshold = neuron->threshold * threshold_modulation;
 
     // Compute gate output based on type
-    float output = 0.0f;
+    float output = 0.0F;
 
     switch (neuron->gate_type) {
         case LOGIC_GATE_AND:
@@ -807,7 +807,7 @@ static void cpu_update_logic_neuron(
         case LOGIC_GATE_NOT:
             output = cpu_compute_not_gate(
                 neuron->input_a_activity,
-                1.0f,  // baseline_rate
+                1.0F,  // baseline_rate
                 fabsf(neuron->inhibitory_weight)
             );
             break;
@@ -817,7 +817,7 @@ static void cpu_update_logic_neuron(
                 neuron->input_a_activity,
                 neuron->input_b_activity,
                 modulated_threshold,
-                0.1f  // balance_tolerance
+                0.1F  // balance_tolerance
             );
             break;
 
@@ -825,13 +825,13 @@ static void cpu_update_logic_neuron(
             output = cpu_compute_implies_gate(
                 neuron->input_a_activity,
                 neuron->input_b_activity,
-                0.8f,  // antecedent_threshold
-                0.8f   // consequent_threshold
+                0.8F,  // antecedent_threshold
+                0.8F   // consequent_threshold
             );
             break;
 
         default:
-            output = 0.0f;
+            output = 0.0F;
             break;
     }
 
@@ -839,7 +839,7 @@ static void cpu_update_logic_neuron(
     neuron->output_state = output;
 
     // Fire spike if output is true
-    if (output > 0.5f) {
+    if (output > 0.5F) {
         neuron->last_spike_time = timestamp;
         neuron->total_spikes++;
         neuron->true_outputs++;
@@ -848,7 +848,7 @@ static void cpu_update_logic_neuron(
     }
 
     // Decay input activities
-    float decay = (float)delta_t / 1000.0f;  // Convert μs to ms
+    float decay = (float)delta_t / 1000.0F;  // Convert μs to ms
     neuron->input_a_activity *= expf(-decay / neuron->integration_window);
     neuron->input_b_activity *= expf(-decay / neuron->integration_window);
 }
@@ -950,7 +950,7 @@ cpu_path:
     // Propagate signals through connections
     for (uint32_t i = 0; i < network->neurons_count; i++) {
         logic_neuron_state_t* neuron = &network->neurons_host[i];
-        if (neuron->output_state > 0.5f) {
+        if (neuron->output_state > 0.5F) {
             propagate_signals(network, i, neuron->output_state);
         }
     }
@@ -1005,10 +1005,10 @@ NIMCP_EXPORT bool neural_logic_evaluate(
     logic_neuron_state_t* neuron = &network->neurons_host[gate_id];
 
     // Directly compute gate output (combinational logic, no temporal dynamics needed)
-    float input_a = (num_inputs >= 1) ? inputs[0] : 0.0f;
-    float input_b = (num_inputs >= 2) ? inputs[1] : 0.0f;
+    float input_a = (num_inputs >= 1) ? inputs[0] : 0.0F;
+    float input_b = (num_inputs >= 2) ? inputs[1] : 0.0F;
 
-    float result = 0.0f;
+    float result = 0.0F;
 
     switch (neuron->gate_type) {
         case LOGIC_GATE_AND:
@@ -1020,20 +1020,20 @@ NIMCP_EXPORT bool neural_logic_evaluate(
             break;
 
         case LOGIC_GATE_NOT:
-            result = cpu_compute_not_gate(input_a, 1.0f, fabsf(neuron->inhibitory_weight));
+            result = cpu_compute_not_gate(input_a, 1.0F, fabsf(neuron->inhibitory_weight));
             break;
 
         case LOGIC_GATE_XOR:
-            result = cpu_compute_xor_gate(input_a, input_b, neuron->threshold, 0.1f);
+            result = cpu_compute_xor_gate(input_a, input_b, neuron->threshold, 0.1F);
             break;
 
         case LOGIC_GATE_IMPLIES:
-            result = cpu_compute_implies_gate(input_a, input_b, 0.8f, 0.8f);
+            result = cpu_compute_implies_gate(input_a, input_b, 0.8F, 0.8F);
             break;
 
         default:
             LOG_WARN(LOG_MODULE, "Unsupported gate type: %d", neuron->gate_type);
-            result = 0.0f;
+            result = 0.0F;
             break;
     }
 
@@ -1046,7 +1046,7 @@ NIMCP_EXPORT bool neural_logic_evaluate(
 
     // Publish bio-async message for evaluation result if enabled
     if (network->bio_async_enabled && network->bio_ctx) {
-        bool spiked = (result > 0.5f);
+        bool spiked = (result > 0.5F);
         nimcp_error_t err = neural_logic_broadcast_result(network, gate_id, result, spiked);
         if (err != NIMCP_SUCCESS) {
             LOG_DEBUG(LOG_MODULE, "Failed to broadcast result for gate %u: error=%d", gate_id, err);
@@ -1098,7 +1098,7 @@ NIMCP_EXPORT bool neural_logic_get_stats(
     
     if (avg_eval_time) {
         *avg_eval_time = (network->total_evaluations > 0) ?
-            (network->sum_eval_time_us / network->total_evaluations) : 0.0f;
+            (network->sum_eval_time_us / network->total_evaluations) : 0.0F;
     }
     
     if (gpu_memory_used) {
@@ -1204,7 +1204,7 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
     memcpy(var->bound_pattern, pattern, dim * sizeof(float));
     var->binding_strength = binding_strength;
     var->is_bound = true;
-    var->decay_rate = 0.001f;  // Default decay: 0.1% per millisecond
+    var->decay_rate = 0.001F;  // Default decay: 0.1% per millisecond
 
     return true;
 }
@@ -1409,7 +1409,7 @@ NIMCP_EXPORT nimcp_error_t neural_logic_broadcast_circuit_complete(
     msg.spikes_generated = spikes_generated;
     msg.gates_evaluated = gates_evaluated;
     msg.avg_eval_time_us = (network->total_evaluations > 0) ?
-        (network->sum_eval_time_us / network->total_evaluations) : 0.0f;
+        (network->sum_eval_time_us / network->total_evaluations) : 0.0F;
     msg.circuit_stable = (spikes_generated == 0);  // Stable if no new spikes
 
     nimcp_error_t err = bio_router_broadcast(network->bio_ctx, &msg, sizeof(msg));

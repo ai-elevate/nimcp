@@ -397,7 +397,7 @@ uint32_t ethics_get_incidents_by_severity(ethics_engine_t engine, float min_seve
                                           ethics_incident_t** incidents_out)
 {
     // Guard clause: Validate inputs
-    if (!engine || !incidents_out || min_severity < 0.0f || min_severity > 1.0f)
+    if (!engine || !incidents_out || min_severity < 0.0F || min_severity > 1.0F)
         return 0;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);

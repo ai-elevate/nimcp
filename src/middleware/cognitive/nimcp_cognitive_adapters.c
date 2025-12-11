@@ -53,9 +53,9 @@ wm_adapter_config_t wm_adapter_default_config(void) {
         .mode = WM_MODE_HYBRID,
         .capacity = COGNITIVE_WM_DEFAULT_CAPACITY,
         .window_size = 100,
-        .attention_threshold = 0.3f,
+        .attention_threshold = 0.3F,
         .enable_decay = true,
-        .decay_tau_ms = 5000.0f
+        .decay_tau_ms = 5000.0F
     };
     return config;
 }
@@ -160,7 +160,7 @@ static int32_t wm_find_lowest_salience(const wm_adapter_t* adapter) {
     if (!adapter) return -1;
 
     int32_t min_idx = -1;
-    float min_salience = 2.0f; // Higher than max possible (1.0)
+    float min_salience = 2.0F; // Higher than max possible (1.0)
 
     for (uint32_t i = 0; i < adapter->config.capacity; i++) {
         if (adapter->items[i].is_active &&
@@ -252,7 +252,7 @@ bool wm_adapter_set_attention(wm_adapter_t* adapter,
     }
 
     // Get combined weight
-    float combined_weight = 0.0f;
+    float combined_weight = 0.0F;
     attention_gate_get_weight(adapter->gate, 0, item_id, &combined_weight);
 
     adapter->items[idx].salience = combined_weight;
@@ -335,7 +335,7 @@ void wm_adapter_clear(wm_adapter_t* adapter) {
 void wm_adapter_update_decay(wm_adapter_t* adapter, uint64_t dt) {
     if (!adapter || !adapter->config.enable_decay) return;
 
-    float decay_factor = expf(-(float)dt / (adapter->config.decay_tau_ms * 1000.0f));
+    float decay_factor = expf(-(float)dt / (adapter->config.decay_tau_ms * 1000.0F));
 
     for (uint32_t i = 0; i < adapter->config.capacity; i++) {
         if (adapter->items[i].is_active) {
@@ -357,7 +357,7 @@ bool wm_adapter_get_stats(const wm_adapter_t* adapter,
     if (!adapter || !stats) return false;
 
     uint32_t active_count = 0;
-    float total_salience = 0.0f;
+    float total_salience = 0.0F;
 
     for (uint32_t i = 0; i < adapter->config.capacity; i++) {
         if (adapter->items[i].is_active) {
@@ -370,7 +370,7 @@ bool wm_adapter_get_stats(const wm_adapter_t* adapter,
     stats->total_added = adapter->stats.total_added;
     stats->total_evicted = adapter->stats.total_evicted;
     stats->avg_salience = (active_count > 0) ?
-                          (total_salience / active_count) : 0.0f;
+                          (total_salience / active_count) : 0.0F;
     stats->capacity_utilization = (float)active_count / adapter->config.capacity;
 
     return true;
@@ -400,7 +400,7 @@ consol_adapter_config_t consol_adapter_default_config(void) {
         .medium_size = 50,
         .slow_size = 20,
         .num_channels = 1,
-        .alpha = 0.1f,
+        .alpha = 0.1F,
         .enable_normalization = true
     };
     return config;
@@ -482,7 +482,7 @@ bool consol_adapter_update(consol_adapter_t* adapter,
     }
 
     // Update temporal accumulator
-    if (!temporal_accumulator_update(adapter->accumulator, channel, value, 1.0f)) {
+    if (!temporal_accumulator_update(adapter->accumulator, channel, value, 1.0F)) {
         return false;
     }
 
@@ -498,7 +498,7 @@ float consol_adapter_get_value(const consol_adapter_t* adapter,
                                  timescale_level_t level,
                                  size_t channel) {
     if (!adapter || channel >= adapter->config.num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return integration_buffer_get_latest(adapter->buffer, level, channel);
@@ -515,18 +515,18 @@ static float apply_consolidation_strategy(const consol_adapter_t* adapter,
                                            float fast, float medium, float slow) {
     switch (adapter->config.strategy) {
         case CONSOL_STRATEGY_AVERAGE:
-            return (fast + medium + slow) / 3.0f;
+            return (fast + medium + slow) / 3.0F;
 
         case CONSOL_STRATEGY_WEIGHTED:
             // Weight recent more heavily
-            return 0.5f * fast + 0.3f * medium + 0.2f * slow;
+            return 0.5F * fast + 0.3F * medium + 0.2F * slow;
 
         case CONSOL_STRATEGY_THRESHOLD:
             // Use fast if variance low, else average
-            if (fabsf(fast - medium) < 0.1f) {
+            if (fabsf(fast - medium) < 0.1F) {
                 return fast;
             }
-            return (fast + medium + slow) / 3.0f;
+            return (fast + medium + slow) / 3.0F;
 
         case CONSOL_STRATEGY_ADAPTIVE:
             // Adapt based on variance
@@ -534,7 +534,7 @@ static float apply_consolidation_strategy(const consol_adapter_t* adapter,
                 float variance = (fast - medium) * (fast - medium) +
                                (medium - slow) * (medium - slow);
                 float weight_fast = expf(-variance);
-                return weight_fast * fast + (1.0f - weight_fast) * medium;
+                return weight_fast * fast + (1.0F - weight_fast) * medium;
             }
 
         default:
@@ -548,7 +548,7 @@ static float apply_consolidation_strategy(const consol_adapter_t* adapter,
 float consol_adapter_get_consolidated(const consol_adapter_t* adapter,
                                         size_t channel) {
     if (!adapter || channel >= adapter->config.num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float fast = integration_buffer_get_latest(adapter->buffer,
@@ -567,7 +567,7 @@ float consol_adapter_get_consolidated(const consol_adapter_t* adapter,
 float consol_adapter_get_trend(const consol_adapter_t* adapter,
                                  size_t channel) {
     if (!adapter || channel >= adapter->config.num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return integration_buffer_trend(adapter->buffer, channel);
@@ -579,7 +579,7 @@ float consol_adapter_get_trend(const consol_adapter_t* adapter,
 float consol_adapter_normalize(const consol_adapter_t* adapter,
                                  size_t channel) {
     if (!adapter || channel >= adapter->config.num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float mean = integration_buffer_mean(adapter->buffer,
@@ -589,7 +589,7 @@ float consol_adapter_normalize(const consol_adapter_t* adapter,
     float value = integration_buffer_get_latest(adapter->buffer,
                                                  TIMESCALE_FAST, channel);
 
-    if (variance < 1e-6f) return 0.0f;
+    if (variance < 1e-6F) return 0.0F;
 
     return (value - mean) / sqrtf(variance);
 }
@@ -618,7 +618,7 @@ bool consol_adapter_get_stats(const consol_adapter_t* adapter,
     stats->total_updates = adapter->stats.total_updates;
 
     // Calculate activity levels
-    float fast_sum = 0.0f, medium_sum = 0.0f, slow_sum = 0.0f;
+    float fast_sum = 0.0F, medium_sum = 0.0F, slow_sum = 0.0F;
     for (size_t ch = 0; ch < adapter->config.num_channels; ch++) {
         fast_sum += fabsf(integration_buffer_get_latest(
             adapter->buffer, TIMESCALE_FAST, ch));
@@ -634,9 +634,9 @@ bool consol_adapter_get_stats(const consol_adapter_t* adapter,
     stats->slow_activity = slow_sum / n;
 
     // Integration quality: how consistent are timescales?
-    float consistency = 1.0f - fabsf(stats->fast_activity - stats->slow_activity)
-                              / (stats->fast_activity + stats->slow_activity + 1e-6f);
-    stats->integration_quality = fmaxf(0.0f, fminf(1.0f, consistency));
+    float consistency = 1.0F - fabsf(stats->fast_activity - stats->slow_activity)
+                              / (stats->fast_activity + stats->slow_activity + 1e-6F);
+    stats->integration_quality = fmaxf(0.0F, fminf(1.0F, consistency));
 
     return true;
 }
@@ -704,8 +704,8 @@ attention_adapter_t* attention_adapter_create(
             gate_config.mode = ATTENTION_MODE_MIXED;
             // For cognitive adapter, we want weights to pass through unchanged
             // User sets explicit weights that should be used as-is
-            gate_config.topdown_weight = 1.0f;
-            gate_config.bottomup_weight = 1.0f;
+            gate_config.topdown_weight = 1.0F;
+            gate_config.bottomup_weight = 1.0F;
             break;
     }
 
@@ -790,7 +790,7 @@ bool attention_adapter_route_signal(attention_adapter_t* adapter,
     }
 
     // Get attention weight
-    float weight = 0.0f;
+    float weight = 0.0F;
     if (!attention_gate_get_weight(adapter->gate, 0, target_id, &weight)) {
         return false;
     }
@@ -887,8 +887,8 @@ bool attention_adapter_get_stats(const attention_adapter_t* adapter,
 
     // Stability: fewer shifts = more stable
     stats->attention_stability = (total_shifts > 0) ?
-                                 1.0f / (1.0f + logf((float)total_shifts)) :
-                                 1.0f;
+                                 1.0F / (1.0F + logf((float)total_shifts)) :
+                                 1.0F;
 
     return true;
 }
@@ -912,17 +912,17 @@ uint64_t cognitive_adapter_get_timestamp_us(void) {
 float cognitive_adapter_calculate_salience(const float* signal,
                                              size_t signal_size,
                                              float baseline) {
-    if (!signal || signal_size == 0) return 0.0f;
+    if (!signal || signal_size == 0) return 0.0F;
 
     // Calculate mean
-    float mean = 0.0f;
+    float mean = 0.0F;
     for (size_t i = 0; i < signal_size; i++) {
         mean += signal[i];
     }
     mean /= signal_size;
 
     // Calculate variance
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (size_t i = 0; i < signal_size; i++) {
         float diff = signal[i] - mean;
         variance += diff * diff;
@@ -939,8 +939,8 @@ float cognitive_adapter_calculate_salience(const float* signal,
     float variability = sqrtf(variance);
 
     // Combine factors
-    float salience = 0.4f * novelty + 0.3f * intensity + 0.3f * variability;
+    float salience = 0.4F * novelty + 0.3F * intensity + 0.3F * variability;
 
     // Clamp to [0, 1]
-    return fmaxf(0.0f, fminf(1.0f, salience));
+    return fmaxf(0.0F, fminf(1.0F, salience));
 }

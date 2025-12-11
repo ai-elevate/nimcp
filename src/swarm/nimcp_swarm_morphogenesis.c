@@ -45,10 +45,10 @@ static const NimcpRoleSpec ROLE_SPECS[NIMCP_SWARM_ROLE_COUNT] = {
         .name = "Generalist",
         .capabilities = NIMCP_ROLE_CAP_EXPLORE | NIMCP_ROLE_CAP_WORK |
                        NIMCP_ROLE_CAP_ADAPT | NIMCP_ROLE_CAP_SENSE,
-        .energy_cost_multiplier = 1.0f,
-        .processing_power = 1.0f,
-        .sensing_range = 1.0f,
-        .communication_range = 1.0f
+        .energy_cost_multiplier = 1.0F,
+        .processing_power = 1.0F,
+        .sensing_range = 1.0F,
+        .communication_range = 1.0F
     },
     /* SCOUT - Like scout ants, explores environment */
     {
@@ -56,50 +56,50 @@ static const NimcpRoleSpec ROLE_SPECS[NIMCP_SWARM_ROLE_COUNT] = {
         .name = "Scout",
         .capabilities = NIMCP_ROLE_CAP_EXPLORE | NIMCP_ROLE_CAP_SENSE |
                        NIMCP_ROLE_CAP_ADAPT,
-        .energy_cost_multiplier = 1.2f,
-        .processing_power = 0.8f,
-        .sensing_range = 2.0f,
-        .communication_range = 0.8f
+        .energy_cost_multiplier = 1.2F,
+        .processing_power = 0.8F,
+        .sensing_range = 2.0F,
+        .communication_range = 0.8F
     },
     /* RELAY - Like neurons, specialized for communication */
     {
         .role = NIMCP_SWARM_ROLE_RELAY,
         .name = "Relay",
         .capabilities = NIMCP_ROLE_CAP_RELAY | NIMCP_ROLE_CAP_SENSE,
-        .energy_cost_multiplier = 0.8f,
-        .processing_power = 0.6f,
-        .sensing_range = 1.0f,
-        .communication_range = 2.5f
+        .energy_cost_multiplier = 0.8F,
+        .processing_power = 0.6F,
+        .sensing_range = 1.0F,
+        .communication_range = 2.5F
     },
     /* SENTINEL - Like immune cells, defends perimeter */
     {
         .role = NIMCP_SWARM_ROLE_SENTINEL,
         .name = "Sentinel",
         .capabilities = NIMCP_ROLE_CAP_DEFEND | NIMCP_ROLE_CAP_SENSE,
-        .energy_cost_multiplier = 1.0f,
-        .processing_power = 1.2f,
-        .sensing_range = 1.5f,
-        .communication_range = 1.0f
+        .energy_cost_multiplier = 1.0F,
+        .processing_power = 1.2F,
+        .sensing_range = 1.5F,
+        .communication_range = 1.0F
     },
     /* WORKER - Like worker bees, executes tasks */
     {
         .role = NIMCP_SWARM_ROLE_WORKER,
         .name = "Worker",
         .capabilities = NIMCP_ROLE_CAP_WORK | NIMCP_ROLE_CAP_ADAPT,
-        .energy_cost_multiplier = 1.0f,
-        .processing_power = 1.5f,
-        .sensing_range = 0.8f,
-        .communication_range = 0.8f
+        .energy_cost_multiplier = 1.0F,
+        .processing_power = 1.5F,
+        .sensing_range = 0.8F,
+        .communication_range = 0.8F
     },
     /* MEDIC - Like support cells, repairs others */
     {
         .role = NIMCP_SWARM_ROLE_MEDIC,
         .name = "Medic",
         .capabilities = NIMCP_ROLE_CAP_REPAIR | NIMCP_ROLE_CAP_SENSE,
-        .energy_cost_multiplier = 1.1f,
-        .processing_power = 1.0f,
-        .sensing_range = 1.2f,
-        .communication_range = 1.2f
+        .energy_cost_multiplier = 1.1F,
+        .processing_power = 1.0F,
+        .sensing_range = 1.2F,
+        .communication_range = 1.2F
     },
     /* LEADER - Like queen bee, coordinates swarm */
     {
@@ -107,10 +107,10 @@ static const NimcpRoleSpec ROLE_SPECS[NIMCP_SWARM_ROLE_COUNT] = {
         .name = "Leader",
         .capabilities = NIMCP_ROLE_CAP_COORDINATE | NIMCP_ROLE_CAP_SENSE |
                        NIMCP_ROLE_CAP_RELAY,
-        .energy_cost_multiplier = 1.3f,
-        .processing_power = 2.0f,
-        .sensing_range = 1.5f,
-        .communication_range = 2.0f
+        .energy_cost_multiplier = 1.3F,
+        .processing_power = 2.0F,
+        .sensing_range = 1.5F,
+        .communication_range = 2.0F
     }
 };
 
@@ -156,7 +156,7 @@ static void update_swarm_center(NimcpSwarmMorphogenesis* morph) {
         return;
     }
 
-    float sum_x = 0.0f, sum_y = 0.0f, sum_z = 0.0f;
+    float sum_x = 0.0F, sum_y = 0.0F, sum_z = 0.0F;
 
     for (uint32_t i = 0; i < morph->active_drones; i++) {
         sum_x += morph->drone_states[i].position[0];
@@ -200,18 +200,18 @@ static void update_role_distribution(NimcpSwarmMorphogenesis* morph) {
     }
 
     /* Calculate balance score (Shannon entropy-based) */
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     float max_entropy = logf((float)NIMCP_SWARM_ROLE_COUNT);
 
     for (int i = 0; i < NIMCP_SWARM_ROLE_COUNT; i++) {
-        if (morph->distribution.role_ratios[i] > 0.0f) {
+        if (morph->distribution.role_ratios[i] > 0.0F) {
             entropy -= morph->distribution.role_ratios[i] *
                       logf(morph->distribution.role_ratios[i]);
         }
     }
 
     morph->distribution.balance_score =
-        (max_entropy > 0.0f) ? (entropy / max_entropy) : 0.0f;
+        (max_entropy > 0.0F) ? (entropy / max_entropy) : 0.0F;
 
     /* Check if rebalancing needed */
     morph->distribution.needs_rebalancing =
@@ -273,7 +273,7 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
         return NULL;
     }
 
-    if (rebalance_threshold < 0.0f || rebalance_threshold > 1.0f) {
+    if (rebalance_threshold < 0.0F || rebalance_threshold > 1.0F) {
         LOG_ERROR("Invalid rebalance_threshold: %.2f", rebalance_threshold);
         return NULL;
     }
@@ -290,7 +290,7 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     morph->max_drones = max_drones;
     morph->transition_cooldown = transition_cooldown;
     morph->rebalance_threshold = rebalance_threshold;
-    morph->morphogen_update_rate = 10.0f; /* 10 Hz default */
+    morph->morphogen_update_rate = 10.0F; /* 10 Hz default */
     morph->gradient_grid_size = NIMCP_MORPH_DEFAULT_GRID_SIZE;
 
     /* Copy role specifications */
@@ -321,12 +321,12 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     /* Initialize gradient thresholds */
     for (int i = 0; i < NIMCP_MORPHOGEN_COUNT; i++) {
         morph->global_gradients[i].type = (NimcpMorphogenType)i;
-        morph->global_gradients[i].threshold_scout = 0.7f;
-        morph->global_gradients[i].threshold_relay = 0.5f;
-        morph->global_gradients[i].threshold_sentinel = 0.6f;
-        morph->global_gradients[i].threshold_worker = 0.4f;
-        morph->global_gradients[i].threshold_medic = 0.3f;
-        morph->global_gradients[i].threshold_leader = 0.8f;
+        morph->global_gradients[i].threshold_scout = 0.7F;
+        morph->global_gradients[i].threshold_relay = 0.5F;
+        morph->global_gradients[i].threshold_sentinel = 0.6F;
+        morph->global_gradients[i].threshold_worker = 0.4F;
+        morph->global_gradients[i].threshold_medic = 0.3F;
+        morph->global_gradients[i].threshold_leader = 0.8F;
     }
 
     /* Initialize synchronization */
@@ -460,8 +460,8 @@ nimcp_result_t nimcp_swarm_morphogenesis_register_drone(
 
     state->role_adoption_time = nimcp_time_monotonic_ns();
     state->last_transition_time = nimcp_time_monotonic_ns();
-    state->fitness_score = 1.0f;
-    state->adaptation_rate = 1.0f;
+    state->fitness_score = 1.0F;
+    state->adaptation_rate = 1.0F;
 
     /* Allocate transition history */
     state->history_size = NIMCP_MORPH_DEFAULT_HISTORY_SIZE;
@@ -479,7 +479,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_register_drone(
     /* Initialize gradients */
     for (int i = 0; i < NIMCP_MORPHOGEN_COUNT; i++) {
         state->gradients[i].type = (NimcpMorphogenType)i;
-        state->gradients[i].concentration = 0.0f;
+        state->gradients[i].concentration = 0.0F;
     }
 
     morph->active_drones++;
@@ -592,20 +592,20 @@ nimcp_result_t nimcp_swarm_morphogenesis_get_role(
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     NimcpDroneRoleState* state = find_drone_state(
         (NimcpSwarmMorphogenesis*)morph,
         drone_id
     );
     if (!state) {
-        nimcp_platform_mutex_unlock(&morph->lock);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
         return NIMCP_NOT_FOUND;
     }
 
     *out_role = state->current_role;
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -633,7 +633,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_assign_role(
     }
 
     /* Check cooldown unless forced */
-    if (!force && state->cooldown_remaining > 0.0f) {
+    if (!force && state->cooldown_remaining > 0.0F) {
         LOG_WARN("Drone %u in cooldown (%.2f seconds remaining)",
                        drone_id, state->cooldown_remaining);
         nimcp_platform_mutex_unlock(&morph->lock);
@@ -714,20 +714,20 @@ nimcp_result_t nimcp_swarm_morphogenesis_can_differentiate(
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     NimcpDroneRoleState* state = find_drone_state(
         (NimcpSwarmMorphogenesis*)morph,
         drone_id
     );
     if (!state) {
-        nimcp_platform_mutex_unlock(&morph->lock);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
         return NIMCP_NOT_FOUND;
     }
 
-    *out_can_differentiate = (state->cooldown_remaining <= 0.0f);
+    *out_can_differentiate = (state->cooldown_remaining <= 0.0F);
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -765,13 +765,13 @@ nimcp_result_t nimcp_swarm_morphogenesis_update_gradients(
         );
 
         /* Center distance morphogen (higher at edges) */
-        float max_distance = 100.0f; /* Normalize to 100 units */
-        float normalized_dist = fminf(state->swarm_center_distance / max_distance, 1.0f);
+        float max_distance = 100.0F; /* Normalize to 100 units */
+        float normalized_dist = fminf(state->swarm_center_distance / max_distance, 1.0F);
         state->gradients[NIMCP_MORPHOGEN_CENTER_DISTANCE].concentration = normalized_dist;
 
         /* Connectivity morphogen (based on number of nearby drones) */
         uint32_t nearby_count = 0;
-        float connectivity_radius = 10.0f;
+        float connectivity_radius = 10.0F;
         for (uint32_t j = 0; j < morph->active_drones; j++) {
             if (i != j) {
                 float dist = calculate_distance(
@@ -783,7 +783,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_update_gradients(
                 }
             }
         }
-        float normalized_connectivity = fminf((float)nearby_count / 10.0f, 1.0f);
+        float normalized_connectivity = fminf((float)nearby_count / 10.0F, 1.0F);
         state->gradients[NIMCP_MORPHOGEN_CONNECTIVITY].concentration =
             normalized_connectivity;
 
@@ -793,10 +793,10 @@ nimcp_result_t nimcp_swarm_morphogenesis_update_gradients(
         }
 
         /* Update cooldown */
-        if (state->cooldown_remaining > 0.0f) {
+        if (state->cooldown_remaining > 0.0F) {
             state->cooldown_remaining -= delta_time;
-            if (state->cooldown_remaining < 0.0f) {
-                state->cooldown_remaining = 0.0f;
+            if (state->cooldown_remaining < 0.0F) {
+                state->cooldown_remaining = 0.0F;
             }
         }
     }
@@ -821,7 +821,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_set_morphogen(
         return NIMCP_INVALID_PARAM;
     }
 
-    if (concentration < 0.0f || concentration > 1.0f) {
+    if (concentration < 0.0F || concentration > 1.0F) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -862,7 +862,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_get_morphogen(
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     /* Find nearest drone and get its morphogen */
     float min_dist = FLT_MAX;
@@ -879,10 +879,10 @@ nimcp_result_t nimcp_swarm_morphogenesis_get_morphogen(
     if (nearest) {
         *out_concentration = nearest->gradients[morphogen_type].concentration;
     } else {
-        *out_concentration = 0.0f;
+        *out_concentration = 0.0F;
     }
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -897,14 +897,14 @@ nimcp_result_t nimcp_swarm_morphogenesis_evaluate_differentiation(
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     NimcpDroneRoleState* state = find_drone_state(
         (NimcpSwarmMorphogenesis*)morph,
         drone_id
     );
     if (!state) {
-        nimcp_platform_mutex_unlock(&morph->lock);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
         return NIMCP_NOT_FOUND;
     }
 
@@ -915,43 +915,43 @@ nimcp_result_t nimcp_swarm_morphogenesis_evaluate_differentiation(
     float threat = state->gradients[NIMCP_MORPHOGEN_THREAT].concentration;
 
     NimcpSwarmRole suggested = NIMCP_SWARM_ROLE_GENERALIST;
-    float confidence = 0.5f;
+    float confidence = 0.5F;
 
     /* Scout: high center distance, low connectivity */
-    if (center_dist > 0.7f && connectivity < 0.3f) {
+    if (center_dist > 0.7F && connectivity < 0.3F) {
         suggested = NIMCP_SWARM_ROLE_SCOUT;
-        confidence = 0.8f;
+        confidence = 0.8F;
     }
     /* Relay: medium connectivity, medium center distance */
-    else if (connectivity > 0.4f && connectivity < 0.7f) {
+    else if (connectivity > 0.4F && connectivity < 0.7F) {
         suggested = NIMCP_SWARM_ROLE_RELAY;
-        confidence = 0.7f;
+        confidence = 0.7F;
     }
     /* Sentinel: high threat or high center distance with medium connectivity */
-    else if (threat > 0.6f || (center_dist > 0.6f && connectivity > 0.4f)) {
+    else if (threat > 0.6F || (center_dist > 0.6F && connectivity > 0.4F)) {
         suggested = NIMCP_SWARM_ROLE_SENTINEL;
-        confidence = 0.75f;
+        confidence = 0.75F;
     }
     /* Worker: high resource proximity, medium connectivity */
-    else if (resource > 0.5f && connectivity > 0.3f) {
+    else if (resource > 0.5F && connectivity > 0.3F) {
         suggested = NIMCP_SWARM_ROLE_WORKER;
-        confidence = 0.8f;
+        confidence = 0.8F;
     }
     /* Leader: low center distance, high connectivity */
-    else if (center_dist < 0.3f && connectivity > 0.7f) {
+    else if (center_dist < 0.3F && connectivity > 0.7F) {
         suggested = NIMCP_SWARM_ROLE_LEADER;
-        confidence = 0.85f;
+        confidence = 0.85F;
     }
     /* Medic: medium everything, balanced position */
-    else if (connectivity > 0.5f && center_dist < 0.5f) {
+    else if (connectivity > 0.5F && center_dist < 0.5F) {
         suggested = NIMCP_SWARM_ROLE_MEDIC;
-        confidence = 0.65f;
+        confidence = 0.65F;
     }
 
     *out_suggested_role = suggested;
     *out_confidence = confidence;
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -968,11 +968,11 @@ nimcp_result_t nimcp_swarm_morphogenesis_get_distribution(
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     memcpy(out_distribution, &morph->distribution, sizeof(NimcpRoleDistribution));
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -986,12 +986,12 @@ nimcp_result_t nimcp_swarm_morphogenesis_is_balanced(
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     *out_balanced = !morph->distribution.needs_rebalancing;
     *out_balance_score = morph->distribution.balance_score;
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -1010,13 +1010,13 @@ nimcp_result_t nimcp_swarm_morphogenesis_rebalance(
 
     /* Default target distribution if none provided */
     float default_targets[NIMCP_SWARM_ROLE_COUNT] = {
-        0.30f, /* Generalist */
-        0.15f, /* Scout */
-        0.15f, /* Relay */
-        0.15f, /* Sentinel */
-        0.15f, /* Worker */
-        0.05f, /* Medic */
-        0.05f  /* Leader */
+        0.30F, /* Generalist */
+        0.15F, /* Scout */
+        0.15F, /* Relay */
+        0.15F, /* Sentinel */
+        0.15F, /* Worker */
+        0.05F, /* Medic */
+        0.05F  /* Leader */
     };
 
     const float* targets = target_distribution ? target_distribution : default_targets;
@@ -1038,7 +1038,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_rebalance(
             for (uint32_t i = 0; i < morph->active_drones && converted < (uint32_t)diff; i++) {
                 NimcpDroneRoleState* state = &morph->drone_states[i];
                 if (state->current_role == NIMCP_SWARM_ROLE_GENERALIST &&
-                    state->cooldown_remaining <= 0.0f) {
+                    state->cooldown_remaining <= 0.0F) {
 
                     record_transition(state, state->current_role,
                                     (NimcpSwarmRole)role,
@@ -1112,14 +1112,14 @@ nimcp_result_t nimcp_swarm_morphogenesis_get_transition_history(
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     NimcpDroneRoleState* state = find_drone_state(
         (NimcpSwarmMorphogenesis*)morph,
         drone_id
     );
     if (!state) {
-        nimcp_platform_mutex_unlock(&morph->lock);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
         return NIMCP_NOT_FOUND;
     }
 
@@ -1131,7 +1131,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_get_transition_history(
 
     *out_count = count;
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 
     return NIMCP_SUCCESS;
 }
@@ -1147,14 +1147,14 @@ void nimcp_swarm_morphogenesis_get_statistics(
         return;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     if (out_total_diff) *out_total_diff = morph->total_differentiations;
     if (out_total_dediff) *out_total_dediff = morph->total_dedifferentiations;
     if (out_forced) *out_forced = morph->forced_transitions;
     if (out_automatic) *out_automatic = morph->automatic_transitions;
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 }
 
 void nimcp_swarm_morphogenesis_print_state(
@@ -1166,7 +1166,7 @@ void nimcp_swarm_morphogenesis_print_state(
         return;
     }
 
-    nimcp_platform_mutex_lock(&morph->lock);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&morph->lock);
 
     printf("\n=== Swarm Morphogenesis State ===\n");
     printf("Active Drones: %u / %u\n", morph->active_drones, morph->max_drones);
@@ -1178,7 +1178,7 @@ void nimcp_swarm_morphogenesis_print_state(
         printf("  %s: %u (%.1f%%)\n",
                ROLE_SPECS[i].name,
                morph->distribution.role_counts[i],
-               morph->distribution.role_ratios[i] * 100.0f);
+               morph->distribution.role_ratios[i] * 100.0F);
     }
 
     printf("\nBalance Score: %.2f (threshold: %.2f)\n",
@@ -1207,7 +1207,7 @@ void nimcp_swarm_morphogenesis_print_state(
 
     printf("================================\n\n");
 
-    nimcp_platform_mutex_unlock(&morph->lock);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&morph->lock);
 }
 
 /* ============================================================================

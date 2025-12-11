@@ -585,7 +585,7 @@ int nlp_compress(nlp_msg_type_t msg_type,
 
     NIMCP_LOGGING_DEBUG("nlp_compress", "Compressed %zu -> %zu bytes (%.1f%%) using %s",
                     input_len, total_size,
-                    100.0f * total_size / input_len,
+                    100.0F * total_size / input_len,
                     type == NLP_COMPRESS_NONE ? "none" :
                     type == NLP_COMPRESS_RLE ? "RLE" :
                     type == NLP_COMPRESS_DELTA ? "delta" :

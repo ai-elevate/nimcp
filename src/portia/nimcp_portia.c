@@ -209,29 +209,29 @@ portia_config_t portia_get_default_config(void) {
     /* Tier configuration */
     config.tier_config.enable_auto_switching = true;
     config.tier_config.switch_hysteresis_ms = 5000;
-    config.tier_config.upgrade_threshold = 0.7f;
-    config.tier_config.downgrade_threshold = 0.3f;
+    config.tier_config.upgrade_threshold = 0.7F;
+    config.tier_config.downgrade_threshold = 0.3F;
     config.tier_config.lock_tier = false;
 
     /* Power configuration */
     config.power_config.enable_battery_awareness = true;
     config.power_config.poll_interval_ms = 10000;
-    config.power_config.low_battery_threshold = 0.2f;
-    config.power_config.critical_battery_threshold = 0.05f;
+    config.power_config.low_battery_threshold = 0.2F;
+    config.power_config.critical_battery_threshold = 0.05F;
     config.power_config.enable_ac_detection = true;
 
     /* Resource configuration */
     config.resource_config.sample_interval_ms = 1000;
     config.resource_config.history_size = 60;
-    config.resource_config.cpu_threshold = 0.8f;
-    config.resource_config.memory_threshold = 0.85f;
-    config.resource_config.thermal_threshold = 80.0f;
+    config.resource_config.cpu_threshold = 0.8F;
+    config.resource_config.memory_threshold = 0.85F;
+    config.resource_config.thermal_threshold = 80.0F;
 
     /* Degradation configuration */
     config.degradation_config.enable_graceful_degradation = true;
     config.degradation_config.max_degradation = PORTIA_DEGRADATION_SEVERE;
     config.degradation_config.recovery_delay_ms = 30000;
-    config.degradation_config.recovery_threshold = 0.5f;
+    config.degradation_config.recovery_threshold = 0.5F;
 
     /* Accelerator configuration */
     config.accelerator_config.enable_gpu_detection = true;
@@ -496,7 +496,7 @@ nimcp_error_t portia_update(void) {
     /* Update statistics */
     ctx->update_count++;
     uint64_t end_time = nimcp_time_get_us();
-    float update_time_ms = (end_time - start_time) / 1000.0f;
+    float update_time_ms = (end_time - start_time) / 1000.0F;
     ctx->total_update_time_ms += update_time_ms;
     ctx->last_update_time_us = end_time;
 
@@ -550,7 +550,7 @@ nimcp_error_t portia_get_status(portia_status_t* status) {
     /* Statistics */
     status->updates = ctx->update_count;
     status->avg_update_time_ms = ctx->update_count > 0 ?
-        ctx->total_update_time_ms / ctx->update_count : 0.0f;
+        ctx->total_update_time_ms / ctx->update_count : 0.0F;
 
     nimcp_mutex_unlock(&ctx->lock);
 
@@ -599,7 +599,7 @@ nimcp_error_t portia_set_tier(platform_tier_t tier) {
             },
             .old_tier = old_tier,
             .new_tier = tier,
-            .confidence = 1.0f,
+            .confidence = 1.0F,
             .reason = PORTIA_TIER_REASON_USER_REQUEST,
             .timestamp_us = nimcp_time_get_us()
         };
@@ -674,24 +674,24 @@ uint32_t portia_recommend_neuron_count(void) {
         &ctx->resource_tracker->current_resources);
 
     /* Apply degradation multiplier */
-    float degradation_multiplier = 1.0f;
+    float degradation_multiplier = 1.0F;
     switch (ctx->degradation_controller->current_level) {
-        case PORTIA_DEGRADATION_NONE:     degradation_multiplier = 1.0f; break;
-        case PORTIA_DEGRADATION_MINOR:    degradation_multiplier = 0.8f; break;
-        case PORTIA_DEGRADATION_MODERATE: degradation_multiplier = 0.5f; break;
-        case PORTIA_DEGRADATION_SEVERE:   degradation_multiplier = 0.25f; break;
-        case PORTIA_DEGRADATION_EMERGENCY: degradation_multiplier = 0.1f; break;
+        case PORTIA_DEGRADATION_NONE:     degradation_multiplier = 1.0F; break;
+        case PORTIA_DEGRADATION_MINOR:    degradation_multiplier = 0.8F; break;
+        case PORTIA_DEGRADATION_MODERATE: degradation_multiplier = 0.5F; break;
+        case PORTIA_DEGRADATION_SEVERE:   degradation_multiplier = 0.25F; break;
+        case PORTIA_DEGRADATION_EMERGENCY: degradation_multiplier = 0.1F; break;
     }
 
     /* Apply power state multiplier */
-    float power_multiplier = 1.0f;
+    float power_multiplier = 1.0F;
     switch (ctx->power_monitor->current_state) {
-        case PORTIA_POWER_AC:             power_multiplier = 1.0f; break;
-        case PORTIA_POWER_BATTERY_FULL:   power_multiplier = 1.0f; break;
-        case PORTIA_POWER_BATTERY_MID:    power_multiplier = 0.7f; break;
-        case PORTIA_POWER_BATTERY_LOW:    power_multiplier = 0.4f; break;
-        case PORTIA_POWER_BATTERY_CRITICAL: power_multiplier = 0.2f; break;
-        case PORTIA_POWER_UNKNOWN:        power_multiplier = 0.8f; break;
+        case PORTIA_POWER_AC:             power_multiplier = 1.0F; break;
+        case PORTIA_POWER_BATTERY_FULL:   power_multiplier = 1.0F; break;
+        case PORTIA_POWER_BATTERY_MID:    power_multiplier = 0.7F; break;
+        case PORTIA_POWER_BATTERY_LOW:    power_multiplier = 0.4F; break;
+        case PORTIA_POWER_BATTERY_CRITICAL: power_multiplier = 0.2F; break;
+        case PORTIA_POWER_UNKNOWN:        power_multiplier = 0.8F; break;
     }
 
     uint32_t recommended = (uint32_t)(base_count * degradation_multiplier * power_multiplier);
@@ -908,7 +908,7 @@ static nimcp_error_t portia_power_monitor_create(portia_power_monitor_t** out_mo
 
     mon->config = *config;
     mon->current_state = PORTIA_POWER_UNKNOWN;
-    mon->battery_level = -1.0f;
+    mon->battery_level = -1.0F;
     mon->is_on_ac = true;
     nimcp_mutex_init(&mon->lock, NULL);
 
@@ -930,7 +930,7 @@ static nimcp_error_t portia_power_monitor_update(portia_power_monitor_t* mon) {
     nimcp_mutex_lock(&mon->lock);
     mon->current_state = PORTIA_POWER_AC;
     mon->is_on_ac = true;
-    mon->battery_level = 1.0f;
+    mon->battery_level = 1.0F;
     nimcp_mutex_unlock(&mon->lock);
 
     return NIMCP_SUCCESS;
@@ -965,13 +965,13 @@ static nimcp_error_t portia_resource_tracker_update(portia_resource_tracker_t* t
     system_resources_query(&tracker->current_resources);
 
     /* Simple CPU/memory usage estimation */
-    tracker->cpu_usage = 0.5f; /* Placeholder */
+    tracker->cpu_usage = 0.5F; /* Placeholder */
     /* Calculate memory usage from available and total */
     uint64_t used_ram_mb = tracker->current_resources.total_ram_mb -
                           tracker->current_resources.available_ram_mb;
     tracker->memory_usage = (float)used_ram_mb /
                            (float)tracker->current_resources.total_ram_mb;
-    tracker->temperature_celsius = 50.0f; /* Placeholder */
+    tracker->temperature_celsius = 50.0F; /* Placeholder */
     tracker->thermal_state = PORTIA_THERMAL_NOMINAL;
 
     nimcp_mutex_unlock(&tracker->lock);
@@ -1047,10 +1047,10 @@ static nimcp_error_t portia_sensor_fusion_create(portia_sensor_fusion_t** out_fu
     portia_sensor_fusion_t* fusion = nimcp_calloc(1, sizeof(portia_sensor_fusion_t));
     if (!fusion) return NIMCP_ERROR_OUT_OF_MEMORY;
 
-    fusion->overall_health = 1.0f;
-    fusion->resource_pressure = 0.0f;
-    fusion->performance_score = 1.0f;
-    fusion->efficiency_score = 1.0f;
+    fusion->overall_health = 1.0F;
+    fusion->resource_pressure = 0.0F;
+    fusion->performance_score = 1.0F;
+    fusion->efficiency_score = 1.0F;
     nimcp_mutex_init(&fusion->lock, NULL);
 
     *out_fusion = fusion;
@@ -1070,9 +1070,9 @@ static nimcp_error_t portia_sensor_fusion_update(portia_sensor_fusion_t* fusion,
     nimcp_mutex_lock(&fusion->lock);
 
     /* Simplified fusion logic */
-    fusion->resource_pressure = (status->cpu_usage + status->memory_usage) / 2.0f;
-    fusion->overall_health = 1.0f - (fusion->resource_pressure * 0.5f);
-    fusion->performance_score = 1.0f - (status->degradation_level * 0.2f);
+    fusion->resource_pressure = (status->cpu_usage + status->memory_usage) / 2.0F;
+    fusion->overall_health = 1.0F - (fusion->resource_pressure * 0.5F);
+    fusion->performance_score = 1.0F - (status->degradation_level * 0.2F);
     fusion->efficiency_score = fusion->overall_health * fusion->performance_score;
 
     nimcp_mutex_unlock(&fusion->lock);
@@ -1106,7 +1106,7 @@ static nimcp_error_t portia_target_classifier_create(portia_target_classifier_t*
     if (!classifier) return NIMCP_ERROR_OUT_OF_MEMORY;
 
     classifier->classified_workload = PORTIA_WORKLOAD_UNKNOWN;
-    classifier->classification_confidence = 0.0f;
+    classifier->classification_confidence = 0.0F;
     nimcp_mutex_init(&classifier->lock, NULL);
 
     *out_classifier = classifier;

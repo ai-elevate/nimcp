@@ -1036,7 +1036,7 @@ static void* consumer_thread_func(void* arg)
             // Train brain on this sample
             uint32_t num_features = brain_get_num_inputs(ctx->brain);
             float loss = brain_learn_example(ctx->brain, batch->features[i],
-                                            num_features, batch->labels[i], 1.0f);
+                                            num_features, batch->labels[i], 1.0F);
             (void)loss;  // Loss tracked internally by brain
 
             nimcp_mutex_lock(&ctx->stats_lock);
@@ -1087,19 +1087,19 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
     // Guard clauses
     if (!brain || !dataset) {
         dataio_set_error("Invalid brain or dataset");
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (validation_split < 0.0f || validation_split >= 1.0f) {
+    if (validation_split < 0.0F || validation_split >= 1.0F) {
         dataio_set_error("Invalid validation_split: %f (must be 0-1)", validation_split);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Initialize training context
     training_context_t* ctx = (training_context_t*) nimcp_calloc(1, sizeof(training_context_t));
     if (!ctx) {
         dataio_set_error("Failed to allocate training context");
-        return 0.0f;
+        return 0.0F;
     }
 
     ctx->brain = brain;
@@ -1124,7 +1124,7 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
         dataio_set_error("Failed to create batch queue");
         nimcp_mutex_destroy(&ctx->stats_lock);
         nimcp_free(ctx);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Start producer thread (reads batches from dataset)
@@ -1133,7 +1133,7 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
         nimcp_queue_destroy(ctx->batch_queue);
         nimcp_mutex_destroy(&ctx->stats_lock);
         nimcp_free(ctx);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Start consumer thread (trains brain on batches)
@@ -1144,7 +1144,7 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
         nimcp_queue_destroy(ctx->batch_queue);
         nimcp_mutex_destroy(&ctx->stats_lock);
         nimcp_free(ctx);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Wait for both threads to complete
@@ -1185,11 +1185,11 @@ float brain_train_from_dataset_streaming(brain_t brain, dataset_t dataset, uint3
 {
     if (!brain || !dataset) {
         dataio_set_error("Invalid brain or dataset");
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t batches_processed = 0;
-    float avg_loss = 0.0f;
+    float avg_loss = 0.0F;
 
     while (max_batches == 0 || batches_processed < max_batches) {
         data_batch_t batch;

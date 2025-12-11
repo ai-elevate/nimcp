@@ -119,13 +119,13 @@ static float randn(uint32_t* state) {
     float u2 = randf(state);
 
     // Guard: Avoid log(0)
-    if (u1 < 1e-10f) {
-        u1 = 1e-10f;
+    if (u1 < 1e-10F) {
+        u1 = 1e-10F;
     }
 
     // Box-Muller transform
-    float r = sqrtf(-2.0f * logf(u1));
-    float theta = 2.0f * M_PI * u2;
+    float r = sqrtf(-2.0F * logf(u1));
+    float theta = 2.0F * M_PI * u2;
 
     return r * cosf(theta);
 }
@@ -175,7 +175,7 @@ static void voss_init(pink_noise_generator_t gen) {
 static float voss_next(pink_noise_generator_t gen) {
     // Guard: NULL generator
     if (!gen) {
-        return 0.0f;
+        return 0.0F;
     }
 
     gen->voss_counter++;
@@ -184,7 +184,7 @@ static float voss_next(pink_noise_generator_t gen) {
     uint32_t counter = gen->voss_counter;
     for (uint32_t i = 0; i < VOSS_NUM_OCTAVES; i++) {
         // Update this octave if bit i is transitioning from 1 to 0
-        uint32_t mask = 1u << i;
+        uint32_t mask = 1U << i;
 
         // Guard: Check if we should update this octave
         if ((counter & mask) == 0) {
@@ -193,7 +193,7 @@ static float voss_next(pink_noise_generator_t gen) {
     }
 
     // Sum all octaves
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < VOSS_NUM_OCTAVES; i++) {
         sum += gen->voss_octaves[i];
     }
@@ -232,11 +232,11 @@ static void iir_init(pink_noise_generator_t gen) {
     // Design: 2nd-order Butterworth-based pinking filter
     // Transfer function approximates 1/f from 20Hz to 20kHz
     // Normalized for fs = 44100 Hz
-    gen->iir_coeffs[0] = 0.0555179f;   // b0
-    gen->iir_coeffs[1] = -0.0750759f;  // b1
-    gen->iir_coeffs[2] = 0.0427906f;   // b2
-    gen->iir_coeffs[3] = -1.99004745f; // a1 (note: used with subtraction)
-    gen->iir_coeffs[4] = 0.99007225f;  // a2 (stable: |poles| < 1)
+    gen->iir_coeffs[0] = 0.0555179F;   // b0
+    gen->iir_coeffs[1] = -0.0750759F;  // b1
+    gen->iir_coeffs[2] = 0.0427906F;   // b2
+    gen->iir_coeffs[3] = -1.99004745F; // a1 (note: used with subtraction)
+    gen->iir_coeffs[4] = 0.99007225F;  // a2 (stable: |poles| < 1)
 }
 
 /**
@@ -249,7 +249,7 @@ static void iir_init(pink_noise_generator_t gen) {
 static float iir_next(pink_noise_generator_t gen) {
     // Guard: NULL generator
     if (!gen) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Generate white noise input
@@ -305,7 +305,7 @@ static bool fft_init(pink_noise_generator_t gen) {
     // Choose buffer size (power of 2, large enough for good spectral resolution)
     // Minimum 1024 samples for decent frequency resolution
     const uint32_t min_buffer_size = 1024;
-    float duration_needed = 1.0f / gen->config.min_frequency;  // Need enough time for lowest frequency
+    float duration_needed = 1.0F / gen->config.min_frequency;  // Need enough time for lowest frequency
     uint32_t samples_needed = (uint32_t)(duration_needed * gen->config.sample_rate);
 
     // Round up to next power of 2
@@ -342,28 +342,28 @@ static bool fft_init(pink_noise_generator_t gen) {
 
     // Design smoothing coefficient based on alpha
     // Higher alpha → more smoothing → more low-frequency content
-    float smooth_factor = 0.5f + (alpha * 0.3f);  // 0.5 to 1.1 range
+    float smooth_factor = 0.5F + (alpha * 0.3F);  // 0.5 to 1.1 range
 
     // Apply recursive smoothing
-    for (uint32_t pass = 0; pass < (uint32_t)(alpha + 0.5f); pass++) {
+    for (uint32_t pass = 0; pass < (uint32_t)(alpha + 0.5F); pass++) {
         float prev = gen->fft_buffer[0];
         for (uint32_t i = 1; i < buffer_size; i++) {
-            gen->fft_buffer[i] = smooth_factor * prev + (1.0f - smooth_factor) * gen->fft_buffer[i];
+            gen->fft_buffer[i] = smooth_factor * prev + (1.0F - smooth_factor) * gen->fft_buffer[i];
             prev = gen->fft_buffer[i];
         }
     }
 
     // Step 3: Normalize to target amplitude
     // Compute RMS
-    float sum_sq = 0.0f;
+    float sum_sq = 0.0F;
     for (uint32_t i = 0; i < buffer_size; i++) {
         sum_sq += gen->fft_buffer[i] * gen->fft_buffer[i];
     }
     float rms = sqrtf(sum_sq / (float)buffer_size);
 
     // Guard: Zero RMS (shouldn't happen with random input)
-    if (rms < 1e-10f) {
-        rms = 1.0f;
+    if (rms < 1e-10F) {
+        rms = 1.0F;
     }
 
     // Normalize to target amplitude
@@ -388,12 +388,12 @@ static bool fft_init(pink_noise_generator_t gen) {
 static float fft_next(pink_noise_generator_t gen) {
     // Guard: NULL generator
     if (!gen) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Buffer not initialized
     if (!gen->fft_buffer || gen->fft_buffer_size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Get current sample
@@ -414,11 +414,11 @@ static float fft_next(pink_noise_generator_t gen) {
 
 pink_noise_config_t pink_noise_default_config(void) {
     pink_noise_config_t config = {
-        .alpha = 1.0f,                  // True pink noise
-        .amplitude = 0.05f,             // 5% modulation
-        .min_frequency = 0.1f,          // 10s timescale
-        .max_frequency = 100.0f,        // 10ms timescale
-        .sample_rate = 1000.0f,         // 1ms resolution
+        .alpha = 1.0F,                  // True pink noise
+        .amplitude = 0.05F,             // 5% modulation
+        .min_frequency = 0.1F,          // 10s timescale
+        .max_frequency = 100.0F,        // 10ms timescale
+        .sample_rate = 1000.0F,         // 1ms resolution
         .method = PINK_NOISE_VOSS,      // Fast, good quality
         .seed = 0                       // Time-based seed
     };
@@ -433,25 +433,25 @@ bool pink_noise_validate_config(const pink_noise_config_t* config) {
     }
 
     // Guard: Invalid alpha
-    if (config->alpha < 0.0f || config->alpha > 3.0f) {
+    if (config->alpha < 0.0F || config->alpha > 3.0F) {
         set_error("Alpha must be in [0, 3] range");
         return false;
     }
 
     // Guard: Invalid amplitude
-    if (config->amplitude <= 0.0f) {
+    if (config->amplitude <= 0.0F) {
         set_error("Amplitude must be positive");
         return false;
     }
 
     // Guard: Invalid frequency range
-    if (config->min_frequency <= 0.0f || config->min_frequency >= config->max_frequency) {
+    if (config->min_frequency <= 0.0F || config->min_frequency >= config->max_frequency) {
         set_error("Frequency range invalid: 0 < min_freq < max_freq");
         return false;
     }
 
     // Guard: Nyquist violation
-    if (config->sample_rate < 2.0f * config->max_frequency) {
+    if (config->sample_rate < 2.0F * config->max_frequency) {
         set_error("Sample rate must be >= 2*max_frequency (Nyquist)");
         return false;
     }
@@ -561,7 +561,7 @@ bool pink_noise_generate_sample(pink_noise_generator_t generator, float* sample)
     }
 
     // Generate sample based on method
-    float value = 0.0f;
+    float value = 0.0F;
 
     switch (generator->config.method) {
         case PINK_NOISE_VOSS:
@@ -713,12 +713,12 @@ static bool compute_spectral_slope(
     float power[512];  // Max 1024/2 = 512 frequency bins
 
     for (uint32_t k = 1; k < num_freqs && k < 512; k++) {  // Skip DC (k=0)
-        float real_part = 0.0f;
-        float imag_part = 0.0f;
+        float real_part = 0.0F;
+        float imag_part = 0.0F;
 
         // Compute DFT bin k
         for (uint32_t n = 0; n < dft_size; n++) {
-            float angle = -2.0f * M_PI * (float)k * (float)n / (float)dft_size;
+            float angle = -2.0F * M_PI * (float)k * (float)n / (float)dft_size;
             real_part += samples[n] * cosf(angle);
             imag_part += samples[n] * sinf(angle);
         }
@@ -735,15 +735,15 @@ static bool compute_spectral_slope(
     if (start_bin < 2) start_bin = 2;
     uint32_t end_bin = (num_freqs * 9) / 10;
 
-    float sum_log_f = 0.0f;
-    float sum_log_p = 0.0f;
-    float sum_log_f_sq = 0.0f;
-    float sum_log_f_log_p = 0.0f;
+    float sum_log_f = 0.0F;
+    float sum_log_p = 0.0F;
+    float sum_log_f_sq = 0.0F;
+    float sum_log_f_log_p = 0.0F;
     uint32_t count = 0;
 
     for (uint32_t k = start_bin; k < end_bin && k < 512; k++) {
         // Guard: Skip zero/negative power
-        if (power[k] <= 0.0f) continue;
+        if (power[k] <= 0.0F) continue;
 
         float freq = (float)k * sample_rate / (float)dft_size;
         float log_f = logf(freq);
@@ -758,8 +758,8 @@ static bool compute_spectral_slope(
 
     // Guard: Not enough valid points
     if (count < 10) {
-        *alpha = 1.0f;
-        *r_squared = 0.0f;
+        *alpha = 1.0F;
+        *r_squared = 0.0F;
         return true;  // Return default values
     }
 
@@ -769,9 +769,9 @@ static bool compute_spectral_slope(
     float denominator = n * sum_log_f_sq - sum_log_f * sum_log_f;
 
     // Guard: Singular matrix
-    if (fabsf(denominator) < 1e-10f) {
-        *alpha = 1.0f;
-        *r_squared = 0.0f;
+    if (fabsf(denominator) < 1e-10F) {
+        *alpha = 1.0F;
+        *r_squared = 0.0F;
         return true;
     }
 
@@ -780,11 +780,11 @@ static bool compute_spectral_slope(
 
     // Compute R² goodness of fit
     float mean_log_p = sum_log_p / n;
-    float ss_tot = 0.0f;  // Total sum of squares
-    float ss_res = 0.0f;  // Residual sum of squares
+    float ss_tot = 0.0F;  // Total sum of squares
+    float ss_res = 0.0F;  // Residual sum of squares
 
     for (uint32_t k = start_bin; k < end_bin && k < 512; k++) {
-        if (power[k] <= 0.0f) continue;
+        if (power[k] <= 0.0F) continue;
 
         float freq = (float)k * sample_rate / (float)dft_size;
         float log_f = logf(freq);
@@ -799,10 +799,10 @@ static bool compute_spectral_slope(
     }
 
     // R² = 1 - (SS_res / SS_tot)
-    if (ss_tot > 1e-10f) {
-        *r_squared = 1.0f - (ss_res / ss_tot);
+    if (ss_tot > 1e-10F) {
+        *r_squared = 1.0F - (ss_res / ss_tot);
     } else {
-        *r_squared = 0.0f;
+        *r_squared = 0.0F;
     }
 
     return true;
@@ -831,14 +831,14 @@ bool pink_noise_compute_stats(const float* samples, uint32_t num_samples, float 
     memset(stats, 0, sizeof(pink_noise_stats_t));
 
     // Compute mean
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < num_samples; i++) {
         sum += samples[i];
     }
     stats->mean = sum / (float)num_samples;
 
     // Compute std dev, min, max
-    float sum_sq = 0.0f;
+    float sum_sq = 0.0F;
     stats->min_value = samples[0];
     stats->max_value = samples[0];
 
@@ -866,8 +866,8 @@ bool pink_noise_compute_stats(const float* samples, uint32_t num_samples, float 
     // Guard: Spectral analysis failed
     if (!spectral_success) {
         // Use default values
-        stats->measured_alpha = 1.0f;
-        stats->spectral_fit_r2 = 0.0f;
+        stats->measured_alpha = 1.0F;
+        stats->spectral_fit_r2 = 0.0F;
     }
 
     set_error(NULL);
@@ -876,7 +876,7 @@ bool pink_noise_compute_stats(const float* samples, uint32_t num_samples, float 
 
 bool pink_noise_validate(const float* samples, uint32_t num_samples, float sample_rate, float expected_alpha, float tolerance) {
     // Guard: Invalid tolerance
-    if (tolerance <= 0.0f) {
+    if (tolerance <= 0.0F) {
         set_error("Tolerance must be positive");
         return false;
     }
@@ -948,7 +948,7 @@ bool pink_noise_modulate_multiplicative(pink_noise_generator_t generator, float 
     }
 
     // Guard: Invalid modulation strength
-    if (modulation_strength < 0.0f || modulation_strength > 1.0f) {
+    if (modulation_strength < 0.0F || modulation_strength > 1.0F) {
         set_error("Modulation strength must be in [0, 1] range");
         return false;
     }
@@ -964,14 +964,14 @@ bool pink_noise_modulate_multiplicative(pink_noise_generator_t generator, float 
     }
 
     // Normalize noise to [-1, 1] range (approximately)
-    float normalized_noise = noise / (3.0f * generator->config.amplitude);  // ±3σ clipping
+    float normalized_noise = noise / (3.0F * generator->config.amplitude);  // ±3σ clipping
 
     // Guard: Clamp to [-1, 1]
-    if (normalized_noise < -1.0f) normalized_noise = -1.0f;
-    if (normalized_noise > 1.0f) normalized_noise = 1.0f;
+    if (normalized_noise < -1.0F) normalized_noise = -1.0F;
+    if (normalized_noise > 1.0F) normalized_noise = 1.0F;
 
     // Apply multiplicative modulation
-    *output = value * (1.0f + modulation_strength * normalized_noise);
+    *output = value * (1.0F + modulation_strength * normalized_noise);
 
     set_error(NULL);
     return true;
@@ -1046,11 +1046,11 @@ pink_noise_generator_t pink_noise_load(FILE* file) {
 
     // Create default generator (stub)
     pink_noise_config_t config = {
-        .alpha = 1.0f,
-        .amplitude = 0.05f,
-        .min_frequency = 0.1f,
-        .max_frequency = 100.0f,
-        .sample_rate = 1000.0f,
+        .alpha = 1.0F,
+        .amplitude = 0.05F,
+        .min_frequency = 0.1F,
+        .max_frequency = 100.0F,
+        .sample_rate = 1000.0F,
         .method = PINK_NOISE_VOSS,
         .seed = 0
     };

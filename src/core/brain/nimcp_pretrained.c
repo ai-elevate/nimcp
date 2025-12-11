@@ -294,9 +294,15 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
         return NULL;
     }
 
-    fread(content, 1, file_size, fp);
-    content[file_size] = '\0';
+    size_t bytes_read = fread(content, 1, file_size, fp);
     fclose(fp);
+
+    if (bytes_read != (size_t)file_size) {
+        LOG_ERROR("Failed to read metadata file: expected %ld bytes, got %zu", file_size, bytes_read);
+        nimcp_free(content);
+        return NULL;
+    }
+    content[file_size] = '\0';
 
     // Parse JSON
     cJSON* metadata = cJSON_Parse(content);

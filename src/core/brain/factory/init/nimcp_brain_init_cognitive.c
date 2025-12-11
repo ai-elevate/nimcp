@@ -142,7 +142,7 @@ bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t brain)
     // Create neural logic network with spiking logic gates (Phase 9.0)
     neural_logic_config_t logic_config = neural_logic_default_config(1000);
     logic_config.use_gpu = neural_logic_gpu_available();
-    logic_config.integration_window_ms = 5.0f;
+    logic_config.integration_window_ms = 5.0F;
     logic_config.enable_learning = false;  // Combinational logic (no plasticity)
 
     brain->logic = neural_logic_create(&logic_config);
@@ -235,7 +235,7 @@ bool nimcp_brain_factory_init_epistemic_subsystem(brain_t brain)
     // 1.0 = extreme skeptic (rejects almost everything)
     //
     // We default to 0.6 (cautious but not paranoid)
-    float skepticism_level = 0.6f;
+    float skepticism_level = 0.6F;
 
     brain->epistemic = epistemic_filter_create(skepticism_level);
     if (!brain->epistemic) {
@@ -280,7 +280,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     if (brain->config.working_memory_capacity > 0) {
         wm_config.capacity = brain->config.working_memory_capacity;
     }
-    if (brain->config.working_memory_decay_tau_ms > 0.0f) {
+    if (brain->config.working_memory_decay_tau_ms > 0.0F) {
         wm_config.decay_tau_ms = brain->config.working_memory_decay_tau_ms;
     }
 
@@ -695,10 +695,10 @@ bool nimcp_brain_factory_init_mirror_neurons(brain_t brain)
     if (brain->config.mirror_max_agents > 0) {
         mirror_config.max_agents = brain->config.mirror_max_agents;
     }
-    if (brain->config.mirror_learning_rate > 0.0f) {
+    if (brain->config.mirror_learning_rate > 0.0F) {
         mirror_config.learning_rate = brain->config.mirror_learning_rate;
     }
-    if (brain->config.mirror_match_threshold > 0.0f) {
+    if (brain->config.mirror_match_threshold > 0.0F) {
         mirror_config.match_threshold = brain->config.mirror_match_threshold;
     }
 

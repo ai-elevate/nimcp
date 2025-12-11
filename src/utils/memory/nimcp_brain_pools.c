@@ -130,9 +130,9 @@ static float calculate_shannon_entropy(
     size_t num_categories,
     uint64_t total)
 {
-    if (total == 0) return 0.0f;
+    if (total == 0) return 0.0F;
 
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     float total_f = (float)total;
 
     for (size_t i = 0; i < num_categories; i++) {
@@ -151,7 +151,7 @@ static float calculate_shannon_entropy(
  * H_max = log₂(n) for n equally likely categories
  */
 static float calculate_max_entropy(size_t num_categories) {
-    if (num_categories <= 1) return 0.0f;
+    if (num_categories <= 1) return 0.0F;
     return log2f((float)num_categories);
 }
 
@@ -177,49 +177,49 @@ static void calculate_queuing_metrics(
         return;
     }
 
-    float elapsed_sec = (float)elapsed_ms / 1000.0f;
+    float elapsed_sec = (float)elapsed_ms / 1000.0F;
 
     /* Arrival and service rates */
     metrics->arrival_rate_lambda = (float)alloc_count / elapsed_sec;
     metrics->service_rate_mu = (float)release_count / elapsed_sec;
 
     /* Utilization */
-    if (metrics->service_rate_mu > 0.0f) {
+    if (metrics->service_rate_mu > 0.0F) {
         metrics->utilization_rho = metrics->arrival_rate_lambda / metrics->service_rate_mu;
     } else {
-        metrics->utilization_rho = 1.0f;
+        metrics->utilization_rho = 1.0F;
     }
 
     /* Queue length (M/M/1 model) */
-    if (metrics->utilization_rho < 1.0f) {
-        metrics->avg_queue_length = metrics->utilization_rho / (1.0f - metrics->utilization_rho);
+    if (metrics->utilization_rho < 1.0F) {
+        metrics->avg_queue_length = metrics->utilization_rho / (1.0F - metrics->utilization_rho);
     } else {
         metrics->avg_queue_length = INFINITY;
     }
 
     /* Wait time */
     float rate_diff = metrics->service_rate_mu - metrics->arrival_rate_lambda;
-    if (rate_diff > 0.0f) {
-        metrics->avg_wait_time_us = 1000000.0f / rate_diff;
+    if (rate_diff > 0.0F) {
+        metrics->avg_wait_time_us = 1000000.0F / rate_diff;
     } else {
         metrics->avg_wait_time_us = INFINITY;
     }
 
     /* Blocking probability (Erlang B approximation) */
-    if (metrics->utilization_rho < 1.0f) {
-        metrics->blocking_probability = powf(metrics->utilization_rho, 10.0f) *
-                                         (1.0f - metrics->utilization_rho);
+    if (metrics->utilization_rho < 1.0F) {
+        metrics->blocking_probability = powf(metrics->utilization_rho, 10.0F) *
+                                         (1.0F - metrics->utilization_rho);
     } else {
-        metrics->blocking_probability = 1.0f;
+        metrics->blocking_probability = 1.0F;
     }
 
     /* Recommended capacity: N = λ/μ + k√(λ/μ) */
-    if (metrics->service_rate_mu > 0.0f) {
+    if (metrics->service_rate_mu > 0.0F) {
         float base = metrics->utilization_rho;
-        float margin = safety_factor_k * sqrtf(base > 0 ? base : 0.0f);
-        metrics->recommended_capacity = (size_t)(base + margin + 1.0f);
+        float margin = safety_factor_k * sqrtf(base > 0 ? base : 0.0F);
+        metrics->recommended_capacity = (size_t)(base + margin + 1.0F);
     } else {
-        metrics->recommended_capacity = (size_t)(metrics->arrival_rate_lambda * 2.0f);
+        metrics->recommended_capacity = (size_t)(metrics->arrival_rate_lambda * 2.0F);
     }
 }
 
@@ -741,11 +741,11 @@ bool brain_pools_get_metrics(brain_pools_t pools, brain_pools_metrics_t* metrics
     metrics->shannon.entropy_bits = calculate_shannon_entropy(
         pools->size_class_counts, POOL_SIZE_COUNT, pools->total_feature_allocs);
     metrics->shannon.max_entropy_bits = calculate_max_entropy(POOL_SIZE_COUNT);
-    if (metrics->shannon.max_entropy_bits > 0.0f) {
+    if (metrics->shannon.max_entropy_bits > 0.0F) {
         metrics->shannon.efficiency = metrics->shannon.entropy_bits /
                                       metrics->shannon.max_entropy_bits;
     }
-    metrics->shannon.redundancy = 1.0f - metrics->shannon.efficiency;
+    metrics->shannon.redundancy = 1.0F - metrics->shannon.efficiency;
     memcpy(metrics->shannon.size_class_counts, pools->size_class_counts,
            sizeof(pools->size_class_counts));
 
@@ -788,8 +788,8 @@ bool brain_pools_get_metrics(brain_pools_t pools, brain_pools_metrics_t* metrics
     }
 
     /* Estimate speedup vs malloc (malloc ~ 150-300ns, we target <50ns) */
-    if (metrics->avg_acquire_ns > 0.0f) {
-        metrics->speedup_vs_malloc = 200.0f / metrics->avg_acquire_ns;
+    if (metrics->avg_acquire_ns > 0.0F) {
+        metrics->speedup_vs_malloc = 200.0F / metrics->avg_acquire_ns;
     }
 
     /* Timing */
@@ -830,12 +830,12 @@ bool brain_pools_get_shannon_metrics(brain_pools_t pools, shannon_metrics_t* sha
     shannon->entropy_bits = calculate_shannon_entropy(
         pools->size_class_counts, POOL_SIZE_COUNT, pools->total_feature_allocs);
     shannon->max_entropy_bits = calculate_max_entropy(POOL_SIZE_COUNT);
-    if (shannon->max_entropy_bits > 0.0f) {
+    if (shannon->max_entropy_bits > 0.0F) {
         shannon->efficiency = shannon->entropy_bits / shannon->max_entropy_bits;
     } else {
-        shannon->efficiency = 0.0f;
+        shannon->efficiency = 0.0F;
     }
-    shannon->redundancy = 1.0f - shannon->efficiency;
+    shannon->redundancy = 1.0F - shannon->efficiency;
     memcpy(shannon->size_class_counts, pools->size_class_counts,
            sizeof(pools->size_class_counts));
 
@@ -890,25 +890,25 @@ bool brain_pools_get_recommended_config(
     uint64_t elapsed_ms = pools->last_alloc_time_ms - pools->first_alloc_time_ms;
     if (elapsed_ms == 0) elapsed_ms = 1;
 
-    float elapsed_sec = (float)elapsed_ms / 1000.0f;
+    float elapsed_sec = (float)elapsed_ms / 1000.0F;
     float k = pools->config.safety_factor_k;
 
     /* Decision pool recommendation */
     float decision_rate = (float)pools->decision_stats.total_acquires / elapsed_sec;
-    if (decision_rate > 0.0f) {
+    if (decision_rate > 0.0F) {
         recommended->decision_pool_capacity = (size_t)(decision_rate + k * sqrtf(decision_rate) + 1);
     }
 
     /* Spike pool recommendation (high traffic) */
     float spike_rate = (float)pools->spike_stats.total_acquires / elapsed_sec;
-    if (spike_rate > 0.0f) {
+    if (spike_rate > 0.0F) {
         recommended->spike_pool_capacity = (size_t)(spike_rate + k * sqrtf(spike_rate) + 1);
     }
 
     /* Size class recommendations based on usage patterns */
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
         float class_rate = (float)pools->size_class_counts[i] / elapsed_sec;
-        if (class_rate > 0.0f) {
+        if (class_rate > 0.0F) {
             recommended->size_class_capacities[i] =
                 (size_t)(class_rate + k * sqrtf(class_rate) + 1);
         }
@@ -939,7 +939,7 @@ size_t brain_pools_calculate_memory(const brain_pools_config_t* config) {
     }
 
     /* Pool overhead (~10%) */
-    total = (size_t)((float)total * 1.1f);
+    total = (size_t)((float)total * 1.1F);
 
     return total;
 }

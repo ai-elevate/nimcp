@@ -63,15 +63,15 @@ float nimcp_brain_factory_get_default_sparsity(brain_size_t size)
 {
     switch (size) {
         case BRAIN_SIZE_TINY:
-            return 0.70f;
+            return 0.70F;
         case BRAIN_SIZE_SMALL:
-            return 0.80f;
+            return 0.80F;
         case BRAIN_SIZE_MEDIUM:
-            return 0.85f;
+            return 0.85F;
         case BRAIN_SIZE_LARGE:
-            return 0.90f;
+            return 0.90F;
         default:
-            return 0.80f;
+            return 0.80F;
     }
 }
 
@@ -82,14 +82,14 @@ float nimcp_brain_factory_get_default_sparsity(brain_size_t size)
 adaptive_spike_params_t nimcp_brain_factory_build_spike_params(float sparsity_target)
 {
     adaptive_spike_params_t params = {0};
-    params.k_factor = 0.5f;
+    params.k_factor = 0.5F;
     params.sparsity_target = sparsity_target;
     params.encoding = SPIKE_ENCODING_INTEGER;
     params.enable_soft_reset = true;
     params.enable_adaptation = true;
     params.adaptation_window = 100;
-    params.min_threshold = 0.0001f;  // Very low to allow tiny outputs from untrained networks
-    params.max_threshold = 10.0f;
+    params.min_threshold = 0.0001F;  // Very low to allow tiny outputs from untrained networks
+    params.max_threshold = 10.0F;
     return params;
 }
 
@@ -151,7 +151,7 @@ adaptive_network_config_t nimcp_brain_factory_build_network_config(uint32_t num_
     config.spike_params = nimcp_brain_factory_build_spike_params(sparsity_target);
 
     config.enable_sparsity = false;  // Disabled for regression tests
-    config.pruning_threshold = 0.01f;
+    config.pruning_threshold = 0.01F;
     config.update_frequency = 100;
 
     return config;
@@ -186,7 +186,7 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     // Phase 10.2: Working Memory defaults (Miller's 7±2)
     config->enable_working_memory = !minimal;
     config->working_memory_capacity = 7;
-    config->working_memory_decay_tau_ms = 1000.0f;
+    config->working_memory_decay_tau_ms = 1000.0F;
 
     // Phase 10.6: Theory of Mind defaults (social cognition, empathy)
     config->enable_theory_of_mind = !minimal;
@@ -198,39 +198,39 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->mirror_neuron_count = minimal ? 0 : 1000;
     config->mirror_max_actions = 100;
     config->mirror_max_agents = 10;
-    config->mirror_learning_rate = 0.01f;
-    config->mirror_match_threshold = 0.7f;
+    config->mirror_learning_rate = 0.01F;
+    config->mirror_match_threshold = 0.7F;
 
     // Global Workspace Architecture defaults (Global Workspace Theory - Baars 1988)
     config->enable_global_workspace = !minimal;
     config->workspace_capacity_dim = 256;
-    config->workspace_ignition_threshold = 0.6f;
+    config->workspace_ignition_threshold = 0.6F;
     config->workspace_refractory_ms = 50;
     config->workspace_enable_history = !minimal;
     config->workspace_history_depth = 10;
 
     // Phase 11 Enhancement C1.1: Quantum Annealing defaults
     config->enable_quantum_annealing = false;
-    config->annealing_temperature_init = 10.0f;
-    config->annealing_temperature_final = 0.1f;
+    config->annealing_temperature_init = 10.0F;
+    config->annealing_temperature_final = 0.1F;
     config->annealing_steps = 1000;
     config->quantum_annealing_frequency = 100;
 
     // Phase 12: Personality and Identity defaults
     config->use_random_personality = true;
     config->personality_seed = 0;
-    config->explicit_openness = 0.5f;
-    config->explicit_conscientiousness = 0.5f;
-    config->explicit_extraversion = 0.5f;
-    config->explicit_agreeableness = 0.5f;
-    config->explicit_neuroticism = 0.5f;
+    config->explicit_openness = 0.5F;
+    config->explicit_conscientiousness = 0.5F;
+    config->explicit_extraversion = 0.5F;
+    config->explicit_agreeableness = 0.5F;
+    config->explicit_neuroticism = 0.5F;
     config->explicit_gender = GENDER_FEMALE;
     config->explicit_sexuality = SEXUALITY_HETEROSEXUAL;
-    config->personality_trait_mean = 0.5f;
-    config->personality_trait_stddev = 0.15f;
-    config->female_probability = 1.0f;
-    config->male_probability = 0.0f;
-    config->non_binary_probability = 0.0f;
+    config->personality_trait_mean = 0.5F;
+    config->personality_trait_stddev = 0.15F;
+    config->female_probability = 1.0F;
+    config->male_probability = 0.0F;
+    config->non_binary_probability = 0.0F;
 
     // Phase 5/6: Biological Realism defaults
     config->enable_glial = !minimal;
@@ -262,9 +262,9 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     // Phase C2.1: Quantum Walk defaults
     config->enable_quantum_walk_diffusion = false;
     config->quantum_walk_steps = 50;
-    config->quantum_classical_mixing = 0.2f;
+    config->quantum_classical_mixing = 0.2F;
     config->quantum_coin_type = 0;
-    config->quantum_decoherence_rate = 0.05f;
+    config->quantum_decoherence_rate = 0.05F;
 
     // Phase 10.12: Second Messenger Cascades (biological neuromodulation)
     // Second messengers are fundamental to how neuromodulators actually work in the brain.
@@ -274,19 +274,19 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     // Phase TM-3: Brain-Training Integration defaults
     config->enable_training_integration = !minimal;
     config->training_register_security = !minimal;
-    config->training_default_lr = 0.0f;
+    config->training_default_lr = 0.0F;
 
     // Phase TM-4/5/6: Advanced Training Pipeline defaults
     config->enable_lr_scheduler = false;
     config->enable_regularization = false;
-    config->regularization_l1_lambda = 0.0f;
-    config->regularization_l2_lambda = 0.0001f;
-    config->dropout_rate = 0.0f;
+    config->regularization_l1_lambda = 0.0F;
+    config->regularization_l2_lambda = 0.0001F;
+    config->dropout_rate = 0.0F;
     config->enable_gradient_management = false;
     config->enable_gradient_health_check = true;
     config->gradient_accumulation_steps = 1;
-    config->gradient_clip_value = 0.0f;
-    config->gradient_clip_norm = 0.0f;
+    config->gradient_clip_value = 0.0F;
+    config->gradient_clip_norm = 0.0F;
 }
 
 void nimcp_brain_factory_init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t size,

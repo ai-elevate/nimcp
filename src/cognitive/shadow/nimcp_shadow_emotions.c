@@ -53,7 +53,7 @@ static void bio_broadcast_shadow_alert(shadow_emotion_system_t* system) {
     if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
 
     /* Only broadcast if shadow intensity is significant */
-    if (system->total_shadow_intensity < 0.4f) { return; }
+    if (system->total_shadow_intensity < 0.4F) { return; }
 
     /* Use introspection response to alert other modules */
     bio_msg_introspection_response_t msg = {0};
@@ -81,7 +81,7 @@ static inline float clamp(float v, float min, float max) {
 
 static inline float exponential_decay(float current, float target, float rate, float dt) {
     float decay_factor = expf(-rate * dt);
-    return current * decay_factor + target * (1.0f - decay_factor);
+    return current * decay_factor + target * (1.0F - decay_factor);
 }
 
 //=============================================================================
@@ -159,28 +159,28 @@ void shadow_system_reset(shadow_emotion_system_t* system) {
 
     // Reset envy
     memset(&system->envy, 0, sizeof(envy_state_t));
-    system->envy.self_esteem = 0.6f;  // Moderate baseline
+    system->envy.self_esteem = 0.6F;  // Moderate baseline
 
     // Reset obsession
     memset(&system->obsession, 0, sizeof(obsession_state_t));
-    system->obsession.cognitive_flexibility = 0.7f;  // Moderate baseline
+    system->obsession.cognitive_flexibility = 0.7F;  // Moderate baseline
 
     // Reset hubris
     memset(&system->hubris, 0, sizeof(hubris_state_t));
-    system->hubris.accountability = 0.5f;  // Moderate baseline
+    system->hubris.accountability = 0.5F;  // Moderate baseline
 
     // Reset greed
     memset(&system->greed, 0, sizeof(greed_state_t));
-    system->greed.generosity = 0.5f;  // Moderate baseline
+    system->greed.generosity = 0.5F;  // Moderate baseline
 
     // Reset narcissism
     memset(&system->narcissism, 0, sizeof(narcissism_state_t));
-    system->narcissism.self_awareness = 0.5f;  // Moderate baseline
+    system->narcissism.self_awareness = 0.5F;  // Moderate baseline
 
     // Reset global state
-    system->total_shadow_intensity = 0.0f;
-    system->mental_health_impact = 0.0f;
-    system->insight_level = 0.5f;  // Moderate self-awareness
+    system->total_shadow_intensity = 0.0F;
+    system->mental_health_impact = 0.0F;
+    system->insight_level = 0.5F;  // Moderate self-awareness
     system->in_self_correction = false;
 
     // Reset other-detection
@@ -192,7 +192,7 @@ void shadow_system_reset(shadow_emotion_system_t* system) {
     // Reset intervention records
     for (int i = 0; i < SHADOW_INTERVENTION_COUNT; i++) {
         system->interventions[i].active = false;
-        system->interventions[i].effectiveness = 0.5f;
+        system->interventions[i].effectiveness = 0.5F;
         system->interventions[i].application_count = 0;
     }
 
@@ -222,15 +222,15 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     if (!system) return;
     system->total_update_calls++;
 
-    float decay_rate = 1.0f / 3600.0f;  // 1-hour time constant
+    float decay_rate = 1.0F / 3600.0F;  // 1-hour time constant
 
     // Decay jealousy
     if (system->jealousy.active) {
         system->jealousy.intensity = exponential_decay(
-            system->jealousy.intensity, 0.0f, decay_rate, dt);
-        system->jealousy.rumination *= 0.99f;
+            system->jealousy.intensity, 0.0F, decay_rate, dt);
+        system->jealousy.rumination *= 0.99F;
         
-        if (system->jealousy.intensity < SHADOW_JEALOUSY_THRESHOLD * 0.5f) {
+        if (system->jealousy.intensity < SHADOW_JEALOUSY_THRESHOLD * 0.5F) {
             system->jealousy.active = false;
         }
     }
@@ -239,9 +239,9 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     for (int i = 0; i < SHADOW_MAX_ENVY_TARGETS; i++) {
         if (system->envy.targets[i].active) {
             system->envy.targets[i].intensity = exponential_decay(
-                system->envy.targets[i].intensity, 0.0f, decay_rate, dt);
+                system->envy.targets[i].intensity, 0.0F, decay_rate, dt);
             
-            if (system->envy.targets[i].intensity < SHADOW_ENVY_THRESHOLD * 0.5f) {
+            if (system->envy.targets[i].intensity < SHADOW_ENVY_THRESHOLD * 0.5F) {
                 system->envy.targets[i].active = false;
                 system->envy.active_envy_count--;
             }
@@ -252,9 +252,9 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     for (int i = 0; i < SHADOW_MAX_OBSESSIVE_THOUGHTS; i++) {
         if (system->obsession.thoughts[i].active) {
             system->obsession.thoughts[i].intensity = exponential_decay(
-                system->obsession.thoughts[i].intensity, 0.0f, decay_rate, dt);
+                system->obsession.thoughts[i].intensity, 0.0F, decay_rate, dt);
             
-            if (system->obsession.thoughts[i].intensity < SHADOW_OBSESSION_THRESHOLD * 0.5f) {
+            if (system->obsession.thoughts[i].intensity < SHADOW_OBSESSION_THRESHOLD * 0.5F) {
                 system->obsession.thoughts[i].active = false;
                 system->obsession.active_obsession_count--;
             }
@@ -264,9 +264,9 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     // Decay hubris
     if (system->hubris.active) {
         system->hubris.intensity = exponential_decay(
-            system->hubris.intensity, 0.0f, decay_rate * 0.5f, dt);  // Slower decay
+            system->hubris.intensity, 0.0F, decay_rate * 0.5F, dt);  // Slower decay
         
-        if (system->hubris.intensity < SHADOW_HUBRIS_THRESHOLD * 0.5f) {
+        if (system->hubris.intensity < SHADOW_HUBRIS_THRESHOLD * 0.5F) {
             system->hubris.active = false;
         }
     }
@@ -274,11 +274,11 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     // Decay greed
     if (system->greed.active) {
         system->greed.craving_intensity = exponential_decay(
-            system->greed.craving_intensity, 0.0f, decay_rate, dt);
+            system->greed.craving_intensity, 0.0F, decay_rate, dt);
         system->greed.intensity = exponential_decay(
-            system->greed.intensity, 0.0f, decay_rate * 0.5f, dt);
+            system->greed.intensity, 0.0F, decay_rate * 0.5F, dt);
         
-        if (system->greed.intensity < SHADOW_GREED_THRESHOLD * 0.5f) {
+        if (system->greed.intensity < SHADOW_GREED_THRESHOLD * 0.5F) {
             system->greed.active = false;
         }
     }
@@ -286,9 +286,9 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     // Decay narcissism (slow - trait-like)
     if (system->narcissism.active) {
         system->narcissism.intensity = exponential_decay(
-            system->narcissism.intensity, 0.0f, decay_rate * 0.1f, dt);
+            system->narcissism.intensity, 0.0F, decay_rate * 0.1F, dt);
         
-        if (system->narcissism.intensity < SHADOW_NARCISSISM_THRESHOLD * 0.5f) {
+        if (system->narcissism.intensity < SHADOW_NARCISSISM_THRESHOLD * 0.5F) {
             system->narcissism.active = false;
         }
     }
@@ -303,17 +303,17 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
         system->narcissism.intensity;
 
     // Calculate mental health impact (non-linear - higher intensity = worse impact)
-    float normalized_intensity = system->total_shadow_intensity / 6.0f;
+    float normalized_intensity = system->total_shadow_intensity / 6.0F;
     system->mental_health_impact = normalized_intensity * normalized_intensity;  // Quadratic
-    system->mental_health_impact = clamp(system->mental_health_impact, 0.0f, 1.0f);
+    system->mental_health_impact = clamp(system->mental_health_impact, 0.0F, 1.0F);
 
     /* Broadcast shadow alert if intensity is concerning */
     bio_broadcast_shadow_alert(system);
 
     // Insight increases with self-awareness and decreases with narcissism
-    float insight_target = 0.5f + (1.0f - system->narcissism.lack_of_empathy) * 0.3f;
+    float insight_target = 0.5F + (1.0F - system->narcissism.lack_of_empathy) * 0.3F;
     system->insight_level = exponential_decay(
-        system->insight_level, insight_target, 1.0f / 86400.0f, dt);
+        system->insight_level, insight_target, 1.0F / 86400.0F, dt);
 }
 
 
@@ -334,8 +334,8 @@ void shadow_experience_jealousy(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    threat_level = clamp(threat_level, 0.0f, 1.0f);
-    attachment_strength = clamp(attachment_strength, 0.0f, 1.0f);
+    threat_level = clamp(threat_level, 0.0F, 1.0F);
+    attachment_strength = clamp(attachment_strength, 0.0F, 1.0F);
 
     system->jealousy.active = true;
     system->jealousy.threatened_bond_id = bond_id;
@@ -344,15 +344,15 @@ void shadow_experience_jealousy(shadow_emotion_system_t* system,
 
     // Intensity = threat × attachment (both high = intense jealousy)
     system->jealousy.intensity = threat_level * attachment_strength;
-    system->jealousy.intensity = clamp(system->jealousy.intensity, 0.0f, 1.0f);
+    system->jealousy.intensity = clamp(system->jealousy.intensity, 0.0F, 1.0F);
 
     // Cognitive distortions increase with intensity
-    system->jealousy.catastrophizing = system->jealousy.intensity * 0.8f;
-    system->jealousy.rumination = system->jealousy.intensity * 0.7f;
+    system->jealousy.catastrophizing = system->jealousy.intensity * 0.8F;
+    system->jealousy.rumination = system->jealousy.intensity * 0.7F;
 
     // Behavioral urges
-    system->jealousy.mate_guarding_urge = system->jealousy.intensity * 0.9f;
-    system->jealousy.rival_derogation_urge = system->jealousy.intensity * 0.6f;
+    system->jealousy.mate_guarding_urge = system->jealousy.intensity * 0.9F;
+    system->jealousy.rival_derogation_urge = system->jealousy.intensity * 0.6F;
 
     system->jealousy.onset_time = current_time;
     system->jealousy.episode_count++;
@@ -378,9 +378,9 @@ void shadow_experience_envy(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    self_level = clamp(self_level, 0.0f, 1.0f);
-    other_level = clamp(other_level, 0.0f, 1.0f);
-    maliciousness = clamp(maliciousness, 0.0f, 1.0f);
+    self_level = clamp(self_level, 0.0F, 1.0F);
+    other_level = clamp(other_level, 0.0F, 1.0F);
+    maliciousness = clamp(maliciousness, 0.0F, 1.0F);
 
     // Find slot for this target
     envy_target_t* target = NULL;
@@ -412,18 +412,18 @@ void shadow_experience_envy(shadow_emotion_system_t* system,
     target->maliciousness = maliciousness;
 
     // Intensity from discrepancy (large gap = intense envy)
-    target->intensity = clamp(target->discrepancy, 0.0f, 1.0f);
+    target->intensity = clamp(target->discrepancy, 0.0F, 1.0F);
 
     // Deservingness belief increases with envy
-    target->deservingness_belief = target->intensity * 0.7f;
+    target->deservingness_belief = target->intensity * 0.7F;
 
     // Schadenfreude only if malicious
-    target->schadenfreude = target->maliciousness * target->intensity * 0.5f;
+    target->schadenfreude = target->maliciousness * target->intensity * 0.5F;
 
     target->onset_time = current_time;
 
     // Update chronic envy (trait level)
-    float envy_avg = 0.0f;
+    float envy_avg = 0.0F;
     int count = 0;
     for (int i = 0; i < SHADOW_MAX_ENVY_TARGETS; i++) {
         if (system->envy.targets[i].active) {
@@ -456,8 +456,8 @@ void shadow_register_obsession(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    intensity = clamp(intensity, 0.0f, 1.0f);
-    distress = clamp(distress, 0.0f, 1.0f);
+    intensity = clamp(intensity, 0.0F, 1.0F);
+    distress = clamp(distress, 0.0F, 1.0F);
 
     // Find or allocate thought slot
     obsessive_thought_t* thought = NULL;
@@ -493,15 +493,15 @@ void shadow_register_obsession(shadow_emotion_system_t* system,
         thought->intrusion_count_today = 0;
     }
     thought->intrusion_count_today++;
-    thought->frequency = (float)thought->intrusion_count_today / 24.0f;  // per hour estimate
+    thought->frequency = (float)thought->intrusion_count_today / 24.0F;  // per hour estimate
     thought->last_intrusion_time = current_time;
 
     // Compulsive urges scale with distress
-    thought->checking_urge = distress * 0.7f;
-    thought->neutralizing_urge = distress * 0.8f;
+    thought->checking_urge = distress * 0.7F;
+    thought->neutralizing_urge = distress * 0.8F;
 
     // Update overall obsession level
-    float total_intensity = 0.0f;
+    float total_intensity = 0.0F;
     int count = 0;
     for (int i = 0; i < SHADOW_MAX_OBSESSIVE_THOUGHTS; i++) {
         if (system->obsession.thoughts[i].active) {
@@ -509,11 +509,11 @@ void shadow_register_obsession(shadow_emotion_system_t* system,
             count++;
         }
     }
-    system->obsession.overall_obsession_level = count > 0 ? (total_intensity / (float)count) : 0.0f;
+    system->obsession.overall_obsession_level = count > 0 ? (total_intensity / (float)count) : 0.0F;
 
     // Cognitive flexibility decreases with obsession load
-    system->obsession.cognitive_flexibility = 1.0f - (system->obsession.overall_obsession_level * 0.5f);
-    system->obsession.cognitive_flexibility = clamp(system->obsession.cognitive_flexibility, 0.2f, 1.0f);
+    system->obsession.cognitive_flexibility = 1.0F - (system->obsession.overall_obsession_level * 0.5F);
+    system->obsession.cognitive_flexibility = clamp(system->obsession.cognitive_flexibility, 0.2F, 1.0F);
 
     system->total_detections_self++;
 }
@@ -534,25 +534,25 @@ void shadow_assess_hubris(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    power_level = clamp(power_level, 0.0f, 1.0f);
-    accountability = clamp(accountability, 0.0f, 1.0f);
+    power_level = clamp(power_level, 0.0F, 1.0F);
+    accountability = clamp(accountability, 0.0F, 1.0F);
 
     system->hubris.recent_success_count = recent_success_count;
     system->hubris.power_level = power_level;
     system->hubris.accountability = accountability;
 
     // Hubris = success + power - accountability
-    float hubris_factor = (recent_success_count * 0.2f + power_level) * (1.0f - accountability);
-    system->hubris.intensity = clamp(hubris_factor, 0.0f, 1.0f);
+    float hubris_factor = (recent_success_count * 0.2F + power_level) * (1.0F - accountability);
+    system->hubris.intensity = clamp(hubris_factor, 0.0F, 1.0F);
 
     // Components
-    system->hubris.grandiosity = system->hubris.intensity * 0.8f;
-    system->hubris.overconfidence = system->hubris.intensity * 0.9f;
-    system->hubris.invincibility_belief = system->hubris.intensity * 0.7f;
+    system->hubris.grandiosity = system->hubris.intensity * 0.8F;
+    system->hubris.overconfidence = system->hubris.intensity * 0.9F;
+    system->hubris.invincibility_belief = system->hubris.intensity * 0.7F;
 
     // Behavioral consequences
-    system->hubris.risk_taking = system->hubris.intensity * 0.8f;
-    system->hubris.contempt_for_others = system->hubris.intensity * 0.6f;
+    system->hubris.risk_taking = system->hubris.intensity * 0.8F;
+    system->hubris.contempt_for_others = system->hubris.intensity * 0.6F;
 
     system->hubris.active = (system->hubris.intensity >= SHADOW_HUBRIS_THRESHOLD);
     
@@ -577,32 +577,32 @@ void shadow_assess_greed(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    acquisition_value = clamp(acquisition_value, 0.0f, 1.0f);
-    necessity = clamp(necessity, 0.0f, 1.0f);
-    scarcity_context = clamp(scarcity_context, 0.0f, 1.0f);
+    acquisition_value = clamp(acquisition_value, 0.0F, 1.0F);
+    necessity = clamp(necessity, 0.0F, 1.0F);
+    scarcity_context = clamp(scarcity_context, 0.0F, 1.0F);
 
     // Greed = (acquisition - necessity) weighted by scarcity
     float excess = acquisition_value - necessity;
-    if (excess > 0.0f) {
+    if (excess > 0.0F) {
         // Acquiring more than needed
-        float greed_increment = excess * (1.0f - scarcity_context * 0.5f);  // Less greedy if scarce
-        system->greed.intensity += greed_increment * 0.1f;
-        system->greed.intensity = clamp(system->greed.intensity, 0.0f, 1.0f);
+        float greed_increment = excess * (1.0F - scarcity_context * 0.5F);  // Less greedy if scarce
+        system->greed.intensity += greed_increment * 0.1F;
+        system->greed.intensity = clamp(system->greed.intensity, 0.0F, 1.0F);
     }
 
-    system->greed.scarcity_mindset = 1.0f - scarcity_context;
-    system->greed.craving_intensity = system->greed.intensity * 0.9f;
+    system->greed.scarcity_mindset = 1.0F - scarcity_context;
+    system->greed.craving_intensity = system->greed.intensity * 0.9F;
 
     // Hoarding tendency increases with greed
-    system->greed.hoarding_tendency = system->greed.intensity * 0.7f;
-    system->greed.exploitation_level = system->greed.intensity * 0.5f;
+    system->greed.hoarding_tendency = system->greed.intensity * 0.7F;
+    system->greed.exploitation_level = system->greed.intensity * 0.5F;
 
     // Generosity is inverse of greed
-    system->greed.generosity = 1.0f - system->greed.intensity;
-    system->greed.generosity = clamp(system->greed.generosity, 0.1f, 1.0f);
+    system->greed.generosity = 1.0F - system->greed.intensity;
+    system->greed.generosity = clamp(system->greed.generosity, 0.1F, 1.0F);
 
     // Hedonic adaptation (pleasure fades)
-    system->greed.hedonic_adaptation = 0.8f;  // High adaptation
+    system->greed.hedonic_adaptation = 0.8F;  // High adaptation
 
     system->greed.acquisition_count++;
     system->greed.last_acquisition_time = current_time;
@@ -630,13 +630,13 @@ void shadow_assess_narcissism(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    grandiosity_level = clamp(grandiosity_level, 0.0f, 1.0f);
-    empathy_level = clamp(empathy_level, 0.0f, 1.0f);
-    need_for_admiration = clamp(need_for_admiration, 0.0f, 1.0f);
-    entitlement = clamp(entitlement, 0.0f, 1.0f);
+    grandiosity_level = clamp(grandiosity_level, 0.0F, 1.0F);
+    empathy_level = clamp(empathy_level, 0.0F, 1.0F);
+    need_for_admiration = clamp(need_for_admiration, 0.0F, 1.0F);
+    entitlement = clamp(entitlement, 0.0F, 1.0F);
 
     system->narcissism.grandiosity = grandiosity_level;
-    system->narcissism.lack_of_empathy = 1.0f - empathy_level;  // Inverse
+    system->narcissism.lack_of_empathy = 1.0F - empathy_level;  // Inverse
     system->narcissism.need_for_admiration = need_for_admiration;
     system->narcissism.entitlement = entitlement;
 
@@ -646,25 +646,25 @@ void shadow_assess_narcissism(shadow_emotion_system_t* system,
         system->narcissism.lack_of_empathy +
         system->narcissism.need_for_admiration +
         system->narcissism.entitlement
-    ) / 4.0f;
+    ) / 4.0F;
 
     // Determine subtype
-    if (system->narcissism.intensity >= 0.7f && 
-        system->narcissism.exploitativeness > 0.6f &&
-        system->narcissism.paranoia > 0.5f) {
+    if (system->narcissism.intensity >= 0.7F && 
+        system->narcissism.exploitativeness > 0.6F &&
+        system->narcissism.paranoia > 0.5F) {
         system->narcissism.subtype = NARCISSISM_MALIGNANT;
-    } else if (system->narcissism.intensity >= 0.5f) {
+    } else if (system->narcissism.intensity >= 0.5F) {
         system->narcissism.subtype = NARCISSISM_GRANDIOSE;
     } else {
         system->narcissism.subtype = NARCISSISM_VULNERABLE;
     }
 
     // Rage proneness increases with narcissism
-    system->narcissism.rage_proneness = system->narcissism.intensity * 0.7f;
+    system->narcissism.rage_proneness = system->narcissism.intensity * 0.7F;
 
     // Self-awareness typically low in narcissism
-    system->narcissism.self_awareness = 1.0f - (system->narcissism.intensity * 0.6f);
-    system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.1f, 1.0f);
+    system->narcissism.self_awareness = 1.0F - (system->narcissism.intensity * 0.6F);
+    system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.1F, 1.0F);
 
     system->narcissism.active = (system->narcissism.intensity >= SHADOW_NARCISSISM_THRESHOLD);
     
@@ -693,9 +693,9 @@ void shadow_analyze_other(shadow_emotion_system_t* system,
     
     if (!system || !system->detected_in_others) return;
 
-    manipulation_cues = clamp(manipulation_cues, 0.0f, 1.0f);
-    empathy_cues = clamp(empathy_cues, 0.0f, 1.0f);
-    grandiosity_cues = clamp(grandiosity_cues, 0.0f, 1.0f);
+    manipulation_cues = clamp(manipulation_cues, 0.0F, 1.0F);
+    empathy_cues = clamp(empathy_cues, 0.0F, 1.0F);
+    grandiosity_cues = clamp(grandiosity_cues, 0.0F, 1.0F);
 
     // Find or allocate detection record for this person
     other_detection_t* other = NULL;
@@ -712,7 +712,7 @@ void shadow_analyze_other(shadow_emotion_system_t* system,
             if (system->detected_in_others[i].person_id == 0) {
                 other = &system->detected_in_others[i];
                 other->person_id = person_id;
-                other->trust_level = 0.5f;  // Start neutral
+                other->trust_level = 0.5F;  // Start neutral
                 break;
             }
         }
@@ -728,23 +728,23 @@ void shadow_analyze_other(shadow_emotion_system_t* system,
     pattern->timestamp = current_time;
     pattern->manipulation_score = manipulation_cues;
     pattern->grandiosity_score = grandiosity_cues;
-    pattern->empathy_deficit_score = 1.0f - empathy_cues;  // Low empathy = deficit
-    pattern->exploitation_score = (manipulation_cues + (1.0f - empathy_cues)) / 2.0f;
+    pattern->empathy_deficit_score = 1.0F - empathy_cues;  // Low empathy = deficit
+    pattern->exploitation_score = (manipulation_cues + (1.0F - empathy_cues)) / 2.0F;
 
     // Flag as toxic if patterns are severe
     pattern->flagged_as_toxic = (
-        pattern->manipulation_score > 0.6f ||
-        pattern->empathy_deficit_score > 0.7f ||
-        pattern->exploitation_score > 0.65f
+        pattern->manipulation_score > 0.6F ||
+        pattern->empathy_deficit_score > 0.7F ||
+        pattern->exploitation_score > 0.65F
     );
 
     other->history_index++;
 
     // Aggregate detection scores (running average over history)
-    float avg_manipulation = 0.0f;
-    float avg_grandiosity = 0.0f;
-    float avg_empathy_deficit = 0.0f;
-    float avg_exploitation = 0.0f;
+    float avg_manipulation = 0.0F;
+    float avg_grandiosity = 0.0F;
+    float avg_empathy_deficit = 0.0F;
+    float avg_exploitation = 0.0F;
     int history_count = 0;
 
     for (int i = 0; i < SHADOW_MAX_INTERACTION_HISTORY && i < other->history_index; i++) {
@@ -763,25 +763,25 @@ void shadow_analyze_other(shadow_emotion_system_t* system,
     }
 
     // Detect specific shadow emotions
-    other->detected_narcissism = (avg_grandiosity + avg_empathy_deficit) / 2.0f;
+    other->detected_narcissism = (avg_grandiosity + avg_empathy_deficit) / 2.0F;
     other->detected_greed = avg_exploitation;
-    other->detected_hubris = avg_grandiosity * 0.8f;
+    other->detected_hubris = avg_grandiosity * 0.8F;
 
     // Jealousy and envy harder to detect - require specific cues (simplified here)
-    other->detected_jealousy = 0.0f;  // Would need possessive behavior cues
-    other->detected_envy = 0.0f;      // Would need resentment cues
+    other->detected_jealousy = 0.0F;  // Would need possessive behavior cues
+    other->detected_envy = 0.0F;      // Would need resentment cues
 
     // Adjust trust based on toxicity
-    if (avg_manipulation > 0.6f || avg_empathy_deficit > 0.7f) {
-        other->trust_level *= 0.9f;  // Reduce trust
-    } else if (avg_manipulation < 0.3f && avg_empathy_deficit < 0.4f) {
-        other->trust_level += (1.0f - other->trust_level) * 0.05f;  // Slowly increase
+    if (avg_manipulation > 0.6F || avg_empathy_deficit > 0.7F) {
+        other->trust_level *= 0.9F;  // Reduce trust
+    } else if (avg_manipulation < 0.3F && avg_empathy_deficit < 0.4F) {
+        other->trust_level += (1.0F - other->trust_level) * 0.05F;  // Slowly increase
     }
-    other->trust_level = clamp(other->trust_level, 0.0f, 1.0f);
+    other->trust_level = clamp(other->trust_level, 0.0F, 1.0F);
 
     // Set protective measures
-    other->maintain_boundaries = (avg_exploitation > 0.6f || avg_empathy_deficit > 0.7f);
-    other->use_gray_rock = (other->detected_narcissism > 0.65f);  // Boring responses
+    other->maintain_boundaries = (avg_exploitation > 0.6F || avg_empathy_deficit > 0.7F);
+    other->use_gray_rock = (other->detected_narcissism > 0.65F);  // Boring responses
 
     system->total_detections_other++;
 }
@@ -843,90 +843,90 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
     intervention->last_applied_time = current_time;
     intervention->application_count++;
 
-    float reduction = 0.0f;
+    float reduction = 0.0F;
 
     // Apply strategy-specific effects
     switch (strategy) {
         case SHADOW_INTERVENTION_COGNITIVE_REFRAME:
             // Challenge distorted thoughts (effective for jealousy, hubris)
             if (emotion == SHADOW_JEALOUSY) {
-                system->jealousy.catastrophizing *= 0.7f;
-                system->jealousy.rumination *= 0.8f;
-                reduction = 0.2f;
+                system->jealousy.catastrophizing *= 0.7F;
+                system->jealousy.rumination *= 0.8F;
+                reduction = 0.2F;
             } else if (emotion == SHADOW_HUBRIS) {
-                system->hubris.overconfidence *= 0.8f;
-                system->hubris.invincibility_belief *= 0.7f;
-                reduction = 0.25f;
+                system->hubris.overconfidence *= 0.8F;
+                system->hubris.invincibility_belief *= 0.7F;
+                reduction = 0.25F;
             }
             break;
 
         case SHADOW_INTERVENTION_MINDFULNESS:
             // Present moment awareness (effective for obsession, jealousy)
             if (emotion == SHADOW_OBSESSION) {
-                system->obsession.overall_obsession_level *= 0.75f;
-                system->obsession.cognitive_flexibility += 0.1f;
-                system->obsession.cognitive_flexibility = clamp(system->obsession.cognitive_flexibility, 0.0f, 1.0f);
-                reduction = 0.25f;
+                system->obsession.overall_obsession_level *= 0.75F;
+                system->obsession.cognitive_flexibility += 0.1F;
+                system->obsession.cognitive_flexibility = clamp(system->obsession.cognitive_flexibility, 0.0F, 1.0F);
+                reduction = 0.25F;
             } else if (emotion == SHADOW_JEALOUSY) {
-                system->jealousy.rumination *= 0.7f;
-                reduction = 0.15f;
+                system->jealousy.rumination *= 0.7F;
+                reduction = 0.15F;
             }
             break;
 
         case SHADOW_INTERVENTION_PERSPECTIVE_TAKING:
             // Empathy exercise (effective for narcissism, envy)
             if (emotion == SHADOW_NARCISSISM) {
-                system->narcissism.lack_of_empathy *= 0.85f;
-                system->narcissism.intensity *= 0.9f;
-                system->narcissism.self_awareness += 0.1f;
-                system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.0f, 1.0f);
-                reduction = 0.15f;
+                system->narcissism.lack_of_empathy *= 0.85F;
+                system->narcissism.intensity *= 0.9F;
+                system->narcissism.self_awareness += 0.1F;
+                system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.0F, 1.0F);
+                reduction = 0.15F;
             } else if (emotion == SHADOW_ENVY) {
-                system->envy.chronic_envy *= 0.85f;
-                reduction = 0.15f;
+                system->envy.chronic_envy *= 0.85F;
+                reduction = 0.15F;
             }
             break;
 
         case SHADOW_INTERVENTION_GRATITUDE:
             // Counter envy and greed with gratitude
             if (emotion == SHADOW_ENVY) {
-                system->envy.chronic_envy *= 0.8f;
-                system->envy.self_esteem += 0.05f;
-                system->envy.self_esteem = clamp(system->envy.self_esteem, 0.0f, 1.0f);
-                reduction = 0.2f;
+                system->envy.chronic_envy *= 0.8F;
+                system->envy.self_esteem += 0.05F;
+                system->envy.self_esteem = clamp(system->envy.self_esteem, 0.0F, 1.0F);
+                reduction = 0.2F;
             } else if (emotion == SHADOW_GREED) {
-                system->greed.intensity *= 0.85f;
-                system->greed.generosity += 0.05f;
-                system->greed.generosity = clamp(system->greed.generosity, 0.0f, 1.0f);
-                reduction = 0.2f;
+                system->greed.intensity *= 0.85F;
+                system->greed.generosity += 0.05F;
+                system->greed.generosity = clamp(system->greed.generosity, 0.0F, 1.0F);
+                reduction = 0.2F;
             }
             break;
 
         case SHADOW_INTERVENTION_REALITY_TESTING:
             // Counter hubris and narcissism with reality checks
             if (emotion == SHADOW_HUBRIS) {
-                system->hubris.overconfidence *= 0.7f;
-                system->hubris.invincibility_belief *= 0.6f;
+                system->hubris.overconfidence *= 0.7F;
+                system->hubris.invincibility_belief *= 0.6F;
                 system->hubris.fall_count++;
                 system->hubris.last_reality_check_time = current_time;
-                reduction = 0.3f;
+                reduction = 0.3F;
             } else if (emotion == SHADOW_NARCISSISM) {
-                system->narcissism.grandiosity *= 0.8f;
-                system->narcissism.self_awareness += 0.1f;
-                system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.0f, 1.0f);
-                reduction = 0.2f;
+                system->narcissism.grandiosity *= 0.8F;
+                system->narcissism.self_awareness += 0.1F;
+                system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.0F, 1.0F);
+                reduction = 0.2F;
             }
             break;
 
         case SHADOW_INTERVENTION_EXPOSURE:
             // Gradual exposure (effective for obsession, jealousy)
             if (emotion == SHADOW_OBSESSION) {
-                system->obsession.overall_obsession_level *= 0.8f;
-                reduction = 0.2f;
+                system->obsession.overall_obsession_level *= 0.8F;
+                reduction = 0.2F;
             } else if (emotion == SHADOW_JEALOUSY) {
-                system->jealousy.intensity *= 0.85f;
-                system->jealousy.mate_guarding_urge *= 0.8f;
-                reduction = 0.2f;
+                system->jealousy.intensity *= 0.85F;
+                system->jealousy.mate_guarding_urge *= 0.8F;
+                reduction = 0.2F;
             }
             break;
 
@@ -936,7 +936,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
 
     // Track effectiveness (success if reduction >= 10%)
     intervention->effectiveness = reduction;
-    if (reduction >= 0.1f) {
+    if (reduction >= 0.1F) {
         system->successful_interventions++;
         system->in_self_correction = true;
         return true;
@@ -981,7 +981,7 @@ bool shadow_auto_intervene(shadow_emotion_system_t* system,
     }
 
     // Only intervene if above threshold
-    if (max_intensity < 0.5f) {
+    if (max_intensity < 0.5F) {
         system->in_self_correction = false;
         return false;
     }
@@ -1035,7 +1035,7 @@ bool shadow_is_active(const shadow_emotion_system_t* system,
 
 float shadow_get_intensity(const shadow_emotion_system_t* system,
                            shadow_emotion_type_t emotion) {
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
 
     switch (emotion) {
         case SHADOW_JEALOUSY: return system->jealousy.intensity;
@@ -1044,16 +1044,16 @@ float shadow_get_intensity(const shadow_emotion_system_t* system,
         case SHADOW_HUBRIS: return system->hubris.intensity;
         case SHADOW_GREED: return system->greed.intensity;
         case SHADOW_NARCISSISM: return system->narcissism.intensity;
-        default: return 0.0f;
+        default: return 0.0F;
     }
 }
 
 float shadow_get_mental_health_impact(const shadow_emotion_system_t* system) {
-    return system ? system->mental_health_impact : 0.0f;
+    return system ? system->mental_health_impact : 0.0F;
 }
 
 float shadow_get_insight(const shadow_emotion_system_t* system) {
-    return system ? system->insight_level : 0.0f;
+    return system ? system->insight_level : 0.0F;
 }
 
 bool shadow_is_correcting(const shadow_emotion_system_t* system) {
@@ -1084,50 +1084,50 @@ void shadow_get_neuromodulator_effects(const shadow_emotion_system_t* system,
     if (!system || !dopamine_factor || !serotonin_factor || !cortisol_factor) return;
 
     // Defaults
-    *dopamine_factor = 1.0f;
-    *serotonin_factor = 1.0f;
-    *cortisol_factor = 1.0f;
+    *dopamine_factor = 1.0F;
+    *serotonin_factor = 1.0F;
+    *cortisol_factor = 1.0F;
 
     // Jealousy: High stress, low mood
     if (system->jealousy.active) {
-        *serotonin_factor -= system->jealousy.intensity * 0.3f;
-        *cortisol_factor += system->jealousy.intensity * 0.4f;
+        *serotonin_factor -= system->jealousy.intensity * 0.3F;
+        *cortisol_factor += system->jealousy.intensity * 0.4F;
     }
 
     // Envy: Reduces serotonin, increases cortisol
     if (system->envy.active_envy_count > 0) {
-        *serotonin_factor -= system->envy.chronic_envy * 0.25f;
-        *cortisol_factor += system->envy.chronic_envy * 0.3f;
+        *serotonin_factor -= system->envy.chronic_envy * 0.25F;
+        *cortisol_factor += system->envy.chronic_envy * 0.3F;
     }
 
     // Obsession: Low serotonin (repetitive), high cortisol (anxiety)
     if (system->obsession.active_obsession_count > 0) {
-        *serotonin_factor -= system->obsession.overall_obsession_level * 0.35f;
-        *cortisol_factor += system->obsession.overall_obsession_level * 0.4f;
+        *serotonin_factor -= system->obsession.overall_obsession_level * 0.35F;
+        *cortisol_factor += system->obsession.overall_obsession_level * 0.4F;
     }
 
     // Hubris: Low serotonin (poor impulse control), high dopamine (risk seeking)
     if (system->hubris.active) {
-        *serotonin_factor -= system->hubris.intensity * 0.2f;
-        *dopamine_factor += system->hubris.risk_taking * 0.3f;
+        *serotonin_factor -= system->hubris.intensity * 0.2F;
+        *dopamine_factor += system->hubris.risk_taking * 0.3F;
     }
 
     // Greed: High dopamine (craving), low serotonin (impulse control)
     if (system->greed.active) {
-        *dopamine_factor += system->greed.craving_intensity * 0.4f;
-        *serotonin_factor -= system->greed.intensity * 0.25f;
+        *dopamine_factor += system->greed.craving_intensity * 0.4F;
+        *serotonin_factor -= system->greed.intensity * 0.25F;
     }
 
     // Narcissism: Dysregulated dopamine (validation cycles)
     if (system->narcissism.active) {
-        *dopamine_factor += system->narcissism.need_for_admiration * 0.3f;
-        *serotonin_factor -= system->narcissism.lack_of_empathy * 0.2f;
+        *dopamine_factor += system->narcissism.need_for_admiration * 0.3F;
+        *serotonin_factor -= system->narcissism.lack_of_empathy * 0.2F;
     }
 
     // Clamp to reasonable ranges
-    *dopamine_factor = clamp(*dopamine_factor, 0.4f, 2.0f);
-    *serotonin_factor = clamp(*serotonin_factor, 0.3f, 1.5f);
-    *cortisol_factor = clamp(*cortisol_factor, 1.0f, 2.5f);
+    *dopamine_factor = clamp(*dopamine_factor, 0.4F, 2.0F);
+    *serotonin_factor = clamp(*serotonin_factor, 0.3F, 1.5F);
+    *cortisol_factor = clamp(*cortisol_factor, 1.0F, 2.5F);
 }
 
 void shadow_get_interaction_modulation(const shadow_emotion_system_t* system,
@@ -1149,9 +1149,9 @@ void shadow_get_interaction_modulation(const shadow_emotion_system_t* system,
     if (!empathy_modulation || !trust_modulation || !engagement_modulation) return;
 
     // Defaults: no modulation
-    *empathy_modulation = 1.0f;
-    *trust_modulation = 1.0f;
-    *engagement_modulation = 1.0f;
+    *empathy_modulation = 1.0F;
+    *trust_modulation = 1.0F;
+    *engagement_modulation = 1.0F;
 
     // Find detection record
     other_detection_t* other = NULL;
@@ -1168,22 +1168,22 @@ void shadow_get_interaction_modulation(const shadow_emotion_system_t* system,
     *trust_modulation = other->trust_level;
 
     // Empathy modulation: reduce if narcissism detected (avoid feeding supply)
-    if (other->detected_narcissism > 0.6f) {
-        *empathy_modulation = 1.0f - (other->detected_narcissism * 0.5f);
+    if (other->detected_narcissism > 0.6F) {
+        *empathy_modulation = 1.0F - (other->detected_narcissism * 0.5F);
     }
 
     // Engagement modulation: reduce if gray rock strategy needed
     if (other->use_gray_rock) {
-        *engagement_modulation = 0.3f;  // Low engagement, boring responses
+        *engagement_modulation = 0.3F;  // Low engagement, boring responses
     }
 
     // Further reduce engagement if boundaries needed
     if (other->maintain_boundaries) {
-        *engagement_modulation *= 0.6f;
+        *engagement_modulation *= 0.6F;
     }
 
     // Clamp
-    *empathy_modulation = clamp(*empathy_modulation, 0.1f, 1.0f);
-    *trust_modulation = clamp(*trust_modulation, 0.0f, 1.0f);
-    *engagement_modulation = clamp(*engagement_modulation, 0.1f, 1.0f);
+    *empathy_modulation = clamp(*empathy_modulation, 0.1F, 1.0F);
+    *trust_modulation = clamp(*trust_modulation, 0.0F, 1.0F);
+    *engagement_modulation = clamp(*engagement_modulation, 0.1F, 1.0F);
 }

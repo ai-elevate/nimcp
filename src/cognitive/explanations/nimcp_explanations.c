@@ -398,45 +398,45 @@ bool explanation_generate_from_multimodal(
     // What: Decision label and confidence
     snprintf(explanation->what, sizeof(explanation->what),
             "Decision: %s (confidence: %.1f%%)",
-            output->decision_label, output->confidence * 100.0f);
+            output->decision_label, output->confidence * 100.0F);
 
     // Why: Explain modality contributions based on attention weights
     char modality_list[256] = {0};
     bool first = true;
 
-    if (output->visual_attention > 0.01f) {
+    if (output->visual_attention > 0.01F) {
         snprintf(modality_list + strlen(modality_list),
                 sizeof(modality_list) - strlen(modality_list),
                 "%svisual (%.0f%%)", first ? "" : ", ",
-                output->visual_attention * 100.0f);
+                output->visual_attention * 100.0F);
         first = false;
     }
-    if (output->audio_attention > 0.01f) {
+    if (output->audio_attention > 0.01F) {
         snprintf(modality_list + strlen(modality_list),
                 sizeof(modality_list) - strlen(modality_list),
                 "%saudio (%.0f%%)", first ? "" : ", ",
-                output->audio_attention * 100.0f);
+                output->audio_attention * 100.0F);
         first = false;
     }
-    if (output->speech_attention > 0.01f) {
+    if (output->speech_attention > 0.01F) {
         snprintf(modality_list + strlen(modality_list),
                 sizeof(modality_list) - strlen(modality_list),
                 "%sspeech (%.0f%%)", first ? "" : ", ",
-                output->speech_attention * 100.0f);
+                output->speech_attention * 100.0F);
         first = false;
     }
-    if (output->language_attention > 0.01f) {
+    if (output->language_attention > 0.01F) {
         snprintf(modality_list + strlen(modality_list),
                 sizeof(modality_list) - strlen(modality_list),
                 "%slanguage (%.0f%%)", first ? "" : ", ",
-                output->language_attention * 100.0f);
+                output->language_attention * 100.0F);
         first = false;
     }
-    if (output->direct_attention > 0.01f) {
+    if (output->direct_attention > 0.01F) {
         snprintf(modality_list + strlen(modality_list),
                 sizeof(modality_list) - strlen(modality_list),
                 "%sdirect (%.0f%%)", first ? "" : ", ",
-                output->direct_attention * 100.0f);
+                output->direct_attention * 100.0F);
         first = false;
     }
 
@@ -620,10 +620,10 @@ static void generate_what_explanation(brain_t brain, brain_decision_t* decision,
     // Extract actual output label from decision
     if (decision->label[0] != '\0') {
         snprintf(buffer, buffer_size, "Decision: %s (%.1f%% confidence)",
-                decision->label, decision->confidence * 100.0f);
+                decision->label, decision->confidence * 100.0F);
     } else {
         snprintf(buffer, buffer_size, "Decision made with %.1f%% confidence",
-                decision->confidence * 100.0f);
+                decision->confidence * 100.0F);
     }
 }
 
@@ -648,11 +648,11 @@ static void generate_why_explanation(brain_t brain, brain_decision_t* decision,
         float selectivity = decision->sparsity;
         const char* selectivity_desc = "many";
 
-        if (selectivity > 0.9f) {
+        if (selectivity > 0.9F) {
             selectivity_desc = "very few";
-        } else if (selectivity > 0.7f) {
+        } else if (selectivity > 0.7F) {
             selectivity_desc = "few";
-        } else if (selectivity > 0.5f) {
+        } else if (selectivity > 0.5F) {
             selectivity_desc = "some";
         }
 
@@ -709,13 +709,13 @@ static void generate_confidence_explanation(brain_t brain, brain_decision_t* dec
     if (decision->num_active_neurons > 0) {
         snprintf(buffer, buffer_size,
                 "%.0f%% confident (%s certainty: %u active features with %.1f%% selectivity)",
-                confidence * 100.0f, level,
+                confidence * 100.0F, level,
                 decision->num_active_neurons,
-                decision->sparsity * 100.0f);
+                decision->sparsity * 100.0F);
     } else {
         snprintf(buffer, buffer_size,
                 "%.0f%% confident (%s certainty based on pattern matching)",
-                confidence * 100.0f, level);
+                confidence * 100.0F, level);
     }
 }
 

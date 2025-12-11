@@ -111,11 +111,11 @@ static void init_rng(quantum_annealer_t annealer) {
  * COMPLEXITY: O(1)
  */
 static float random_float(quantum_annealer_t annealer) {
-    if (!annealer || !annealer->rng_state) return 0.5f;
+    if (!annealer || !annealer->rng_state) return 0.5F;
 
     // LCG parameters (Numerical Recipes)
-    *annealer->rng_state = (*annealer->rng_state * 1664525u + 1013904223u);
-    return (*annealer->rng_state) / 4294967296.0f;
+    *annealer->rng_state = (*annealer->rng_state * 1664525U + 1013904223U);
+    return (*annealer->rng_state) / 4294967296.0F;
 }
 
 /**
@@ -140,9 +140,9 @@ static float random_gaussian(quantum_annealer_t annealer, float mean, float stdd
     float u2 = random_float(annealer);
 
     // Avoid log(0)
-    u1 = (u1 < 1e-10f) ? 1e-10f : u1;
+    u1 = (u1 < 1e-10F) ? 1e-10F : u1;
 
-    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * M_PI * u2);
+    float z = sqrtf(-2.0F * logf(u1)) * cosf(2.0F * M_PI * u2);
     return mean + stddev * z;
 }
 
@@ -172,11 +172,11 @@ static bool validate_config(const quantum_annealing_config_t* config) {
         LOG_ERROR("validate_config: null config");
         return false;
     }
-    if (config->initial_temperature <= 0.0f) {
+    if (config->initial_temperature <= 0.0F) {
         LOG_ERROR("Invalid initial_temperature: %f (must be > 0)", config->initial_temperature);
         return false;
     }
-    if (config->final_temperature <= 0.0f) {
+    if (config->final_temperature <= 0.0F) {
         LOG_ERROR("Invalid final_temperature: %f (must be > 0)", config->final_temperature);
         return false;
     }
@@ -189,7 +189,7 @@ static bool validate_config(const quantum_annealing_config_t* config) {
         LOG_ERROR("Invalid num_iterations: 0 (must be > 0)");
         return false;
     }
-    if (config->quantum_strength < 0.0f || config->quantum_strength > 1.0f) {
+    if (config->quantum_strength < 0.0F || config->quantum_strength > 1.0F) {
         LOG_ERROR("Invalid quantum_strength: %f (must be in [0, 1])", config->quantum_strength);
         return false;
     }
@@ -217,7 +217,7 @@ static bool validate_config(const quantum_annealing_config_t* config) {
  * COMPLEXITY: O(1)
  */
 static float calculate_temperature(quantum_annealer_t annealer, uint32_t iteration) {
-    if (!annealer) return 0.0f;
+    if (!annealer) return 0.0F;
 
     float T_init = annealer->config.initial_temperature;
     float T_final = annealer->config.final_temperature;
@@ -239,7 +239,7 @@ static float calculate_temperature(quantum_annealer_t annealer, uint32_t iterati
             return T_init - (T_init - T_final) * progress;
 
         case COOLING_LOGARITHMIC:
-            return T_init / logf(1.0f + (float)iteration);
+            return T_init / logf(1.0F + (float)iteration);
 
         case COOLING_ADAPTIVE: {
             // Simplified adaptive: use exponential as baseline
@@ -270,8 +270,8 @@ static float calculate_temperature(quantum_annealer_t annealer, uint32_t iterati
  * COMPLEXITY: O(1)
  */
 static float metropolis_probability(float delta_energy, float temperature) {
-    if (delta_energy <= 0.0f) return 1.0f;
-    if (temperature <= 0.0f) return 0.0f;
+    if (delta_energy <= 0.0F) return 1.0F;
+    if (temperature <= 0.0F) return 0.0F;
 
     return expf(-delta_energy / temperature);
 }
@@ -301,20 +301,20 @@ static float quantum_tunneling_probability(
     float temperature,
     float quantum_strength
 ) {
-    if (!quantum_strength) return 0.0f;
-    if (delta_energy <= 0.0f) return 0.0f;
-    if (temperature <= 0.0f) return 0.0f;
+    if (!quantum_strength) return 0.0F;
+    if (delta_energy <= 0.0F) return 0.0F;
+    if (temperature <= 0.0F) return 0.0F;
 
     float barrier_height = fabsf(delta_energy);
-    float alpha = 0.5f;  // Tunable exponent
+    float alpha = 0.5F;  // Tunable exponent
     float temp_scaled = powf(temperature, alpha);
 
     // Avoid division by zero or overflow
-    if (temp_scaled < 1e-10f) return 0.0f;
+    if (temp_scaled < 1e-10F) return 0.0F;
 
     float exponent = -barrier_height / temp_scaled;
     // Clamp to prevent underflow
-    exponent = (exponent < -20.0f) ? -20.0f : exponent;
+    exponent = (exponent < -20.0F) ? -20.0F : exponent;
 
     return quantum_strength * expf(exponent);
 }
@@ -348,10 +348,10 @@ static void generate_neighbor(
 
     // Larger step size for better exploration: 0.5 * sqrt(T) instead of 0.1 * sqrt(T)
     // This allows faster convergence while still decreasing step size as T decreases
-    float stddev = 0.5f * sqrtf(temperature);
+    float stddev = 0.5F * sqrtf(temperature);
 
     for (uint32_t i = 0; i < dim; ++i) {
-        neighbor[i] = current[i] + random_gaussian(annealer, 0.0f, stddev);
+        neighbor[i] = current[i] + random_gaussian(annealer, 0.0F, stddev);
     }
 }
 
@@ -386,11 +386,11 @@ quantum_annealing_config_t quantum_annealing_default_config(void) {
     LOG_DEBUG("Creating default quantum annealing configuration");
 
     quantum_annealing_config_t config = {
-        .initial_temperature = 1.0f,
-        .final_temperature = 0.01f,
+        .initial_temperature = 1.0F,
+        .final_temperature = 0.01F,
         .num_iterations = 1000,
         .cooling_schedule = COOLING_EXPONENTIAL,
-        .quantum_strength = 0.5f,
+        .quantum_strength = 0.5F,
         .enable_tunneling = true,
         .seed = 0  // Use time-based seed
     };
@@ -460,8 +460,8 @@ float quantum_annealer_get_temperature(quantum_annealer_t annealer, uint32_t ite
      * HOW:  Delegate to calculate_temperature()
      */
 
-    if (!annealer) return -1.0f;
-    if (iteration >= annealer->config.num_iterations) return -1.0f;
+    if (!annealer) return -1.0F;
+    if (iteration >= annealer->config.num_iterations) return -1.0F;
 
     return calculate_temperature(annealer, iteration);
 }
@@ -533,7 +533,7 @@ float quantum_anneal(
         // Accept/reject decision
         bool accept = false;
 
-        if (delta_energy <= 0.0f) {
+        if (delta_energy <= 0.0F) {
             // Always accept improvements
             accept = true;
         } else {
@@ -541,7 +541,7 @@ float quantum_anneal(
             float p_metropolis = metropolis_probability(delta_energy, temperature);
 
             // Quantum tunneling (if enabled)
-            float p_quantum = 0.0f;
+            float p_quantum = 0.0F;
             if (annealer->config.enable_tunneling) {
                 p_quantum = quantum_tunneling_probability(
                     delta_energy, temperature, annealer->config.quantum_strength);
@@ -549,7 +549,7 @@ float quantum_anneal(
 
             // Combined probability
             float p_total = p_metropolis + p_quantum;
-            p_total = (p_total > 1.0f) ? 1.0f : p_total;  // Clamp to [0,1]
+            p_total = (p_total > 1.0F) ? 1.0F : p_total;  // Clamp to [0,1]
 
             // Accept with probability p_total
             accept = (random_float(annealer) < p_total);

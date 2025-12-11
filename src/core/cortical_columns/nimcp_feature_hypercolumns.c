@@ -92,7 +92,7 @@ static void feature_hypercolumns_bio_cleanup(void) {
  */
 static float compute_circular_distance(float a, float b, float period) {
     float diff = fmodf(fabsf(a - b), period);
-    if (diff > period / 2.0f) {
+    if (diff > period / 2.0F) {
         diff = period - diff;
     }
     return diff;
@@ -109,7 +109,7 @@ static float evaluate_gaussian_tuning(
     float sigma
 ) {
     float diff = value - preferred;
-    float response = expf(-(diff * diff) / (2.0f * sigma * sigma));
+    float response = expf(-(diff * diff) / (2.0F * sigma * sigma));
     return response;
 }
 
@@ -136,9 +136,9 @@ static float evaluate_von_mises_tuning(
  */
 static float sigma_to_kappa(float sigma) {
     if (sigma < EPSILON) {
-        return 100.0f;
+        return 100.0F;
     }
-    return 1.0f / (sigma * sigma);
+    return 1.0F / (sigma * sigma);
 }
 
 /**
@@ -232,7 +232,7 @@ void feature_dimension_set_tuning_width(
         return;
     }
 
-    if (width <= 0.0f) {
+    if (width <= 0.0F) {
         LOG_ERROR(LOG_MODULE, "Invalid tuning width: %f", width);
         return;
     }
@@ -261,7 +261,7 @@ static bool init_feature_column(
 
     col->preferred_value = preferred_value;
     col->tuning_width = tuning_width;
-    col->activation = 0.0f;
+    col->activation = 0.0F;
     col->num_weights = num_weights;
     col->weights = NULL;
 
@@ -273,7 +273,7 @@ static bool init_feature_column(
 
         // Initialize with small random values
         for (uint32_t i = 0; i < num_weights; i++) {
-            col->weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+            col->weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 0.1F;
         }
     }
 
@@ -344,7 +344,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
         uint32_t dim_idx = indices[0];
         float preferred = dimensions[0].min_value +
             (dim_idx * (dimensions[0].max_value - dimensions[0].min_value)) /
-            fmaxf(1.0f, dimensions[0].num_columns - 1.0f);
+            fmaxf(1.0F, dimensions[0].num_columns - 1.0F);
 
         if (!init_feature_column(&hcol->columns[col_idx],
                                  preferred,
@@ -367,10 +367,10 @@ feature_hypercolumn_t* feature_hypercolumn_create(
     nimcp_free(indices);
 
     // Initialize spatial properties
-    hcol->position[0] = 0.0f;
-    hcol->position[1] = 0.0f;
-    hcol->position[2] = 0.0f;
-    hcol->receptive_field_size = 1.0f;
+    hcol->position[0] = 0.0F;
+    hcol->position[1] = 0.0F;
+    hcol->position[2] = 0.0F;
+    hcol->receptive_field_size = 1.0F;
 
     // Create mutex
     hcol->mutex = nimcp_platform_mutex_create();
@@ -432,10 +432,10 @@ feature_hypercolumn_t* feature_hypercolumn_create_orientation(
     }
 
     feature_dimension_t dim = feature_dimension_create(
-        FEATURE_ORIENTATION, 0.0f, 180.0f, num_orientations
+        FEATURE_ORIENTATION, 0.0F, 180.0F, num_orientations
     );
     dim.is_circular = true;
-    dim.tuning_width = 30.0f / 180.0f;  // ~30 degrees bandwidth
+    dim.tuning_width = 30.0F / 180.0F;  // ~30 degrees bandwidth
 
     return feature_hypercolumn_create(&dim, 1);
 }
@@ -449,10 +449,10 @@ feature_hypercolumn_t* feature_hypercolumn_create_direction(
     }
 
     feature_dimension_t dim = feature_dimension_create(
-        FEATURE_DIRECTION, 0.0f, 360.0f, num_directions
+        FEATURE_DIRECTION, 0.0F, 360.0F, num_directions
     );
     dim.is_circular = true;
-    dim.tuning_width = 45.0f / 360.0f;  // ~45 degrees bandwidth
+    dim.tuning_width = 45.0F / 360.0F;  // ~45 degrees bandwidth
 
     return feature_hypercolumn_create(&dim, 1);
 }
@@ -462,7 +462,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_spatial_freq(
     float min_freq,
     float max_freq
 ) {
-    if (num_octaves == 0 || min_freq <= 0.0f || max_freq <= min_freq) {
+    if (num_octaves == 0 || min_freq <= 0.0F || max_freq <= min_freq) {
         LOG_ERROR(LOG_MODULE, "Invalid spatial frequency parameters");
         return NULL;
     }
@@ -471,7 +471,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_spatial_freq(
         FEATURE_SPATIAL_FREQ, min_freq, max_freq, num_octaves
     );
     dim.is_circular = false;
-    dim.tuning_width = 0.5f;  // Half-octave bandwidth
+    dim.tuning_width = 0.5F;  // Half-octave bandwidth
 
     return feature_hypercolumn_create(&dim, 1);
 }
@@ -489,17 +489,17 @@ feature_hypercolumn_t* feature_hypercolumn_create_color(
 
     // Hue dimension (circular)
     dims[0] = feature_dimension_create(
-        FEATURE_COLOR_HUE, 0.0f, 360.0f, num_hues
+        FEATURE_COLOR_HUE, 0.0F, 360.0F, num_hues
     );
     dims[0].is_circular = true;
-    dims[0].tuning_width = 45.0f / 360.0f;
+    dims[0].tuning_width = 45.0F / 360.0F;
 
     // Saturation dimension (linear)
     dims[1] = feature_dimension_create(
-        FEATURE_COLOR_SATURATION, 0.0f, 1.0f, num_saturations
+        FEATURE_COLOR_SATURATION, 0.0F, 1.0F, num_saturations
     );
     dims[1].is_circular = false;
-    dims[1].tuning_width = 0.2f;
+    dims[1].tuning_width = 0.2F;
 
     return feature_hypercolumn_create(dims, 2);
 }
@@ -508,7 +508,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_disparity(
     uint32_t num_disparities,
     float max_disparity
 ) {
-    if (num_disparities == 0 || max_disparity <= 0.0f) {
+    if (num_disparities == 0 || max_disparity <= 0.0F) {
         LOG_ERROR(LOG_MODULE, "Invalid disparity parameters");
         return NULL;
     }
@@ -562,7 +562,7 @@ void feature_hypercolumn_process(
         decompose_column_index(col_idx, indices,
                               hcol->dimensions, hcol->num_dimensions);
 
-        float response = 1.0f;
+        float response = 1.0F;
 
         // Compute joint response across all dimensions
         for (uint32_t dim = 0; dim < hcol->num_dimensions; dim++) {
@@ -573,7 +573,7 @@ void feature_hypercolumn_process(
             float preferred = hcol->dimensions[dim].min_value +
                 (dim_idx * (hcol->dimensions[dim].max_value -
                            hcol->dimensions[dim].min_value)) /
-                fmaxf(1.0f, hcol->dimensions[dim].num_columns - 1.0f);
+                fmaxf(1.0F, hcol->dimensions[dim].num_columns - 1.0F);
 
             float dim_response;
             if (hcol->dimensions[dim].is_circular) {
@@ -631,7 +631,7 @@ void feature_hypercolumn_process_with_input(
             // Random initialization
             for (uint32_t j = 0; j < input_size; j++) {
                 hcol->columns[i].weights[j] =
-                    ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+                    ((float)rand() / RAND_MAX - 0.5F) * 0.1F;
             }
         }
     }
@@ -644,13 +644,13 @@ void feature_hypercolumn_process_with_input(
             continue;
         }
 
-        float weighted_sum = 0.0f;
+        float weighted_sum = 0.0F;
         for (uint32_t i = 0; i < input_size; i++) {
             weighted_sum += col->weights[i] * raw_input[i];
         }
 
         // Apply nonlinearity (ReLU)
-        col->activation = fmaxf(0.0f, weighted_sum);
+        col->activation = fmaxf(0.0F, weighted_sum);
     }
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
@@ -668,7 +668,7 @@ void feature_hypercolumn_normalize(feature_hypercolumn_t* hcol) {
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
         sum += hcol->columns[i].activation;
     }
@@ -691,7 +691,7 @@ void feature_hypercolumn_softmax(
         return;
     }
 
-    if (temperature <= 0.0f) {
+    if (temperature <= 0.0F) {
         LOG_ERROR(LOG_MODULE, "Invalid temperature: %f", temperature);
         return;
     }
@@ -707,7 +707,7 @@ void feature_hypercolumn_softmax(
     }
 
     // Compute exp and sum
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
         float exp_val = expf((hcol->columns[i].activation - max_activation) /
                             temperature);
@@ -776,7 +776,7 @@ void feature_hypercolumn_k_winners(
     // Zero out below threshold
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
         if (hcol->columns[i].activation < threshold) {
-            hcol->columns[i].activation = 0.0f;
+            hcol->columns[i].activation = 0.0F;
         }
     }
 
@@ -796,7 +796,7 @@ void feature_hypercolumn_threshold(
 
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
         if (hcol->columns[i].activation < threshold) {
-            hcol->columns[i].activation = 0.0f;
+            hcol->columns[i].activation = 0.0F;
         }
     }
 
@@ -825,25 +825,25 @@ float feature_hypercolumn_decode_single(
 ) {
     if (!hcol) {
         LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
-        return 0.0f;
+        return 0.0F;
     }
 
     if (dimension >= hcol->num_dimensions) {
         LOG_ERROR(LOG_MODULE, "Invalid dimension: %u", dimension);
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
 
-    float weighted_sum = 0.0f;
-    float weight_total = 0.0f;
+    float weighted_sum = 0.0F;
+    float weight_total = 0.0F;
 
     uint32_t* indices = (uint32_t*)nimcp_malloc(
         hcol->num_dimensions * sizeof(uint32_t)
     );
     if (!indices) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
-        return 0.0f;
+        return 0.0F;
     }
 
     for (uint32_t col_idx = 0; col_idx < hcol->total_columns; col_idx++) {
@@ -857,7 +857,7 @@ float feature_hypercolumn_decode_single(
             float preferred = hcol->dimensions[dimension].min_value +
                 (dim_idx * (hcol->dimensions[dimension].max_value -
                            hcol->dimensions[dimension].min_value)) /
-                fmaxf(1.0f, hcol->dimensions[dimension].num_columns - 1.0f);
+                fmaxf(1.0F, hcol->dimensions[dimension].num_columns - 1.0F);
 
             weighted_sum += activation * preferred;
             weight_total += activation;
@@ -871,7 +871,7 @@ float feature_hypercolumn_decode_single(
         return weighted_sum / weight_total;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 void feature_hypercolumn_decode_population_vector(
@@ -886,7 +886,7 @@ void feature_hypercolumn_decode_population_vector(
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
 
     for (uint32_t dim = 0; dim < hcol->num_dimensions; dim++) {
-        decoded_features[dim] = 0.0f;
+        decoded_features[dim] = 0.0F;
     }
 
     float* weight_totals = (float*)nimcp_malloc(
@@ -898,7 +898,7 @@ void feature_hypercolumn_decode_population_vector(
     }
 
     for (uint32_t dim = 0; dim < hcol->num_dimensions; dim++) {
-        weight_totals[dim] = 0.0f;
+        weight_totals[dim] = 0.0F;
     }
 
     uint32_t* indices = (uint32_t*)nimcp_malloc(
@@ -922,7 +922,7 @@ void feature_hypercolumn_decode_population_vector(
                 float preferred = hcol->dimensions[dim].min_value +
                     (dim_idx * (hcol->dimensions[dim].max_value -
                                hcol->dimensions[dim].min_value)) /
-                    fmaxf(1.0f, hcol->dimensions[dim].num_columns - 1.0f);
+                    fmaxf(1.0F, hcol->dimensions[dim].num_columns - 1.0F);
 
                 decoded_features[dim] += activation * preferred;
                 weight_totals[dim] += activation;
@@ -952,12 +952,12 @@ float feature_hypercolumn_get_activation(
 ) {
     if (!hcol) {
         LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
-        return 0.0f;
+        return 0.0F;
     }
 
     if (column_idx >= hcol->total_columns) {
         LOG_ERROR(LOG_MODULE, "Invalid column index: %u", column_idx);
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
@@ -1092,7 +1092,7 @@ void feature_hypercolumn_learn_hebbian(
         return;
     }
 
-    if (learning_rate <= 0.0f || learning_rate > 1.0f) {
+    if (learning_rate <= 0.0F || learning_rate > 1.0F) {
         LOG_ERROR(LOG_MODULE, "Invalid learning rate: %f", learning_rate);
         return;
     }
@@ -1114,7 +1114,7 @@ void feature_hypercolumn_learn_hebbian(
         }
 
         // Normalize weights to prevent runaway growth
-        float norm = 0.0f;
+        float norm = 0.0F;
         for (uint32_t i = 0; i < col->num_weights; i++) {
             norm += col->weights[i] * col->weights[i];
         }
@@ -1141,7 +1141,7 @@ void feature_hypercolumn_learn_competitive(
         return;
     }
 
-    if (learning_rate <= 0.0f || learning_rate > 1.0f) {
+    if (learning_rate <= 0.0F || learning_rate > 1.0F) {
         LOG_ERROR(LOG_MODULE, "Invalid learning rate: %f", learning_rate);
         return;
     }
@@ -1170,7 +1170,7 @@ void feature_hypercolumn_learn_competitive(
         // Compute neighborhood strength
         float distance = fabsf((float)col_idx - (float)winner_idx);
         float neighborhood = expf(-(distance * distance) /
-                                 (2.0f * neighborhood_sigma * neighborhood_sigma));
+                                 (2.0F * neighborhood_sigma * neighborhood_sigma));
 
         // Update weights
         float effective_lr = learning_rate * neighborhood;
@@ -1179,7 +1179,7 @@ void feature_hypercolumn_learn_competitive(
         }
 
         // Normalize
-        float norm = 0.0f;
+        float norm = 0.0F;
         for (uint32_t i = 0; i < col->num_weights; i++) {
             norm += col->weights[i] * col->weights[i];
         }
@@ -1234,7 +1234,7 @@ void feature_hypercolumn_get_tuning_curve(
     for (uint32_t col_idx = 0; col_idx < dim->num_columns; col_idx++) {
         float preferred = dim->min_value +
             (col_idx * (dim->max_value - dim->min_value)) /
-            fmaxf(1.0f, dim->num_columns - 1.0f);
+            fmaxf(1.0F, dim->num_columns - 1.0F);
 
         for (uint32_t pt = 0; pt < num_points; pt++) {
             float response;
@@ -1282,7 +1282,7 @@ void feature_hypercolumn_pool_responses(
 
     // Initialize output
     for (uint32_t i = 0; i < total_columns; i++) {
-        pooled_output[i] = 0.0f;
+        pooled_output[i] = 0.0F;
     }
 
     // Average pooling
@@ -1321,7 +1321,7 @@ void feature_hypercolumn_get_stats(
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     float max_act = -FLT_MAX;
     uint32_t num_active = 0;
     uint32_t winner_idx = 0;
@@ -1344,16 +1344,16 @@ void feature_hypercolumn_get_stats(
     stats->max_activation = max_act;
     stats->num_active = num_active;
     stats->winner_index = winner_idx;
-    stats->sparsity = 1.0f - ((float)num_active / hcol->total_columns);
+    stats->sparsity = 1.0F - ((float)num_active / hcol->total_columns);
 
     if (stats->mean_activation > EPSILON) {
         stats->selectivity = max_act / stats->mean_activation;
     } else {
-        stats->selectivity = 0.0f;
+        stats->selectivity = 0.0F;
     }
 
     // Compute entropy
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     if (sum > EPSILON) {
         for (uint32_t i = 0; i < hcol->total_columns; i++) {
             float p = hcol->columns[i].activation / sum;
@@ -1370,7 +1370,7 @@ void feature_hypercolumn_get_stats(
 float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
     if (!hcol) {
         LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
@@ -1382,7 +1382,7 @@ float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
         }
     }
 
-    float sparsity = 1.0f - ((float)num_active / hcol->total_columns);
+    float sparsity = 1.0F - ((float)num_active / hcol->total_columns);
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
 
@@ -1392,12 +1392,12 @@ float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
 float feature_hypercolumn_compute_selectivity(feature_hypercolumn_t* hcol) {
     if (!hcol) {
         LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     float max_act = -FLT_MAX;
 
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
@@ -1409,7 +1409,7 @@ float feature_hypercolumn_compute_selectivity(feature_hypercolumn_t* hcol) {
     }
 
     float mean = sum / hcol->total_columns;
-    float selectivity = 0.0f;
+    float selectivity = 0.0F;
 
     if (mean > EPSILON) {
         selectivity = max_act / mean;

@@ -232,9 +232,9 @@ static int serialize_network_segment(
     // For each neuron, write state and connections
     for (uint32_t i = start_neuron; i < start_neuron + num_neurons; i++) {
         // Get neuron state from base network
-        float neuron_state = 0.0f;
+        float neuron_state = 0.0F;
         if (!neural_network_get_neuron_state(base_net, i, &neuron_state)) {
-            neuron_state = 0.0f;
+            neuron_state = 0.0F;
         }
 
         // Get neuron pointer for synapse data (requires internal access)
@@ -246,7 +246,7 @@ static int serialize_network_segment(
         offset += sizeof(float);
 
         // Write threshold (use default if not available)
-        float threshold = 1.0f;
+        float threshold = 1.0F;
         *(float*)(temp_buffer + offset) = threshold;
         offset += sizeof(float);
 
@@ -619,7 +619,7 @@ static distributed_cow_state_t* create_distributed_cow_state(
     state->total_bytes_fetched = 0;
     state->cache_hits = 0;
     state->cache_misses = 0;
-    state->avg_fetch_latency_ms = 0.0f;
+    state->avg_fetch_latency_ms = 0.0F;
 
     return state;
 }
@@ -908,7 +908,7 @@ bool distributed_cow_fetch_segment(
 
     // Update stats
     uint64_t latency_us = nimcp_time_get_us() - start_time;
-    float latency_ms = latency_us / 1000.0f;
+    float latency_ms = latency_us / 1000.0F;
 
     state->total_fetches++;
     state->total_bytes_fetched += response_length;
@@ -1024,15 +1024,15 @@ bool brain_get_distributed_cow_stats(brain_t brain, distributed_cow_stats_t* sta
     stats->cache_misses = state->cache_misses;
 
     uint64_t total_accesses = state->cache_hits + state->cache_misses;
-    stats->cache_hit_rate = total_accesses > 0 ? (float)state->cache_hits / total_accesses : 0.0f;
+    stats->cache_hit_rate = total_accesses > 0 ? (float)state->cache_hits / total_accesses : 0.0F;
     stats->avg_fetch_latency_ms = state->avg_fetch_latency_ms;
 
     // Calculate bandwidth (bytes/sec)
     if (state->avg_fetch_latency_ms > 0) {
         float bytes_per_ms = state->total_bytes_fetched / (state->total_fetches * state->avg_fetch_latency_ms);
-        stats->network_bandwidth_mbps = (bytes_per_ms * 1000.0f * 8.0f) / (1024.0f * 1024.0f);
+        stats->network_bandwidth_mbps = (bytes_per_ms * 1000.0F * 8.0F) / (1024.0F * 1024.0F);
     } else {
-        stats->network_bandwidth_mbps = 0.0f;
+        stats->network_bandwidth_mbps = 0.0F;
     }
 
     nimcp_platform_rwlock_rdunlock(&state->cache_lock);

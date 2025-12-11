@@ -503,7 +503,7 @@ static float compute_modulated_switch_cost(executive_controller_t* exec,
     // DA range [0.3, 0.7], map to cost multiplier [1.4, 0.6]
     // High DA (0.7) → 0.6× cost (flexible, easy switching)
     // Low DA (0.3) → 1.4× cost (rigid, perseverative)
-    float multiplier = 1.4f - (da - 0.3f) * 2.0f;
+    float multiplier = 1.4F - (da - 0.3F) * 2.0F;
 
     return base_cost * multiplier;
 }
@@ -611,7 +611,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     // =========================================================================
     exec->workspace = NULL;
     exec->workspace_integration_enabled = false;
-    exec->workspace_ignition_threshold = 0.7f;  // Default threshold
+    exec->workspace_ignition_threshold = 0.7F;  // Default threshold
 
     // =========================================================================
     // BIO-ASYNC: Register with bio-router
@@ -749,9 +749,9 @@ static bool broadcast_decision_to_workspace(
     float decision_content[256] = {0};  // Workspace capacity
 
     // Encode task information into decision vector
-    decision_content[0] = (float)task->type / 10.0f;         // Task type
-    decision_content[1] = (float)task->priority / 5.0f;      // Priority
-    decision_content[2] = (float)task->status / 6.0f;        // Status
+    decision_content[0] = (float)task->type / 10.0F;         // Task type
+    decision_content[1] = (float)task->priority / 5.0F;      // Priority
+    decision_content[2] = (float)task->status / 6.0F;        // Status
     decision_content[3] = confidence;                         // Confidence
 
     // Add task progress information
@@ -929,7 +929,7 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
     exec->stats.total_switches++;
     float old_avg = exec->stats.avg_switch_cost_ms;
     float n = (float)exec->stats.total_switches;
-    exec->stats.avg_switch_cost_ms = (old_avg * (n - 1.0f) + switch_cost) / n;
+    exec->stats.avg_switch_cost_ms = (old_avg * (n - 1.0F) + switch_cost) / n;
 
     // REMOVE target from queue (to prevent double-free)
     if (found_in_queue) {
@@ -982,9 +982,9 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
     }
 
     // Broadcast significant decision to global workspace
-    float confidence = success ? 0.8f : 0.5f;  // Higher confidence for success
+    float confidence = success ? 0.8F : 0.5F;  // Higher confidence for success
     if (exec->active_task->priority >= PRIORITY_HIGH) {
-        confidence += 0.1f;  // Boost confidence for high-priority tasks
+        confidence += 0.1F;  // Boost confidence for high-priority tasks
     }
     broadcast_decision_to_workspace(exec, exec->active_task, confidence);
 
@@ -1092,7 +1092,7 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
     exec->stats.plans_created++;
     float old_avg = exec->stats.avg_plan_length;
     float n = (float)exec->stats.plans_created;
-    exec->stats.avg_plan_length = (old_avg * (n - 1.0f) + (float)plan->num_steps) / n;
+    exec->stats.avg_plan_length = (old_avg * (n - 1.0F) + (float)plan->num_steps) / n;
 
     return plan;
 }
@@ -1158,7 +1158,7 @@ float executive_get_cognitive_load(executive_controller_t* exec)
 {
     // Guard: NULL controller
     if (!exec) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // WHAT: Compute load as ratio of active tasks to capacity
@@ -1170,13 +1170,13 @@ float executive_get_cognitive_load(executive_controller_t* exec)
     }
 
     if (exec->max_tasks == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float load = (float)total_tasks / (float)exec->max_tasks;
 
     // Clamp to [0, 1]
-    return fminf(fmaxf(load, 0.0f), 1.0f);
+    return fminf(fmaxf(load, 0.0F), 1.0F);
 }
 
 /**
@@ -1204,7 +1204,7 @@ bool executive_boost_task_priority(executive_controller_t* exec,
     }
 
     // Clamp boost amount
-    boost_amount = fminf(fmaxf(boost_amount, 0.0f), 1.0f);
+    boost_amount = fminf(fmaxf(boost_amount, 0.0F), 1.0F);
 
     // WHAT: Search for task by name
     // WHY:  Need to find task in queue or active slot

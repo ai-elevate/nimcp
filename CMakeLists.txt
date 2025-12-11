@@ -50,6 +50,114 @@ find_package(GTest)
 # Enable testing
 enable_testing()
 
+#==============================================================================
+# Static Analysis / Linting
+#==============================================================================
+
+# Option to enable linting during build (off by default - use targets instead)
+option(NIMCP_ENABLE_LINT "Enable clang-tidy during build" OFF)
+option(NIMCP_ENABLE_CPPCHECK "Enable cppcheck during build" OFF)
+
+# Find clang-tidy
+find_program(CLANG_TIDY_EXE NAMES clang-tidy clang-tidy-18 clang-tidy-17 clang-tidy-16 clang-tidy-15 clang-tidy-14)
+if(CLANG_TIDY_EXE)
+    message(STATUS "Found clang-tidy: ${CLANG_TIDY_EXE}")
+
+    # Enable clang-tidy during compilation if requested
+    if(NIMCP_ENABLE_LINT)
+        set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_EXE}")
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+        message(STATUS "clang-tidy enabled for all builds")
+    endif()
+else()
+    message(STATUS "clang-tidy not found - install with: sudo apt install clang-tidy")
+endif()
+
+# Find cppcheck
+find_program(CPPCHECK_EXE NAMES cppcheck)
+if(CPPCHECK_EXE)
+    message(STATUS "Found cppcheck: ${CPPCHECK_EXE}")
+
+    # Enable cppcheck during compilation if requested
+    if(NIMCP_ENABLE_CPPCHECK)
+        set(CMAKE_C_CPPCHECK "${CPPCHECK_EXE};--enable=warning,performance,portability;--suppress=missingIncludeSystem;--inline-suppr")
+        set(CMAKE_CXX_CPPCHECK "${CPPCHECK_EXE};--enable=warning,performance,portability;--suppress=missingIncludeSystem;--inline-suppr")
+        message(STATUS "cppcheck enabled for all builds")
+    endif()
+else()
+    message(STATUS "cppcheck not found - install with: sudo apt install cppcheck")
+endif()
+
+# Collect source files for lint targets
+file(GLOB_RECURSE NIMCP_ALL_SOURCES
+    "${CMAKE_SOURCE_DIR}/src/*.c"
+    "${CMAKE_SOURCE_DIR}/src/*.h"
+)
+file(GLOB_RECURSE NIMCP_ALL_HEADERS
+    "${CMAKE_SOURCE_DIR}/include/*.h"
+)
+
+# Create 'lint' target for clang-tidy
+if(CLANG_TIDY_EXE)
+    add_custom_target(lint
+        COMMAND ${CLANG_TIDY_EXE}
+            -p ${CMAKE_BINARY_DIR}
+            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+            ${NIMCP_ALL_SOURCES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy on all source files..."
+        VERBATIM
+    )
+
+    # Create 'lint-fix' target to auto-fix issues
+    add_custom_target(lint-fix
+        COMMAND ${CLANG_TIDY_EXE}
+            -p ${CMAKE_BINARY_DIR}
+            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+            --fix
+            --fix-errors
+            ${NIMCP_ALL_SOURCES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy with auto-fix on all source files..."
+        VERBATIM
+    )
+endif()
+
+# Create 'cppcheck' target
+if(CPPCHECK_EXE)
+    add_custom_target(cppcheck
+        COMMAND ${CPPCHECK_EXE}
+            --enable=all
+            --suppress=missingIncludeSystem
+            --suppress=unusedFunction
+            --suppress=unmatchedSuppression
+            --inline-suppr
+            --project=${CMAKE_BINARY_DIR}/compile_commands.json
+            --error-exitcode=1
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running cppcheck on all source files..."
+        VERBATIM
+    )
+endif()
+
+# Create combined 'check' target that runs all available linters
+add_custom_target(check
+    COMMENT "Running all static analysis tools..."
+)
+if(CLANG_TIDY_EXE)
+    add_dependencies(check lint)
+endif()
+if(CPPCHECK_EXE)
+    add_dependencies(check cppcheck)
+endif()
+
+# Export compile commands for IDE and tool integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+#==============================================================================
+# End Static Analysis
+#==============================================================================
+
 # Add subdirectories
 add_subdirectory(src)
 add_subdirectory(test)

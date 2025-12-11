@@ -318,7 +318,7 @@ static bool update_intention(theory_of_mind_t tom, const char* action, float lik
 static tom_emotion_t infer_emotion_from_observation(const tom_observation_t* obs, float* confidence)
 {
     if (!obs || !confidence) {
-        if (confidence) *confidence = 0.0f;
+        if (confidence) *confidence = 0.0F;
         return TOM_EMOTION_UNKNOWN;
     }
 
@@ -486,7 +486,7 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
     tom->stats.total_observations++;
 
     // Infer emotion from observation
-    float emotion_conf = 0.0f;
+    float emotion_conf = 0.0F;
     tom_emotion_t inferred_emotion = infer_emotion_from_observation(observation, &emotion_conf);
 
     if (inferred_emotion != TOM_EMOTION_UNKNOWN) {
@@ -497,7 +497,7 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
 
     // Infer goal from observation
     char goal_buffer[256];
-    float goal_conf = 0.0f;
+    float goal_conf = 0.0F;
     if (infer_goal_from_observation(observation, goal_buffer, sizeof(goal_buffer), &goal_conf)) {
         strncpy(tom->current_goal, goal_buffer, sizeof(tom->current_goal) - 1);
         tom->current_goal[sizeof(tom->current_goal) - 1] = '\0';
@@ -510,10 +510,10 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
 
     // Update statistics
     float total_conf = emotion_conf + goal_conf;
-    if (total_conf > 0.0f) {
+    if (total_conf > 0.0F) {
         tom->stats.average_inference_confidence =
             (tom->stats.average_inference_confidence * (tom->stats.total_observations - 1) +
-             (total_conf / 2.0f)) / tom->stats.total_observations;
+             (total_conf / 2.0F)) / tom->stats.total_observations;
     }
 
     return true;
@@ -522,7 +522,7 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
 tom_emotion_t tom_infer_emotion(theory_of_mind_t tom, float* confidence)
 {
     if (!tom) {
-        if (confidence) *confidence = 0.0f;
+        if (confidence) *confidence = 0.0F;
         return TOM_EMOTION_UNKNOWN;
     }
 
@@ -587,7 +587,7 @@ bool tom_predict_action(theory_of_mind_t tom, char* predicted_action, size_t act
     predicted_action[action_buffer_size - 1] = '\0';
 
     if (likelihood) {
-        *likelihood = CONFIDENCE_LOW / 2.0f;  // Very low confidence (0.1)
+        *likelihood = CONFIDENCE_LOW / 2.0F;  // Very low confidence (0.1)
     }
 
     return true;
@@ -657,11 +657,11 @@ bool tom_detect_false_belief(theory_of_mind_t tom,
 
     if (*is_false_belief) {
         // Record false belief
-        add_belief(tom, believed_state, 0.8f, true);
+        add_belief(tom, believed_state, 0.8F, true);
         tom->stats.false_beliefs_detected++;
 
         // High perspective-taking score (recognized mismatch)
-        tom->perspective_score = fminf(1.0f, tom->perspective_score + 0.1f);
+        tom->perspective_score = fminf(1.0F, tom->perspective_score + 0.1F);
     }
 
     return true;
@@ -698,7 +698,7 @@ bool tom_get_bdi_state(theory_of_mind_t tom,
 float tom_get_perspective_score(theory_of_mind_t tom)
 {
     if (!tom) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return tom->perspective_score;
@@ -753,7 +753,7 @@ bool tom_update_self_model(theory_of_mind_t tom,
         set_error("Zero num_features in tom_update_self_model");
         return false;
     }
-    if (confidence < 0.0f || confidence > 1.0f) {
+    if (confidence < 0.0F || confidence > 1.0F) {
         set_error("Invalid confidence in tom_update_self_model");
         return false;
     }

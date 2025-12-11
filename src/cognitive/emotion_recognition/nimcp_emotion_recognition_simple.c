@@ -125,16 +125,16 @@ bool emotion_recognize_text_simple(
 
     // Initialize outputs
     emotion_name[0] = '\0';
-    *confidence = 0.0f;
-    *valence = 0.0f;
-    *arousal = 0.0f;
+    *confidence = 0.0F;
+    *valence = 0.0F;
+    *arousal = 0.0F;
 
     // Guard: Empty text
     if (text[0] == '\0') {
         strncpy(emotion_name, "neutral", emotion_name_len - 1);
-        *confidence = 0.5f;
-        *valence = 0.0f;
-        *arousal = 0.0f;
+        *confidence = 0.5F;
+        *valence = 0.0F;
+        *arousal = 0.0F;
         return true;
     }
 
@@ -148,48 +148,48 @@ bool emotion_recognize_text_simple(
     // Select dominant emotion
     int max_count = 0;
     const char* detected_emotion = "neutral";
-    float detected_valence = 0.0f;
-    float detected_arousal = 0.3f;
+    float detected_valence = 0.0F;
+    float detected_arousal = 0.3F;
 
     if (anger_count > max_count) {
         max_count = anger_count;
         detected_emotion = "anger";
-        detected_valence = -0.7f;
-        detected_arousal = 0.8f;
+        detected_valence = -0.7F;
+        detected_arousal = 0.8F;
     }
     if (fear_count > max_count) {
         max_count = fear_count;
         detected_emotion = "fear";
-        detected_valence = -0.6f;
-        detected_arousal = 0.9f;
+        detected_valence = -0.6F;
+        detected_arousal = 0.9F;
     }
     if (sadness_count > max_count) {
         max_count = sadness_count;
         detected_emotion = "sadness";
-        detected_valence = -0.6f;
-        detected_arousal = 0.2f;
+        detected_valence = -0.6F;
+        detected_arousal = 0.2F;
     }
     if (happiness_count > max_count) {
         max_count = happiness_count;
         detected_emotion = "happiness";
-        detected_valence = 0.8f;
-        detected_arousal = 0.6f;
+        detected_valence = 0.8F;
+        detected_arousal = 0.6F;
     }
     if (confusion_count > max_count) {
         max_count = confusion_count;
         detected_emotion = "confusion";
-        detected_valence = -0.2f;
-        detected_arousal = 0.5f;
+        detected_valence = -0.2F;
+        detected_arousal = 0.5F;
     }
 
     // Calculate confidence based on keyword density
     size_t text_len = strlen(text);
     float keyword_density = (max_count > 0) ?
-        ((float)max_count / (text_len / 20.0f)) : 0.0f;
+        ((float)max_count / (text_len / 20.0F)) : 0.0F;
 
     // Confidence: 0.5 base + up to 0.4 based on keyword density
-    *confidence = (max_count > 0) ? (0.5f + (keyword_density * 0.4f)) : 0.3f;
-    if (*confidence > 1.0f) *confidence = 1.0f;
+    *confidence = (max_count > 0) ? (0.5F + (keyword_density * 0.4F)) : 0.3F;
+    if (*confidence > 1.0F) *confidence = 1.0F;
 
     // Set outputs
     strncpy(emotion_name, detected_emotion, emotion_name_len - 1);

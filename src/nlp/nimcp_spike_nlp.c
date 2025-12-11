@@ -140,7 +140,7 @@ uint32_t spike_nlp_embed_to_spikes(
         // - For input neurons: bias ≈ 0, synaptic = 0, so need external_current > 0.5
         // - Scale by 5.0x to ensure even moderate signals (>0.1) reach threshold
         // - Clamp negative values (inhibitory handled separately)
-        float input_current = fmaxf(0.0f, embedding[i]) * 5.0f;
+        float input_current = fmaxf(0.0F, embedding[i]) * 5.0F;
 
         // WHAT: Set external current field for neuron
         // WHY: Persists through compute_step(), proper integration with neuron dynamics
@@ -156,7 +156,7 @@ uint32_t spike_nlp_embed_to_spikes(
         neuron->external_current = input_current;
 
         // Count how many neurons received significant input
-        if (input_current > 0.1f) {
+        if (input_current > 0.1F) {
             spikes_generated++;  // Track neurons stimulated (actual spikes recorded by compute_step)
         }
     }
@@ -382,7 +382,7 @@ bool spike_nlp_process_sentence(
     // WHY: Hubs integrate semantic information from multiple sources
     // HOW: Identify hubs by degree (synapses), average their activity
     // HEURISTIC: Hub = neuron with > 10 synapses (scale-free property)
-    float hub_activity_sum = 0.0f;
+    float hub_activity_sum = 0.0F;
     uint32_t hub_count = 0;
 
     for (uint32_t i = 0; i < net->num_neurons; i++) {
@@ -401,7 +401,7 @@ bool spike_nlp_process_sentence(
     // WHAT: Compute average hub activity
     // WHY: High hub activity = good semantic integration
     // HOW: Mean of all hub activities (or 0 if no hubs)
-    result->avg_hub_activity = (hub_count > 0) ? (hub_activity_sum / hub_count) : 0.0f;
+    result->avg_hub_activity = (hub_count > 0) ? (hub_activity_sum / hub_count) : 0.0F;
 
     LOG_DEBUG(LOG_MODULE, "Hub analysis: %u hubs found, avg_activity=%f",
               hub_count, result->avg_hub_activity);
@@ -410,7 +410,7 @@ bool spike_nlp_process_sentence(
     // WHY: Measure how well sentence meaning is captured
     // HOW: Scale hub activity to [0, 1] range
     // NOTE: This is a placeholder - real coherence would use variance analysis
-    result->semantic_coherence = result->avg_hub_activity * 0.5f;
+    result->semantic_coherence = result->avg_hub_activity * 0.5F;
 
     LOG_INFO(LOG_MODULE, "Sentence processing complete: total_spikes=%u, output_spikes=%u, coherence=%f",
              result->total_spikes, result->output_spikes, result->semantic_coherence);
@@ -456,7 +456,7 @@ float spike_nlp_compute_semantic_coherence(
     // Guard: NULL network, NULL indices, or zero hubs
     if (!network || !hub_indices || num_hubs == 0) {
         LOG_WARN(LOG_MODULE, "compute_semantic_coherence: Invalid parameters");
-        return 0.0f;
+        return 0.0F;
     }
 
     struct neural_network_struct* net = (struct neural_network_struct*)network;
@@ -465,7 +465,7 @@ float spike_nlp_compute_semantic_coherence(
     // WHAT: Average activity across all hub neurons
     // WHY: Need baseline for variance calculation
     // HOW: Sum activities and divide by count
-    float mean = 0.0f;
+    float mean = 0.0F;
     for (uint32_t i = 0; i < num_hubs; i++) {
         uint32_t idx = hub_indices[i];
 
@@ -480,7 +480,7 @@ float spike_nlp_compute_semantic_coherence(
     // WHAT: Sum of squared deviations from mean
     // WHY: Variance measures spread of hub activities
     // HOW: (activity - mean)² for each hub
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < num_hubs; i++) {
         uint32_t idx = hub_indices[i];
 
@@ -497,8 +497,8 @@ float spike_nlp_compute_semantic_coherence(
     // WHY: Normalized score easier to interpret
     // HOW: sqrt(variance) × 2.0, then clamp
     // TUNING: Factor of 2.0 chosen empirically for typical activity ranges
-    float coherence = sqrtf(variance) * 2.0f;
-    if (coherence > 1.0f) coherence = 1.0f;
+    float coherence = sqrtf(variance) * 2.0F;
+    if (coherence > 1.0F) coherence = 1.0F;
 
     return coherence;
 }

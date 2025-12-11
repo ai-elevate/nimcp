@@ -73,7 +73,7 @@ static recovery_strategy_t g_strategy_sigsegv = {
     .fallback = RECOVERY_ACTION_EMERGENCY_SAVE,
     .max_retries = 1,
     .timeout_ms = 1000,
-    .success_threshold = 0.7f,
+    .success_threshold = 0.7F,
     .description = "Rollback to checkpoint after segmentation fault"
 };
 
@@ -84,7 +84,7 @@ static recovery_strategy_t g_strategy_sigfpe = {
     .fallback = RECOVERY_ACTION_REDUCE_LR,
     .max_retries = 3,
     .timeout_ms = 100,
-    .success_threshold = 0.8f,
+    .success_threshold = 0.8F,
     .description = "Clear NaN/Inf and reduce learning rate"
 };
 
@@ -95,7 +95,7 @@ static recovery_strategy_t g_strategy_memory = {
     .fallback = RECOVERY_ACTION_REDUCE_BATCH,
     .max_retries = 2,
     .timeout_ms = 500,
-    .success_threshold = 0.75f,
+    .success_threshold = 0.75F,
     .description = "Free memory and reduce batch size"
 };
 
@@ -106,7 +106,7 @@ static recovery_strategy_t g_strategy_performance = {
     .fallback = RECOVERY_ACTION_REDUCE_MODEL,
     .max_retries = 1,
     .timeout_ms = 2000,
-    .success_threshold = 0.6f,
+    .success_threshold = 0.6F,
     .description = "Fallback to CPU or reduce model complexity"
 };
 
@@ -117,7 +117,7 @@ static recovery_strategy_t g_strategy_corruption = {
     .fallback = RECOVERY_ACTION_REINIT_LAYER,
     .max_retries = 2,
     .timeout_ms = 1000,
-    .success_threshold = 0.7f,
+    .success_threshold = 0.7F,
     .description = "Reload checkpoint or reinitialize corrupted layers"
 };
 
@@ -473,11 +473,11 @@ recovery_result_t recovery_execute_strategy(brain_t brain, diagnostic_summary_t*
     if (status == RECOVERY_SUCCESS) {
         g_recovery_stats.successful_recoveries++;
         result.message = "Recovery successful";
-        result.success_probability = 0.9f;
+        result.success_probability = 0.9F;
     } else {
         g_recovery_stats.failed_recoveries++;
         result.message = "Recovery failed";
-        result.success_probability = 0.1f;
+        result.success_probability = 0.1F;
     }
 
     LOG_INFO("Recovery: Completed in %u us (status: %s)",
@@ -519,7 +519,7 @@ recovery_result_t recovery_retry_operation(brain_t brain, operation_t* op, uint3
             result.status = RECOVERY_SUCCESS;
             result.message = "Operation succeeded";
             result.time_us = (uint32_t)(get_time_us() - start_time);
-            result.success_probability = 1.0f;
+            result.success_probability = 1.0F;
 
             g_recovery_stats.successful_recoveries++;
             g_recovery_stats.tactical_recoveries++;
@@ -544,7 +544,7 @@ recovery_result_t recovery_retry_operation(brain_t brain, operation_t* op, uint3
     result.status = RECOVERY_FAILED;
     result.message = "All retries exhausted";
     result.time_us = (uint32_t)(get_time_us() - start_time);
-    result.success_probability = 0.0f;
+    result.success_probability = 0.0F;
 
     g_recovery_stats.failed_recoveries++;
 
@@ -616,7 +616,7 @@ recovery_result_t recovery_rollback_state(brain_t brain, const char* checkpoint)
         // TODO: Replace current brain state with restored state
         result.status = RECOVERY_SUCCESS;
         result.message = "Rollback successful";
-        result.success_probability = 0.9f;
+        result.success_probability = 0.9F;
 
         g_recovery_stats.successful_recoveries++;
         g_recovery_stats.rollbacks++;
@@ -626,7 +626,7 @@ recovery_result_t recovery_rollback_state(brain_t brain, const char* checkpoint)
     } else {
         result.status = RECOVERY_FAILED;
         result.message = "Checkpoint not found or corrupted";
-        result.success_probability = 0.0f;
+        result.success_probability = 0.0F;
 
         g_recovery_stats.failed_recoveries++;
 

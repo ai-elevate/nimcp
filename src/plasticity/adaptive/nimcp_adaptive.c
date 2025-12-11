@@ -60,6 +60,14 @@
 #define SPARSITY_ADAPT_DECREASE 0.99f
 #define SPARSITY_EMA_WEIGHT 0.1f
 
+// WHAT: Helper macros for checked file I/O (cert-err33-c compliance)
+// WHY:  fwrite/fread return values must be checked to detect I/O errors
+// HOW:  Macros check return value and set success=false on failure
+#define FWRITE_CHECKED(ptr, size, count, stream) \
+    do { if (fwrite((ptr), (size), (count), (stream)) != (count)) success = false; } while(0)
+#define FREAD_CHECKED(ptr, size, count, stream) \
+    do { if (fread((ptr), (size), (count), (stream)) != (count)) goto cleanup; } while(0)
+
 //=============================================================================
 // Memory Pool for Hot Paths (Phase MP)
 //=============================================================================
@@ -392,9 +400,9 @@ static float compute_mean_abs(const float* input, uint32_t size)
 {
     // Guard clause: Validate inputs
     if (!input || size == 0)
-        return 0.0f;
+        return 0.0F;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         sum += fabsf(input[i]);
     }
@@ -443,7 +451,7 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label)
         return 0;
 
     // O(1) hash table lookup
-    uint32_t index = hash_table_lookup_label(&network->label_table, label);
+    uint32_t index = hash_table_lookup_label(network->label_table, label);
 
     // Guard clause: Return if found
     if (index != UINT32_MAX)
@@ -465,7 +473,7 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label)
     network->label_map[network->num_labels][label_len] = '\0';
 
     // Insert into hash table for future O(1) lookups
-    hash_table_insert_label(&network->label_table, network->label_map[network->num_labels],
+    hash_table_insert_label(network->label_table, network->label_map[network->num_labels],
                             network->num_labels);
 
     return network->num_labels++;
@@ -565,7 +573,7 @@ static int32_t decode_integer(const uint8_t* spike_train, uint32_t length)
     if (length < sizeof(int32_t))
         return 0;
 
-    int32_t spike_count;
+    int32_t spike_count = 0;
     memcpy(&spike_count, spike_train, sizeof(int32_t));
     return spike_count;
 }
@@ -661,11 +669,11 @@ float adaptive_compute_threshold(const float* input, uint32_t size, float k_fact
 {
     // Guard clause: Validate inputs
     if (!input || size == 0)
-        return 1.0f;
+        return 1.0F;
 
     // Guard clause: Validate k_factor
-    if (k_factor <= 0.0f)
-        return 1.0f;
+    if (k_factor <= 0.0F)
+        return 1.0F;
 
     float mean_abs = compute_mean_abs(input, size);
     return mean_abs / k_factor;
@@ -686,8 +694,8 @@ float adaptive_compute_threshold(const float* input, uint32_t size, float k_fact
 int32_t adaptive_value_to_spikes(float value, float threshold)
 {
     // Guard clause: Ensure valid threshold
-    if (threshold <= 0.0f)
-        threshold = 1.0f;
+    if (threshold <= 0.0F)
+        threshold = 1.0F;
 
     return (int32_t) roundf(value / threshold);
 }
@@ -742,11 +750,11 @@ float adaptive_decode_spikes(const uint8_t* spike_train, uint32_t length, spike_
 {
     // Guard clause: Validate inputs
     if (!spike_train || length == 0)
-        return 0.0f;
+        return 0.0F;
 
     // Guard clause: Validate encoding type
     if (encoding >= 4)
-        return 0.0f;
+        return 0.0F;
 
     // Create temporary strategy table
     spike_strategy_table_t table;
@@ -757,7 +765,7 @@ float adaptive_decode_spikes(const uint8_t* spike_train, uint32_t length, spike_
 
     // Guard clause: Check decoder exists
     if (!decoder)
-        return 0.0f;
+        return 0.0F;
 
     int32_t spike_count = decoder(spike_train, length);
     return spike_count * threshold;
@@ -794,11 +802,11 @@ static bool validate_network_config(const adaptive_network_config_t* config)
     }
 
     // Guard clause: Validate spike parameters
-    if (config->spike_params.k_factor <= 0.0f) {
+    if (config->spike_params.k_factor <= 0.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid k_factor=%f\n", config->spike_params.k_factor);
         return false;
     }
-    if (config->spike_params.min_threshold <= 0.0f) {
+    if (config->spike_params.min_threshold <= 0.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid min_threshold=%f\n", config->spike_params.min_threshold);
         return false;
     }
@@ -807,7 +815,7 @@ static bool validate_network_config(const adaptive_network_config_t* config)
                 config->spike_params.max_threshold, config->spike_params.min_threshold);
         return false;
     }
-    if (config->spike_params.sparsity_target < 0.0f || config->spike_params.sparsity_target > 1.0f) {
+    if (config->spike_params.sparsity_target < 0.0F || config->spike_params.sparsity_target > 1.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid sparsity_target=%f\n", config->spike_params.sparsity_target);
         return false;
     }
@@ -831,12 +839,12 @@ static void initialize_neuron_states(adaptive_neuron_state_t* states, uint32_t n
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         states[i].adaptive_threshold = default_threshold;
-        states[i].membrane_potential = 0.0f;
+        states[i].membrane_potential = 0.0F;
         states[i].spike_count = 0;
         states[i].spike_train = NULL;
         states[i].spike_train_length = 0;
-        states[i].activation_mean = 0.0f;
-        states[i].activation_variance = 0.0f;
+        states[i].activation_mean = 0.0F;
+        states[i].activation_variance = 0.0F;
         states[i].sample_count = 0;
     }
 }
@@ -1220,7 +1228,7 @@ static bool process_neuron_output(adaptive_neuron_state_t* state, float* output_
 
     // Apply sparsity if enabled
     if (enable_sparsity && !is_active) {
-        *output_value = 0.0f;
+        *output_value = 0.0F;
         return false;
     }
 
@@ -1291,8 +1299,8 @@ static void update_running_sparsity(adaptive_network_t network, uint32_t active_
     if (!network || output_size == 0)
         return;
 
-    float current_sparsity = 1.0f - ((float) active_count / output_size);
-    network->running_sparsity = (1.0f - SPARSITY_EMA_WEIGHT) * network->running_sparsity +
+    float current_sparsity = 1.0F - ((float) active_count / output_size);
+    network->running_sparsity = (1.0F - SPARSITY_EMA_WEIGHT) * network->running_sparsity +
                                 SPARSITY_EMA_WEIGHT * current_sparsity;
 }
 
@@ -1420,7 +1428,7 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
 float adaptive_network_get_sparsity(adaptive_network_t network)
 {
     if (!network)
-        return 0.0f;
+        return 0.0F;
     return network->running_sparsity;
 }
 
@@ -1445,18 +1453,18 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                              learning_mode_t mode, float learning_rate)
 {
     if (!network || !example)
-        return -1.0f;
+        return -1.0F;
 
     // Forward pass to get current output (Phase MP: use pool)
     float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
     if (!output) {
-        return -1.0f;
+        return -1.0F;
     }
     adaptive_network_forward(network, example->input, example->input_size, output,
                              example->target_size, 0);
 
     // Compute loss based on mode
-    float loss = 0.0f;
+    float loss = 0.0F;
 
     switch (mode) {
         case LEARN_MODE_SUPERVISED:
@@ -1486,7 +1494,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // Compute reward signal from error
             // High error → low reward, low error → high reward
             // Reward in [0, 1] where 1 = perfect, 0 = maximum error
-            float reward = 1.0f / (1.0f + loss);  // Bounded reward signal
+            float reward = 1.0F / (1.0F + loss);  // Bounded reward signal
             reward *= example->confidence;         // Scale by example confidence
 
             // Apply biological plasticity to all synapses
@@ -1499,12 +1507,12 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         case LEARN_MODE_UNSUPERVISED:
             // Hebbian learning - no explicit target
             // Already handled by base network's plasticity rules during forward pass
-            loss = 0.0f;
+            loss = 0.0F;
             break;
 
         case LEARN_MODE_REINFORCEMENT:
             // Use confidence as reward signal
-            loss = 1.0f - example->confidence;
+            loss = 1.0F - example->confidence;
 
             // Apply reinforcement learning with eligibility traces
             // Reward comes directly from confidence
@@ -1527,9 +1535,9 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
                                    uint32_t num_examples, learning_mode_t mode, float learning_rate)
 {
     if (!network || !examples || num_examples == 0)
-        return -1.0f;
+        return -1.0F;
 
-    float total_loss = 0.0f;
+    float total_loss = 0.0F;
 
     for (uint32_t i = 0; i < num_examples; i++) {
         float loss = adaptive_network_learn(network, &examples[i], mode, learning_rate);
@@ -1544,19 +1552,19 @@ float adaptive_network_distill(adaptive_network_t network, const float* input, u
                                float learning_rate)
 {
     if (!network || !input || !teacher_fn)
-        return -1.0f;
+        return -1.0F;
 
     // Query teacher for target
     float* teacher_output = teacher_fn(input, input_size, teacher_context);
     if (!teacher_output)
-        return -1.0f;
+        return -1.0F;
 
     // Create training example from teacher's output
     training_example_t example = {.input = (float*) input,
                                   .input_size = input_size,
                                   .target = teacher_output,
                                   .target_size = network->config.base_config.output_size,
-                                  .confidence = 1.0f,  // Assume high confidence in teacher
+                                  .confidence = 1.0F,  // Assume high confidence in teacher
                                   .label = {0}};
 
     float loss = adaptive_network_learn(network, &example, LEARN_MODE_DISTILLATION, learning_rate);
@@ -1590,137 +1598,137 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             uint32_t magic = 0x4E494D43;    // "NIMC"
             uint32_t version = 0x00020500;  // v2.5.0
 
-            fwrite(&magic, sizeof(uint32_t), 1, file);
-            fwrite(&version, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&magic, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&version, sizeof(uint32_t), 1, file);
 
             // WHAT: Write configuration (excluding pointer fields)
             // WHY:  Can't serialize pointers directly - they're invalid when loaded
             // HOW:  Write num_layers, then layer_sizes array data separately
 
             // Write base_config fields (safe ones)
-            fwrite(&network->config.base_config.num_neurons, sizeof(uint32_t), 1, file);
-            fwrite(&network->config.base_config.ei_ratio, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.learning_rate, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.hebbian_rate, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.stdp_window, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.homeostatic_rate, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.target_activity, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.adaptation_rate, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.refractory_period, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.min_weight, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.max_weight, sizeof(float), 1, file);
-            fwrite(&network->config.base_config.update_interval, sizeof(uint32_t), 1, file);
-            fwrite(&network->config.base_config.input_size, sizeof(uint32_t), 1, file);
-            fwrite(&network->config.base_config.output_size, sizeof(uint32_t), 1, file);
-            fwrite(&network->config.base_config.num_layers, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.num_neurons, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.ei_ratio, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.learning_rate, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.hebbian_rate, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.stdp_window, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.homeostatic_rate, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.target_activity, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.adaptation_rate, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.refractory_period, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.min_weight, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.max_weight, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.update_interval, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.input_size, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.output_size, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.num_layers, sizeof(uint32_t), 1, file);
 
             // Write layer_sizes array separately
             if (network->config.base_config.num_layers > 0 && network->config.base_config.layer_sizes) {
-                fwrite(network->config.base_config.layer_sizes,
+                FWRITE_CHECKED(network->config.base_config.layer_sizes,
                        sizeof(uint32_t),
                        network->config.base_config.num_layers,
                        file);
             }
 
             // Continue with base_config booleans and enums
-            fwrite(&network->config.base_config.enable_stdp, sizeof(bool), 1, file);
-            fwrite(&network->config.base_config.enable_hebbian, sizeof(bool), 1, file);
-            fwrite(&network->config.base_config.enable_oja, sizeof(bool), 1, file);
-            fwrite(&network->config.base_config.enable_homeostasis, sizeof(bool), 1, file);
-            fwrite(&network->config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.enable_stdp, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.enable_hebbian, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.enable_oja, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.enable_homeostasis, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file);
             // Skip model_params pointer (NULL in most cases, complex to serialize)
-            fwrite(&network->config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file);
-            fwrite(&network->config.base_config.enable_bcm, sizeof(bool), 1, file);
-            fwrite(&network->config.base_config.enable_eligibility, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.enable_bcm, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.base_config.enable_eligibility, sizeof(bool), 1, file);
 
             // Write spike_params struct
-            fwrite(&network->config.spike_params, sizeof(adaptive_spike_params_t), 1, file);
+            FWRITE_CHECKED(&network->config.spike_params, sizeof(adaptive_spike_params_t), 1, file);
 
             // Write remaining adaptive config fields
-            fwrite(&network->config.enable_sparsity, sizeof(bool), 1, file);
-            fwrite(&network->config.pruning_threshold, sizeof(float), 1, file);
-            fwrite(&network->config.update_frequency, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->config.enable_sparsity, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.pruning_threshold, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->config.update_frequency, sizeof(uint32_t), 1, file);
 
             // Skip checkpoint_path pointer (don't need to save this)
-            fwrite(&network->config.auto_load, sizeof(bool), 1, file);
-            fwrite(&network->config.auto_save, sizeof(bool), 1, file);
-            fwrite(&network->config.auto_save_interval, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->config.auto_load, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.auto_save, sizeof(bool), 1, file);
+            FWRITE_CHECKED(&network->config.auto_save_interval, sizeof(uint32_t), 1, file);
 
             // Write neuron count
-            fwrite(&network->num_neurons, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->num_neurons, sizeof(uint32_t), 1, file);
 
             // Write neuron states
             for (uint32_t i = 0; i < network->num_neurons; i++) {
-                fwrite(&network->neuron_states[i], sizeof(adaptive_neuron_state_t), 1, file);
+                FWRITE_CHECKED(&network->neuron_states[i], sizeof(adaptive_neuron_state_t), 1, file);
             }
 
             // Write label map
-            fwrite(&network->num_labels, sizeof(uint32_t), 1, file);
+            FWRITE_CHECKED(&network->num_labels, sizeof(uint32_t), 1, file);
             for (uint32_t i = 0; i < network->num_labels; i++) {
                 uint32_t label_len = strlen(network->label_map[i]) + 1;
-                fwrite(&label_len, sizeof(uint32_t), 1, file);
-                fwrite(network->label_map[i], label_len, 1, file);
+                FWRITE_CHECKED(&label_len, sizeof(uint32_t), 1, file);
+                FWRITE_CHECKED(network->label_map[i], label_len, 1, file);
             }
 
             // Write statistics
-            fwrite(&network->total_inferences, sizeof(uint64_t), 1, file);
-            fwrite(&network->total_learning_steps, sizeof(uint64_t), 1, file);
-            fwrite(&network->running_sparsity, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->total_inferences, sizeof(uint64_t), 1, file);
+            FWRITE_CHECKED(&network->total_learning_steps, sizeof(uint64_t), 1, file);
+            FWRITE_CHECKED(&network->running_sparsity, sizeof(float), 1, file);
 
             // Write synaptic weights from base_network (CRITICAL: enables weight persistence)
             if (network->base_network) {
                 uint32_t base_num_neurons = neural_network_get_num_neurons(network->base_network);
-                fwrite(&base_num_neurons, sizeof(uint32_t), 1, file);
+                FWRITE_CHECKED(&base_num_neurons, sizeof(uint32_t), 1, file);
 
                 for (uint32_t i = 0; i < base_num_neurons; i++) {
                     neuron_t* neuron = neural_network_get_neuron(network->base_network, i);
                     if (!neuron) continue;
 
                     // Write number of synapses for this neuron
-                    fwrite(&neuron->num_synapses, sizeof(uint32_t), 1, file);
+                    FWRITE_CHECKED(&neuron->num_synapses, sizeof(uint32_t), 1, file);
 
                     // Write each synapse (weight and key plasticity data)
                     for (uint32_t j = 0; j < neuron->num_synapses; j++) {
                         synapse_t* syn = &neuron->synapses[j];
-                        fwrite(&syn->target_id, sizeof(uint32_t), 1, file);
-                        fwrite(&syn->weight, sizeof(float), 1, file);
-                        fwrite(&syn->plasticity, sizeof(float), 1, file);
-                        fwrite(&syn->trace, sizeof(float), 1, file);
-                        fwrite(&syn->strength, sizeof(float), 1, file);
-                        fwrite(&syn->meta_plasticity, sizeof(float), 1, file);
-                        fwrite(&syn->last_change, sizeof(float), 1, file);
-                        fwrite(&syn->last_active, sizeof(uint64_t), 1, file);
-                        fwrite(&syn->enable_stp, sizeof(bool), 1, file);
+                        FWRITE_CHECKED(&syn->target_id, sizeof(uint32_t), 1, file);
+                        FWRITE_CHECKED(&syn->weight, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&syn->plasticity, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&syn->trace, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&syn->strength, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&syn->meta_plasticity, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&syn->last_change, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&syn->last_active, sizeof(uint64_t), 1, file);
+                        FWRITE_CHECKED(&syn->enable_stp, sizeof(bool), 1, file);
                         if (syn->enable_stp) {
-                            fwrite(&syn->stp, sizeof(stp_state_t), 1, file);
+                            FWRITE_CHECKED(&syn->stp, sizeof(stp_state_t), 1, file);
                         }
                     }
 
                     // Write full neuron state (CRITICAL: enables exact training resume)
-                    fwrite(&neuron->state, sizeof(float), 1, file);
-                    fwrite(&neuron->bias, sizeof(float), 1, file);
-                    fwrite(&neuron->threshold, sizeof(float), 1, file);
-                    fwrite(&neuron->adaptation, sizeof(float), 1, file);
-                    fwrite(&neuron->calcium_concentration, sizeof(float), 1, file);
-                    fwrite(&neuron->plasticity_rate, sizeof(float), 1, file);
-                    fwrite(&neuron->homeostatic_factor, sizeof(float), 1, file);
-                    fwrite(&neuron->avg_activity, sizeof(float), 1, file);
-                    fwrite(&neuron->weight_norm, sizeof(float), 1, file);
-                    fwrite(&neuron->learning_rule, sizeof(learning_rule_t), 1, file);
-                    fwrite(&neuron->activation_type, sizeof(activation_type_t), 1, file);
-                    fwrite(&neuron->oja_params, sizeof(oja_params_t), 1, file);
-                    fwrite(&neuron->stdp_params, sizeof(stdp_params_t), 1, file);
-                    fwrite(&neuron->homeostatic, sizeof(homeostatic_params_t), 1, file);
-                    fwrite(&neuron->last_spike, sizeof(uint64_t), 1, file);
-                    fwrite(&neuron->last_update, sizeof(uint64_t), 1, file);
-                    fwrite(&neuron->model_type, sizeof(neuron_model_type_t), 1, file);
+                    FWRITE_CHECKED(&neuron->state, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->bias, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->threshold, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->adaptation, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->calcium_concentration, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->plasticity_rate, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->homeostatic_factor, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->avg_activity, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->weight_norm, sizeof(float), 1, file);
+                    FWRITE_CHECKED(&neuron->learning_rule, sizeof(learning_rule_t), 1, file);
+                    FWRITE_CHECKED(&neuron->activation_type, sizeof(activation_type_t), 1, file);
+                    FWRITE_CHECKED(&neuron->oja_params, sizeof(oja_params_t), 1, file);
+                    FWRITE_CHECKED(&neuron->stdp_params, sizeof(stdp_params_t), 1, file);
+                    FWRITE_CHECKED(&neuron->homeostatic, sizeof(homeostatic_params_t), 1, file);
+                    FWRITE_CHECKED(&neuron->last_spike, sizeof(uint64_t), 1, file);
+                    FWRITE_CHECKED(&neuron->last_update, sizeof(uint64_t), 1, file);
+                    FWRITE_CHECKED(&neuron->model_type, sizeof(neuron_model_type_t), 1, file);
                     // Note: neuron.model (neuron_model_state_t) is a pointer to opaque state
                     // TODO: If model is not NULL, need to serialize model-specific state
                 }
             } else {
                 // No base network - write 0 neurons
                 uint32_t zero = 0;
-                fwrite(&zero, sizeof(uint32_t), 1, file);
+                FWRITE_CHECKED(&zero, sizeof(uint32_t), 1, file);
             }
 
             break;
@@ -1746,7 +1754,8 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
 
     // Read magic header
-    uint32_t magic, version;
+    uint32_t magic = 0;
+    uint32_t version = 0;
     if (fread(&magic, sizeof(uint32_t), 1, file) != 1 || magic != 0x4E494D43) {
         fclose(file);
         return NULL;
@@ -1765,24 +1774,26 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     memset(&config, 0, sizeof(adaptive_network_config_t));
 
     // Read base_config fields
+    // Note: Using (void) cast intentionally ignores return value for non-critical config fields
+    // that have safe defaults. Critical fields use explicit error checking.
     if (fread(&config.base_config.num_neurons, sizeof(uint32_t), 1, file) != 1) {
         fclose(file);
         return NULL;
     }
-    fread(&config.base_config.ei_ratio, sizeof(float), 1, file);
-    fread(&config.base_config.learning_rate, sizeof(float), 1, file);
-    fread(&config.base_config.hebbian_rate, sizeof(float), 1, file);
-    fread(&config.base_config.stdp_window, sizeof(float), 1, file);
-    fread(&config.base_config.homeostatic_rate, sizeof(float), 1, file);
-    fread(&config.base_config.target_activity, sizeof(float), 1, file);
-    fread(&config.base_config.adaptation_rate, sizeof(float), 1, file);
-    fread(&config.base_config.refractory_period, sizeof(float), 1, file);
-    fread(&config.base_config.min_weight, sizeof(float), 1, file);
-    fread(&config.base_config.max_weight, sizeof(float), 1, file);
-    fread(&config.base_config.update_interval, sizeof(uint32_t), 1, file);
-    fread(&config.base_config.input_size, sizeof(uint32_t), 1, file);
-    fread(&config.base_config.output_size, sizeof(uint32_t), 1, file);
-    fread(&config.base_config.num_layers, sizeof(uint32_t), 1, file);
+    (void)fread(&config.base_config.ei_ratio, sizeof(float), 1, file);
+    (void)fread(&config.base_config.learning_rate, sizeof(float), 1, file);
+    (void)fread(&config.base_config.hebbian_rate, sizeof(float), 1, file);
+    (void)fread(&config.base_config.stdp_window, sizeof(float), 1, file);
+    (void)fread(&config.base_config.homeostatic_rate, sizeof(float), 1, file);
+    (void)fread(&config.base_config.target_activity, sizeof(float), 1, file);
+    (void)fread(&config.base_config.adaptation_rate, sizeof(float), 1, file);
+    (void)fread(&config.base_config.refractory_period, sizeof(float), 1, file);
+    (void)fread(&config.base_config.min_weight, sizeof(float), 1, file);
+    (void)fread(&config.base_config.max_weight, sizeof(float), 1, file);
+    (void)fread(&config.base_config.update_interval, sizeof(uint32_t), 1, file);
+    (void)fread(&config.base_config.input_size, sizeof(uint32_t), 1, file);
+    (void)fread(&config.base_config.output_size, sizeof(uint32_t), 1, file);
+    (void)fread(&config.base_config.num_layers, sizeof(uint32_t), 1, file);
 
     // Read layer_sizes array separately
     uint32_t* layer_sizes = NULL;
@@ -1800,29 +1811,29 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         config.base_config.layer_sizes = layer_sizes;
     }
 
-    // Read remaining base_config fields
-    fread(&config.base_config.enable_stdp, sizeof(bool), 1, file);
-    fread(&config.base_config.enable_hebbian, sizeof(bool), 1, file);
-    fread(&config.base_config.enable_oja, sizeof(bool), 1, file);
-    fread(&config.base_config.enable_homeostasis, sizeof(bool), 1, file);
-    fread(&config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file);
+    // Read remaining base_config fields (non-critical, use (void) cast)
+    (void)fread(&config.base_config.enable_stdp, sizeof(bool), 1, file);
+    (void)fread(&config.base_config.enable_hebbian, sizeof(bool), 1, file);
+    (void)fread(&config.base_config.enable_oja, sizeof(bool), 1, file);
+    (void)fread(&config.base_config.enable_homeostasis, sizeof(bool), 1, file);
+    (void)fread(&config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file);
     config.base_config.model_params = NULL;  // Not serialized
-    fread(&config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file);
-    fread(&config.base_config.enable_bcm, sizeof(bool), 1, file);
-    fread(&config.base_config.enable_eligibility, sizeof(bool), 1, file);
+    (void)fread(&config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file);
+    (void)fread(&config.base_config.enable_bcm, sizeof(bool), 1, file);
+    (void)fread(&config.base_config.enable_eligibility, sizeof(bool), 1, file);
 
-    // Read spike_params
-    fread(&config.spike_params, sizeof(adaptive_spike_params_t), 1, file);
+    // Read spike_params (non-critical)
+    (void)fread(&config.spike_params, sizeof(adaptive_spike_params_t), 1, file);
 
-    // Read remaining adaptive config fields
-    fread(&config.enable_sparsity, sizeof(bool), 1, file);
-    fread(&config.pruning_threshold, sizeof(float), 1, file);
-    fread(&config.update_frequency, sizeof(uint32_t), 1, file);
+    // Read remaining adaptive config fields (non-critical)
+    (void)fread(&config.enable_sparsity, sizeof(bool), 1, file);
+    (void)fread(&config.pruning_threshold, sizeof(float), 1, file);
+    (void)fread(&config.update_frequency, sizeof(uint32_t), 1, file);
 
     config.checkpoint_path = NULL;  // Not serialized, will be NULL
-    fread(&config.auto_load, sizeof(bool), 1, file);
-    fread(&config.auto_save, sizeof(bool), 1, file);
-    fread(&config.auto_save_interval, sizeof(uint32_t), 1, file);
+    (void)fread(&config.auto_load, sizeof(bool), 1, file);
+    (void)fread(&config.auto_save, sizeof(bool), 1, file);
+    (void)fread(&config.auto_save_interval, sizeof(uint32_t), 1, file);
 
     // Create network with reconstructed config
     adaptive_network_t network = adaptive_network_create(&config);
@@ -1838,7 +1849,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     }
 
     // Read neuron count
-    uint32_t num_neurons;
+    uint32_t num_neurons = 0;
     if (fread(&num_neurons, sizeof(uint32_t), 1, file) != 1) {
         adaptive_network_destroy(network);
         fclose(file);
@@ -1855,7 +1866,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     }
 
     // Read label map
-    uint32_t num_labels;
+    uint32_t num_labels = 0;
     if (fread(&num_labels, sizeof(uint32_t), 1, file) != 1) {
         adaptive_network_destroy(network);
         fclose(file);
@@ -1866,7 +1877,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     network->num_labels = num_labels;
 
     for (uint32_t i = 0; i < num_labels; i++) {
-        uint32_t label_len;
+        uint32_t label_len = 0;
         if (fread(&label_len, sizeof(uint32_t), 1, file) != 1) {
             adaptive_network_destroy(network);
             fclose(file);
@@ -1881,10 +1892,10 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         }
     }
 
-    // Read statistics
-    fread(&network->total_inferences, sizeof(uint64_t), 1, file);
-    fread(&network->total_learning_steps, sizeof(uint64_t), 1, file);
-    fread(&network->running_sparsity, sizeof(float), 1, file);
+    // Read statistics (non-critical, use (void) cast)
+    (void)fread(&network->total_inferences, sizeof(uint64_t), 1, file);
+    (void)fread(&network->total_learning_steps, sizeof(uint64_t), 1, file);
+    (void)fread(&network->running_sparsity, sizeof(float), 1, file);
 
     // Read synaptic weights from base_network (CRITICAL: restores learned weights)
     uint32_t base_num_neurons = 0;
@@ -1919,21 +1930,21 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 for (uint32_t j = 0; j < num_synapses; j++) {
                     if (neuron->num_synapses >= MAX_SYNAPSES_PER_NEURON) {
                         fprintf(stderr, "WARNING: Neuron %u has more synapses than MAX_SYNAPSES_PER_NEURON\n", i);
-                        // Skip remaining synapses for this neuron
+                        // Skip remaining synapses for this neuron (non-critical, use (void) cast)
                         synapse_t dummy;
-                        fread(&dummy.target_id, sizeof(uint32_t), 1, file);
-                        fread(&dummy.weight, sizeof(float), 1, file);
-                        fread(&dummy.plasticity, sizeof(float), 1, file);
-                        fread(&dummy.trace, sizeof(float), 1, file);
-                        fread(&dummy.strength, sizeof(float), 1, file);
-                        fread(&dummy.meta_plasticity, sizeof(float), 1, file);
-                        fread(&dummy.last_change, sizeof(float), 1, file);
-                        fread(&dummy.last_active, sizeof(uint64_t), 1, file);
-                        bool enable_stp;
-                        fread(&enable_stp, sizeof(bool), 1, file);
+                        (void)fread(&dummy.target_id, sizeof(uint32_t), 1, file);
+                        (void)fread(&dummy.weight, sizeof(float), 1, file);
+                        (void)fread(&dummy.plasticity, sizeof(float), 1, file);
+                        (void)fread(&dummy.trace, sizeof(float), 1, file);
+                        (void)fread(&dummy.strength, sizeof(float), 1, file);
+                        (void)fread(&dummy.meta_plasticity, sizeof(float), 1, file);
+                        (void)fread(&dummy.last_change, sizeof(float), 1, file);
+                        (void)fread(&dummy.last_active, sizeof(uint64_t), 1, file);
+                        bool enable_stp = false;
+                        (void)fread(&enable_stp, sizeof(bool), 1, file);
                         if (enable_stp) {
                             stp_state_t stp_dummy;
-                            fread(&stp_dummy, sizeof(stp_state_t), 1, file);
+                            (void)fread(&stp_dummy, sizeof(stp_state_t), 1, file);
                         }
                         continue;
                     }
@@ -1998,7 +2009,7 @@ size_t adaptive_network_get_size(adaptive_network_t network)
     }
 
     // Add base network size (approximate)
-    size += network->num_neurons * network->config.base_config.input_size * sizeof(float);
+    size += (size_t)network->num_neurons * network->config.base_config.input_size * sizeof(float);
 
     return size;
 }
@@ -2032,7 +2043,7 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
         nimcp_free(analysis->active_neuron_ids);
         nimcp_free(analysis->activation_strengths);
         free_hot_buffer(output);  // Phase MP: Return to pool
-        return;
+        return false;
     }
 
     // Collect active neurons
@@ -2046,13 +2057,13 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     }
 
     // Compute confidence (based on max activation)
-    float max_activation = 0.0f;
+    float max_activation = 0.0F;
     for (uint32_t i = 0; i < active_count; i++) {
         if (fabsf(analysis->activation_strengths[i]) > max_activation) {
             max_activation = fabsf(analysis->activation_strengths[i]);
         }
     }
-    analysis->confidence = fminf(max_activation / 10.0f, 1.0f);  // Normalize to [0,1]
+    analysis->confidence = fminf(max_activation / 10.0F, 1.0F);  // Normalize to [0,1]
 
     free_hot_buffer(output);  // Phase MP: Return to pool
     return true;
@@ -2077,10 +2088,10 @@ uint32_t adaptive_network_rank_neurons(adaptive_network_t network, neuron_import
         float variance = (network->neuron_states[i].sample_count > 1)
                              ? network->neuron_states[i].activation_variance /
                                    (network->neuron_states[i].sample_count - 1)
-                             : 1.0f;
+                             : 1.0F;
 
         rankings[i].importance = rankings[i].avg_activation *
-                                 sqrtf((float) rankings[i].activation_count) / (variance + 1e-6f);
+                                 sqrtf((float) rankings[i].activation_count) / (variance + 1e-6F);
 
         rankings[i].most_active_for = NULL;  // TODO: Track pattern associations
     }
@@ -2117,7 +2128,7 @@ uint32_t adaptive_network_explain(adaptive_network_t network, const float* input
                            "Confidence: %.2f. "
                            "Top contributors: ",
                            analysis.num_active_neurons, network->config.base_config.output_size,
-                           analysis.sparsity * 100.0f, analysis.confidence);
+                           analysis.sparsity * 100.0F, analysis.confidence);
 
     // Add top 3 neurons
     uint32_t top_count = (analysis.num_active_neurons < 3) ? analysis.num_active_neurons : 3;
@@ -2148,7 +2159,7 @@ bool adaptive_network_get_performance(adaptive_network_t network, network_perfor
     stats->avg_inference_time_us = network->running_inference_time_us;
     stats->avg_learning_time_us = network->running_learning_time_us;
     stats->memory_usage_bytes = adaptive_network_get_size(network);
-    stats->accuracy = 0.0f;  // TODO: Track validation accuracy
+    stats->accuracy = 0.0F;  // TODO: Track validation accuracy
     stats->num_pruned_synapses = network->num_pruned_synapses;
 
     return true;
@@ -2161,9 +2172,9 @@ void adaptive_network_reset_stats(adaptive_network_t network)
 
     network->total_inferences = 0;
     network->total_learning_steps = 0;
-    network->running_sparsity = 0.0f;
-    network->running_inference_time_us = 0.0f;
-    network->running_learning_time_us = 0.0f;
+    network->running_sparsity = 0.0F;
+    network->running_inference_time_us = 0.0F;
+    network->running_learning_time_us = 0.0F;
 }
 
 //=============================================================================
@@ -2215,20 +2226,20 @@ uint32_t adaptive_network_get_active_neurons(adaptive_network_t network, float t
 
     /* WHAT: Scan neurons and collect active ones */
     /* NOTE: Biological potentials need normalization */
-    const float REST_POTENTIAL = -65.0f;
-    const float PEAK_POTENTIAL = 30.0f;
+    const float REST_POTENTIAL = -65.0F;
+    const float PEAK_POTENTIAL = 30.0F;
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < network->num_neurons && count < max_neurons; i++) {
-        float raw_activation;
+        float raw_activation = 0.0F;
         if (neural_network_get_neuron_state(network->base_network, i, &raw_activation)) {
             /* WHAT: Normalize to 0-1 range */
             float normalized =
                 (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
-            if (normalized < 0.0f)
-                normalized = 0.0f;
-            if (normalized > 1.0f)
-                normalized = 1.0f;
+            if (normalized < 0.0F)
+                normalized = 0.0F;
+            if (normalized > 1.0F)
+                normalized = 1.0F;
 
             if (normalized >= threshold) {
                 neuron_ids[count] = i;
@@ -2261,7 +2272,7 @@ bool adaptive_network_get_connection_count(adaptive_network_t network, uint32_t 
     /* TODO: Add neural_network_get_neuron_info() API */
     /* For now, return average connections based on sparsity */
     uint32_t avg_connections =
-        (uint32_t) (network->num_neurons * (1.0f - network->config.spike_params.sparsity_target));
+        (uint32_t) (network->num_neurons * (1.0F - network->config.spike_params.sparsity_target));
     *num_connections = avg_connections;
 
     return true;
@@ -2281,11 +2292,11 @@ bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neur
 
     /* TODO: Add neural_network_get_neuron_weights() API */
     /* For now, estimate based on neuron activation and network stats */
-    float activation;
+    float activation = 0.0F;
     if (neural_network_get_neuron_state(network->base_network, neuron_id, &activation)) {
         /* Estimate: active neurons have higher total weights */
         /* Use absolute value since total weight should be non-negative */
-        *total_weight = fabsf(activation) * 10.0f; /* Rough estimate */
+        *total_weight = fabsf(activation) * 10.0F; /* Rough estimate */
         return true;
     }
 
@@ -2378,19 +2389,19 @@ float adaptive_network_get_synapse_weight(adaptive_network_t network, uint32_t f
 {
     /* Guard: Validate network */
     if (!network || !network->base_network) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Guard: Validate neuron IDs */
     uint32_t num_neurons = neural_network_get_num_neurons(network->base_network);
     if (from_neuron >= num_neurons || to_neuron >= num_neurons) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Get source neuron */
     neuron_t* from = neural_network_get_neuron(network->base_network, from_neuron);
     if (!from) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Search for synapse to target neuron */
@@ -2401,7 +2412,7 @@ float adaptive_network_get_synapse_weight(adaptive_network_t network, uint32_t f
     }
 
     /* No connection found */
-    return 0.0f;
+    return 0.0F;
 }
 
 //=============================================================================

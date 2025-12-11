@@ -113,7 +113,7 @@ static void orientation_columns_bio_cleanup(void) {
  * HOW:  Multiply by π/180.
  */
 static inline float deg2rad(float degrees) {
-    return degrees * (float)M_PI / 180.0f;
+    return degrees * (float)M_PI / 180.0F;
 }
 
 /**
@@ -124,7 +124,7 @@ static inline float deg2rad(float degrees) {
  * HOW:  Multiply by 180/π.
  */
 static inline float rad2deg(float radians) {
-    return radians * 180.0f / (float)M_PI;
+    return radians * 180.0F / (float)M_PI;
 }
 
 /**
@@ -135,11 +135,11 @@ static inline float rad2deg(float radians) {
  * HOW:  Uses modulo arithmetic with wrapping.
  */
 static float normalize_orientation(float angle) {
-    while (angle < 0.0f) {
-        angle += 180.0f;
+    while (angle < 0.0F) {
+        angle += 180.0F;
     }
-    while (angle >= 180.0f) {
-        angle -= 180.0f;
+    while (angle >= 180.0F) {
+        angle -= 180.0F;
     }
     return angle;
 }
@@ -153,8 +153,8 @@ static float normalize_orientation(float angle) {
  */
 static float angular_difference(float angle1, float angle2) {
     float diff = fabsf(angle1 - angle2);
-    if (diff > 90.0f) {
-        diff = 180.0f - diff;
+    if (diff > 90.0F) {
+        diff = 180.0F - diff;
     }
     return diff;
 }
@@ -168,11 +168,11 @@ static float angular_difference(float angle1, float angle2) {
  */
 static float gaussian_2d(float x, float y, float sigma_x, float sigma_y) {
     if (sigma_x < EPSILON || sigma_y < EPSILON) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float x_term = (x * x) / (2.0f * sigma_x * sigma_x);
-    float y_term = (y * y) / (2.0f * sigma_y * sigma_y);
+    float x_term = (x * x) / (2.0F * sigma_x * sigma_x);
+    float y_term = (y * y) / (2.0F * sigma_y * sigma_y);
     return expf(-(x_term + y_term));
 }
 
@@ -205,7 +205,7 @@ static float gabor_function(
     const cc_gabor_params_t* params
 ) {
     if (!params) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Rotate coordinates by orientation angle */
@@ -222,7 +222,7 @@ static float gabor_function(
 
     /* Compute sinusoidal carrier */
     float sinusoid_term = cosf(
-        2.0f * (float)M_PI * x_rot / params->lambda + params->psi
+        2.0F * (float)M_PI * x_rot / params->lambda + params->psi
     );
 
     return gaussian_term * sinusoid_term;
@@ -237,7 +237,7 @@ static float gabor_function(
  */
 static float von_mises(float theta, float mu, float kappa) {
     float angle_diff = deg2rad(theta - mu);
-    return expf(kappa * cosf(2.0f * angle_diff));
+    return expf(kappa * cosf(2.0F * angle_diff));
 }
 
 /**
@@ -257,9 +257,9 @@ static void init_default_gabor_params(
         return;
     }
 
-    params->lambda = 1.0f / spatial_frequency;
-    params->sigma_x = params->lambda * 0.56f;  /* Standard ratio */
-    params->sigma_y = params->lambda * 0.56f;
+    params->lambda = 1.0F / spatial_frequency;
+    params->sigma_x = params->lambda * 0.56F;  /* Standard ratio */
+    params->sigma_y = params->lambda * 0.56F;
     params->gamma = DEFAULT_GABOR_GAMMA;
     params->psi = phase;
     params->theta = deg2rad(orientation_deg);
@@ -275,7 +275,7 @@ orientation_column_t* orientation_column_create(
     float spatial_frequency
 ) {
     /* Guard clauses */
-    if (tuning_width <= 0.0f || spatial_frequency <= 0.0f) {
+    if (tuning_width <= 0.0F || spatial_frequency <= 0.0F) {
         LOG_ERROR("Invalid parameters: tuning_width and spatial_frequency must be > 0");
         return NULL;
     }
@@ -295,8 +295,8 @@ orientation_column_t* orientation_column_create(
     col->preferred_orientation = normalize_orientation(preferred_orientation);
     col->tuning_width = tuning_width;
     col->spatial_frequency = spatial_frequency;
-    col->phase = 0.0f;
-    col->activation = 0.0f;
+    col->phase = 0.0F;
+    col->activation = 0.0F;
     col->column_id = 0;
 
     /* Initialize Gabor parameters */
@@ -304,7 +304,7 @@ orientation_column_t* orientation_column_create(
         &col->gabor_params,
         spatial_frequency,
         col->preferred_orientation,
-        0.0f
+        0.0F
     );
 
     /* Initialize tuning curve parameters */
@@ -371,12 +371,12 @@ float orientation_column_apply_gabor(
     /* Guard clauses */
     if (!col || !image_patch || patch_width == 0 || patch_height == 0) {
         LOG_ERROR("Invalid parameters in orientation_column_apply_gabor");
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
 
-    float response = 0.0f;
+    float response = 0.0F;
     int32_t center_x = patch_width / 2;
     int32_t center_y = patch_height / 2;
 
@@ -424,20 +424,20 @@ float orientation_column_compute_energy(
     /* Guard clauses */
     if (!col || !image_patch || patch_width == 0 || patch_height == 0) {
         LOG_ERROR("Invalid parameters in orientation_column_compute_energy");
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
 
     /* Create even and odd phase Gabor filters (quadrature pair) */
     cc_gabor_params_t even_params = col->gabor_params;
-    even_params.psi = 0.0f;
+    even_params.psi = 0.0F;
 
     cc_gabor_params_t odd_params = col->gabor_params;
-    odd_params.psi = (float)M_PI / 2.0f;
+    odd_params.psi = (float)M_PI / 2.0F;
 
-    float even_response = 0.0f;
-    float odd_response = 0.0f;
+    float even_response = 0.0F;
+    float odd_response = 0.0F;
 
     int32_t center_x = patch_width / 2;
     int32_t center_y = patch_height / 2;
@@ -490,7 +490,7 @@ float orientation_column_get_response(
 ) {
     if (!col) {
         LOG_ERROR("NULL column in orientation_column_get_response");
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
@@ -522,7 +522,7 @@ bool orientation_column_get_tuning_curve(
         return false;
     }
 
-    float step = 180.0f / (float)num_points;
+    float step = 180.0F / (float)num_points;
 
     for (uint32_t i = 0; i < num_points; i++) {
         orientations[i] = (float)i * step;
@@ -571,7 +571,7 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
         return NULL;
     }
 
-    if (spatial_frequency <= 0.0f || tuning_width <= 0.0f) {
+    if (spatial_frequency <= 0.0F || tuning_width <= 0.0F) {
         LOG_ERROR("Invalid parameters: spatial_frequency and tuning_width must be > 0");
         return NULL;
     }
@@ -599,16 +599,16 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
 
     /* Initialize hypercolumn parameters */
     hcol->num_orientations = num_orientations;
-    hcol->dominant_orientation = 0.0f;
-    hcol->selectivity_index = 0.0f;
-    hcol->circular_variance = 1.0f;
+    hcol->dominant_orientation = 0.0F;
+    hcol->selectivity_index = 0.0F;
+    hcol->circular_variance = 1.0F;
     hcol->inhibition_strength = DEFAULT_INHIBITION_STRENGTH;
     hcol->normalization_constant = DEFAULT_NORMALIZATION_CONSTANT;
-    hcol->pinwheel_center_x = 0.0f;
-    hcol->pinwheel_center_y = 0.0f;
+    hcol->pinwheel_center_x = 0.0F;
+    hcol->pinwheel_center_y = 0.0F;
 
     /* Create orientation columns evenly spaced from 0-180 degrees */
-    float orientation_step = 180.0f / (float)num_orientations;
+    float orientation_step = 180.0F / (float)num_orientations;
 
     for (uint32_t i = 0; i < num_orientations; i++) {
         float orientation = (float)i * orientation_step;
@@ -748,7 +748,7 @@ float orientation_hypercolumn_get_dominant(
 ) {
     if (!hcol) {
         LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_get_dominant");
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
@@ -839,7 +839,7 @@ bool orientation_hypercolumn_apply_inhibition(
         return false;
     }
 
-    if (strength < 0.0f || strength > 1.0f) {
+    if (strength < 0.0F || strength > 1.0F) {
         LOG_ERROR("Invalid inhibition strength: %.2f (must be 0-1)", strength);
         return false;
     }
@@ -858,7 +858,7 @@ bool orientation_hypercolumn_apply_inhibition(
 
     /* Compute inhibition for each column */
     for (uint32_t i = 0; i < hcol->num_orientations; i++) {
-        float inhibition = 0.0f;
+        float inhibition = 0.0F;
 
         /* Sum inhibitory contributions from all other columns */
         for (uint32_t j = 0; j < hcol->num_orientations; j++) {
@@ -874,7 +874,7 @@ bool orientation_hypercolumn_apply_inhibition(
 
             /* Gaussian inhibition kernel */
             float inhibition_kernel = expf(
-                -angle_diff * angle_diff / (2.0f * 30.0f * 30.0f)
+                -angle_diff * angle_diff / (2.0F * 30.0F * 30.0F)
             );
 
             inhibition += hcol->columns[j].activation * inhibition_kernel;
@@ -884,8 +884,8 @@ bool orientation_hypercolumn_apply_inhibition(
         new_activations[i] = hcol->columns[i].activation - strength * inhibition;
 
         /* Ensure non-negative activations */
-        if (new_activations[i] < 0.0f) {
-            new_activations[i] = 0.0f;
+        if (new_activations[i] < 0.0F) {
+            new_activations[i] = 0.0F;
         }
     }
 
@@ -905,7 +905,7 @@ float orientation_hypercolumn_compute_osi(
 ) {
     if (!hcol) {
         LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_compute_osi");
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
@@ -925,11 +925,11 @@ float orientation_hypercolumn_compute_osi(
 
     /* Find orthogonal orientation (90 degrees away) */
     float orthogonal_orientation = normalize_orientation(
-        preferred_orientation + 90.0f
+        preferred_orientation + 90.0F
     );
 
     /* Find column closest to orthogonal orientation */
-    float min_diff = 180.0f;
+    float min_diff = 180.0F;
     uint32_t orthogonal_idx = 0;
 
     for (uint32_t i = 0; i < hcol->num_orientations; i++) {
@@ -948,7 +948,7 @@ float orientation_hypercolumn_compute_osi(
     /* Compute OSI = (R_pref - R_orth) / (R_pref + R_orth) */
     float osi;
     if (max_response + orthogonal_response < EPSILON) {
-        osi = 0.0f;
+        osi = 0.0F;
     } else {
         osi = (max_response - orthogonal_response) /
               (max_response + orthogonal_response);
@@ -966,35 +966,35 @@ float orientation_hypercolumn_compute_circular_variance(
 ) {
     if (!hcol) {
         LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_compute_circular_variance");
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
 
     /* Compute complex vector sum: Σ(R_i × e^(2iθ_i)) */
-    float sum_real = 0.0f;
-    float sum_imag = 0.0f;
-    float sum_responses = 0.0f;
+    float sum_real = 0.0F;
+    float sum_imag = 0.0F;
+    float sum_responses = 0.0F;
 
     for (uint32_t i = 0; i < hcol->num_orientations; i++) {
         float theta_rad = deg2rad(hcol->columns[i].preferred_orientation);
         float response = hcol->columns[i].activation;
 
         /* Double the angle for orientation (180-degree periodicity) */
-        sum_real += response * cosf(2.0f * theta_rad);
-        sum_imag += response * sinf(2.0f * theta_rad);
+        sum_real += response * cosf(2.0F * theta_rad);
+        sum_imag += response * sinf(2.0F * theta_rad);
         sum_responses += response;
     }
 
     /* Compute circular variance: CV = 1 - |vector_sum| / sum_responses */
     float cv;
     if (sum_responses < EPSILON) {
-        cv = 1.0f;  /* Maximum variance (no tuning) */
+        cv = 1.0F;  /* Maximum variance (no tuning) */
     } else {
         float vector_magnitude = sqrtf(
             sum_real * sum_real + sum_imag * sum_imag
         );
-        cv = 1.0f - (vector_magnitude / sum_responses);
+        cv = 1.0F - (vector_magnitude / sum_responses);
     }
 
     hcol->circular_variance = cv;
@@ -1033,7 +1033,7 @@ float orientation_hypercolumn_get_local_orientation(
 ) {
     if (!hcol) {
         LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_get_local_orientation");
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
@@ -1072,7 +1072,7 @@ bool orientation_hypercolumn_get_stats(
 
     /* Count active columns and compute total activation */
     uint32_t num_active = 0;
-    float total_activation = 0.0f;
+    float total_activation = 0.0F;
 
     for (uint32_t i = 0; i < hcol->num_orientations; i++) {
         if (hcol->columns[i].activation > EPSILON) {
@@ -1083,11 +1083,11 @@ bool orientation_hypercolumn_get_stats(
 
     stats->num_active_columns = num_active;
     stats->competition_strength = (total_activation > EPSILON) ?
-        (float)num_active / (float)hcol->num_orientations : 0.0f;
+        (float)num_active / (float)hcol->num_orientations : 0.0F;
 
     /* Compute coverage uniformity (inverse of variance) */
     float expected_activation = total_activation / (float)hcol->num_orientations;
-    float variance = 0.0f;
+    float variance = 0.0F;
 
     for (uint32_t i = 0; i < hcol->num_orientations; i++) {
         float diff = hcol->columns[i].activation - expected_activation;
@@ -1095,8 +1095,8 @@ bool orientation_hypercolumn_get_stats(
     }
 
     variance /= (float)hcol->num_orientations;
-    stats->coverage_uniformity = (variance < EPSILON) ? 1.0f :
-        1.0f / (1.0f + sqrtf(variance));
+    stats->coverage_uniformity = (variance < EPSILON) ? 1.0F :
+        1.0F / (1.0F + sqrtf(variance));
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
 

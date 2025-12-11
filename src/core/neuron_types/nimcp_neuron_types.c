@@ -53,9 +53,9 @@
  * COMPLEXITY: O(n)
  */
 static float compute_mean(const float* values, uint32_t count) {
-    if (!values || count == 0) return 0.0f;
+    if (!values || count == 0) return 0.0F;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         sum += values[i];
     }
@@ -72,9 +72,9 @@ static float compute_mean(const float* values, uint32_t count) {
  * COMPLEXITY: O(n)
  */
 static float compute_variance(const float* values, uint32_t count, float mean) {
-    if (!values || count == 0) return 0.0f;
+    if (!values || count == 0) return 0.0F;
 
-    float sum_sq_diff = 0.0f;
+    float sum_sq_diff = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         float diff = values[i] - mean;
         sum_sq_diff += diff * diff;
@@ -163,7 +163,7 @@ void compute_izhikevich_neuron(const izh_params_t* params, float input,
      */
 
     // Euler integration with 0.5ms sub-steps for stability
-    const float substep = 0.5f;
+    const float substep = 0.5F;
     int num_substeps = (int)(dt / substep) + 1;
     float actual_substep = dt / num_substeps;
 
@@ -172,7 +172,7 @@ void compute_izhikevich_neuron(const izh_params_t* params, float input,
 
     for (int i = 0; i < num_substeps; i++) {
         // dv/dt = 0.04v^2 + 5v + 140 - u + I
-        float dv = (0.04f * v_curr * v_curr + 5.0f * v_curr + 140.0f - u_curr + input) * actual_substep;
+        float dv = (0.04F * v_curr * v_curr + 5.0F * v_curr + 140.0F - u_curr + input) * actual_substep;
 
         // du/dt = a(bv - u)
         float du = params->a * (params->b * v_curr - u_curr) * actual_substep;
@@ -181,7 +181,7 @@ void compute_izhikevich_neuron(const izh_params_t* params, float input,
         u_curr += du;
 
         // Check for spike (v >= 30 mV)
-        if (v_curr >= 30.0f) {
+        if (v_curr >= 30.0F) {
             v_curr = params->c;  // reset voltage
             u_curr += params->d;  // reset recovery
         }
@@ -199,7 +199,7 @@ float compute_v1_simple_cell(const v1_simple_cell_params_t* params,
                              const float* inputs,
                              uint32_t input_width, uint32_t input_height,
                              float center_x, float center_y) {
-    if (!params || !inputs) return 0.0f;
+    if (!params || !inputs) return 0.0F;
 
     /**
      * WHAT: Gabor filter for oriented edge detection
@@ -225,13 +225,13 @@ float compute_v1_simple_cell(const v1_simple_cell_params_t* params,
      * COMPLEXITY: O(w*h) where w,h are receptive field size
      */
 
-    float response = 0.0f;
-    float theta_rad = params->orientation * M_PI / 180.0f;
+    float response = 0.0F;
+    float theta_rad = params->orientation * M_PI / 180.0F;
     float gamma = params->aspect_ratio;
     float sigma_sq = params->sigma * params->sigma;
 
     // Define receptive field size (typically 3-4 sigma)
-    int rf_size = (int)(3.0f * params->sigma);
+    int rf_size = (int)(3.0F * params->sigma);
     int count = 0;
 
     // Convolve Gabor filter over receptive field
@@ -251,10 +251,10 @@ float compute_v1_simple_cell(const v1_simple_cell_params_t* params,
             rotate_coords((float)dx, (float)dy, theta_rad, &x_rot, &y_rot);
 
             // Gaussian envelope
-            float gaussian = expf(-(x_rot * x_rot + gamma * gamma * y_rot * y_rot) / (2.0f * sigma_sq));
+            float gaussian = expf(-(x_rot * x_rot + gamma * gamma * y_rot * y_rot) / (2.0F * sigma_sq));
 
             // Sinusoidal carrier
-            float sinusoid = cosf(2.0f * M_PI * params->spatial_frequency * x_rot + params->phase);
+            float sinusoid = cosf(2.0F * M_PI * params->spatial_frequency * x_rot + params->phase);
 
             // Gabor filter value
             float gabor = gaussian * sinusoid;
@@ -277,13 +277,13 @@ float compute_v1_simple_cell(const v1_simple_cell_params_t* params,
     }
 
     // Half-wave rectification (neurons only respond to positive)
-    return fmaxf(0.0f, response);
+    return fmaxf(0.0F, response);
 }
 
 float compute_v1_complex_cell(const v1_complex_cell_params_t* params,
                               const float* simple_cell_responses,
                               uint32_t num_simple_cells) {
-    if (!params || !simple_cell_responses || num_simple_cells == 0) return 0.0f;
+    if (!params || !simple_cell_responses || num_simple_cells == 0) return 0.0F;
 
     /**
      * WHAT: Energy model for phase-invariant edge detection
@@ -304,8 +304,8 @@ float compute_v1_complex_cell(const v1_complex_cell_params_t* params,
      */
 
     // Pool responses (typically first half are even-symmetric, second half odd)
-    float even_sum = 0.0f;
-    float odd_sum = 0.0f;
+    float even_sum = 0.0F;
+    float odd_sum = 0.0F;
     uint32_t half = num_simple_cells / 2;
 
     // Even-symmetric responses (phase = 0)
@@ -329,11 +329,11 @@ float compute_v1_complex_cell(const v1_complex_cell_params_t* params,
 
     // Direction selectivity: suppress responses to non-preferred direction
     // (simplified: assume even/odd sign indicates direction)
-    float direction_factor = 1.0f;
-    if (params->direction_selectivity > 0.0f) {
+    float direction_factor = 1.0F;
+    if (params->direction_selectivity > 0.0F) {
         float direction_signal = even_sum - odd_sum;
-        if (direction_signal < 0.0f) {
-            direction_factor = 1.0f - params->direction_selectivity;
+        if (direction_signal < 0.0F) {
+            direction_factor = 1.0F - params->direction_selectivity;
         }
     }
 
@@ -349,7 +349,7 @@ float compute_a1_frequency_tuned(const a1_frequency_params_t* params,
                                  uint32_t signal_length,
                                  float sample_rate,
                                  uint64_t timestamp) {
-    if (!params || !audio_input || signal_length == 0) return 0.0f;
+    if (!params || !audio_input || signal_length == 0) return 0.0F;
 
     /**
      * WHAT: Bandpass filtering for tonotopic frequency selectivity
@@ -375,11 +375,11 @@ float compute_a1_frequency_tuned(const a1_frequency_params_t* params,
 
     // Simplified bandpass: multiply by sinusoid at center frequency
     // This extracts energy at that frequency (like heterodyning)
-    float response = 0.0f;
-    float dt = 1.0f / sample_rate;
+    float response = 0.0F;
+    float dt = 1.0F / sample_rate;
 
     // Determine integration window size (in samples)
-    uint32_t window_samples = (uint32_t)(params->integration_window * sample_rate / 1000.0f);
+    uint32_t window_samples = (uint32_t)(params->integration_window * sample_rate / 1000.0F);
     if (window_samples > signal_length) window_samples = signal_length;
     if (window_samples == 0) window_samples = 1;
 
@@ -388,25 +388,25 @@ float compute_a1_frequency_tuned(const a1_frequency_params_t* params,
         float t = i * dt;
 
         // Carrier at center frequency
-        float carrier = sinf(2.0f * M_PI * params->center_frequency * t);
+        float carrier = sinf(2.0F * M_PI * params->center_frequency * t);
 
         // Modulate input
         float modulated = audio_input[i] * carrier;
 
         // Low-pass filter the modulated signal (envelope detection)
         // Q factor determines bandwidth
-        float alpha = expf(-1.0f / params->q_factor);
-        response = alpha * response + (1.0f - alpha) * modulated;
+        float alpha = expf(-1.0F / params->q_factor);
+        response = alpha * response + (1.0F - alpha) * modulated;
     }
 
     // Normalize
     response /= window_samples;
 
     // Adaptation to sustained input
-    response *= (1.0f - params->adaptation_rate * 0.1f);
+    response *= (1.0F - params->adaptation_rate * 0.1F);
 
     // Half-wave rectification
-    return fmaxf(0.0f, response);
+    return fmaxf(0.0F, response);
 }
 
 float compute_a1_coincidence_detector(const a1_coincidence_params_t* params,
@@ -414,7 +414,7 @@ float compute_a1_coincidence_detector(const a1_coincidence_params_t* params,
                                       const float* right_input,
                                       uint32_t num_samples,
                                       uint64_t timestamp) {
-    if (!params || !left_input || !right_input || num_samples == 0) return 0.0f;
+    if (!params || !left_input || !right_input || num_samples == 0) return 0.0F;
 
     /**
      * WHAT: Coincidence detection for binaural sound localization
@@ -439,14 +439,14 @@ float compute_a1_coincidence_detector(const a1_coincidence_params_t* params,
      */
 
     // Compute cross-correlation over short integration window
-    float coincidence = 0.0f;
+    float coincidence = 0.0F;
     uint32_t window_size = num_samples;
 
     // Short integration window for temporal precision
-    if (params->integration_window > 0.0f) {
+    if (params->integration_window > 0.0F) {
         // Assume sample rate ~44.1 kHz typical for audio
-        float sample_rate = 44100.0f;
-        uint32_t window_samples = (uint32_t)(params->integration_window * sample_rate / 1000.0f);
+        float sample_rate = 44100.0F;
+        uint32_t window_samples = (uint32_t)(params->integration_window * sample_rate / 1000.0F);
         if (window_samples < window_size) {
             window_size = window_samples;
         }
@@ -461,12 +461,12 @@ float compute_a1_coincidence_detector(const a1_coincidence_params_t* params,
     coincidence /= window_size;
 
     // Apply decay
-    float decay_factor = expf(-params->decay_rate * 0.01f);
+    float decay_factor = expf(-params->decay_rate * 0.01F);
     coincidence *= decay_factor;
 
     // Threshold for coincidence detection
     if (coincidence < params->threshold) {
-        coincidence = 0.0f;
+        coincidence = 0.0F;
     }
 
     return coincidence;
@@ -481,9 +481,9 @@ float compute_metacognitive(const metacognitive_params_t* params,
                             const float* input_history, uint32_t history_size,
                             float* out_confidence, float* out_uncertainty) {
     if (!params || !inputs || num_inputs == 0) {
-        if (out_confidence) *out_confidence = 0.0f;
-        if (out_uncertainty) *out_uncertainty = 1.0f;
-        return 0.0f;
+        if (out_confidence) *out_confidence = 0.0F;
+        if (out_uncertainty) *out_uncertainty = 1.0F;
+        return 0.0F;
     }
 
     /**
@@ -517,7 +517,7 @@ float compute_metacognitive(const metacognitive_params_t* params,
     float mean = compute_mean(inputs, num_inputs);
 
     // Compute variance over history (if available)
-    float variance = 0.0f;
+    float variance = 0.0F;
     if (input_history && history_size > 0) {
         float history_mean = compute_mean(input_history, history_size);
         variance = compute_variance(input_history, history_size, history_mean);
@@ -531,7 +531,7 @@ float compute_metacognitive(const metacognitive_params_t* params,
 
     // Confidence = 1 / (1 + uncertainty)
     // This gives sigmoid-like mapping: low uncertainty -> high confidence
-    float confidence = 1.0f / (1.0f + uncertainty);
+    float confidence = 1.0F / (1.0F + uncertainty);
 
     // Output values if requested
     if (out_confidence) *out_confidence = confidence;
@@ -543,7 +543,7 @@ float compute_metacognitive(const metacognitive_params_t* params,
 
     // Apply confidence threshold
     if (confidence < params->confidence_threshold) {
-        activation *= 0.5f;  // Attenuate low-confidence signals
+        activation *= 0.5F;  // Attenuate low-confidence signals
     }
 
     return activation;
@@ -595,13 +595,13 @@ float compute_executive_control(const executive_control_params_t* params,
         new_state = current_state + dt * (maintenance_input - decay);
 
         // Prevent unbounded growth
-        if (new_state > 1.0f) new_state = 1.0f;
+        if (new_state > 1.0F) new_state = 1.0F;
 
     } else {
         // ACTIVE PERIOD: Process goal input with amplification
 
         // Top-down modulation amplifies goal-relevant signals
-        float modulated_input = goal_input * (1.0f + params->modulation_strength);
+        float modulated_input = goal_input * (1.0F + params->modulation_strength);
 
         // Integrate input with decay
         float integration = modulated_input - params->decay_rate * current_state;
@@ -609,8 +609,8 @@ float compute_executive_control(const executive_control_params_t* params,
     }
 
     // Clamp to [0, 1]
-    if (new_state < 0.0f) new_state = 0.0f;
-    if (new_state > 1.0f) new_state = 1.0f;
+    if (new_state < 0.0F) new_state = 0.0F;
+    if (new_state > 1.0F) new_state = 1.0F;
 
     return new_state;
 }
@@ -635,74 +635,74 @@ nimcp_result_t neuron_type_get_default_params(neuron_type_t type,
         case NEURON_EXCITATORY:
         case NEURON_INHIBITORY:
             // Backward compatibility: use LIF as default
-            out_params->lif.tau_membrane = 20.0f;
-            out_params->lif.rest_potential = -70.0f;
-            out_params->lif.threshold = -55.0f;
-            out_params->lif.reset_potential = -75.0f;
-            out_params->lif.refractory_period = 2.0f;
+            out_params->lif.tau_membrane = 20.0F;
+            out_params->lif.rest_potential = -70.0F;
+            out_params->lif.threshold = -55.0F;
+            out_params->lif.reset_potential = -75.0F;
+            out_params->lif.refractory_period = 2.0F;
             LOG_DEBUG(LOG_MODULE, "Initialized LIF params for %s: tau=%.1fms, threshold=%.1fmV",
                       neuron_type_get_name(type), out_params->lif.tau_membrane, out_params->lif.threshold);
             break;
 
         case NEURON_GENERIC_LIF:
-            out_params->lif.tau_membrane = 20.0f;      // 20 ms
-            out_params->lif.rest_potential = -70.0f;   // -70 mV
-            out_params->lif.threshold = -55.0f;        // -55 mV
-            out_params->lif.reset_potential = -75.0f;  // -75 mV
-            out_params->lif.refractory_period = 2.0f;  // 2 ms
+            out_params->lif.tau_membrane = 20.0F;      // 20 ms
+            out_params->lif.rest_potential = -70.0F;   // -70 mV
+            out_params->lif.threshold = -55.0F;        // -55 mV
+            out_params->lif.reset_potential = -75.0F;  // -75 mV
+            out_params->lif.refractory_period = 2.0F;  // 2 ms
             break;
 
         case NEURON_GENERIC_IZHIKEVICH:
             // Regular spiking (RS) cortical neuron
-            out_params->izhikevich.a = 0.02f;
-            out_params->izhikevich.b = 0.2f;
-            out_params->izhikevich.c = -65.0f;
-            out_params->izhikevich.d = 8.0f;
+            out_params->izhikevich.a = 0.02F;
+            out_params->izhikevich.b = 0.2F;
+            out_params->izhikevich.c = -65.0F;
+            out_params->izhikevich.d = 8.0F;
             break;
 
         case NEURON_V1_SIMPLE_CELL:
-            out_params->v1_simple.orientation = 45.0f;        // 45 degrees
-            out_params->v1_simple.spatial_frequency = 2.0f;   // 2 cycles/degree
-            out_params->v1_simple.phase = 0.0f;               // ON-center
-            out_params->v1_simple.aspect_ratio = 0.5f;        // Elongated
-            out_params->v1_simple.sigma = 2.0f;               // 2 degree width
+            out_params->v1_simple.orientation = 45.0F;        // 45 degrees
+            out_params->v1_simple.spatial_frequency = 2.0F;   // 2 cycles/degree
+            out_params->v1_simple.phase = 0.0F;               // ON-center
+            out_params->v1_simple.aspect_ratio = 0.5F;        // Elongated
+            out_params->v1_simple.sigma = 2.0F;               // 2 degree width
             out_params->v1_simple.on_center = true;
             break;
 
         case NEURON_V1_COMPLEX_CELL:
-            out_params->v1_complex.orientation = 90.0f;         // Vertical
-            out_params->v1_complex.direction_selectivity = 0.5f; // Moderate
-            out_params->v1_complex.surround_suppression = 0.3f;  // Weak
-            out_params->v1_complex.pooling_size = 4.0f;         // 4 degrees
+            out_params->v1_complex.orientation = 90.0F;         // Vertical
+            out_params->v1_complex.direction_selectivity = 0.5F; // Moderate
+            out_params->v1_complex.surround_suppression = 0.3F;  // Weak
+            out_params->v1_complex.pooling_size = 4.0F;         // 4 degrees
             break;
 
         case NEURON_A1_FREQUENCY_TUNED:
-            out_params->a1_frequency.center_frequency = 1000.0f;  // 1 kHz
-            out_params->a1_frequency.q_factor = 5.0f;             // Moderate tuning
-            out_params->a1_frequency.bandwidth = 200.0f;          // 200 Hz
-            out_params->a1_frequency.integration_window = 10.0f;  // 10 ms
-            out_params->a1_frequency.adaptation_rate = 0.1f;
+            out_params->a1_frequency.center_frequency = 1000.0F;  // 1 kHz
+            out_params->a1_frequency.q_factor = 5.0F;             // Moderate tuning
+            out_params->a1_frequency.bandwidth = 200.0F;          // 200 Hz
+            out_params->a1_frequency.integration_window = 10.0F;  // 10 ms
+            out_params->a1_frequency.adaptation_rate = 0.1F;
             break;
 
         case NEURON_A1_COINCIDENCE_DETECTOR:
-            out_params->a1_coincidence.integration_window = 1.0f;   // 1 ms
-            out_params->a1_coincidence.temporal_precision = 100.0f; // 100 µs
-            out_params->a1_coincidence.threshold = 0.3f;
-            out_params->a1_coincidence.decay_rate = 0.1f;
+            out_params->a1_coincidence.integration_window = 1.0F;   // 1 ms
+            out_params->a1_coincidence.temporal_precision = 100.0F; // 100 µs
+            out_params->a1_coincidence.threshold = 0.3F;
+            out_params->a1_coincidence.decay_rate = 0.1F;
             break;
 
         case NEURON_METACOGNITIVE:
-            out_params->metacognitive.confidence_threshold = 0.5f;  // 50%
-            out_params->metacognitive.uncertainty_window = 100.0f;  // 100 ms
-            out_params->metacognitive.uncertainty_beta = 1.0f;
+            out_params->metacognitive.confidence_threshold = 0.5F;  // 50%
+            out_params->metacognitive.uncertainty_window = 100.0F;  // 100 ms
+            out_params->metacognitive.uncertainty_beta = 1.0F;
             out_params->metacognitive.history_size = 10;
             break;
 
         case NEURON_EXECUTIVE_CONTROL:
-            out_params->executive.goal_maintenance = 0.8f;        // Strong maintenance
-            out_params->executive.modulation_strength = 0.5f;     // Moderate modulation
-            out_params->executive.decay_rate = 0.05f;             // Slow decay
-            out_params->executive.threshold_boost = 0.2f;
+            out_params->executive.goal_maintenance = 0.8F;        // Strong maintenance
+            out_params->executive.modulation_strength = 0.5F;     // Moderate modulation
+            out_params->executive.decay_rate = 0.05F;             // Slow decay
+            out_params->executive.threshold_boost = 0.2F;
             out_params->executive.delay_activity = true;
             break;
 
@@ -746,11 +746,11 @@ nimcp_result_t neuron_type_validate_params(neuron_type_t type,
 
     switch (type) {
         case NEURON_GENERIC_LIF:
-            if (params->lif.tau_membrane <= 0.0f) {
+            if (params->lif.tau_membrane <= 0.0F) {
                 LOG_ERROR(LOG_MODULE, "LIF: invalid tau_membrane=%.2f (must be > 0)", params->lif.tau_membrane);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (params->lif.refractory_period < 0.0f) {
+            if (params->lif.refractory_period < 0.0F) {
                 LOG_ERROR(LOG_MODULE, "LIF: invalid refractory_period=%.2f (must be >= 0)", params->lif.refractory_period);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
@@ -761,58 +761,58 @@ nimcp_result_t neuron_type_validate_params(neuron_type_t type,
             break;
 
         case NEURON_V1_SIMPLE_CELL:
-            if (params->v1_simple.orientation < 0.0f || params->v1_simple.orientation > 180.0f) {
+            if (params->v1_simple.orientation < 0.0F || params->v1_simple.orientation > 180.0F) {
                 LOG_ERROR(LOG_MODULE, "V1 Simple: invalid orientation=%.1f (must be 0-180)", params->v1_simple.orientation);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (params->v1_simple.spatial_frequency <= 0.0f) {
+            if (params->v1_simple.spatial_frequency <= 0.0F) {
                 LOG_ERROR(LOG_MODULE, "V1 Simple: invalid spatial_frequency=%.2f (must be > 0)", params->v1_simple.spatial_frequency);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (params->v1_simple.sigma <= 0.0f) {
+            if (params->v1_simple.sigma <= 0.0F) {
                 LOG_ERROR(LOG_MODULE, "V1 Simple: invalid sigma=%.2f (must be > 0)", params->v1_simple.sigma);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NEURON_V1_COMPLEX_CELL:
-            if (params->v1_complex.orientation < 0.0f || params->v1_complex.orientation > 180.0f) {
+            if (params->v1_complex.orientation < 0.0F || params->v1_complex.orientation > 180.0F) {
                 LOG_ERROR(LOG_MODULE, "V1 Complex: invalid orientation=%.1f (must be 0-180)", params->v1_complex.orientation);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (params->v1_complex.direction_selectivity < 0.0f || params->v1_complex.direction_selectivity > 1.0f) {
+            if (params->v1_complex.direction_selectivity < 0.0F || params->v1_complex.direction_selectivity > 1.0F) {
                 LOG_ERROR(LOG_MODULE, "V1 Complex: invalid direction_selectivity=%.2f (must be 0-1)", params->v1_complex.direction_selectivity);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NEURON_A1_FREQUENCY_TUNED:
-            if (params->a1_frequency.center_frequency <= 0.0f || params->a1_frequency.center_frequency > 20000.0f) {
+            if (params->a1_frequency.center_frequency <= 0.0F || params->a1_frequency.center_frequency > 20000.0F) {
                 LOG_ERROR(LOG_MODULE, "A1 Frequency: invalid center_frequency=%.1f (must be 0-20000 Hz)", params->a1_frequency.center_frequency);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (params->a1_frequency.q_factor <= 0.0f) {
+            if (params->a1_frequency.q_factor <= 0.0F) {
                 LOG_ERROR(LOG_MODULE, "A1 Frequency: invalid q_factor=%.2f (must be > 0)", params->a1_frequency.q_factor);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NEURON_A1_COINCIDENCE_DETECTOR:
-            if (params->a1_coincidence.integration_window <= 0.0f) {
+            if (params->a1_coincidence.integration_window <= 0.0F) {
                 LOG_ERROR(LOG_MODULE, "A1 Coincidence: invalid integration_window=%.2f (must be > 0)", params->a1_coincidence.integration_window);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NEURON_METACOGNITIVE:
-            if (params->metacognitive.confidence_threshold < 0.0f || params->metacognitive.confidence_threshold > 1.0f) {
+            if (params->metacognitive.confidence_threshold < 0.0F || params->metacognitive.confidence_threshold > 1.0F) {
                 LOG_ERROR(LOG_MODULE, "Metacognitive: invalid confidence_threshold=%.2f (must be 0-1)", params->metacognitive.confidence_threshold);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NEURON_EXECUTIVE_CONTROL:
-            if (params->executive.goal_maintenance < 0.0f || params->executive.goal_maintenance > 1.0f) {
+            if (params->executive.goal_maintenance < 0.0F || params->executive.goal_maintenance > 1.0F) {
                 LOG_ERROR(LOG_MODULE, "Executive: invalid goal_maintenance=%.2f (must be 0-1)", params->executive.goal_maintenance);
                 return NIMCP_ERROR_INVALID_PARAM;
             }
@@ -871,21 +871,21 @@ bool neuron_type_is_excitatory(neuron_type_t type) {
  */
 static float apply_gabor_response(float input, float preferred_orientation,
                                    float spatial_frequency, float phase) {
-    if (input <= 0.0f) return 0.0f;
+    if (input <= 0.0F) return 0.0F;
 
     // For single-value input, treat input as edge strength
     // Response is modulated by sinusoid at spatial frequency
-    float theta_rad = preferred_orientation * M_PI / 180.0f;
+    float theta_rad = preferred_orientation * M_PI / 180.0F;
 
     // Gabor response: Gaussian envelope already implicit in network weights
     // We compute just the sinusoidal carrier modulation
-    float sinusoid = cosf(2.0f * M_PI * spatial_frequency * input + phase);
+    float sinusoid = cosf(2.0F * M_PI * spatial_frequency * input + phase);
 
     // Modulate input by sinusoid (orientation tuning)
-    float response = input * (0.5f + 0.5f * sinusoid);  // [0,1] range
+    float response = input * (0.5F + 0.5F * sinusoid);  // [0,1] range
 
     // Half-wave rectification
-    return fmaxf(0.0f, response);
+    return fmaxf(0.0F, response);
 }
 
 /**
@@ -904,7 +904,7 @@ static float apply_gabor_response(float input, float preferred_orientation,
  */
 static float apply_complex_cell_response(float input, float orientation,
                                           float direction_selectivity) {
-    if (input <= 0.0f) return 0.0f;
+    if (input <= 0.0F) return 0.0F;
 
     // Energy model approximation for single input
     // Typically: E = sqrt(even^2 + odd^2)
@@ -913,7 +913,7 @@ static float apply_complex_cell_response(float input, float orientation,
 
     // Direction selectivity: suppress non-preferred directions
     // For single input, we can't determine direction, so apply partial suppression
-    float direction_factor = 1.0f - (direction_selectivity * 0.3f);
+    float direction_factor = 1.0F - (direction_selectivity * 0.3F);
 
     return energy * direction_factor;
 }
@@ -936,8 +936,8 @@ static float apply_complex_cell_response(float input, float orientation,
  */
 static float apply_bandpass_response(float input, float preferred_frequency,
                                       float quality_factor, float integration_window) {
-    if (input <= 0.0f || preferred_frequency <= 0.0f || quality_factor <= 0.0f) {
-        return 0.0f;
+    if (input <= 0.0F || preferred_frequency <= 0.0F || quality_factor <= 0.0F) {
+        return 0.0F;
     }
 
     // For single-value input, apply frequency-dependent gain
@@ -945,17 +945,17 @@ static float apply_bandpass_response(float input, float preferred_frequency,
     // Response = input * H(f) where H(f) is bandpass transfer function
 
     // Normalize input by integration window to account for temporal integration
-    float window_factor = fminf(1.0f, integration_window / 10.0f);  // 10ms baseline
+    float window_factor = fminf(1.0F, integration_window / 10.0F);  // 10ms baseline
 
     // Apply Q factor as gain modulation
     // Higher Q = more selective = lower baseline response
-    float q_factor = 1.0f / (1.0f + quality_factor * 0.1f);
+    float q_factor = 1.0F / (1.0F + quality_factor * 0.1F);
 
     // Bandpass response with temporal integration
     float response = input * window_factor * q_factor;
 
     // Half-wave rectification (neurons only fire for positive inputs)
-    return fmaxf(0.0f, response);
+    return fmaxf(0.0F, response);
 }
 
 /**
@@ -981,8 +981,8 @@ static float apply_bandpass_response(float input, float preferred_frequency,
  */
 static float apply_coincidence_detection(float input, float integration_window,
                                           float decay_rate) {
-    if (input <= 0.0f || integration_window <= 0.0f) {
-        return 0.0f;
+    if (input <= 0.0F || integration_window <= 0.0F) {
+        return 0.0F;
     }
 
     // For single-value input, model coincidence strength
@@ -990,20 +990,20 @@ static float apply_coincidence_detection(float input, float integration_window,
 
     // Short integration window enhances temporal precision
     // Typical MSO neurons: 0.5-2ms integration window
-    float temporal_precision = 1.0f / fmaxf(0.1f, integration_window);
+    float temporal_precision = 1.0F / fmaxf(0.1F, integration_window);
 
     // Apply temporal precision scaling
     float coincidence = input * temporal_precision;
 
     // Apply decay for sustained inputs
-    float decay_factor = expf(-decay_rate * 0.01f);
+    float decay_factor = expf(-decay_rate * 0.01F);
     coincidence *= decay_factor;
 
     // Threshold for coincidence detection
     // Coincidence detectors have high thresholds
-    float threshold = 0.3f;
+    float threshold = 0.3F;
     if (coincidence < threshold) {
-        coincidence = 0.0f;
+        coincidence = 0.0F;
     }
 
     return coincidence;
@@ -1032,8 +1032,8 @@ static float apply_coincidence_detection(float input, float integration_window,
  * COMPLEXITY: O(1)
  */
 static float apply_onset_detection(float input, float integration_window) {
-    if (input <= 0.0f || integration_window <= 0.0f) {
-        return 0.0f;
+    if (input <= 0.0F || integration_window <= 0.0F) {
+        return 0.0F;
     }
 
     // Onset detection via short integration window
@@ -1041,7 +1041,7 @@ static float apply_onset_detection(float input, float integration_window) {
 
     // Shorter window = stronger onset response
     // Normalize by 5ms baseline
-    float onset_strength = 5.0f / fmaxf(1.0f, integration_window);
+    float onset_strength = 5.0F / fmaxf(1.0F, integration_window);
 
     // Apply onset scaling to input
     float onset_response = input * onset_strength;
@@ -1049,13 +1049,13 @@ static float apply_onset_detection(float input, float integration_window) {
     // Rapid adaptation: strong initial response, fast decay
     // Model as high-pass filter on envelope
     // For single-value input, apply threshold nonlinearity
-    float adaptation_threshold = 0.5f;
+    float adaptation_threshold = 0.5F;
     if (onset_response < adaptation_threshold) {
-        onset_response *= 0.1f;  // Weak response below threshold
+        onset_response *= 0.1F;  // Weak response below threshold
     }
 
     // Clamp to [0, 1] range
-    onset_response = fminf(1.0f, onset_response);
+    onset_response = fminf(1.0F, onset_response);
 
     return onset_response;
 }
@@ -1076,9 +1076,9 @@ static float apply_onset_detection(float input, float integration_window) {
  */
 static float compute_prediction_error(float actual, float expected,
                                         float uncertainty_beta) {
-    if (expected < 0.0f) {
+    if (expected < 0.0F) {
         // No expected value: use neutral baseline (0.5)
-        expected = 0.5f;
+        expected = 0.5F;
     }
 
     // Prediction error magnitude
@@ -1108,7 +1108,7 @@ static float estimate_activation_variance(float current, float prev_mean,
     // Exponential moving average of variance
     // This approximates online variance calculation
     float delta = current - prev_mean;
-    float variance = decay_alpha * prev_variance + (1.0f - decay_alpha) * (delta * delta);
+    float variance = decay_alpha * prev_variance + (1.0F - decay_alpha) * (delta * delta);
 
     return variance;
 }
@@ -1169,15 +1169,15 @@ static float apply_metacognitive_monitoring(float input, float prev_input,
                                               float confidence_threshold,
                                               float uncertainty_beta) {
     // Guard clause: no previous input for comparison
-    if (prev_input < 0.0f) {
+    if (prev_input < 0.0F) {
         // First activation: assume moderate confidence
-        return input * 0.7f;
+        return input * 0.7F;
     }
 
     // 1. INTROSPECTION: Track activation variance
     // Use exponential decay for online variance estimation
-    float decay_alpha = 0.9f;  // Smoothing factor
-    static float prev_variance = 0.0f;  // Static for persistence
+    float decay_alpha = 0.9F;  // Smoothing factor
+    static float prev_variance = 0.0F;  // Static for persistence
     float variance = estimate_activation_variance(input, prev_input,
                                                     prev_variance, decay_alpha);
     prev_variance = variance;
@@ -1192,18 +1192,18 @@ static float apply_metacognitive_monitoring(float input, float prev_input,
 
     // 4. CONFIDENCE COMPUTATION: Convert uncertainty to confidence
     // Confidence = 1 / (1 + uncertainty)
-    float confidence = 1.0f / (1.0f + uncertainty);
+    float confidence = 1.0F / (1.0F + uncertainty);
 
     // 5. LEARNING RATE MODULATION: Adjust based on confidence
     // High confidence → strong learning (rate = 1.0)
     // Low confidence → weak learning (rate = 0.3)
     float modulated_input = modulate_learning_rate(input, confidence,
-                                                     0.3f, 1.0f);
+                                                     0.3F, 1.0F);
 
     // 6. CONFIDENCE THRESHOLD: Apply hard threshold for low confidence
     if (confidence < confidence_threshold) {
         // Low confidence: flag for additional monitoring
-        modulated_input *= 0.5f;
+        modulated_input *= 0.5F;
     }
 
     return modulated_input;
@@ -1227,13 +1227,13 @@ static float apply_metacognitive_monitoring(float input, float prev_input,
 static float apply_task_switching(float input, float current_goal,
                                     float prev_goal, float switch_cost) {
     // Detect task switch: goal signal changed significantly
-    static float task_switch_threshold = 0.3f;
+    static float task_switch_threshold = 0.3F;
     float goal_change = fabsf(current_goal - prev_goal);
 
     if (goal_change > task_switch_threshold) {
         // Task switch detected: apply reconfiguration cost
         // Temporarily reduce processing efficiency
-        return input * (1.0f - switch_cost);
+        return input * (1.0F - switch_cost);
     }
 
     // No task switch: normal processing
@@ -1262,12 +1262,12 @@ static float apply_inhibitory_control(float input, float goal_relevance,
                                         float threshold_boost) {
     // Adaptive threshold: higher for low-relevance inputs
     // threshold = base + (1 - relevance) * boost
-    float base_threshold = 0.3f;
-    float adaptive_threshold = base_threshold + (1.0f - goal_relevance) * threshold_boost;
+    float base_threshold = 0.3F;
+    float adaptive_threshold = base_threshold + (1.0F - goal_relevance) * threshold_boost;
 
     if (input < adaptive_threshold) {
         // Below threshold: suppress (strong inhibition)
-        return input * 0.1f;
+        return input * 0.1F;
     }
 
     // Above threshold: pass through
@@ -1299,7 +1299,7 @@ static float maintain_working_memory(float input, float goal_strength,
     // Strong goal signal: maintain elevated activity
     if (goal_strength > maintenance_threshold) {
         // Boost weak inputs to maintain representation
-        float maintenance_boost = 0.5f * goal_strength;
+        float maintenance_boost = 0.5F * goal_strength;
         return fmaxf(input, maintenance_boost);
     }
 
@@ -1326,7 +1326,7 @@ static float apply_attentional_modulation(float input, float task_relevance,
                                             float modulation_strength) {
     // Multiplicative gain modulation
     // gain = 1 + strength * relevance
-    float gain = 1.0f + (modulation_strength * task_relevance);
+    float gain = 1.0F + (modulation_strength * task_relevance);
 
     return input * gain;
 }
@@ -1364,16 +1364,16 @@ static float apply_executive_control(float input, float goal_signal,
                                        float modulation_strength,
                                        float threshold_boost) {
     // Guard clause: invalid inputs
-    if (goal_signal < 0.0f) {
+    if (goal_signal < 0.0F) {
         // No goal context: minimal processing
-        return input * 0.3f;
+        return input * 0.3F;
     }
 
     // Track previous goal for task switching detection
-    static float prev_goal_signal = 0.0f;
+    static float prev_goal_signal = 0.0F;
 
     // 1. TASK SWITCHING: Detect and apply switch cost
-    float switch_cost = 0.3f;  // 30% efficiency reduction during switch
+    float switch_cost = 0.3F;  // 30% efficiency reduction during switch
     float switched_input = apply_task_switching(input, goal_signal,
                                                   prev_goal_signal, switch_cost);
 
@@ -1391,7 +1391,7 @@ static float apply_executive_control(float input, float goal_signal,
                                                        threshold_boost);
 
     // 4. WORKING MEMORY: Maintain activity for strong goals
-    float maintenance_threshold = 0.7f;  // Strong goal threshold
+    float maintenance_threshold = 0.7F;  // Strong goal threshold
     float maintained_input = maintain_working_memory(inhibited_input,
                                                        goal_signal,
                                                        maintenance_threshold);
@@ -1400,7 +1400,7 @@ static float apply_executive_control(float input, float goal_signal,
     prev_goal_signal = goal_signal;
 
     // Clamp output to [0, 1]
-    maintained_input = fminf(1.0f, fmaxf(0.0f, maintained_input));
+    maintained_input = fminf(1.0F, fmaxf(0.0F, maintained_input));
 
     return maintained_input;
 }
@@ -1431,12 +1431,12 @@ float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* 
     // Guard clause: invalid input
     if (!params) {
         LOG_WARN(LOG_MODULE, "NULL params for %s, returning 0.0", neuron_type_get_name(type));
-        return 0.0f;
+        return 0.0F;
     }
 
     (void)timestamp;  // May be used by future neuron types
 
-    float result = 0.0f;
+    float result = 0.0F;
 
     switch (type) {
         case NEURON_V1_SIMPLE_CELL:  // NEURON_VISUAL_EDGE is an alias (same value)
@@ -1469,7 +1469,7 @@ float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* 
             return apply_complex_cell_response(
                 input,
                 params->v1_complex.orientation,
-                1.0f  // Maximum direction selectivity
+                1.0F  // Maximum direction selectivity
             );
 
         case NEURON_AUDITORY_FREQUENCY:
@@ -1512,7 +1512,7 @@ float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* 
             // We approximate by comparing current input to expected baseline (0.5).
             return apply_metacognitive_monitoring(
                 input,
-                0.5f,  // Baseline for comparison (prev_input proxy)
+                0.5F,  // Baseline for comparison (prev_input proxy)
                 params->metacognitive.confidence_threshold,
                 params->metacognitive.uncertainty_beta
             );
@@ -1527,7 +1527,7 @@ float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* 
             // We approximate by assuming moderate goal signal (0.6).
             return apply_executive_control(
                 input,
-                0.6f,  // Default goal signal strength
+                0.6F,  // Default goal signal strength
                 params->executive.modulation_strength,
                 params->executive.threshold_boost
             );

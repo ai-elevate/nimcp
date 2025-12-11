@@ -59,10 +59,10 @@ extern void sorgqr_(
 mps_config_t mps_default_config(void) {
     mps_config_t config = {
         .bond_dim = 10,              // 10-20x compression
-        .svd_tolerance = 1e-6f,      // Discard small singular values
+        .svd_tolerance = 1e-6F,      // Discard small singular values
         .adaptive_bond_dim = true,   // Optimize per bond
         .max_iterations = 100,       // For iterative optimization
-        .learning_rate = 0.01f,      // For gradient descent
+        .learning_rate = 0.01F,      // For gradient descent
         .normalize_tensors = true    // Numerical stability
     };
     return config;
@@ -71,7 +71,7 @@ mps_config_t mps_default_config(void) {
 mps_config_t mps_high_compression_config(void) {
     mps_config_t config = mps_default_config();
     config.bond_dim = 5;             // 50-100x compression
-    config.svd_tolerance = 1e-4f;    // More aggressive truncation
+    config.svd_tolerance = 1e-4F;    // More aggressive truncation
     config.adaptive_bond_dim = true;
     return config;
 }
@@ -79,7 +79,7 @@ mps_config_t mps_high_compression_config(void) {
 mps_config_t mps_high_accuracy_config(void) {
     mps_config_t config = mps_default_config();
     config.bond_dim = 20;            // 5-10x compression
-    config.svd_tolerance = 1e-8f;    // Keep more singular values
+    config.svd_tolerance = 1e-8F;    // Keep more singular values
     config.adaptive_bond_dim = false; // Use full bond_dim everywhere
     return config;
 }
@@ -193,20 +193,20 @@ static float compute_reconstruction_error(
     uint32_t num_rows,
     uint32_t num_cols)
 {
-    if (!mps || !original_weights) return 1.0f;
+    if (!mps || !original_weights) return 1.0F;
 
     // WHAT: Reconstruct matrix from MPS
     float* reconstructed = nimcp_malloc(num_rows * num_cols * sizeof(float));
-    if (!reconstructed) return 1.0f;
+    if (!reconstructed) return 1.0F;
 
     if (!mps_reconstruct_matrix(mps, reconstructed)) {
         nimcp_free(reconstructed);
-        return 1.0f;
+        return 1.0F;
     }
 
     // WHAT: Compute ||original - reconstructed||_F
-    float error_sum = 0.0f;
-    float orig_sum = 0.0f;
+    float error_sum = 0.0F;
+    float orig_sum = 0.0F;
     for (uint32_t i = 0; i < num_rows * num_cols; i++) {
         float diff = original_weights[i] - reconstructed[i];
         error_sum += diff * diff;
@@ -216,7 +216,7 @@ static float compute_reconstruction_error(
     nimcp_free(reconstructed);
 
     // WHAT: Return relative error
-    return (orig_sum > 1e-10f) ? sqrtf(error_sum / orig_sum) : 0.0f;
+    return (orig_sum > 1e-10F) ? sqrtf(error_sum / orig_sum) : 0.0F;
 }
 
 /**
@@ -389,7 +389,7 @@ static void mps_randomize(mps_matrix_t* mps) {
         mps_tensor_t* tensor = &mps->sites[site];
         for (uint32_t i = 0; i < tensor->total_size; i++) {
             // Random in [-0.1, 0.1]
-            tensor->data[i] = ((float)rand() / (float)RAND_MAX) * 0.2f - 0.1f;
+            tensor->data[i] = ((float)rand() / (float)RAND_MAX) * 0.2F - 0.1F;
         }
     }
 }
@@ -505,7 +505,7 @@ mps_matrix_t* mps_compress_matrix(
     if (stats) {
         stats->compression_ratio = mps->compression_ratio;
         stats->reconstruction_error = mps->reconstruction_error;
-        stats->max_singular_value = 1.0f;
+        stats->max_singular_value = 1.0F;
         stats->min_singular_value = config->svd_tolerance;
         stats->num_singular_values_kept = total_params;
         stats->num_singular_values_dropped = original_params - total_params;
@@ -566,7 +566,7 @@ bool mps_matrix_vector_multiply(
         // Contract: v_next[j] = Σᵢ Σₖ A[i,j,k] × v_curr[i × phys_dim + k]
         for (uint32_t i = 0; i < tensor->left_dim; i++) {
             for (uint32_t j = 0; j < tensor->right_dim; j++) {
-                float sum = 0.0f;
+                float sum = 0.0F;
 
                 for (uint32_t k = 0; k < tensor->phys_dim; k++) {
                     // Index into tensor: A[i,j,k]
@@ -619,7 +619,7 @@ bool mps_reconstruct_matrix(
         float* input = (float*)nimcp_calloc(mps->input_dim, sizeof(float));
         if (!input) return false;
 
-        input[i] = 1.0f;
+        input[i] = 1.0F;
 
         // Compute output row
         float* output = weights + i * mps->output_dim;
@@ -638,23 +638,23 @@ float mps_compute_error(
     const float* original_weights
 ) {
     // Guard: NULL checks
-    if (!mps || !original_weights) return -1.0f;
+    if (!mps || !original_weights) return -1.0F;
 
     // Reconstruct MPS matrix
     float* reconstructed = (float*)nimcp_malloc(
         mps->input_dim * mps->output_dim * sizeof(float)
     );
-    if (!reconstructed) return -1.0f;
+    if (!reconstructed) return -1.0F;
 
     bool success = mps_reconstruct_matrix(mps, reconstructed);
     if (!success) {
         nimcp_free(reconstructed);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Compute Frobenius norms
-    float error_norm = 0.0f;
-    float original_norm = 0.0f;
+    float error_norm = 0.0F;
+    float original_norm = 0.0F;
 
     for (uint32_t i = 0; i < mps->input_dim * mps->output_dim; i++) {
         float diff = original_weights[i] - reconstructed[i];
@@ -665,7 +665,7 @@ float mps_compute_error(
     nimcp_free(reconstructed);
 
     // Return relative error
-    if (original_norm < 1e-12f) return 0.0f; // Avoid division by zero
+    if (original_norm < 1e-12F) return 0.0F; // Avoid division by zero
     return sqrtf(error_norm / original_norm);
 }
 
@@ -748,7 +748,7 @@ void mps_print_info(const mps_matrix_t* mps) {
     printf("Original parameters:  %u\n", mps->input_dim * mps->output_dim);
     printf("Compression ratio:    %.2fx\n", mps->compression_ratio);
     printf("Reconstruction error: %.6f\n", mps->reconstruction_error);
-    printf("Memory usage:         %.2f KB\n", mps_memory_usage(mps) / 1024.0f);
+    printf("Memory usage:         %.2f KB\n", mps_memory_usage(mps) / 1024.0F);
 
     printf("\nSite structure:\n");
     for (uint32_t i = 0; i < mps->num_sites; i++) {
@@ -895,7 +895,7 @@ bool mps_backward(
         //      The tensor only has phys_dim elements, but v_curr has input_dim elements
         for (uint32_t i = 0; i < tensor->left_dim; i++) {
             for (uint32_t j = 0; j < tensor->right_dim; j++) {
-                float sum = 0.0f;
+                float sum = 0.0F;
 
                 if (site == 0) {
                     // Site 0: Contract over all input dimensions
@@ -1031,7 +1031,7 @@ bool mps_update_params(
     if (!mps || !grad_mps) return false;
     if (!mps->sites || !grad_mps->sites) return false;
     if (mps->num_sites != grad_mps->num_sites) return false;
-    if (learning_rate <= 0.0f || learning_rate > 1.0f) return false;
+    if (learning_rate <= 0.0F || learning_rate > 1.0F) return false;
 
     // Update each site tensor
     for (uint32_t site = 0; site < mps->num_sites; site++) {
@@ -1054,8 +1054,8 @@ bool mps_update_params(
         // Optional: Gradient clipping to prevent instability
         // Clip individual gradient values to [-10, 10]
         for (uint32_t i = 0; i < tensor->total_size; i++) {
-            if (tensor->data[i] > 10.0f) tensor->data[i] = 10.0f;
-            if (tensor->data[i] < -10.0f) tensor->data[i] = -10.0f;
+            if (tensor->data[i] > 10.0F) tensor->data[i] = 10.0F;
+            if (tensor->data[i] < -10.0F) tensor->data[i] = -10.0F;
         }
     }
 
@@ -1085,7 +1085,7 @@ bool mps_adapt_bond_dimensions(
     // Guard: NULL checks
     if (!mps || !mps->sites) return false;
     if (mps->num_sites < 2) return false;
-    if (target_error <= 0.0f || target_error >= 1.0f) return false;
+    if (target_error <= 0.0F || target_error >= 1.0F) return false;
 
     // Adaptive strategy: Compute importance of each bond
     // For simplicity, we'll analyze the Frobenius norm of each site tensor
@@ -1097,7 +1097,7 @@ bool mps_adapt_bond_dimensions(
         mps_tensor_t* tensor = &mps->sites[site];
 
         // Compute Frobenius norm of tensor
-        float tensor_norm = 0.0f;
+        float tensor_norm = 0.0F;
         for (uint32_t i = 0; i < tensor->total_size; i++) {
             tensor_norm += tensor->data[i] * tensor->data[i];
         }
@@ -1113,7 +1113,7 @@ bool mps_adapt_bond_dimensions(
 
         // Heuristic: If avg magnitude < target_error, this site is a candidate
         // for dimension reduction
-        if (avg_magnitude < target_error * 0.1f) {
+        if (avg_magnitude < target_error * 0.1F) {
             // This site could potentially use smaller bond dimensions
             // Mark for potential recompression
             adapted = true;
@@ -1125,8 +1125,8 @@ bool mps_adapt_bond_dimensions(
 
             // For this simplified version, we'll just renormalize the tensor
             // to maintain numerical stability
-            if (tensor_norm > 1e-12f) {
-                float scale = 1.0f / tensor_norm;
+            if (tensor_norm > 1e-12F) {
+                float scale = 1.0F / tensor_norm;
                 for (uint32_t i = 0; i < tensor->total_size; i++) {
                     tensor->data[i] *= scale;
                 }
@@ -1138,7 +1138,7 @@ bool mps_adapt_bond_dimensions(
     if (adapted) {
         // Estimate new reconstruction error based on adaptations
         // This is a rough heuristic - proper implementation would recompute
-        mps->reconstruction_error = target_error * 0.5f;
+        mps->reconstruction_error = target_error * 0.5F;
     }
 
     return adapted;
@@ -1242,10 +1242,10 @@ bool mps_recompress(
     // Estimate reconstruction error change
     if (new_bond_dim < old_bond_dim) {
         // Compressing further increases error
-        mps->reconstruction_error *= (1.0f + 0.1f * (float)(old_bond_dim - new_bond_dim) / (float)old_bond_dim);
+        mps->reconstruction_error *= (1.0F + 0.1F * (float)(old_bond_dim - new_bond_dim) / (float)old_bond_dim);
     } else {
         // Expanding potentially reduces error (if followed by training)
-        mps->reconstruction_error *= 0.9f;
+        mps->reconstruction_error *= 0.9F;
     }
 
     return true;
@@ -1443,14 +1443,14 @@ bool mps_canonicalize(
     for (uint32_t site = 0; site < center_site; site++) {
         mps_tensor_t* tensor = &mps->sites[site];
 
-        float norm = 0.0f;
+        float norm = 0.0F;
         for (uint32_t i = 0; i < tensor->total_size; i++) {
             norm += tensor->data[i] * tensor->data[i];
         }
         norm = sqrtf(norm);
 
-        if (norm > 1e-12f) {
-            float scale = 1.0f / norm;
+        if (norm > 1e-12F) {
+            float scale = 1.0F / norm;
             for (uint32_t i = 0; i < tensor->total_size; i++) {
                 tensor->data[i] *= scale;
             }
@@ -1468,14 +1468,14 @@ bool mps_canonicalize(
     for (int site = (int)mps->num_sites - 1; site > (int)center_site; site--) {
         mps_tensor_t* tensor = &mps->sites[site];
 
-        float norm = 0.0f;
+        float norm = 0.0F;
         for (uint32_t i = 0; i < tensor->total_size; i++) {
             norm += tensor->data[i] * tensor->data[i];
         }
         norm = sqrtf(norm);
 
-        if (norm > 1e-12f) {
-            float scale = 1.0f / norm;
+        if (norm > 1e-12F) {
+            float scale = 1.0F / norm;
             for (uint32_t i = 0; i < tensor->total_size; i++) {
                 tensor->data[i] *= scale;
             }

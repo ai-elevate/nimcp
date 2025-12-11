@@ -139,7 +139,7 @@ bool nimcp_brain_factory_init_introspection_subsystem(brain_t brain)
 
     // Customize configuration for NIMCP
     config.default_strategy = STATE_STRATEGY_BALANCED;  // Balance speed vs accuracy
-    config.activity_threshold = 0.3f;                   // Neurons above 0.3 = "active"
+    config.activity_threshold = 0.3F;                   // Neurons above 0.3 = "active"
     config.history_size = 100;                          // Track last 100 states
     config.enable_pattern_tracking = true;              // Track learned patterns
     config.enable_uncertainty_estimation = true;        // Enable uncertainty
@@ -190,7 +190,7 @@ bool nimcp_brain_factory_init_connectivity_health_subsystem(brain_t brain)
 
     // Initialize health structure to safe defaults
     memset(&brain->last_connectivity_health, 0, sizeof(brain_connectivity_health_t));
-    brain->last_connectivity_health.overall_health = 0.0f;
+    brain->last_connectivity_health.overall_health = 0.0F;
     brain->last_connectivity_health.is_healthy = false;
 
     // Enable monitoring if Shannon monitoring is enabled (synergy)
@@ -288,12 +288,12 @@ bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t brain)
         .num_policies = 0,
         .callback = NULL,                    // No custom callback
         .callback_context = NULL,
-        .default_severity = 0.5f,            // Moderate default severity
+        .default_severity = 0.5F,            // Moderate default severity
         .enable_learning = true,             // Enable learning from outcomes
         .action_feature_size = 20,           // Feature vector size for actions
         .max_agents = 10,                    // Maximum number of agents to consider
-        .golden_rule_threshold = 0.0f,       // Always evaluate (no threshold)
-        .empathy_weight = 0.7f               // High weight for empathy signals
+        .golden_rule_threshold = 0.0F,       // Always evaluate (no threshold)
+        .empathy_weight = 0.7F               // High weight for empathy signals
     };
 
     // Create ethics engine with empathy network integration
@@ -351,7 +351,7 @@ bool nimcp_brain_factory_init_empathy_network_subsystem(brain_t brain)
     empathy_config_t config = {
         .mirror_network = brain->mirror_neurons,  // Link to mirror neurons if available
         .observation_window_ms = 1000,            // 1 second observation window
-        .empathy_threshold = 0.5f                 // Minimum activation for empathy response
+        .empathy_threshold = 0.5F                 // Minimum activation for empathy response
     };
 
     // Create empathy network

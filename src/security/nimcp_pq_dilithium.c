@@ -194,9 +194,9 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     uint8_t seed[64];
     err = secure_random_bytes(seed, sizeof(seed));
     if (err != NIMCP_OK) {
-        secure_zero(seed, sizeof(seed));
+        _local_secure_zero(seed, sizeof(seed));
         free(public_key);
-        secure_zero(secret_key, secret_key_len);
+        _local_secure_zero(secret_key, secret_key_len);
         free(secret_key);
         LOG_ERROR("nimcp_dilithium_keygen: Random generation failed");
         return err;
@@ -211,9 +211,9 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     /* Public key: rho and t1 */
     err = secure_random_bytes(public_key, public_key_len);
     if (err != NIMCP_OK) {
-        secure_zero(seed, sizeof(seed));
+        _local_secure_zero(seed, sizeof(seed));
         free(public_key);
-        secure_zero(secret_key, secret_key_len);
+        _local_secure_zero(secret_key, secret_key_len);
         free(secret_key);
         return err;
     }
@@ -221,9 +221,9 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     /* Secret key: rho, K, tr, s1, s2, t0 */
     err = secure_random_bytes(secret_key, secret_key_len);
     if (err != NIMCP_OK) {
-        secure_zero(seed, sizeof(seed));
+        _local_secure_zero(seed, sizeof(seed));
         free(public_key);
-        secure_zero(secret_key, secret_key_len);
+        _local_secure_zero(secret_key, secret_key_len);
         free(secret_key);
         return err;
     }
@@ -236,7 +236,7 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
     keypair->secret_key = secret_key;
     keypair->secret_key_len = secret_key_len;
 
-    secure_zero(seed, sizeof(seed));
+    _local_secure_zero(seed, sizeof(seed));
 
     LOG_DEBUG("nimcp_dilithium_keygen: Generated Dilithium%d keypair (pk=%zu, sk=%zu)",
                     variant == NIMCP_PQ_DILITHIUM_2 ? 2 :
@@ -312,7 +312,7 @@ nimcp_error_t nimcp_dilithium_sign(
     /* Create signature (simplified - would be proper lattice signature) */
     err = secure_random_bytes(signature, expected_sig_len);
     if (err != NIMCP_OK) {
-        secure_zero(nonce, sizeof(nonce));
+        _local_secure_zero(nonce, sizeof(nonce));
         return err;
     }
 
@@ -322,7 +322,7 @@ nimcp_error_t nimcp_dilithium_sign(
     }
 
     *signature_len = expected_sig_len;
-    secure_zero(nonce, sizeof(nonce));
+    _local_secure_zero(nonce, sizeof(nonce));
 
     LOG_DEBUG("nimcp_dilithium_sign: Created signature (msg=%zu, sig=%zu)",
                     message_len, *signature_len);
@@ -435,7 +435,7 @@ void nimcp_dilithium_keypair_free(nimcp_dilithium_keypair_t* keypair) {
 
     /* Securely zero and free secret key */
     if (keypair->secret_key) {
-        secure_zero(keypair->secret_key, keypair->secret_key_len);
+        _local_secure_zero(keypair->secret_key, keypair->secret_key_len);
         free(keypair->secret_key);
         keypair->secret_key = NULL;
     }

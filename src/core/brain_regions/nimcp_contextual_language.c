@@ -118,40 +118,40 @@ static void init_context_weights(contextual_language_t cl) {
     memset(cl->context_biases, 0, sizeof(cl->context_biases));
 
     // FORMAL: High formality, precision, low emotion
-    cl->context_weights[CONTEXT_FORMAL][0] = 0.8f;   // Lexical complexity
-    cl->context_weights[CONTEXT_FORMAL][1] = 0.9f;   // Formality markers
-    cl->context_weights[CONTEXT_FORMAL][7] = -0.5f;  // Negative emotion weight
-    cl->context_biases[CONTEXT_FORMAL] = 0.2f;
+    cl->context_weights[CONTEXT_FORMAL][0] = 0.8F;   // Lexical complexity
+    cl->context_weights[CONTEXT_FORMAL][1] = 0.9F;   // Formality markers
+    cl->context_weights[CONTEXT_FORMAL][7] = -0.5F;  // Negative emotion weight
+    cl->context_biases[CONTEXT_FORMAL] = 0.2F;
 
     // CASUAL: Low formality, moderate emotion
-    cl->context_weights[CONTEXT_CASUAL][0] = -0.3f;  // Lower complexity
-    cl->context_weights[CONTEXT_CASUAL][1] = -0.7f;  // Informal markers
-    cl->context_weights[CONTEXT_CASUAL][4] = 0.4f;   // Positive emotion OK
-    cl->context_biases[CONTEXT_CASUAL] = -0.1f;
+    cl->context_weights[CONTEXT_CASUAL][0] = -0.3F;  // Lower complexity
+    cl->context_weights[CONTEXT_CASUAL][1] = -0.7F;  // Informal markers
+    cl->context_weights[CONTEXT_CASUAL][4] = 0.4F;   // Positive emotion OK
+    cl->context_biases[CONTEXT_CASUAL] = -0.1F;
 
     // TECHNICAL: High precision, technical terms
-    cl->context_weights[CONTEXT_TECHNICAL][2] = 0.9f;  // Technical terms
-    cl->context_weights[CONTEXT_TECHNICAL][6] = 0.8f;  // Precision
-    cl->context_weights[CONTEXT_TECHNICAL][3] = -0.3f; // Low emotion
-    cl->context_biases[CONTEXT_TECHNICAL] = 0.3f;
+    cl->context_weights[CONTEXT_TECHNICAL][2] = 0.9F;  // Technical terms
+    cl->context_weights[CONTEXT_TECHNICAL][6] = 0.8F;  // Precision
+    cl->context_weights[CONTEXT_TECHNICAL][3] = -0.3F; // Low emotion
+    cl->context_biases[CONTEXT_TECHNICAL] = 0.3F;
 
     // EMOTIONAL: High emotional content
-    cl->context_weights[CONTEXT_EMOTIONAL][3] = 0.9f;  // Emotion markers
-    cl->context_weights[CONTEXT_EMOTIONAL][4] = 0.7f;  // Sentiment
-    cl->context_weights[CONTEXT_EMOTIONAL][5] = 0.6f;  // Arousal
-    cl->context_biases[CONTEXT_EMOTIONAL] = 0.1f;
+    cl->context_weights[CONTEXT_EMOTIONAL][3] = 0.9F;  // Emotion markers
+    cl->context_weights[CONTEXT_EMOTIONAL][4] = 0.7F;  // Sentiment
+    cl->context_weights[CONTEXT_EMOTIONAL][5] = 0.6F;  // Arousal
+    cl->context_biases[CONTEXT_EMOTIONAL] = 0.1F;
 
     // URGENT: High urgency, priority markers
-    cl->context_weights[CONTEXT_URGENT][6] = 0.9f;   // Urgency indicators
-    cl->context_weights[CONTEXT_URGENT][7] = 0.8f;   // Time pressure
-    cl->context_weights[CONTEXT_URGENT][8] = 0.7f;   // Priority
-    cl->context_biases[CONTEXT_URGENT] = 0.4f;
+    cl->context_weights[CONTEXT_URGENT][6] = 0.9F;   // Urgency indicators
+    cl->context_weights[CONTEXT_URGENT][7] = 0.8F;   // Time pressure
+    cl->context_weights[CONTEXT_URGENT][8] = 0.7F;   // Priority
+    cl->context_biases[CONTEXT_URGENT] = 0.4F;
 
     // LEARNING: Moderate complexity, clear structure
-    cl->context_weights[CONTEXT_LEARNING][0] = 0.4f;  // Moderate complexity
-    cl->context_weights[CONTEXT_LEARNING][6] = 0.6f;  // Clear precision
-    cl->context_weights[CONTEXT_LEARNING][9] = 0.5f;  // Explanatory markers
-    cl->context_biases[CONTEXT_LEARNING] = 0.0f;
+    cl->context_weights[CONTEXT_LEARNING][0] = 0.4F;  // Moderate complexity
+    cl->context_weights[CONTEXT_LEARNING][6] = 0.6F;  // Clear precision
+    cl->context_weights[CONTEXT_LEARNING][9] = 0.5F;  // Explanatory markers
+    cl->context_biases[CONTEXT_LEARNING] = 0.0F;
 }
 
 /**
@@ -168,14 +168,14 @@ static void softmax(float* logits, uint32_t size, float* probs) {
     }
 
     // Compute exp and sum
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         probs[i] = expf(logits[i] - max_logit);
         sum += probs[i];
     }
 
     // Normalize
-    if (sum > 0.0f) {
+    if (sum > 0.0F) {
         for (uint32_t i = 0; i < size; i++) {
             probs[i] /= sum;
         }
@@ -252,10 +252,10 @@ contextual_language_t contextual_language_create(
 
     // Set initial context (CASUAL as default)
     cl->current_context.current_context = CONTEXT_CASUAL;
-    cl->current_context.formality_level = 0.3f;
-    cl->current_context.precision_level = 0.5f;
-    cl->current_context.emotional_tone = 0.2f;
-    cl->current_context.urgency_level = 0.0f;
+    cl->current_context.formality_level = 0.3F;
+    cl->current_context.precision_level = 0.5F;
+    cl->current_context.emotional_tone = 0.2F;
+    cl->current_context.urgency_level = 0.0F;
 
     cl->last_update_us = get_time_us();
 
@@ -402,7 +402,7 @@ int contextual_adapt_message(
         *adapted_size = size;
         for (uint32_t i = 0; i < size; i++) {
             float transform = cl->transformation_cache[source_ctx][target_ctx][i];
-            adapted[i] = original[i] * (1.0f - cl->config.adaptation_rate) +
+            adapted[i] = original[i] * (1.0F - cl->config.adaptation_rate) +
                          transform * cl->config.adaptation_rate;
         }
     } else {
@@ -416,8 +416,8 @@ int contextual_adapt_message(
         for (uint32_t i = 0; i < size; i++) {
             adapted[i] = original[i];
             // Simple adjustment (placeholder for more sophisticated adaptation)
-            adapted[i] += formality_delta * 0.1f + precision_delta * 0.1f;
-            adapted[i] = fmaxf(0.0f, fminf(1.0f, adapted[i])); // Clamp to [0,1]
+            adapted[i] += formality_delta * 0.1F + precision_delta * 0.1F;
+            adapted[i] = fmaxf(0.0F, fminf(1.0F, adapted[i])); // Clamp to [0,1]
         }
     }
 
@@ -614,40 +614,40 @@ int contextual_get_default_state(
 
     switch (context) {
         case CONTEXT_FORMAL:
-            state->formality_level = 0.9f;
-            state->precision_level = 0.8f;
-            state->emotional_tone = 0.0f;
-            state->urgency_level = 0.3f;
+            state->formality_level = 0.9F;
+            state->precision_level = 0.8F;
+            state->emotional_tone = 0.0F;
+            state->urgency_level = 0.3F;
             break;
         case CONTEXT_CASUAL:
-            state->formality_level = 0.2f;
-            state->precision_level = 0.5f;
-            state->emotional_tone = 0.3f;
-            state->urgency_level = 0.1f;
+            state->formality_level = 0.2F;
+            state->precision_level = 0.5F;
+            state->emotional_tone = 0.3F;
+            state->urgency_level = 0.1F;
             break;
         case CONTEXT_TECHNICAL:
-            state->formality_level = 0.7f;
-            state->precision_level = 0.95f;
-            state->emotional_tone = 0.0f;
-            state->urgency_level = 0.2f;
+            state->formality_level = 0.7F;
+            state->precision_level = 0.95F;
+            state->emotional_tone = 0.0F;
+            state->urgency_level = 0.2F;
             break;
         case CONTEXT_EMOTIONAL:
-            state->formality_level = 0.3f;
-            state->precision_level = 0.4f;
-            state->emotional_tone = 0.8f;
-            state->urgency_level = 0.4f;
+            state->formality_level = 0.3F;
+            state->precision_level = 0.4F;
+            state->emotional_tone = 0.8F;
+            state->urgency_level = 0.4F;
             break;
         case CONTEXT_URGENT:
-            state->formality_level = 0.5f;
-            state->precision_level = 0.9f;
-            state->emotional_tone = -0.2f;
-            state->urgency_level = 0.95f;
+            state->formality_level = 0.5F;
+            state->precision_level = 0.9F;
+            state->emotional_tone = -0.2F;
+            state->urgency_level = 0.95F;
             break;
         case CONTEXT_LEARNING:
-            state->formality_level = 0.5f;
-            state->precision_level = 0.7f;
-            state->emotional_tone = 0.2f;
-            state->urgency_level = 0.0f;
+            state->formality_level = 0.5F;
+            state->precision_level = 0.7F;
+            state->emotional_tone = 0.2F;
+            state->urgency_level = 0.0F;
             break;
         default:
             return -1;
@@ -661,7 +661,7 @@ float contextual_compute_distance(
     const context_state_t* state2
 ) {
     // Guard clauses
-    if (!state1 || !state2) return -1.0f;
+    if (!state1 || !state2) return -1.0F;
 
     float d_formal = state1->formality_level - state2->formality_level;
     float d_precision = state1->precision_level - state2->precision_level;

@@ -257,12 +257,12 @@ static float randg(float mean, float stddev) {
     has_spare = true;
     float u, v, s;
     do {
-        u = randf() * 2.0f - 1.0f;
-        v = randf() * 2.0f - 1.0f;
+        u = randf() * 2.0F - 1.0F;
+        v = randf() * 2.0F - 1.0F;
         s = u * u + v * v;
-    } while (s >= 1.0f || s == 0.0f);
+    } while (s >= 1.0F || s == 0.0F);
 
-    s = sqrtf(-2.0f * logf(s) / s);
+    s = sqrtf(-2.0F * logf(s) / s);
     spare = v * s;
     return mean + stddev * u * s;
 }
@@ -281,7 +281,7 @@ static float compute_distance(
     const float* pos2,
     uint32_t dims)
 {
-    float sum_sq = 0.0f;
+    float sum_sq = 0.0F;
     for (uint32_t i = 0; i < dims; i++) {
         float diff = pos1[i] - pos2[i];
         sum_sq += diff * diff;
@@ -296,7 +296,7 @@ static float compute_distance(
  */
 static float compute_feature_similarity(float feature1, float feature2) {
     float diff = feature1 - feature2;
-    return 0.5f * (1.0f + cosf(2.0f * diff));
+    return 0.5F * (1.0F + cosf(2.0F * diff));
 }
 
 /**
@@ -309,7 +309,7 @@ static float connection_probability(
     float base_prob,
     float lambda)
 {
-    if (lambda <= 0.0f) return base_prob;
+    if (lambda <= 0.0F) return base_prob;
     return base_prob * expf(-distance / lambda);
 }
 
@@ -320,15 +320,15 @@ static float connection_probability(
  */
 static float patchy_probability(float distance) {
     // Patch centers (mm) and weights (Bosking et al. 1997)
-    const float patch_centers[] = {0.5f, 1.5f, 3.0f};
-    const float patch_widths[] = {0.2f, 0.4f, 0.6f};
-    const float patch_weights[] = {0.4f, 0.35f, 0.25f};
+    const float patch_centers[] = {0.5F, 1.5F, 3.0F};
+    const float patch_widths[] = {0.2F, 0.4F, 0.6F};
+    const float patch_weights[] = {0.4F, 0.35F, 0.25F};
     const int num_patches = 3;
 
-    float prob = 0.0f;
+    float prob = 0.0F;
     for (int i = 0; i < num_patches; i++) {
         float diff = distance - patch_centers[i];
-        float gaussian = expf(-diff * diff / (2.0f * patch_widths[i] * patch_widths[i]));
+        float gaussian = expf(-diff * diff / (2.0F * patch_widths[i] * patch_widths[i]));
         prob += patch_weights[i] * gaussian;
     }
 
@@ -445,56 +445,56 @@ nimcp_result_t connectivity_apply_canonical_rules(columnar_connectivity_t* conn)
     // Rule 1: Layer IV → II/III (thalamic input to association)
     connectivity_rule_t rule1 = {
         .type = CONNECTIVITY_INTRACOLUMNAR,
-        .base_probability = 0.3f,
-        .distance_decay_lambda = 0.2f,  // mm
-        .feature_similarity_weight = 0.0f,
+        .base_probability = 0.3F,
+        .distance_decay_lambda = 0.2F,  // mm
+        .feature_similarity_weight = 0.0F,
         .layer_specific = true,
         .source_layer = CC_LAYER_IV,
         .target_layer = CC_LAYER_II_III,
-        .min_delay_ms = 0.5f,
-        .conduction_velocity_m_s = 1.0f
+        .min_delay_ms = 0.5F,
+        .conduction_velocity_m_s = 1.0F
     };
     connectivity_add_rule(conn, &rule1);
 
     // Rule 2: Layer II/III → V (association to output)
     connectivity_rule_t rule2 = {
         .type = CONNECTIVITY_INTRACOLUMNAR,
-        .base_probability = 0.2f,
-        .distance_decay_lambda = 0.3f,
-        .feature_similarity_weight = 0.0f,
+        .base_probability = 0.2F,
+        .distance_decay_lambda = 0.3F,
+        .feature_similarity_weight = 0.0F,
         .layer_specific = true,
         .source_layer = CC_LAYER_II_III,
         .target_layer = CC_LAYER_V,
-        .min_delay_ms = 0.5f,
-        .conduction_velocity_m_s = 1.0f
+        .min_delay_ms = 0.5F,
+        .conduction_velocity_m_s = 1.0F
     };
     connectivity_add_rule(conn, &rule2);
 
     // Rule 3: Layer V → VI (output to feedback)
     connectivity_rule_t rule3 = {
         .type = CONNECTIVITY_INTRACOLUMNAR,
-        .base_probability = 0.15f,
-        .distance_decay_lambda = 0.25f,
-        .feature_similarity_weight = 0.0f,
+        .base_probability = 0.15F,
+        .distance_decay_lambda = 0.25F,
+        .feature_similarity_weight = 0.0F,
         .layer_specific = true,
         .source_layer = CC_LAYER_V,
         .target_layer = CC_LAYER_VI,
-        .min_delay_ms = 0.5f,
-        .conduction_velocity_m_s = 1.0f
+        .min_delay_ms = 0.5F,
+        .conduction_velocity_m_s = 1.0F
     };
     connectivity_add_rule(conn, &rule3);
 
     // Rule 4: Horizontal connections (patchy, same layer)
     connectivity_rule_t rule4 = {
         .type = CONNECTIVITY_INTERCOLUMNAR,
-        .base_probability = 0.1f,
-        .distance_decay_lambda = 1.5f,  // mm (patchy clusters)
-        .feature_similarity_weight = 0.5f,  // Feature similarity modulates
+        .base_probability = 0.1F,
+        .distance_decay_lambda = 1.5F,  // mm (patchy clusters)
+        .feature_similarity_weight = 0.5F,  // Feature similarity modulates
         .layer_specific = false,
         .source_layer = CC_LAYER_II_III,
         .target_layer = CC_LAYER_II_III,
-        .min_delay_ms = 1.0f,
-        .conduction_velocity_m_s = 0.5f  // Slower horizontal axons
+        .min_delay_ms = 1.0F,
+        .conduction_velocity_m_s = 0.5F  // Slower horizontal axons
     };
     connectivity_add_rule(conn, &rule4);
 
@@ -574,14 +574,14 @@ uint32_t connectivity_generate_intracolumnar(
                         .target_column_id = column_id,
                         .source_layer = src_layer,
                         .target_layer = tgt_layer,
-                        .weight = 0.5f + randg(0.0f, 0.1f),  // ~N(0.5, 0.1)
+                        .weight = 0.5F + randg(0.0F, 0.1F),  // ~N(0.5, 0.1)
                         .delay_ms = rule->min_delay_ms,
                         .type = CONNECTIVITY_INTRACOLUMNAR
                     };
 
                     // Clip weight to [0, 1]
-                    if (new_conn.weight < 0.0f) new_conn.weight = 0.0f;
-                    if (new_conn.weight > 1.0f) new_conn.weight = 1.0f;
+                    if (new_conn.weight < 0.0F) new_conn.weight = 0.0F;
+                    if (new_conn.weight > 1.0F) new_conn.weight = 1.0F;
 
                     if (add_connection(conn, &new_conn) == NIMCP_SUCCESS) {
                         connections_created++;
@@ -628,7 +628,7 @@ uint32_t connectivity_generate_intercolumnar(
         for (uint32_t i = 0; i < num_columns; i++) {
             local_positions[i * dims + 0] = (float)(i % grid_size);
             local_positions[i * dims + 1] = (float)(i / grid_size);
-            if (dims == 3) local_positions[i * dims + 2] = 0.0f;
+            if (dims == 3) local_positions[i * dims + 2] = 0.0F;
         }
 
         positions = local_positions;
@@ -663,11 +663,11 @@ uint32_t connectivity_generate_intercolumnar(
                 prob *= patchy_probability(distance);
 
                 // Feature similarity modulation (use column IDs as proxy features)
-                if (rule->feature_similarity_weight > 0.0f) {
-                    float feature_i = (float)column_ids[i] / (float)num_columns * 3.14159f;
-                    float feature_j = (float)column_ids[j] / (float)num_columns * 3.14159f;
+                if (rule->feature_similarity_weight > 0.0F) {
+                    float feature_i = (float)column_ids[i] / (float)num_columns * 3.14159F;
+                    float feature_j = (float)column_ids[j] / (float)num_columns * 3.14159F;
                     float similarity = compute_feature_similarity(feature_i, feature_j);
-                    prob *= (1.0f - rule->feature_similarity_weight +
+                    prob *= (1.0F - rule->feature_similarity_weight +
                             rule->feature_similarity_weight * similarity);
                 }
 
@@ -675,9 +675,9 @@ uint32_t connectivity_generate_intercolumnar(
                 if (randf() < prob) {
                     // Compute delay based on distance and conduction velocity
                     float delay_ms = rule->min_delay_ms;
-                    if (rule->conduction_velocity_m_s > 0.0f) {
+                    if (rule->conduction_velocity_m_s > 0.0F) {
                         // distance in mm, velocity in m/s
-                        delay_ms += (distance / 1000.0f) / rule->conduction_velocity_m_s * 1000.0f;
+                        delay_ms += (distance / 1000.0F) / rule->conduction_velocity_m_s * 1000.0F;
                     }
 
                     columnar_connection_t new_conn = {
@@ -685,14 +685,14 @@ uint32_t connectivity_generate_intercolumnar(
                         .target_column_id = column_ids[j],
                         .source_layer = rule->layer_specific ? rule->source_layer : CC_LAYER_II_III,
                         .target_layer = rule->layer_specific ? rule->target_layer : CC_LAYER_II_III,
-                        .weight = 0.3f + randg(0.0f, 0.05f),
+                        .weight = 0.3F + randg(0.0F, 0.05F),
                         .delay_ms = delay_ms,
                         .type = CONNECTIVITY_INTERCOLUMNAR
                     };
 
                     // Clip weight
-                    if (new_conn.weight < 0.0f) new_conn.weight = 0.0f;
-                    if (new_conn.weight > 1.0f) new_conn.weight = 1.0f;
+                    if (new_conn.weight < 0.0F) new_conn.weight = 0.0F;
+                    if (new_conn.weight > 1.0F) new_conn.weight = 1.0F;
 
                     if (add_connection(conn, &new_conn) == NIMCP_SUCCESS) {
                         connections_created++;
@@ -762,14 +762,14 @@ uint32_t connectivity_generate_long_range(
                         .target_column_id = target_columns[j],
                         .source_layer = src_layer,
                         .target_layer = tgt_layer,
-                        .weight = 0.4f + randg(0.0f, 0.1f),
-                        .delay_ms = 2.0f + randg(0.0f, 0.5f),  // Longer delays for long-range
+                        .weight = 0.4F + randg(0.0F, 0.1F),
+                        .delay_ms = 2.0F + randg(0.0F, 0.5F),  // Longer delays for long-range
                         .type = rule->type
                     };
 
                     // Clip weight
-                    if (new_conn.weight < 0.0f) new_conn.weight = 0.0f;
-                    if (new_conn.weight > 1.0f) new_conn.weight = 1.0f;
+                    if (new_conn.weight < 0.0F) new_conn.weight = 0.0F;
+                    if (new_conn.weight > 1.0F) new_conn.weight = 1.0F;
 
                     if (add_connection(conn, &new_conn) == NIMCP_SUCCESS) {
                         connections_created++;
@@ -881,7 +881,7 @@ void connectivity_propagate_with_delay(
     float dt_ms)
 {
     // Guard: validate parameters
-    if (!conn || !source_activations || !target_inputs || dt_ms <= 0.0f) {
+    if (!conn || !source_activations || !target_inputs || dt_ms <= 0.0F) {
         return;
     }
 
@@ -919,7 +919,7 @@ void connectivity_apply_hebbian(
 {
     // Guard: validate parameters
     if (!conn || !pre_activations || !post_activations) return;
-    if (learning_rate <= 0.0f || learning_rate > 1.0f) return;
+    if (learning_rate <= 0.0F || learning_rate > 1.0F) return;
 
     // For each connection: Δw = η × pre × post
     for (uint32_t i = 0; i < conn->num_connections; i++) {
@@ -933,8 +933,8 @@ void connectivity_apply_hebbian(
         c->weight += delta_w;
 
         // Clip to [0, 1]
-        if (c->weight < 0.0f) c->weight = 0.0f;
-        if (c->weight > 1.0f) c->weight = 1.0f;
+        if (c->weight < 0.0F) c->weight = 0.0F;
+        if (c->weight > 1.0F) c->weight = 1.0F;
     }
 
     conn->stats_valid = false;
@@ -971,7 +971,7 @@ void connectivity_apply_stdp(
         // Guard: check STDP window
         if (llabs(delta_t) > STDP_WINDOW_US) continue;
 
-        float delta_w = 0.0f;
+        float delta_w = 0.0F;
 
         if (delta_t > 0) {
             // LTP: pre before post
@@ -984,8 +984,8 @@ void connectivity_apply_stdp(
         c->weight += delta_w;
 
         // Clip to [0, 1]
-        if (c->weight < 0.0f) c->weight = 0.0f;
-        if (c->weight > 1.0f) c->weight = 1.0f;
+        if (c->weight < 0.0F) c->weight = 0.0F;
+        if (c->weight > 1.0F) c->weight = 1.0F;
     }
 
     conn->stats_valid = false;
@@ -997,21 +997,21 @@ void connectivity_apply_stdp(
 
 float connectivity_compute_clustering(columnar_connectivity_t* conn) {
     // Guard: validate parameters
-    if (!conn) return -1.0f;
+    if (!conn) return -1.0F;
 
     nimcp_platform_mutex_lock(&conn->lock);
 
     // Guard: need minimum connections
     if (conn->num_connections < 3) {
         nimcp_platform_mutex_unlock(&conn->lock);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Extract unique column IDs
     uint32_t* columns = nimcp_malloc(sizeof(uint32_t) * conn->num_connections * 2);
     if (!columns) {
         nimcp_platform_mutex_unlock(&conn->lock);
-        return -1.0f;
+        return -1.0F;
     }
 
     uint32_t num_unique = 0;
@@ -1029,7 +1029,7 @@ float connectivity_compute_clustering(columnar_connectivity_t* conn) {
         if (!found_tgt) columns[num_unique++] = tgt;
     }
 
-    float total_clustering = 0.0f;
+    float total_clustering = 0.0F;
     uint32_t nodes_with_neighbors = 0;
 
     // For each column, compute local clustering
@@ -1075,31 +1075,31 @@ float connectivity_compute_clustering(columnar_connectivity_t* conn) {
     nimcp_platform_mutex_unlock(&conn->lock);
 
     // Average clustering coefficient
-    if (nodes_with_neighbors == 0) return 0.0f;
+    if (nodes_with_neighbors == 0) return 0.0F;
     return total_clustering / (float)nodes_with_neighbors;
 }
 
 float connectivity_compute_path_length(columnar_connectivity_t* conn) {
     // Guard: validate parameters
-    if (!conn) return -1.0f;
+    if (!conn) return -1.0F;
 
     nimcp_platform_mutex_lock(&conn->lock);
 
     // Guard: need minimum connections
     if (conn->num_connections < MIN_COLUMNS_FOR_ANALYSIS) {
         nimcp_platform_mutex_unlock(&conn->lock);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Sample-based estimation for large graphs (BFS-based approximation)
-    float total_path_length = 0.0f;
+    float total_path_length = 0.0F;
     uint32_t path_count = 0;
 
     // Extract unique column IDs
     uint32_t* columns = nimcp_malloc(sizeof(uint32_t) * conn->num_connections * 2);
     if (!columns) {
         nimcp_platform_mutex_unlock(&conn->lock);
-        return -1.0f;
+        return -1.0F;
     }
 
     uint32_t num_unique = 0;
@@ -1131,7 +1131,7 @@ float connectivity_compute_path_length(columnar_connectivity_t* conn) {
             bool connected = false;
             for (uint32_t k = 0; k < n; k++) {
                 if (temp[k].target_column_id == columns[j]) {
-                    total_path_length += 1.0f;
+                    total_path_length += 1.0F;
                     path_count++;
                     connected = true;
                     break;
@@ -1140,7 +1140,7 @@ float connectivity_compute_path_length(columnar_connectivity_t* conn) {
 
             // If not directly connected, estimate 2-3 hops
             if (!connected && n > 0) {
-                total_path_length += 2.5f;
+                total_path_length += 2.5F;
                 path_count++;
             }
         }
@@ -1149,7 +1149,7 @@ float connectivity_compute_path_length(columnar_connectivity_t* conn) {
     nimcp_free(columns);
     nimcp_platform_mutex_unlock(&conn->lock);
 
-    return path_count > 0 ? total_path_length / (float)path_count : -1.0f;
+    return path_count > 0 ? total_path_length / (float)path_count : -1.0F;
 }
 
 bool connectivity_is_small_world(columnar_connectivity_t* conn) {
@@ -1160,13 +1160,13 @@ bool connectivity_is_small_world(columnar_connectivity_t* conn) {
     float L = connectivity_compute_path_length(conn);
 
     // Guard: check validity
-    if (C < 0.0f || L < 0.0f) return false;
+    if (C < 0.0F || L < 0.0F) return false;
 
     // Approximation: C_rand ≈ k/N, L_rand ≈ ln(N)/ln(k)
     // For small-world: σ = (C/C_rand) / (L/L_rand) > 1
 
     // Simplified check: high clustering (C > 0.3) and short paths (L < 6)
-    return (C > 0.3f && L < 6.0f);
+    return (C > 0.3F && L < 6.0F);
 }
 
 //=============================================================================
@@ -1187,8 +1187,8 @@ nimcp_result_t connectivity_get_stats(
 
     stats->total_connections = conn->num_connections;
 
-    float weight_sum = 0.0f;
-    float delay_sum = 0.0f;
+    float weight_sum = 0.0F;
+    float delay_sum = 0.0F;
 
     // Aggregate statistics
     for (uint32_t i = 0; i < conn->num_connections; i++) {
@@ -1231,8 +1231,8 @@ nimcp_result_t connectivity_get_stats(
     stats->characteristic_path_length = connectivity_compute_path_length(conn);
 
     // Small-world sigma (simplified)
-    if (stats->clustering_coefficient > 0.0f &&
-        stats->characteristic_path_length > 0.0f) {
+    if (stats->clustering_coefficient > 0.0F &&
+        stats->characteristic_path_length > 0.0F) {
         stats->small_world_sigma = stats->clustering_coefficient /
                                    stats->characteristic_path_length;
     }

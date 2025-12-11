@@ -271,7 +271,7 @@ nimcp_pattern_db_config_t nimcp_pattern_db_default_config(void) {
         .enable_validation = true,
         .enable_bio_async = false,
         .module_id = 0,
-        .match_timeout_ms = 100.0f,
+        .match_timeout_ms = 100.0F,
         .worker_threads = 0  // Auto-detect
     };
     return config;
@@ -826,7 +826,7 @@ nimcp_error_t nimcp_pattern_db_match(
     }
 
     // Match patterns in priority order
-    float total_threat = 0.0f;
+    float total_threat = 0.0F;
     uint32_t match_count = 0;
 
     for (size_t i = 0; i < sorted_count; i++) {
@@ -863,7 +863,7 @@ nimcp_error_t nimcp_pattern_db_match(
     free(sorted_patterns);
 
     result->match_count = match_count;
-    result->threat_score = (total_threat > 1.0f) ? 1.0f : total_threat;
+    result->threat_score = (total_threat > 1.0F) ? 1.0F : total_threat;
 
     uint64_t end_time = get_time_us();
     float match_time = (float)(end_time - start_time);
@@ -878,7 +878,7 @@ nimcp_error_t nimcp_pattern_db_match(
         // Update running average
         float n = (float)db->stats.total_matches;
         db->stats.avg_match_time_us =
-            (db->stats.avg_match_time_us * (n - 1.0f) + match_time) / n;
+            (db->stats.avg_match_time_us * (n - 1.0F) + match_time) / n;
 
         if (match_time > db->stats.max_match_time_us) {
             db->stats.max_match_time_us = match_time;
@@ -997,8 +997,8 @@ void nimcp_pattern_db_reset_stats(nimcp_pattern_db_t db) {
 
     db->stats.total_matches = 0;
     db->stats.total_hits = 0;
-    db->stats.avg_match_time_us = 0.0f;
-    db->stats.max_match_time_us = 0.0f;
+    db->stats.avg_match_time_us = 0.0F;
+    db->stats.max_match_time_us = 0.0F;
 
     pthread_rwlock_unlock(&db->write_lock);
 }

@@ -56,17 +56,17 @@ struct emotion_tensor_system {
  */
 static float get_emotion_valence_weight(emotion_primary_t emotion) {
     static const float weights[EMOTION_TENSOR_PRIMARY_COUNT] = {
-        [TENSOR_JOY] = 1.0f,           /* Positive */
-        [TENSOR_TRUST] = 0.6f,         /* Slightly positive */
-        [TENSOR_FEAR] = -0.8f,         /* Negative */
-        [TENSOR_SURPRISE] = 0.0f,      /* Neutral (can be either) */
-        [TENSOR_SADNESS] = -1.0f,      /* Negative */
-        [TENSOR_DISGUST] = -0.7f,      /* Negative */
-        [TENSOR_ANGER] = -0.5f,        /* Negative */
-        [TENSOR_ANTICIPATION] = 0.4f   /* Slightly positive */
+        [TENSOR_JOY] = 1.0F,           /* Positive */
+        [TENSOR_TRUST] = 0.6F,         /* Slightly positive */
+        [TENSOR_FEAR] = -0.8F,         /* Negative */
+        [TENSOR_SURPRISE] = 0.0F,      /* Neutral (can be either) */
+        [TENSOR_SADNESS] = -1.0F,      /* Negative */
+        [TENSOR_DISGUST] = -0.7F,      /* Negative */
+        [TENSOR_ANGER] = -0.5F,        /* Negative */
+        [TENSOR_ANTICIPATION] = 0.4F   /* Slightly positive */
     };
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
-        return 0.0f;
+        return 0.0F;
     }
     return weights[emotion];
 }
@@ -80,17 +80,17 @@ static float get_emotion_valence_weight(emotion_primary_t emotion) {
  */
 static float get_emotion_arousal_weight(emotion_primary_t emotion) {
     static const float weights[EMOTION_TENSOR_PRIMARY_COUNT] = {
-        [TENSOR_JOY] = 0.7f,           /* High arousal */
-        [TENSOR_TRUST] = 0.3f,         /* Low arousal */
-        [TENSOR_FEAR] = 0.9f,          /* Very high arousal */
-        [TENSOR_SURPRISE] = 0.8f,      /* High arousal */
-        [TENSOR_SADNESS] = 0.2f,       /* Low arousal */
-        [TENSOR_DISGUST] = 0.4f,       /* Medium arousal */
-        [TENSOR_ANGER] = 0.9f,         /* Very high arousal */
-        [TENSOR_ANTICIPATION] = 0.6f   /* Medium-high arousal */
+        [TENSOR_JOY] = 0.7F,           /* High arousal */
+        [TENSOR_TRUST] = 0.3F,         /* Low arousal */
+        [TENSOR_FEAR] = 0.9F,          /* Very high arousal */
+        [TENSOR_SURPRISE] = 0.8F,      /* High arousal */
+        [TENSOR_SADNESS] = 0.2F,       /* Low arousal */
+        [TENSOR_DISGUST] = 0.4F,       /* Medium arousal */
+        [TENSOR_ANGER] = 0.9F,         /* Very high arousal */
+        [TENSOR_ANTICIPATION] = 0.6F   /* Medium-high arousal */
     };
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
-        return 0.0f;
+        return 0.0F;
     }
     return weights[emotion];
 }
@@ -122,7 +122,7 @@ static float compute_primary_dyad(const float* channels, emotion_primary_t e1, e
 static float compute_secondary_dyad(const float* channels, emotion_primary_t e1, emotion_primary_t e2) {
     float a1 = channels[e1];
     float a2 = channels[e2];
-    return sqrtf(a1 * a2) * 0.8f;
+    return sqrtf(a1 * a2) * 0.8F;
 }
 
 /**
@@ -191,19 +191,19 @@ static void update_compounds(emotion_tensor_t* tensor) {
  * HOW:  Weighted sum of channels by valence weight
  */
 static float compute_aggregate_valence(const float* channels) {
-    float sum = 0.0f;
-    float total_activation = 0.0f;
+    float sum = 0.0F;
+    float total_activation = 0.0F;
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
         sum += channels[i] * get_emotion_valence_weight((emotion_primary_t)i);
         total_activation += channels[i];
     }
 
-    if (total_activation < 0.001f) {
-        return 0.0f;
+    if (total_activation < 0.001F) {
+        return 0.0F;
     }
     float valence = sum / total_activation;
-    return fmaxf(-1.0f, fminf(1.0f, valence));
+    return fmaxf(-1.0F, fminf(1.0F, valence));
 }
 
 /**
@@ -214,19 +214,19 @@ static float compute_aggregate_valence(const float* channels) {
  * HOW:  Weighted average of channels by arousal weight
  */
 static float compute_aggregate_arousal(const float* channels) {
-    float sum = 0.0f;
-    float total_activation = 0.0f;
+    float sum = 0.0F;
+    float total_activation = 0.0F;
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
         sum += channels[i] * get_emotion_arousal_weight((emotion_primary_t)i);
         total_activation += channels[i];
     }
 
-    if (total_activation < 0.001f) {
-        return 0.0f;
+    if (total_activation < 0.001F) {
+        return 0.0F;
     }
     float arousal = sum / total_activation;
-    return fmaxf(0.0f, fminf(1.0f, arousal));
+    return fmaxf(0.0F, fminf(1.0F, arousal));
 }
 
 /**
@@ -237,19 +237,19 @@ static float compute_aggregate_arousal(const float* channels) {
  * HOW:  Shannon entropy of normalized activations
  */
 static float compute_entropy(const float* channels) {
-    float total = 0.0f;
+    float total = 0.0F;
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
         total += channels[i];
     }
 
-    if (total < 0.001f) {
-        return 0.0f;
+    if (total < 0.001F) {
+        return 0.0F;
     }
 
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
         float p = channels[i] / total;
-        if (p > 0.001f) {
+        if (p > 0.001F) {
             entropy -= p * log2f(p);
         }
     }
@@ -315,10 +315,10 @@ static void update_aggregates(emotion_tensor_t* tensor) {
                           &tensor->primary_strength,
                           &tensor->secondary_strength);
 
-    if (tensor->primary_strength > 0.001f) {
+    if (tensor->primary_strength > 0.001F) {
         tensor->blend_ratio = tensor->secondary_strength / tensor->primary_strength;
     } else {
-        tensor->blend_ratio = 0.0f;
+        tensor->blend_ratio = 0.0F;
     }
 }
 
@@ -351,11 +351,11 @@ static void record_dynamics(emotion_tensor_t* tensor) {
  * HOW:  Inverse of variance across temporal window
  */
 static float compute_stability(const emotion_tensor_t* tensor) {
-    float total_variance = 0.0f;
+    float total_variance = 0.0F;
 
     for (int e = 0; e < EMOTION_TENSOR_PRIMARY_COUNT; e++) {
-        float sum = 0.0f;
-        float sum_sq = 0.0f;
+        float sum = 0.0F;
+        float sum_sq = 0.0F;
 
         for (int t = 0; t < EMOTION_TENSOR_TEMPORAL_WINDOW; t++) {
             float v = tensor->dynamics[e][t];
@@ -370,7 +370,7 @@ static float compute_stability(const emotion_tensor_t* tensor) {
 
     float avg_variance = total_variance / EMOTION_TENSOR_PRIMARY_COUNT;
     /* Stability is inverse of variance, normalized */
-    return 1.0f / (1.0f + avg_variance * 10.0f);
+    return 1.0F / (1.0F + avg_variance * 10.0F);
 }
 
 //=============================================================================
@@ -379,10 +379,10 @@ static float compute_stability(const emotion_tensor_t* tensor) {
 
 emotion_tensor_config_t emotion_tensor_default_config(void) {
     emotion_tensor_config_t config = {
-        .decay_rate = 0.1f,
-        .interaction_strength = 0.3f,
-        .blend_threshold = 0.2f,
-        .dominance_threshold = 0.5f,
+        .decay_rate = 0.1F,
+        .interaction_strength = 0.3F,
+        .blend_threshold = 0.2F,
+        .dominance_threshold = 0.5F,
         .enable_temporal_dynamics = true,
         .enable_appraisals = true,
         .enable_interactions = true
@@ -400,48 +400,48 @@ void emotion_tensor_init_interaction_matrix(emotion_interaction_matrix_t* matrix
 
     /* Self-reinforcement (diagonal) - emotions reinforce themselves slightly */
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
-        matrix->matrix[i][i] = 0.1f;
+        matrix->matrix[i][i] = 0.1F;
     }
 
     /* Adjacent emotions facilitate each other (Plutchik wheel) */
     /* Joy <-> Trust */
-    matrix->matrix[TENSOR_JOY][TENSOR_TRUST] = 0.2f;
-    matrix->matrix[TENSOR_TRUST][TENSOR_JOY] = 0.2f;
+    matrix->matrix[TENSOR_JOY][TENSOR_TRUST] = 0.2F;
+    matrix->matrix[TENSOR_TRUST][TENSOR_JOY] = 0.2F;
     /* Trust <-> Fear (submission) */
-    matrix->matrix[TENSOR_TRUST][TENSOR_FEAR] = 0.1f;
-    matrix->matrix[TENSOR_FEAR][TENSOR_TRUST] = 0.1f;
+    matrix->matrix[TENSOR_TRUST][TENSOR_FEAR] = 0.1F;
+    matrix->matrix[TENSOR_FEAR][TENSOR_TRUST] = 0.1F;
     /* Fear <-> Surprise */
-    matrix->matrix[TENSOR_FEAR][TENSOR_SURPRISE] = 0.15f;
-    matrix->matrix[TENSOR_SURPRISE][TENSOR_FEAR] = 0.15f;
+    matrix->matrix[TENSOR_FEAR][TENSOR_SURPRISE] = 0.15F;
+    matrix->matrix[TENSOR_SURPRISE][TENSOR_FEAR] = 0.15F;
     /* Surprise <-> Sadness */
-    matrix->matrix[TENSOR_SURPRISE][TENSOR_SADNESS] = 0.1f;
-    matrix->matrix[TENSOR_SADNESS][TENSOR_SURPRISE] = 0.1f;
+    matrix->matrix[TENSOR_SURPRISE][TENSOR_SADNESS] = 0.1F;
+    matrix->matrix[TENSOR_SADNESS][TENSOR_SURPRISE] = 0.1F;
     /* Sadness <-> Disgust */
-    matrix->matrix[TENSOR_SADNESS][TENSOR_DISGUST] = 0.15f;
-    matrix->matrix[TENSOR_DISGUST][TENSOR_SADNESS] = 0.15f;
+    matrix->matrix[TENSOR_SADNESS][TENSOR_DISGUST] = 0.15F;
+    matrix->matrix[TENSOR_DISGUST][TENSOR_SADNESS] = 0.15F;
     /* Disgust <-> Anger */
-    matrix->matrix[TENSOR_DISGUST][TENSOR_ANGER] = 0.2f;
-    matrix->matrix[TENSOR_ANGER][TENSOR_DISGUST] = 0.2f;
+    matrix->matrix[TENSOR_DISGUST][TENSOR_ANGER] = 0.2F;
+    matrix->matrix[TENSOR_ANGER][TENSOR_DISGUST] = 0.2F;
     /* Anger <-> Anticipation */
-    matrix->matrix[TENSOR_ANGER][TENSOR_ANTICIPATION] = 0.15f;
-    matrix->matrix[TENSOR_ANTICIPATION][TENSOR_ANGER] = 0.15f;
+    matrix->matrix[TENSOR_ANGER][TENSOR_ANTICIPATION] = 0.15F;
+    matrix->matrix[TENSOR_ANTICIPATION][TENSOR_ANGER] = 0.15F;
     /* Anticipation <-> Joy */
-    matrix->matrix[TENSOR_ANTICIPATION][TENSOR_JOY] = 0.25f;
-    matrix->matrix[TENSOR_JOY][TENSOR_ANTICIPATION] = 0.25f;
+    matrix->matrix[TENSOR_ANTICIPATION][TENSOR_JOY] = 0.25F;
+    matrix->matrix[TENSOR_JOY][TENSOR_ANTICIPATION] = 0.25F;
 
     /* Opposite emotions inhibit each other */
     /* Joy <-> Sadness */
-    matrix->matrix[TENSOR_JOY][TENSOR_SADNESS] = -0.3f;
-    matrix->matrix[TENSOR_SADNESS][TENSOR_JOY] = -0.3f;
+    matrix->matrix[TENSOR_JOY][TENSOR_SADNESS] = -0.3F;
+    matrix->matrix[TENSOR_SADNESS][TENSOR_JOY] = -0.3F;
     /* Trust <-> Disgust */
-    matrix->matrix[TENSOR_TRUST][TENSOR_DISGUST] = -0.35f;
-    matrix->matrix[TENSOR_DISGUST][TENSOR_TRUST] = -0.35f;
+    matrix->matrix[TENSOR_TRUST][TENSOR_DISGUST] = -0.35F;
+    matrix->matrix[TENSOR_DISGUST][TENSOR_TRUST] = -0.35F;
     /* Fear <-> Anger */
-    matrix->matrix[TENSOR_FEAR][TENSOR_ANGER] = -0.25f;
-    matrix->matrix[TENSOR_ANGER][TENSOR_FEAR] = -0.25f;
+    matrix->matrix[TENSOR_FEAR][TENSOR_ANGER] = -0.25F;
+    matrix->matrix[TENSOR_ANGER][TENSOR_FEAR] = -0.25F;
     /* Surprise <-> Anticipation */
-    matrix->matrix[TENSOR_SURPRISE][TENSOR_ANTICIPATION] = -0.2f;
-    matrix->matrix[TENSOR_ANTICIPATION][TENSOR_SURPRISE] = -0.2f;
+    matrix->matrix[TENSOR_SURPRISE][TENSOR_ANTICIPATION] = -0.2F;
+    matrix->matrix[TENSOR_ANTICIPATION][TENSOR_SURPRISE] = -0.2F;
 }
 
 emotion_tensor_system_t* emotion_tensor_create(const emotion_tensor_config_t* config) {
@@ -504,10 +504,10 @@ bool emotion_tensor_get(const emotion_tensor_system_t* system, emotion_tensor_t*
 
 float emotion_tensor_get_channel(const emotion_tensor_system_t* system, emotion_primary_t emotion) {
     if (!system) {
-        return -1.0f;
+        return -1.0F;
     }
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
-        return -1.0f;
+        return -1.0F;
     }
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
@@ -519,10 +519,10 @@ float emotion_tensor_get_channel(const emotion_tensor_system_t* system, emotion_
 
 float emotion_tensor_get_compound(const emotion_tensor_system_t* system, emotion_compound_t compound) {
     if (!system) {
-        return -1.0f;
+        return -1.0F;
     }
     if (compound < 0 || compound >= EMOTION_TENSOR_COMPOUND_COUNT) {
-        return -1.0f;
+        return -1.0F;
     }
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
@@ -558,7 +558,7 @@ bool emotion_tensor_is_contradictory(const emotion_tensor_system_t* system, floa
 
 float emotion_tensor_get_valence(const emotion_tensor_system_t* system) {
     if (!system) {
-        return 0.0f;
+        return 0.0F;
     }
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
@@ -570,7 +570,7 @@ float emotion_tensor_get_valence(const emotion_tensor_system_t* system) {
 
 float emotion_tensor_get_arousal(const emotion_tensor_system_t* system) {
     if (!system) {
-        return 0.0f;
+        return 0.0F;
     }
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
@@ -597,7 +597,7 @@ bool emotion_tensor_set_channel(
         return false;
     }
 
-    activation = fmaxf(0.0f, fminf(1.0f, activation));
+    activation = fmaxf(0.0F, fminf(1.0F, activation));
 
     pthread_rwlock_wrlock(&system->lock);
 
@@ -630,7 +630,7 @@ bool emotion_tensor_set_channels(
     pthread_rwlock_wrlock(&system->lock);
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
-        system->tensor.channels[i] = fmaxf(0.0f, fminf(1.0f, activations[i]));
+        system->tensor.channels[i] = fmaxf(0.0F, fminf(1.0F, activations[i]));
     }
     system->tensor.last_update_ms = timestamp_ms;
 
@@ -664,7 +664,7 @@ bool emotion_tensor_set_appraisal(
         return false;
     }
 
-    value = fmaxf(0.0f, fminf(1.0f, value));
+    value = fmaxf(0.0F, fminf(1.0F, value));
 
     pthread_rwlock_wrlock(&system->lock);
     system->tensor.appraisals[emotion][dimension] = value;
@@ -687,13 +687,13 @@ bool emotion_tensor_apply_stimulus(
         return false;
     }
 
-    intensity = fmaxf(0.0f, fminf(1.0f, intensity));
+    intensity = fmaxf(0.0F, fminf(1.0F, intensity));
 
     pthread_rwlock_wrlock(&system->lock);
 
     float current = system->tensor.channels[emotion];
-    float change = is_positive ? intensity : -intensity * 0.5f;
-    float new_val = fmaxf(0.0f, fminf(1.0f, current + change));
+    float change = is_positive ? intensity : -intensity * 0.5F;
+    float new_val = fmaxf(0.0F, fminf(1.0F, current + change));
 
     system->tensor.channels[emotion] = new_val;
     system->tensor.last_update_ms = timestamp_ms;
@@ -727,7 +727,7 @@ bool emotion_tensor_update(
     if (!system) {
         return false;
     }
-    if (delta_time <= 0.0f) {
+    if (delta_time <= 0.0F) {
         return false;
     }
 
@@ -745,7 +745,7 @@ bool emotion_tensor_update(
         memcpy(new_channels, system->tensor.channels, sizeof(new_channels));
 
         for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
-            float interaction_effect = 0.0f;
+            float interaction_effect = 0.0F;
             for (int j = 0; j < EMOTION_TENSOR_PRIMARY_COUNT; j++) {
                 if (i != j) {
                     interaction_effect += system->interactions.matrix[i][j] *
@@ -753,7 +753,7 @@ bool emotion_tensor_update(
                 }
             }
             new_channels[i] += interaction_effect * system->config.interaction_strength * delta_time;
-            new_channels[i] = fmaxf(0.0f, fminf(1.0f, new_channels[i]));
+            new_channels[i] = fmaxf(0.0F, fminf(1.0F, new_channels[i]));
         }
 
         memcpy(system->tensor.channels, new_channels, sizeof(new_channels));
@@ -797,7 +797,7 @@ bool emotion_tensor_apply_interactions(emotion_tensor_system_t* system, float de
     memcpy(new_channels, system->tensor.channels, sizeof(new_channels));
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
-        float interaction_effect = 0.0f;
+        float interaction_effect = 0.0F;
         for (int j = 0; j < EMOTION_TENSOR_PRIMARY_COUNT; j++) {
             if (i != j) {
                 interaction_effect += system->interactions.matrix[i][j] *
@@ -805,7 +805,7 @@ bool emotion_tensor_apply_interactions(emotion_tensor_system_t* system, float de
             }
         }
         new_channels[i] += interaction_effect * system->config.interaction_strength * delta_time;
-        new_channels[i] = fmaxf(0.0f, fminf(1.0f, new_channels[i]));
+        new_channels[i] = fmaxf(0.0F, fminf(1.0F, new_channels[i]));
     }
 
     memcpy(system->tensor.channels, new_channels, sizeof(new_channels));
@@ -830,15 +830,15 @@ bool emotion_tensor_reset(emotion_tensor_system_t* system) {
     memset(system->tensor.appraisals, 0, sizeof(system->tensor.appraisals));
 
     system->tensor.dynamics_index = 0;
-    system->tensor.overall_valence = 0.0f;
-    system->tensor.overall_arousal = 0.0f;
-    system->tensor.emotional_entropy = 0.0f;
-    system->tensor.stability = 1.0f;
+    system->tensor.overall_valence = 0.0F;
+    system->tensor.overall_arousal = 0.0F;
+    system->tensor.emotional_entropy = 0.0F;
+    system->tensor.stability = 1.0F;
     system->tensor.primary_emotion = TENSOR_JOY;
     system->tensor.secondary_emotion = TENSOR_TRUST;
-    system->tensor.primary_strength = 0.0f;
-    system->tensor.secondary_strength = 0.0f;
-    system->tensor.blend_ratio = 0.0f;
+    system->tensor.primary_strength = 0.0F;
+    system->tensor.secondary_strength = 0.0F;
+    system->tensor.blend_ratio = 0.0F;
 
     pthread_rwlock_unlock(&system->lock);
 
@@ -852,7 +852,7 @@ bool emotion_tensor_reset(emotion_tensor_system_t* system) {
 
 float emotion_tensor_get_entropy(const emotion_tensor_system_t* system) {
     if (!system) {
-        return -1.0f;
+        return -1.0F;
     }
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
@@ -864,7 +864,7 @@ float emotion_tensor_get_entropy(const emotion_tensor_system_t* system) {
 
 float emotion_tensor_get_stability(const emotion_tensor_system_t* system) {
     if (!system) {
-        return -1.0f;
+        return -1.0F;
     }
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);

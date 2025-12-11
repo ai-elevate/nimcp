@@ -192,8 +192,8 @@ bool brain_enable_quantum_shannon_diffusion(brain_t brain, bool enable, uint32_t
         }
 
         // Default information if not specified
-        if (source_information_bits <= 0.0f) {
-            source_information_bits = 10.0f;  // 10 bits default
+        if (source_information_bits <= 0.0F) {
+            source_information_bits = 10.0F;  // 10 bits default
         }
 
         // Create quantum-Shannon config
@@ -238,8 +238,8 @@ void brain_set_quantum_shannon_mixing(brain_t brain, float mixing_ratio)
     }
 
     // Clamp to [0, 1]
-    if (mixing_ratio < 0.0f) mixing_ratio = 0.0f;
-    if (mixing_ratio > 1.0f) mixing_ratio = 1.0f;
+    if (mixing_ratio < 0.0F) mixing_ratio = 0.0F;
+    if (mixing_ratio > 1.0F) mixing_ratio = 1.0F;
 
     brain->quantum_shannon_mixing_ratio = mixing_ratio;
     brain_clear_error();
@@ -458,8 +458,8 @@ void brain_set_cross_modal_threshold(brain_t brain, float threshold)
     }
 
     // Clamp to valid range
-    if (threshold < 0.0f) threshold = 0.0f;
-    if (threshold > 1.0f) threshold = 1.0f;
+    if (threshold < 0.0F) threshold = 0.0F;
+    if (threshold > 1.0F) threshold = 1.0F;
 
     brain->cross_modal_bottleneck_threshold = threshold;
     brain_clear_error();

@@ -60,7 +60,7 @@ typedef struct {
 
 float nimcp_calculate_entropy(const uint8_t* data, size_t len) {
     if (!data || len == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Count byte frequencies */
@@ -70,7 +70,7 @@ float nimcp_calculate_entropy(const uint8_t* data, size_t len) {
     }
 
     /* Calculate entropy: H = -Σ p(x) log2 p(x) */
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < 256; i++) {
         if (freq[i] > 0) {
             float p = (float)freq[i] / (float)len;
@@ -98,13 +98,13 @@ static uint32_t ngram_hash(const uint8_t* ngram, uint32_t n) {
 
 float nimcp_calculate_ngram_entropy(const uint8_t* data, size_t len, uint32_t n) {
     if (!data || len < n || n < 2 || n > 5) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Simple hash table for n-gram counts */
     uint32_t* freq_table = (uint32_t*)calloc(MAX_NGRAM_TABLE_SIZE, sizeof(uint32_t));
     if (!freq_table) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Count n-grams */
@@ -116,7 +116,7 @@ float nimcp_calculate_ngram_entropy(const uint8_t* data, size_t len, uint32_t n)
     }
 
     /* Calculate entropy */
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < MAX_NGRAM_TABLE_SIZE; i++) {
         if (freq_table[i] > 0) {
             float p = (float)freq_table[i] / (float)total_ngrams;
@@ -139,10 +139,10 @@ static void analyze_char_classes(const uint8_t* data, size_t len,
                                   float* alpha_ratio, float* numeric_ratio,
                                   float* special_ratio, float* control_ratio) {
     if (!data || len == 0) {
-        *alpha_ratio = 0.0f;
-        *numeric_ratio = 0.0f;
-        *special_ratio = 0.0f;
-        *control_ratio = 0.0f;
+        *alpha_ratio = 0.0F;
+        *numeric_ratio = 0.0F;
+        *special_ratio = 0.0F;
+        *control_ratio = 0.0F;
         return;
     }
 
@@ -217,7 +217,7 @@ uint32_t nimcp_detect_nesting_depth(const uint8_t* data, size_t len) {
 
 float nimcp_calculate_repeat_ratio(const uint8_t* data, size_t len) {
     if (!data || len < MIN_REPEAT_LENGTH * 2) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t max_repeat_len = 0;
@@ -260,7 +260,7 @@ float nimcp_calculate_repeat_ratio(const uint8_t* data, size_t len) {
         return (float)total_repeat_bytes / (float)search_len;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 /*=============================================================================
@@ -272,8 +272,8 @@ float nimcp_calculate_repeat_ratio(const uint8_t* data, size_t len) {
  */
 static void analyze_timing(timing_context_t* ctx, float* request_rate, float* burst_score) {
     if (!ctx) {
-        *request_rate = 0.0f;
-        *burst_score = 0.0f;
+        *request_rate = 0.0F;
+        *burst_score = 0.0F;
         return;
     }
 
@@ -290,13 +290,13 @@ static void analyze_timing(timing_context_t* ctx, float* request_rate, float* bu
     }
 
     if (ctx->count < 2) {
-        *request_rate = 0.0f;
-        *burst_score = 0.0f;
+        *request_rate = 0.0F;
+        *burst_score = 0.0F;
         return;
     }
 
     /* Calculate request rate within time window */
-    uint64_t window_us = (uint64_t)(ctx->window_sec * 1000000.0f);
+    uint64_t window_us = (uint64_t)(ctx->window_sec * 1000000.0F);
     uint32_t requests_in_window = 0;
 
     for (uint32_t i = 0; i < ctx->count; i++) {
@@ -309,7 +309,7 @@ static void analyze_timing(timing_context_t* ctx, float* request_rate, float* bu
 
     /* Calculate burst score: variance in inter-request times */
     if (ctx->count >= 3) {
-        float mean_interval = 0.0f;
+        float mean_interval = 0.0F;
         uint32_t interval_count = 0;
 
         for (uint32_t i = 1; i < ctx->count; i++) {
@@ -327,7 +327,7 @@ static void analyze_timing(timing_context_t* ctx, float* request_rate, float* bu
             mean_interval /= (float)interval_count;
 
             /* Calculate variance */
-            float variance = 0.0f;
+            float variance = 0.0F;
             for (uint32_t i = 1; i < ctx->count; i++) {
                 uint32_t prev_idx = (ctx->write_idx + 100 - ctx->count + i - 1) % 100;
                 uint32_t curr_idx = (ctx->write_idx + 100 - ctx->count + i) % 100;
@@ -341,16 +341,16 @@ static void analyze_timing(timing_context_t* ctx, float* request_rate, float* bu
             variance /= (float)interval_count;
 
             /* Burst score: coefficient of variation */
-            if (mean_interval > 0.0f) {
+            if (mean_interval > 0.0F) {
                 *burst_score = sqrtf(variance) / mean_interval;
             } else {
-                *burst_score = 0.0f;
+                *burst_score = 0.0F;
             }
         } else {
-            *burst_score = 0.0f;
+            *burst_score = 0.0F;
         }
     } else {
-        *burst_score = 0.0f;
+        *burst_score = 0.0F;
     }
 }
 
@@ -374,13 +374,13 @@ nimcp_error_t nimcp_extract_features(const void* input, size_t input_len,
     }
 
     /* FEATURE 0: Length (normalized to [0, 1], max 10KB) */
-    float normalized_len = (float)input_len / 10240.0f;
-    if (normalized_len > 1.0f) normalized_len = 1.0f;
+    float normalized_len = (float)input_len / 10240.0F;
+    if (normalized_len > 1.0F) normalized_len = 1.0F;
     features[NIMCP_FEATURE_LENGTH] = normalized_len;
 
     /* FEATURE 1: Shannon entropy [0, 8 bits] normalized to [0, 1] */
     float entropy = nimcp_calculate_entropy(data, input_len);
-    features[NIMCP_FEATURE_ENTROPY] = entropy / 8.0f;
+    features[NIMCP_FEATURE_ENTROPY] = entropy / 8.0F;
 
     /* FEATURES 2-5: Character class ratios */
     analyze_char_classes(data, input_len,
@@ -393,20 +393,20 @@ nimcp_error_t nimcp_extract_features(const void* input, size_t input_len,
     if (input_len >= 2) {
         float bigram_entropy = nimcp_calculate_ngram_entropy(data, input_len, 2);
         /* Bigram entropy max is ~16 bits (2 bytes) */
-        features[NIMCP_FEATURE_BIGRAM_ENTROPY] = bigram_entropy / 16.0f;
+        features[NIMCP_FEATURE_BIGRAM_ENTROPY] = bigram_entropy / 16.0F;
     }
 
     if (input_len >= 3) {
         float trigram_entropy = nimcp_calculate_ngram_entropy(data, input_len, 3);
         /* Trigram entropy max is ~24 bits (3 bytes) */
-        features[NIMCP_FEATURE_TRIGRAM_ENTROPY] = trigram_entropy / 24.0f;
+        features[NIMCP_FEATURE_TRIGRAM_ENTROPY] = trigram_entropy / 24.0F;
     }
 
     /* FEATURE 8: Nesting depth (normalized, max depth 20) */
     uint32_t nesting = nimcp_detect_nesting_depth(data, input_len);
-    features[NIMCP_FEATURE_NESTING_DEPTH] = (float)nesting / 20.0f;
-    if (features[NIMCP_FEATURE_NESTING_DEPTH] > 1.0f) {
-        features[NIMCP_FEATURE_NESTING_DEPTH] = 1.0f;
+    features[NIMCP_FEATURE_NESTING_DEPTH] = (float)nesting / 20.0F;
+    if (features[NIMCP_FEATURE_NESTING_DEPTH] > 1.0F) {
+        features[NIMCP_FEATURE_NESTING_DEPTH] = 1.0F;
     }
 
     /* FEATURES 9-10: Timing features */
@@ -415,15 +415,15 @@ nimcp_error_t nimcp_extract_features(const void* input, size_t input_len,
         analyze_timing((timing_context_t*)timing_context, &request_rate, &burst_score);
 
         /* Normalize request rate (max 100 req/sec) */
-        features[NIMCP_FEATURE_REQUEST_RATE] = request_rate / 100.0f;
-        if (features[NIMCP_FEATURE_REQUEST_RATE] > 1.0f) {
-            features[NIMCP_FEATURE_REQUEST_RATE] = 1.0f;
+        features[NIMCP_FEATURE_REQUEST_RATE] = request_rate / 100.0F;
+        if (features[NIMCP_FEATURE_REQUEST_RATE] > 1.0F) {
+            features[NIMCP_FEATURE_REQUEST_RATE] = 1.0F;
         }
 
         /* Burst score is already a ratio (CoV) */
         features[NIMCP_FEATURE_BURST_SCORE] = burst_score;
-        if (features[NIMCP_FEATURE_BURST_SCORE] > 1.0f) {
-            features[NIMCP_FEATURE_BURST_SCORE] = 1.0f;
+        if (features[NIMCP_FEATURE_BURST_SCORE] > 1.0F) {
+            features[NIMCP_FEATURE_BURST_SCORE] = 1.0F;
         }
     }
 

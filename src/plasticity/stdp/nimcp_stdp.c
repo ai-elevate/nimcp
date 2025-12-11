@@ -25,15 +25,15 @@
 
 stdp_config_t stdp_config_default(void) {
     stdp_config_t config = {
-        .w_max = 1.0f,
-        .learning_rate = 0.01f,
-        .a_plus = 0.005f,           /* LTP amplitude (Bi & Poo, 1998) */
-        .a_minus = 0.00525f,        /* LTD amplitude (slightly larger for balance) */
-        .tau_plus = 0.020f,         /* 20 ms (seconds) */
-        .tau_minus = 0.020f,        /* 20 ms */
+        .w_max = 1.0F,
+        .learning_rate = 0.01F,
+        .a_plus = 0.005F,           /* LTP amplitude (Bi & Poo, 1998) */
+        .a_minus = 0.00525F,        /* LTD amplitude (slightly larger for balance) */
+        .tau_plus = 0.020F,         /* 20 ms (seconds) */
+        .tau_minus = 0.020F,        /* 20 ms */
         .enable_da_modulation = true,
-        .da_modulation_gain = 100.0f,   /* DA concentration [0-1] → LR multiplier */
-        .burst_amplification = 3.0f     /* 3x learning during bursts */
+        .da_modulation_gain = 100.0F,   /* DA concentration [0-1] → LR multiplier */
+        .burst_amplification = 3.0F     /* 3x learning during bursts */
     };
     return config;
 }
@@ -57,9 +57,9 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
 
     memset(synapse, 0, sizeof(stdp_synapse_t));
 
-    synapse->weight = 0.5f;  /* Initialize to 50% of max */
+    synapse->weight = 0.5F;  /* Initialize to 50% of max */
     synapse->w_max = config->w_max;
-    synapse->w_min = 0.0f;
+    synapse->w_min = 0.0F;
 
     synapse->learning_rate = config->learning_rate;
     synapse->a_plus = config->a_plus;
@@ -71,13 +71,13 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
     synapse->da_modulation_gain = config->da_modulation_gain;
     synapse->burst_amplification = config->burst_amplification;
 
-    synapse->pre_trace = 0.0f;
-    synapse->post_trace = 0.0f;
+    synapse->pre_trace = 0.0F;
+    synapse->post_trace = 0.0F;
 
     synapse->num_potentiation_events = 0;
     synapse->num_depression_events = 0;
-    synapse->total_ltp = 0.0f;
-    synapse->total_ltd = 0.0f;
+    synapse->total_ltp = 0.0F;
+    synapse->total_ltd = 0.0F;
 }
 
 /* ============================================================================
@@ -100,7 +100,7 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     /* LTD: post trace indicates recent postsynaptic spike */
     float weight_change = -synapse->a_minus * synapse->learning_rate * synapse->post_trace;
 
-    if (weight_change < 0.0f) {
+    if (weight_change < 0.0F) {
         synapse->num_depression_events++;
         synapse->total_ltd += fabsf(weight_change);
     }
@@ -111,7 +111,7 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
 
     /* Increment presynaptic trace */
-    synapse->pre_trace += 1.0f;
+    synapse->pre_trace += 1.0F;
 
     return weight_change;
 }
@@ -122,7 +122,7 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     /* LTP: pre trace indicates recent presynaptic spike */
     float weight_change = synapse->a_plus * synapse->learning_rate * synapse->pre_trace;
 
-    if (weight_change > 0.0f) {
+    if (weight_change > 0.0F) {
         synapse->num_potentiation_events++;
         synapse->total_ltp += weight_change;
     }
@@ -133,7 +133,7 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
 
     /* Increment postsynaptic trace */
-    synapse->post_trace += 1.0f;
+    synapse->post_trace += 1.0F;
 
     return weight_change;
 }
@@ -145,18 +145,18 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
 float stdp_get_da_modulation_factor(const stdp_synapse_t* synapse,
                                      neuromodulator_system_t neuromod) {
     if (!synapse->enable_da_modulation || neuromod == NULL) {
-        return 1.0f;  /* No modulation */
+        return 1.0F;  /* No modulation */
     }
 
     /* Get dopamine concentration (tonic + phasic) */
     float da_concentration = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
 
     /* Base modulation: DA concentration → LR multiplier */
-    float modulation_factor = 1.0f + da_concentration * synapse->da_modulation_gain;
+    float modulation_factor = 1.0F + da_concentration * synapse->da_modulation_gain;
 
     /* Burst amplification: High DA concentration indicates burst */
     /* Baseline DA ≈ 0.05 in [0,1] range, burst ≈ 0.8+ */
-    if (da_concentration > 0.3f) {  /* Above 30% = likely in burst */
+    if (da_concentration > 0.3F) {  /* Above 30% = likely in burst */
         modulation_factor *= synapse->burst_amplification;
     }
 
@@ -173,10 +173,10 @@ float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
     float modulated_weight_change = base_weight_change * modulation;
 
     /* Update statistics */
-    if (modulated_weight_change > 0.0f) {
+    if (modulated_weight_change > 0.0F) {
         synapse->num_potentiation_events++;
         synapse->total_ltp += modulated_weight_change;
-    } else if (modulated_weight_change < 0.0f) {
+    } else if (modulated_weight_change < 0.0F) {
         synapse->num_depression_events++;
         synapse->total_ltd += fabsf(modulated_weight_change);
     }
@@ -204,7 +204,7 @@ float stdp_pre_spike_modulated(stdp_synapse_t* synapse,
         synapse, base_weight_change, neuromod);
 
     /* Increment presynaptic trace */
-    synapse->pre_trace += 1.0f;
+    synapse->pre_trace += 1.0F;
 
     return modulated_weight_change;
 }
@@ -222,7 +222,7 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
         synapse, base_weight_change, neuromod);
 
     /* Increment postsynaptic trace */
-    synapse->post_trace += 1.0f;
+    synapse->post_trace += 1.0F;
 
     return modulated_weight_change;
 }
@@ -232,12 +232,12 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
  * ============================================================================ */
 
 void stdp_synapse_reset(stdp_synapse_t* synapse) {
-    synapse->pre_trace = 0.0f;
-    synapse->post_trace = 0.0f;
+    synapse->pre_trace = 0.0F;
+    synapse->post_trace = 0.0F;
     synapse->num_potentiation_events = 0;
     synapse->num_depression_events = 0;
-    synapse->total_ltp = 0.0f;
-    synapse->total_ltd = 0.0f;
+    synapse->total_ltp = 0.0F;
+    synapse->total_ltd = 0.0F;
 }
 
 void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {

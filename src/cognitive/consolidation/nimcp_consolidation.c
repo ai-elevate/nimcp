@@ -144,22 +144,22 @@ consolidation_config_t consolidation_default_config(void)
                                      .priority = CONSOLIDATION_PRIORITY_IMPORTANT,
 
                                      .consolidation_cycles = 10,
-                                     .consolidation_strength = 0.1f,
+                                     .consolidation_strength = 0.1F,
 
                                      .enable_replay = true,
                                      .replay_count = 100,
 
                                      .enable_pruning = true,
-                                     .pruning_threshold = 0.01f,
+                                     .pruning_threshold = 0.01F,
 
                                      .enable_scaling = true,
-                                     .scaling_target = 0.5f,
+                                     .scaling_target = 0.5F,
 
                                      .prioritize_novel = true,
-                                     .novelty_boost = 1.5f,
+                                     .novelty_boost = 1.5F,
 
                                      .prune_weak = true,
-                                     .weakness_threshold = 0.1f,
+                                     .weakness_threshold = 0.1F,
 
                                      .on_consolidation_start = NULL,
                                      .on_consolidation_progress = NULL,
@@ -196,7 +196,7 @@ bool brain_consolidate_memory(brain_t brain, const consolidation_config_t* confi
 
     /* WHAT: Perform consolidation */
     uint64_t start_time = nimcp_time_monotonic_ms();
-    float progress = 0.0f;
+    float progress = 0.0F;
 
     ensure_sync_stats_init();
     nimcp_mutex_lock(&g_sync_stats_lock);
@@ -209,17 +209,17 @@ bool brain_consolidate_memory(brain_t brain, const consolidation_config_t* confi
 
         /* WHAT: Ensure non-zero duration for fast consolidations */
         /* WHY: Placeholder consolidation completes in < 1ms */
-        if (duration_ms < 0.001f) {
-            duration_ms = 0.001f; /* Minimum 1 microsecond */
+        if (duration_ms < 0.001F) {
+            duration_ms = 0.001F; /* Minimum 1 microsecond */
         }
 
         g_sync_stats.total_consolidations++;
         g_sync_stats.last_consolidation_time_ms = duration_ms;
 
         /* Update running average */
-        float alpha = 0.1f; /* EMA smoothing */
+        float alpha = 0.1F; /* EMA smoothing */
         g_sync_stats.avg_consolidation_time_ms =
-            alpha * duration_ms + (1.0f - alpha) * g_sync_stats.avg_consolidation_time_ms;
+            alpha * duration_ms + (1.0F - alpha) * g_sync_stats.avg_consolidation_time_ms;
 
         g_sync_stats.last_consolidation_timestamp = end_time;
     }
@@ -284,7 +284,7 @@ static bool perform_consolidation(brain_t brain, const consolidation_config_t* c
 
     /* WHAT: Final progress update */
     if (progress) {
-        *progress = 1.0f;
+        *progress = 1.0F;
     }
 
     return true;
@@ -335,7 +335,7 @@ static bool consolidate_replay(brain_t brain, const consolidation_config_t* conf
 
         for (uint32_t i = 0; i < max_replay; i++) {
             /* Get total salience (includes emotional boost) */
-            float total_salience = 0.0f;
+            float total_salience = 0.0F;
             if (!working_memory_get_total_salience(wm, i, &total_salience)) {
                 continue;
             }
@@ -346,9 +346,9 @@ static bool consolidate_replay(brain_t brain, const consolidation_config_t* conf
 
             /* Phase 10.3: Emotional boost for consolidation */
             float consolidation_strength = config->consolidation_strength;
-            if (has_emotion && emotion.intensity > 0.5f) {
+            if (has_emotion && emotion.intensity > 0.5F) {
                 /* High-intensity emotions get stronger consolidation */
-                consolidation_strength *= (1.0f + emotion.intensity);
+                consolidation_strength *= (1.0F + emotion.intensity);
             }
 
             /* Apply novelty boost if enabled */
@@ -362,7 +362,7 @@ static bool consolidate_replay(brain_t brain, const consolidation_config_t* conf
             patterns_replayed++;
 
             /* Estimate connections strengthened (emotional items get more) */
-            uint32_t connections_per_pattern = has_emotion && emotion.intensity > 0.5f ? 75 : 50;
+            uint32_t connections_per_pattern = has_emotion && emotion.intensity > 0.5F ? 75 : 50;
             connections_strengthened += connections_per_pattern;
         }
     } else {
@@ -417,17 +417,17 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
     }
 
     /* WHAT: Calculate current average weight and activation */
-    float total_weight = 0.0f;
-    float total_activation = 0.0f;
+    float total_weight = 0.0F;
+    float total_activation = 0.0F;
     uint32_t total_synapses = 0;
     uint32_t active_neurons = 0;
 
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
         /* Get neuron activation */
-        float activation = 0.0f;
+        float activation = 0.0F;
         if (adaptive_network_get_neuron_activation(network, neuron_id, &activation)) {
             total_activation += fabsf(activation);
-            if (fabsf(activation) > 0.01f) {
+            if (fabsf(activation) > 0.01F) {
                 active_neurons++;
             }
         }
@@ -450,30 +450,30 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
     }
 
     /* WHAT: Compute scaling statistics */
-    float avg_weight_before = total_synapses > 0 ? total_weight / total_synapses : 0.0f;
-    float avg_activation = active_neurons > 0 ? total_activation / active_neurons : 0.0f;
+    float avg_weight_before = total_synapses > 0 ? total_weight / total_synapses : 0.0F;
+    float avg_activation = active_neurons > 0 ? total_activation / active_neurons : 0.0F;
 
     /* WHAT: Compute scaling factor based on target activation */
     /* WHY: Multiplicative scaling preserves relative weight differences */
-    float scale_factor = 1.0f;
-    if (avg_activation > 0.0f && avg_activation < 2.0f) {
+    float scale_factor = 1.0F;
+    if (avg_activation > 0.0F && avg_activation < 2.0F) {
         scale_factor = config->scaling_target / avg_activation;
     }
 
     /* WHAT: Clamp scaling to reasonable range */
     /* WHY: Prevent runaway growth or collapse */
-    if (scale_factor < 0.5f) scale_factor = 0.5f;
-    if (scale_factor > 2.0f) scale_factor = 2.0f;
+    if (scale_factor < 0.5F) scale_factor = 0.5F;
+    if (scale_factor > 2.0F) scale_factor = 2.0F;
 
     /* WHAT: Update statistics */
-    stats->network_sparsity_before = 1.0f - ((float)active_neurons / (float)num_neurons);
+    stats->network_sparsity_before = 1.0F - ((float)active_neurons / (float)num_neurons);
     stats->avg_connection_strength_before = avg_weight_before;
     stats->avg_connection_strength_after = avg_weight_before * scale_factor;
 
     /* Track strengthened vs weakened connections */
-    if (scale_factor > 1.0f) {
+    if (scale_factor > 1.0F) {
         stats->connections_strengthened += total_synapses;
-    } else if (scale_factor < 1.0f) {
+    } else if (scale_factor < 1.0F) {
         stats->connections_weakened += total_synapses;
     }
 
@@ -520,7 +520,7 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
 
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
-        return 0.0f;  /* Cannot analyze without base network */
+        return 0.0F;  /* Cannot analyze without base network */
     }
 
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
@@ -550,7 +550,7 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
     stats->connections_pruned += pruned_count;
 
     /* WHAT: Update sparsity after pruning */
-    float sparsity_after = 1.0f - ((float)(total_connections - weak_connections) /
+    float sparsity_after = 1.0F - ((float)(total_connections - weak_connections) /
                                    (float)total_connections);
     stats->network_sparsity_after = sparsity_after;
 
@@ -605,7 +605,7 @@ static void* consolidation_thread_fn(void* arg)
 
         /* WHAT: Mark as consolidating */
         handle->is_consolidating = true;
-        handle->current_progress = 0.0f;
+        handle->current_progress = 0.0F;
 
         nimcp_mutex_unlock(&handle->lock);
 
@@ -627,17 +627,17 @@ static void* consolidation_thread_fn(void* arg)
 
         float duration_ms = (float) (end_time - start_time);
         /* WHAT: Ensure non-zero duration for fast consolidations */
-        if (duration_ms < 0.001f) {
-            duration_ms = 0.001f; /* Minimum 1 microsecond */
+        if (duration_ms < 0.001F) {
+            duration_ms = 0.001F; /* Minimum 1 microsecond */
         }
 
         handle->stats.total_consolidations++;
         handle->stats.last_consolidation_time_ms = duration_ms;
 
         /* Update running average */
-        float alpha = 0.1f;
+        float alpha = 0.1F;
         handle->stats.avg_consolidation_time_ms =
-            alpha * duration_ms + (1.0f - alpha) * handle->stats.avg_consolidation_time_ms;
+            alpha * duration_ms + (1.0F - alpha) * handle->stats.avg_consolidation_time_ms;
 
         /* Broadcast consolidation complete via bio-async */
         bio_broadcast_consolidation_complete(handle, duration_ms);
@@ -645,7 +645,7 @@ static void* consolidation_thread_fn(void* arg)
         handle->stats.last_consolidation_timestamp = end_time;
 
         handle->is_consolidating = false;
-        handle->current_progress = 0.0f;
+        handle->current_progress = 0.0F;
 
         nimcp_mutex_unlock(&handle->lock);
     }
@@ -730,7 +730,7 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
     handle->paused = false;
     handle->trigger_now = false;
     handle->is_consolidating = false;
-    handle->current_progress = 0.0f;
+    handle->current_progress = 0.0F;
 
     nimcp_mutex_init(&handle->lock, NULL);
     nimcp_cond_init(&handle->trigger_cond);
@@ -917,11 +917,11 @@ pattern_importance_t* brain_get_important_patterns(brain_t brain, uint32_t* num_
         snprintf(name_buffer, sizeof(name_buffer), "pattern_%u", i);
 
         patterns[i].pattern_name = nimcp_strdup(name_buffer);
-        patterns[i].importance_score = 0.9f - (i * 0.05f);
-        patterns[i].recency_score = 0.8f - (i * 0.05f);
-        patterns[i].frequency_score = 0.7f - (i * 0.03f);
-        patterns[i].novelty_score = 0.5f + (i * 0.02f);
-        patterns[i].strength = 0.8f - (i * 0.04f);
+        patterns[i].importance_score = 0.9F - (i * 0.05F);
+        patterns[i].recency_score = 0.8F - (i * 0.05F);
+        patterns[i].frequency_score = 0.7F - (i * 0.03F);
+        patterns[i].novelty_score = 0.5F + (i * 0.02F);
+        patterns[i].strength = 0.8F - (i * 0.04F);
         patterns[i].activation_count = 1000 - (i * 50);
         patterns[i].last_activated = nimcp_time_monotonic_ms() - (i * 60000); /* Recent */
     }
@@ -1070,11 +1070,11 @@ bool consolidation_is_running(consolidation_handle_t handle)
 float consolidation_get_progress(consolidation_handle_t handle)
 {
     if (handle == NULL) {
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_mutex_lock(&handle->lock);
-    float progress = handle->is_consolidating ? handle->current_progress : -1.0f;
+    float progress = handle->is_consolidating ? handle->current_progress : -1.0F;
     nimcp_mutex_unlock(&handle->lock);
 
     return progress;
@@ -1103,7 +1103,7 @@ bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t repl
     }
 
     /* Guard: Validate strength parameter */
-    if (strength <= 0.0f || strength > 1.0f) {
+    if (strength <= 0.0F || strength > 1.0F) {
         return false;
     }
 
@@ -1127,7 +1127,7 @@ bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t repl
     for (uint32_t i = 0; i < wm_size && i < replay_count; i++) {
         /* WHAT: Strengthen connections in proportion to salience */
         /* WHY: Important memories get stronger consolidation */
-        float salience = 0.5f; /* Default salience */
+        float salience = 0.5F; /* Default salience */
         working_memory_get_total_salience(wm, i, &salience);
 
         /* WHAT: Strengthening happens during forward/backward passes */
@@ -1156,7 +1156,7 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
     }
 
     /* Guard: Validate target activation */
-    if (target_activation <= 0.0f || target_activation > 2.0f) {
+    if (target_activation <= 0.0F || target_activation > 2.0F) {
         return false;
     }
 
@@ -1173,22 +1173,22 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
     }
 
     /* WHAT: Calculate current average activation across network */
-    float total_activation = 0.0f;
+    float total_activation = 0.0F;
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
-        float activation = 0.0f;
+        float activation = 0.0F;
         if (adaptive_network_get_neuron_activation(network, i, &activation)) {
             total_activation += fabsf(activation);
-            if (fabsf(activation) > 0.01f) {
+            if (fabsf(activation) > 0.01F) {
                 active_count++;
             }
         }
     }
 
     /* WHAT: Compute scaling factor */
-    float avg_activation = active_count > 0 ? total_activation / active_count : 0.0f;
-    if (avg_activation < 0.001f) {
+    float avg_activation = active_count > 0 ? total_activation / active_count : 0.0F;
+    if (avg_activation < 0.001F) {
         /* Network is essentially silent - no scaling needed */
         return true;
     }
@@ -1197,8 +1197,8 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
 
     /* WHAT: Clamp scaling to reasonable range */
     /* WHY: Prevent runaway growth or collapse */
-    if (scale_factor < 0.5f) scale_factor = 0.5f;
-    if (scale_factor > 2.0f) scale_factor = 2.0f;
+    if (scale_factor < 0.5F) scale_factor = 0.5F;
+    if (scale_factor > 2.0F) scale_factor = 2.0F;
 
     /* WHAT: Apply scaling to all synaptic weights */
     /* HOW: Iterate through neurons and scale their incoming weights */
@@ -1226,7 +1226,7 @@ uint32_t brain_prune_weak_connections(brain_t brain, float threshold)
     }
 
     /* Guard: Validate threshold */
-    if (threshold < 0.0f || threshold > 1.0f) {
+    if (threshold < 0.0F || threshold > 1.0F) {
         return 0;
     }
 

@@ -579,12 +579,12 @@ void nlp_bridge_get_stats(nlp_protocol_bridge_t* bridge,
  * @brief Calculate compression ratio
  */
 float nlp_bridge_get_compression_ratio(nlp_protocol_bridge_t* bridge) {
-    if (!bridge || bridge->expressions_sent == 0) return 1.0f;
+    if (!bridge || bridge->expressions_sent == 0) return 1.0F;
 
     // Estimate: average expression is ~20 bytes uncompressed
     size_t estimated_uncompressed = bridge->expressions_sent * 20;
     size_t estimated_compressed = estimated_uncompressed - bridge->bytes_saved;
 
-    if (estimated_uncompressed == 0) return 1.0f;
+    if (estimated_uncompressed == 0) return 1.0F;
     return (float)estimated_compressed / (float)estimated_uncompressed;
 }

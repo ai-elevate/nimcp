@@ -35,24 +35,24 @@ struct signal_filter_t {
 
 static void apply_window(float* coeffs, uint32_t n, window_function_t window) {
     for (uint32_t i = 0; i < n; i++) {
-        float w = 1.0f;
+        float w = 1.0F;
         float x = (float)i / (float)(n - 1);
 
         switch (window) {
             case WINDOW_RECTANGULAR:
-                w = 1.0f;
+                w = 1.0F;
                 break;
 
             case WINDOW_HAMMING:
-                w = 0.54f - 0.46f * cosf(2.0f * M_PI * x);
+                w = 0.54F - 0.46F * cosf(2.0F * M_PI * x);
                 break;
 
             case WINDOW_HANN:
-                w = 0.5f - 0.5f * cosf(2.0f * M_PI * x);
+                w = 0.5F - 0.5F * cosf(2.0F * M_PI * x);
                 break;
 
             case WINDOW_BLACKMAN:
-                w = 0.42f - 0.5f * cosf(2.0f * M_PI * x) + 0.08f * cosf(4.0f * M_PI * x);
+                w = 0.42F - 0.5F * cosf(2.0F * M_PI * x) + 0.08F * cosf(4.0F * M_PI * x);
                 break;
         }
 
@@ -65,7 +65,7 @@ static void apply_window(float* coeffs, uint32_t n, window_function_t window) {
 //=============================================================================
 
 static bool design_lowpass_filter(float* coeffs, uint32_t order, float cutoff, float sample_rate) {
-    if (!coeffs || order == 0 || cutoff <= 0.0f || sample_rate <= 0.0f) {
+    if (!coeffs || order == 0 || cutoff <= 0.0F || sample_rate <= 0.0F) {
         return false;
     }
 
@@ -77,10 +77,10 @@ static bool design_lowpass_filter(float* coeffs, uint32_t order, float cutoff, f
         int32_t idx = i - m;
         if (idx == 0) {
             // Limit as idx->0: sin(2πfc*idx)/(π*idx) = 2fc
-            coeffs[i] = 2.0f * fc;
+            coeffs[i] = 2.0F * fc;
         } else {
             // Windowed sinc: h[n] = sin(2πfc*n) / (π*n) = 2fc * sinc(2fc*n)
-            coeffs[i] = sinf(2.0f * M_PI * fc * (float)idx) / (M_PI * (float)idx);
+            coeffs[i] = sinf(2.0F * M_PI * fc * (float)idx) / (M_PI * (float)idx);
         }
     }
 
@@ -94,7 +94,7 @@ static bool design_highpass_filter(float* coeffs, uint32_t order, float cutoff, 
 }
 
 static bool design_bandpass_filter(float* coeffs, uint32_t order, float low_freq, float high_freq, float sample_rate) {
-    if (!coeffs || order == 0 || low_freq < 0.0f || high_freq <= low_freq || sample_rate <= 0.0f) {
+    if (!coeffs || order == 0 || low_freq < 0.0F || high_freq <= low_freq || sample_rate <= 0.0F) {
         return false;
     }
 
@@ -140,10 +140,10 @@ static bool design_bandstop_filter(float* coeffs, uint32_t order, float low_freq
 signal_filter_config_t signal_filter_default_config(void) {
     signal_filter_config_t config;
     config.type = FILTER_BANDPASS;
-    config.low_freq = 4.0f;
-    config.high_freq = 8.0f;
-    config.cutoff_freq = 0.0f;
-    config.sample_rate = 1000.0f;
+    config.low_freq = 4.0F;
+    config.high_freq = 8.0F;
+    config.cutoff_freq = 0.0F;
+    config.sample_rate = 1000.0F;
     config.order = 64;
     config.window = WINDOW_HAMMING;
     config.use_fft_convolution = true;
@@ -178,23 +178,23 @@ signal_filter_config_t signal_filter_highpass_config(float cutoff_freq, float sa
 bool signal_filter_validate_config(const signal_filter_config_t* config) {
     if (!config) return false;
 
-    if (config->sample_rate <= 0.0f) return false;
+    if (config->sample_rate <= 0.0F) return false;
     if (config->order == 0 || config->order > 1024) return false;
     if (config->order % 2 != 0) return false;  // Must be even
 
-    float nyquist = config->sample_rate / 2.0f;
+    float nyquist = config->sample_rate / 2.0F;
 
     switch (config->type) {
         case FILTER_LOWPASS:
         case FILTER_HIGHPASS:
-            if (config->cutoff_freq <= 0.0f || config->cutoff_freq >= nyquist) {
+            if (config->cutoff_freq <= 0.0F || config->cutoff_freq >= nyquist) {
                 return false;
             }
             break;
 
         case FILTER_BANDPASS:
         case FILTER_BANDSTOP:
-            if (config->low_freq < 0.0f || config->high_freq >= nyquist) {
+            if (config->low_freq < 0.0F || config->high_freq >= nyquist) {
                 return false;
             }
             if (config->low_freq >= config->high_freq) {
@@ -266,7 +266,7 @@ signal_filter_t* signal_filter_create(const signal_filter_config_t* config) {
         for (uint32_t i = 0; i < filter->num_coeffs; i++) {
             filter->coefficients[i] = -filter->coefficients[i];
         }
-        filter->coefficients[config->order / 2] += 1.0f;  // Add impulse at center
+        filter->coefficients[config->order / 2] += 1.0F;  // Add impulse at center
     }
 
     // NOTE: We don't normalize by sum for FIR filters
@@ -323,7 +323,7 @@ bool signal_filter_apply(signal_filter_t* filter, const float* input, float* out
         filter->state[filter->state_idx] = input[i];
 
         // Convolve
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (uint32_t j = 0; j < filter->num_coeffs; j++) {
             uint32_t idx = (filter->state_idx + filter->state_size - j) % filter->state_size;
             sum += filter->coefficients[j] * filter->state[idx];
@@ -371,9 +371,9 @@ bool signal_filter_get_response(signal_filter_t* filter, const float* frequencie
     // Compute frequency response via DTFT
     for (uint32_t i = 0; i < n; i++) {
         float freq = frequencies[i];
-        float omega = 2.0f * M_PI * freq / filter->config.sample_rate;
+        float omega = 2.0F * M_PI * freq / filter->config.sample_rate;
 
-        float real = 0.0f, imag = 0.0f;
+        float real = 0.0F, imag = 0.0F;
         for (uint32_t k = 0; k < filter->num_coeffs; k++) {
             float phase = omega * (float)k;
             real += filter->coefficients[k] * cosf(phase);

@@ -43,7 +43,7 @@ quantum_shannon_config_t quantum_shannon_default_config(void) {
         .neuron_sample_size = DEFAULT_NEURON_SAMPLES,
         .bottleneck_threshold = DEFAULT_BOTTLENECK_THRESHOLD,
         .enable_adaptive_coin = true,
-        .coin_adaptation_rate = 0.1f,
+        .coin_adaptation_rate = 0.1F,
         .shannon_update_interval = 10,  // Update every 10 steps
         .track_information_loss = true
     };
@@ -61,7 +61,7 @@ quantum_shannon_config_t quantum_shannon_high_accuracy_config(void) {
     config.synapse_sample_size = 1000;  // Sample more synapses
     config.neuron_sample_size = 2000;   // Sample more neurons
     config.shannon_update_interval = 5; // Update every 5 steps
-    config.coin_adaptation_rate = 0.05f; // Slower adaptation
+    config.coin_adaptation_rate = 0.05F; // Slower adaptation
 
     return config;
 }
@@ -164,15 +164,15 @@ static float compute_node_entropy(float probability) {
     // Maximum entropy: H = 1 bit when p = 0.5 (maximum uncertainty)
 
     // Guard: Invalid probability
-    if (probability < MIN_INFORMATION || probability > 1.0f) {
-        return 0.0f;
+    if (probability < MIN_INFORMATION || probability > 1.0F) {
+        return 0.0F;
     }
 
     // Binary entropy
     float p = probability;
-    float q = 1.0f - p;
+    float q = 1.0F - p;
 
-    float h = 0.0f;
+    float h = 0.0F;
     if (p > MIN_INFORMATION) {
         h -= p * log2f(p);
     }
@@ -198,15 +198,15 @@ static float compute_synapse_capacity(neural_network_t network,
     // - Typical SNR: 1-10 (noisy biological channels)
 
     // Guard: NULL checks
-    if (!network || !config) return 0.0f;
+    if (!network || !config) return 0.0F;
 
     // Suppress unused parameter warning
     (void)synapse_idx;
 
     // TODO: Access synapse at index (needs network API)
     // For now, use simplified capacity estimation
-    float bandwidth = 50.0f;  // 50 Hz average firing rate
-    float snr = 5.0f;         // Typical SNR = 5
+    float bandwidth = 50.0F;  // 50 Hz average firing rate
+    float snr = 5.0F;         // Typical SNR = 5
 
     float capacity = shannon_channel_capacity(bandwidth, snr);
 
@@ -401,7 +401,7 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
     }
 
     // STEP 2: Compute Shannon entropy at each node
-    qsd->metrics.total_entropy = 0.0f;
+    qsd->metrics.total_entropy = 0.0F;
     qsd->metrics.num_nodes_reached = 0;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -424,7 +424,7 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
 
     // Mutual information must be non-negative and <= source_entropy
     float mi = qsd->metrics.source_entropy - fabsf(information_loss);
-    qsd->metrics.mutual_information = fmaxf(0.0f, fminf(mi, qsd->metrics.source_entropy));
+    qsd->metrics.mutual_information = fmaxf(0.0F, fminf(mi, qsd->metrics.source_entropy));
     qsd->metrics.information_loss = information_loss;
 
     // STEP 4: Compute propagation efficiency
@@ -432,7 +432,7 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
         qsd->metrics.propagation_efficiency =
             qsd->metrics.mutual_information / qsd->metrics.source_entropy;
     } else {
-        qsd->metrics.propagation_efficiency = 0.0f;
+        qsd->metrics.propagation_efficiency = 0.0F;
     }
 
     // STEP 5: Compute spreading distance (average distance from source)
@@ -445,8 +445,8 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
         return false;
     }
 
-    float total_distance = 0.0f;
-    float total_prob = 0.0f;
+    float total_distance = 0.0F;
+    float total_prob = 0.0F;
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (probs[i] > MIN_INFORMATION) {
             // Approximate distance as difference in node IDs
@@ -460,17 +460,17 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
 
     nimcp_free(probs);
 
-    qsd->metrics.spreading_distance = (total_prob > 0.0f) ?
-        total_distance / total_prob : 0.0f;
+    qsd->metrics.spreading_distance = (total_prob > 0.0F) ?
+        total_distance / total_prob : 0.0F;
 
     // STEP 6: Compute speedup vs classical
     // Quantum walk: O(d) for distance d
     // Classical diffusion: O(d²) for distance d
     // Speedup = d²/d = d
-    if (qsd->metrics.spreading_distance > 1.0f) {
+    if (qsd->metrics.spreading_distance > 1.0F) {
         qsd->metrics.speedup_vs_classical = qsd->metrics.spreading_distance;
     } else {
-        qsd->metrics.speedup_vs_classical = 1.0f;  // Minimum 1x (no slowdown)
+        qsd->metrics.speedup_vs_classical = 1.0F;  // Minimum 1x (no slowdown)
     }
 
     // STEP 7: Compute information rate (dH/dt)
@@ -503,9 +503,9 @@ static bool update_channel_capacities(quantum_shannon_diffusion_t* qsd) {
     }
 
     // Compute capacity for each sampled synapse
-    float total_capacity = 0.0f;
+    float total_capacity = 0.0F;
     float min_cap = INFINITY;
-    float max_cap = 0.0f;
+    float max_cap = 0.0F;
 
     for (uint32_t i = 0; i < qsd->config.synapse_sample_size; i++) {
         float capacity = compute_synapse_capacity(
@@ -683,14 +683,14 @@ static bool detect_bottlenecks(quantum_shannon_diffusion_t* qsd) {
     if (!qsd) return false;
 
     qsd->num_bottlenecks = 0;
-    float total_deficit = 0.0f;
+    float total_deficit = 0.0F;
 
     // Check each sampled synapse
     for (uint32_t i = 0; i < qsd->config.synapse_sample_size; i++) {
         float capacity = qsd->channel_capacities[i];
 
         // Estimate demand (simplified)
-        float demand = qsd->metrics.average_capacity * 1.2f;
+        float demand = qsd->metrics.average_capacity * 1.2F;
 
         // Check if capacity < threshold
         float utilization = capacity / (demand + MIN_CAPACITY);
@@ -710,7 +710,7 @@ static bool detect_bottlenecks(quantum_shannon_diffusion_t* qsd) {
             bn->capacity = capacity;
             bn->demand = demand;
             bn->deficit = (demand - capacity) / demand;
-            bn->suggested_weight = capacity * 2.0f; // Double capacity
+            bn->suggested_weight = capacity * 2.0F; // Double capacity
 
             total_deficit += bn->deficit;
             qsd->num_bottlenecks++;
@@ -722,7 +722,7 @@ static bool detect_bottlenecks(quantum_shannon_diffusion_t* qsd) {
         qsd->metrics.bottleneck_severity =
             total_deficit / qsd->num_bottlenecks;
     } else {
-        qsd->metrics.bottleneck_severity = 0.0f;
+        qsd->metrics.bottleneck_severity = 0.0F;
     }
     qsd->metrics.num_bottlenecks = qsd->num_bottlenecks;
 
@@ -848,12 +848,12 @@ bool quantum_shannon_route_around_bottlenecks(quantum_shannon_diffusion_t* qsd) 
         //          (reduce flow by 8% to bottleneck)
 
         float deficit = bn->deficit;
-        float routing_factor = 1.0f - (deficit * adaptation_rate);
+        float routing_factor = 1.0F - (deficit * adaptation_rate);
 
         // Ensure routing factor is in valid range [0.5, 1.0]
         // Never completely block a path (min 50% flow)
-        if (routing_factor < 0.5f) routing_factor = 0.5f;
-        if (routing_factor > 1.0f) routing_factor = 1.0f;
+        if (routing_factor < 0.5F) routing_factor = 0.5F;
+        if (routing_factor > 1.0F) routing_factor = 1.0F;
 
         // Apply routing bias to amplitude at pre_node
         // This affects the coin operator implicitly by modifying
@@ -901,7 +901,7 @@ bool quantum_shannon_route_around_bottlenecks(quantum_shannon_diffusion_t* qsd) 
         float imag_part = cimagf(amplitudes[pre_node]);
 
         // Apply routing factor to modulate amplitude
-        float phase_shift = (1.0f - routing_factor) * 0.1f;
+        float phase_shift = (1.0F - routing_factor) * 0.1F;
 
         // Phase modulation
         float cos_phi = cosf(phase_shift);
@@ -969,7 +969,7 @@ void quantum_shannon_print_metrics(const quantum_shannon_diffusion_t* qsd) {
     printf("  Mutual information:    %.2f bits\n", m->mutual_information);
     printf("  Information loss:      %.2f bits\n", m->information_loss);
     printf("\nPropagation Quality:\n");
-    printf("  Efficiency:            %.2f%%\n", m->propagation_efficiency * 100.0f);
+    printf("  Efficiency:            %.2f%%\n", m->propagation_efficiency * 100.0F);
     printf("  Nodes reached:         %u\n", m->num_nodes_reached);
     printf("  Spreading distance:    %.2f\n", m->spreading_distance);
     printf("\nChannel Capacity:\n");
@@ -979,7 +979,7 @@ void quantum_shannon_print_metrics(const quantum_shannon_diffusion_t* qsd) {
            m->min_capacity, m->max_capacity);
     printf("\nBottlenecks:\n");
     printf("  Count:                 %u\n", m->num_bottlenecks);
-    printf("  Severity:              %.2f%%\n", m->bottleneck_severity * 100.0f);
+    printf("  Severity:              %.2f%%\n", m->bottleneck_severity * 100.0F);
     printf("\nPerformance:\n");
     printf("  Speedup vs classical:  %.1fx\n", m->speedup_vs_classical);
     printf("  Information rate:      %.2f bits/s\n", m->information_rate);
@@ -1002,7 +1002,7 @@ void quantum_shannon_print_bottlenecks(const quantum_shannon_diffusion_t* qsd) {
         printf("  Pre → Post:       %u → %u\n", bn->pre_node, bn->post_node);
         printf("  Capacity:         %.2f bits/s\n", bn->capacity);
         printf("  Demand:           %.2f bits/s\n", bn->demand);
-        printf("  Deficit:          %.2f%%\n", bn->deficit * 100.0f);
+        printf("  Deficit:          %.2f%%\n", bn->deficit * 100.0F);
         printf("  Suggested weight: %.4f\n\n", bn->suggested_weight);
     }
 
@@ -1024,14 +1024,14 @@ bool quantum_shannon_verify(const quantum_shannon_diffusion_t* qsd) {
     }
 
     // Verify Shannon metrics
-    if (qsd->metrics.source_entropy < 0.0f) return false;
-    if (qsd->metrics.total_entropy < 0.0f) return false;
-    if (qsd->metrics.mutual_information < 0.0f) return false;
-    if (qsd->metrics.mutual_information > qsd->metrics.source_entropy + 0.1f) {
+    if (qsd->metrics.source_entropy < 0.0F) return false;
+    if (qsd->metrics.total_entropy < 0.0F) return false;
+    if (qsd->metrics.mutual_information < 0.0F) return false;
+    if (qsd->metrics.mutual_information > qsd->metrics.source_entropy + 0.1F) {
         return false;  // MI cannot exceed source entropy
     }
-    if (qsd->metrics.propagation_efficiency < 0.0f ||
-        qsd->metrics.propagation_efficiency > 1.1f) {
+    if (qsd->metrics.propagation_efficiency < 0.0F ||
+        qsd->metrics.propagation_efficiency > 1.1F) {
         return false;
     }
 
@@ -1116,7 +1116,7 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
 
     // Initialize all weights to 1.0 (neutral)
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
-        routing_weights[i] = 1.0f;
+        routing_weights[i] = 1.0F;
     }
 
     // Step 4a: Increase exploration near hubs
@@ -1133,7 +1133,7 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
         // Increase routing weight proportional to centrality
         // High centrality (near 1.0) → weight = 1.5-2.0
         // Moderate centrality (0.5) → weight = 1.25
-        routing_weights[hub_id] = 1.0f + (centrality * 1.0f);
+        routing_weights[hub_id] = 1.0F + (centrality * 1.0F);
     }
 
     // Step 4b: Bias routing through inter-community edges
@@ -1171,7 +1171,7 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
                 float boundary_ratio = (float)external_count / (float)degree;
                 // Increase routing weight for boundary neurons
                 // More external connections → higher weight
-                routing_weights[neuron_id] *= (1.0f + boundary_ratio * 0.5f);
+                routing_weights[neuron_id] *= (1.0F + boundary_ratio * 0.5F);
             }
         }
     }
@@ -1184,7 +1184,7 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     float avg_clustering = metrics.clustering_coefficient;
 
     // Only apply if clustering data is available and meaningful
-    if (avg_clustering > 0.01f) {
+    if (avg_clustering > 0.01F) {
         // For each node, use degree as proxy for local density
         // High-degree nodes in small networks are likely in dense clusters
         uint32_t total_nodes = walker->num_nodes;
@@ -1195,13 +1195,13 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
 
             // Compute degree ratio: node degree / average degree
             float avg_degree = (float)(total_nodes) / (float)(total_nodes > 0 ? total_nodes : 1);
-            float degree_ratio = (float)degree / (avg_degree > 0.0f ? avg_degree : 1.0f);
+            float degree_ratio = (float)degree / (avg_degree > 0.0F ? avg_degree : 1.0F);
 
             // If degree is much higher than average, likely in dense cluster
             // Reduce routing weight to avoid spending too much time there
-            if (degree_ratio > 2.0f) {
+            if (degree_ratio > 2.0F) {
                 // Modest reduction: don't penalize hubs too much
-                routing_weights[n] *= 0.9f;
+                routing_weights[n] *= 0.9F;
             }
         }
     }
@@ -1210,11 +1210,11 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     // WHY: Larger networks need larger steps for efficient traversal
     // HOW: Use average path length as proxy for diameter
     float avg_path_length = metrics.avg_path_length;
-    if (avg_path_length > 0.0f) {
+    if (avg_path_length > 0.0F) {
         // Adjust step size: longer paths → fewer but larger steps
         // This is handled by the quantum walk's evolution steps parameter
         // We can suggest an optimal step count
-        uint32_t suggested_steps = (uint32_t)(avg_path_length * 10.0f);
+        uint32_t suggested_steps = (uint32_t)(avg_path_length * 10.0F);
         if (suggested_steps < 50) suggested_steps = 50;
         if (suggested_steps > 500) suggested_steps = 500;
 
@@ -1230,7 +1230,7 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     quantum_amplitude_t* amplitudes = walker->amplitudes;
 
     // Compute normalization factor
-    float norm_sum = 0.0f;
+    float norm_sum = 0.0F;
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
         #ifdef __cplusplus
         float abs_alpha = std::abs(amplitudes[i]);
@@ -1241,7 +1241,7 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     }
 
     float norm_factor = sqrtf(norm_sum);
-    if (norm_factor < 1e-10f) norm_factor = 1.0f; // Avoid division by zero
+    if (norm_factor < 1e-10F) norm_factor = 1.0F; // Avoid division by zero
 
     // Apply routing weights with normalization
     for (uint32_t i = 0; i < walker->num_nodes; i++) {

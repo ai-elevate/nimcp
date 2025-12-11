@@ -78,7 +78,7 @@ bool integration_step(
         return false;
     }
 
-    if (dt <= 0.0f) {
+    if (dt <= 0.0F) {
         integration_error("timestep dt must be positive");
         return false;
     }
@@ -138,7 +138,7 @@ bool integration_integrate(
         return false;
     }
 
-    if (dt <= 0.0f) {
+    if (dt <= 0.0F) {
         integration_error("timestep dt must be positive");
         return false;
     }
@@ -154,7 +154,7 @@ bool integration_integrate(
     float remainder = duration - (steps * dt);
 
     // If there's a remainder, we need one more step with shorter dt
-    bool need_final_step = (remainder > 1e-9f);
+    bool need_final_step = (remainder > 1e-9F);
     if (need_final_step) {
         steps++;
     }
@@ -285,15 +285,15 @@ bool integration_rk4_step(
 
     // Stage 2: k2 = f(y + dt*k1/2, t + dt/2)
     for (uint32_t i = 0; i < n; i++) {
-        temp_state[i] = state[i] + 0.5f * dt * k1[i];
+        temp_state[i] = state[i] + 0.5F * dt * k1[i];
     }
-    derivative_fn(temp_state, t + 0.5f * dt, params, k2);
+    derivative_fn(temp_state, t + 0.5F * dt, params, k2);
 
     // Stage 3: k3 = f(y + dt*k2/2, t + dt/2)
     for (uint32_t i = 0; i < n; i++) {
-        temp_state[i] = state[i] + 0.5f * dt * k2[i];
+        temp_state[i] = state[i] + 0.5F * dt * k2[i];
     }
-    derivative_fn(temp_state, t + 0.5f * dt, params, k3);
+    derivative_fn(temp_state, t + 0.5F * dt, params, k3);
 
     // Stage 4: k4 = f(y + dt*k3, t + dt)
     for (uint32_t i = 0; i < n; i++) {
@@ -303,7 +303,7 @@ bool integration_rk4_step(
 
     // Final update: y_new = y + dt*(k1 + 2*k2 + 2*k3 + k4)/6
     for (uint32_t i = 0; i < n; i++) {
-        state[i] += (dt / 6.0f) * (k1[i] + 2.0f * k2[i] + 2.0f * k3[i] + k4[i]);
+        state[i] += (dt / 6.0F) * (k1[i] + 2.0F * k2[i] + 2.0F * k3[i] + k4[i]);
     }
 
     // Cleanup
@@ -359,9 +359,9 @@ bool integration_adaptive_step(
 {
     // Default config if not provided
     adaptive_config_t default_config = {
-        .min_timestep = 1e-6f,
-        .max_timestep = 1.0f,
-        .error_tolerance = 1e-6f,
+        .min_timestep = 1e-6F,
+        .max_timestep = 1.0F,
+        .error_tolerance = 1e-6F,
         .max_steps = 10000
     };
     if (config == NULL) {
@@ -392,22 +392,22 @@ bool integration_adaptive_step(
     float* temp_state = temp_storage + 6 * n;
 
     // Dormand-Prince coefficients
-    const float c2 = 1.0f/5.0f, c3 = 3.0f/10.0f, c4 = 4.0f/5.0f, c5 = 8.0f/9.0f;
+    const float c2 = 1.0F/5.0F, c3 = 3.0F/10.0F, c4 = 4.0F/5.0F, c5 = 8.0F/9.0F;
 
     // a coefficients (for intermediate stages)
-    const float a21 = 1.0f/5.0f;
-    const float a31 = 3.0f/40.0f, a32 = 9.0f/40.0f;
-    const float a41 = 44.0f/45.0f, a42 = -56.0f/15.0f, a43 = 32.0f/9.0f;
-    const float a51 = 19372.0f/6561.0f, a52 = -25360.0f/2187.0f, a53 = 64448.0f/6561.0f, a54 = -212.0f/729.0f;
-    const float a61 = 9017.0f/3168.0f, a62 = -355.0f/33.0f, a63 = 46732.0f/5247.0f, a64 = 49.0f/176.0f, a65 = -5103.0f/18656.0f;
+    const float a21 = 1.0F/5.0F;
+    const float a31 = 3.0F/40.0F, a32 = 9.0F/40.0F;
+    const float a41 = 44.0F/45.0F, a42 = -56.0F/15.0F, a43 = 32.0F/9.0F;
+    const float a51 = 19372.0F/6561.0F, a52 = -25360.0F/2187.0F, a53 = 64448.0F/6561.0F, a54 = -212.0F/729.0F;
+    const float a61 = 9017.0F/3168.0F, a62 = -355.0F/33.0F, a63 = 46732.0F/5247.0F, a64 = 49.0F/176.0F, a65 = -5103.0F/18656.0F;
 
     // b coefficients (5th order solution)
-    const float b1 = 35.0f/384.0f, b3 = 500.0f/1113.0f, b4 = 125.0f/192.0f;
-    const float b5 = -2187.0f/6784.0f, b6 = 11.0f/84.0f;
+    const float b1 = 35.0F/384.0F, b3 = 500.0F/1113.0F, b4 = 125.0F/192.0F;
+    const float b5 = -2187.0F/6784.0F, b6 = 11.0F/84.0F;
 
     // b* coefficients (4th order solution for error estimate)
-    const float bs1 = 5179.0f/57600.0f, bs3 = 7571.0f/16695.0f, bs4 = 393.0f/640.0f;
-    const float bs5 = -92097.0f/339200.0f, bs6 = 187.0f/2100.0f, bs7 = 1.0f/40.0f;
+    const float bs1 = 5179.0F/57600.0F, bs3 = 7571.0F/16695.0F, bs4 = 393.0F/640.0F;
+    const float bs5 = -92097.0F/339200.0F, bs6 = 187.0F/2100.0F, bs7 = 1.0F/40.0F;
 
     float current_dt = *dt;
     bool step_accepted = false;
@@ -454,7 +454,7 @@ bool integration_adaptive_step(
         derivative_fn(temp_state, *t + current_dt, params, k6);
 
         // Compute 5th-order solution and error estimate
-        float max_error = 0.0f;
+        float max_error = 0.0F;
         for (uint32_t i = 0; i < n; i++) {
             float y5 = state[i] + current_dt * (b1*k1[i] + b3*k3[i] + b4*k4[i] + b5*k5[i] + b6*k6[i]);
             float y4 = state[i] + current_dt * (bs1*k1[i] + bs3*k3[i] + bs4*k4[i] + bs5*k5[i] + bs6*k6[i] + bs7*k6[i]);
@@ -473,15 +473,15 @@ bool integration_adaptive_step(
             step_accepted = true;
 
             // Compute new timestep for next step
-            if (max_error > 0.0f) {
-                float safety = 0.9f;  // Safety factor
-                float dt_new = current_dt * safety * powf(config->error_tolerance / max_error, 0.2f);  // 1/5 power
+            if (max_error > 0.0F) {
+                float safety = 0.9F;  // Safety factor
+                float dt_new = current_dt * safety * powf(config->error_tolerance / max_error, 0.2F);  // 1/5 power
                 *dt = dt_new;
             }
         } else {
             // Reject step, reduce timestep
-            float safety = 0.9f;
-            current_dt = current_dt * safety * powf(config->error_tolerance / max_error, 0.25f);  // More aggressive reduction
+            float safety = 0.9F;
+            current_dt = current_dt * safety * powf(config->error_tolerance / max_error, 0.25F);  // More aggressive reduction
         }
     }
 
@@ -522,7 +522,7 @@ bool integration_integrate_adaptive(
         return false;
     }
 
-    if (dt_initial <= 0.0f) {
+    if (dt_initial <= 0.0F) {
         integration_error("initial timestep must be positive");
         return false;
     }
@@ -534,9 +534,9 @@ bool integration_integrate_adaptive(
 
     // Default config if not provided
     adaptive_config_t default_config = {
-        .min_timestep = 1e-6f,
-        .max_timestep = 1.0f,
-        .error_tolerance = 1e-6f,
+        .min_timestep = 1e-6F,
+        .max_timestep = 1.0F,
+        .error_tolerance = 1e-6F,
         .max_steps = 100000
     };
     if (config == NULL) {
@@ -565,7 +565,7 @@ bool integration_integrate_adaptive(
         steps++;
 
         // Check if we've reached the end
-        if (fabsf(t - t_end) < 1e-9f) {
+        if (fabsf(t - t_end) < 1e-9F) {
             break;
         }
     }
@@ -604,11 +604,11 @@ const char* integration_method_name(integration_method_t method)
 float integration_method_cost(integration_method_t method)
 {
     switch (method) {
-        case INTEGRATION_EULER:    return 1.0f;   // Baseline
-        case INTEGRATION_RK4:      return 4.0f;   // 4 derivative evaluations
-        case INTEGRATION_ADAPTIVE: return 6.0f;   // ~6 evals on average
-        case INTEGRATION_IMPLICIT: return 10.0f;  // Expensive (Jacobian, solve)
-        default:                   return 1.0f;
+        case INTEGRATION_EULER:    return 1.0F;   // Baseline
+        case INTEGRATION_RK4:      return 4.0F;   // 4 derivative evaluations
+        case INTEGRATION_ADAPTIVE: return 6.0F;   // ~6 evals on average
+        case INTEGRATION_IMPLICIT: return 10.0F;  // Expensive (Jacobian, solve)
+        default:                   return 1.0F;
     }
 }
 

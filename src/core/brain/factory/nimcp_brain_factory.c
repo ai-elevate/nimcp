@@ -109,6 +109,7 @@
 
 // Sub-module headers
 #include "core/brain/factory/init/nimcp_brain_init.h"
+#include "core/brain/factory/init/nimcp_brain_init_plasticity.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"
@@ -206,8 +207,8 @@ personality_profile_t* create_personality(const brain_config_t* config)
         identity_profile_t identity = {0};
         identity.gender = (gender_identity_t)config->explicit_gender;
         identity.sexuality = (sexual_orientation_t)config->explicit_sexuality;
-        identity.gender_certainty = 1.0f;
-        identity.sexuality_certainty = 1.0f;
+        identity.gender_certainty = 1.0F;
+        identity.sexuality_certainty = 1.0F;
         identity.gender_is_core_identity = true;
         identity.sexuality_is_core_identity = false;
 
@@ -463,7 +464,7 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Phase C4.1: Quantum-Shannon diffusion
     brain->quantum_shannon_diffusion = NULL;
     brain->enable_quantum_shannon_diffusion = false;
-    brain->quantum_shannon_mixing_ratio = 0.2f;
+    brain->quantum_shannon_mixing_ratio = 0.2F;
     brain->quantum_shannon_evolution_steps = 100;
     memset(&brain->last_quantum_shannon_metrics, 0, sizeof(shannon_diffusion_metrics_t));
 
@@ -471,7 +472,7 @@ brain_t brain_create_custom(const brain_config_t* config)
     brain->cross_modal_graph = NULL;
     brain->enable_cross_modal_monitoring = false;
     memset(&brain->last_cross_modal_metrics, 0, sizeof(multi_modal_integration_t));
-    brain->cross_modal_bottleneck_threshold = 0.5f;
+    brain->cross_modal_bottleneck_threshold = 0.5F;
     brain->cross_modal_sample_count = 50;
 
     // ========================================================================
@@ -592,7 +593,7 @@ brain_t brain_create_custom(const brain_config_t* config)
         router_config.worker_threads = 2;            // Light async processing
         router_config.enable_logging = true;
         router_config.enable_statistics = true;
-        router_config.routing_timeout_ms = 100.0f;   // 100ms timeout
+        router_config.routing_timeout_ms = 100.0F;   // 100ms timeout
 
         nimcp_error_t router_err = bio_router_init(&router_config);
         if (router_err != NIMCP_SUCCESS) {
@@ -628,7 +629,7 @@ brain_t brain_create_custom(const brain_config_t* config)
             .final_temperature = brain->config.annealing_temperature_final,
             .num_iterations = brain->config.annealing_steps,
             .cooling_schedule = COOLING_EXPONENTIAL,
-            .quantum_strength = 0.5f,
+            .quantum_strength = 0.5F,
             .enable_tunneling = true,
             .seed = (uint32_t)time(NULL)
         };

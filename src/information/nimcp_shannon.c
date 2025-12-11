@@ -86,7 +86,7 @@ static void shannon_init_once(void)
 static inline float safe_log2(float x)
 {
     if (x <= SHANNON_EPSILON) {
-        return 0.0f;
+        return 0.0F;
     }
     return log2f(x);
 }
@@ -117,9 +117,9 @@ float shannon_channel_capacity(float bandwidth, float snr)
         bandwidth = SHANNON_MIN_BANDWIDTH;
     }
 
-    if (snr < 0.0f) {
+    if (snr < 0.0F) {
         LOG_WARN("Negative SNR %.2f, clamping to 0.0", snr);
-        snr = 0.0f;
+        snr = 0.0F;
     }
 
     // Clamp SNR to reasonable range
@@ -129,7 +129,7 @@ float shannon_channel_capacity(float bandwidth, float snr)
     }
 
     // Shannon-Hartley theorem: C = B × log₂(1 + SNR)
-    float capacity = bandwidth * log2f(1.0f + snr);
+    float capacity = bandwidth * log2f(1.0F + snr);
 
     LOG_DEBUG("Channel capacity computed: %.2f bits/s", capacity);
 
@@ -144,12 +144,12 @@ float shannon_entropy(const shannon_distribution_t* distribution)
 
     if (!distribution || !distribution->probabilities) {
         LOG_ERROR("NULL distribution or probabilities");
-        return 0.0f;
+        return 0.0F;
     }
 
     LOG_DEBUG("Distribution has %u states", distribution->num_states);
 
-    float entropy = 0.0f;
+    float entropy = 0.0F;
 
     // H(X) = -Σ p(x) log₂ p(x)
     for (uint32_t i = 0; i < distribution->num_states; i++) {
@@ -168,14 +168,14 @@ float shannon_entropy(const shannon_distribution_t* distribution)
 float shannon_entropy_array(const float* probabilities, uint32_t num_states)
 {
     if (!probabilities || num_states == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Create temporary distribution
     shannon_distribution_t dist;
     dist.probabilities = (float*)probabilities;
     dist.num_states = num_states;
-    dist.total_probability = 1.0f;
+    dist.total_probability = 1.0F;
 
     return shannon_entropy(&dist);
 }
@@ -188,7 +188,7 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
 
     if (!joint_distribution || !joint_distribution->joint_probabilities) {
         LOG_ERROR("NULL joint distribution or probabilities");
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t num_x = joint_distribution->num_x_states;
@@ -204,7 +204,7 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
         LOG_ERROR("Failed to allocate marginal distributions");
         nimcp_free(p_x);
         nimcp_free(p_y);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Marginalize: P(X=x) = Σ_y P(X=x, Y=y)
@@ -217,7 +217,7 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
     }
 
     // Compute mutual information: I(X;Y) = Σ_x Σ_y p(x,y) log₂(p(x,y) / (p(x)p(y)))
-    float mutual_info = 0.0f;
+    float mutual_info = 0.0F;
 
     for (uint32_t x = 0; x < num_x; x++) {
         for (uint32_t y = 0; y < num_y; y++) {
@@ -239,13 +239,13 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
 float shannon_conditional_entropy(const shannon_joint_distribution_t* joint_distribution)
 {
     if (!joint_distribution) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // H(Y|X) = H(X,Y) - H(X)
 
     // Compute joint entropy H(X,Y)
-    float joint_entropy = 0.0f;
+    float joint_entropy = 0.0F;
     uint32_t num_x = joint_distribution->num_x_states;
     uint32_t num_y = joint_distribution->num_y_states;
 
@@ -259,7 +259,7 @@ float shannon_conditional_entropy(const shannon_joint_distribution_t* joint_dist
     // Compute marginal H(X)
     shannon_distribution_t* p_x = shannon_marginal_x(joint_distribution);
     if (!p_x) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float marginal_entropy_x = shannon_entropy(p_x);
@@ -273,14 +273,14 @@ float shannon_kl_divergence(
     const shannon_distribution_t* q)
 {
     if (!p || !q || !p->probabilities || !q->probabilities) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (p->num_states != q->num_states) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float divergence = 0.0f;
+    float divergence = 0.0F;
 
     // D(P||Q) = Σ p(x) log₂(p(x) / q(x))
     for (uint32_t i = 0; i < p->num_states; i++) {
@@ -316,8 +316,8 @@ shannon_synapse_metrics_t shannon_analyze_synapse(
     }
 
     // Validate inputs
-    weight = clamp(weight, -1.0f, 1.0f);
-    pre_firing_rate = fmaxf(0.0f, pre_firing_rate);
+    weight = clamp(weight, -1.0F, 1.0F);
+    pre_firing_rate = fmaxf(0.0F, pre_firing_rate);
     noise_level = fmaxf(SHANNON_EPSILON, noise_level);
     bandwidth = fmaxf(SHANNON_MIN_BANDWIDTH, bandwidth);
 
@@ -343,17 +343,17 @@ shannon_synapse_metrics_t shannon_analyze_synapse(
     }
 
     // Clamp SNR
-    metrics.snr = clamp(metrics.snr, 0.0f, SHANNON_MAX_SNR);
+    metrics.snr = clamp(metrics.snr, 0.0F, SHANNON_MAX_SNR);
 
     // Compute channel capacity: C = B × log₂(1 + SNR)
     metrics.channel_capacity = shannon_channel_capacity(bandwidth, metrics.snr);
 
     // Compute entropy of synaptic transmission
     // Model as Bernoulli: probability of transmission = tanh(weight)
-    float p_transmit = 0.5f * (tanhf(weight) + 1.0f);
-    float p_no_transmit = 1.0f - p_transmit;
+    float p_transmit = 0.5F * (tanhf(weight) + 1.0F);
+    float p_no_transmit = 1.0F - p_transmit;
 
-    metrics.shannon_entropy = 0.0f;
+    metrics.shannon_entropy = 0.0F;
     if (p_transmit > SHANNON_EPSILON) {
         metrics.shannon_entropy -= p_transmit * log2f(p_transmit);
     }
@@ -369,18 +369,18 @@ shannon_synapse_metrics_t shannon_analyze_synapse(
 
     // Information rate: capacity weighted by current activity
     float activity_factor = pre_firing_rate / (bandwidth + SHANNON_EPSILON);
-    activity_factor = clamp(activity_factor, 0.0f, 1.0f);
+    activity_factor = clamp(activity_factor, 0.0F, 1.0F);
     metrics.information_rate = metrics.channel_capacity * activity_factor;
 
     // Coding efficiency: how well capacity is being used
-    float max_entropy = 1.0f;  // Binary synapse
+    float max_entropy = 1.0F;  // Binary synapse
     if (metrics.channel_capacity > SHANNON_EPSILON) {
         metrics.coding_efficiency = metrics.shannon_entropy /
                                    fminf(metrics.channel_capacity, max_entropy);
     } else {
-        metrics.coding_efficiency = 0.0f;
+        metrics.coding_efficiency = 0.0F;
     }
-    metrics.coding_efficiency = clamp(metrics.coding_efficiency, 0.0f, 1.0f);
+    metrics.coding_efficiency = clamp(metrics.coding_efficiency, 0.0F, 1.0F);
 
     return metrics;
 }
@@ -402,7 +402,7 @@ float shannon_optimize_synapse_weight(
     float current_capacity = current_metrics.channel_capacity;
 
     // If already at target, no change
-    if (fabsf(current_capacity - target_capacity) < 0.01f) {
+    if (fabsf(current_capacity - target_capacity) < 0.01F) {
         return current_weight;
     }
 
@@ -412,17 +412,17 @@ float shannon_optimize_synapse_weight(
     // dSNR/dw = 2w × firing_rate / noise²
 
     float snr = current_metrics.snr;
-    float dC_dSNR = pre_firing_rate / ((1.0f + snr) * logf(2.0f));
-    float dSNR_dw = 2.0f * current_weight * pre_firing_rate /
+    float dC_dSNR = pre_firing_rate / ((1.0F + snr) * logf(2.0F));
+    float dSNR_dw = 2.0F * current_weight * pre_firing_rate /
                     (noise_level * noise_level + SHANNON_EPSILON);
     float dC_dw = dC_dSNR * dSNR_dw;
 
     // Gradient descent toward target
     float error = target_capacity - current_capacity;
-    float weight_delta = learning_rate * error * (dC_dw > 0.0f ? 1.0f : -1.0f);
+    float weight_delta = learning_rate * error * (dC_dw > 0.0F ? 1.0F : -1.0F);
 
     float new_weight = current_weight + weight_delta;
-    new_weight = clamp(new_weight, -1.0f, 1.0f);
+    new_weight = clamp(new_weight, -1.0F, 1.0F);
 
     return new_weight;
 }
@@ -485,7 +485,7 @@ shannon_neuron_metrics_t shannon_analyze_neuron(
             for (uint32_t i = 1; i < history_length; i++) {
                 uint64_t isi = spike_history[i] - spike_history[i-1];
                 uint32_t bin = (uint32_t)(isi % num_isi_bins);
-                isi_histogram[bin] += 1.0f;
+                isi_histogram[bin] += 1.0F;
             }
 
             // Normalize
@@ -528,8 +528,8 @@ shannon_network_metrics_t shannon_analyze_network(
     }
 
     // Aggregate synapse metrics
-    float sum_efficiency = 0.0f;
-    float avg_capacity = 0.0f;
+    float sum_efficiency = 0.0F;
+    float avg_capacity = 0.0F;
 
     for (uint32_t i = 0; i < num_synapses; i++) {
         metrics.total_capacity += synapse_metrics[i].channel_capacity;
@@ -561,16 +561,16 @@ shannon_network_metrics_t shannon_analyze_network(
     // Bottleneck score: 0 = many bottlenecks, 1 = no bottlenecks
     if (num_synapses > 0) {
         float bottleneck_ratio = (float)metrics.num_bottlenecks / (float)num_synapses;
-        metrics.bottleneck_score = 1.0f - bottleneck_ratio;
+        metrics.bottleneck_score = 1.0F - bottleneck_ratio;
     } else {
-        metrics.bottleneck_score = 1.0f;
+        metrics.bottleneck_score = 1.0F;
     }
 
     // Mutual information (simplified): correlation between inputs and outputs
     // Real implementation would require joint distribution P(input, output)
     // For now, estimate from information flow
     if (metrics.total_capacity > SHANNON_EPSILON) {
-        metrics.mutual_information = metrics.information_rate * 0.7f;  // Rough estimate
+        metrics.mutual_information = metrics.information_rate * 0.7F;  // Rough estimate
     }
 
     return metrics;
@@ -588,7 +588,7 @@ uint32_t shannon_detect_bottlenecks(
     }
 
     // Compute average capacity
-    float avg_capacity = 0.0f;
+    float avg_capacity = 0.0F;
     for (uint32_t i = 0; i < num_synapses; i++) {
         avg_capacity += synapse_metrics[i].channel_capacity;
     }
@@ -613,11 +613,11 @@ uint32_t shannon_detect_bottlenecks(
             // C = B × log₂(1 + SNR), solve for new weight
             float current_snr = synapse_metrics[i].snr;
             float bandwidth = synapse_metrics[i].bandwidth;
-            float target_snr = powf(2.0f, avg_capacity / bandwidth) - 1.0f;
+            float target_snr = powf(2.0F, avg_capacity / bandwidth) - 1.0F;
             float weight_scale = sqrtf(target_snr / (current_snr + SHANNON_EPSILON));
-            bottlenecks[num_found].suggested_weight = weight_scale * 0.5f;  // Heuristic
+            bottlenecks[num_found].suggested_weight = weight_scale * 0.5F;  // Heuristic
             bottlenecks[num_found].suggested_weight =
-                clamp(bottlenecks[num_found].suggested_weight, 0.1f, 1.0f);
+                clamp(bottlenecks[num_found].suggested_weight, 0.1F, 1.0F);
 
             num_found++;
         }
@@ -632,18 +632,18 @@ float shannon_information_flow_rate(
     float time_window_ms)
 {
     if (!synapse_metrics || num_synapses == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float total_rate = 0.0f;
+    float total_rate = 0.0F;
 
     for (uint32_t i = 0; i < num_synapses; i++) {
         total_rate += synapse_metrics[i].information_rate;
     }
 
     // Scale by time window if needed
-    if (time_window_ms > 0.0f && time_window_ms != 1000.0f) {
-        total_rate *= (time_window_ms / 1000.0f);
+    if (time_window_ms > 0.0F && time_window_ms != 1000.0F) {
+        total_rate *= (time_window_ms / 1000.0F);
     }
 
     return total_rate;
@@ -678,14 +678,14 @@ shannon_distribution_t* shannon_distribution_create(
         memcpy(dist->probabilities, probabilities, num_states * sizeof(float));
     } else {
         // Initialize to uniform distribution
-        float uniform_p = 1.0f / (float)num_states;
+        float uniform_p = 1.0F / (float)num_states;
         for (uint32_t i = 0; i < num_states; i++) {
             dist->probabilities[i] = uniform_p;
         }
     }
 
     // Compute total
-    dist->total_probability = 0.0f;
+    dist->total_probability = 0.0F;
     for (uint32_t i = 0; i < num_states; i++) {
         dist->total_probability += dist->probabilities[i];
     }
@@ -717,7 +717,7 @@ bool shannon_distribution_normalize(shannon_distribution_t* distribution)
         return false;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < distribution->num_states; i++) {
         sum += distribution->probabilities[i];
     }
@@ -730,7 +730,7 @@ bool shannon_distribution_normalize(shannon_distribution_t* distribution)
         distribution->probabilities[i] /= sum;
     }
 
-    distribution->total_probability = 1.0f;
+    distribution->total_probability = 1.0F;
 
     return true;
 }
@@ -766,14 +766,14 @@ shannon_joint_distribution_t* shannon_joint_distribution_create(
                total_size * sizeof(float));
     } else {
         // Initialize to uniform
-        float uniform_p = 1.0f / (float)total_size;
+        float uniform_p = 1.0F / (float)total_size;
         for (uint32_t i = 0; i < total_size; i++) {
             joint->joint_probabilities[i] = uniform_p;
         }
     }
 
     // Compute total
-    joint->total_probability = 0.0f;
+    joint->total_probability = 0.0F;
     for (uint32_t i = 0; i < total_size; i++) {
         joint->total_probability += joint->joint_probabilities[i];
     }
@@ -858,8 +858,8 @@ shannon_config_t shannon_default_config(void)
 {
     shannon_config_t config;
     config.min_probability = SHANNON_EPSILON;
-    config.min_capacity = 0.1f;
-    config.bottleneck_threshold = 0.5f;
+    config.min_capacity = 0.1F;
+    config.bottleneck_threshold = 0.5F;
     config.use_log_approximation = false;
     config.normalize_entropy = false;
     config.sampling_window_ms = 1000;
@@ -869,9 +869,9 @@ shannon_config_t shannon_default_config(void)
 shannon_config_t shannon_high_accuracy_config(void)
 {
     shannon_config_t config;
-    config.min_probability = 1e-12f;
-    config.min_capacity = 0.01f;
-    config.bottleneck_threshold = 0.8f;
+    config.min_probability = 1e-12F;
+    config.min_capacity = 0.01F;
+    config.bottleneck_threshold = 0.8F;
     config.use_log_approximation = false;
     config.normalize_entropy = true;
     config.sampling_window_ms = 10000;
@@ -881,9 +881,9 @@ shannon_config_t shannon_high_accuracy_config(void)
 shannon_config_t shannon_fast_config(void)
 {
     shannon_config_t config;
-    config.min_probability = 1e-6f;
-    config.min_capacity = 1.0f;
-    config.bottleneck_threshold = 0.3f;
+    config.min_probability = 1e-6F;
+    config.min_capacity = 1.0F;
+    config.bottleneck_threshold = 0.3F;
     config.use_log_approximation = true;
     config.normalize_entropy = false;
     config.sampling_window_ms = 100;
@@ -896,7 +896,7 @@ shannon_config_t shannon_fast_config(void)
 
 float shannon_log2_fast(float x)
 {
-    if (x <= 0.0f) {
+    if (x <= 0.0F) {
         return -FLT_MAX;
     }
 
@@ -917,7 +917,7 @@ float shannon_log2_fast(float x)
 
     // Polynomial approximation for log₂(mantissa)
     // log₂(m) ≈ -1.49 + (2.11 - 0.729m)m for m ∈ [1, 2]
-    float log2_mantissa = -1.49f + (2.11f - 0.729f * mantissa) * mantissa;
+    float log2_mantissa = -1.49F + (2.11F - 0.729F * mantissa) * mantissa;
 
     return (float)exponent + log2_mantissa;
 }
@@ -925,15 +925,15 @@ float shannon_log2_fast(float x)
 float shannon_snr_to_db(float snr_linear)
 {
     if (snr_linear <= SHANNON_EPSILON) {
-        return -100.0f;  // Very low SNR
+        return -100.0F;  // Very low SNR
     }
 
-    return 10.0f * log10f(snr_linear);
+    return 10.0F * log10f(snr_linear);
 }
 
 float shannon_snr_from_db(float snr_db)
 {
-    return powf(10.0f, snr_db / 10.0f);
+    return powf(10.0F, snr_db / 10.0F);
 }
 
 void shannon_print_synapse_metrics(
@@ -954,7 +954,7 @@ void shannon_print_synapse_metrics(
     printf("  Shannon Entropy:   %.3f bits\n", metrics->shannon_entropy);
     printf("  Mutual Information: %.3f bits\n", metrics->mutual_information);
     printf("  Information Rate:  %.2f bits/s\n", metrics->information_rate);
-    printf("  Coding Efficiency: %.1f%%\n", metrics->coding_efficiency * 100.0f);
+    printf("  Coding Efficiency: %.1f%%\n", metrics->coding_efficiency * 100.0F);
     printf("  SNR:               %.2f (%.1f dB)\n",
            metrics->snr, shannon_snr_to_db(metrics->snr));
     printf("  Signal Power:      %.3f\n", metrics->signal_power);
@@ -1004,11 +1004,11 @@ void shannon_print_network_metrics(
         printf("=== Shannon Network Metrics ===\n");
     }
 
-    printf("  Total Capacity:     %.2f Kbits/s\n", metrics->total_capacity / 1000.0f);
-    printf("  Total Entropy:      %.2f Kbits\n", metrics->total_entropy / 1000.0f);
-    printf("  Mutual Information: %.2f Kbits\n", metrics->mutual_information / 1000.0f);
-    printf("  Information Rate:   %.2f Kbits/s\n", metrics->information_rate / 1000.0f);
-    printf("  Average Efficiency: %.1f%%\n", metrics->average_efficiency * 100.0f);
+    printf("  Total Capacity:     %.2f Kbits/s\n", metrics->total_capacity / 1000.0F);
+    printf("  Total Entropy:      %.2f Kbits\n", metrics->total_entropy / 1000.0F);
+    printf("  Mutual Information: %.2f Kbits\n", metrics->mutual_information / 1000.0F);
+    printf("  Information Rate:   %.2f Kbits/s\n", metrics->information_rate / 1000.0F);
+    printf("  Average Efficiency: %.1f%%\n", metrics->average_efficiency * 100.0F);
     printf("  Bottleneck Score:   %.3f (0=bad, 1=good)\n", metrics->bottleneck_score);
     printf("  Num Bottlenecks:    %u\n", metrics->num_bottlenecks);
     printf("  Num Neurons:        %u\n", metrics->num_neurons);

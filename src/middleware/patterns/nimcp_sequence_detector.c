@@ -136,9 +136,9 @@ static void add_ngram(sequence_detector_t* detector, const uint32_t* neurons,
             if (match) {
                 // Update existing
                 node->pattern.count++;
-                float alpha = 0.1f;
+                float alpha = 0.1F;
                 node->pattern.avg_interval_ms =
-                    (1.0f - alpha) * node->pattern.avg_interval_ms + alpha * interval_ms;
+                    (1.0F - alpha) * node->pattern.avg_interval_ms + alpha * interval_ms;
                 return;
             }
         }
@@ -196,7 +196,7 @@ static float match_template(const spike_buffer_t* buffer,
                            bool* is_forward, bool* is_backward,
                            float* compression) {
     if (!buffer || !seq_template || buffer->count < seq_template->length) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t matched = 0;
@@ -241,7 +241,7 @@ static float match_template(const spike_buffer_t* buffer,
 
     float strength = (float)matched / (float)seq_template->length;
 
-    if (strength > 0.5f) {
+    if (strength > 0.5F) {
         *is_forward = true;
         *is_backward = false;
 
@@ -249,7 +249,7 @@ static float match_template(const spike_buffer_t* buffer,
             double actual_duration = last_spike_time - first_spike_time;
             *compression = (float)(actual_duration / (seq_template->duration_ms + 1e-6));
         } else {
-            *compression = 1.0f;
+            *compression = 1.0F;
         }
     }
 
@@ -275,7 +275,7 @@ sequence_detector_config_t sequence_detector_default_config(void) {
     config.enable_positional_encoding = false;
     config.pe_type = NIMCP_POS_ROTARY;  // RoPE for temporal sequences
     config.pe_embedding_dim = 64;       // Moderate dimension
-    config.pe_similarity_weight = 0.3f; // Temporal matching still dominant
+    config.pe_similarity_weight = 0.3F; // Temporal matching still dominant
     return config;
 }
 
@@ -397,7 +397,7 @@ bool sequence_detector_learn_template(sequence_detector_t* detector,
     tmpl->length = length;
     tmpl->duration_ms = elements[length - 1].relative_time_ms;
     tmpl->observations = 0;
-    tmpl->avg_strength = 0.0f;
+    tmpl->avg_strength = 0.0F;
     tmpl->template_id = detector->next_template_id++;
 
     if (template_id) *template_id = tmpl->template_id;
@@ -421,7 +421,7 @@ bool sequence_detector_detect(sequence_detector_t* detector,
     for (uint32_t i = 0; i < detector->num_templates && *num_detected < max_detections; i++) {
         bool is_forward = false;
         bool is_backward = false;
-        float compression = 1.0f;
+        float compression = 1.0F;
 
         float strength = match_template(&detector->buffer,
                                        &detector->templates[i],
@@ -453,9 +453,9 @@ bool sequence_detector_detect(sequence_detector_t* detector,
 
             // Update seq_template statistics
             detector->templates[i].observations++;
-            float alpha = 0.1f;
+            float alpha = 0.1F;
             detector->templates[i].avg_strength =
-                (1.0f - alpha) * detector->templates[i].avg_strength + alpha * strength;
+                (1.0F - alpha) * detector->templates[i].avg_strength + alpha * strength;
 
             (*num_detected)++;
             detector->total_detections++;
@@ -544,7 +544,7 @@ bool sequence_detector_get_stats(const sequence_detector_t* detector,
 
     if (avg_strength) {
         *avg_strength = (detector->total_detections > 0) ?
-                       (float)(detector->sum_strength / detector->total_detections) : 0.0f;
+                       (float)(detector->sum_strength / detector->total_detections) : 0.0F;
     }
 
     return true;
@@ -563,11 +563,11 @@ bool sequence_detector_get_stats(const sequence_detector_t* detector,
  */
 static float compute_cosine_similarity(const float* vec1, const float* vec2,
                                        uint32_t dim) {
-    if (!vec1 || !vec2 || dim == 0) return 0.0f;
+    if (!vec1 || !vec2 || dim == 0) return 0.0F;
 
-    float dot = 0.0f;
-    float norm1 = 0.0f;
-    float norm2 = 0.0f;
+    float dot = 0.0F;
+    float norm1 = 0.0F;
+    float norm2 = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         dot += vec1[i] * vec2[i];
@@ -576,7 +576,7 @@ static float compute_cosine_similarity(const float* vec1, const float* vec2,
     }
 
     float norm_product = sqrtf(norm1) * sqrtf(norm2);
-    if (norm_product < 1e-8f) return 0.0f;
+    if (norm_product < 1e-8F) return 0.0F;
 
     return dot / norm_product;
 }
@@ -729,13 +729,13 @@ static float match_template_with_pe(const spike_buffer_t* buffer,
                                     float* compression,
                                     float* pe_similarity_out) {
     if (!buffer || !tmpl || !pe_encoder || buffer->count < tmpl->length) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t matched = 0;
     double first_spike_time = 0.0;
     double last_spike_time = 0.0;
-    float total_pe_similarity = 0.0f;
+    float total_pe_similarity = 0.0F;
     uint32_t pe_comparisons = 0;
 
     // Match elements with temporal and positional scoring
@@ -793,14 +793,14 @@ static float match_template_with_pe(const spike_buffer_t* buffer,
 
     // Compute PE similarity score
     float pe_similarity = (pe_comparisons > 0) ?
-                         (total_pe_similarity / (float)pe_comparisons) : 0.0f;
+                         (total_pe_similarity / (float)pe_comparisons) : 0.0F;
 
     // Combined score: weighted average of temporal and positional
-    float combined_strength = (1.0f - pe_weight) * temporal_strength +
+    float combined_strength = (1.0F - pe_weight) * temporal_strength +
                              pe_weight * pe_similarity;
 
     // Update metadata if strong match
-    if (combined_strength > 0.5f) {
+    if (combined_strength > 0.5F) {
         *is_forward = true;
         *is_backward = false;
 
@@ -808,7 +808,7 @@ static float match_template_with_pe(const spike_buffer_t* buffer,
             double actual_duration = last_spike_time - first_spike_time;
             *compression = (float)(actual_duration / (tmpl->duration_ms + 1e-6));
         } else {
-            *compression = 1.0f;
+            *compression = 1.0F;
         }
     }
 
@@ -850,8 +850,8 @@ bool sequence_detector_match_with_pe(sequence_detector_t* detector,
     for (uint32_t i = 0; i < detector->num_templates && *num_detected < max_detections; i++) {
         bool is_forward = false;
         bool is_backward = false;
-        float compression = 1.0f;
-        float pe_similarity = 0.0f;
+        float compression = 1.0F;
+        float pe_similarity = 0.0F;
 
         float strength = match_template_with_pe(&detector->buffer,
                                                 &detector->templates[i],
@@ -885,9 +885,9 @@ bool sequence_detector_match_with_pe(sequence_detector_t* detector,
 
             // Update statistics
             detector->templates[i].observations++;
-            float alpha = 0.1f;
+            float alpha = 0.1F;
             detector->templates[i].avg_strength =
-                (1.0f - alpha) * detector->templates[i].avg_strength + alpha * strength;
+                (1.0F - alpha) * detector->templates[i].avg_strength + alpha * strength;
 
             (*num_detected)++;
             detector->total_detections++;
@@ -919,9 +919,9 @@ bool sequence_detector_get_pe_stats(const sequence_detector_t* detector,
 
     if (!detector->config.enable_positional_encoding || !detector->pe_encoder) {
         // Return zeros if PE not enabled
-        if (pe_match_rate) *pe_match_rate = 0.0f;
-        if (avg_pe_similarity) *avg_pe_similarity = 0.0f;
-        if (pe_cache_hit_rate) *pe_cache_hit_rate = 0.0f;
+        if (pe_match_rate) *pe_match_rate = 0.0F;
+        if (avg_pe_similarity) *avg_pe_similarity = 0.0F;
+        if (pe_cache_hit_rate) *pe_cache_hit_rate = 0.0F;
         return true;
     }
 
@@ -929,14 +929,14 @@ bool sequence_detector_get_pe_stats(const sequence_detector_t* detector,
     if (pe_match_rate) {
         *pe_match_rate = (detector->total_detections > 0) ?
                         (float)detector->pe_matches / (float)detector->total_detections :
-                        0.0f;
+                        0.0F;
     }
 
     // Average PE similarity
     if (avg_pe_similarity) {
         *avg_pe_similarity = (detector->pe_matches > 0) ?
                             (float)(detector->pe_similarity_sum / detector->pe_matches) :
-                            0.0f;
+                            0.0F;
     }
 
     // PE cache hit rate
@@ -945,9 +945,9 @@ bool sequence_detector_get_pe_stats(const sequence_detector_t* detector,
         if (nimcp_pos_get_stats(detector->pe_encoder, &pe_stats) == NIMCP_POS_SUCCESS) {
             uint64_t total = pe_stats.cache_hits + pe_stats.cache_misses;
             *pe_cache_hit_rate = (total > 0) ?
-                                (float)pe_stats.cache_hits / (float)total : 0.0f;
+                                (float)pe_stats.cache_hits / (float)total : 0.0F;
         } else {
-            *pe_cache_hit_rate = 0.0f;
+            *pe_cache_hit_rate = 0.0F;
         }
     }
 

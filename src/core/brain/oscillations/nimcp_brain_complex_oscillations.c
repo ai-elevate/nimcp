@@ -61,13 +61,13 @@ brain_complex_oscillation_state_t* brain_complex_oscillation_create(
 
     // Initialize state
     state->num_neurons = num_neurons;
-    state->phase_update_rate = phase_update_rate > 0.0f ? phase_update_rate : DEFAULT_PHASE_UPDATE_RATE;
-    state->amplitude_decay = (amplitude_decay >= 0.0f && amplitude_decay <= 1.0f) ?
+    state->phase_update_rate = phase_update_rate > 0.0F ? phase_update_rate : DEFAULT_PHASE_UPDATE_RATE;
+    state->amplitude_decay = (amplitude_decay >= 0.0F && amplitude_decay <= 1.0F) ?
                               amplitude_decay : DEFAULT_AMPLITUDE_DECAY;
     state->metrics_valid = false;
-    state->last_coherence = 0.0f;
-    state->last_mean_phase = 0.0f;
-    state->last_phase_variance = 0.0f;
+    state->last_coherence = 0.0F;
+    state->last_mean_phase = 0.0F;
+    state->last_phase_variance = 0.0F;
 
     return state;
 }
@@ -111,8 +111,8 @@ bool brain_complex_oscillation_update(
         float new_phase = current_phase + state->phase_update_rate;
 
         // Wrap phase to [-π, π]
-        while (new_phase > M_PI) new_phase -= 2.0f * M_PI;
-        while (new_phase < -M_PI) new_phase += 2.0f * M_PI;
+        while (new_phase > M_PI) new_phase -= 2.0F * M_PI;
+        while (new_phase < -M_PI) new_phase += 2.0F * M_PI;
 
         // Compute new amplitude with decay
         float new_amplitude = activations[i] * state->amplitude_decay;
@@ -208,7 +208,7 @@ bool brain_complex_oscillation_compute_coherence(
     );
 
     // Compute mean amplitude
-    float total_amplitude = 0.0f;
+    float total_amplitude = 0.0F;
     for (uint32_t i = 0; i < state->num_neurons; i++) {
         total_amplitude += phasor_amplitude(state->neuron_phasors[i]);
     }
@@ -263,7 +263,7 @@ bool brain_complex_oscillation_compute_coherence_subset(
     result->phase_variance = phasor_array_phase_variance(subset_phasors, num_neurons);
 
     // Compute mean amplitude
-    float total_amplitude = 0.0f;
+    float total_amplitude = 0.0F;
     for (uint32_t i = 0; i < num_neurons; i++) {
         total_amplitude += phasor_amplitude(subset_phasors[i]);
     }
@@ -285,12 +285,12 @@ float brain_complex_oscillation_compute_synchrony(
 ) {
     // Guard: Validate inputs
     if (!state || !indices1 || !indices2) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Guard: Need at least one neuron in each population
     if (num1 == 0 || num2 == 0) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Allocate temporary arrays
@@ -299,7 +299,7 @@ float brain_complex_oscillation_compute_synchrony(
     if (!phasors1 || !phasors2) {
         nimcp_free(phasors1);
         nimcp_free(phasors2);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Extract phasors for each population
@@ -307,7 +307,7 @@ float brain_complex_oscillation_compute_synchrony(
         if (indices1[i] >= state->num_neurons) {
             nimcp_free(phasors1);
             nimcp_free(phasors2);
-            return -1.0f;
+            return -1.0F;
         }
         phasors1[i] = state->neuron_phasors[indices1[i]];
     }
@@ -316,7 +316,7 @@ float brain_complex_oscillation_compute_synchrony(
         if (indices2[i] >= state->num_neurons) {
             nimcp_free(phasors1);
             nimcp_free(phasors2);
-            return -1.0f;
+            return -1.0F;
         }
         phasors2[i] = state->neuron_phasors[indices2[i]];
     }
@@ -384,7 +384,7 @@ bool brain_complex_oscillation_compute_pac(
     for (uint32_t i = 0; i < num_phase; i++) {
         float phase = phasor_phase(phase_phasors[i]);
         // Convert phase [-π, π] to bin [0, PAC_NUM_PHASE_BINS)
-        int bin = (int)((phase + M_PI) / (2.0f * M_PI) * PAC_NUM_PHASE_BINS);
+        int bin = (int)((phase + M_PI) / (2.0F * M_PI) * PAC_NUM_PHASE_BINS);
         if (bin < 0) bin = 0;
         if (bin >= PAC_NUM_PHASE_BINS) bin = PAC_NUM_PHASE_BINS - 1;
 
@@ -394,7 +394,7 @@ bool brain_complex_oscillation_compute_pac(
 
     // Find bin with highest mean amplitude
     int max_bin = 0;
-    float max_mean_amp = 0.0f;
+    float max_mean_amp = 0.0F;
     for (int i = 0; i < PAC_NUM_PHASE_BINS; i++) {
         if (bin_counts[i] > 0) {
             float mean_amp = phase_bins[i] / bin_counts[i];
@@ -406,7 +406,7 @@ bool brain_complex_oscillation_compute_pac(
     }
 
     // Convert bin back to phase
-    result->preferred_phase = -M_PI + (max_bin + 0.5f) * (2.0f * M_PI / PAC_NUM_PHASE_BINS);
+    result->preferred_phase = -M_PI + (max_bin + 0.5F) * (2.0F * M_PI / PAC_NUM_PHASE_BINS);
     result->phase_bin_count = PAC_NUM_PHASE_BINS;
 
     // Compute significance (simple heuristic: modulation_index itself)

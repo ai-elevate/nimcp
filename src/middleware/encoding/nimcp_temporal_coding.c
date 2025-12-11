@@ -21,6 +21,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 
+// Forward declaration for spike_train_clear
+extern void spike_train_clear(spike_train_t* train);
+
 
 //=============================================================================
 // Internal Structures
@@ -70,8 +73,8 @@ void temporal_coding_destroy(temporal_coding_encoder_t encoder) {
 
 temporal_coding_config_t temporal_coding_default_config(void) {
     temporal_coding_config_t config = {
-        .latency_window_ms = 100.0f,
-        .precision_threshold_ms = 1.0f,
+        .latency_window_ms = 100.0F,
+        .precision_threshold_ms = 1.0F,
         .encode_isi_patterns = true,
         .encode_spike_timing = true,
         .num_isi_bins = 20
@@ -96,10 +99,10 @@ bool temporal_coding_encode(
     // Initialize features
     features_out->num_spikes = spike_train->num_spikes;
     features_out->first_spike_latency = TEMPORAL_MAX_LATENCY_MS;
-    features_out->mean_isi = 0.0f;
-    features_out->isi_std = 0.0f;
-    features_out->isi_cv = 0.0f;
-    features_out->spike_timing_precision = 0.0f;
+    features_out->mean_isi = 0.0F;
+    features_out->isi_std = 0.0F;
+    features_out->isi_cv = 0.0F;
+    features_out->spike_timing_precision = 0.0F;
 
     // Handle empty spike train
     if (spike_train->num_spikes == 0) {
@@ -127,7 +130,7 @@ bool temporal_coding_encode(
         return false;
     }
 
-    float sum_isi = 0.0f;
+    float sum_isi = 0.0F;
     for (uint32_t i = 0; i < num_isi; i++) {
         isi[i] = (float)(spike_train->spike_times[i + 1] - spike_train->spike_times[i]);
         sum_isi += isi[i];
@@ -136,7 +139,7 @@ bool temporal_coding_encode(
     features_out->mean_isi = sum_isi / (float)num_isi;
 
     // Calculate ISI variance and standard deviation
-    float sum_sq_diff = 0.0f;
+    float sum_sq_diff = 0.0F;
     for (uint32_t i = 0; i < num_isi; i++) {
         float diff = isi[i] - features_out->mean_isi;
         sum_sq_diff += diff * diff;
@@ -145,7 +148,7 @@ bool temporal_coding_encode(
     features_out->isi_std = sqrtf(variance);
 
     // Calculate CV
-    if (features_out->mean_isi > 0.0f) {
+    if (features_out->mean_isi > 0.0F) {
         features_out->isi_cv = features_out->isi_std / features_out->mean_isi;
     }
 
@@ -160,7 +163,7 @@ bool temporal_coding_encode(
         }
 
         float bin_width = (max_isi - min_isi) / (float)features_out->num_isi_bins;
-        if (bin_width > 0.0f) {
+        if (bin_width > 0.0F) {
             // Initialize histogram
             memset(features_out->isi_histogram, 0,
                    features_out->num_isi_bins * sizeof(float));
@@ -171,7 +174,7 @@ bool temporal_coding_encode(
                 if (bin >= features_out->num_isi_bins) {
                     bin = features_out->num_isi_bins - 1;
                 }
-                features_out->isi_histogram[bin] += 1.0f;
+                features_out->isi_histogram[bin] += 1.0F;
             }
 
             // Normalize histogram
@@ -220,14 +223,14 @@ bool temporal_coding_decode(
     float duration_ms,
     spike_train_t* spike_train_out
 ) {
-    if (!encoder || !features || !spike_train_out || duration_ms <= 0.0f) {
+    if (!encoder || !features || !spike_train_out || duration_ms <= 0.0F) {
         return false;
     }
 
     spike_train_clear(spike_train_out);
 
     // Generate spikes with specified ISI distribution
-    if (features->mean_isi <= 0.0f) {
+    if (features->mean_isi <= 0.0F) {
         return true;  // No spikes to generate
     }
 
@@ -240,11 +243,11 @@ bool temporal_coding_decode(
 
         // Generate next ISI using Gaussian distribution
         float next_isi = features->mean_isi;
-        if (features->isi_std > 0.0f) {
+        if (features->isi_std > 0.0F) {
             // Add Gaussian noise scaled by std dev
-            float z = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;  // Approximate
+            float z = ((float)rand() / (float)RAND_MAX) * 2.0F - 1.0F;  // Approximate
             next_isi += z * features->isi_std;
-            if (next_isi < 0.1f) next_isi = 0.1f;  // Prevent negative ISI
+            if (next_isi < 0.1F) next_isi = 0.1F;  // Prevent negative ISI
         }
 
         current_time += next_isi;
@@ -266,7 +269,7 @@ bool temporal_coding_compute_correlation(
     float max_lag_ms,
     float* correlation_out
 ) {
-    if (!encoder || !train1 || !train2 || !correlation_out || max_lag_ms <= 0.0f) {
+    if (!encoder || !train1 || !train2 || !correlation_out || max_lag_ms <= 0.0F) {
         return false;
     }
 
@@ -290,7 +293,7 @@ bool temporal_coding_compute_correlation(
     if (total_comparisons > 0) {
         *correlation_out = (float)coincidence_count / (float)total_comparisons;
     } else {
-        *correlation_out = 0.0f;
+        *correlation_out = 0.0F;
     }
 
     return true;
@@ -301,7 +304,7 @@ bool temporal_coding_compute_jitter(
     float expected_isi_ms,
     float* jitter_out
 ) {
-    if (!spike_train || !jitter_out || expected_isi_ms <= 0.0f) {
+    if (!spike_train || !jitter_out || expected_isi_ms <= 0.0F) {
         return false;
     }
 
@@ -311,7 +314,7 @@ bool temporal_coding_compute_jitter(
 
     // Calculate deviation from expected ISI
     uint32_t num_isi = spike_train->num_spikes - 1;
-    float sum_sq_dev = 0.0f;
+    float sum_sq_dev = 0.0F;
 
     for (uint32_t i = 0; i < num_isi; i++) {
         float isi = (float)(spike_train->spike_times[i + 1] - spike_train->spike_times[i]);

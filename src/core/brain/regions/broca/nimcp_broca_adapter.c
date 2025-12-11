@@ -196,7 +196,7 @@ broca_config_t broca_default_config(void) {
     config.enable_morphology = true;
     config.enable_events = true;
     config.enable_training = false;
-    config.learning_rate = 0.01f;
+    config.learning_rate = 0.01F;
     config.planning_window_ms = BROCA_DEFAULT_PLANNING_WINDOW_MS;
     /* Bio-async: enabled by default, use acetylcholine for fast language processing */
     config.enable_bio_async = true;
@@ -643,7 +643,7 @@ bool broca_process_utterance(broca_adapter_t* adapter,
                     phonological_add_phoneme_detailed(adapter->phonological,
                                                        entry.phonemes[p],
                                                        category,
-                                                       80.0f, 0.7f);
+                                                       80.0F, 0.7F);
                 }
             }
         }
@@ -677,7 +677,7 @@ bool broca_process_utterance(broca_adapter_t* adapter,
 
     /* Plan sequence using syllable phonemes */
     uint32_t syllable_count = phonological_get_syllable_count(adapter->phonological);
-    float total_duration = 0.0f;
+    float total_duration = 0.0F;
 
     for (uint32_t s = 0; s < syllable_count; s++) {
         syllable_t syllable;
@@ -844,7 +844,7 @@ bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
     uint32_t idx = (adapter->wm_head + adapter->wm_count - 1) %
                    adapter->config.working_memory_slots;
     adapter->working_memory[idx].word_id = word_id;
-    adapter->working_memory[idx].activation = 1.0f;
+    adapter->working_memory[idx].activation = 1.0F;
     adapter->working_memory[idx].timestamp = adapter->current_time_ms;
 
     return true;
@@ -906,12 +906,12 @@ bool broca_train_phonemes(broca_adapter_t* adapter,
     adapter->stats.training_iterations++;
 
     /* Use default learning rate if not specified */
-    if (learning_rate <= 0.0f) {
+    if (learning_rate <= 0.0F) {
         learning_rate = adapter->config.learning_rate;
     }
 
     /* Compute simple loss (placeholder) */
-    float loss = 0.0f;
+    float loss = 0.0F;
     uint32_t actual_count = phonological_get_phoneme_count(adapter->phonological);
     if (actual_count != num_phonemes) {
         loss = fabsf((float)actual_count - (float)num_phonemes) / (float)num_phonemes;
@@ -939,7 +939,7 @@ bool broca_train_word(broca_adapter_t* adapter,
     memcpy(entry.phonemes, phonemes, copy_count);
     entry.phoneme_count = copy_count;
     entry.pos = POS_NOUN;  /* Default */
-    entry.frequency = 0.5f;
+    entry.frequency = 0.5F;
 
     return broca_add_lexical_entry(adapter, &entry);
 }
@@ -1139,7 +1139,7 @@ nimcp_bio_future_t broca_request_motor_command_async(
     msg.phoneme = phoneme;
     msg.duration_ms = duration_ms;
     msg.pitch_hz = pitch_hz;
-    msg.intensity = 0.7f;  /* Default intensity */
+    msg.intensity = 0.7F;  /* Default intensity */
 
     nimcp_bio_promise_t promise = bio_router_send_async(
         adapter->bio_ctx, &msg, sizeof(msg), adapter->default_channel);
@@ -1198,7 +1198,7 @@ nimcp_error_t broca_handle_speech_feedback(
               BROCA_LOG_MODULE, phoneme_id, confidence, timing_error);
 
     /* Process feedback for self-monitoring and error correction */
-    if (confidence < 0.5f || fabsf(timing_error) > 50.0f) {
+    if (confidence < 0.5F || fabsf(timing_error) > 50.0F) {
         LOG_WARNING("[%s] Speech feedback indicates potential error: phoneme=%u",
                     BROCA_LOG_MODULE, phoneme_id);
         /* Could trigger re-planning or adjustment here */
@@ -1247,7 +1247,7 @@ static nimcp_error_t handle_lexical_access_request(
         response.phoneme_count = entry.phoneme_count;
         response.pos = entry.pos;
         response.frequency = entry.frequency;
-        response.activation = 1.0f;
+        response.activation = 1.0F;
     }
 
     /* Complete promise with response */
@@ -1274,7 +1274,7 @@ static nimcp_error_t handle_syntax_parse_request(
 
     /* Perform syntax parsing */
     bool parse_valid = true;
-    float complexity = 0.0f;
+    float complexity = 0.0F;
 
     /* Reset and add words */
     syntax_reset(adapter->syntax);
@@ -1290,7 +1290,7 @@ static nimcp_error_t handle_syntax_parse_request(
 
     if (parse_valid) {
         parse_valid = syntax_build_tree(adapter->syntax);
-        complexity = (float)req->word_count * 1.5f;  /* Simple complexity estimate */
+        complexity = (float)req->word_count * 1.5F;  /* Simple complexity estimate */
     }
 
     /* Build response */
@@ -1334,7 +1334,7 @@ static nimcp_error_t handle_phonological_encode_request(
     phonological_reset(adapter->phonological);
     for (uint8_t i = 0; i < req->phoneme_count && i < 32; i++) {
         phonological_add_phoneme_detailed(adapter->phonological,
-            req->phonemes[i], PHONEME_CATEGORY_CONSONANT, 80.0f, 0.7f);
+            req->phonemes[i], PHONEME_CATEGORY_CONSONANT, 80.0F, 0.7F);
     }
 
     /* Generate syllables */
@@ -1389,12 +1389,12 @@ static nimcp_error_t handle_motor_command_request(
 
     /* Fill in articulator positions based on phoneme type */
     /* This is a simplified model - real values would come from speech motor planner */
-    response.lip_aperture = 0.5f;
-    response.tongue_height = 0.5f;
-    response.tongue_advance = 0.5f;
-    response.jaw_opening = 0.3f;
-    response.velum_opening = 0.0f;
-    response.larynx_tension = 0.5f;
+    response.lip_aperture = 0.5F;
+    response.tongue_height = 0.5F;
+    response.tongue_advance = 0.5F;
+    response.jaw_opening = 0.3F;
+    response.velum_opening = 0.0F;
+    response.larynx_tension = 0.5F;
     response.timestamp_ms = adapter->current_time_ms;
 
     if (response_promise) {
@@ -1421,7 +1421,7 @@ static nimcp_error_t handle_speech_feedback(
 
     /* Process feedback for error monitoring */
     broca_handle_speech_feedback(adapter, feedback->phoneme_id,
-                                  feedback->confidence, 0.0f);
+                                  feedback->confidence, 0.0F);
 
     /* No response needed for feedback */
     (void)response_promise;

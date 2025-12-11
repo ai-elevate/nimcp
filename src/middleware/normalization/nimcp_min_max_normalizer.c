@@ -56,7 +56,7 @@ min_max_normalizer_t* minmax_normalizer_create(
     for (size_t i = 0; i < num_channels; i++) {
         norm->channels[i].min_value = FLT_MAX;
         norm->channels[i].max_value = -FLT_MAX;
-        norm->channels[i].range = 1.0f;
+        norm->channels[i].range = 1.0F;
         norm->channels[i].count = 0;
     }
 
@@ -82,7 +82,7 @@ bool minmax_normalizer_fit(
     if (value > stats->max_value) stats->max_value = value;
 
     stats->range = stats->max_value - stats->min_value;
-    if (stats->range < 1e-6f) stats->range = 1.0f;
+    if (stats->range < 1e-6F) stats->range = 1.0F;
 
     stats->count++;
     return true;
@@ -132,8 +132,8 @@ bool minmax_normalizer_get_stats(
     if (!normalizer || channel >= normalizer->num_channels || !stats) return false;
 
     const channel_stats_t* ch = &normalizer->channels[channel];
-    stats->min_value = (ch->min_value == FLT_MAX) ? 0.0f : ch->min_value;
-    stats->max_value = (ch->max_value == -FLT_MAX) ? 1.0f : ch->max_value;
+    stats->min_value = (ch->min_value == FLT_MAX) ? 0.0F : ch->min_value;
+    stats->max_value = (ch->max_value == -FLT_MAX) ? 1.0F : ch->max_value;
     stats->range = ch->range;
     stats->sample_count = ch->count;
 
@@ -149,7 +149,7 @@ bool minmax_normalizer_reset_channel(
     channel_stats_t* stats = &normalizer->channels[channel];
     stats->min_value = FLT_MAX;
     stats->max_value = -FLT_MAX;
-    stats->range = 1.0f;
+    stats->range = 1.0F;
     stats->count = 0;
 
     return true;

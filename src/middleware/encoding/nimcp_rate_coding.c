@@ -57,7 +57,7 @@ static uint32_t count_spikes_in_window(
         return 0;
     }
 
-    uint64_t start_time = (uint64_t)fmaxf(0.0f, (float)end_time - window_ms);
+    uint64_t start_time = (uint64_t)fmaxf(0.0F, (float)end_time - window_ms);
     uint32_t count = 0;
 
     // Count spikes in [start_time, end_time]
@@ -81,10 +81,10 @@ static float apply_ema_smoothing(
     float last_rate,
     float alpha
 ) {
-    if (alpha <= 0.0f || alpha >= 1.0f) {
+    if (alpha <= 0.0F || alpha >= 1.0F) {
         return raw_rate;  // No smoothing
     }
-    return alpha * raw_rate + (1.0f - alpha) * last_rate;
+    return alpha * raw_rate + (1.0F - alpha) * last_rate;
 }
 
 /**
@@ -142,15 +142,15 @@ rate_coding_encoder_t rate_coding_create(const rate_coding_config_t* config) {
     if (encoder->config.window_ms > RATE_CODING_MAX_WINDOW_MS) {
         encoder->config.window_ms = RATE_CODING_MAX_WINDOW_MS;
     }
-    if (encoder->config.ema_alpha < 0.0f) {
-        encoder->config.ema_alpha = 0.0f;
+    if (encoder->config.ema_alpha < 0.0F) {
+        encoder->config.ema_alpha = 0.0F;
     }
-    if (encoder->config.ema_alpha > 1.0f) {
-        encoder->config.ema_alpha = 1.0f;
+    if (encoder->config.ema_alpha > 1.0F) {
+        encoder->config.ema_alpha = 1.0F;
     }
 
     // Initialize state
-    encoder->last_rate = 0.0f;
+    encoder->last_rate = 0.0F;
     encoder->has_last_rate = false;
     encoder->encode_count = 0;
 
@@ -167,10 +167,10 @@ void rate_coding_destroy(rate_coding_encoder_t encoder) {
 rate_coding_config_t rate_coding_default_config(void) {
     rate_coding_config_t config = {
         .window_ms = RATE_CODING_DEFAULT_WINDOW_MS,
-        .ema_alpha = 0.3f,
+        .ema_alpha = 0.3F,
         .enable_burst_filter = false,
-        .burst_threshold_hz = 100.0f,
-        .burst_min_isi_ms = 5.0f,
+        .burst_threshold_hz = 100.0F,
+        .burst_min_isi_ms = 5.0F,
         .adaptive_binning = true
     };
     return config;
@@ -200,12 +200,12 @@ bool rate_coding_encode(
 
     // Calculate raw firing rate (Hz)
     // Rate = spikes / (window_seconds)
-    float window_sec = encoder->config.window_ms / 1000.0f;
+    float window_sec = encoder->config.window_ms / 1000.0F;
     float raw_rate = (float)spike_count / window_sec;
 
     // Apply EMA smoothing if enabled and we have previous rate
     float smoothed_rate = raw_rate;
-    if (encoder->has_last_rate && encoder->config.ema_alpha > 0.0f) {
+    if (encoder->has_last_rate && encoder->config.ema_alpha > 0.0F) {
         smoothed_rate = apply_ema_smoothing(
             raw_rate,
             encoder->last_rate,
@@ -238,12 +238,12 @@ uint32_t rate_coding_encode_population(
 
     // Encode each neuron
     for (uint32_t i = 0; i < num_neurons; i++) {
-        float rate = 0.0f;
+        float rate = 0.0F;
         if (rate_coding_encode(encoder, &spike_trains[i], current_time, &rate)) {
             rates_out[i] = rate;
             success_count++;
         } else {
-            rates_out[i] = 0.0f;
+            rates_out[i] = 0.0F;
         }
     }
 
@@ -270,7 +270,7 @@ uint32_t rate_coding_encode_multiscale(
         // Validate window size
         if (windows_ms[i] < RATE_CODING_MIN_WINDOW_MS ||
             windows_ms[i] > RATE_CODING_MAX_WINDOW_MS) {
-            rates_out[i] = 0.0f;
+            rates_out[i] = 0.0F;
             continue;
         }
 
@@ -282,7 +282,7 @@ uint32_t rate_coding_encode_multiscale(
         );
 
         // Calculate rate
-        float window_sec = windows_ms[i] / 1000.0f;
+        float window_sec = windows_ms[i] / 1000.0F;
         rates_out[i] = (float)spike_count / window_sec;
         success_count++;
     }
@@ -302,7 +302,7 @@ bool rate_coding_decode(
     spike_train_t* spike_train_out
 ) {
     // Guard clauses
-    if (!encoder || !spike_train_out || rate_hz < 0.0f || duration_ms <= 0.0f) {
+    if (!encoder || !spike_train_out || rate_hz < 0.0F || duration_ms <= 0.0F) {
         return false;
     }
 
@@ -310,18 +310,18 @@ bool rate_coding_decode(
     rate_coding_spike_train_clear(spike_train_out);
 
     // Handle zero rate case
-    if (rate_hz == 0.0f) {
+    if (rate_hz == 0.0F) {
         return true;
     }
 
     if (use_poisson) {
         // Poisson spike generation
         // Time step = 1ms for reasonable resolution
-        float dt_ms = 1.0f;
-        float prob_spike = rate_hz * (dt_ms / 1000.0f);  // Probability per ms
+        float dt_ms = 1.0F;
+        float prob_spike = rate_hz * (dt_ms / 1000.0F);  // Probability per ms
 
         // Generate spikes
-        for (float t = 0.0f; t < duration_ms; t += dt_ms) {
+        for (float t = 0.0F; t < duration_ms; t += dt_ms) {
             float r = (float)rand() / (float)RAND_MAX;
             if (r < prob_spike) {
                 uint64_t spike_time = (uint64_t)t;
@@ -332,11 +332,11 @@ bool rate_coding_decode(
         }
     } else {
         // Regular spike train generation
-        if (rate_hz > 0.0f) {
-            float isi_ms = 1000.0f / rate_hz;  // Inter-spike interval
+        if (rate_hz > 0.0F) {
+            float isi_ms = 1000.0F / rate_hz;  // Inter-spike interval
 
             // Generate spikes at regular intervals
-            for (float t = 0.0f; t < duration_ms; t += isi_ms) {
+            for (float t = 0.0F; t < duration_ms; t += isi_ms) {
                 uint64_t spike_time = (uint64_t)t;
                 if (!spike_train_add_spike(spike_train_out, spike_time)) {
                     return false;
@@ -402,8 +402,8 @@ bool rate_coding_detect_bursts(
 
     // Initialize outputs
     *burst_count_out = 0;
-    *burst_rate_out = 0.0f;
-    *tonic_rate_out = 0.0f;
+    *burst_rate_out = 0.0F;
+    *tonic_rate_out = 0.0F;
 
     // Need at least 3 spikes for burst detection
     if (spike_train->num_spikes < 3) {
@@ -465,15 +465,15 @@ bool rate_coding_detect_bursts(
     }
 
     // Calculate rates
-    float total_duration_sec = 0.0f;
+    float total_duration_sec = 0.0F;
     if (spike_train->num_spikes > 0) {
         total_duration_sec = (float)(
             spike_train->spike_times[spike_train->num_spikes - 1] -
             spike_train->spike_times[0]
-        ) / 1000.0f;
+        ) / 1000.0F;
     }
 
-    if (total_duration_sec > 0.0f) {
+    if (total_duration_sec > 0.0F) {
         *burst_rate_out = (float)burst_spike_count / total_duration_sec;
         *tonic_rate_out = (float)tonic_spike_count / total_duration_sec;
     }
@@ -492,17 +492,17 @@ bool rate_coding_instantaneous_rate(
     float* inst_rate_out
 ) {
     // Guard clauses
-    if (!encoder || !spike_train || !inst_rate_out || kernel_width_ms <= 0.0f) {
+    if (!encoder || !spike_train || !inst_rate_out || kernel_width_ms <= 0.0F) {
         return false;
     }
 
     // Gaussian kernel density estimation
     // rate(t) = sum_i K((t - t_i) / h) where K is Gaussian kernel
 
-    float sum = 0.0f;
-    float sigma = kernel_width_ms / 2.355f;  // FWHM to sigma conversion
-    float two_sigma_sq = 2.0f * sigma * sigma;
-    float norm_factor = 1.0f / (sqrtf(2.0f * M_PI) * sigma);
+    float sum = 0.0F;
+    float sigma = kernel_width_ms / 2.355F;  // FWHM to sigma conversion
+    float two_sigma_sq = 2.0F * sigma * sigma;
+    float norm_factor = 1.0F / (sqrtf(2.0F * M_PI) * sigma);
 
     for (uint32_t i = 0; i < spike_train->num_spikes; i++) {
         float dt = (float)((int64_t)time_ms - (int64_t)spike_train->spike_times[i]);
@@ -511,7 +511,7 @@ bool rate_coding_instantaneous_rate(
     }
 
     // Convert from density to rate (Hz)
-    *inst_rate_out = sum * 1000.0f;  // Convert ms^-1 to Hz
+    *inst_rate_out = sum * 1000.0F;  // Convert ms^-1 to Hz
     return true;
 }
 
@@ -660,14 +660,14 @@ bool rate_coding_compute_cv(const spike_train_t* spike_train, float* cv_out) {
     }
 
     // Calculate mean ISI
-    float mean_isi = 0.0f;
+    float mean_isi = 0.0F;
     for (uint32_t i = 0; i < num_isi; i++) {
         mean_isi += isi[i];
     }
     mean_isi /= (float)num_isi;
 
     // Calculate standard deviation
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < num_isi; i++) {
         float diff = isi[i] - mean_isi;
         variance += diff * diff;
@@ -676,10 +676,10 @@ bool rate_coding_compute_cv(const spike_train_t* spike_train, float* cv_out) {
     float std_dev = sqrtf(variance);
 
     // Calculate CV
-    if (mean_isi > 0.0f) {
+    if (mean_isi > 0.0F) {
         *cv_out = std_dev / mean_isi;
     } else {
-        *cv_out = 0.0f;
+        *cv_out = 0.0F;
     }
 
     nimcp_free(isi);
@@ -693,7 +693,7 @@ bool rate_coding_compute_fano_factor(
     float* fano_out
 ) {
     // Guard clauses
-    if (!spike_trains || !fano_out || num_trials == 0 || window_ms <= 0.0f) {
+    if (!spike_trains || !fano_out || num_trials == 0 || window_ms <= 0.0F) {
         return false;
     }
 
@@ -712,14 +712,14 @@ bool rate_coding_compute_fano_factor(
     }
 
     // Calculate mean spike count
-    float mean_count = 0.0f;
+    float mean_count = 0.0F;
     for (uint32_t i = 0; i < num_trials; i++) {
         mean_count += (float)spike_counts[i];
     }
     mean_count /= (float)num_trials;
 
     // Calculate variance
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < num_trials; i++) {
         float diff = (float)spike_counts[i] - mean_count;
         variance += diff * diff;
@@ -727,10 +727,10 @@ bool rate_coding_compute_fano_factor(
     variance /= (float)num_trials;
 
     // Calculate Fano factor
-    if (mean_count > 0.0f) {
+    if (mean_count > 0.0F) {
         *fano_out = variance / mean_count;
     } else {
-        *fano_out = 0.0f;
+        *fano_out = 0.0F;
     }
 
     nimcp_free(spike_counts);

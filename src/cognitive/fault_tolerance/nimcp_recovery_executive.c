@@ -184,7 +184,7 @@ static uint32_t select_actions_for_nan(
         steps[count].timeout_ms = 100;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Save current state before recovery");
-        steps[count].expected_success_rate = 0.95f;
+        steps[count].expected_success_rate = 0.95F;
         steps[count].is_critical = true;
         count++;
     }
@@ -195,7 +195,7 @@ static uint32_t select_actions_for_nan(
         steps[count].timeout_ms = 50;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Reset numerical subsystem to clear NaN values");
-        steps[count].expected_success_rate = 0.85f;
+        steps[count].expected_success_rate = 0.85F;
         steps[count].is_critical = true;
         count++;
     }
@@ -206,7 +206,7 @@ static uint32_t select_actions_for_nan(
         steps[count].timeout_ms = 10;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Switch to higher precision to prevent NaN");
-        steps[count].expected_success_rate = 0.90f;
+        steps[count].expected_success_rate = 0.90F;
         steps[count].is_critical = false;
         count++;
     }
@@ -217,7 +217,7 @@ static uint32_t select_actions_for_nan(
         steps[count].timeout_ms = 50;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Verify system state is numerically stable");
-        steps[count].expected_success_rate = 0.95f;
+        steps[count].expected_success_rate = 0.95F;
         steps[count].is_critical = false;
         count++;
     }
@@ -245,7 +245,7 @@ static uint32_t select_actions_for_memory_error(
         steps[count].timeout_ms = 20;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Isolate potentially corrupted memory region");
-        steps[count].expected_success_rate = 0.80f;
+        steps[count].expected_success_rate = 0.80F;
         steps[count].is_critical = true;
         count++;
     }
@@ -256,7 +256,7 @@ static uint32_t select_actions_for_memory_error(
         steps[count].timeout_ms = 30;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Clear memory caches to remove corrupted data");
-        steps[count].expected_success_rate = 0.90f;
+        steps[count].expected_success_rate = 0.90F;
         steps[count].is_critical = false;
         count++;
     }
@@ -267,7 +267,7 @@ static uint32_t select_actions_for_memory_error(
         steps[count].timeout_ms = 200;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Restore from last known good checkpoint");
-        steps[count].expected_success_rate = 0.75f;
+        steps[count].expected_success_rate = 0.75F;
         steps[count].is_critical = true;
         count++;
     }
@@ -278,7 +278,7 @@ static uint32_t select_actions_for_memory_error(
         steps[count].timeout_ms = 50;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Verify memory integrity");
-        steps[count].expected_success_rate = 0.95f;
+        steps[count].expected_success_rate = 0.95F;
         steps[count].is_critical = false;
         count++;
     }
@@ -306,7 +306,7 @@ static uint32_t select_actions_for_gradient_error(
         steps[count].timeout_ms = 100;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Save state before parameter adjustments");
-        steps[count].expected_success_rate = 0.95f;
+        steps[count].expected_success_rate = 0.95F;
         steps[count].is_critical = true;
         count++;
     }
@@ -317,18 +317,18 @@ static uint32_t select_actions_for_gradient_error(
         steps[count].timeout_ms = 10;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Reduce learning rate to stabilize gradients");
-        steps[count].expected_success_rate = 0.85f;
+        steps[count].expected_success_rate = 0.85F;
         steps[count].is_critical = true;
         count++;
     }
 
     // Step 3: Reduce batch size (if aggressive)
-    if (count < max_steps && criteria->risk_tolerance > 0.3f) {
+    if (count < max_steps && criteria->risk_tolerance > 0.3F) {
         steps[count].action = RECOVERY_EXEC_ACTION_REDUCE_BATCH_SIZE;
         steps[count].timeout_ms = 10;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Reduce batch size for more stable gradients");
-        steps[count].expected_success_rate = 0.80f;
+        steps[count].expected_success_rate = 0.80F;
         steps[count].is_critical = false;
         count++;
     }
@@ -339,7 +339,7 @@ static uint32_t select_actions_for_gradient_error(
         steps[count].timeout_ms = 50;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Verify gradient stability");
-        steps[count].expected_success_rate = 0.90f;
+        steps[count].expected_success_rate = 0.90F;
         steps[count].is_critical = false;
         count++;
     }
@@ -367,7 +367,7 @@ static uint32_t select_actions_for_critical_error(
         steps[count].timeout_ms = 50;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Analyze crash context and stack trace");
-        steps[count].expected_success_rate = 0.95f;
+        steps[count].expected_success_rate = 0.95F;
         steps[count].is_critical = false;
         count++;
     }
@@ -378,7 +378,7 @@ static uint32_t select_actions_for_critical_error(
         steps[count].timeout_ms = 200;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Restore from checkpoint before crash");
-        steps[count].expected_success_rate = 0.70f;
+        steps[count].expected_success_rate = 0.70F;
         steps[count].is_critical = true;
         count++;
     }
@@ -389,7 +389,7 @@ static uint32_t select_actions_for_critical_error(
         steps[count].timeout_ms = 500;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Graceful shutdown to preserve data");
-        steps[count].expected_success_rate = 0.99f;
+        steps[count].expected_success_rate = 0.99F;
         steps[count].is_critical = true;
         count++;
     }
@@ -441,7 +441,7 @@ static uint32_t select_actions_for_error(
                 steps[0].timeout_ms = 100;
                 snprintf(steps[0].description, sizeof(steps[0].description),
                         "Generic recovery: save state");
-                steps[0].expected_success_rate = 0.80f;
+                steps[0].expected_success_rate = 0.80F;
                 steps[0].is_critical = true;
                 return 1;
             }
@@ -466,11 +466,11 @@ static float calculate_plan_confidence(
     float diagnostic_confidence
 ) {
     if (step_count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Multiply step success probabilities (independence assumption)
-    float combined_success = 1.0f;
+    float combined_success = 1.0F;
     for (uint32_t i = 0; i < step_count; i++) {
         combined_success *= steps[i].expected_success_rate;
     }
@@ -479,8 +479,8 @@ static float calculate_plan_confidence(
     float confidence = combined_success * diagnostic_confidence;
 
     // Clamp to [0, 1]
-    if (confidence < 0.0f) confidence = 0.0f;
-    if (confidence > 1.0f) confidence = 1.0f;
+    if (confidence < 0.0F) confidence = 0.0F;
+    if (confidence > 1.0F) confidence = 1.0F;
 
     return confidence;
 }
@@ -513,16 +513,16 @@ recovery_executive_config_t recovery_executive_default_config(void) {
     config.max_subgoals = 5;
     config.max_plan_steps = 20;
     config.enable_metacognitive_monitoring = true;
-    config.replanning_confidence_threshold = 0.3f;
+    config.replanning_confidence_threshold = 0.3F;
 
     // Default decision criteria
-    config.default_criteria.risk_tolerance = 0.5f;
+    config.default_criteria.risk_tolerance = 0.5F;
     config.default_criteria.max_recovery_time_ms = 1000;
     config.default_criteria.max_steps = 20;
     config.default_criteria.allow_data_loss = false;
     config.default_criteria.allow_performance_degradation = true;
     config.default_criteria.require_verification = true;
-    config.default_criteria.min_confidence_threshold = 0.3f;
+    config.default_criteria.min_confidence_threshold = 0.3F;
 
     return config;
 }
@@ -563,11 +563,11 @@ recovery_executive_t* recovery_executive_create(
     exec->current_step = 0;
 
     // Initialize monitoring
-    exec->monitoring.confidence_in_plan = 1.0f;
+    exec->monitoring.confidence_in_plan = 1.0F;
     exec->monitoring.plan_working = true;
     exec->monitoring.steps_succeeded = 0;
     exec->monitoring.steps_failed = 0;
-    exec->monitoring.progress_rate = 0.0f;
+    exec->monitoring.progress_rate = 0.0F;
 
     // No diagnosis yet
     exec->has_diagnosis = false;
@@ -752,7 +752,7 @@ recovery_plan_t* recovery_executive_create_plan_with_brain_input(
     plan->step_count = step_count;
 
     // Calculate confidence
-    float diag_confidence = diagnosis->confidence > 0.0f ? diagnosis->confidence : 0.5f;
+    float diag_confidence = diagnosis->confidence > 0.0F ? diagnosis->confidence : 0.5F;
     plan->confidence = calculate_plan_confidence(
         plan->steps,
         step_count,
@@ -768,7 +768,7 @@ recovery_plan_t* recovery_executive_create_plan_with_brain_input(
              diagnostics_get_error_type_name(diagnosis->error_type),
              recovery_executive_get_goal_name(goal),
              step_count,
-             plan->confidence * 100.0f);
+             plan->confidence * 100.0F);
 
     // Store diagnosis for potential replanning
     exec->last_diagnosis = *diagnosis;
@@ -852,7 +852,7 @@ recovery_execution_result_t recovery_executive_execute_plan(
 
         // SIMULATION: In real implementation, would execute actual action
         // For now, simulate success based on expected success rate
-        bool step_success = (plan->steps[i].expected_success_rate > 0.5f);
+        bool step_success = (plan->steps[i].expected_success_rate > 0.5F);
 
         if (step_success) {
             exec->monitoring.steps_succeeded++;
@@ -880,11 +880,11 @@ recovery_execution_result_t recovery_executive_execute_plan(
 
             // Update confidence based on success/failure pattern
             if (exec->monitoring.steps_failed > exec->monitoring.steps_succeeded) {
-                exec->monitoring.confidence_in_plan *= 0.8f;  // Reduce confidence
+                exec->monitoring.confidence_in_plan *= 0.8F;  // Reduce confidence
                 exec->monitoring.plan_working = false;
             } else {
                 exec->monitoring.confidence_in_plan = fminf(
-                    exec->monitoring.confidence_in_plan * 1.1f, 1.0f);
+                    exec->monitoring.confidence_in_plan * 1.1F, 1.0F);
             }
         }
     }

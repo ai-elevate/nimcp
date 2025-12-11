@@ -148,8 +148,8 @@ static bool patterns_match(
  * @return Confidence score [0.0, 1.0]
  */
 static float calculate_confidence(uint32_t success_count, uint32_t total_count) {
-    if (total_count == 0) return 0.0f;
-    if (total_count == 1) return 0.3f;  // Low confidence with single sample
+    if (total_count == 0) return 0.0F;
+    if (total_count == 1) return 0.3F;  // Low confidence with single sample
 
     float p = (float)success_count / (float)total_count;
     float n = (float)total_count;
@@ -159,16 +159,16 @@ static float calculate_confidence(uint32_t success_count, uint32_t total_count) 
     float z2 = z * z;
 
     // Interval width
-    float numerator = z * sqrtf(p * (1.0f - p) / n + z2 / (4.0f * n * n));
-    float denominator = 1.0f + z2 / n;
-    float interval_width = 2.0f * numerator / denominator;
+    float numerator = z * sqrtf(p * (1.0F - p) / n + z2 / (4.0F * n * n));
+    float denominator = 1.0F + z2 / n;
+    float interval_width = 2.0F * numerator / denominator;
 
     // Confidence = 1 - (normalized interval width)
-    float confidence = 1.0f - (interval_width / 2.0f);
+    float confidence = 1.0F - (interval_width / 2.0F);
 
     // Clamp to [0, 1]
-    if (confidence < 0.0f) confidence = 0.0f;
-    if (confidence > 1.0f) confidence = 1.0f;
+    if (confidence < 0.0F) confidence = 0.0F;
+    if (confidence > 1.0F) confidence = 1.0F;
 
     return confidence;
 }
@@ -247,7 +247,7 @@ static void* background_consolidation_thread(void* arg) {
 consolidation_config_t recovery_consolidation_default_config(void) {
     consolidation_config_t config = {
         .min_episodes_for_rule = 10,
-        .min_confidence_threshold = 0.8f,
+        .min_confidence_threshold = 0.8F,
         .max_rules = 100,
         .enable_background_consolidation = false,
         .consolidation_interval_ms = 1000
@@ -730,7 +730,7 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
 
     // Compute average confidence
     if (consolidation->rule_count > 0) {
-        float total_confidence = 0.0f;
+        float total_confidence = 0.0F;
         for (uint32_t i = 0; i < consolidation->rule_count; i++) {
             total_confidence += consolidation->rules[i].confidence;
         }

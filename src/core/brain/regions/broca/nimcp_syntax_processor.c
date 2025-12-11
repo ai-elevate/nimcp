@@ -115,7 +115,7 @@ syntax_config_t syntax_default_config(void) {
     config.enable_movement = false;  // Advanced feature
     config.enable_tree_caching = true;
     config.enable_neuromodulation = false;
-    config.learning_rate = 0.01f;
+    config.learning_rate = 0.01F;
 
     return config;
 }
@@ -299,7 +299,7 @@ bool syntax_build_tree(syntax_processor_t* processor) {
     for (uint32_t i = 0; i < processor->chart_size; i++) {
         for (uint32_t j = 0; j < processor->chart_size; j++) {
             processor->chart[i][j].is_filled = false;
-            processor->chart[i][j].probability = 0.0f;
+            processor->chart[i][j].probability = 0.0F;
         }
     }
 
@@ -333,7 +333,7 @@ bool syntax_build_tree(syntax_processor_t* processor) {
         }
 
         processor->chart[i][i].phrase_type = phrase;
-        processor->chart[i][i].probability = 1.0f;
+        processor->chart[i][i].probability = 1.0F;
         processor->chart[i][i].is_filled = (phrase != PHRASE_NONE);
     }
 
@@ -676,7 +676,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_NP;
     rule.rhs[1] = PHRASE_VP;
     rule.num_rhs = 2;
-    rule.probability = 0.9f;
+    rule.probability = 0.9F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -685,7 +685,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_DP;
     rule.rhs[1] = PHRASE_VP;
     rule.num_rhs = 2;
-    rule.probability = 0.85f;
+    rule.probability = 0.85F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -696,7 +696,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_VP;
     rule.rhs[1] = PHRASE_NP;
     rule.num_rhs = 2;
-    rule.probability = 0.7f;
+    rule.probability = 0.7F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -705,7 +705,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_VP;
     rule.rhs[1] = PHRASE_DP;
     rule.num_rhs = 2;
-    rule.probability = 0.65f;
+    rule.probability = 0.65F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -714,7 +714,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_VP;
     rule.rhs[1] = PHRASE_PP;
     rule.num_rhs = 2;
-    rule.probability = 0.5f;
+    rule.probability = 0.5F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -723,7 +723,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_VP;
     rule.rhs[1] = PHRASE_AP;
     rule.num_rhs = 2;
-    rule.probability = 0.3f;
+    rule.probability = 0.3F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -732,7 +732,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_VP;
     rule.rhs[1] = PHRASE_ADVP;
     rule.num_rhs = 2;
-    rule.probability = 0.4f;
+    rule.probability = 0.4F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -743,7 +743,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_DP;
     rule.rhs[1] = PHRASE_NP;
     rule.num_rhs = 2;
-    rule.probability = 0.7f;
+    rule.probability = 0.7F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -752,7 +752,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_AP;
     rule.rhs[1] = PHRASE_NP;
     rule.num_rhs = 2;
-    rule.probability = 0.5f;
+    rule.probability = 0.5F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -761,7 +761,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_NP;
     rule.rhs[1] = PHRASE_PP;
     rule.num_rhs = 2;
-    rule.probability = 0.4f;
+    rule.probability = 0.4F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -770,7 +770,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_NP;
     rule.rhs[1] = PHRASE_NP;
     rule.num_rhs = 2;
-    rule.probability = 0.3f;
+    rule.probability = 0.3F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -781,7 +781,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_DP;
     rule.rhs[1] = PHRASE_NP;
     rule.num_rhs = 2;
-    rule.probability = 0.6f;
+    rule.probability = 0.6F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -792,7 +792,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_PP;
     rule.rhs[1] = PHRASE_NP;
     rule.num_rhs = 2;
-    rule.probability = 0.8f;
+    rule.probability = 0.8F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -801,7 +801,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_PP;
     rule.rhs[1] = PHRASE_DP;
     rule.num_rhs = 2;
-    rule.probability = 0.7f;
+    rule.probability = 0.7F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -812,7 +812,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_ADVP;
     rule.rhs[1] = PHRASE_AP;
     rule.num_rhs = 2;
-    rule.probability = 0.5f;
+    rule.probability = 0.5F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -821,7 +821,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_AP;
     rule.rhs[1] = PHRASE_PP;
     rule.num_rhs = 2;
-    rule.probability = 0.3f;
+    rule.probability = 0.3F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
@@ -832,7 +832,7 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.rhs[0] = PHRASE_ADVP;
     rule.rhs[1] = PHRASE_ADVP;
     rule.num_rhs = 2;
-    rule.probability = 0.4f;
+    rule.probability = 0.4F;
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 

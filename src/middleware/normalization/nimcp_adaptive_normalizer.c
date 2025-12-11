@@ -50,8 +50,8 @@ adaptive_normalizer_t* adaptive_normalizer_create(
     }
 
     for (size_t i = 0; i < num_channels; i++) {
-        norm->channels[i].mean = 0.0f;
-        norm->channels[i].variance = 1.0f;
+        norm->channels[i].mean = 0.0F;
+        norm->channels[i].variance = 1.0F;
         norm->channels[i].learning_rate = initial_learning_rate;
         norm->channels[i].count = 0;
     }
@@ -75,15 +75,15 @@ bool adaptive_normalizer_fit(
     adaptive_channel_t* ch = &normalizer->channels[channel];
 
     float lr = ch->learning_rate;
-    ch->mean = (1.0f - lr) * ch->mean + lr * value;
+    ch->mean = (1.0F - lr) * ch->mean + lr * value;
 
     float diff = value - ch->mean;
-    ch->variance = (1.0f - lr) * ch->variance + lr * diff * diff;
+    ch->variance = (1.0F - lr) * ch->variance + lr * diff * diff;
 
     // Adapt learning rate based on variance change
-    ch->learning_rate *= (1.0f + normalizer->adaptation_rate * fabsf(diff));
-    if (ch->learning_rate > 0.5f) ch->learning_rate = 0.5f;
-    if (ch->learning_rate < 0.001f) ch->learning_rate = 0.001f;
+    ch->learning_rate *= (1.0F + normalizer->adaptation_rate * fabsf(diff));
+    if (ch->learning_rate > 0.5F) ch->learning_rate = 0.5F;
+    if (ch->learning_rate < 0.001F) ch->learning_rate = 0.001F;
 
     ch->count++;
     return true;
@@ -97,7 +97,7 @@ float adaptive_normalizer_transform(
     if (!normalizer || channel >= normalizer->num_channels) return value;
 
     const adaptive_channel_t* ch = &normalizer->channels[channel];
-    if (ch->count == 0 || ch->variance < 0.0001f) return 0.0f;
+    if (ch->count == 0 || ch->variance < 0.0001F) return 0.0F;
 
     return (value - ch->mean) / sqrtf(ch->variance);
 }
@@ -118,8 +118,8 @@ bool adaptive_normalizer_reset_channel(
     if (!normalizer || channel >= normalizer->num_channels) return false;
 
     adaptive_channel_t* ch = &normalizer->channels[channel];
-    ch->mean = 0.0f;
-    ch->variance = 1.0f;
+    ch->mean = 0.0F;
+    ch->variance = 1.0F;
     ch->learning_rate = normalizer->initial_learning_rate;
     ch->count = 0;
 

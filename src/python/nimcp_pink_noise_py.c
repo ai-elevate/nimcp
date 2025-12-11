@@ -52,11 +52,11 @@ static int PinkNoiseGenerator_init(PinkNoiseGeneratorObject* self, PyObject* arg
     static char* kwlist[] = {"alpha", "amplitude", "min_frequency", "max_frequency",
                               "sample_rate", "method", "seed", NULL};
 
-    float alpha = 1.0f;
-    float amplitude = 0.05f;
-    float min_frequency = 0.1f;
-    float max_frequency = 100.0f;
-    float sample_rate = 1000.0f;
+    float alpha = 1.0F;
+    float amplitude = 0.05F;
+    float min_frequency = 0.1F;
+    float max_frequency = 100.0F;
+    float sample_rate = 1000.0F;
     const char* method_str = "voss";
     unsigned int seed = 0;
 

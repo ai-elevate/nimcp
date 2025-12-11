@@ -51,11 +51,11 @@
 void synapse_init_ampa(ampa_state_t* state) {
     if (!state) return;
 
-    state->conductance = 0.0f;
-    state->g_max = 1.0f;           // 1.0 nS
-    state->tau_rise = 0.5f;        // 0.5 ms
-    state->tau_decay = 2.0f;       // 2.0 ms
-    state->reversal_potential = 0.0f; // 0 mV
+    state->conductance = 0.0F;
+    state->g_max = 1.0F;           // 1.0 nS
+    state->tau_rise = 0.5F;        // 0.5 ms
+    state->tau_decay = 2.0F;       // 2.0 ms
+    state->reversal_potential = 0.0F; // 0 mV
 }
 
 /**
@@ -85,7 +85,7 @@ float synapse_compute_ampa(
     float pre_spike,
     float dt
 ) {
-    if (!syn || !post_neuron) return 0.0f;
+    if (!syn || !post_neuron) return 0.0F;
 
     ampa_state_t* state = &syn->type_state.ampa;
 
@@ -93,7 +93,7 @@ float synapse_compute_ampa(
     state->conductance *= expf(-dt / state->tau_decay);
 
     // 2. Add spike-triggered conductance increment
-    if (pre_spike > 0.5f) {
+    if (pre_spike > 0.5F) {
         state->conductance += state->g_max;
     }
 
@@ -121,13 +121,13 @@ float synapse_compute_ampa(
 void synapse_init_nmda(nmda_state_t* state) {
     if (!state) return;
 
-    state->conductance = 0.0f;
-    state->g_max = 0.3f;           // 0.3 nS
-    state->tau_rise = 10.0f;       // 10 ms
-    state->tau_decay = 100.0f;     // 100 ms
-    state->reversal_potential = 0.0f;  // 0 mV
-    state->mg_concentration = 1.0f;    // 1.0 mM
-    state->calcium_influx = 0.0f;
+    state->conductance = 0.0F;
+    state->g_max = 0.3F;           // 0.3 nS
+    state->tau_rise = 10.0F;       // 10 ms
+    state->tau_decay = 100.0F;     // 100 ms
+    state->reversal_potential = 0.0F;  // 0 mV
+    state->mg_concentration = 1.0F;    // 1.0 mM
+    state->calcium_influx = 0.0F;
 }
 
 /**
@@ -159,7 +159,7 @@ float synapse_compute_nmda(
     float pre_spike,
     float dt
 ) {
-    if (!syn || !post_neuron) return 0.0f;
+    if (!syn || !post_neuron) return 0.0F;
 
     nmda_state_t* state = &syn->type_state.nmda;
 
@@ -167,7 +167,7 @@ float synapse_compute_nmda(
     state->conductance *= expf(-dt / state->tau_decay);
 
     // 2. Add spike-triggered conductance increment
-    if (pre_spike > 0.5f) {
+    if (pre_spike > 0.5F) {
         state->conductance += state->g_max;
     }
 
@@ -175,7 +175,7 @@ float synapse_compute_nmda(
     // B(V) = 1 / (1 + [Mg2+]_o * exp(-0.062*V) / 3.57)
     float voltage = post_neuron->state;
     float mg_factor = state->mg_concentration * expf(-NMDA_MG_SLOPE * voltage) / NMDA_MG_IC50;
-    float mg_block = 1.0f / (1.0f + mg_factor);
+    float mg_block = 1.0F / (1.0F + mg_factor);
 
     // 4. Compute synaptic current with Mg2+ gating
     float driving_force = voltage - state->reversal_potential;
@@ -183,12 +183,12 @@ float synapse_compute_nmda(
 
     // 5. Update calcium influx (for LTP/LTD)
     // Ca2+ influx only occurs at strong depolarization
-    if (voltage > NMDA_CA_THRESHOLD && current > 0.0f) {
+    if (voltage > NMDA_CA_THRESHOLD && current > 0.0F) {
         state->calcium_influx += current * dt;
     }
 
     // Decay calcium over time (τ_ca ≈ 100 ms)
-    state->calcium_influx *= expf(-dt / 100.0f);
+    state->calcium_influx *= expf(-dt / 100.0F);
 
     return current;
 }
@@ -209,11 +209,11 @@ float synapse_compute_nmda(
 void synapse_init_gaba_a(gaba_a_state_t* state) {
     if (!state) return;
 
-    state->conductance = 0.0f;
-    state->g_max = 2.0f;           // 2.0 nS
-    state->tau_rise = 1.0f;        // 1.0 ms
-    state->tau_decay = 10.0f;      // 10 ms
-    state->reversal_potential = -70.0f; // -70 mV (Cl-)
+    state->conductance = 0.0F;
+    state->g_max = 2.0F;           // 2.0 nS
+    state->tau_rise = 1.0F;        // 1.0 ms
+    state->tau_decay = 10.0F;      // 10 ms
+    state->reversal_potential = -70.0F; // -70 mV (Cl-)
 }
 
 /**
@@ -233,7 +233,7 @@ float synapse_compute_gaba_a(
     float pre_spike,
     float dt
 ) {
-    if (!syn || !post_neuron) return 0.0f;
+    if (!syn || !post_neuron) return 0.0F;
 
     gaba_a_state_t* state = &syn->type_state.gaba_a;
 
@@ -241,7 +241,7 @@ float synapse_compute_gaba_a(
     state->conductance *= expf(-dt / state->tau_decay);
 
     // 2. Spike-triggered increment
-    if (pre_spike > 0.5f) {
+    if (pre_spike > 0.5F) {
         state->conductance += state->g_max;
     }
 
@@ -268,11 +268,11 @@ float synapse_compute_gaba_a(
 void synapse_init_gaba_b(gaba_b_state_t* state) {
     if (!state) return;
 
-    state->conductance = 0.0f;
-    state->g_max = 0.5f;           // 0.5 nS
-    state->tau_rise = 50.0f;       // 50 ms
-    state->tau_decay = 150.0f;     // 150 ms
-    state->reversal_potential = -95.0f; // -95 mV (K+)
+    state->conductance = 0.0F;
+    state->g_max = 0.5F;           // 0.5 nS
+    state->tau_rise = 50.0F;       // 50 ms
+    state->tau_decay = 150.0F;     // 150 ms
+    state->reversal_potential = -95.0F; // -95 mV (K+)
 }
 
 /**
@@ -292,7 +292,7 @@ float synapse_compute_gaba_b(
     float pre_spike,
     float dt
 ) {
-    if (!syn || !post_neuron) return 0.0f;
+    if (!syn || !post_neuron) return 0.0F;
 
     gaba_b_state_t* state = &syn->type_state.gaba_b;
 
@@ -300,7 +300,7 @@ float synapse_compute_gaba_b(
     state->conductance *= expf(-dt / state->tau_decay);
 
     // 2. Spike-triggered increment
-    if (pre_spike > 0.5f) {
+    if (pre_spike > 0.5F) {
         state->conductance += state->g_max;
     }
 
@@ -326,12 +326,12 @@ float synapse_compute_gaba_b(
 void synapse_init_dopamine(dopamine_state_t* state) {
     if (!state) return;
 
-    state->d1_level = 0.0f;
-    state->d2_level = 0.0f;
-    state->tau_d1 = 200.0f;        // 200 ms
-    state->tau_d2 = 100.0f;        // 100 ms
-    state->modulation = 0.0f;
-    state->baseline = 0.5f;        // 50% tonic level
+    state->d1_level = 0.0F;
+    state->d2_level = 0.0F;
+    state->tau_d1 = 200.0F;        // 200 ms
+    state->tau_d2 = 100.0F;        // 100 ms
+    state->modulation = 0.0F;
+    state->baseline = 0.5F;        // 50% tonic level
 }
 
 /**
@@ -363,7 +363,7 @@ float synapse_compute_dopamine(
     float pre_spike,
     float dt
 ) {
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     dopamine_state_t* state = &syn->type_state.dopamine;
 
@@ -398,12 +398,12 @@ float synapse_compute_dopamine(
 void synapse_init_serotonin(serotonin_state_t* state) {
     if (!state) return;
 
-    state->ht1a_level = 0.0f;
-    state->ht2a_level = 0.0f;
-    state->tau_ht1a = 500.0f;      // 500 ms
-    state->tau_ht2a = 300.0f;      // 300 ms
-    state->modulation = 0.0f;
-    state->baseline = 0.5f;
+    state->ht1a_level = 0.0F;
+    state->ht2a_level = 0.0F;
+    state->tau_ht1a = 500.0F;      // 500 ms
+    state->tau_ht2a = 300.0F;      // 300 ms
+    state->modulation = 0.0F;
+    state->baseline = 0.5F;
 }
 
 /**
@@ -428,7 +428,7 @@ float synapse_compute_serotonin(
     float pre_spike,
     float dt
 ) {
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     serotonin_state_t* state = &syn->type_state.serotonin;
 
@@ -463,12 +463,12 @@ float synapse_compute_serotonin(
 void synapse_init_acetylcholine(acetylcholine_state_t* state) {
     if (!state) return;
 
-    state->nicotinic_level = 0.0f;
-    state->muscarinic_level = 0.0f;
-    state->tau_nicotinic = 20.0f;  // 20 ms
-    state->tau_muscarinic = 200.0f; // 200 ms
-    state->modulation = 0.0f;
-    state->baseline = 0.3f;        // Low baseline (attention-dependent)
+    state->nicotinic_level = 0.0F;
+    state->muscarinic_level = 0.0F;
+    state->tau_nicotinic = 20.0F;  // 20 ms
+    state->tau_muscarinic = 200.0F; // 200 ms
+    state->modulation = 0.0F;
+    state->baseline = 0.3F;        // Low baseline (attention-dependent)
 }
 
 /**
@@ -495,7 +495,7 @@ float synapse_compute_acetylcholine(
     float pre_spike,
     float dt
 ) {
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     acetylcholine_state_t* state = &syn->type_state.acetylcholine;
 
@@ -529,7 +529,7 @@ float synapse_compute_acetylcholine(
 void synapse_init_electrical(electrical_state_t* state) {
     if (!state) return;
 
-    state->conductance = 0.5f;     // 0.5 nS
+    state->conductance = 0.5F;     // 0.5 nS
     state->bidirectional = true;
 }
 
@@ -561,7 +561,7 @@ float synapse_compute_electrical(
     float pre_spike,
     float dt
 ) {
-    if (!syn || !pre_neuron || !post_neuron) return 0.0f;
+    if (!syn || !pre_neuron || !post_neuron) return 0.0F;
 
     electrical_state_t* state = &syn->type_state.electrical;
 
@@ -592,7 +592,7 @@ float synapse_compute_generic(
     float pre_spike,
     float dt
 ) {
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     return syn->weight * pre_spike;
 }
@@ -640,7 +640,7 @@ const char* synapse_type_name(synapse_type_t type) {
  * COMPLEXITY: O(1)
  */
 float synapse_type_time_constant(synapse_type_t type, const synapse_type_state_t* state) {
-    if (!state) return 0.0f;
+    if (!state) return 0.0F;
 
     switch (type) {
         case SYNAPSE_AMPA:
@@ -658,10 +658,10 @@ float synapse_type_time_constant(synapse_type_t type, const synapse_type_state_t
         case SYNAPSE_ACETYLCHOLINE:
             return state->acetylcholine.tau_muscarinic;
         case SYNAPSE_ELECTRICAL:
-            return 0.0f;  // Instantaneous
+            return 0.0F;  // Instantaneous
         case SYNAPSE_GENERIC:
         default:
-            return 0.0f;
+            return 0.0F;
     }
 }
 

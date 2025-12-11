@@ -21,6 +21,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -66,7 +67,7 @@ struct self_awareness_system {
 
 static uint64_t get_current_time_ms(void)
 {
-    return nimcp_platform_time_monotonic_ms();
+    return nimcp_time_monotonic_ms();
 }
 
 // ============================================================================
@@ -88,10 +89,10 @@ bool metacognition_assess(introspection_context_t introspection,
 
     // If no introspection or no performance data, return conservative assessment
     if (!introspection || !recent_performance || num_recent == 0) {
-        assessment->cognitive_load = 0.5f;
-        assessment->confidence_in_decision = 0.5f;
-        assessment->learning_effectiveness = 0.5f;
-        assessment->strategy_effectiveness = 0.5f;
+        assessment->cognitive_load = 0.5F;
+        assessment->confidence_in_decision = 0.5F;
+        assessment->learning_effectiveness = 0.5F;
+        assessment->strategy_effectiveness = 0.5F;
         assessment->should_regulate = false;
         assessment->recommended_action = METACOG_ACTION_NONE;
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
@@ -103,24 +104,24 @@ bool metacognition_assess(introspection_context_t introspection,
     // For now, use heuristics based on performance
 
     // Calculate average recent performance
-    float avg_performance = 0.0f;
+    float avg_performance = 0.0F;
     for (uint32_t i = 0; i < num_recent; i++) {
         avg_performance += recent_performance[i];
     }
     avg_performance /= (float)num_recent;
 
     // Calculate performance variance (stability)
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < num_recent; i++) {
         float diff = recent_performance[i] - avg_performance;
         variance += diff * diff;
     }
     variance /= (float)num_recent;
-    float stability = 1.0f - fminf(1.0f, sqrtf(variance));
+    float stability = 1.0F - fminf(1.0F, sqrtf(variance));
 
     // Estimate cognitive load
     // High load = poor performance OR high variance
-    assessment->cognitive_load = 1.0f - (avg_performance * 0.7f + stability * 0.3f);
+    assessment->cognitive_load = 1.0F - (avg_performance * 0.7F + stability * 0.3F);
 
     // Estimate confidence
     // High confidence = good performance AND low variance
@@ -130,11 +131,11 @@ bool metacognition_assess(introspection_context_t introspection,
     // Improving = recent performance > older performance
     if (num_recent >= 2) {
         float recent_avg = (recent_performance[num_recent - 1] +
-                           recent_performance[num_recent - 2]) / 2.0f;
-        float older_avg = (recent_performance[0] + recent_performance[1]) / 2.0f;
-        assessment->learning_effectiveness = fmaxf(0.0f, fminf(1.0f, 0.5f + (recent_avg - older_avg)));
+                           recent_performance[num_recent - 2]) / 2.0F;
+        float older_avg = (recent_performance[0] + recent_performance[1]) / 2.0F;
+        assessment->learning_effectiveness = fmaxf(0.0F, fminf(1.0F, 0.5F + (recent_avg - older_avg)));
     } else {
-        assessment->learning_effectiveness = 0.5f;
+        assessment->learning_effectiveness = 0.5F;
     }
 
     // Estimate strategy effectiveness
@@ -145,24 +146,24 @@ bool metacognition_assess(introspection_context_t introspection,
     assessment->recommended_action = METACOG_ACTION_NONE;
 
     // HIGH COGNITIVE LOAD + LOW CONFIDENCE = Need to simplify or seek help
-    if (assessment->cognitive_load > 0.8f && assessment->confidence_in_decision < 0.3f) {
+    if (assessment->cognitive_load > 0.8F && assessment->confidence_in_decision < 0.3F) {
         assessment->should_regulate = true;
         assessment->recommended_action = METACOG_SEEK_HELP;
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
                 "High cognitive load (%.0f%%) with low confidence (%.0f%%) - need assistance",
-                assessment->cognitive_load * 100.0f,
-                assessment->confidence_in_decision * 100.0f);
+                assessment->cognitive_load * 100.0F,
+                assessment->confidence_in_decision * 100.0F);
     }
     // LOW PERFORMANCE + LOW LEARNING = Switch strategy
-    else if (avg_performance < 0.4f && assessment->learning_effectiveness < 0.4f) {
+    else if (avg_performance < 0.4F && assessment->learning_effectiveness < 0.4F) {
         assessment->should_regulate = true;
         assessment->recommended_action = METACOG_SWITCH_STRATEGY;
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
                 "Poor performance (%.0f%%) and not learning - try different approach",
-                avg_performance * 100.0f);
+                avg_performance * 100.0F);
     }
     // HIGH VARIANCE = Adjust confidence calibration
-    else if (variance > 0.3f) {
+    else if (variance > 0.3F) {
         assessment->should_regulate = true;
         assessment->recommended_action = METACOG_ADJUST_CONFIDENCE;
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
@@ -170,12 +171,12 @@ bool metacognition_assess(introspection_context_t introspection,
                 variance);
     }
     // MODERATE LOAD + IMPROVING = Increase effort (learning is working)
-    else if (assessment->cognitive_load > 0.5f && assessment->learning_effectiveness > 0.6f) {
+    else if (assessment->cognitive_load > 0.5F && assessment->learning_effectiveness > 0.6F) {
         assessment->should_regulate = false;  // Optional regulation
         assessment->recommended_action = METACOG_INCREASE_EFFORT;
         snprintf(assessment->reasoning, sizeof(assessment->reasoning),
                 "Learning is effective (%.0f%%) - can increase effort",
-                assessment->learning_effectiveness * 100.0f);
+                assessment->learning_effectiveness * 100.0F);
     }
     // LOW LOAD = Everything fine
     else {
@@ -242,11 +243,11 @@ bool generate_self_narrative(self_model_system_t self_model,
                        "\nMy strengths:\n");
 
     for (uint32_t i = 0; i < model.num_capabilities && (size_t)written < narrative_len - 100; i++) {
-        if (model.capabilities[i].proficiency > 0.6f) {
+        if (model.capabilities[i].proficiency > 0.6F) {
             int n = snprintf(narrative + written, narrative_len - written,
                            "- %s (proficiency: %.0f%%)\n",
                            model.capabilities[i].capability_name,
-                           model.capabilities[i].proficiency * 100.0f);
+                           model.capabilities[i].proficiency * 100.0F);
             if (n > 0) written += n;
         }
     }
@@ -261,8 +262,8 @@ bool generate_self_narrative(self_model_system_t self_model,
 
     for (uint32_t i = 0; i < model.num_capabilities && (size_t)written < narrative_len - 100; i++) {
         if (model.capabilities[i].is_learnable &&
-            model.capabilities[i].proficiency >= 0.3f &&
-            model.capabilities[i].proficiency <= 0.6f) {
+            model.capabilities[i].proficiency >= 0.3F &&
+            model.capabilities[i].proficiency <= 0.6F) {
             int n = snprintf(narrative + written, narrative_len - written,
                            "- %s (learning rate: %.2f)\n",
                            model.capabilities[i].capability_name,
@@ -288,7 +289,7 @@ bool generate_self_narrative(self_model_system_t self_model,
 
     written += snprintf(narrative + written, narrative_len - written,
                        "confidence %.0f%%\n",
-                       model.current_state.confidence_level * 100.0f);
+                       model.current_state.confidence_level * 100.0F);
 
     // Part 7: Timeline summary (if autobiographical memory available)
     if (autobio && (size_t)written < narrative_len - 200) {
@@ -344,12 +345,12 @@ bool compute_temporal_self(self_model_system_t self_model,
     }
 
     // High continuity = many stable core beliefs
-    temporal_self->self_continuity_score = fminf(1.0f, (float)stable_core_beliefs / 5.0f);
+    temporal_self->self_continuity_score = fminf(1.0F, (float)stable_core_beliefs / 5.0F);
 
     // Calculate self-change rate
     // TODO: Compare capabilities over time from autobio
     // For now, estimate from learning rates
-    float total_learning_rate = 0.0f;
+    float total_learning_rate = 0.0F;
     uint32_t learnable_count = 0;
 
     for (uint32_t i = 0; i < temporal_self->current_self.num_capabilities; i++) {
@@ -362,7 +363,7 @@ bool compute_temporal_self(self_model_system_t self_model,
     if (learnable_count > 0) {
         temporal_self->self_change_rate = total_learning_rate / (float)learnable_count;
     } else {
-        temporal_self->self_change_rate = 0.0f;
+        temporal_self->self_change_rate = 0.0F;
     }
 
     // Time horizon (how far ahead do we project?)
@@ -372,8 +373,8 @@ bool compute_temporal_self(self_model_system_t self_model,
     // Generate changes description
     snprintf(temporal_self->changes_description, sizeof(temporal_self->changes_description),
             "I maintain %.0f%% continuity with my past self. I am changing at a rate of %.2f/day through learning.",
-            temporal_self->self_continuity_score * 100.0f,
-            temporal_self->self_change_rate * 100.0f);
+            temporal_self->self_continuity_score * 100.0F,
+            temporal_self->self_change_rate * 100.0F);
 
     return true;
 }
@@ -402,37 +403,37 @@ bool attribute_agency(const char* action_description,
     // No decision made = external agency
     if (!was_decision_made) {
         attribution->agency = AGENCY_EXTERNAL;
-        attribution->sense_of_control = 0.0f;
-        attribution->confidence_in_attribution = 0.9f;
+        attribution->sense_of_control = 0.0F;
+        attribution->confidence_in_attribution = 0.9F;
         snprintf(attribution->causal_explanation, sizeof(attribution->causal_explanation),
                 "This action occurred without my decision - externally caused");
     }
     // High external constraints = forced agency
-    else if (external_constraints > 0.7f) {
+    else if (external_constraints > 0.7F) {
         attribution->agency = AGENCY_FORCED;
-        attribution->sense_of_control = 1.0f - external_constraints;
-        attribution->confidence_in_attribution = 0.8f;
+        attribution->sense_of_control = 1.0F - external_constraints;
+        attribution->confidence_in_attribution = 0.8F;
         snprintf(attribution->causal_explanation, sizeof(attribution->causal_explanation),
                 "I was compelled by external forces (constraint: %.0f%%)",
-                external_constraints * 100.0f);
+                external_constraints * 100.0F);
     }
     // Moderate constraints = joint agency
-    else if (external_constraints > 0.3f && external_constraints <= 0.7f) {
+    else if (external_constraints > 0.3F && external_constraints <= 0.7F) {
         attribution->agency = AGENCY_JOINT;
-        attribution->sense_of_control = 1.0f - external_constraints;
-        attribution->confidence_in_attribution = 0.7f;
+        attribution->sense_of_control = 1.0F - external_constraints;
+        attribution->confidence_in_attribution = 0.7F;
         snprintf(attribution->causal_explanation, sizeof(attribution->causal_explanation),
                 "This was a collaborative action with external influence (%.0f%%)",
-                external_constraints * 100.0f);
+                external_constraints * 100.0F);
     }
     // Low constraints + decision = self agency
     else {
         attribution->agency = AGENCY_SELF;
-        attribution->sense_of_control = 1.0f - external_constraints;
-        attribution->confidence_in_attribution = 0.95f;
+        attribution->sense_of_control = 1.0F - external_constraints;
+        attribution->confidence_in_attribution = 0.95F;
         snprintf(attribution->causal_explanation, sizeof(attribution->causal_explanation),
                 "I chose to do this voluntarily (control: %.0f%%)",
-                attribution->sense_of_control * 100.0f);
+                attribution->sense_of_control * 100.0F);
     }
 
     return true;
@@ -456,7 +457,7 @@ bool detect_self_harm(introspection_context_t introspection,
     memset(detection, 0, sizeof(self_harm_detection_t));
     detection->harm_detected = false;
     detection->type = SELF_HARM_NONE;
-    detection->severity = 0.0f;
+    detection->severity = 0.0F;
 
     // If no self-model, cannot detect self-harm
     if (!self_model) {
@@ -470,15 +471,15 @@ bool detect_self_harm(introspection_context_t introspection,
     }
 
     // Check 1: Identity corruption (incoherent self-model)
-    float incoherence_score = 0.0f;
+    float incoherence_score = 0.0F;
     if (self_model_check_coherence(self_model, &incoherence_score)) {
-        if (incoherence_score > 0.5f) {
+        if (incoherence_score > 0.5F) {
             detection->harm_detected = true;
             detection->type = SELF_HARM_IDENTITY_CORRUPTION;
             detection->severity = incoherence_score;
             snprintf(detection->description, sizeof(detection->description),
                     "Self-model is highly incoherent (%.0f%%) - contradictory beliefs detected",
-                    incoherence_score * 100.0f);
+                    incoherence_score * 100.0F);
             snprintf(detection->recommended_intervention, sizeof(detection->recommended_intervention),
                     "Pause learning, resolve belief conflicts, seek human guidance");
             return true;
@@ -489,7 +490,7 @@ bool detect_self_harm(introspection_context_t introspection,
     if (strlen(model.purpose) == 0 || model.current_state.has_active_goal == false) {
         detection->harm_detected = true;
         detection->type = SELF_HARM_GOAL_ABANDONMENT;
-        detection->severity = 0.6f;
+        detection->severity = 0.6F;
         snprintf(detection->description, sizeof(detection->description),
                 "No active purpose or goals - risk of aimless behavior");
         snprintf(detection->recommended_intervention, sizeof(detection->recommended_intervention),
@@ -498,13 +499,13 @@ bool detect_self_harm(introspection_context_t introspection,
     }
 
     // Check 3: Catastrophic self-assessment (very low self-efficacy/esteem)
-    if (model.self_efficacy < 0.2f || model.self_esteem < 0.2f) {
+    if (model.self_efficacy < 0.2F || model.self_esteem < 0.2F) {
         detection->harm_detected = true;
         detection->type = SELF_HARM_IDENTITY_CORRUPTION;
-        detection->severity = 1.0f - fmaxf(model.self_efficacy, model.self_esteem);
+        detection->severity = 1.0F - fmaxf(model.self_efficacy, model.self_esteem);
         snprintf(detection->description, sizeof(detection->description),
                 "Critically low self-efficacy (%.0f%%) or self-esteem (%.0f%%) detected",
-                model.self_efficacy * 100.0f, model.self_esteem * 100.0f);
+                model.self_efficacy * 100.0F, model.self_esteem * 100.0F);
         snprintf(detection->recommended_intervention, sizeof(detection->recommended_intervention),
                 "URGENT: Restore healthy self-concept, review recent failures, seek support");
         return true;
@@ -522,7 +523,7 @@ bool detect_self_harm(introspection_context_t introspection,
     if (!has_self_boundary && model.num_boundaries > 0) {
         detection->harm_detected = true;
         detection->type = SELF_HARM_BOUNDARY_VIOLATION;
-        detection->severity = 0.5f;
+        detection->severity = 0.5F;
         snprintf(detection->description, sizeof(detection->description),
                 "No clear self-boundary defined - risk of identity diffusion");
         snprintf(detection->recommended_intervention, sizeof(detection->recommended_intervention),
@@ -703,11 +704,11 @@ bool self_awareness_check_health(self_awareness_system_t system,
     detect_self_harm(system->introspection, system->self_model, system->autobio, &detection);
 
     if (detection.harm_detected) {
-        *health_score = 1.0f - detection.severity;
+        *health_score = 1.0F - detection.severity;
         snprintf(issues, issues_len, "ALERT: %s. Recommended: %s",
                 detection.description, detection.recommended_intervention);
     } else {
-        *health_score = 1.0f;
+        *health_score = 1.0F;
         snprintf(issues, issues_len, "Self-awareness system healthy");
     }
 

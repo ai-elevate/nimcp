@@ -15,6 +15,7 @@
 #include "async/nimcp_bio_router.h"
 
 #include "utils/validation/nimcp_common.h"
+#include "utils/thread/nimcp_thread.h"
 
 /* Error code aliases for this file */
 #ifndef NIMCP_OK
@@ -36,8 +37,8 @@
 #include <stdio.h>
 #include <time.h>
 
-/* External context accessor */
-extern struct nimcp_supply_chain {
+/* Supply chain structure definition */
+struct nimcp_supply_chain {
     uint32_t magic;
     nimcp_supply_chain_config_t config;
     nimcp_supply_chain_stats_t stats;
@@ -47,9 +48,9 @@ extern struct nimcp_supply_chain {
     nimcp_trusted_source_t* sources;
     size_t source_count;
     size_t source_capacity;
-    pthread_t monitor_thread;
+    nimcp_thread_t monitor_thread;
     bool monitoring_active;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bio_module_context_t bio_ctx;
     bool bio_registered;
 };

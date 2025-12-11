@@ -85,18 +85,18 @@
  */
 neuromod_pink_config_t neuromod_pink_default_config(void) {
     neuromod_pink_config_t config = {
-        .dopamine_baseline = 0.2f,           // Low baseline, reward-driven
-        .serotonin_baseline = 0.3f,          // Moderate baseline for stability
-        .acetylcholine_baseline = 0.4f,      // Higher baseline for attention
-        .norepinephrine_baseline = 0.1f,     // Low baseline, arousal-driven
-        .dopamine_noise_amplitude = 0.1f,    // 10% exploration noise
-        .serotonin_noise_amplitude = 0.05f,  // 5% stability noise
-        .acetylcholine_noise_amplitude = 0.15f,  // 15% attention variability
-        .norepinephrine_noise_amplitude = 0.08f, // 8% stress variability
-        .alpha = 1.0f,                       // Pink spectrum (1/f)
-        .min_frequency = 0.1f,               // 0.1 Hz (slow fluctuations)
-        .max_frequency = 10.0f,              // 10 Hz (fast fluctuations)
-        .sample_rate = 1000.0f               // 1 kHz (1ms timesteps)
+        .dopamine_baseline = 0.2F,           // Low baseline, reward-driven
+        .serotonin_baseline = 0.3F,          // Moderate baseline for stability
+        .acetylcholine_baseline = 0.4F,      // Higher baseline for attention
+        .norepinephrine_baseline = 0.1F,     // Low baseline, arousal-driven
+        .dopamine_noise_amplitude = 0.1F,    // 10% exploration noise
+        .serotonin_noise_amplitude = 0.05F,  // 5% stability noise
+        .acetylcholine_noise_amplitude = 0.15F,  // 15% attention variability
+        .norepinephrine_noise_amplitude = 0.08F, // 8% stress variability
+        .alpha = 1.0F,                       // Pink spectrum (1/f)
+        .min_frequency = 0.1F,               // 0.1 Hz (slow fluctuations)
+        .max_frequency = 10.0F,              // 10 Hz (fast fluctuations)
+        .sample_rate = 1000.0F               // 1 kHz (1ms timesteps)
     };
     return config;
 }
@@ -181,7 +181,7 @@ neuromod_pink_noise_t* neuromod_pink_create(const neuromod_pink_config_t* config
     pink_noise_config_t noise_config = {
         .method = PINK_NOISE_VOSS,          // Voss-McCartney algorithm
         .alpha = config->alpha,              // Spectral exponent (1.0 = pink)
-        .amplitude = 1.0f,                   // Unit amplitude (scaled later)
+        .amplitude = 1.0F,                   // Unit amplitude (scaled later)
         .min_frequency = config->min_frequency,  // 0.1 Hz (slow fluctuations)
         .max_frequency = config->max_frequency,  // 10 Hz (fast fluctuations)
         .sample_rate = config->sample_rate,      // 1000 Hz (1ms timesteps)
@@ -328,7 +328,7 @@ void neuromod_pink_update(
     // TUNING: gain=0.5 chosen for moderate sensitivity to reward
     mod->dopamine_current =
         mod->dopamine_baseline +
-        reward_signal * 0.5f +
+        reward_signal * 0.5F +
         dopamine_noise * mod->dopamine_noise_amplitude;
 
     // STEP 3: Update serotonin
@@ -338,7 +338,7 @@ void neuromod_pink_update(
     // TUNING: gain=0.3 for lower sensitivity (serotonin more stable)
     mod->serotonin_current =
         mod->serotonin_baseline +
-        punishment_signal * 0.3f +
+        punishment_signal * 0.3F +
         serotonin_noise * mod->serotonin_noise_amplitude;
 
     // STEP 4: Update acetylcholine
@@ -348,7 +348,7 @@ void neuromod_pink_update(
     // TUNING: gain=0.4 for moderate attention modulation
     mod->acetylcholine_current =
         mod->acetylcholine_baseline +
-        salience_signal * 0.4f +
+        salience_signal * 0.4F +
         acetylcholine_noise * mod->acetylcholine_noise_amplitude;
 
     // STEP 5: Update norepinephrine
@@ -358,25 +358,25 @@ void neuromod_pink_update(
     // TUNING: gain=0.6 for high sensitivity to arousal
     mod->norepinephrine_current =
         mod->norepinephrine_baseline +
-        arousal_signal * 0.6f +
+        arousal_signal * 0.6F +
         norepinephrine_noise * mod->norepinephrine_noise_amplitude;
 
     // STEP 6: Clamp all levels to valid range [0, 1]
     // WHAT: Ensure neuromodulator levels stay in bounds
     // WHY: Biological levels are bounded (can't have negative dopamine!)
     // HOW: fminf(1.0, fmaxf(0.0, value))
-    mod->dopamine_current = fminf(1.0f, fmaxf(0.0f, mod->dopamine_current));
-    mod->serotonin_current = fminf(1.0f, fmaxf(0.0f, mod->serotonin_current));
-    mod->acetylcholine_current = fminf(1.0f, fmaxf(0.0f, mod->acetylcholine_current));
-    mod->norepinephrine_current = fminf(1.0f, fmaxf(0.0f, mod->norepinephrine_current));
+    mod->dopamine_current = fminf(1.0F, fmaxf(0.0F, mod->dopamine_current));
+    mod->serotonin_current = fminf(1.0F, fmaxf(0.0F, mod->serotonin_current));
+    mod->acetylcholine_current = fminf(1.0F, fmaxf(0.0F, mod->acetylcholine_current));
+    mod->norepinephrine_current = fminf(1.0F, fmaxf(0.0F, mod->norepinephrine_current));
 
     // STEP 7: Update statistics
     // WHAT: Track update count and exponential moving averages
     // WHY: Monitoring long-term trends in neuromodulator levels
     // HOW: EMA with α=0.01 (99% weight on history, 1% on current)
     mod->update_count++;
-    mod->avg_dopamine = (mod->avg_dopamine * 0.99f) + (mod->dopamine_current * 0.01f);
-    mod->avg_serotonin = (mod->avg_serotonin * 0.99f) + (mod->serotonin_current * 0.01f);
+    mod->avg_dopamine = (mod->avg_dopamine * 0.99F) + (mod->dopamine_current * 0.01F);
+    mod->avg_serotonin = (mod->avg_serotonin * 0.99F) + (mod->serotonin_current * 0.01F);
 }
 
 /**
@@ -397,7 +397,7 @@ void neuromod_pink_update(
  * @param reward Reward signal [-1, 1]
  */
 void neuromod_pink_update_reward(neuromod_pink_noise_t* mod, float reward) {
-    neuromod_pink_update(mod, reward, 0.0f, 0.0f, 0.0f);
+    neuromod_pink_update(mod, reward, 0.0F, 0.0F, 0.0F);
 }
 
 //=============================================================================
@@ -415,7 +415,7 @@ void neuromod_pink_update_reward(neuromod_pink_noise_t* mod, float reward) {
  * @return Current dopamine [0, 1], or 0.0 if mod is NULL
  */
 float neuromod_pink_get_dopamine(const neuromod_pink_noise_t* mod) {
-    return mod ? mod->dopamine_current : 0.0f;
+    return mod ? mod->dopamine_current : 0.0F;
 }
 
 /**
@@ -429,7 +429,7 @@ float neuromod_pink_get_dopamine(const neuromod_pink_noise_t* mod) {
  * @return Current serotonin [0, 1], or 0.0 if mod is NULL
  */
 float neuromod_pink_get_serotonin(const neuromod_pink_noise_t* mod) {
-    return mod ? mod->serotonin_current : 0.0f;
+    return mod ? mod->serotonin_current : 0.0F;
 }
 
 /**
@@ -443,7 +443,7 @@ float neuromod_pink_get_serotonin(const neuromod_pink_noise_t* mod) {
  * @return Current acetylcholine [0, 1], or 0.0 if mod is NULL
  */
 float neuromod_pink_get_acetylcholine(const neuromod_pink_noise_t* mod) {
-    return mod ? mod->acetylcholine_current : 0.0f;
+    return mod ? mod->acetylcholine_current : 0.0F;
 }
 
 /**
@@ -457,7 +457,7 @@ float neuromod_pink_get_acetylcholine(const neuromod_pink_noise_t* mod) {
  * @return Current norepinephrine [0, 1], or 0.0 if mod is NULL
  */
 float neuromod_pink_get_norepinephrine(const neuromod_pink_noise_t* mod) {
-    return mod ? mod->norepinephrine_current : 0.0f;
+    return mod ? mod->norepinephrine_current : 0.0F;
 }
 
 /**
@@ -561,13 +561,13 @@ float neuromod_pink_compute_learning_rate(
 float neuromod_pink_compute_attention(const neuromod_pink_noise_t* mod) {
     // Guard: NULL mod (return neutral attention)
     if (!mod) {
-        return 0.5f;
+        return 0.5F;
     }
 
     // WHAT: Scale attention by acetylcholine
     // WHY: ACh enhances sensory processing
     // HOW: Map [0, 1] → [0.5, 1.0] (never fully off)
-    return 0.5f + 0.5f * mod->acetylcholine_current;
+    return 0.5F + 0.5F * mod->acetylcholine_current;
 }
 
 //=============================================================================

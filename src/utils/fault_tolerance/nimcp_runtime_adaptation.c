@@ -25,11 +25,11 @@
 //=============================================================================
 
 static const parameter_info_t PARAMETER_REGISTRY[] = {
-    {RUNTIME_PARAM_LEARNING_RATE, "learning_rate", "Learning rate", 0.0001f, 1.0f, 0.01f, 0.01f, true, ""},
-    {RUNTIME_PARAM_BATCH_SIZE, "batch_size", "Batch size", 1.0f, 1000.0f, 32.0f, 32.0f, false, ""},
-    {RUNTIME_PARAM_DROPOUT_RATE, "dropout_rate", "Dropout probability", 0.0f, 0.9f, 0.2f, 0.2f, false, ""},
-    {RUNTIME_PARAM_GRADIENT_CLIP_VALUE, "gradient_clip", "Gradient clipping", 0.1f, 10.0f, 0.0f, 0.0f, false, ""},
-    {RUNTIME_PARAM_TEMPERATURE, "temperature", "Neuron temperature", 0.1f, 10.0f, 1.0f, 1.0f, false, ""},
+    {RUNTIME_PARAM_LEARNING_RATE, "learning_rate", "Learning rate", 0.0001F, 1.0F, 0.01F, 0.01F, true, ""},
+    {RUNTIME_PARAM_BATCH_SIZE, "batch_size", "Batch size", 1.0F, 1000.0F, 32.0F, 32.0F, false, ""},
+    {RUNTIME_PARAM_DROPOUT_RATE, "dropout_rate", "Dropout probability", 0.0F, 0.9F, 0.2F, 0.2F, false, ""},
+    {RUNTIME_PARAM_GRADIENT_CLIP_VALUE, "gradient_clip", "Gradient clipping", 0.1F, 10.0F, 0.0F, 0.0F, false, ""},
+    {RUNTIME_PARAM_TEMPERATURE, "temperature", "Neuron temperature", 0.1F, 10.0F, 1.0F, 1.0F, false, ""},
     // ... more parameters would be added here
 };
 
@@ -200,7 +200,7 @@ float runtime_adaptation_get_parameter(
     runtime_adaptation_context_t ctx,
     runtime_parameter_t param
 ) {
-    if (!ctx || param >= RUNTIME_PARAM_COUNT) return -1.0f;
+    if (!ctx || param >= RUNTIME_PARAM_COUNT) return -1.0F;
     return ctx->parameters[param];
 }
 
@@ -309,8 +309,8 @@ bool runtime_adaptation_policy_nan_detected(runtime_adaptation_context_t ctx) {
     LOG_INFO("Applying NaN detection policy");
 
     parameter_change_t changes[] = {
-        {RUNTIME_PARAM_LEARNING_RATE, ctx->parameters[RUNTIME_PARAM_LEARNING_RATE] * 0.5f},
-        {RUNTIME_PARAM_GRADIENT_CLIP_VALUE, 1.0f},
+        {RUNTIME_PARAM_LEARNING_RATE, ctx->parameters[RUNTIME_PARAM_LEARNING_RATE] * 0.5F},
+        {RUNTIME_PARAM_GRADIENT_CLIP_VALUE, 1.0F},
     };
 
     bool success = runtime_adaptation_apply_batch(ctx, changes, 2,
@@ -328,7 +328,7 @@ bool runtime_adaptation_policy_memory_pressure(runtime_adaptation_context_t ctx)
     LOG_INFO("Applying memory pressure policy");
 
     parameter_change_t changes[] = {
-        {RUNTIME_PARAM_BATCH_SIZE, ctx->parameters[RUNTIME_PARAM_BATCH_SIZE] * 0.5f},
+        {RUNTIME_PARAM_BATCH_SIZE, ctx->parameters[RUNTIME_PARAM_BATCH_SIZE] * 0.5F},
     };
 
     bool success = runtime_adaptation_apply_batch(ctx, changes, 1,
@@ -346,8 +346,8 @@ bool runtime_adaptation_policy_gradient_explosion(runtime_adaptation_context_t c
     LOG_INFO("Applying gradient explosion policy");
 
     parameter_change_t changes[] = {
-        {RUNTIME_PARAM_LEARNING_RATE, ctx->parameters[RUNTIME_PARAM_LEARNING_RATE] * 0.25f},
-        {RUNTIME_PARAM_GRADIENT_CLIP_VALUE, 1.0f},
+        {RUNTIME_PARAM_LEARNING_RATE, ctx->parameters[RUNTIME_PARAM_LEARNING_RATE] * 0.25F},
+        {RUNTIME_PARAM_GRADIENT_CLIP_VALUE, 1.0F},
     };
 
     return runtime_adaptation_apply_batch(ctx, changes, 2,
@@ -360,7 +360,7 @@ bool runtime_adaptation_policy_slow_convergence(runtime_adaptation_context_t ctx
     LOG_INFO("Applying slow convergence policy");
 
     parameter_change_t changes[] = {
-        {RUNTIME_PARAM_LEARNING_RATE, ctx->parameters[RUNTIME_PARAM_LEARNING_RATE] * 1.2f},
+        {RUNTIME_PARAM_LEARNING_RATE, ctx->parameters[RUNTIME_PARAM_LEARNING_RATE] * 1.2F},
     };
 
     return runtime_adaptation_apply_batch(ctx, changes, 1,
@@ -373,8 +373,8 @@ bool runtime_adaptation_policy_overfitting(runtime_adaptation_context_t ctx) {
     LOG_INFO("Applying overfitting policy");
 
     parameter_change_t changes[] = {
-        {RUNTIME_PARAM_DROPOUT_RATE, 0.3f},
-        {RUNTIME_PARAM_WEIGHT_DECAY, 0.001f},
+        {RUNTIME_PARAM_DROPOUT_RATE, 0.3F},
+        {RUNTIME_PARAM_WEIGHT_DECAY, 0.001F},
     };
 
     return runtime_adaptation_apply_batch(ctx, changes, 2,

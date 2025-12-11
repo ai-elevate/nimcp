@@ -297,7 +297,7 @@ static float compute_transfer_score(
     float emotional_salience,
     uint64_t time_in_wm_ms)
 {
-    float score = 0.0f;
+    float score = 0.0F;
 
     // Rehearsal contribution (40% weight)
     if (rehearsal_count >= system->criteria.rehearsal_threshold) {
@@ -532,10 +532,10 @@ void wm_transfer_get_statistics(
 wm_transfer_criteria_t wm_transfer_get_default_criteria(void) {
     wm_transfer_criteria_t criteria = {
         .rehearsal_threshold = 3,       // 3+ rehearsals triggers transfer
-        .attention_threshold = 0.5f,    // 50% attention required
-        .emotional_threshold = 0.3f,    // 30% emotional salience
+        .attention_threshold = 0.5F,    // 50% attention required
+        .emotional_threshold = 0.3F,    // 30% emotional salience
         .time_threshold_ms = 5000,      // 5 seconds in working memory
-        .decay_rate = 0.1f              // 10% decay per second
+        .decay_rate = 0.1F              // 10% decay per second
     };
     return criteria;
 }

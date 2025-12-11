@@ -20,6 +20,7 @@
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -1250,7 +1251,7 @@ static void nlp_auto_mode_check(nlp_node_t node) {
     const char* reason = NULL;
 
     // Check for degraded conditions requiring tactical mode
-    if (env.packet_loss_rate > 0.3f ||
+    if (env.packet_loss_rate > 0.3F ||
         env.jamming_events > 0 ||
         !env.master_reachable ||
         env.master_timeout_ms > 30000) {
@@ -1267,7 +1268,7 @@ static void nlp_auto_mode_check(nlp_node_t node) {
     }
 
     // Check for power conservation
-    if (env.low_power_mode || env.battery_percent < 20.0f) {
+    if (env.low_power_mode || env.battery_percent < 20.0F) {
         if (node->current_mode == NLP_MODE_STANDARD) {
             suggested_mode = NLP_MODE_TACTICAL;  // Less overhead
             reason = "low power mode";
@@ -1276,10 +1277,10 @@ static void nlp_auto_mode_check(nlp_node_t node) {
 
     // Check if we can return to standard mode
     if (node->current_mode != NLP_MODE_STANDARD &&
-        env.packet_loss_rate < 0.1f &&
+        env.packet_loss_rate < 0.1F &&
         env.master_reachable &&
         !env.rf_anomaly_detected &&
-        env.battery_percent > 50.0f) {
+        env.battery_percent > 50.0F) {
         suggested_mode = NLP_MODE_STANDARD;
         reason = "conditions improved";
     }

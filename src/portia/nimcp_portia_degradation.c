@@ -31,16 +31,16 @@ static degradation_context_t g_degradation_ctx = {0};
  * Default feature definitions
  */
 static const degradation_feature_t DEFAULT_FEATURES[] = {
-    {FEATURE_LOGGING_VERBOSE, "Verbose Logging", DEGRADATION_LEVEL_MINOR, 0.05f, false, true},
-    {FEATURE_METRICS, "Metrics Collection", DEGRADATION_LEVEL_MINOR, 0.08f, false, true},
-    {FEATURE_LEARNING, "Learning", DEGRADATION_LEVEL_MODERATE, 0.15f, false, true},
-    {FEATURE_PLASTICITY, "Plasticity", DEGRADATION_LEVEL_MODERATE, 0.15f, false, true},
-    {FEATURE_MEMORY_LONG, "Long-term Memory", DEGRADATION_LEVEL_MODERATE, 0.12f, false, true},
-    {FEATURE_EMOTIONS, "Emotions", DEGRADATION_LEVEL_SEVERE, 0.10f, false, true},
-    {FEATURE_PLANNING, "Planning", DEGRADATION_LEVEL_SEVERE, 0.18f, false, true},
-    {FEATURE_SENSORS_FULL, "Full Sensors", DEGRADATION_LEVEL_SEVERE, 0.20f, false, true},
-    {FEATURE_COMMUNICATION, "Communication", DEGRADATION_LEVEL_CRITICAL, 0.15f, false, true},
-    {FEATURE_MEMORY_WORKING, "Working Memory", DEGRADATION_LEVEL_CRITICAL, 0.25f, true, true}
+    {FEATURE_LOGGING_VERBOSE, "Verbose Logging", DEGRADATION_LEVEL_MINOR, 0.05F, false, true},
+    {FEATURE_METRICS, "Metrics Collection", DEGRADATION_LEVEL_MINOR, 0.08F, false, true},
+    {FEATURE_LEARNING, "Learning", DEGRADATION_LEVEL_MODERATE, 0.15F, false, true},
+    {FEATURE_PLASTICITY, "Plasticity", DEGRADATION_LEVEL_MODERATE, 0.15F, false, true},
+    {FEATURE_MEMORY_LONG, "Long-term Memory", DEGRADATION_LEVEL_MODERATE, 0.12F, false, true},
+    {FEATURE_EMOTIONS, "Emotions", DEGRADATION_LEVEL_SEVERE, 0.10F, false, true},
+    {FEATURE_PLANNING, "Planning", DEGRADATION_LEVEL_SEVERE, 0.18F, false, true},
+    {FEATURE_SENSORS_FULL, "Full Sensors", DEGRADATION_LEVEL_SEVERE, 0.20F, false, true},
+    {FEATURE_COMMUNICATION, "Communication", DEGRADATION_LEVEL_CRITICAL, 0.15F, false, true},
+    {FEATURE_MEMORY_WORKING, "Working Memory", DEGRADATION_LEVEL_CRITICAL, 0.25F, true, true}
 };
 
 #define DEFAULT_FEATURE_COUNT (sizeof(DEFAULT_FEATURES) / sizeof(DEFAULT_FEATURES[0]))
@@ -230,7 +230,7 @@ degradation_state_t* portia_degradation_init(
     // Initialize state
     state->current_level = DEGRADATION_LEVEL_NONE;
     state->target_level = DEGRADATION_LEVEL_NONE;
-    state->resource_usage = 0.0f;
+    state->resource_usage = 0.0F;
     state->last_change_time_ms = nimcp_time_monotonic_ms();
 
     // Sort features by degradation level
@@ -243,15 +243,15 @@ degradation_state_t* portia_degradation_init(
                sizeof(degradation_internal_config_t));
     } else {
         // Default configuration
-        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_NONE] = 0.0f;
-        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_MINOR] = 70.0f;
-        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_MODERATE] = 80.0f;
-        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_SEVERE] = 90.0f;
-        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_CRITICAL] = 95.0f;
+        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_NONE] = 0.0F;
+        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_MINOR] = 70.0F;
+        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_MODERATE] = 80.0F;
+        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_SEVERE] = 90.0F;
+        g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_CRITICAL] = 95.0F;
         g_degradation_ctx.config.hysteresis_ms = 5000;  // 5 seconds
         g_degradation_ctx.config.enable_auto_degrade = true;
         g_degradation_ctx.config.enable_auto_restore = true;
-        g_degradation_ctx.config.restore_threshold = 10.0f;  // 10% below threshold
+        g_degradation_ctx.config.restore_threshold = 10.0F;  // 10% below threshold
     }
 
     g_degradation_ctx.initialized = true;
@@ -307,7 +307,7 @@ nimcp_result_t portia_degradation_evaluate(
     }
 
     // Validate resource usage range
-    if (resource_usage < 0.0f || resource_usage > 100.0f) {
+    if (resource_usage < 0.0F || resource_usage > 100.0F) {
         LOG_ERROR("Invalid resource usage: %.2f", resource_usage);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -378,7 +378,7 @@ nimcp_result_t portia_degradation_evaluate(
     // Check for warning thresholds
     for (int level = DEGRADATION_LEVEL_MINOR; level < DEGRADATION_LEVEL_COUNT; level++) {
         float threshold = g_degradation_ctx.config.level_thresholds[level];
-        if (resource_usage >= threshold - 5.0f && resource_usage < threshold) {
+        if (resource_usage >= threshold - 5.0F && resource_usage < threshold) {
             degradation_event_t warning_event = {
                 .type = DEGRADATION_EVENT_RESOURCE_WARNING,
                 .old_level = state->current_level,

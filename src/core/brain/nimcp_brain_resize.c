@@ -197,13 +197,13 @@ static float compute_neuron_utilization(neural_network_t network)
 
     if (!network) {
         LOG_ERROR("compute_neuron_utilization: NULL network");
-        return -1.0f;  // Error signal
+        return -1.0F;  // Error signal
     }
 
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
         LOG_WARN("compute_neuron_utilization: Network has 0 neurons");
-        return -1.0f;  // Error signal
+        return -1.0F;  // Error signal
     }
 
     // Count active neurons with error handling
@@ -222,9 +222,9 @@ static float compute_neuron_utilization(neural_network_t network)
         float avg_activity = neural_network_get_average_activity(network, i);
 
         // Activity is valid if non-negative
-        if (avg_activity >= 0.0f) {
+        if (avg_activity >= 0.0F) {
             valid_reads++;
-            if (avg_activity > 0.01f) {
+            if (avg_activity > 0.01F) {
                 active_count++;
             }
         }
@@ -232,12 +232,12 @@ static float compute_neuron_utilization(neural_network_t network)
 
     // If we couldn't read any neurons, signal error
     if (valid_reads == 0) {
-        return -1.0f;  // Error signal
+        return -1.0F;  // Error signal
     }
 
     // For brand new brains, all neurons will have 0 activity, giving 0% utilization
     float utilization = (float)active_count / (float)valid_reads;
-    LOG_DEBUG("Neuron utilization: %.2f%% (%u/%u active)", utilization * 100.0f, active_count, valid_reads);
+    LOG_DEBUG("Neuron utilization: %.2f%% (%u/%u active)", utilization * 100.0F, active_count, valid_reads);
     return utilization;
 }
 
@@ -256,17 +256,17 @@ static float compute_neuron_utilization(neural_network_t network)
 static float compute_weight_saturation(neural_network_t network)
 {
     if (!network) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t total_weights = 0;
     uint32_t saturated_weights = 0;
-    const float saturation_threshold = 0.9f;  // Consider saturated if |w| > 0.9
+    const float saturation_threshold = 0.9F;  // Consider saturated if |w| > 0.9
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
@@ -295,7 +295,7 @@ static float compute_weight_saturation(neural_network_t network)
     }
 
     if (total_weights == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return (float)saturated_weights / (float)total_weights;
@@ -329,7 +329,7 @@ static bool should_grow(const growth_metrics_t* metrics)
     }
 
     // Trigger 2: High neuron utilization
-    const float utilization_threshold = 0.90f;
+    const float utilization_threshold = 0.90F;
     const uint32_t utilization_patience = 1000;  // Steps to wait before growing
 
     if (metrics->avg_neuron_utilization > utilization_threshold &&
@@ -341,7 +341,7 @@ static bool should_grow(const growth_metrics_t* metrics)
     }
 
     // Trigger 3: Weight saturation
-    const float saturation_threshold = 0.80f;
+    const float saturation_threshold = 0.80F;
 
     if (metrics->weight_saturation > saturation_threshold) {
         LOG_INFO("Growth triggered: Weight saturation (%.2f%% > %.2f%%)",
@@ -387,7 +387,7 @@ static uint32_t compute_next_size(uint32_t current_size, bool use_gpu)
         } else if (current_size <= 1000) {
             return 5000;  // MEDIUM → LARGE
         } else {
-            return (uint32_t)(current_size * 1.5f);
+            return (uint32_t)(current_size * 1.5F);
         }
     }
 
@@ -402,7 +402,7 @@ static uint32_t compute_next_size(uint32_t current_size, bool use_gpu)
 
     // Additional safety check: never recommend same or smaller size
     if (recommended_size <= current_size) {
-        uint32_t min_growth = (uint32_t)(current_size * 1.1f);  // At least 10% growth
+        uint32_t min_growth = (uint32_t)(current_size * 1.1F);  // At least 10% growth
         LOG_WARN("compute_next_size: Recommended size (%u) <= current (%u), forcing min growth to %u",
                        recommended_size, current_size, min_growth);
         recommended_size = min_growth;
@@ -580,13 +580,13 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // CRITICAL FIX: If spike_params are corrupted (k_factor==0), reinitialize with sane defaults
     // WHY: Loaded checkpoints or corrupted configs can have invalid spike params
     // WHAT: Reset to known-good defaults that match build_spike_params
-    if (new_config.spike_params.k_factor <= 0.0f) {
+    if (new_config.spike_params.k_factor <= 0.0F) {
         LOG_WARN("brain_resize: Corrupted spike_params detected (k_factor=%f), resetting to defaults",
                        new_config.spike_params.k_factor);
-        new_config.spike_params.k_factor = 0.5f;
-        new_config.spike_params.min_threshold = 0.0001f;
-        new_config.spike_params.max_threshold = 10.0f;
-        new_config.spike_params.sparsity_target = 0.7f;
+        new_config.spike_params.k_factor = 0.5F;
+        new_config.spike_params.min_threshold = 0.0001F;
+        new_config.spike_params.max_threshold = 10.0F;
+        new_config.spike_params.sparsity_target = 0.7F;
         new_config.spike_params.encoding = SPIKE_ENCODING_INTEGER;
         new_config.spike_params.enable_soft_reset = true;
         new_config.spike_params.enable_adaptation = true;
@@ -787,8 +787,8 @@ bool brain_auto_resize(brain_t brain)
     }
 
     // Check utilization metrics - only resize if brain is saturated
-    float utilization = 0.0f;
-    float saturation = 0.0f;
+    float utilization = 0.0F;
+    float saturation = 0.0F;
 
     if (!brain_get_utilization_metrics(brain, &utilization, &saturation)) {
         LOG_WARN("brain_auto_resize: Failed to get utilization metrics");
@@ -798,18 +798,18 @@ bool brain_auto_resize(brain_t brain)
     // Auto-resize policy: Trigger when EITHER condition is met:
     // - Utilization > 80% (neurons are heavily active)
     // - Saturation > 70% (weights are saturated/maxed out)
-    const float UTILIZATION_THRESHOLD = 0.80f;
-    const float SATURATION_THRESHOLD = 0.70f;
+    const float UTILIZATION_THRESHOLD = 0.80F;
+    const float SATURATION_THRESHOLD = 0.70F;
 
     if (utilization < UTILIZATION_THRESHOLD && saturation < SATURATION_THRESHOLD) {
         // Brain has spare capacity - no need to resize
         LOG_DEBUG("brain_auto_resize: Brain not saturated (util=%.1f%%, sat=%.1f%%), skipping resize",
-                  utilization * 100.0f, saturation * 100.0f);
+                  utilization * 100.0F, saturation * 100.0F);
         return false;
     }
 
     LOG_INFO("brain_auto_resize: Brain saturated (util=%.1f%%, sat=%.1f%%), triggering resize",
-             utilization * 100.0f, saturation * 100.0f);
+             utilization * 100.0F, saturation * 100.0F);
 
     // Publish saturation alert (via norepinephrine - urgent)
     publish_resize_event(BIO_MSG_SALIENCE_QUERY, current_size, 0,

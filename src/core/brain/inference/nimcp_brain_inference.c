@@ -211,7 +211,7 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
     }
 
     // Normalize confidence
-    decision->confidence = fminf(max_value / 10.0f, 1.0f);
+    decision->confidence = fminf(max_value / 10.0F, 1.0F);
 }
 
 /**
@@ -328,7 +328,7 @@ static action_t features_to_action(const float* features, uint32_t num_features,
     snprintf(action.action_name, sizeof(action.action_name), "observed_%u", agent_id);
     action.agent_id = agent_id;
     action.timestamp = nimcp_time_get_ms();
-    action.confidence = 1.0f;
+    action.confidence = 1.0F;
 
     // Copy features (up to 32)
     action.num_features = (num_features < 32) ? num_features : 32;
@@ -504,7 +504,7 @@ bool brain_observe_action(brain_t brain, const float* features, uint32_t num_fea
     if (brain->working_memory && brain->config.enable_working_memory) {
         // Store action features in working memory
         // Note: This enables later replay and sequence learning
-        working_memory_add(brain->working_memory, features, num_features, 0.8f);
+        working_memory_add(brain->working_memory, features, num_features, 0.8F);
     }
 
     // Trigger theory of mind inference if enabled

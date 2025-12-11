@@ -51,28 +51,28 @@
  * This is a simplified implementation for the bio-async module.
  */
 static inline float brain_get_global_activity_impl(brain_t brain) {
-    if (!brain) return 0.0f;
+    if (!brain) return 0.0F;
     struct brain_struct* b = (struct brain_struct*)brain;
 
     // Use network activity from the adaptive network
     if (b->network) {
         // Return a normalized activity value based on recent inference
         uint32_t neuron_count = adaptive_network_get_neuron_count(b->network);
-        if (neuron_count == 0) return 0.0f;
+        if (neuron_count == 0) return 0.0F;
 
         // Sample a few neurons to estimate activity
-        float total_activity = 0.0f;
+        float total_activity = 0.0F;
         uint32_t sample_size = (neuron_count < 100) ? neuron_count : 100;
         for (uint32_t i = 0; i < sample_size; i++) {
             uint32_t idx = (neuron_count > sample_size) ? (i * neuron_count / sample_size) : i;
-            float activation = 0.0f;
+            float activation = 0.0F;
             if (adaptive_network_get_neuron_activation(b->network, idx, &activation)) {
-                total_activity += (activation > 0.5f) ? 1.0f : 0.0f;
+                total_activity += (activation > 0.5F) ? 1.0F : 0.0F;
             }
         }
         return total_activity / (float)sample_size;
     }
-    return 0.0f;
+    return 0.0F;
 }
 
 /**
@@ -88,10 +88,10 @@ static inline bool inject_current_impl(
     if (!network) return false;
 
     // Check if neuron state indicates a spike after adding input
-    float activation = 0.0f;
+    float activation = 0.0F;
     if (adaptive_network_get_neuron_activation(network, neuron_id, &activation)) {
         // Consider a spike if activation + current exceeds threshold
-        return (activation + current) > 1.0f;
+        return (activation + current) > 1.0F;
     }
     return false;
 }
@@ -103,13 +103,13 @@ static inline bool inject_current_impl(
  */
 static inline float get_neuron_voltage_impl(
     adaptive_network_t network, uint32_t neuron_id) {
-    if (!network) return 0.0f;
+    if (!network) return 0.0F;
 
-    float activation = 0.0f;
+    float activation = 0.0F;
     if (adaptive_network_get_neuron_activation(network, neuron_id, &activation)) {
         return activation;
     }
-    return 0.0f;
+    return 0.0F;
 }
 
 //=============================================================================
@@ -365,19 +365,19 @@ nimcp_error_t brain_bio_async_init(brain_t brain) {
     ctx->neuron_count_predictor = nimcp_predictive_create(
         "brain.neuron_count",
         (float)neuron_count,
-        100.0f  // High precision - neuron count is stable
+        100.0F  // High precision - neuron count is stable
     );
 
     ctx->activity_predictor = nimcp_predictive_create(
         "brain.global_activity",
-        0.05f,  // Expect low baseline activity
-        10.0f   // Medium precision - activity varies
+        0.05F,  // Expect low baseline activity
+        10.0F   // Medium precision - activity varies
     );
 
     ctx->energy_predictor = nimcp_predictive_create(
         "brain.energy_level",
-        1.0f,   // Expect full energy initially
-        50.0f   // High precision for energy monitoring
+        1.0F,   // Expect full energy initially
+        50.0F   // High precision for energy monitoring
     );
 
     if (!ctx->neuron_count_predictor || !ctx->activity_predictor ||
@@ -531,15 +531,15 @@ static nimcp_error_t brain_handle_state_query(
 
     if (query->query_flags & BIO_BRAIN_QUERY_NEUROMODULATORS) {
         // Get neuromodulator levels (use defaults for now - TODO: integrate with neuromod system)
-        response.dopamine_level = 0.5f;
-        response.serotonin_level = 0.5f;
-        response.norepinephrine_level = 0.5f;
-        response.acetylcholine_level = 0.5f;
+        response.dopamine_level = 0.5F;
+        response.serotonin_level = 0.5F;
+        response.norepinephrine_level = 0.5F;
+        response.acetylcholine_level = 0.5F;
     }
 
     if (query->query_flags & BIO_BRAIN_QUERY_ENERGY_STATE) {
         // Get energy from glial system (default to full energy for now)
-        response.energy_level = 1.0f;
+        response.energy_level = 1.0F;
     }
 
     if (query->query_flags & BIO_BRAIN_QUERY_ACTIVE_REGIONS) {
@@ -650,7 +650,7 @@ static nimcp_error_t brain_handle_activation_request(
     response.neuron_id = request->neuron_id;
     response.membrane_potential = voltage;
     response.spiked = spiked;
-    response.spike_time_ms = spiked ? request->duration_ms : 0.0f;
+    response.spike_time_ms = spiked ? request->duration_ms : 0.0F;
 
     LOG_DEBUG("Neuron %d response: voltage=%.3f, spiked=%s",
               request->neuron_id, voltage, spiked ? "yes" : "no");
@@ -733,9 +733,9 @@ static nimcp_error_t brain_handle_topology_query(
     // Estimate connectivity metrics
     if (response.neuron_count > 0) {
         float avg_connectivity = (float)response.synapse_count / (float)response.neuron_count;
-        response.global_activity = avg_connectivity / 100.0f;  // Normalize to [0,1]
+        response.global_activity = avg_connectivity / 100.0F;  // Normalize to [0,1]
     } else {
-        response.global_activity = 0.0f;
+        response.global_activity = 0.0F;
     }
 
     LOG_DEBUG("Topology response: neurons=%d, synapses=%d, regions=%d, avg_conn=%.2f",
@@ -823,10 +823,10 @@ static nimcp_error_t brain_handle_region_config_query(
     response.active_region_count = b->brain_regions ? 1 : 0;
 
     // Default neuromodulator levels
-    response.dopamine_level = 0.5f;
-    response.serotonin_level = 0.5f;
-    response.norepinephrine_level = 0.5f;
-    response.acetylcholine_level = 0.5f;
+    response.dopamine_level = 0.5F;
+    response.serotonin_level = 0.5F;
+    response.norepinephrine_level = 0.5F;
+    response.acetylcholine_level = 0.5F;
 
     LOG_DEBUG("Region %d config: neurons=%d, synapses=%d",
               query->region_id, response.neuron_count, response.synapse_count);
@@ -959,7 +959,7 @@ static void brain_publish_state_signals(brain_bio_async_ctx_t* ctx) {
     nimcp_predictive_observe(ctx->activity_predictor, activity);
 
     // Observe energy level (default for now - TODO: integrate with glial system)
-    float energy = 1.0f;
+    float energy = 1.0F;
     nimcp_predictive_observe(ctx->energy_predictor, energy);
 
     // Publish via bio-router

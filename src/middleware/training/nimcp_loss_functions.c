@@ -105,9 +105,9 @@ static void update_stats(nimcp_loss_stats_t* stats, float loss_value, uint64_t c
  * @brief Apply reduction to per-sample losses
  */
 static float apply_reduction(const float* losses, size_t count, nimcp_loss_reduction_t reduction) {
-    if (count == 0) return 0.0f;
+    if (count == 0) return 0.0F;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
         sum += losses[i];
     }
@@ -160,7 +160,7 @@ nimcp_cross_entropy_config_t nimcp_loss_cross_entropy_default_config(size_t num_
         .compute_gradient = true,
         .class_weights = NULL,
         .num_classes = num_classes,
-        .label_smoothing = 0.0f,
+        .label_smoothing = 0.0F,
         .ignore_index = -1
     };
     return cfg;
@@ -179,7 +179,7 @@ nimcp_huber_config_t nimcp_loss_huber_default_config(float delta) {
     nimcp_huber_config_t cfg = {
         .reduction = NIMCP_LOSS_REDUCE_MEAN,
         .compute_gradient = true,
-        .delta = (delta > 0.0f) ? delta : 1.0f
+        .delta = (delta > 0.0F) ? delta : 1.0F
     };
     return cfg;
 }
@@ -188,8 +188,8 @@ nimcp_focal_config_t nimcp_loss_focal_default_config(void) {
     nimcp_focal_config_t cfg = {
         .reduction = NIMCP_LOSS_REDUCE_MEAN,
         .compute_gradient = true,
-        .gamma = 2.0f,
-        .alpha = 0.25f
+        .gamma = 2.0F,
+        .alpha = 0.25F
     };
     return cfg;
 }
@@ -203,7 +203,7 @@ nimcp_loss_config_t nimcp_loss_default_config(nimcp_loss_type_t type) {
     cfg.cow_strategy = UNIFIED_STRATEGY_POOL_DIRECT;
     cfg.epsilon = LOSS_DEFAULT_EPSILON;
     cfg.clip_gradients = false;
-    cfg.gradient_clip_value = 1.0f;
+    cfg.gradient_clip_value = 1.0F;
 
     switch (type) {
         case NIMCP_LOSS_MSE:
@@ -218,7 +218,7 @@ nimcp_loss_config_t nimcp_loss_default_config(nimcp_loss_type_t type) {
             cfg.params.kl = nimcp_loss_kl_default_config();
             break;
         case NIMCP_LOSS_HUBER:
-            cfg.params.huber = nimcp_loss_huber_default_config(1.0f);
+            cfg.params.huber = nimcp_loss_huber_default_config(1.0F);
             break;
         case NIMCP_LOSS_FOCAL:
             cfg.params.focal = nimcp_loss_focal_default_config();
@@ -226,12 +226,12 @@ nimcp_loss_config_t nimcp_loss_default_config(nimcp_loss_type_t type) {
         case NIMCP_LOSS_CONTRASTIVE:
             cfg.params.contrastive.reduction = NIMCP_LOSS_REDUCE_MEAN;
             cfg.params.contrastive.compute_gradient = true;
-            cfg.params.contrastive.margin = 1.0f;
+            cfg.params.contrastive.margin = 1.0F;
             break;
         case NIMCP_LOSS_TRIPLET:
             cfg.params.triplet.reduction = NIMCP_LOSS_REDUCE_MEAN;
             cfg.params.triplet.compute_gradient = true;
-            cfg.params.triplet.margin = 1.0f;
+            cfg.params.triplet.margin = 1.0F;
             cfg.params.triplet.swap = false;
             break;
         default:
@@ -381,10 +381,10 @@ float nimcp_loss_mse(
     nimcp_loss_reduction_t reduction)
 {
     if (!predictions || !targets || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
         float diff = predictions[i] - targets[i];
         sum += diff * diff;
@@ -409,7 +409,7 @@ void nimcp_loss_mse_grad(
 {
     if (!predictions || !targets || !gradients || count == 0) return;
 
-    float scale = 2.0f / (float)count;
+    float scale = 2.0F / (float)count;
     for (size_t i = 0; i < count; i++) {
         gradients[i] = scale * (predictions[i] - targets[i]);
     }
@@ -422,10 +422,10 @@ float nimcp_loss_mae(
     nimcp_loss_reduction_t reduction)
 {
     if (!predictions || !targets || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
         sum += fabsf(predictions[i] - targets[i]);
     }
@@ -449,15 +449,15 @@ void nimcp_loss_mae_grad(
 {
     if (!predictions || !targets || !gradients || count == 0) return;
 
-    float scale = 1.0f / (float)count;
+    float scale = 1.0F / (float)count;
     for (size_t i = 0; i < count; i++) {
         float diff = predictions[i] - targets[i];
-        if (diff > 0.0f) {
+        if (diff > 0.0F) {
             gradients[i] = scale;
-        } else if (diff < 0.0f) {
+        } else if (diff < 0.0F) {
             gradients[i] = -scale;
         } else {
-            gradients[i] = 0.0f;
+            gradients[i] = 0.0F;
         }
     }
 }
@@ -470,19 +470,19 @@ float nimcp_loss_binary_cross_entropy(
     float epsilon)
 {
     if (!predictions || !targets || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
         /* Clamp predictions to prevent log(0) */
-        float p = fmaxf(fminf(predictions[i], 1.0f - epsilon), epsilon);
+        float p = fmaxf(fminf(predictions[i], 1.0F - epsilon), epsilon);
         float t = targets[i];
 
         /* BCE = -[t*log(p) + (1-t)*log(1-p)] */
-        sum += -(t * logf(p) + (1.0f - t) * logf(1.0f - p));
+        sum += -(t * logf(p) + (1.0F - t) * logf(1.0F - p));
     }
 
     switch (reduction) {
@@ -505,15 +505,15 @@ void nimcp_loss_binary_cross_entropy_grad(
 {
     if (!predictions || !targets || !gradients || count == 0) return;
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
-    float scale = 1.0f / (float)count;
+    float scale = 1.0F / (float)count;
     for (size_t i = 0; i < count; i++) {
-        float p = fmaxf(fminf(predictions[i], 1.0f - epsilon), epsilon);
+        float p = fmaxf(fminf(predictions[i], 1.0F - epsilon), epsilon);
         float t = targets[i];
 
         /* d(BCE)/dp = -t/p + (1-t)/(1-p) = (p-t) / (p*(1-p)) */
-        gradients[i] = scale * (p - t) / (p * (1.0f - p));
+        gradients[i] = scale * (p - t) / (p * (1.0F - p));
     }
 }
 
@@ -526,17 +526,17 @@ float nimcp_loss_cross_entropy(
     float epsilon)
 {
     if (!predictions || !targets || batch_size == 0 || num_classes == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t b = 0; b < batch_size; b++) {
         const float* pred_row = predictions + b * num_classes;
         const float* target_row = targets + b * num_classes;
 
-        float sample_loss = 0.0f;
+        float sample_loss = 0.0F;
         for (size_t c = 0; c < num_classes; c++) {
             float p = fmaxf(pred_row[c], epsilon);
             sample_loss -= target_row[c] * logf(p);
@@ -565,7 +565,7 @@ void nimcp_loss_cross_entropy_grad(
     if (!predictions || !targets || !gradients || batch_size == 0 || num_classes == 0) return;
 
     /* For softmax + cross entropy, gradient simplifies to: p - t */
-    float scale = 1.0f / (float)batch_size;
+    float scale = 1.0F / (float)batch_size;
     size_t total = batch_size * num_classes;
 
     for (size_t i = 0; i < total; i++) {
@@ -581,12 +581,12 @@ float nimcp_loss_kl_divergence(
     float epsilon)
 {
     if (!p || !q || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
         float p_i = fmaxf(p[i], epsilon);
         float q_i = fmaxf(q[i], epsilon);
@@ -615,14 +615,14 @@ void nimcp_loss_kl_divergence_grad(
 {
     if (!p || !q || !gradients || count == 0) return;
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
     /* d(KL)/dp = log(p/q) + 1 */
-    float scale = 1.0f / (float)count;
+    float scale = 1.0F / (float)count;
     for (size_t i = 0; i < count; i++) {
         float p_i = fmaxf(p[i], epsilon);
         float q_i = fmaxf(q[i], epsilon);
-        gradients[i] = scale * (logf(p_i / q_i) + 1.0f);
+        gradients[i] = scale * (logf(p_i / q_i) + 1.0F);
     }
 }
 
@@ -634,21 +634,21 @@ float nimcp_loss_huber(
     nimcp_loss_reduction_t reduction)
 {
     if (!predictions || !targets || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (delta <= 0.0f) delta = 1.0f;
+    if (delta <= 0.0F) delta = 1.0F;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
         float abs_diff = fabsf(predictions[i] - targets[i]);
 
         if (abs_diff <= delta) {
             /* Quadratic region (like MSE) */
-            sum += 0.5f * abs_diff * abs_diff;
+            sum += 0.5F * abs_diff * abs_diff;
         } else {
             /* Linear region (like MAE) */
-            sum += delta * (abs_diff - 0.5f * delta);
+            sum += delta * (abs_diff - 0.5F * delta);
         }
     }
 
@@ -672,9 +672,9 @@ void nimcp_loss_huber_grad(
 {
     if (!predictions || !targets || !gradients || count == 0) return;
 
-    if (delta <= 0.0f) delta = 1.0f;
+    if (delta <= 0.0F) delta = 1.0F;
 
-    float scale = 1.0f / (float)count;
+    float scale = 1.0F / (float)count;
     for (size_t i = 0; i < count; i++) {
         float diff = predictions[i] - targets[i];
         float abs_diff = fabsf(diff);
@@ -682,7 +682,7 @@ void nimcp_loss_huber_grad(
         if (abs_diff <= delta) {
             gradients[i] = scale * diff;
         } else {
-            gradients[i] = scale * delta * (diff > 0.0f ? 1.0f : -1.0f);
+            gradients[i] = scale * delta * (diff > 0.0F ? 1.0F : -1.0F);
         }
     }
 }
@@ -694,14 +694,14 @@ float nimcp_loss_hinge(
     nimcp_loss_reduction_t reduction)
 {
     if (!predictions || !targets || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
         /* Hinge: max(0, 1 - y*f(x)) where y in {-1, +1} */
-        float margin = 1.0f - targets[i] * predictions[i];
-        sum += fmaxf(0.0f, margin);
+        float margin = 1.0F - targets[i] * predictions[i];
+        sum += fmaxf(0.0F, margin);
     }
 
     switch (reduction) {
@@ -723,13 +723,13 @@ void nimcp_loss_hinge_grad(
 {
     if (!predictions || !targets || !gradients || count == 0) return;
 
-    float scale = 1.0f / (float)count;
+    float scale = 1.0F / (float)count;
     for (size_t i = 0; i < count; i++) {
-        float margin = 1.0f - targets[i] * predictions[i];
-        if (margin > 0.0f) {
+        float margin = 1.0F - targets[i] * predictions[i];
+        if (margin > 0.0F) {
             gradients[i] = -scale * targets[i];
         } else {
-            gradients[i] = 0.0f;
+            gradients[i] = 0.0F;
         }
     }
 }
@@ -744,21 +744,21 @@ float nimcp_loss_focal(
     float epsilon)
 {
     if (!predictions || !targets || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < count; i++) {
-        float p = fmaxf(fminf(predictions[i], 1.0f - epsilon), epsilon);
+        float p = fmaxf(fminf(predictions[i], 1.0F - epsilon), epsilon);
         float t = targets[i];
 
         /* Focal loss: -alpha * (1-p)^gamma * log(p) for positive class */
-        float pt = t * p + (1.0f - t) * (1.0f - p);
-        float at = t * alpha + (1.0f - t) * (1.0f - alpha);
+        float pt = t * p + (1.0F - t) * (1.0F - p);
+        float at = t * alpha + (1.0F - t) * (1.0F - alpha);
 
-        sum += -at * powf(1.0f - pt, gamma) * logf(pt);
+        sum += -at * powf(1.0F - pt, gamma) * logf(pt);
     }
 
     switch (reduction) {
@@ -783,21 +783,21 @@ void nimcp_loss_focal_grad(
 {
     if (!predictions || !targets || !gradients || count == 0) return;
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
-    float scale = 1.0f / (float)count;
+    float scale = 1.0F / (float)count;
     for (size_t i = 0; i < count; i++) {
-        float p = fmaxf(fminf(predictions[i], 1.0f - epsilon), epsilon);
+        float p = fmaxf(fminf(predictions[i], 1.0F - epsilon), epsilon);
         float t = targets[i];
 
-        float pt = t * p + (1.0f - t) * (1.0f - p);
-        float at = t * alpha + (1.0f - t) * (1.0f - alpha);
+        float pt = t * p + (1.0F - t) * (1.0F - p);
+        float at = t * alpha + (1.0F - t) * (1.0F - alpha);
 
         /* Focal loss gradient is complex - approximation */
-        float focal_weight = powf(1.0f - pt, gamma);
-        float grad_factor = gamma * focal_weight * logf(pt) / (1.0f - pt) + focal_weight / pt;
+        float focal_weight = powf(1.0F - pt, gamma);
+        float grad_factor = gamma * focal_weight * logf(pt) / (1.0F - pt) + focal_weight / pt;
 
-        gradients[i] = scale * at * grad_factor * (2.0f * t - 1.0f);
+        gradients[i] = scale * at * grad_factor * (2.0F * t - 1.0F);
     }
 }
 
@@ -805,7 +805,7 @@ void nimcp_loss_focal_grad(
  * @brief Compute Euclidean distance between two vectors
  */
 static float euclidean_distance(const float* a, const float* b, size_t dim) {
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < dim; i++) {
         float diff = a[i] - b[i];
         sum += diff * diff;
@@ -823,10 +823,10 @@ float nimcp_loss_contrastive(
     nimcp_loss_reduction_t reduction)
 {
     if (!embeddings1 || !embeddings2 || !labels || batch_size == 0 || embed_dim == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t b = 0; b < batch_size; b++) {
         const float* e1 = embeddings1 + b * embed_dim;
         const float* e2 = embeddings2 + b * embed_dim;
@@ -836,10 +836,10 @@ float nimcp_loss_contrastive(
 
         /* Contrastive: y*d^2 + (1-y)*max(0, margin-d)^2 */
         float similar_term = y * dist * dist;
-        float margin_term = fmaxf(0.0f, margin - dist);
-        float dissimilar_term = (1.0f - y) * margin_term * margin_term;
+        float margin_term = fmaxf(0.0F, margin - dist);
+        float dissimilar_term = (1.0F - y) * margin_term * margin_term;
 
-        sum += 0.5f * (similar_term + dissimilar_term);
+        sum += 0.5F * (similar_term + dissimilar_term);
     }
 
     switch (reduction) {
@@ -863,10 +863,10 @@ float nimcp_loss_triplet(
     nimcp_loss_reduction_t reduction)
 {
     if (!anchors || !positives || !negatives || batch_size == 0 || embed_dim == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t b = 0; b < batch_size; b++) {
         const float* a = anchors + b * embed_dim;
         const float* p = positives + b * embed_dim;
@@ -876,7 +876,7 @@ float nimcp_loss_triplet(
         float d_an = euclidean_distance(a, n, embed_dim);
 
         /* Triplet: max(0, d(a,p) - d(a,n) + margin) */
-        sum += fmaxf(0.0f, d_ap - d_an + margin);
+        sum += fmaxf(0.0F, d_ap - d_an + margin);
     }
 
     switch (reduction) {
@@ -917,7 +917,7 @@ nimcp_result_t nimcp_loss_forward(
     memset(result, 0, sizeof(nimcp_loss_result_t));
     result->sample_count = batch_size;
 
-    float loss_value = 0.0f;
+    float loss_value = 0.0F;
 
     switch (ctx->config.type) {
         case NIMCP_LOSS_MSE:
@@ -1168,24 +1168,24 @@ nimcp_result_t nimcp_loss_validate_config(const nimcp_loss_config_t* config) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->epsilon < 0.0f) {
+    if (config->epsilon < 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->clip_gradients && config->gradient_clip_value <= 0.0f) {
+    if (config->clip_gradients && config->gradient_clip_value <= 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Type-specific validation */
     switch (config->type) {
         case NIMCP_LOSS_HUBER:
-            if (config->params.huber.delta <= 0.0f) {
+            if (config->params.huber.delta <= 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NIMCP_LOSS_FOCAL:
-            if (config->params.focal.gamma < 0.0f) {
+            if (config->params.focal.gamma < 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
@@ -1222,7 +1222,7 @@ void nimcp_loss_softmax(
         }
 
         /* Compute exp(x - max) and sum */
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (size_t c = 0; c < num_classes; c++) {
             out_row[c] = expf(in_row[c] - max_val);
             sum += out_row[c];
@@ -1243,7 +1243,7 @@ void nimcp_loss_sigmoid(
     if (!input || !output || count == 0) return;
 
     for (size_t i = 0; i < count; i++) {
-        output[i] = 1.0f / (1.0f + expf(-input[i]));
+        output[i] = 1.0F / (1.0F + expf(-input[i]));
     }
 }
 
@@ -1252,7 +1252,7 @@ size_t nimcp_loss_clip_gradients(
     size_t count,
     float max_value)
 {
-    if (!gradients || count == 0 || max_value <= 0.0f) return 0;
+    if (!gradients || count == 0 || max_value <= 0.0F) return 0;
 
     size_t clipped = 0;
     for (size_t i = 0; i < count; i++) {
@@ -1280,7 +1280,7 @@ float nimcp_loss_clip_gradients_norm(
     size_t count,
     float max_norm)
 {
-    if (!gradients || count == 0 || max_norm <= 0.0f) return 0.0f;
+    if (!gradients || count == 0 || max_norm <= 0.0F) return 0.0F;
 
     /* Try tensor-accelerated gradient clipping */
     uint32_t dims[] = {(uint32_t)count};
@@ -1295,7 +1295,7 @@ float nimcp_loss_clip_gradients_norm(
     }
 
     /* Fallback to scalar computation */
-    float norm_sq = 0.0f;
+    float norm_sq = 0.0F;
     for (size_t i = 0; i < count; i++) {
         norm_sq += gradients[i] * gradients[i];
     }
@@ -1351,24 +1351,24 @@ float nimcp_loss_mse_tensor(
     nimcp_loss_reduction_t reduction
 ) {
     if (!predictions || !targets) {
-        return 0.0f;
+        return 0.0F;
     }
 
     size_t n = nimcp_tensor_numel(predictions);
     if (n != nimcp_tensor_numel(targets) || n == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Compute (predictions - targets)^2 */
     nimcp_tensor_t* diff = nimcp_tensor_sub(predictions, targets);
     if (!diff) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_tensor_t* sq = nimcp_tensor_mul(diff, diff);
     nimcp_tensor_destroy(diff);
     if (!sq) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Reduce */
@@ -1451,40 +1451,40 @@ float nimcp_loss_cross_entropy_tensor(
     nimcp_loss_reduction_t reduction
 ) {
     if (!predictions || !targets) {
-        return 0.0f;
+        return 0.0F;
     }
 
     size_t n = nimcp_tensor_numel(predictions);
     if (n != nimcp_tensor_numel(targets) || n == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+    if (epsilon <= 0.0F) epsilon = LOSS_DEFAULT_EPSILON;
 
     /* Clamp predictions for numerical stability */
     nimcp_tensor_t* pred_clamped = nimcp_tensor_clone(predictions);
     if (!pred_clamped) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float* data = (float*)nimcp_tensor_data(pred_clamped);
     for (size_t i = 0; i < n; i++) {
         if (data[i] < epsilon) data[i] = epsilon;
-        if (data[i] > 1.0f - epsilon) data[i] = 1.0f - epsilon;
+        if (data[i] > 1.0F - epsilon) data[i] = 1.0F - epsilon;
     }
 
     /* Compute log(pred) */
     nimcp_tensor_t* log_pred = nimcp_tensor_log(pred_clamped);
     nimcp_tensor_destroy(pred_clamped);
     if (!log_pred) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Compute -target * log(pred) */
     nimcp_tensor_t* loss = nimcp_tensor_mul(targets, log_pred);
     nimcp_tensor_destroy(log_pred);
     if (!loss) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_tensor_mul_scalar_(loss, -1.0);
@@ -1494,7 +1494,7 @@ float nimcp_loss_cross_entropy_tensor(
     nimcp_tensor_t* reduced = nimcp_tensor_sum(loss);
     nimcp_tensor_destroy(loss);
     if (!reduced) {
-        return 0.0f;
+        return 0.0F;
     }
 
     result = (float)nimcp_tensor_get_flat(reduced, 0);
@@ -1525,8 +1525,8 @@ float nimcp_loss_clip_gradients_norm_tensor(
     nimcp_tensor_t* gradients,
     float max_norm
 ) {
-    if (!gradients || max_norm <= 0.0f) {
-        return 0.0f;
+    if (!gradients || max_norm <= 0.0F) {
+        return 0.0F;
     }
 
     float norm = (float)nimcp_tensor_norm_p(gradients, 2.0);

@@ -37,7 +37,7 @@ void quantum_normalize(quantum_amplitude_t* amplitudes, uint32_t size) {
     // WHAT: Calculate Σ|αᵢ|²
     // WHY: Need total probability for normalization
     // HOW: Sum real² + imag² for all amplitudes
-    float norm_squared = 0.0f;
+    float norm_squared = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         float re = crealf(amplitudes[i]);
         float im = cimagf(amplitudes[i]);
@@ -45,9 +45,9 @@ void quantum_normalize(quantum_amplitude_t* amplitudes, uint32_t size) {
     }
 
     // Guard: Avoid division by zero
-    if (norm_squared < 1e-12f) {
+    if (norm_squared < 1e-12F) {
         // State is essentially zero → uniform distribution
-        quantum_amplitude_t uniform = 1.0f / sqrtf((float)size);
+        quantum_amplitude_t uniform = 1.0F / sqrtf((float)size);
         for (uint32_t i = 0; i < size; i++) {
             amplitudes[i] = uniform;
         }
@@ -59,7 +59,7 @@ void quantum_normalize(quantum_amplitude_t* amplitudes, uint32_t size) {
     // WHY: Ensure Σ|αᵢ|² = 1 (probability conservation)
     // HOW: Multiply each amplitude by normalization factor
     float norm = sqrtf(norm_squared);
-    float inv_norm = 1.0f / norm;
+    float inv_norm = 1.0F / norm;
 
     for (uint32_t i = 0; i < size; i++) {
         amplitudes[i] *= inv_norm;
@@ -74,9 +74,9 @@ quantum_walk_config_t quantum_walk_default_config(void) {
     quantum_walk_config_t config = {
         .coin_type = COIN_HADAMARD,        // Balanced superposition
         .num_steps = 100,                  // 100 evolution steps
-        .hybrid_mixing = 0.0f,             // Pure quantum (no classical mixing)
+        .hybrid_mixing = 0.0F,             // Pure quantum (no classical mixing)
         .normalize_each_step = true,       // Maintain probability conservation
-        .decoherence_rate = 0.01f,         // Minimal decoherence (1% per step)
+        .decoherence_rate = 0.01F,         // Minimal decoherence (1% per step)
         .measurement_interval = 0,         // Only measure at end
         .enable_boundary_conditions = true // Reflect at boundaries
     };
@@ -87,15 +87,15 @@ quantum_walk_config_t quantum_walk_fast_config(void) {
     quantum_walk_config_t config = quantum_walk_default_config();
     config.coin_type = COIN_GROVER;    // Faster spreading
     config.num_steps = 50;             // Fewer steps
-    config.decoherence_rate = 0.0f;    // No decoherence (pure quantum)
+    config.decoherence_rate = 0.0F;    // No decoherence (pure quantum)
     config.normalize_each_step = false; // Skip normalization for speed
     return config;
 }
 
 quantum_walk_config_t quantum_walk_hybrid_config(void) {
     quantum_walk_config_t config = quantum_walk_default_config();
-    config.hybrid_mixing = 0.5f;       // 50% quantum + 50% classical
-    config.decoherence_rate = 0.05f;   // Higher decoherence (5% per step)
+    config.hybrid_mixing = 0.5F;       // 50% quantum + 50% classical
+    config.decoherence_rate = 0.05F;   // Higher decoherence (5% per step)
     return config;
 }
 
@@ -205,7 +205,7 @@ static void apply_grover_coin(
     uint32_t num_nodes
 ) {
     // Compute average amplitude
-    quantum_amplitude_t avg = 0.0f;
+    quantum_amplitude_t avg = 0.0F;
     for (uint32_t i = 0; i < num_nodes; i++) {
         avg += amplitudes[i];
     }
@@ -213,7 +213,7 @@ static void apply_grover_coin(
 
     // Apply Grover diffusion: α' = 2×avg - α
     for (uint32_t i = 0; i < num_nodes; i++) {
-        amplitudes[i] = 2.0f * avg - amplitudes[i];
+        amplitudes[i] = 2.0F * avg - amplitudes[i];
     }
 }
 
@@ -237,11 +237,11 @@ static void apply_fourier_coin(
     if (!temp) return;
 
     // Compute DFT
-    float inv_sqrt_n = 1.0f / sqrtf((float)num_nodes);
+    float inv_sqrt_n = 1.0F / sqrtf((float)num_nodes);
     for (uint32_t j = 0; j < num_nodes; j++) {
-        quantum_amplitude_t sum = 0.0f;
+        quantum_amplitude_t sum = 0.0F;
         for (uint32_t k = 0; k < num_nodes; k++) {
-            float phase = 2.0f * PI * (float)(j * k) / (float)num_nodes;
+            float phase = 2.0F * PI * (float)(j * k) / (float)num_nodes;
             quantum_amplitude_t twiddle = cosf(phase) + I * sinf(phase);
             sum += amplitudes[k] * twiddle;
         }
@@ -305,7 +305,7 @@ quantum_walker_t* quantum_walk_create(
     }
 
     // Initialize statistics
-    walker->stats.total_probability = 1.0f;
+    walker->stats.total_probability = 1.0F;
     walker->stats.speedup_vs_classical = sqrtf((float)walker->num_nodes);
 
     return walker;
@@ -369,11 +369,11 @@ bool quantum_walk_initialize(quantum_walker_t* walker, uint32_t node_id) {
     memset(walker->amplitudes, 0, walker->num_nodes * sizeof(quantum_amplitude_t));
 
     // Set single node to 1.0 (real amplitude)
-    walker->amplitudes[node_id] = 1.0f + 0.0f * I;
+    walker->amplitudes[node_id] = 1.0F + 0.0F * I;
 
     // Update probabilities
     memset(walker->probabilities, 0, walker->num_nodes * sizeof(float));
-    walker->probabilities[node_id] = 1.0f;
+    walker->probabilities[node_id] = 1.0F;
 
     // Reset state
     walker->current_step = 0;
@@ -391,7 +391,7 @@ bool quantum_walk_initialize_superposition(
 
     if (initial_amplitudes == NULL) {
         // Uniform superposition: |ψ⟩ = (1/√N)Σ|i⟩
-        quantum_amplitude_t uniform = 1.0f / sqrtf((float)walker->num_nodes);
+        quantum_amplitude_t uniform = 1.0F / sqrtf((float)walker->num_nodes);
         for (uint32_t i = 0; i < walker->num_nodes; i++) {
             walker->amplitudes[i] = uniform;
         }
@@ -467,7 +467,7 @@ bool quantum_walk_step(quantum_walker_t* walker) {
         if (walker->node_degrees[i] == 0) continue;
 
         quantum_amplitude_t amplitude = walker->amplitudes[i];
-        float weight = 1.0f / sqrtf((float)walker->node_degrees[i]);
+        float weight = 1.0F / sqrtf((float)walker->node_degrees[i]);
 
         // Distribute amplitude to neighbors
         for (uint32_t n = 0; n < walker->node_degrees[i]; n++) {
@@ -484,7 +484,7 @@ bool quantum_walk_step(quantum_walker_t* walker) {
     // WHAT: Add noise to quantum state
     // WHY: Model environmental decoherence
     // HOW: Mix with random phases
-    if (walker->config.decoherence_rate > 0.0f) {
+    if (walker->config.decoherence_rate > 0.0F) {
         quantum_walk_apply_decoherence(walker, walker->config.decoherence_rate);
     }
 
@@ -577,7 +577,7 @@ uint32_t quantum_walk_measure(quantum_walker_t* walker) {
     float r = (float)rand() / (float)RAND_MAX;
 
     // Find node via cumulative probability
-    float cumulative = 0.0f;
+    float cumulative = 0.0F;
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
         cumulative += walker->probabilities[i];
         if (r <= cumulative) {
@@ -603,8 +603,8 @@ bool quantum_walk_compute_stats(
     if (!walker || !stats) return false;
 
     // Compute total probability
-    float total_prob = 0.0f;
-    float max_amp = 0.0f;
+    float total_prob = 0.0F;
+    float max_amp = 0.0F;
     uint32_t nonzero_count = 0;
 
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
@@ -618,7 +618,7 @@ bool quantum_walk_compute_stats(
     }
 
     // Compute Shannon entropy: H = -Σ P(i)×log(P(i))
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
         float p = walker->probabilities[i];
         if (p > AMPLITUDE_THRESHOLD) {
@@ -659,7 +659,7 @@ void quantum_walk_print_stats(const quantum_walker_t* walker) {
     printf("Spreading distance:     %.2f nodes\n", walker->stats.spreading_distance);
     printf("Nonzero amplitudes:     %u (%.1f%%)\n",
            walker->stats.num_nonzero_amplitudes,
-           100.0f * walker->stats.num_nonzero_amplitudes / walker->num_nodes);
+           100.0F * walker->stats.num_nonzero_amplitudes / walker->num_nodes);
     printf("Speedup vs classical:   %.2fx\n", walker->stats.speedup_vs_classical);
     printf("Evolution time:         %lu μs\n", walker->stats.evolution_time_us);
     printf("===============================\n\n");
@@ -672,12 +672,12 @@ bool quantum_walk_verify(const quantum_walker_t* walker) {
     // WHY: Detect numerical errors
     // HOW: Verify Σ|αᵢ|² ≈ 1.0
 
-    float total_prob = 0.0f;
+    float total_prob = 0.0F;
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
         total_prob += walker->probabilities[i];
     }
 
-    float error = fabsf(total_prob - 1.0f);
+    float error = fabsf(total_prob - 1.0F);
     if (error > PROB_TOLERANCE) {
         printf("⚠️ Quantum walk verification FAILED: Probability = %.6f (error = %.6f)\n",
                total_prob, error);
@@ -737,7 +737,7 @@ bool quantum_walk_apply_custom_coin(
             return false;
         }
 
-        quantum_amplitude_t sum = 0.0f + 0.0f * I;
+        quantum_amplitude_t sum = 0.0F + 0.0F * I;
 
         for (uint32_t j = 0; j < matrix_size; j++) {
             // Multiply: sum += M[i][j] * amplitude[j]
@@ -781,7 +781,7 @@ bool quantum_walk_hybrid_step(
 ) {
     // Guard: NULL checks
     if (!walker || !classical_weights) return false;
-    if (mixing_ratio < 0.0f || mixing_ratio > 1.0f) return false;
+    if (mixing_ratio < 0.0F || mixing_ratio > 1.0F) return false;
 
     // WHAT: Mix quantum + classical diffusion
     // WHY: Balance speedup and biological realism
@@ -793,9 +793,9 @@ bool quantum_walk_hybrid_step(
     // Mix with classical weights
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
         quantum_amplitude_t quantum_amp = walker->amplitudes[i];
-        quantum_amplitude_t classical_amp = classical_weights[i] + 0.0f * I;
+        quantum_amplitude_t classical_amp = classical_weights[i] + 0.0F * I;
 
-        walker->amplitudes[i] = (1.0f - mixing_ratio) * quantum_amp
+        walker->amplitudes[i] = (1.0F - mixing_ratio) * quantum_amp
                               + mixing_ratio * classical_amp;
     }
 
@@ -811,7 +811,7 @@ bool quantum_walk_apply_decoherence(
 ) {
     // Guard: NULL check
     if (!walker) return false;
-    if (decoherence_strength < 0.0f || decoherence_strength > 1.0f) return false;
+    if (decoherence_strength < 0.0F || decoherence_strength > 1.0F) return false;
 
     // WHAT: Add noise to quantum amplitudes
     // WHY: Model environmental decoherence
@@ -819,11 +819,11 @@ bool quantum_walk_apply_decoherence(
 
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
         // Add random phase
-        float random_phase = 2.0f * PI * ((float)rand() / (float)RAND_MAX);
+        float random_phase = 2.0F * PI * ((float)rand() / (float)RAND_MAX);
         quantum_amplitude_t phase_factor = cosf(random_phase) + I * sinf(random_phase);
 
         // Mix original amplitude with dephased version
-        walker->amplitudes[i] = (1.0f - decoherence_strength) * walker->amplitudes[i]
+        walker->amplitudes[i] = (1.0F - decoherence_strength) * walker->amplitudes[i]
                               + decoherence_strength * phase_factor * walker->amplitudes[i];
     }
 

@@ -196,34 +196,34 @@ static uint32_t map_region_to_neurons(
  */
 static float calculate_command_information(const middleware_command_t* command) {
     if (!command) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Simple information estimate based on command type
     // More complex commands = higher information
-    float base_information = 4.0f;  // 4 bits base
+    float base_information = 4.0F;  // 4 bits base
 
     // Add information based on command type rarity
     switch (command->type) {
         case COMMAND_CONFIGURE_ATTENTION:
-            base_information += 2.0f;  // Common command
+            base_information += 2.0F;  // Common command
             break;
         case COMMAND_ADJUST_ROUTING:
-            base_information += 3.0f;  // Less common
+            base_information += 3.0F;  // Less common
             break;
         case COMMAND_RESET_BUFFERS:
-            base_information += 4.0f;  // Rare command
+            base_information += 4.0F;  // Rare command
             break;
         case COMMAND_CUSTOM:
-            base_information += 5.0f;  // Very rare
+            base_information += 5.0F;  // Very rare
             break;
         default:
-            base_information += 1.0f;
+            base_information += 1.0F;
             break;
     }
 
     // Add information from priority (high priority = more information)
-    base_information += command->priority * 2.0f;
+    base_information += command->priority * 2.0F;
 
     return base_information;
 }
@@ -309,7 +309,7 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
 
     // Initialize metrics
     memset(&qcp->metrics, 0, sizeof(command_propagation_metrics_t));
-    qcp->metrics.quantum_efficiency = 1.0f;
+    qcp->metrics.quantum_efficiency = 1.0F;
 
     // Note: quantum_shannon_diffusion_t is created on-demand per propagation
     // (reusing it across different source neurons is inefficient)
@@ -509,10 +509,10 @@ uint32_t quantum_command_propagator_propagate_to_neurons(
     }
 
     // Set uniform amplitude for all target neurons
-    float amplitude_value = 1.0f / sqrtf((float)num_neurons);
+    float amplitude_value = 1.0F / sqrtf((float)num_neurons);
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (neuron_ids[i] < qcp->num_neurons) {
-            initial_amplitudes[neuron_ids[i]] = amplitude_value + 0.0f * I;
+            initial_amplitudes[neuron_ids[i]] = amplitude_value + 0.0F * I;
         }
     }
 
@@ -580,7 +580,7 @@ uint32_t quantum_command_propagator_propagate_to_neurons(
     // Strategy: Use min(config.threshold, 0.5/num_targets) to ensure at least
     // half the target neurons receive the command.
     float effective_threshold = qcp->config.propagation_threshold;
-    float adaptive_threshold = 0.5f / (float)num_neurons;
+    float adaptive_threshold = 0.5F / (float)num_neurons;
     if (adaptive_threshold < effective_threshold) {
         effective_threshold = adaptive_threshold;
     }
@@ -614,7 +614,7 @@ uint32_t quantum_command_propagator_propagate_to_neurons(
 
     if (quantum_shannon_get_metrics(qcp->qsd, &shannon_metrics)) {
         // If Shannon speedup is zero (evolution was skipped), calculate theoretical
-        if (shannon_metrics.speedup_vs_classical < 0.001f) {
+        if (shannon_metrics.speedup_vs_classical < 0.001F) {
             // Superposition initialization gives instant delivery - O(1) vs O(N)
             qcp->metrics.speedup_vs_classical = sqrtf((float)num_neurons);
         } else {
@@ -627,13 +627,13 @@ uint32_t quantum_command_propagator_propagate_to_neurons(
 
         // Calculate quantum efficiency (actual vs theoretical speedup)
         float theoretical_speedup = sqrtf((float)qcp->num_neurons);
-        if (theoretical_speedup > 0.0f) {
+        if (theoretical_speedup > 0.0F) {
             qcp->metrics.quantum_efficiency = qcp->metrics.speedup_vs_classical / theoretical_speedup;
         }
     } else {
         // If quantum metrics unavailable, use theoretical speedup for superposition broadcast
         qcp->metrics.speedup_vs_classical = sqrtf((float)num_neurons);
-        qcp->metrics.quantum_efficiency = 1.0f;  // 100% efficient for direct superposition
+        qcp->metrics.quantum_efficiency = 1.0F;  // 100% efficient for direct superposition
     }
 
     // Update coverage metrics
@@ -714,7 +714,7 @@ float quantum_command_propagator_get_last_coverage(
     const quantum_command_propagator_t* qcp
 ) {
     if (!qcp) {
-        return 0.0f;
+        return 0.0F;
     }
     return qcp->last_coverage;
 }
@@ -723,7 +723,7 @@ float quantum_command_propagator_get_speedup(
     const quantum_command_propagator_t* qcp
 ) {
     if (!qcp) {
-        return 1.0f;
+        return 1.0F;
     }
     return qcp->metrics.speedup_vs_classical;
 }
@@ -736,8 +736,8 @@ void quantum_command_propagator_reset_stats(
     }
 
     memset(&qcp->metrics, 0, sizeof(command_propagation_metrics_t));
-    qcp->metrics.quantum_efficiency = 1.0f;
-    qcp->last_coverage = 0.0f;
+    qcp->metrics.quantum_efficiency = 1.0F;
+    qcp->last_coverage = 0.0F;
     qcp->last_neurons_reached = 0;
     qcp->last_propagation_time_us = 0;
 
@@ -769,8 +769,8 @@ void quantum_command_propagator_set_threshold(
     }
 
     // Clamp to [0, 1]
-    if (threshold < 0.0f) threshold = 0.0f;
-    if (threshold > 1.0f) threshold = 1.0f;
+    if (threshold < 0.0F) threshold = 0.0F;
+    if (threshold > 1.0F) threshold = 1.0F;
 
     qcp->config.propagation_threshold = threshold;
     LOG_INFO("Propagation threshold set to %.4f", threshold);

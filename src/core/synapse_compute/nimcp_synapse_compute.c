@@ -100,7 +100,7 @@ static phasic_tonic_state_t* get_dopamine_phasic_tonic(void* neuromod_system) {
  * PERFORMANCE: ~3n CPU cycles (load + multiply + add per element)
  */
 static inline float dot_product(const float* a, const float* b, uint32_t size) {
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         sum += a[i] * b[i];
     }
@@ -118,14 +118,14 @@ static inline float dot_product(const float* a, const float* b, uint32_t size) {
  * PERFORMANCE: ~5n CPU cycles + 1 sqrt + 1 div
  */
 static inline float cosine_similarity(const float* a, const float* b, uint32_t size) {
-    float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
+    float dot = 0.0F, norm_a = 0.0F, norm_b = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         dot += a[i] * b[i];
         norm_a += a[i] * a[i];
         norm_b += b[i] * b[i];
     }
     float denom = sqrtf(norm_a * norm_b);
-    return (denom > 1e-8f) ? (dot / denom) : 0.0f;
+    return (denom > 1e-8F) ? (dot / denom) : 0.0F;
 }
 
 /**
@@ -139,7 +139,7 @@ static inline float cosine_similarity(const float* a, const float* b, uint32_t s
  * PERFORMANCE: ~100 CPU cycles (dominated by exp())
  */
 static inline float sigmoid(float x) {
-    return 1.0f / (1.0f + expf(-x));
+    return 1.0F / (1.0F + expf(-x));
 }
 
 //=============================================================================
@@ -167,7 +167,7 @@ float synapse_compute_default(
     struct synapse_compute_context_t* context
 ) {
     // Guard against null synapse
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     // Base transmission
     float output = syn->weight * pre_activity;
@@ -214,7 +214,7 @@ float synapse_compute_attention(
     struct synapse_compute_context_t* context
 ) {
     // Guard against null inputs
-    if (!syn || !pre_neuron || !post_neuron) return 0.0f;
+    if (!syn || !pre_neuron || !post_neuron) return 0.0F;
 
     #define ATTENTION_DIM 16
 
@@ -275,7 +275,7 @@ float synapse_compute_semantic(
     struct synapse_compute_context_t* context
 ) {
     // Guard against null synapse
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     // Need compute state with embeddings
     if (!syn->compute_state || !syn->compute_state->extended_memory) {
@@ -297,7 +297,7 @@ float synapse_compute_semantic(
     syn->compute_state->local_memory[0] = similarity;
 
     // Modulate transmission by semantic similarity
-    float modulation = 0.5f + 0.5f * similarity;  // Map [-1,1] to [0,1]
+    float modulation = 0.5F + 0.5F * similarity;  // Map [-1,1] to [0,1]
     float output = syn->weight * pre_activity * modulation;
 
     // Apply STP
@@ -327,10 +327,10 @@ float synapse_compute_gating(
     struct synapse_compute_context_t* context
 ) {
     // Guard against null synapse
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     // Default gate = open (1.0)
-    float gate_signal = 1.0f;
+    float gate_signal = 1.0F;
 
     // Read gate from local memory if available
     if (syn->compute_state) {
@@ -338,8 +338,8 @@ float synapse_compute_gating(
     }
 
     // Clamp gate to [0, 1]
-    if (gate_signal < 0.0f) gate_signal = 0.0f;
-    if (gate_signal > 1.0f) gate_signal = 1.0f;
+    if (gate_signal < 0.0F) gate_signal = 0.0F;
+    if (gate_signal > 1.0F) gate_signal = 1.0F;
 
     // Gated transmission
     float output = syn->weight * pre_activity * gate_signal;
@@ -371,22 +371,22 @@ float synapse_compute_neuromodulated(
     struct synapse_compute_context_t* context
 ) {
     // Guard against null synapse
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
     // Default sensitivity = 1.0
-    float sensitivity = 1.0f;
+    float sensitivity = 1.0F;
     if (syn->compute_state) {
         sensitivity = syn->compute_state->local_memory[0];
     }
 
     // Get neuromodulation level from context
-    float neuromod = 0.0f;
+    float neuromod = 0.0F;
     if (context) {
         neuromod = context->neuromodulation;
     }
 
     // Compute modulation factor
-    float modulation = 1.0f + neuromod * sensitivity;
+    float modulation = 1.0F + neuromod * sensitivity;
 
     // Modulated transmission
     float output = syn->weight * pre_activity * modulation;
@@ -418,9 +418,9 @@ float synapse_compute_dendritic(
     struct synapse_compute_context_t* context
 ) {
     // Guard against null synapse
-    if (!syn) return 0.0f;
+    if (!syn) return 0.0F;
 
-    float local_sum = 0.0f;
+    float local_sum = 0.0F;
 
     // Sum activity from neighboring synapses if available
     if (syn->compute_state && syn->compute_state->function_data) {
@@ -501,7 +501,7 @@ void synapse_learn_three_factor(
 
         // Extract dopamine phasic-tonic state from context (Phase 2.7.1)
         phasic_tonic_state_t* dopamine_phasic_tonic = NULL;
-        float dopamine_level = 0.5f;  // Default baseline dopamine
+        float dopamine_level = 0.5F;  // Default baseline dopamine
 
         // Guard: Access neuromodulator system from context
         if (context && context->neuromodulator_system) {
@@ -523,9 +523,9 @@ void synapse_learn_three_factor(
         if (pre_spike_time > 0 && post_spike_time > 0) {
             // Compute STDP contribution (pre-post correlation)
             float dt = post_spike_time - pre_spike_time;
-            float stdp_contribution = expf(-fabsf(dt) / 20.0f);
+            float stdp_contribution = expf(-fabsf(dt) / 20.0F);
             if (dt < 0) {
-                stdp_contribution *= -0.5f;  // LTD asymmetry
+                stdp_contribution *= -0.5F;  // LTD asymmetry
             }
 
             // Update eligibility trace with STDP
@@ -542,7 +542,7 @@ void synapse_learn_three_factor(
         }
 
         // Apply three-factor learning: Δw = learning_rate × trace × reward × dopamine
-        float weight_change = 0.0f;
+        float weight_change = 0.0F;
 
         if (dopamine_phasic_tonic && config.burst_triggered_mode) {
             // Burst-triggered consolidation (four-factor rule)
@@ -560,23 +560,23 @@ void synapse_learn_three_factor(
         syn->last_change = weight_change;
 
         // Weight bounds
-        if (syn->weight < -10.0f) syn->weight = -10.0f;
-        if (syn->weight > 10.0f) syn->weight = 10.0f;
+        if (syn->weight < -10.0F) syn->weight = -10.0F;
+        if (syn->weight > 10.0F) syn->weight = 10.0F;
 
     } else {
         // === SIMPLE INLINE TRACE (BACKWARD COMPATIBLE) ===
 
-        const float TAU_ELIGIBILITY = 1000.0f; // ms
-        const float LEARNING_RATE = 0.01f;
+        const float TAU_ELIGIBILITY = 1000.0F; // ms
+        const float LEARNING_RATE = 0.01F;
 
         // Update eligibility trace with STDP
         if (pre_spike_time > 0 && post_spike_time > 0) {
             float dt = post_spike_time - pre_spike_time;
-            float stdp_update = expf(-fabsf(dt) / 20.0f);
+            float stdp_update = expf(-fabsf(dt) / 20.0F);
             if (dt > 0) {
-                stdp_update *= 1.0f;  // LTP
+                stdp_update *= 1.0F;  // LTP
             } else {
-                stdp_update *= -0.5f;  // LTD (asymmetric)
+                stdp_update *= -0.5F;  // LTD (asymmetric)
             }
 
             // Update trace
@@ -585,7 +585,7 @@ void synapse_learn_three_factor(
 
         // Decay eligibility trace
         if (context) {
-            float dt = 1.0f; // Assume 1ms timestep
+            float dt = 1.0F; // Assume 1ms timestep
             syn->trace *= expf(-dt / TAU_ELIGIBILITY);
         }
 
@@ -595,8 +595,8 @@ void synapse_learn_three_factor(
         syn->last_change = weight_change;
 
         // Weight bounds
-        if (syn->weight < -10.0f) syn->weight = -10.0f;
-        if (syn->weight > 10.0f) syn->weight = 10.0f;
+        if (syn->weight < -10.0F) syn->weight = -10.0F;
+        if (syn->weight > 10.0F) syn->weight = 10.0F;
     }
 }
 
@@ -618,31 +618,31 @@ void synapse_learn_attention_modulated(
     if (!syn) return;
 
     // Get attention weight (stored during compute phase)
-    float attention = 1.0f;
+    float attention = 1.0F;
     if (syn->compute_state) {
         attention = syn->compute_state->local_memory[0];
-        if (attention < 0.1f) attention = 0.1f; // Minimum learning
+        if (attention < 0.1F) attention = 0.1F; // Minimum learning
     }
 
     // Standard STDP
     if (pre_spike_time > 0 && post_spike_time > 0) {
         float dt = post_spike_time - pre_spike_time;
-        float stdp_update = expf(-fabsf(dt) / 20.0f);
+        float stdp_update = expf(-fabsf(dt) / 20.0F);
         if (dt > 0) {
-            stdp_update *= 1.0f;
+            stdp_update *= 1.0F;
         } else {
-            stdp_update *= -0.5f;
+            stdp_update *= -0.5F;
         }
 
         // Scale by attention
-        float weight_change = 0.01f * attention * stdp_update;
+        float weight_change = 0.01F * attention * stdp_update;
         syn->weight += weight_change;
         syn->last_change = weight_change;
     }
 
     // Weight bounds
-    if (syn->weight < -10.0f) syn->weight = -10.0f;
-    if (syn->weight > 10.0f) syn->weight = 10.0f;
+    if (syn->weight < -10.0F) syn->weight = -10.0F;
+    if (syn->weight > 10.0F) syn->weight = 10.0F;
 }
 
 /**
@@ -667,33 +667,33 @@ void synapse_learn_metaplastic(
     // Low activity → higher plasticity (exploration)
 
     float avg_activity = post_neuron->avg_activity;
-    float theta = 0.5f; // Threshold
+    float theta = 0.5F; // Threshold
 
     // BCM-like learning rate modulation
-    float activity_factor = (avg_activity > theta) ? 0.5f : 1.5f;
+    float activity_factor = (avg_activity > theta) ? 0.5F : 1.5F;
 
     // Update meta-plasticity state
-    syn->meta_plasticity = 0.9f * syn->meta_plasticity + 0.1f * activity_factor;
+    syn->meta_plasticity = 0.9F * syn->meta_plasticity + 0.1F * activity_factor;
 
     // Standard STDP with meta-plasticity modulation
     if (pre_spike_time > 0 && post_spike_time > 0) {
         float dt = post_spike_time - pre_spike_time;
-        float stdp_update = expf(-fabsf(dt) / 20.0f);
+        float stdp_update = expf(-fabsf(dt) / 20.0F);
         if (dt > 0) {
-            stdp_update *= 1.0f;
+            stdp_update *= 1.0F;
         } else {
-            stdp_update *= -0.5f;
+            stdp_update *= -0.5F;
         }
 
         // Modulate by meta-plasticity
-        float weight_change = 0.01f * syn->meta_plasticity * stdp_update;
+        float weight_change = 0.01F * syn->meta_plasticity * stdp_update;
         syn->weight += weight_change;
         syn->last_change = weight_change;
     }
 
     // Weight bounds
-    if (syn->weight < -10.0f) syn->weight = -10.0f;
-    if (syn->weight > 10.0f) syn->weight = 10.0f;
+    if (syn->weight < -10.0F) syn->weight = -10.0F;
+    if (syn->weight > 10.0F) syn->weight = 10.0F;
 }
 
 // ============================================================================

@@ -119,7 +119,7 @@ static void init_dimension_stats(nimcp_dimension_stats_t* stats, nimcp_coverage_
     memset(stats, 0, sizeof(nimcp_dimension_stats_t));
     stats->dimension = dim;
     stats->status = NIMCP_COVERAGE_STATUS_UNKNOWN;
-    stats->coverage_percent = 0.0f;
+    stats->coverage_percent = 0.0F;
 }
 
 //=============================================================================
@@ -595,7 +595,7 @@ nimcp_result_t nimcp_coverage_verify_all(
     report->report_timestamp = get_timestamp_ms();
     report->monitoring_uptime_ms = report->report_timestamp - coverage->start_time;
 
-    float total_coverage = 0.0f;
+    float total_coverage = 0.0F;
     int active_dimensions = 0;
 
     for (int i = 0; i < NIMCP_COVERAGE_DIMENSION_COUNT; i++) {
@@ -604,20 +604,20 @@ nimcp_result_t nimcp_coverage_verify_all(
         // Calculate coverage percentage
         if (stats->total_items > 0) {
             stats->coverage_percent =
-                (float)stats->protected_items / stats->total_items * 100.0f;
+                (float)stats->protected_items / stats->total_items * 100.0F;
             active_dimensions++;
             total_coverage += stats->coverage_percent;
         } else {
             // No items = 100% coverage (nothing to protect)
-            stats->coverage_percent = 100.0f;
+            stats->coverage_percent = 100.0F;
         }
 
         // Determine status
-        if (stats->coverage_percent >= 100.0f) {
+        if (stats->coverage_percent >= 100.0F) {
             stats->status = NIMCP_COVERAGE_STATUS_FULL;
-        } else if (stats->coverage_percent >= 50.0f) {
+        } else if (stats->coverage_percent >= 50.0F) {
             stats->status = NIMCP_COVERAGE_STATUS_PARTIAL;
-        } else if (stats->coverage_percent > 0.0f) {
+        } else if (stats->coverage_percent > 0.0F) {
             stats->status = NIMCP_COVERAGE_STATUS_PARTIAL;
         } else if (stats->total_items == 0) {
             stats->status = NIMCP_COVERAGE_STATUS_FULL;
@@ -634,7 +634,7 @@ nimcp_result_t nimcp_coverage_verify_all(
     if (active_dimensions > 0) {
         report->overall_coverage = total_coverage / active_dimensions;
     } else {
-        report->overall_coverage = 100.0f;
+        report->overall_coverage = 100.0F;
     }
 
     // Check if all dimensions are at 100%
@@ -662,9 +662,9 @@ nimcp_result_t nimcp_coverage_verify_dimension(
     // Recalculate coverage
     if (stats->total_items > 0) {
         stats->coverage_percent =
-            (float)stats->protected_items / stats->total_items * 100.0f;
+            (float)stats->protected_items / stats->total_items * 100.0F;
     } else {
-        stats->coverage_percent = 100.0f;
+        stats->coverage_percent = 100.0F;
     }
 
     stats->last_check = get_timestamp_ms();
@@ -687,11 +687,11 @@ bool nimcp_coverage_is_complete(nimcp_security_coverage_t* coverage)
 float nimcp_coverage_get_percentage(nimcp_security_coverage_t* coverage)
 {
     if (!coverage)
-        return 0.0f;
+        return 0.0F;
 
     nimcp_coverage_report_t report;
     if (nimcp_coverage_verify_all(coverage, &report) != NIMCP_SUCCESS)
-        return 0.0f;
+        return 0.0F;
 
     return report.overall_coverage;
 }

@@ -65,7 +65,7 @@ network_builder_config_t network_builder_default(void) {
 
     // Basic network defaults
     config.num_neurons = 100;
-    config.ei_ratio = 0.8f;  // 80% excitatory
+    config.ei_ratio = 0.8F;  // 80% excitatory
     config.enable_stdp = true;
     config.enable_homeostasis = true;
 
@@ -74,8 +74,8 @@ network_builder_config_t network_builder_default(void) {
 
     // No pink noise weights by default
     config.use_pink_noise_weights = false;
-    config.noise_amplitude = 0.5f;
-    config.base_weight = 0.0f;
+    config.noise_amplitude = 0.5F;
+    config.base_weight = 0.0F;
 
     // Random seed
     config.random_seed = 0;  // 0 means use time-based seed
@@ -116,15 +116,15 @@ neural_network_t network_builder_build(const network_builder_config_t* config) {
         .ei_ratio = config->ei_ratio,
         .enable_stdp = config->enable_stdp,
         .enable_homeostasis = config->enable_homeostasis,
-        .learning_rate = 0.01f,
-        .hebbian_rate = 0.001f,
-        .stdp_window = 20.0f,
-        .homeostatic_rate = 0.001f,
-        .target_activity = 0.05f,
-        .adaptation_rate = 0.01f,
-        .refractory_period = 2.0f,
-        .min_weight = -1.0f,
-        .max_weight = 1.0f,
+        .learning_rate = 0.01F,
+        .hebbian_rate = 0.001F,
+        .stdp_window = 20.0F,
+        .homeostatic_rate = 0.001F,
+        .target_activity = 0.05F,
+        .adaptation_rate = 0.01F,
+        .refractory_period = 2.0F,
+        .min_weight = -1.0F,
+        .max_weight = 1.0F,
         .update_interval = 1,
         .input_size = 0,
         .output_size = 0,
@@ -260,11 +260,11 @@ bool network_init_weights_pink_noise(
     // Step 2: Create pink noise generator
     pink_noise_config_t noise_config = {
         .method = PINK_NOISE_VOSS,
-        .alpha = 1.0f,              // Pure pink noise (1/f)
+        .alpha = 1.0F,              // Pure pink noise (1/f)
         .amplitude = amplitude,
-        .min_frequency = 0.1f,
-        .max_frequency = 1000.0f,
-        .sample_rate = 44100.0f,
+        .min_frequency = 0.1F,
+        .max_frequency = 1000.0F,
+        .sample_rate = 44100.0F,
         .seed = 0                   // Use time-based seed
     };
 

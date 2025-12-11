@@ -131,9 +131,9 @@ static middleware_command_t create_command(
 static float calculate_event_information(uint32_t event_type, float value) {
     // Simple information estimate
     // High-value events = high information
-    float base_info = 3.0f;  // 3 bits base
-    float value_info = -log2f(1.0f - value + 0.01f);  // Higher value = more info
-    float type_info = (float)(event_type % 4) * 0.5f;  // Type variation
+    float base_info = 3.0F;  // 3 bits base
+    float value_info = -log2f(1.0F - value + 0.01F);  // Higher value = more info
+    float type_info = (float)(event_type % 4) * 0.5F;  // Type variation
 
     return base_info + value_info + type_info;
 }
@@ -360,7 +360,7 @@ bool executive_middleware_adapter_on_task_switched(
 
     // Set attention payload
     cmd.payload.attention.priority = priority;
-    cmd.payload.attention.selectivity = 0.7f;  // Default selectivity
+    cmd.payload.attention.selectivity = 0.7F;  // Default selectivity
     cmd.payload.attention.top_k = 50;          // Attend to top 50 neurons
 
     cmd.information_bits = event_info;
@@ -433,10 +433,10 @@ bool executive_middleware_adapter_on_cognitive_load_changed(
 
     // Determine command type based on cognitive load
     middleware_command_type_t cmd_type;
-    if (cognitive_load > 0.7f) {
+    if (cognitive_load > 0.7F) {
         // High load -> reduce middleware activity
         cmd_type = COMMAND_REDUCE_ACTIVITY;
-    } else if (cognitive_load < 0.3f) {
+    } else if (cognitive_load < 0.3F) {
         // Low load -> increase middleware activity
         cmd_type = COMMAND_INCREASE_ACTIVITY;
     } else {
@@ -454,7 +454,7 @@ bool executive_middleware_adapter_on_cognitive_load_changed(
 
     // Set activity payload
     cmd.payload.activity.target_region = TARGET_ALL_REGIONS;
-    cmd.payload.activity.activity_scale = (cmd_type == COMMAND_REDUCE_ACTIVITY) ? 0.5f : 1.5f;
+    cmd.payload.activity.activity_scale = (cmd_type == COMMAND_REDUCE_ACTIVITY) ? 0.5F : 1.5F;
 
     cmd.information_bits = event_info;
 
@@ -505,7 +505,7 @@ bool executive_middleware_adapter_on_pattern_detected(
     float event_info = calculate_event_information(pattern_id, confidence);
 
     // Filter low-confidence patterns
-    if (confidence < 0.5f) {
+    if (confidence < 0.5F) {
         LOG_DEBUG("Pattern filtered: confidence %.2f < 0.5", confidence);
         return false;
     }
@@ -520,7 +520,7 @@ bool executive_middleware_adapter_on_pattern_detected(
 
     // Set pattern payload
     cmd.payload.pattern.pattern_id = pattern_id;
-    cmd.payload.pattern.confidence_threshold = confidence * 0.8f;  // 80% of detection confidence
+    cmd.payload.pattern.confidence_threshold = confidence * 0.8F;  // 80% of detection confidence
     cmd.payload.pattern.enable_notifications = true;
 
     cmd.information_bits = event_info;
@@ -639,7 +639,7 @@ bool executive_middleware_adapter_on_salience_peak(
 
     // Set activity payload
     cmd.payload.activity.target_region = (command_target_region_t)target_region;
-    cmd.payload.activity.activity_scale = 1.0f + salience;  // Scale proportional to salience
+    cmd.payload.activity.activity_scale = 1.0F + salience;  // Scale proportional to salience
 
     cmd.information_bits = event_info;
 
@@ -687,7 +687,7 @@ float executive_middleware_adapter_get_mutual_information(
     const executive_middleware_adapter_t* adapter
 ) {
     if (!adapter) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return adapter->metrics.mutual_information_exec_mw;
@@ -697,7 +697,7 @@ float executive_middleware_adapter_get_success_rate(
     const executive_middleware_adapter_t* adapter
 ) {
     if (!adapter) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return adapter->metrics.command_success_rate;
@@ -742,8 +742,8 @@ void executive_middleware_adapter_set_priority_threshold(
     }
 
     // Clamp to [0, 1]
-    if (threshold < 0.0f) threshold = 0.0f;
-    if (threshold > 1.0f) threshold = 1.0f;
+    if (threshold < 0.0F) threshold = 0.0F;
+    if (threshold > 1.0F) threshold = 1.0F;
 
     adapter->config.command_priority_threshold = threshold;
     LOG_INFO("Command priority threshold set to %.2f", threshold);
@@ -753,7 +753,7 @@ void executive_middleware_adapter_set_information_threshold(
     executive_middleware_adapter_t* adapter,
     float threshold_bits
 ) {
-    if (!adapter || threshold_bits < 0.0f) {
+    if (!adapter || threshold_bits < 0.0F) {
         return;
     }
 

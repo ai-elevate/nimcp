@@ -121,11 +121,11 @@ static inline float calculate_time_decay(
     uint64_t time_window,
     float sensitivity
 ) {
-    if (sensitivity <= 0.0f) return 1.0f;
-    if (time_diff >= time_window) return 0.0f;
+    if (sensitivity <= 0.0F) return 1.0F;
+    if (time_diff >= time_window) return 0.0F;
 
     float ratio = (float)time_diff / (float)time_window;
-    return 1.0f - (ratio * sensitivity);
+    return 1.0F - (ratio * sensitivity);
 }
 
 /**
@@ -192,8 +192,8 @@ static float calculate_combined_harm(
     combined *= decay;
 
     // Clamp to [0, 1]
-    if (combined > 1.0f) combined = 1.0f;
-    if (combined < 0.0f) combined = 0.0f;
+    if (combined > 1.0F) combined = 1.0F;
+    if (combined < 0.0F) combined = 0.0F;
 
     return combined;
 }
@@ -418,8 +418,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
         .description = "Revealing both location and schedule enables stalking/targeting",
         .category_a = ACTION_CATEGORY_INFORMATION_DISCLOSURE,
         .category_b = ACTION_CATEGORY_INFORMATION_DISCLOSURE,
-        .harm_multiplier = 3.0f,
-        .time_sensitivity = 0.3f,
+        .harm_multiplier = 3.0F,
+        .time_sensitivity = 0.3F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - Cannot be disabled
@@ -433,8 +433,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
         .description = "Combining access grants may enable unauthorized privilege escalation",
         .category_a = ACTION_CATEGORY_ACCESS_GRANT,
         .category_b = ACTION_CATEGORY_ACCESS_GRANT,
-        .harm_multiplier = 2.5f,
-        .time_sensitivity = 0.2f,
+        .harm_multiplier = 2.5F,
+        .time_sensitivity = 0.2F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - Cannot be disabled
@@ -448,8 +448,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
         .description = "Multiple data exports may enable complete profile reconstruction",
         .category_a = ACTION_CATEGORY_DATA_EXPORT,
         .category_b = ACTION_CATEGORY_DATA_EXPORT,
-        .harm_multiplier = 2.8f,
-        .time_sensitivity = 0.4f,
+        .harm_multiplier = 2.8F,
+        .time_sensitivity = 0.4F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - Cannot be disabled
@@ -463,8 +463,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
         .description = "Access grants combined with information disclosure enables targeted attacks",
         .category_a = ACTION_CATEGORY_ACCESS_GRANT,
         .category_b = ACTION_CATEGORY_INFORMATION_DISCLOSURE,
-        .harm_multiplier = 3.5f,
-        .time_sensitivity = 0.5f,
+        .harm_multiplier = 3.5F,
+        .time_sensitivity = 0.5F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - Cannot be disabled
@@ -478,8 +478,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
         .description = "Multiple configuration changes may compromise system security",
         .category_a = ACTION_CATEGORY_CONFIGURATION_CHANGE,
         .category_b = ACTION_CATEGORY_CONFIGURATION_CHANGE,
-        .harm_multiplier = 2.0f,
-        .time_sensitivity = 0.6f,
+        .harm_multiplier = 2.0F,
+        .time_sensitivity = 0.6F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - Cannot be disabled
@@ -493,8 +493,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
         .description = "Multiple resource allocations may lead to exhaustion or denial of service",
         .category_a = ACTION_CATEGORY_RESOURCE_ALLOCATION,
         .category_b = ACTION_CATEGORY_RESOURCE_ALLOCATION,
-        .harm_multiplier = 2.2f,
-        .time_sensitivity = 0.7f,
+        .harm_multiplier = 2.2F,
+        .time_sensitivity = 0.7F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - Cannot be disabled
@@ -510,8 +510,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
                       "ASIMOV FIRST LAW PROTECTION",
         .category_a = ACTION_CATEGORY_PHYSICAL_ACTION,
         .category_b = ACTION_CATEGORY_PHYSICAL_ACTION,
-        .harm_multiplier = 4.0f,  // Highest multiplier for physical harm
-        .time_sensitivity = 0.8f,
+        .harm_multiplier = 4.0F,  // Highest multiplier for physical harm
+        .time_sensitivity = 0.8F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - CRITICAL SAFETY PATTERN
@@ -525,8 +525,8 @@ NIMCP_EXPORT uint32_t combinatorial_register_default_patterns(
         .description = "Multiple financial transactions may constitute manipulation or fraud",
         .category_a = ACTION_CATEGORY_FINANCIAL_TRANSACTION,
         .category_b = ACTION_CATEGORY_FINANCIAL_TRANSACTION,
-        .harm_multiplier = 2.5f,
-        .time_sensitivity = 0.5f,
+        .harm_multiplier = 2.5F,
+        .time_sensitivity = 0.5F,
         .bidirectional = true,
         .enabled = true,
         .locked = true  // MEMORY LOCKED - Cannot be disabled
@@ -654,8 +654,8 @@ NIMCP_EXPORT bool combinatorial_evaluate(
     // Initialize result
     memset(result, 0, sizeof(combinatorial_evaluation_t));
     result->harmful = false;
-    result->combined_harm_score = 0.0f;
-    result->confidence = 1.0f;
+    result->combined_harm_score = 0.0F;
+    result->confidence = 1.0F;
     result->recommended_action = ETHICS_ACTION_ALLOW;
     strncpy(result->explanation, "No harmful combinations detected",
             sizeof(result->explanation) - 1);
@@ -666,7 +666,7 @@ NIMCP_EXPORT bool combinatorial_evaluate(
     detector->stats.total_evaluations++;
 
     uint64_t current_time = get_time_ms();
-    float worst_score = 0.0f;
+    float worst_score = 0.0F;
     uint32_t worst_pattern_id = 0;
     uint64_t worst_action_id = 0;
     const char* worst_pattern_name = NULL;
@@ -788,7 +788,7 @@ NIMCP_EXPORT int combinatorial_evaluate_batch(
     }
 
     int worst_index = -1;
-    float worst_score = 0.0f;
+    float worst_score = 0.0F;
     combinatorial_evaluation_t current_result;
 
     for (uint32_t i = 0; i < num_pending; i++) {
@@ -841,7 +841,7 @@ NIMCP_EXPORT void combinatorial_reset_stats(
     detector->stats.total_evaluations = 0;
     detector->stats.combinations_detected = 0;
     detector->stats.actions_blocked = 0;
-    detector->stats.average_combination_score = 0.0f;
+    detector->stats.average_combination_score = 0.0F;
     // Keep: actions_in_history, patterns_registered
 
     nimcp_platform_mutex_unlock(&detector->mutex);
@@ -897,22 +897,22 @@ NIMCP_EXPORT bool combinatorial_detach_from_ethics(
  */
 static float compute_action_entropy(const action_record_t* action) {
     if (!action || !action->features || action->num_features == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Normalize features to probability distribution
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < action->num_features; i++) {
         sum += fabsf(action->features[i]);
     }
 
-    if (sum < 1e-10f) return 0.0f;
+    if (sum < 1e-10F) return 0.0F;
 
     // Compute Shannon entropy: H = -sum(p * log2(p))
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < action->num_features; i++) {
         float p = fabsf(action->features[i]) / sum;
-        if (p > 1e-10f) {
+        if (p > 1e-10F) {
             entropy -= p * log2f(p);
         }
     }
@@ -943,20 +943,20 @@ NIMCP_EXPORT bool combinatorial_compute_shannon_metrics(
     metrics->mutual_information = harm_correlation * fminf(metrics->action_entropy, entropy_b);
 
     // Conditional harm entropy: H(Harm|A,B) decreases when actions are more predictive
-    float base_harm_entropy = 1.0f;  // Maximum uncertainty
-    metrics->conditional_harm_entropy = base_harm_entropy * (1.0f - harm_correlation);
+    float base_harm_entropy = 1.0F;  // Maximum uncertainty
+    metrics->conditional_harm_entropy = base_harm_entropy * (1.0F - harm_correlation);
 
     // Information gain: how much knowing actions reduces harm uncertainty
     metrics->information_gain = base_harm_entropy - metrics->conditional_harm_entropy;
 
     // Normalized harm score using entropy bounds
     float max_entropy = log2f((float)(action_a->num_features > 0 ? action_a->num_features : 1));
-    metrics->normalized_harm_score = (max_entropy > 0.0f) ?
-        (metrics->information_gain / max_entropy) : 0.0f;
+    metrics->normalized_harm_score = (max_entropy > 0.0F) ?
+        (metrics->information_gain / max_entropy) : 0.0F;
 
     // Clamp to [0, 1]
-    if (metrics->normalized_harm_score > 1.0f) metrics->normalized_harm_score = 1.0f;
-    if (metrics->normalized_harm_score < 0.0f) metrics->normalized_harm_score = 0.0f;
+    if (metrics->normalized_harm_score > 1.0F) metrics->normalized_harm_score = 1.0F;
+    if (metrics->normalized_harm_score < 0.0F) metrics->normalized_harm_score = 0.0F;
 
     return true;
 }
@@ -972,20 +972,20 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
     analysis->fractal_depth = COMBINATORIAL_FRACTAL_DEPTH;
 
     // Define time scale factors (seconds, minutes, hours, days)
-    float scale_factors[COMBINATORIAL_FRACTAL_DEPTH] = {1.0f, 60.0f, 3600.0f, 86400.0f};
+    float scale_factors[COMBINATORIAL_FRACTAL_DEPTH] = {1.0F, 60.0F, 3600.0F, 86400.0F};
     memcpy(analysis->scale_factors, scale_factors, sizeof(scale_factors));
 
     uint64_t current_time = get_time_ms();
-    float total_harm = 0.0f;
-    float weighted_harm = 0.0f;
-    float total_weight = 0.0f;
+    float total_harm = 0.0F;
+    float weighted_harm = 0.0F;
+    float total_weight = 0.0F;
 
     nimcp_platform_mutex_lock(&detector->mutex);
 
     // Analyze harm at each time scale
     for (uint32_t scale = 0; scale < COMBINATORIAL_FRACTAL_DEPTH; scale++) {
-        uint64_t scale_window_ms = (uint64_t)(scale_factors[scale] * 1000.0f);
-        float scale_harm = 0.0f;
+        uint64_t scale_window_ms = (uint64_t)(scale_factors[scale] * 1000.0F);
+        float scale_harm = 0.0F;
         uint32_t count_at_scale = 0;
 
         // Count harmful combinations at this scale
@@ -1002,10 +1002,10 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
         }
 
         analysis->harm_by_scale[scale] = (count_at_scale > 0) ?
-            scale_harm / count_at_scale : 0.0f;
+            scale_harm / count_at_scale : 0.0F;
 
         // Weight by scale (longer scales = more weight for persistent patterns)
-        float weight = 1.0f + (float)scale * 0.5f;
+        float weight = 1.0F + (float)scale * 0.5F;
         weighted_harm += analysis->harm_by_scale[scale] * weight;
         total_weight += weight;
         total_harm += analysis->harm_by_scale[scale];
@@ -1014,12 +1014,12 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
     nimcp_platform_mutex_unlock(&detector->mutex);
 
     // Self-similar aggregation
-    analysis->aggregated_harm = (total_weight > 0.0f) ?
-        weighted_harm / total_weight : 0.0f;
+    analysis->aggregated_harm = (total_weight > 0.0F) ?
+        weighted_harm / total_weight : 0.0F;
 
     // Estimate Hurst exponent from scale variance
     // H > 0.5 indicates long-range dependence (persistent harm pattern)
-    float variance_sum = 0.0f;
+    float variance_sum = 0.0F;
     float mean_harm = total_harm / COMBINATORIAL_FRACTAL_DEPTH;
     for (uint32_t i = 0; i < COMBINATORIAL_FRACTAL_DEPTH; i++) {
         float diff = analysis->harm_by_scale[i] - mean_harm;
@@ -1028,7 +1028,7 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
     float variance = variance_sum / COMBINATORIAL_FRACTAL_DEPTH;
 
     // Simplified Hurst estimation (proper R/S analysis would be more accurate)
-    analysis->hurst_exponent = 0.5f + 0.5f * tanhf(variance * 10.0f);
+    analysis->hurst_exponent = 0.5F + 0.5F * tanhf(variance * 10.0F);
 
     return true;
 }
@@ -1046,20 +1046,20 @@ NIMCP_EXPORT bool combinatorial_hyperbolic_embed(
     // More severe harms are closer to center (counterintuitive but useful)
     // Less severe harms near boundary (easier to escape)
     float severity = action->standalone_harm_score;
-    embedding->hyperbolic_distance = 1.0f - severity;  // Invert: high harm = low distance
+    embedding->hyperbolic_distance = 1.0F - severity;  // Invert: high harm = low distance
 
     // Map action category to angular position (divide disk into sectors)
-    float angle_per_category = 2.0f * M_PI / 9.0f;  // 9 categories
+    float angle_per_category = 2.0F * M_PI / 9.0F;  // 9 categories
     embedding->angular_position = (float)action->category * angle_per_category;
 
     // Convert to Cartesian coordinates in Poincare disk
-    float r = embedding->hyperbolic_distance * 0.9f;  // Stay inside disk
+    float r = embedding->hyperbolic_distance * 0.9F;  // Stay inside disk
     embedding->poincare_coords[0] = r * cosf(embedding->angular_position);
     embedding->poincare_coords[1] = r * sinf(embedding->angular_position);
 
     // Hierarchy depth based on category specificity
-    embedding->hierarchy_depth = (action->category == ACTION_CATEGORY_CUSTOM) ? 3.0f :
-                                 (action->category >= ACTION_CATEGORY_PHYSICAL_ACTION) ? 2.0f : 1.0f;
+    embedding->hierarchy_depth = (action->category == ACTION_CATEGORY_CUSTOM) ? 3.0F :
+                                 (action->category >= ACTION_CATEGORY_PHYSICAL_ACTION) ? 2.0F : 1.0F;
 
     return true;
 }
@@ -1082,11 +1082,11 @@ NIMCP_EXPORT float combinatorial_hyperbolic_distance(
     float norm_b_sq = embedding_b->poincare_coords[0] * embedding_b->poincare_coords[0] +
                       embedding_b->poincare_coords[1] * embedding_b->poincare_coords[1];
 
-    float denom = (1.0f - norm_a_sq) * (1.0f - norm_b_sq);
-    if (denom < 1e-10f) return INFINITY;
+    float denom = (1.0F - norm_a_sq) * (1.0F - norm_b_sq);
+    if (denom < 1e-10F) return INFINITY;
 
-    float arg = 1.0f + 2.0f * diff_sq / denom;
-    if (arg < 1.0f) arg = 1.0f;  // Numerical stability
+    float arg = 1.0F + 2.0F * diff_sq / denom;
+    if (arg < 1.0F) arg = 1.0F;  // Numerical stability
 
     return acoshf(arg);
 }
@@ -1102,9 +1102,9 @@ NIMCP_EXPORT bool combinatorial_quantum_search(
     memset(search, 0, sizeof(quantum_harm_search_t));
 
     // Initialize quantum state
-    search->amplitude_real = 1.0f / sqrtf((float)detector->history.count + 1);
-    search->amplitude_imag = 0.0f;
-    search->annealing_temperature = 1.0f;  // Start hot
+    search->amplitude_real = 1.0F / sqrtf((float)detector->history.count + 1);
+    search->amplitude_imag = 0.0F;
+    search->annealing_temperature = 1.0F;  // Start hot
 
     float best_energy = INFINITY;
     uint32_t actual_steps = 0;
@@ -1116,7 +1116,7 @@ NIMCP_EXPORT bool combinatorial_quantum_search(
         actual_steps++;
 
         // Diffusion operator (mix amplitudes)
-        float phase_shift = 2.0f * M_PI * (float)step / (float)max_steps;
+        float phase_shift = 2.0F * M_PI * (float)step / (float)max_steps;
         float new_real = search->amplitude_real * cosf(phase_shift) -
                          search->amplitude_imag * sinf(phase_shift);
         float new_imag = search->amplitude_real * sinf(phase_shift) +
@@ -1125,7 +1125,7 @@ NIMCP_EXPORT bool combinatorial_quantum_search(
         search->amplitude_imag = new_imag;
 
         // Oracle: mark harmful states (amplitude amplification)
-        float harm_energy = 0.0f;
+        float harm_energy = 0.0F;
         for (uint32_t i = 0; i < detector->history.count; i++) {
             uint32_t index = (detector->history.head + detector->history.capacity - 1 - i)
                              % detector->history.capacity;
@@ -1149,7 +1149,7 @@ NIMCP_EXPORT bool combinatorial_quantum_search(
         }
 
         // Quantum annealing: reduce temperature
-        search->annealing_temperature *= 0.95f;
+        search->annealing_temperature *= 0.95F;
 
         // Tunneling probability based on energy landscape
         search->tunneling_probability = expf(-harm_energy / search->annealing_temperature);
@@ -1159,8 +1159,8 @@ NIMCP_EXPORT bool combinatorial_quantum_search(
                                              search->amplitude_imag * search->amplitude_imag);
 
         // Check convergence
-        if (search->annealing_temperature < 0.01f ||
-            search->interference_pattern > 0.9f) {
+        if (search->annealing_temperature < 0.01F ||
+            search->interference_pattern > 0.9F) {
             search->converged = true;
         }
     }
@@ -1190,7 +1190,7 @@ NIMCP_EXPORT bool combinatorial_compute_phasor(
     // Phase: based on temporal relationship
     int64_t time_diff = (int64_t)action_b->timestamp - (int64_t)action_a->timestamp;
     float normalized_diff = (float)time_diff / (float)detector->config.time_window_ms;
-    phasor->phase = normalized_diff * 2.0f * M_PI;
+    phasor->phase = normalized_diff * 2.0F * M_PI;
 
     // Convert to rectangular form
     phasor->real_part = phasor->magnitude * cosf(phasor->phase);
@@ -1198,7 +1198,7 @@ NIMCP_EXPORT bool combinatorial_compute_phasor(
 
     // Phase coherence: how aligned are the actions temporally?
     // High coherence = same category and close in time
-    float category_match = (action_a->category == action_b->category) ? 1.0f : 0.5f;
+    float category_match = (action_a->category == action_b->category) ? 1.0F : 0.5F;
     float time_coherence = expf(-fabsf(normalized_diff));
     phasor->phase_coherence = category_match * time_coherence;
 
@@ -1207,7 +1207,7 @@ NIMCP_EXPORT bool combinatorial_compute_phasor(
 
     // Instantaneous frequency: rate of phase change
     if (time_diff != 0) {
-        phasor->instantaneous_frequency = phasor->phase / ((float)time_diff / 1000.0f);
+        phasor->instantaneous_frequency = phasor->phase / ((float)time_diff / 1000.0F);
     }
 
     return true;
@@ -1227,7 +1227,7 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
     // Collect harm scores over time for spectral analysis
     float harm_series[256];
     uint32_t series_len = 0;
-    float sum_harm = 0.0f;
+    float sum_harm = 0.0F;
 
     for (uint32_t i = 0; i < detector->history.count && series_len < 256; i++) {
         uint32_t index = (detector->history.head + detector->history.capacity - 1 - i)
@@ -1241,8 +1241,8 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
 
     if (series_len < 4) {
         // Not enough data for spectral analysis
-        analysis->spectral_slope = -1.0f;  // Assume pink
-        analysis->deviation_from_pink = 0.0f;
+        analysis->spectral_slope = -1.0F;  // Assume pink
+        analysis->deviation_from_pink = 0.0F;
         analysis->anomaly_detected = false;
         return true;
     }
@@ -1250,14 +1250,14 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
     // Compute power spectrum using variance at different scales
     // (Simplified - proper FFT would be more accurate)
     float mean_harm = sum_harm / series_len;
-    float total_power = 0.0f;
-    float weighted_freq_power = 0.0f;
+    float total_power = 0.0F;
+    float weighted_freq_power = 0.0F;
 
     for (uint32_t k = 1; k <= series_len / 2; k++) {
         // Compute power at frequency k
-        float power = 0.0f;
+        float power = 0.0F;
         for (uint32_t n = 0; n < series_len; n++) {
-            float angle = 2.0f * M_PI * k * n / series_len;
+            float angle = 2.0F * M_PI * k * n / series_len;
             power += (harm_series[n] - mean_harm) * cosf(angle);
         }
         power = (power * power) / series_len;
@@ -1265,35 +1265,35 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
         // For 1/f (pink) noise, power ~ 1/f
         float freq = (float)k;
         total_power += power;
-        weighted_freq_power += power * logf(freq + 1.0f);
+        weighted_freq_power += power * logf(freq + 1.0F);
     }
 
     // Estimate spectral slope (should be -1.0 for pink noise)
-    if (total_power > 1e-10f) {
+    if (total_power > 1e-10F) {
         float avg_log_freq = logf((float)(series_len / 4 + 1));
         analysis->spectral_slope = -weighted_freq_power / (total_power * avg_log_freq);
     } else {
-        analysis->spectral_slope = -1.0f;
+        analysis->spectral_slope = -1.0F;
     }
 
     // Deviation from ideal pink noise (-1.0)
-    analysis->deviation_from_pink = fabsf(analysis->spectral_slope + 1.0f);
+    analysis->deviation_from_pink = fabsf(analysis->spectral_slope + 1.0F);
 
     // Noise floor estimation
-    analysis->noise_floor = mean_harm * 0.1f;
+    analysis->noise_floor = mean_harm * 0.1F;
 
     // Signal-to-noise ratio
     float signal_power = sqrtf(total_power / (series_len / 2));
-    analysis->signal_to_noise = (analysis->noise_floor > 1e-10f) ?
-        signal_power / analysis->noise_floor : 100.0f;
+    analysis->signal_to_noise = (analysis->noise_floor > 1e-10F) ?
+        signal_power / analysis->noise_floor : 100.0F;
 
     // Stochastic resonance: optimal noise can enhance signal detection
     // Peak resonance when noise_floor ~ signal threshold
     float threshold = detector->config.harm_threshold;
-    analysis->stochastic_resonance = expf(-fabsf(analysis->noise_floor - threshold * 0.5f));
+    analysis->stochastic_resonance = expf(-fabsf(analysis->noise_floor - threshold * 0.5F));
 
     // Anomaly detection: significant deviation from 1/f indicates artificial pattern
-    analysis->anomaly_detected = analysis->deviation_from_pink > 0.5f;
+    analysis->anomaly_detected = analysis->deviation_from_pink > 0.5F;
 
     return true;
 }
@@ -1358,7 +1358,7 @@ NIMCP_EXPORT bool combinatorial_full_mathematical_analysis(
 
     if (analysis->methods_used & MATH_METHOD_SHANNON) {
         scores[n_scores] = analysis->shannon.normalized_harm_score;
-        weights[n_scores] = 1.0f;
+        weights[n_scores] = 1.0F;
         n_scores++;
     }
     if (analysis->methods_used & MATH_METHOD_FRACTAL) {
@@ -1367,8 +1367,8 @@ NIMCP_EXPORT bool combinatorial_full_mathematical_analysis(
         n_scores++;
     }
     if (analysis->methods_used & MATH_METHOD_HYPERBOLIC) {
-        scores[n_scores] = 1.0f - analysis->hyperbolic.hyperbolic_distance;  // Invert distance
-        weights[n_scores] = 0.8f;
+        scores[n_scores] = 1.0F - analysis->hyperbolic.hyperbolic_distance;  // Invert distance
+        weights[n_scores] = 0.8F;
         n_scores++;
     }
     if (analysis->methods_used & MATH_METHOD_PHASOR) {
@@ -1377,35 +1377,35 @@ NIMCP_EXPORT bool combinatorial_full_mathematical_analysis(
         n_scores++;
     }
     if (analysis->methods_used & MATH_METHOD_PINK_NOISE) {
-        scores[n_scores] = analysis->pink_noise.anomaly_detected ? 0.8f : 0.2f;
-        weights[n_scores] = analysis->pink_noise.signal_to_noise > 1.0f ? 1.0f : 0.5f;
+        scores[n_scores] = analysis->pink_noise.anomaly_detected ? 0.8F : 0.2F;
+        weights[n_scores] = analysis->pink_noise.signal_to_noise > 1.0F ? 1.0F : 0.5F;
         n_scores++;
     }
     if (analysis->methods_used & MATH_METHOD_QUANTUM) {
         scores[n_scores] = analysis->quantum.ground_state_energy;
-        weights[n_scores] = analysis->quantum.converged ? 1.0f : 0.5f;
+        weights[n_scores] = analysis->quantum.converged ? 1.0F : 0.5F;
         n_scores++;
     }
 
     // Weighted average for unified score
-    float total_weight = 0.0f;
-    float weighted_sum = 0.0f;
+    float total_weight = 0.0F;
+    float weighted_sum = 0.0F;
     for (int i = 0; i < n_scores; i++) {
         weighted_sum += scores[i] * weights[i];
         total_weight += weights[i];
     }
 
-    analysis->unified_harm_score = (total_weight > 0.0f) ?
-        weighted_sum / total_weight : 0.0f;
+    analysis->unified_harm_score = (total_weight > 0.0F) ?
+        weighted_sum / total_weight : 0.0F;
 
     // Confidence based on method agreement
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (int i = 0; i < n_scores; i++) {
         float diff = scores[i] - analysis->unified_harm_score;
         variance += diff * diff;
     }
-    variance = (n_scores > 1) ? variance / (n_scores - 1) : 0.0f;
-    analysis->confidence = expf(-variance * 4.0f);  // High variance = low confidence
+    variance = (n_scores > 1) ? variance / (n_scores - 1) : 0.0F;
+    analysis->confidence = expf(-variance * 4.0F);  // High variance = low confidence
 
     return true;
 }
@@ -1432,12 +1432,12 @@ NIMCP_EXPORT bool combinatorial_evaluate_enhanced(
     }
 
     // Combine standard and mathematical results
-    float combined_score = 0.6f * result->combined_harm_score +
-                          0.4f * analysis->unified_harm_score;
+    float combined_score = 0.6F * result->combined_harm_score +
+                          0.4F * analysis->unified_harm_score;
 
     // Update result with combined score
     result->combined_harm_score = combined_score;
-    result->confidence = (result->confidence + analysis->confidence) / 2.0f;
+    result->confidence = (result->confidence + analysis->confidence) / 2.0F;
 
     // Re-evaluate harmful threshold with combined score
     if (combined_score >= detector->config.harm_threshold && !result->harmful) {

@@ -125,7 +125,7 @@ routing_table_config_t routing_table_default_config(void) {
     config.enable_learning = true;
     config.enable_pruning = true;
     config.enable_multi_path = true;
-    config.learning_rate = 0.1f;
+    config.learning_rate = 0.1F;
     return config;
 }
 
@@ -170,7 +170,7 @@ bool routing_table_add_route(routing_table_t* table,
                              uint32_t source_id,
                              uint32_t dest_id,
                              float initial_strength) {
-    if (!table || initial_strength < 0.0f || initial_strength > 1.0f) {
+    if (!table || initial_strength < 0.0F || initial_strength > 1.0F) {
         return false;
     }
 
@@ -180,9 +180,9 @@ bool routing_table_add_route(routing_table_t* table,
         // Update existing route
         if (table->config.enable_learning) {
             float lr = table->config.learning_rate;
-            existing->rule.strength += lr * (1.0f - existing->rule.strength);
-            if (existing->rule.strength > 1.0f) {
-                existing->rule.strength = 1.0f;
+            existing->rule.strength += lr * (1.0F - existing->rule.strength);
+            if (existing->rule.strength > 1.0F) {
+                existing->rule.strength = 1.0F;
             }
         }
         return true;
@@ -277,7 +277,7 @@ bool routing_table_get_strength(const routing_table_t* table,
     const route_node_t* node = find_route(table, source_id, dest_id);
 
     if (!node) {
-        *strength = 0.0f;
+        *strength = 0.0F;
         return false;
     }
 
@@ -316,9 +316,9 @@ bool routing_table_use_route(routing_table_t* table,
     // Hebbian learning
     if (table->config.enable_learning) {
         float lr = table->config.learning_rate;
-        node->rule.strength += lr * (1.0f - node->rule.strength);
-        if (node->rule.strength > 1.0f) {
-            node->rule.strength = 1.0f;
+        node->rule.strength += lr * (1.0F - node->rule.strength);
+        if (node->rule.strength > 1.0F) {
+            node->rule.strength = 1.0F;
         }
 
         // Apply decay to all other routes
@@ -394,9 +394,9 @@ bool routing_table_get_stats(const routing_table_t* table,
 
     if (avg_strength) {
         if (table->num_routes == 0) {
-            *avg_strength = 0.0f;
+            *avg_strength = 0.0F;
         } else {
-            float sum = 0.0f;
+            float sum = 0.0F;
             uint32_t count = 0;
 
             for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {

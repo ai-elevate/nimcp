@@ -31,6 +31,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -561,9 +562,9 @@ static bool process_checkpoint_request(async_checkpoint_writer_t* writer, async_
                 strncpy(request->error_msg, error, sizeof(request->error_msg) - 1);
                 request->error_msg[sizeof(request->error_msg) - 1] = '\0';
             } else {
-                // Fallback error message with path information
+                // Fallback error message with path information (limit path to fit in buffer)
                 snprintf(request->error_msg, sizeof(request->error_msg),
-                         "Failed to save checkpoint to %s (invalid path or I/O error)", request->path);
+                         "Failed to save checkpoint to %.180s (invalid path or I/O error)", request->path);
             }
         }
 

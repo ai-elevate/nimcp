@@ -674,14 +674,14 @@ signal_health_info_t signal_handler_get_health_status(void)
     // Calculate recovery success rate
     uint64_t total_attempts = g_recoveries + g_recovery_failures;
     health.recovery_success_rate = (total_attempts > 0) ?
-        (100.0f * g_recoveries / total_attempts) : 0.0f;
+        (100.0F * g_recoveries / total_attempts) : 0.0F;
 
     // Determine health status based on metrics
     if (g_fatal_crashes == 0 && g_recovery_failures == 0 && g_sigsegv_count == 0) {
         health.status = SIGNAL_HEALTH_HEALTHY;
     } else if (g_recovery_failures > 0 || g_sigsegv_count > 5) {
         health.status = SIGNAL_HEALTH_CRITICAL;
-    } else if (g_sigsegv_count > 3 || health.recovery_success_rate < 50.0f) {
+    } else if (g_sigsegv_count > 3 || health.recovery_success_rate < 50.0F) {
         health.status = SIGNAL_HEALTH_COMPROMISED;
     } else if (g_fatal_crashes > 0 || g_recovery_failures > 0) {
         health.status = SIGNAL_HEALTH_DEGRADED;

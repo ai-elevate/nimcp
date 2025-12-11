@@ -16,6 +16,8 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "utils/platform/nimcp_platform.h"
+#include "utils/time/nimcp_time.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -123,9 +125,9 @@ static float random_gaussian(float mean, float stddev) {
     float u2 = random_uniform();
 
     // Avoid log(0)
-    u1 = (u1 < 1e-10f) ? 1e-10f : u1;
+    u1 = (u1 < 1e-10F) ? 1e-10F : u1;
 
-    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)PI * u2);
+    float z = sqrtf(-2.0F * logf(u1)) * cosf(2.0F * (float)PI * u2);
     return mean + stddev * z;
 }
 
@@ -142,8 +144,8 @@ static float random_gaussian(float mean, float stddev) {
  * COMPLEXITY: O(1)
  */
 static float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
+    if (value < 0.0F) return 0.0F;
+    if (value > 1.0F) return 1.0F;
     return value;
 }
 
@@ -163,13 +165,13 @@ static gender_identity_t sample_gender(
     const personality_generation_config_t* config)
 {
     float r = random_uniform();
-    float female_prob = config ? config->female_probability : 1.0f;
-    float male_prob = config ? config->male_probability : 0.0f;
-    float nb_prob = config ? config->non_binary_probability : 0.0f;
+    float female_prob = config ? config->female_probability : 1.0F;
+    float male_prob = config ? config->male_probability : 0.0F;
+    float nb_prob = config ? config->non_binary_probability : 0.0F;
 
     // Normalize probabilities
     float total = female_prob + male_prob + nb_prob;
-    if (total < 1e-6f) {
+    if (total < 1e-6F) {
         return GENDER_FEMALE; // Default fallback
     }
 
@@ -206,10 +208,10 @@ static gender_identity_t sample_gender(
 static sexual_orientation_t sample_sexuality(void) {
     float r = random_uniform();
 
-    if (r < 0.85f) return SEXUALITY_HETEROSEXUAL;
-    if (r < 0.90f) return SEXUALITY_HOMOSEXUAL;
-    if (r < 0.97f) return SEXUALITY_BISEXUAL;
-    if (r < 0.99f) return SEXUALITY_PANSEXUAL;
+    if (r < 0.85F) return SEXUALITY_HETEROSEXUAL;
+    if (r < 0.90F) return SEXUALITY_HOMOSEXUAL;
+    if (r < 0.97F) return SEXUALITY_BISEXUAL;
+    if (r < 0.99F) return SEXUALITY_PANSEXUAL;
     return SEXUALITY_ASEXUAL;
 }
 
@@ -225,11 +227,11 @@ personality_generation_config_t personality_default_generation_config(void) {
      */
 
     personality_generation_config_t config = {
-        .trait_mean = 0.5f,
-        .trait_stddev = 0.15f,
-        .female_probability = 1.0f,  // Default: female (per user request)
-        .male_probability = 0.0f,
-        .non_binary_probability = 0.0f,
+        .trait_mean = 0.5F,
+        .trait_stddev = 0.15F,
+        .female_probability = 1.0F,  // Default: female (per user request)
+        .male_probability = 0.0F,
+        .non_binary_probability = 0.0F,
         .seed = 0,  // Time-based
         .enforce_balanced_traits = false
     };
@@ -251,8 +253,8 @@ personality_profile_t personality_generate_random(
     init_rng(seed);
 
     // Generate personality traits
-    float mean = config ? config->trait_mean : 0.5f;
-    float stddev = config ? config->trait_stddev : 0.15f;
+    float mean = config ? config->trait_mean : 0.5F;
+    float stddev = config ? config->trait_stddev : 0.15F;
 
     personality_traits_t traits;
     traits.openness = clamp_01(random_gaussian(mean, stddev));
@@ -268,17 +270,17 @@ personality_profile_t personality_generate_random(
     identity.gender = sample_gender(config);
     identity.sexuality = sample_sexuality();
 
-    identity.gender_certainty = clamp_01(random_gaussian(0.9f, 0.1f));
-    identity.sexuality_certainty = clamp_01(random_gaussian(0.8f, 0.15f));
+    identity.gender_certainty = clamp_01(random_gaussian(0.9F, 0.1F));
+    identity.sexuality_certainty = clamp_01(random_gaussian(0.8F, 0.15F));
 
-    identity.gender_is_core_identity = (random_uniform() > 0.5f);
-    identity.sexuality_is_core_identity = (random_uniform() > 0.3f);
+    identity.gender_is_core_identity = (random_uniform() > 0.5F);
+    identity.sexuality_is_core_identity = (random_uniform() > 0.3F);
 
     // Create profile
     personality_profile_t profile;
     profile.traits = traits;
     profile.identity = identity;
-    profile.created_timestamp_ms = nimcp_platform_time_monotonic_ms();
+    profile.created_timestamp_ms = nimcp_time_monotonic_ms();
     profile.seed = seed;
     profile.was_randomly_generated = true;
 
@@ -321,7 +323,7 @@ personality_profile_t personality_create_custom(
     profile.identity.gender_certainty = clamp_01(identity->gender_certainty);
     profile.identity.sexuality_certainty = clamp_01(identity->sexuality_certainty);
 
-    profile.created_timestamp_ms = nimcp_platform_time_monotonic_ms();
+    profile.created_timestamp_ms = nimcp_time_monotonic_ms();
     profile.seed = 0;
     profile.was_randomly_generated = false;
 
@@ -349,11 +351,11 @@ void personality_compute_modifiers(personality_profile_t* profile) {
     if (!profile) return;
 
     // Map each trait to [-0.5, +0.5]
-    profile->curiosity_modifier = profile->traits.openness - 0.5f;
-    profile->planning_modifier = profile->traits.conscientiousness - 0.5f;
-    profile->social_drive_modifier = profile->traits.extraversion - 0.5f;
-    profile->empathy_modifier = profile->traits.agreeableness - 0.5f;
-    profile->stress_sensitivity_modifier = profile->traits.neuroticism - 0.5f;
+    profile->curiosity_modifier = profile->traits.openness - 0.5F;
+    profile->planning_modifier = profile->traits.conscientiousness - 0.5F;
+    profile->social_drive_modifier = profile->traits.extraversion - 0.5F;
+    profile->empathy_modifier = profile->traits.agreeableness - 0.5F;
+    profile->stress_sensitivity_modifier = profile->traits.neuroticism - 0.5F;
 }
 
 //=============================================================================
@@ -490,24 +492,24 @@ bool personality_generate_summary(
     if (!profile || !buffer || buffer_size == 0) return false;
 
     // Trait descriptors
-    const char* openness_desc = (profile->traits.openness > 0.7f) ? "Creative" :
-                                (profile->traits.openness < 0.3f) ? "Conventional" :
+    const char* openness_desc = (profile->traits.openness > 0.7F) ? "Creative" :
+                                (profile->traits.openness < 0.3F) ? "Conventional" :
                                 "Moderate-Openness";
 
-    const char* conscient_desc = (profile->traits.conscientiousness > 0.7f) ? "Organized" :
-                                 (profile->traits.conscientiousness < 0.3f) ? "Spontaneous" :
+    const char* conscient_desc = (profile->traits.conscientiousness > 0.7F) ? "Organized" :
+                                 (profile->traits.conscientiousness < 0.3F) ? "Spontaneous" :
                                  "Moderate-Conscientiousness";
 
-    const char* extraver_desc = (profile->traits.extraversion > 0.7f) ? "Extraverted" :
-                                (profile->traits.extraversion < 0.3f) ? "Introverted" :
+    const char* extraver_desc = (profile->traits.extraversion > 0.7F) ? "Extraverted" :
+                                (profile->traits.extraversion < 0.3F) ? "Introverted" :
                                 "Ambivert";
 
-    const char* agreeable_desc = (profile->traits.agreeableness > 0.7f) ? "Compassionate" :
-                                 (profile->traits.agreeableness < 0.3f) ? "Direct" :
+    const char* agreeable_desc = (profile->traits.agreeableness > 0.7F) ? "Compassionate" :
+                                 (profile->traits.agreeableness < 0.3F) ? "Direct" :
                                  "Moderate-Agreeableness";
 
-    const char* neurotic_desc = (profile->traits.neuroticism > 0.7f) ? "Sensitive" :
-                                (profile->traits.neuroticism < 0.3f) ? "Emotionally-Stable" :
+    const char* neurotic_desc = (profile->traits.neuroticism > 0.7F) ? "Sensitive" :
+                                (profile->traits.neuroticism < 0.3F) ? "Emotionally-Stable" :
                                 "Moderate-Stability";
 
     int written = snprintf(buffer, buffer_size,

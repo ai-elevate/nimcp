@@ -442,11 +442,11 @@ uint32_t build_circuit_from_ast(
         }
 
         // Create gate for this operator
-        float threshold = 1.5f;  // Default threshold
-        if (gate_type == LOGIC_GATE_OR) threshold = 0.5f;
-        if (gate_type == LOGIC_GATE_NOT) threshold = 0.5f;
-        if (gate_type == LOGIC_GATE_XOR) threshold = 1.0f;
-        if (gate_type == LOGIC_GATE_IMPLIES) threshold = 1.0f;
+        float threshold = 1.5F;  // Default threshold
+        if (gate_type == LOGIC_GATE_OR) threshold = 0.5F;
+        if (gate_type == LOGIC_GATE_NOT) threshold = 0.5F;
+        if (gate_type == LOGIC_GATE_XOR) threshold = 1.0F;
+        if (gate_type == LOGIC_GATE_IMPLIES) threshold = 1.0F;
 
         uint32_t gate_id = neural_logic_create_gate(network, gate_type, threshold);
         if (gate_id == UINT32_MAX) {
@@ -456,13 +456,13 @@ uint32_t build_circuit_from_ast(
 
         // Connect inputs to gate
         if (left_id != UINT32_MAX) {
-            float weight = 1.0f;
-            if (gate_type == LOGIC_GATE_NOT) weight = -1.0f;  // Inhibitory
+            float weight = 1.0F;
+            if (gate_type == LOGIC_GATE_NOT) weight = -1.0F;  // Inhibitory
             neural_logic_connect(network, left_id, gate_id, weight);
         }
 
         if (right_id != UINT32_MAX) {
-            neural_logic_connect(network, right_id, gate_id, 1.0f);
+            neural_logic_connect(network, right_id, gate_id, 1.0F);
         }
 
         LOG_DEBUG("build_circuit_from_ast: created gate %s as neuron %u",

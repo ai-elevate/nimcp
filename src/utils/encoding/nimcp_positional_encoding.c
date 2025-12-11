@@ -202,7 +202,7 @@ static bool precompute_rope_cache(
     for (uint32_t pos = 0; pos < length; pos++) {
         for (uint32_t i = 0; i < dim / 2; i++) {
             float exp = (float)(2 * i) / (float)dim;
-            float freq = 1.0f / (powf(base, exp) * scaling);
+            float freq = 1.0F / (powf(base, exp) * scaling);
             float angle = (float)pos * freq;
 
             size_t idx = pos * (dim / 2) + i;
@@ -263,8 +263,8 @@ static float* compute_alibi_slopes(uint32_t num_heads, float slope_base)
     float* slopes = nimcp_calloc(num_heads, sizeof(float));
     if (!slopes) return NULL;
 
-    float ratio = powf(slope_base, 1.0f / (float)num_heads);
-    float slope = 1.0f;
+    float ratio = powf(slope_base, 1.0F / (float)num_heads);
+    float slope = 1.0F;
 
     for (uint32_t h = 0; h < num_heads; h++) {
         slopes[h] = slope;
@@ -299,9 +299,9 @@ static bool init_learned_embeddings(
     float std = encoder->data.learned.init_std;
     for (size_t i = 0; i < size; i++) {
         /* Box-Muller transform for normal distribution */
-        float u1 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
-        float u2 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
-        float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)M_PI * u2);
+        float u1 = ((float)rand() + 1.0F) / ((float)RAND_MAX + 2.0F);
+        float u2 = ((float)rand() + 1.0F) / ((float)RAND_MAX + 2.0F);
+        float z = sqrtf(-2.0F * logf(u1)) * cosf(2.0F * (float)M_PI * u2);
         encoder->data.learned.embeddings[i] = z * std;
     }
 
@@ -399,7 +399,7 @@ nimcp_pos_sinusoidal_config_t nimcp_pos_sinusoidal_default_config(void)
             .thread_safe = true
         },
         .frequency_base = NIMCP_ROPE_DEFAULT_BASE,
-        .frequency_scale = 1.0f
+        .frequency_scale = 1.0F
     };
     return config;
 }
@@ -413,9 +413,9 @@ nimcp_pos_learned_config_t nimcp_pos_learned_default_config(void)
             .cache_enabled = true,
             .thread_safe = true
         },
-        .init_std = 0.02f,
-        .learning_rate = 0.001f,
-        .weight_decay = 0.0001f
+        .init_std = 0.02F,
+        .learning_rate = 0.001F,
+        .weight_decay = 0.0001F
     };
     return config;
 }
@@ -430,10 +430,10 @@ nimcp_pos_rope_config_t nimcp_pos_rope_default_config(void)
             .thread_safe = true
         },
         .rope_base = NIMCP_ROPE_DEFAULT_BASE,
-        .rope_scaling = 1.0f,
+        .rope_scaling = 1.0F,
         .rope_dim = 0,
         .use_ntk_scaling = false,
-        .ntk_factor = 1.0f
+        .ntk_factor = 1.0F
     };
     return config;
 }
@@ -448,7 +448,7 @@ nimcp_pos_alibi_config_t nimcp_pos_alibi_default_config(void)
             .thread_safe = true
         },
         .num_heads = NIMCP_ALIBI_DEFAULT_HEADS,
-        .slope_base = 0.5f,
+        .slope_base = 0.5F,
         .use_symmetric = false
     };
     return config;
@@ -465,7 +465,7 @@ nimcp_pos_relative_config_t nimcp_pos_relative_default_config(void)
         },
         .max_relative_pos = 128,
         .use_clipping = true,
-        .init_std = 0.02f
+        .init_std = 0.02F
     };
     return config;
 }
@@ -1021,7 +1021,7 @@ int nimcp_pos_learned_update(
     if (!encoder) return NIMCP_POS_ERROR_NULL_PARAM;
     if (encoder->type != NIMCP_POS_LEARNED) return NIMCP_POS_ERROR_INVALID_TYPE;
 
-    if (learning_rate == 0.0f) {
+    if (learning_rate == 0.0F) {
         learning_rate = encoder->data.learned.learning_rate;
     }
 
@@ -1118,10 +1118,10 @@ int nimcp_pos_cache_stats(
 
     if (encoder->cache) {
         uint64_t total = encoder->cache->hits + encoder->cache->misses;
-        *hit_rate = (total > 0) ? (float)encoder->cache->hits / (float)total : 0.0f;
+        *hit_rate = (total > 0) ? (float)encoder->cache->hits / (float)total : 0.0F;
         *size_bytes = encoder->cache->cached_length * encoder->embedding_dim * sizeof(float);
     } else {
-        *hit_rate = 0.0f;
+        *hit_rate = 0.0F;
         *size_bytes = 0;
     }
 

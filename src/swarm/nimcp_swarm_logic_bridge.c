@@ -197,7 +197,7 @@ static float evaluate_logic_gate(logic_gate_type_t gate_type,
                                  uint32_t num_inputs,
                                  float threshold) {
     if (!inputs || num_inputs == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     switch (gate_type) {
@@ -225,13 +225,13 @@ static float evaluate_logic_gate(logic_gate_type_t gate_type,
 
         case LOGIC_GATE_NOT: {
             // NOT: Invert first input
-            return 1.0f - inputs[0];
+            return 1.0F - inputs[0];
         }
 
         case LOGIC_GATE_XOR: {
             // XOR: Exactly one input above threshold
             uint32_t count_high = 0;
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t i = 0; i < num_inputs; i++) {
                 if (inputs[i] >= threshold) {
                     count_high++;
@@ -240,22 +240,22 @@ static float evaluate_logic_gate(logic_gate_type_t gate_type,
             }
 
             // True if odd number of high inputs
-            return (count_high % 2 == 1) ? sum / num_inputs : 0.0f;
+            return (count_high % 2 == 1) ? sum / num_inputs : 0.0F;
         }
 
         case LOGIC_GATE_IMPLIES: {
             // IMPLIES: If A then B (¬A ∨ B)
             if (num_inputs < 2) {
-                return 0.0f;
+                return 0.0F;
             }
             float a = inputs[0];
             float b = inputs[1];
             // (1 - A) OR B = max(1 - A, B)
-            return fmaxf(1.0f - a, b);
+            return fmaxf(1.0F - a, b);
         }
 
         default:
-            return 0.0f;
+            return 0.0F;
     }
 }
 
@@ -376,8 +376,8 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     logic_config.variable_pattern_dim = 16;
     logic_config.use_gpu = false; // CPU only for now
     logic_config.enable_bio_async = bridge->config.enable_bio_async;
-    logic_config.timestep_us = 100.0f;
-    logic_config.integration_window_ms = 10.0f;
+    logic_config.timestep_us = 100.0F;
+    logic_config.integration_window_ms = 10.0F;
 
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
@@ -798,12 +798,12 @@ nimcp_error_t swarm_logic_bridge_validate_consensus(swarm_logic_bridge_t* bridge
     nimcp_platform_mutex_lock(bridge->mutex);
 
     uint64_t start_time = nimcp_time_get_us();
-    float gate_output = evaluate_logic_gate(consensus_type, votes, num_votes, 0.5f);
+    float gate_output = evaluate_logic_gate(consensus_type, votes, num_votes, 0.5F);
     uint64_t eval_time = nimcp_time_get_us() - start_time;
 
     memset(result, 0, sizeof(swarm_logic_result_t));
     result->rule_id = 0; // Consensus has no rule ID
-    result->result = (gate_output >= 0.5f);
+    result->result = (gate_output >= 0.5F);
     result->confidence = gate_output;
     result->num_inputs_used = num_votes;
     result->evaluation_time_us = eval_time;
@@ -850,7 +850,7 @@ int swarm_logic_bridge_detect_contradiction(swarm_logic_bridge_t* bridge,
 
             // XOR: contradiction if beliefs are opposite
             float inputs[2] = { beliefs[i].belief_value, beliefs[j].belief_value };
-            float xor_result = evaluate_logic_gate(LOGIC_GATE_XOR, inputs, 2, 0.5f);
+            float xor_result = evaluate_logic_gate(LOGIC_GATE_XOR, inputs, 2, 0.5F);
 
             // High XOR result indicates contradiction
             if (xor_result >= bridge->config.inference_threshold) {
@@ -883,8 +883,8 @@ nimcp_error_t swarm_logic_bridge_validate_implication(swarm_logic_bridge_t* brid
     nimcp_platform_mutex_lock(bridge->mutex);
 
     // Find agents
-    float antecedent_value = 0.0f;
-    float consequent_value = 0.0f;
+    float antecedent_value = 0.0F;
+    float consequent_value = 0.0F;
     bool found_antecedent = false;
     bool found_consequent = false;
 
@@ -907,12 +907,12 @@ nimcp_error_t swarm_logic_bridge_validate_implication(swarm_logic_bridge_t* brid
     // Evaluate IMPLIES gate
     float inputs[2] = { antecedent_value, consequent_value };
     uint64_t start_time = nimcp_time_get_us();
-    float gate_output = evaluate_logic_gate(LOGIC_GATE_IMPLIES, inputs, 2, 0.5f);
+    float gate_output = evaluate_logic_gate(LOGIC_GATE_IMPLIES, inputs, 2, 0.5F);
     uint64_t eval_time = nimcp_time_get_us() - start_time;
 
     memset(result, 0, sizeof(swarm_logic_result_t));
     result->rule_id = 0;
-    result->result = (gate_output >= 0.5f);
+    result->result = (gate_output >= 0.5F);
     result->confidence = gate_output;
     result->num_inputs_used = 2;
     result->evaluation_time_us = eval_time;
@@ -960,10 +960,10 @@ nimcp_error_t swarm_logic_bridge_send_result(swarm_logic_bridge_t* bridge,
 
     msg.gate_id = result->rule_id;
     msg.gate_type = 0; // Unknown gate type in result
-    msg.output = result->result ? 1.0f : 0.0f;
+    msg.output = result->result ? 1.0F : 0.0F;
     msg.spiked = result->result;
     msg.spike_time_us = result->evaluation_time_us;
-    msg.threshold_used = 0.5f;
+    msg.threshold_used = 0.5F;
 
     return bio_router_send(bridge->bio_ctx, &msg, sizeof(msg), 0);
 }
@@ -1019,7 +1019,7 @@ void swarm_logic_bridge_reset_stats(swarm_logic_bridge_t* bridge) {
     bridge->stats.failed_evaluations = 0;
     bridge->stats.cache_hits = 0;
     bridge->stats.cache_misses = 0;
-    bridge->stats.avg_evaluation_time_us = 0.0f;
+    bridge->stats.avg_evaluation_time_us = 0.0F;
 
     // Keep active counts
 

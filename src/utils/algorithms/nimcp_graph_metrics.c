@@ -152,17 +152,17 @@ static bool has_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
 float compute_modularity_q(NimcpGraph* graph, uint32_t* communities)
 {
     if (!graph || !communities) {
-        return -1.0f;
+        return -1.0F;
     }
 
     if (graph->vertex_count == 0 || graph->edge_count == 0) {
-        return 0.0f;  // Empty graph has zero modularity
+        return 0.0F;  // Empty graph has zero modularity
     }
 
     // 2m = twice the number of edges (for undirected graphs)
-    float two_m = 2.0f * (float)graph->edge_count;
+    float two_m = 2.0F * (float)graph->edge_count;
 
-    float q_sum = 0.0f;
+    float q_sum = 0.0F;
 
     // Iterate over all vertex pairs
     for (uint32_t i = 0; i < graph->vertex_count; i++) {
@@ -177,7 +177,7 @@ float compute_modularity_q(NimcpGraph* graph, uint32_t* communities)
             uint32_t k_j = get_degree(graph, j);
 
             // A_ij = 1 if edge exists, 0 otherwise
-            float a_ij = has_edge(graph, i, j) ? 1.0f : 0.0f;
+            float a_ij = has_edge(graph, i, j) ? 1.0F : 0.0F;
 
             // Expected edges under random null model
             float expected = (float)k_i * (float)k_j / two_m;
@@ -209,14 +209,14 @@ float compute_modularity_q(NimcpGraph* graph, uint32_t* communities)
 float compute_clustering_coefficient(NimcpGraph* graph)
 {
     if (!graph) {
-        return -1.0f;
+        return -1.0F;
     }
 
     if (graph->vertex_count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float total_clustering = 0.0f;
+    float total_clustering = 0.0F;
     uint32_t counted_vertices = 0;
 
     // Compute local clustering for each vertex
@@ -231,7 +231,7 @@ float compute_clustering_coefficient(NimcpGraph* graph)
 
         // Local clustering: C_i = 2*T_i / (k_i*(k_i-1))
         float max_triangles = (float)k * (float)(k - 1);
-        float local_clustering = (2.0f * (float)triangles) / max_triangles;
+        float local_clustering = (2.0F * (float)triangles) / max_triangles;
 
         total_clustering += local_clustering;
         counted_vertices++;
@@ -239,7 +239,7 @@ float compute_clustering_coefficient(NimcpGraph* graph)
 
     // Return average clustering
     if (counted_vertices == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return total_clustering / (float)counted_vertices;
@@ -262,27 +262,27 @@ float compute_clustering_coefficient(NimcpGraph* graph)
 float compute_characteristic_path_length(NimcpGraph* graph)
 {
     if (!graph) {
-        return -1.0f;
+        return -1.0F;
     }
 
     uint32_t n = graph->vertex_count;
     if (n == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Allocate distance matrix (flattened 2D array)
     float* dist = (float*)nimcp_malloc(n * n * sizeof(float));
     if (!dist) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Initialize distance matrix
     for (uint32_t i = 0; i < n; i++) {
         for (uint32_t j = 0; j < n; j++) {
             if (i == j) {
-                dist[i * n + j] = 0.0f;  // Distance to self = 0
+                dist[i * n + j] = 0.0F;  // Distance to self = 0
             } else if (has_edge(graph, i, j)) {
-                dist[i * n + j] = 1.0f;  // Direct edge = distance 1
+                dist[i * n + j] = 1.0F;  // Direct edge = distance 1
             } else {
                 dist[i * n + j] = FLT_MAX;  // No path initially
             }
@@ -307,7 +307,7 @@ float compute_characteristic_path_length(NimcpGraph* graph)
     }
 
     // Compute average of all finite distances (excluding diagonal)
-    float sum = 0.0f;
+    float sum = 0.0F;
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -322,7 +322,7 @@ float compute_characteristic_path_length(NimcpGraph* graph)
     nimcp_free(dist);
 
     if (count == 0) {
-        return 0.0f;  // Disconnected graph
+        return 0.0F;  // Disconnected graph
     }
 
     return sum / (float)count;
@@ -347,21 +347,21 @@ float compute_characteristic_path_length(NimcpGraph* graph)
 float compute_assortativity(NimcpGraph* graph)
 {
     if (!graph) {
-        return -2.0f;
+        return -2.0F;
     }
 
     if (graph->edge_count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float m = (float)graph->edge_count;
 
     // Accumulate statistics over all edges
-    float sum_jk = 0.0f;    // Σ(j * k)
-    float sum_j = 0.0f;     // Σ(j)
-    float sum_k = 0.0f;     // Σ(k)
-    float sum_j2 = 0.0f;    // Σ(j^2)
-    float sum_k2 = 0.0f;    // Σ(k^2)
+    float sum_jk = 0.0F;    // Σ(j * k)
+    float sum_j = 0.0F;     // Σ(j)
+    float sum_k = 0.0F;     // Σ(k)
+    float sum_j2 = 0.0F;    // Σ(j^2)
+    float sum_k2 = 0.0F;    // Σ(k^2)
 
     // Iterate over all edges
     for (uint32_t i = 0; i < graph->vertex_count; i++) {
@@ -390,14 +390,14 @@ float compute_assortativity(NimcpGraph* graph)
     float denom_j = sum_j2 - (sum_j * sum_j) / m;
     float denom_k = sum_k2 - (sum_k * sum_k) / m;
 
-    if (denom_j <= 0.0f || denom_k <= 0.0f) {
-        return 0.0f;  // All vertices have same degree
+    if (denom_j <= 0.0F || denom_k <= 0.0F) {
+        return 0.0F;  // All vertices have same degree
     }
 
     float denominator = sqrtf(denom_j * denom_k);
 
-    if (denominator == 0.0f) {
-        return 0.0f;
+    if (denominator == 0.0F) {
+        return 0.0F;
     }
 
     float r = numerator / denominator;
@@ -425,12 +425,12 @@ graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
     }
 
     // Initialize all metrics to invalid values
-    metrics->modularity = 0.0f;
-    metrics->clustering_coefficient = -1.0f;
-    metrics->characteristic_path_length = -1.0f;
-    metrics->small_world_coefficient = 0.0f;
+    metrics->modularity = 0.0F;
+    metrics->clustering_coefficient = -1.0F;
+    metrics->characteristic_path_length = -1.0F;
+    metrics->small_world_coefficient = 0.0F;
     metrics->diameter = 0;
-    metrics->assortativity = -2.0f;
+    metrics->assortativity = -2.0F;
 
     // Compute basic metrics
     metrics->clustering_coefficient = compute_clustering_coefficient(graph);
@@ -459,9 +459,9 @@ graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
             for (uint32_t i = 0; i < n; i++) {
                 for (uint32_t j = 0; j < n; j++) {
                     if (i == j) {
-                        dist[i * n + j] = 0.0f;
+                        dist[i * n + j] = 0.0F;
                     } else if (has_edge(graph, i, j)) {
-                        dist[i * n + j] = 1.0f;
+                        dist[i * n + j] = 1.0F;
                     } else {
                         dist[i * n + j] = FLT_MAX;
                     }
@@ -485,7 +485,7 @@ graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
             }
 
             // Find maximum finite distance
-            float max_dist = 0.0f;
+            float max_dist = 0.0F;
             for (uint32_t i = 0; i < n; i++) {
                 for (uint32_t j = 0; j < n; j++) {
                     if (i != j && dist[i * n + j] != FLT_MAX) {
@@ -508,20 +508,20 @@ graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
     // L_random ≈ log(N)/log(k)
     if (graph->vertex_count > 1 && graph->edge_count > 0) {
         float N = (float)graph->vertex_count;
-        float k_avg = (2.0f * (float)graph->edge_count) / N;
+        float k_avg = (2.0F * (float)graph->edge_count) / N;
 
-        if (k_avg > 1.0f) {
+        if (k_avg > 1.0F) {
             float C_random = k_avg / N;
             float L_random = logf(N) / logf(k_avg);
 
-            if (C_random > 0.0f && L_random > 0.0f &&
-                metrics->clustering_coefficient > 0.0f &&
-                metrics->characteristic_path_length > 0.0f) {
+            if (C_random > 0.0F && L_random > 0.0F &&
+                metrics->clustering_coefficient > 0.0F &&
+                metrics->characteristic_path_length > 0.0F) {
 
                 float C_ratio = metrics->clustering_coefficient / C_random;
                 float L_ratio = metrics->characteristic_path_length / L_random;
 
-                if (L_ratio > 0.0f) {
+                if (L_ratio > 0.0F) {
                     metrics->small_world_coefficient = C_ratio / L_ratio;
                 }
             }

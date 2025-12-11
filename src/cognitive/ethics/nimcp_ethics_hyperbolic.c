@@ -84,18 +84,18 @@ float ethics_hyperbolic_weight(const knowledge_item_t *principle,
                                const knowledge_item_t *situation,
                                float decay_rate) {
     if (!principle || !situation) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check both have hyperbolic embeddings
     if (!principle->hyperbolic_embedding || !situation->hyperbolic_embedding) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute hyperbolic distance
     float distance = knowledge_hyperbolic_distance(principle, situation);
-    if (distance < 0.0f) {
-        return 0.0f;
+    if (distance < 0.0F) {
+        return 0.0F;
     }
 
     // Exponential decay of relevance
@@ -151,11 +151,11 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
 
     // Compute weights for each principle
     for (uint32_t i = 0; i < num_neighbors; i++) {
-        float base_weight = ethics_hyperbolic_weight(neighbors[i], situation, 1.5f);
+        float base_weight = ethics_hyperbolic_weight(neighbors[i], situation, 1.5F);
 
         // Boost weight for fundamental principles (near origin)
         float radius = poincare_norm(neighbors[i]->hyperbolic_embedding);
-        float fundamentality_boost = 1.0f + 0.5f * expf(-radius * 2.0f);
+        float fundamentality_boost = 1.0F + 0.5F * expf(-radius * 2.0F);
 
         float final_weight = base_weight * fundamentality_boost;
 
@@ -196,7 +196,7 @@ float ethics_resolve_conflict_hyperbolic(const knowledge_item_t *principle1,
                                          int *resolution_out) {
     if (!principle1 || !principle2 || !situation || !resolution_out) {
         *resolution_out = 0;
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check all have hyperbolic embeddings
@@ -204,7 +204,7 @@ float ethics_resolve_conflict_hyperbolic(const knowledge_item_t *principle1,
         !principle2->hyperbolic_embedding ||
         !situation->hyperbolic_embedding) {
         *resolution_out = 0;
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute distances to situation
@@ -216,20 +216,20 @@ float ethics_resolve_conflict_hyperbolic(const knowledge_item_t *principle1,
     float radius2 = poincare_norm(principle2->hyperbolic_embedding);
 
     // Combined score: closeness to situation + fundamentality
-    float score1 = expf(-dist1) * (1.0f + 0.5f * expf(-radius1));
-    float score2 = expf(-dist2) * (1.0f + 0.5f * expf(-radius2));
+    float score1 = expf(-dist1) * (1.0F + 0.5F * expf(-radius1));
+    float score2 = expf(-dist2) * (1.0F + 0.5F * expf(-radius2));
 
     // Determine winner
     float score_diff = fabsf(score1 - score2);
-    float confidence = tanhf(score_diff * 2.0f);  // Maps difference to [0, 1]
+    float confidence = tanhf(score_diff * 2.0F);  // Maps difference to [0, 1]
 
-    if (score1 > score2 * 1.2f) {
+    if (score1 > score2 * 1.2F) {
         *resolution_out = 1;  // Principle 1 dominates
-    } else if (score2 > score1 * 1.2f) {
+    } else if (score2 > score1 * 1.2F) {
         *resolution_out = -1;  // Principle 2 dominates
     } else {
         *resolution_out = 0;  // Balanced - need compromise
-        confidence *= 0.5f;  // Lower confidence in ties
+        confidence *= 0.5F;  // Lower confidence in ties
     }
 
     return confidence;
@@ -267,10 +267,10 @@ bool ethics_map_situation_to_hyperbolic(knowledge_system_t system,
     // Determine specificity from description length
     // (longer descriptions → more specific → higher radius)
     size_t desc_len = strlen(situation_description);
-    float specificity = tanhf(desc_len / 200.0f);  // 0 to ~1
+    float specificity = tanhf(desc_len / 200.0F);  // 0 to ~1
 
     // Map specificity to radius: 0.3 (general) to 0.85 (very specific)
-    float radius = 0.3f + 0.55f * specificity;
+    float radius = 0.3F + 0.55F * specificity;
 
     // Initialize hyperbolic embedding at this radius
     // Use default dimension from config
@@ -310,7 +310,7 @@ void ethics_visualize_hyperbolic_hierarchy(knowledge_system_t system, uint32_t m
 
     // Group by radius (abstraction level)
     uint32_t displayed = 0;
-    float radius_bins[3] = {0.0f, 0.4f, 0.7f};
+    float radius_bins[3] = {0.0F, 0.4F, 0.7F};
     const char *bin_labels[4] = {
         "UNIVERSAL PRINCIPLES",
         "DOMAIN ETHICS",
@@ -319,8 +319,8 @@ void ethics_visualize_hyperbolic_hierarchy(knowledge_system_t system, uint32_t m
     };
 
     for (uint32_t bin = 0; bin < 4 && displayed < max_items; bin++) {
-        float min_radius = (bin > 0) ? radius_bins[bin-1] : 0.0f;
-        float max_radius = (bin < 3) ? radius_bins[bin] : 1.0f;
+        float min_radius = (bin > 0) ? radius_bins[bin-1] : 0.0F;
+        float max_radius = (bin < 3) ? radius_bins[bin] : 1.0F;
 
         printf("--- %s (radius %.2f-%.2f) ---\n", bin_labels[bin], min_radius, max_radius);
 

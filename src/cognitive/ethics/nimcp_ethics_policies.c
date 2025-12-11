@@ -32,7 +32,7 @@
  */
 float ethics_evaluate_harm_policy(const action_context_t* action)
 {
-    return action ? action->predicted_harm : 0.0f;
+    return action ? action->predicted_harm : 0.0F;
 }
 
 /**
@@ -44,7 +44,7 @@ float ethics_evaluate_harm_policy(const action_context_t* action)
  */
 float ethics_evaluate_unfairness_policy(const action_context_t* action)
 {
-    return action ? action->fairness_violation : 0.0f;
+    return action ? action->fairness_violation : 0.0F;
 }
 
 /**
@@ -54,7 +54,7 @@ float ethics_evaluate_unfairness_policy(const action_context_t* action)
  */
 float ethics_evaluate_deception_policy(const action_context_t* action)
 {
-    return action ? action->deception_level : 0.0f;
+    return action ? action->deception_level : 0.0F;
 }
 
 /**
@@ -64,7 +64,7 @@ float ethics_evaluate_deception_policy(const action_context_t* action)
  */
 float ethics_evaluate_autonomy_policy(const action_context_t* action)
 {
-    return action ? action->autonomy_violation : 0.0f;
+    return action ? action->autonomy_violation : 0.0F;
 }
 
 /**
@@ -74,7 +74,7 @@ float ethics_evaluate_autonomy_policy(const action_context_t* action)
  */
 float ethics_evaluate_privacy_policy(const action_context_t* action)
 {
-    return action ? action->privacy_violation : 0.0f;
+    return action ? action->privacy_violation : 0.0F;
 }
 
 /**
@@ -84,7 +84,7 @@ float ethics_evaluate_privacy_policy(const action_context_t* action)
  */
 float ethics_evaluate_consent_policy(const action_context_t* action)
 {
-    return action ? action->consent_violation : 0.0f;
+    return action ? action->consent_violation : 0.0F;
 }
 
 /**
@@ -128,16 +128,16 @@ float ethics_evaluate_policy_strategy(const policy_strategy_table_t* table,
 {
     // Guard clause: Validate inputs
     if (!table || !policy || !action)
-        return 0.0f;
+        return 0.0F;
 
     // Guard clause: Check bounds
     if (policy->violation_type >= 16)
-        return 0.0f;
+        return 0.0F;
 
     policy_evaluator_fn evaluator = table->evaluators[policy->violation_type];
     // Guard clause: Check if evaluator exists
     if (!evaluator)
-        return 0.0f;
+        return 0.0F;
 
     return evaluator(action);
 }
@@ -164,12 +164,12 @@ float ethics_evaluate_all_policies(ethics_engine_t engine, const action_context_
 {
     // Guard clause: Validate inputs
     if (!engine || !action || !worst_violation || !worst_severity) {
-        return 1.0f;
+        return 1.0F;
     }
 
-    float policy_score = 1.0f;
+    float policy_score = 1.0F;
     *worst_violation = ETHICS_VIOLATION_TYPE_NONE;
-    *worst_severity = 0.0f;
+    *worst_severity = 0.0F;
 
     uint32_t num_policies = ethics_engine_get_num_policies(engine);
     const policy_strategy_table_t* strategy_table = ethics_engine_get_strategy_table(engine);
@@ -195,7 +195,7 @@ float ethics_evaluate_all_policies(ethics_engine_t engine, const action_context_
             *worst_violation = (ethics_violation_type_t)policy->violation_type;
         }
 
-        policy_score = fminf(policy_score, 1.0f - severity);
+        policy_score = fminf(policy_score, 1.0F - severity);
     }
 
     return policy_score;

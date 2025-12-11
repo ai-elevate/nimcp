@@ -207,9 +207,9 @@ mirror_neuron_config_t mirror_neurons_get_default_config(void)
         .num_mirror_neurons = 1000,
         .max_actions = 100,
         .max_agents = 10,
-        .learning_rate = 0.01f,
-        .decay_rate = 0.05f,
-        .match_threshold = 0.7f,
+        .learning_rate = 0.01F,
+        .decay_rate = 0.05F,
+        .match_threshold = 0.7F,
         .enable_working_memory = true,
         .enable_theory_of_mind = true,
         .enable_prediction = true,
@@ -250,7 +250,7 @@ action_t mirror_neurons_create_action(
     action.agent_id = agent_id;
     action.num_features = (num_features > 32) ? 32 : num_features;
     action.timestamp = nimcp_time_get_ms();
-    action.confidence = 1.0f;
+    action.confidence = 1.0F;
 
     if (action_name) {
         strncpy(action.action_name, action_name, sizeof(action.action_name) - 1);
@@ -275,12 +275,12 @@ action_t mirror_neurons_create_action(
 static float compute_feature_similarity(const float* f1, const float* f2, uint32_t n)
 {
     if (!f1 || !f2 || n == 0) {
-        return -1.0f;
+        return -1.0F;
     }
 
-    float dot_product = 0.0f;
-    float norm1 = 0.0f;
-    float norm2 = 0.0f;
+    float dot_product = 0.0F;
+    float norm1 = 0.0F;
+    float norm2 = 0.0F;
 
     for (uint32_t i = 0; i < n; i++) {
         dot_product += f1[i] * f2[i];
@@ -288,16 +288,16 @@ static float compute_feature_similarity(const float* f1, const float* f2, uint32
         norm2 += f2[i] * f2[i];
     }
 
-    if (norm1 == 0.0f || norm2 == 0.0f) {
-        return 0.0f;
+    if (norm1 == 0.0F || norm2 == 0.0F) {
+        return 0.0F;
     }
 
     float similarity = dot_product / (sqrtf(norm1) * sqrtf(norm2));
 
     // Normalize to [0, 1] from [-1, 1]
-    similarity = (similarity + 1.0f) / 2.0f;
+    similarity = (similarity + 1.0F) / 2.0F;
 
-    return (similarity < 0.0f) ? 0.0f : ((similarity > 1.0f) ? 1.0f : similarity);
+    return (similarity < 0.0F) ? 0.0F : ((similarity > 1.0F) ? 1.0F : similarity);
 }
 
 //=============================================================================
@@ -344,7 +344,7 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
     mapping->neuron_indices = (uint32_t*)nimcp_malloc(mapping->capacity * sizeof(uint32_t));
     mapping->total_observations = 0;
     mapping->total_executions = 0;
-    mapping->avg_similarity = 0.0f;
+    mapping->avg_similarity = 0.0F;
 
     if (!mapping->neuron_indices) {
         MIRROR_LOG_ERROR("Mirror neurons: failed to allocate neuron indices");
@@ -391,7 +391,7 @@ static uint32_t find_or_create_agent(mirror_neurons_t mirror, uint32_t agent_id)
     agent->agent_id = agent_id;
     agent->observation_count = 0;
     agent->last_observation_time = nimcp_time_get_ms();
-    agent->trust_score = 0.5f;  // Neutral trust initially
+    agent->trust_score = 0.5F;  // Neutral trust initially
 
     return idx;
 }
@@ -423,19 +423,19 @@ static float get_mirror_ach_modulation(mirror_neurons_t mirror)
 {
     // Guard: Early return if no brain
     if (!mirror || !mirror->brain) {
-        return 1.0f;
+        return 1.0F;
     }
 
     neuromodulator_system_t neuromod = brain_get_neuromodulator_system(mirror->brain);
     if (!neuromod) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Read acetylcholine level
     float ach = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
 
     // Map ACh range [0.3, 0.7] to modulation [0.6, 1.4]
-    float modulation = 0.6f + (ach - 0.3f) * 2.0f;
+    float modulation = 0.6F + (ach - 0.3F) * 2.0F;
 
     return modulation;
 }
@@ -474,7 +474,7 @@ static void activate_neurons_for_action(
     }
 
     // Apply acetylcholine modulation to observation pathway
-    float ach_modulation = is_observation ? get_mirror_ach_modulation(mirror) : 1.0f;
+    float ach_modulation = is_observation ? get_mirror_ach_modulation(mirror) : 1.0F;
 
     // Activate neurons
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
@@ -484,15 +484,15 @@ static void activate_neurons_for_action(
         if (is_observation) {
             // Apply ACh gating: enhances social learning when attentive
             neuron->observation_activation += strength * ach_modulation;
-            if (neuron->observation_activation > 1.0f) {
-                neuron->observation_activation = 1.0f;
+            if (neuron->observation_activation > 1.0F) {
+                neuron->observation_activation = 1.0F;
             }
             neuron->observation_count++;
             neuron->last_observation_time = current_time;
         } else {
             neuron->execution_activation += strength;
-            if (neuron->execution_activation > 1.0f) {
-                neuron->execution_activation = 1.0f;
+            if (neuron->execution_activation > 1.0F) {
+                neuron->execution_activation = 1.0F;
             }
             neuron->execution_count++;
             neuron->last_execution_time = current_time;
@@ -525,7 +525,7 @@ static void update_action_statistics(mirror_neurons_t mirror, uint32_t action_id
     }
 
     // Calculate average similarity across neurons
-    float total_similarity = 0.0f;
+    float total_similarity = 0.0F;
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
@@ -537,7 +537,7 @@ static void update_action_statistics(mirror_neurons_t mirror, uint32_t action_id
             float obs_norm = neuron->observation_activation;
             float exec_norm = neuron->execution_activation;
             float similarity = (obs_norm * exec_norm) /
-                             (obs_norm + exec_norm + 0.001f);  // Prevent div by 0
+                             (obs_norm + exec_norm + 0.001F);  // Prevent div by 0
             total_similarity += similarity;
             count++;
         }
@@ -818,7 +818,7 @@ bool mirror_neurons_observe_action(mirror_neurons_t mirror, const action_t* acti
     mirror->last_update_time = nimcp_time_get_ms();
 
     // Broadcast mirror neuron activation via bio-async
-    if (activation_strength > 0.5f) {
+    if (activation_strength > 0.5F) {
         bio_broadcast_mirror_fire(mirror, action->action_id, activation_strength);
     }
 
@@ -868,7 +868,7 @@ bool mirror_neurons_execute_action(mirror_neurons_t mirror, const action_t* acti
 float mirror_neurons_get_activation(mirror_neurons_t mirror, uint32_t action_id)
 {
     if (!mirror || !mirror->initialized) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Find action
@@ -881,11 +881,11 @@ float mirror_neurons_get_activation(mirror_neurons_t mirror, uint32_t action_id)
     }
 
     if (action_idx == UINT32_MAX) {
-        return -1.0f;  // Action not found
+        return -1.0F;  // Action not found
     }
 
     // Sum activations across neurons
-    float total_activation = 0.0f;
+    float total_activation = 0.0F;
     action_mapping_t* mapping = &mirror->actions[action_idx];
 
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
@@ -903,7 +903,7 @@ float mirror_neurons_get_activation(mirror_neurons_t mirror, uint32_t action_id)
         return total_activation / mapping->num_neurons;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 /**
@@ -916,7 +916,7 @@ bool mirror_neurons_match_actions(
     float* out_similarity)
 {
     if (!mirror || !observed_action || !executed_action) {
-        if (out_similarity) *out_similarity = 0.0f;
+        if (out_similarity) *out_similarity = 0.0F;
         return false;
     }
 
@@ -925,7 +925,7 @@ bool mirror_neurons_match_actions(
                            observed_action->num_features : executed_action->num_features;
 
     if (num_features == 0) {
-        if (out_similarity) *out_similarity = 0.0f;
+        if (out_similarity) *out_similarity = 0.0F;
         return false;
     }
 
@@ -1001,18 +1001,18 @@ bool mirror_neurons_update_associations(mirror_neurons_t mirror)
         float obs_act = neuron->observation_activation;
         float exec_act = neuron->execution_activation;
 
-        if (obs_act > 0.0f && exec_act > 0.0f) {
+        if (obs_act > 0.0F && exec_act > 0.0F) {
             // Both pathways active - strengthen association
             float delta = mirror->config.learning_rate * obs_act * exec_act;
             neuron->association_weight += delta;
 
             // Bound to [0, 1]
-            if (neuron->association_weight > 1.0f) {
-                neuron->association_weight = 1.0f;
+            if (neuron->association_weight > 1.0F) {
+                neuron->association_weight = 1.0F;
             }
         } else {
             // Weak decay if no co-activation
-            neuron->association_weight *= 0.99f;
+            neuron->association_weight *= 0.99F;
         }
     }
 
@@ -1034,7 +1034,7 @@ bool mirror_neurons_decay_activations(mirror_neurons_t mirror, uint32_t delta_ti
     }
 
     // Calculate decay factor based on time
-    float decay_factor = expf(-mirror->config.decay_rate * (delta_time_ms / 1000.0f));
+    float decay_factor = expf(-mirror->config.decay_rate * (delta_time_ms / 1000.0F));
 
     // Apply decay to all neurons
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
@@ -1044,11 +1044,11 @@ bool mirror_neurons_decay_activations(mirror_neurons_t mirror, uint32_t delta_ti
         neuron->execution_activation *= decay_factor;
 
         // Threshold to zero if very small
-        if (neuron->observation_activation < 0.001f) {
-            neuron->observation_activation = 0.0f;
+        if (neuron->observation_activation < 0.001F) {
+            neuron->observation_activation = 0.0F;
         }
-        if (neuron->execution_activation < 0.001f) {
-            neuron->execution_activation = 0.0f;
+        if (neuron->execution_activation < 0.001F) {
+            neuron->execution_activation = 0.0F;
         }
     }
 
@@ -1074,8 +1074,8 @@ bool mirror_neurons_get_stats(mirror_neurons_t mirror, mirror_neuron_stats_t* st
     // Update dynamic metrics
     stats->num_active_neurons = 0;
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
-        if (mirror->neurons[i].observation_activation > 0.01f ||
-            mirror->neurons[i].execution_activation > 0.01f) {
+        if (mirror->neurons[i].observation_activation > 0.01F ||
+            mirror->neurons[i].execution_activation > 0.01F) {
             stats->num_active_neurons++;
         }
     }
@@ -1084,15 +1084,15 @@ bool mirror_neurons_get_stats(mirror_neurons_t mirror, mirror_neuron_stats_t* st
     stats->num_observed_agents = mirror->num_agents;
 
     // Calculate average match quality
-    float total_quality = 0.0f;
+    float total_quality = 0.0F;
     uint32_t count = 0;
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
-        if (mirror->actions[i].avg_similarity > 0.0f) {
+        if (mirror->actions[i].avg_similarity > 0.0F) {
             total_quality += mirror->actions[i].avg_similarity;
             count++;
         }
     }
-    stats->avg_match_quality = (count > 0) ? (total_quality / count) : 0.0f;
+    stats->avg_match_quality = (count > 0) ? (total_quality / count) : 0.0F;
 
     stats->last_update_time = mirror->last_update_time;
 
@@ -1128,9 +1128,9 @@ bool mirror_neurons_get_activation_record(
 
     // Aggregate activation across neurons
     activation->action_id = action_id;
-    activation->observation_activation = 0.0f;
-    activation->execution_activation = 0.0f;
-    activation->association_strength = 0.0f;
+    activation->observation_activation = 0.0F;
+    activation->execution_activation = 0.0F;
+    activation->association_strength = 0.0F;
     activation->observation_count = mapping->total_observations;
     activation->execution_count = mapping->total_executions;
     activation->last_activation = 0;
@@ -1174,7 +1174,7 @@ bool mirror_neurons_predict_next_action(
     float* confidence)
 {
     if (!mirror || !previous_actions || num_previous == 0 || !predicted_action) {
-        if (confidence) *confidence = 0.0f;
+        if (confidence) *confidence = 0.0F;
         return false;
     }
 
@@ -1185,7 +1185,7 @@ bool mirror_neurons_predict_next_action(
     const action_t* last_action = &previous_actions[num_previous - 1];
 
     // Find action with highest activation that's different from last
-    float max_activation = 0.0f;
+    float max_activation = 0.0F;
     uint32_t best_action_id = 0;
 
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
@@ -1201,7 +1201,7 @@ bool mirror_neurons_predict_next_action(
     }
 
     if (best_action_id == 0) {
-        if (confidence) *confidence = 0.0f;
+        if (confidence) *confidence = 0.0F;
         return false;
     }
 
@@ -1223,7 +1223,7 @@ bool mirror_neurons_predict_next_action(
         }
     }
 
-    if (confidence) *confidence = 0.0f;
+    if (confidence) *confidence = 0.0F;
     return false;
 }
 
@@ -1363,37 +1363,37 @@ float mirror_neurons_get_social_salience(mirror_neurons_t mirror)
 {
     // Guard: Validate mirror system
     if (!mirror || !mirror->initialized) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // WHAT: Compute average activation across all mirror neurons
     // WHY:  High activation suggests social context is salient
     // HOW:  Average observation activation across neurons
-    float total_activation = 0.0f;
+    float total_activation = 0.0F;
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
         mirror_neuron_unit_t* neuron = &mirror->neurons[i];
-        if (neuron->observation_activation > 0.01f) {
+        if (neuron->observation_activation > 0.01F) {
             total_activation += neuron->observation_activation;
             active_count++;
         }
     }
 
     if (active_count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float avg_activation = total_activation / active_count;
 
     // Scale by number of observed agents
-    float agent_factor = (mirror->num_agents > 0) ? 1.0f : 0.5f;
+    float agent_factor = (mirror->num_agents > 0) ? 1.0F : 0.5F;
 
     // Combine activation and agent presence
     float social_salience = avg_activation * agent_factor;
 
     // Clamp to [0, 1]
-    return fminf(fmaxf(social_salience, 0.0f), 1.0f);
+    return fminf(fmaxf(social_salience, 0.0F), 1.0F);
 }
 
 /**
@@ -1422,8 +1422,8 @@ void mirror_neurons_activate_observation_mode(mirror_neurons_t mirror)
         mirror_neuron_unit_t* neuron = &mirror->neurons[i];
         if (neuron->action_id != 0) {  // Skip unassigned neurons
             neuron->observation_activation = fminf(
-                neuron->observation_activation + 0.1f,  // Small boost
-                1.0f
+                neuron->observation_activation + 0.1F,  // Small boost
+                1.0F
             );
         }
     }
@@ -1502,8 +1502,8 @@ bool mirror_neurons_get_all_activations(
         action_mapping_t* action = &mirror->actions[i];
 
         // Sum activations across all neurons for this action
-        float obs_activation = 0.0f;
-        float exec_activation = 0.0f;
+        float obs_activation = 0.0F;
+        float exec_activation = 0.0F;
         uint32_t neuron_count = 0;
 
         for (uint32_t j = 0; j < action->num_neurons; j++) {
@@ -1522,7 +1522,7 @@ bool mirror_neurons_get_all_activations(
             float avg_obs = obs_activation / neuron_count;
             float avg_exec = exec_activation / neuron_count;
             // Weight: 70% observation, 30% execution (empathy focus)
-            activations[count] = 0.7f * avg_obs + 0.3f * avg_exec;
+            activations[count] = 0.7F * avg_obs + 0.3F * avg_exec;
             count++;
         }
     }
@@ -1985,7 +1985,7 @@ float mirror_neurons_get_recognition_delay(mirror_neurons_t mirror, uint32_t act
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
         if (mirror->actions[i].action_id == action_id) {
             /* Get average delay across neurons for this action */
-            float total_delay = 0.0f;
+            float total_delay = 0.0F;
             uint32_t count = 0;
 
             for (uint32_t j = 0; j < mirror->actions[i].num_neurons; j++) {
@@ -2018,12 +2018,12 @@ float mirror_neurons_get_recognition_delay(mirror_neurons_t mirror, uint32_t act
  */
 float mirror_neurons_get_spine_association(mirror_neurons_t mirror, uint32_t action_id)
 {
-    if (!mirror || !mirror->substrate_enabled) return 0.0f;
+    if (!mirror || !mirror->substrate_enabled) return 0.0F;
 
     /* Find action mapping */
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
         if (mirror->actions[i].action_id == action_id) {
-            float total_weight = 0.0f;
+            float total_weight = 0.0F;
 
             for (uint32_t j = 0; j < mirror->actions[i].num_neurons; j++) {
                 uint32_t neuron_idx = mirror->actions[i].neuron_indices[j];
@@ -2040,7 +2040,7 @@ float mirror_neurons_get_spine_association(mirror_neurons_t mirror, uint32_t act
         }
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 /**
@@ -2055,7 +2055,7 @@ bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms)
     if (!mirror || !mirror->substrate_enabled) return false;
 
     uint64_t current_time = nimcp_time_get_us();
-    float dt_seconds = dt_ms / 1000.0f;
+    float dt_seconds = dt_ms / 1000.0F;
 
     /* Step each neuron's substrate */
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
@@ -2109,7 +2109,7 @@ bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
     // Create synapses for existing actions
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
         uint32_t action_id = mirror->actions[i].action_id;
-        mirror_stdp_create_synapse(stdp, action_id, 0.5f);  // Initial weight 0.5
+        mirror_stdp_create_synapse(stdp, action_id, 0.5F);  // Initial weight 0.5
     }
 
     mirror->stdp_system = stdp;

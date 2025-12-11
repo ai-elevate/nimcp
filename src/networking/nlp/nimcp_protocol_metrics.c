@@ -134,7 +134,7 @@ static void rotate_window(protocol_metrics_t* pm) {
     uint64_t window_duration_ms = pm->config.metrics_window_ms;
     if (window_duration_ms > 0) {
         pm->current_stats.throughput_msgs_per_sec =
-            (float)pm->window_message_count * 1000.0f / (float)window_duration_ms;
+            (float)pm->window_message_count * 1000.0F / (float)window_duration_ms;
     }
 
     /* Calculate final average latency */
@@ -144,7 +144,7 @@ static void rotate_window(protocol_metrics_t* pm) {
 
     /* Reset current window */
     memset(&pm->current_stats, 0, sizeof(protocol_stats_t));
-    pm->latency_sum = 0.0f;
+    pm->latency_sum = 0.0F;
     pm->latency_count = 0;
     pm->window_message_count = 0;
     pm->current_window_start_ms = nimcp_time_get_us() / 1000;
@@ -175,7 +175,7 @@ static primitive_entry_t* find_or_create_primitive(
     prim->primitive_id = primitive_id;
     snprintf(prim->name, METRICS_MAX_PRIMITIVE_NAME, "primitive_%u", primitive_id);
     prim->usage_count = 0;
-    prim->total_relevance = 0.0f;
+    prim->total_relevance = 0.0F;
     prim->compression_savings = 0;
     prim->active = true;
 
@@ -362,7 +362,7 @@ int metrics_record_message(
     pm->window_message_count++;
 
     /* Update latency */
-    if (latency_ms > 0.0f) {
+    if (latency_ms > 0.0F) {
         pm->latency_sum += latency_ms;
         pm->latency_count++;
         pm->current_stats.avg_latency_ms = pm->latency_sum / (float)pm->latency_count;
@@ -517,7 +517,7 @@ int metrics_get_primitive_stats(
         (*stats)[i].avg_context_relevance =
             pm->primitives[i].usage_count > 0
                 ? pm->primitives[i].total_relevance / (float)pm->primitives[i].usage_count
-                : 0.0f;
+                : 0.0F;
         (*stats)[i].compression_savings = pm->primitives[i].compression_savings;
     }
 
@@ -714,22 +714,22 @@ int metrics_check_alerts(protocol_metrics_t* pm) {
             char alert[256];
             snprintf(alert, sizeof(alert),
                      "High error rate: %.2f%% (threshold: %.2f%%)",
-                     error_rate * 100.0f, pm->config.alert_threshold * 100.0f);
+                     error_rate * 100.0F, pm->config.alert_threshold * 100.0F);
             trigger_alert(pm, alert);
         }
     }
 
     /* Check latency spike (if we have history) */
-    if (pm->history.count > 0 && stats->avg_latency_ms > 0.0f) {
+    if (pm->history.count > 0 && stats->avg_latency_ms > 0.0F) {
         /* Calculate average latency from history */
-        float hist_avg = 0.0f;
+        float hist_avg = 0.0F;
         for (uint32_t i = 0; i < pm->history.count; i++) {
             hist_avg += pm->history.buffer[i].avg_latency_ms;
         }
         hist_avg /= (float)pm->history.count;
 
         /* Alert if current latency is 2x historical average */
-        if (stats->avg_latency_ms > hist_avg * 2.0f && hist_avg > EPSILON) {
+        if (stats->avg_latency_ms > hist_avg * 2.0F && hist_avg > EPSILON) {
             char alert[256];
             snprintf(alert, sizeof(alert),
                      "Latency spike: %.2f ms (avg: %.2f ms)",
@@ -767,7 +767,7 @@ int metrics_reset_all(protocol_metrics_t* pm) {
 
     /* Reset current stats */
     memset(&pm->current_stats, 0, sizeof(protocol_stats_t));
-    pm->latency_sum = 0.0f;
+    pm->latency_sum = 0.0F;
     pm->latency_count = 0;
     pm->window_message_count = 0;
 
@@ -778,7 +778,7 @@ int metrics_reset_all(protocol_metrics_t* pm) {
     /* Reset primitives */
     for (uint32_t i = 0; i < pm->primitive_count; i++) {
         pm->primitives[i].usage_count = 0;
-        pm->primitives[i].total_relevance = 0.0f;
+        pm->primitives[i].total_relevance = 0.0F;
         pm->primitives[i].compression_savings = 0;
     }
 

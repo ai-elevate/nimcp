@@ -77,7 +77,7 @@ static float calculate_pattern_match(
     size_t len2
 ) {
     if (!pattern1 || !pattern2 || len1 == 0 || len2 == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Use Hamming distance for same-length patterns */
@@ -112,18 +112,18 @@ static float calculate_anomaly_score(
     const NimcpSwarmBehaviorProfile* current
 ) {
     if (!baseline || !current) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float score = 0.0f;
-    float weight = 0.25f; /* Equal weight for each metric */
+    float score = 0.0F;
+    float weight = 0.25F; /* Equal weight for each metric */
 
     /* Message rate anomaly */
     float msg_rate_diff = fabsf(current->msg_rate - baseline->msg_rate);
-    score += weight * (msg_rate_diff / (baseline->msg_rate + 1.0f));
+    score += weight * (msg_rate_diff / (baseline->msg_rate + 1.0F));
 
     /* Movement pattern anomaly */
-    float movement_diff = 0.0f;
+    float movement_diff = 0.0F;
     for (int i = 0; i < 3; i++) {
         float diff = fabsf(current->movement_pattern[i] - baseline->movement_pattern[i]);
         movement_diff += diff * diff;
@@ -133,13 +133,13 @@ static float calculate_anomaly_score(
 
     /* Energy usage anomaly */
     float energy_diff = fabsf(current->energy_usage - baseline->energy_usage);
-    score += weight * (energy_diff / (baseline->energy_usage + 1.0f));
+    score += weight * (energy_diff / (baseline->energy_usage + 1.0F));
 
     /* Connection changes anomaly */
     float conn_diff = fabsf((float)current->connection_changes - (float)baseline->connection_changes);
     score += weight * (conn_diff / (float)(baseline->connection_changes + 1));
 
-    return fminf(score, 1.0f);
+    return fminf(score, 1.0F);
 }
 
 /**
@@ -341,7 +341,7 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
     nimcp_platform_mutex_lock(system->mutex);
 
     /* Check against known threat signatures in memory cells */
-    float best_match = 0.0f;
+    float best_match = 0.0F;
     NimcpSwarmMemoryCell* matched_cell = NULL;
 
     for (size_t i = 0; i < system->memory_cell_count; i++) {
@@ -381,11 +381,11 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
         threat->confirming_drones = 1;
 
         /* Determine severity based on confidence and threat type */
-        if (best_match > 0.9f || threat->type == THREAT_MALICIOUS_DRONE) {
+        if (best_match > 0.9F || threat->type == THREAT_MALICIOUS_DRONE) {
             threat->severity = SEVERITY_CRITICAL;
-        } else if (best_match > 0.8f) {
+        } else if (best_match > 0.8F) {
             threat->severity = SEVERITY_HIGH;
-        } else if (best_match > 0.7f) {
+        } else if (best_match > 0.7F) {
             threat->severity = SEVERITY_MEDIUM;
         } else {
             threat->severity = SEVERITY_LOW;
@@ -449,10 +449,10 @@ nimcp_result_t nimcp_swarm_immune_check_behavior(
 
         baseline = &system->behavior_profiles[system->behavior_profile_count];
         memcpy(baseline, behavior, sizeof(NimcpSwarmBehaviorProfile));
-        baseline->anomaly_score = 0.0f;
+        baseline->anomaly_score = 0.0F;
         system->behavior_profile_count++;
 
-        *anomaly_score = 0.0f;
+        *anomaly_score = 0.0F;
         nimcp_platform_mutex_unlock(system->mutex);
         return NIMCP_SUCCESS;
     }
@@ -462,17 +462,17 @@ nimcp_result_t nimcp_swarm_immune_check_behavior(
     *anomaly_score = score;
 
     /* Update baseline with exponential moving average */
-    float alpha = 0.1f; /* Smoothing factor */
-    baseline->msg_rate = alpha * behavior->msg_rate + (1.0f - alpha) * baseline->msg_rate;
-    baseline->energy_usage = alpha * behavior->energy_usage + (1.0f - alpha) * baseline->energy_usage;
+    float alpha = 0.1F; /* Smoothing factor */
+    baseline->msg_rate = alpha * behavior->msg_rate + (1.0F - alpha) * baseline->msg_rate;
+    baseline->energy_usage = alpha * behavior->energy_usage + (1.0F - alpha) * baseline->energy_usage;
     for (int i = 0; i < 3; i++) {
         baseline->movement_pattern[i] = alpha * behavior->movement_pattern[i] +
-                                       (1.0f - alpha) * baseline->movement_pattern[i];
+                                       (1.0F - alpha) * baseline->movement_pattern[i];
     }
-    baseline->anomaly_score = alpha * score + (1.0f - alpha) * baseline->anomaly_score;
+    baseline->anomaly_score = alpha * score + (1.0F - alpha) * baseline->anomaly_score;
     baseline->last_update = get_current_time_ms();
 
-    if (score > 0.7f) {
+    if (score > 0.7F) {
         LOG_WARN("High anomaly score detected: drone=%u, score=%.2f",
                        drone_id, score);
     }
@@ -587,7 +587,7 @@ nimcp_result_t nimcp_swarm_immune_find_memory_cell(
 
     nimcp_platform_mutex_lock(system->mutex);
 
-    float best_match = 0.0f;
+    float best_match = 0.0F;
     NimcpSwarmMemoryCell* best_cell = NULL;
 
     for (size_t i = 0; i < system->memory_cell_count; i++) {
@@ -632,10 +632,10 @@ nimcp_result_t nimcp_swarm_immune_update_effectiveness(
     for (size_t i = 0; i < system->memory_cell_count; i++) {
         if (system->memory_cells[i].id == cell_id) {
             /* Update with exponential moving average */
-            float alpha = 0.3f;
+            float alpha = 0.3F;
             system->memory_cells[i].effectiveness =
                 alpha * new_effectiveness +
-                (1.0f - alpha) * system->memory_cells[i].effectiveness;
+                (1.0F - alpha) * system->memory_cells[i].effectiveness;
 
             nimcp_platform_mutex_unlock(system->mutex);
             return NIMCP_SUCCESS;
@@ -666,12 +666,12 @@ nimcp_result_t nimcp_swarm_immune_decay_memory(
         /* Calculate time-based decay */
         uint64_t time_diff = current_time - cell->last_activation;
         if (time_diff > 0) {
-            float time_factor = expf(-(float)time_diff / 3600000.0f); /* 1 hour decay */
+            float time_factor = expf(-(float)time_diff / 3600000.0F); /* 1 hour decay */
             cell->effectiveness *= cell->decay_factor * time_factor;
         }
 
         /* Remove if effectiveness too low */
-        if (cell->effectiveness < 0.1f && cell->activation_count < 5) {
+        if (cell->effectiveness < 0.1F && cell->activation_count < 5) {
             /* Swap with last element and reduce count */
             system->memory_cells[i] = system->memory_cells[system->memory_cell_count - 1];
             system->memory_cell_count--;
@@ -869,7 +869,7 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
     uint32_t response_id,
     float success_rate
 ) {
-    if (!system || success_rate < 0.0f || success_rate > 1.0f) {
+    if (!system || success_rate < 0.0F || success_rate > 1.0F) {
         LOG_ERROR("Invalid arguments for response amplification");
         return NIMCP_INVALID_PARAM;
     }
@@ -911,7 +911,7 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
         if (cell->signature.type == threat->type && cell->response == response->type) {
             /* Amplify effective responses */
             float amplification = system->config.clonal_expansion_rate * success_rate;
-            cell->effectiveness = fminf(1.0f, cell->effectiveness * amplification);
+            cell->effectiveness = fminf(1.0F, cell->effectiveness * amplification);
             cell->activation_count++;
 
             LOG_INFO("Amplifying memory cell %u: effectiveness %.2f -> %.2f",
@@ -920,7 +920,7 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
                           cell->effectiveness);
 
             /* Share successful patterns */
-            if (success_rate > 0.8f && system->config.enable_sharing && !cell->shared) {
+            if (success_rate > 0.8F && system->config.enable_sharing && !cell->shared) {
                 nimcp_swarm_immune_share_memory_cell(system, cell->id);
             }
 
@@ -956,13 +956,13 @@ nimcp_result_t nimcp_swarm_immune_adapt_signature(
             for (size_t j = 0; j < min_len; j++) {
                 /* Weighted average */
                 cell->signature.pattern[j] = (uint8_t)(
-                    0.7f * cell->signature.pattern[j] + 0.3f * new_data[j]
+                    0.7F * cell->signature.pattern[j] + 0.3F * new_data[j]
                 );
             }
 
             /* Slightly relax threshold for mutated threats */
-            cell->signature.match_threshold *= 0.95f;
-            cell->signature.match_threshold = fmaxf(0.5f, cell->signature.match_threshold);
+            cell->signature.match_threshold *= 0.95F;
+            cell->signature.match_threshold = fmaxf(0.5F, cell->signature.match_threshold);
 
             LOG_INFO("Adapted signature for memory cell %u", cell_id);
 
@@ -993,7 +993,7 @@ nimcp_result_t nimcp_swarm_immune_affinity_maturation(
         NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
         /* Remove low-performing cells */
-        if (cell->activation_count > 10 && cell->effectiveness < 0.3f) {
+        if (cell->activation_count > 10 && cell->effectiveness < 0.3F) {
             system->memory_cells[i] = system->memory_cells[system->memory_cell_count - 1];
             system->memory_cell_count--;
             removed++;
@@ -1480,17 +1480,17 @@ nimcp_result_t immune_evaluate_threats(
 
         /* Guard clause: Need at least one valid signal */
         if (valid_signals == 0) {
-            threat_scores[i] = 0.0f;
+            threat_scores[i] = 0.0F;
             continue;
         }
 
         /* Evaluate detection logic */
-        float threat_score = 0.0f;
+        float threat_score = 0.0F;
 
         switch (rule->detection_logic) {
             case LOGIC_GATE_AND:
                 /* All sources must detect threat */
-                threat_score = 1.0f;
+                threat_score = 1.0F;
                 for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
                     if (signal_values[s] < threat_score) {
                         threat_score = signal_values[s];
@@ -1500,7 +1500,7 @@ nimcp_result_t immune_evaluate_threats(
 
             case LOGIC_GATE_OR:
                 /* Any source detecting triggers threat */
-                threat_score = 0.0f;
+                threat_score = 0.0F;
                 for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
                     if (signal_values[s] > threat_score) {
                         threat_score = signal_values[s];
@@ -1512,12 +1512,12 @@ nimcp_result_t immune_evaluate_threats(
                 /* Absence of expected signal = threat */
                 /* Average signal should be low for NOT to be high */
                 {
-                    float avg_signal = 0.0f;
+                    float avg_signal = 0.0F;
                     for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
                         avg_signal += signal_values[s];
                     }
                     avg_signal /= (float)rule->num_sources;
-                    threat_score = 1.0f - avg_signal; /* Invert */
+                    threat_score = 1.0F - avg_signal; /* Invert */
                 }
                 break;
 
@@ -1528,11 +1528,11 @@ nimcp_result_t immune_evaluate_threats(
                     float consequent = signal_values[1];
 
                     /* IMPLIES: A → B = ¬A ∨ B */
-                    if (antecedent >= 0.5f && consequent < 0.5f) {
+                    if (antecedent >= 0.5F && consequent < 0.5F) {
                         /* Implication violated = threat */
-                        threat_score = 1.0f;
+                        threat_score = 1.0F;
                     } else {
-                        threat_score = 0.0f;
+                        threat_score = 0.0F;
                     }
                 }
                 break;

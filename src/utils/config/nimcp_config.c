@@ -70,22 +70,22 @@ void nimcp_config_init_defaults(nimcp_brain_config_t* config) {
     config->num_inputs = 10;
     config->num_outputs = 3;
     config->num_hidden = 100;
-    config->learning_rate = 0.01f;
+    config->learning_rate = 0.01F;
 
     config->max_epochs = 100;
     config->batch_size = 32;
-    config->validation_split = 0.2f;
+    config->validation_split = 0.2F;
     config->early_stopping = true;
     config->patience = 10;
 
     config->enable_bcm = true;
-    config->bcm_tau = 1000.0f;
+    config->bcm_tau = 1000.0F;
     config->enable_stdp = false;
-    config->stdp_window = 20.0f;
+    config->stdp_window = 20.0F;
 
     config->ethics_enabled = false;
-    config->golden_rule_threshold = 0.0f;
-    config->empathy_weight = 0.5f;
+    config->golden_rule_threshold = 0.0F;
+    config->empathy_weight = 0.5F;
 
     strcpy(config->model_path, "/tmp/brain.model");
     config->checkpoint_interval = 10;

@@ -125,8 +125,8 @@ tcb_config_t tcb_config_default(void) {
 
         .enable_early_stopping = true,
         .patience = 10,
-        .min_delta = 1e-6f,
-        .divergence_threshold = 10.0f,
+        .min_delta = 1e-6F,
+        .divergence_threshold = 10.0F,
 
         .enable_async_callbacks = false,
         .async_queue_size = 256,
@@ -491,7 +491,7 @@ void tcb_update_metrics(
     if (step == 0) {
         ctx->metrics.loss_ema = loss;
     } else {
-        ctx->metrics.loss_ema = TCB_EMA_ALPHA * loss + (1.0f - TCB_EMA_ALPHA) * ctx->metrics.loss_ema;
+        ctx->metrics.loss_ema = TCB_EMA_ALPHA * loss + (1.0F - TCB_EMA_ALPHA) * ctx->metrics.loss_ema;
     }
 
     /* Min/max loss */
@@ -520,7 +520,7 @@ void tcb_update_metrics(
 
     /* Calculate throughput */
     if (ctx->metrics.total_time_us > 0) {
-        ctx->metrics.steps_per_second = (float)step / (ctx->metrics.total_time_us / 1e6f);
+        ctx->metrics.steps_per_second = (float)step / (ctx->metrics.total_time_us / 1e6F);
     }
 
     /* Update convergence flags */
@@ -812,7 +812,7 @@ nimcp_result_t tcb_validate_config(const tcb_config_t* config) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->divergence_threshold <= 1.0f) {
+    if (config->divergence_threshold <= 1.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -837,7 +837,7 @@ tcb_action_t tcb_builtin_logger(const tcb_event_t* event) {
            m->loss,
            m->learning_rate,
            m->gradient_norm,
-           m->step_time_us / 1000.0f);
+           m->step_time_us / 1000.0F);
 
     return TCB_ACTION_CONTINUE;
 }
@@ -848,7 +848,7 @@ tcb_action_t tcb_builtin_early_stopper(const tcb_event_t* event) {
     const tcb_metrics_t* m = &event->metrics;
 
     /* Check for convergence (handled by manager's tcb_should_stop) */
-    if (m->is_converging && m->loss < 1e-6f) {
+    if (m->is_converging && m->loss < 1e-6F) {
         printf("[Early Stop] Training converged at step %lu (loss=%.8f)\n",
                (unsigned long)m->step, m->loss);
         return TCB_ACTION_STOP_TRAINING;
@@ -885,14 +885,14 @@ tcb_action_t tcb_builtin_gradient_monitor(const tcb_event_t* event) {
     const tcb_metrics_t* m = &event->metrics;
 
     /* Exploding gradients */
-    if (m->gradient_norm > 100.0f) {
+    if (m->gradient_norm > 100.0F) {
         printf("[Gradient] Exploding gradients detected (norm=%.2f) at step %lu\n",
                m->gradient_norm, (unsigned long)m->step);
         return TCB_ACTION_REDUCE_LR;
     }
 
     /* Vanishing gradients */
-    if (m->gradient_norm < 1e-7f && m->step > 100) {
+    if (m->gradient_norm < 1e-7F && m->step > 100) {
         printf("[Gradient] Vanishing gradients detected (norm=%.2e) at step %lu\n",
                m->gradient_norm, (unsigned long)m->step);
         return TCB_ACTION_INCREASE_LR;
@@ -953,11 +953,11 @@ static void tcb_update_convergence_flags(tcb_context_t* ctx) {
     }
 
     ctx->metrics.is_converging = decreasing && ctx->metrics.step > TCB_MIN_STEPS_FOR_CONVERGENCE;
-    ctx->metrics.is_diverging = increasing && ctx->metrics.loss > ctx->metrics.min_loss * 2.0f;
+    ctx->metrics.is_diverging = increasing && ctx->metrics.loss > ctx->metrics.min_loss * 2.0F;
 
     /* Gradient health */
-    ctx->metrics.gradients_exploding = ctx->metrics.gradient_norm > 100.0f;
-    ctx->metrics.gradients_vanishing = ctx->metrics.gradient_norm < 1e-7f;
+    ctx->metrics.gradients_exploding = ctx->metrics.gradient_norm > 100.0F;
+    ctx->metrics.gradients_vanishing = ctx->metrics.gradient_norm < 1e-7F;
 }
 
 static tcb_action_t tcb_aggregate_actions(tcb_action_t a, tcb_action_t b) {

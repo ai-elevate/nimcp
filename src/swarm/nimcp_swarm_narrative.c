@@ -291,7 +291,7 @@ int swarm_narrative_begin(swarm_narrative_t* sn, uint32_t teller_id, uint32_t* n
     narrative->narrative_id = sn->next_narrative_id++;
     narrative->teller_agent_id = teller_id;
     narrative->num_events = 0;
-    narrative->coherence_score = 0.0f;
+    narrative->coherence_score = 0.0F;
     narrative->share_count = 0;
 
     /* Add to pending table */
@@ -776,7 +776,7 @@ float narrative_calculate_coherence(const narrative_t* narrative)
      */
 
     if (!narrative || narrative->num_events == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float temporal = calculate_temporal_coherence(narrative);
@@ -802,7 +802,7 @@ static float calculate_temporal_coherence(const narrative_t* narrative)
      */
 
     if (narrative->num_events < 2) {
-        return 1.0f;
+        return 1.0F;
     }
 
     uint32_t ordered_count = 0;
@@ -823,10 +823,10 @@ static float calculate_emotional_coherence(const narrative_t* narrative)
      */
 
     if (narrative->num_events < 2) {
-        return 1.0f;
+        return 1.0F;
     }
 
-    float total_variance = 0.0f;
+    float total_variance = 0.0F;
     for (uint32_t i = 1; i < narrative->num_events; i++) {
         float diff = narrative->events[i].emotional_valence -
                      narrative->events[i-1].emotional_valence;
@@ -836,7 +836,7 @@ static float calculate_emotional_coherence(const narrative_t* narrative)
     float avg_variance = total_variance / (narrative->num_events - 1);
 
     /* Lower variance = higher coherence */
-    return fmaxf(0.0f, 1.0f - (avg_variance / 2.0f));
+    return fmaxf(0.0F, 1.0F - (avg_variance / 2.0F));
 }
 
 static float calculate_encoding_coherence(const narrative_t* narrative)
@@ -847,10 +847,10 @@ static float calculate_encoding_coherence(const narrative_t* narrative)
      */
 
     if (narrative->num_events < 2) {
-        return 1.0f;
+        return 1.0F;
     }
 
-    float total_similarity = 0.0f;
+    float total_similarity = 0.0F;
     uint32_t pair_count = 0;
 
     /* Sample pairs (not all combinations for efficiency) */
@@ -864,14 +864,14 @@ static float calculate_encoding_coherence(const narrative_t* narrative)
         pair_count++;
     }
 
-    return (pair_count > 0) ? (total_similarity / pair_count) : 0.0f;
+    return (pair_count > 0) ? (total_similarity / pair_count) : 0.0F;
 }
 
 static float vector_cosine_similarity(const float* v1, const float* v2, uint32_t size)
 {
-    float dot_product = 0.0f;
-    float norm1 = 0.0f;
-    float norm2 = 0.0f;
+    float dot_product = 0.0F;
+    float norm1 = 0.0F;
+    float norm2 = 0.0F;
 
     for (uint32_t i = 0; i < size; i++) {
         dot_product += v1[i] * v2[i];
@@ -882,8 +882,8 @@ static float vector_cosine_similarity(const float* v1, const float* v2, uint32_t
     norm1 = sqrtf(norm1);
     norm2 = sqrtf(norm2);
 
-    if (norm1 < 1e-8f || norm2 < 1e-8f) {
-        return 0.0f;
+    if (norm1 < 1e-8F || norm2 < 1e-8F) {
+        return 0.0F;
     }
 
     return dot_product / (norm1 * norm2);

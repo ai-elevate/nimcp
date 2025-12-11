@@ -97,13 +97,7 @@ extern "C" {
 // Export Macro
 //=============================================================================
 
-#ifndef NIMCP_EXPORT
-#ifdef _WIN32
-#define NIMCP_EXPORT __declspec(dllexport)
-#else
-#define NIMCP_EXPORT __attribute__((visibility("default")))
-#endif
-#endif
+#include "common/nimcp_export.h"
 
 //=============================================================================
 // Forward Declarations

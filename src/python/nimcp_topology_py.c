@@ -54,11 +54,11 @@ static int TopologyConfig_init(TopologyConfigObject* self, PyObject* args, PyObj
                               "bidirectional", NULL};
 
     const char* topology_type_str = "scale_free";
-    float power_law_gamma = -2.1f;
-    float hub_ratio = 0.15f;
+    float power_law_gamma = -2.1F;
+    float hub_ratio = 0.15F;
     int min_degree = 3;
     int max_degree = 50;
-    float spatial_constraint = 0.0f;
+    float spatial_constraint = 0.0F;
     int bidirectional = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sffiiifp", kwlist,

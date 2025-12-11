@@ -324,7 +324,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
 
     // Set default config if not provided
     brain_finetune_config_t default_config = {
-        .learning_rate = 0.001f,
+        .learning_rate = 0.001F,
         .num_epochs = 5,
         .freeze_sensory = true,
         .freeze_cognitive = true,
@@ -386,23 +386,23 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
     // WHAT: Compute layer-specific learning rates
     // WHY:  Frozen layers need near-zero gradients, unfrozen layers use full rate
     // HOW:  Scale learning rate by layer-specific multipliers
-    float sensory_lr_multiplier = cfg->freeze_sensory ? 0.01f : 1.0f;  // 1% for frozen
-    float cognitive_lr_multiplier = cfg->freeze_cognitive ? 0.01f : 1.0f;
-    float classifier_lr_multiplier = cfg->finetune_classifier ? 1.0f : 0.01f;
+    float sensory_lr_multiplier = cfg->freeze_sensory ? 0.01F : 1.0F;  // 1% for frozen
+    float cognitive_lr_multiplier = cfg->freeze_cognitive ? 0.01F : 1.0F;
+    float classifier_lr_multiplier = cfg->finetune_classifier ? 1.0F : 0.01F;
 
     if (cfg->verbose) {
         printf("NIMCP:   Layer freezing enabled:\n");
         printf("NIMCP:     Sensory (0-%u neurons): %.1f%% learning rate\n",
-               sensory_end, sensory_lr_multiplier * 100.0f);
+               sensory_end, sensory_lr_multiplier * 100.0F);
         printf("NIMCP:     Cognitive (%u-%u neurons): %.1f%% learning rate\n",
-               sensory_end, cognitive_end, cognitive_lr_multiplier * 100.0f);
+               sensory_end, cognitive_end, cognitive_lr_multiplier * 100.0F);
         printf("NIMCP:     Classifier (%u-%u neurons): %.1f%% learning rate\n",
-               cognitive_end, total_neurons, classifier_lr_multiplier * 100.0f);
+               cognitive_end, total_neurons, classifier_lr_multiplier * 100.0F);
     }
 
     // Training loop
     for (uint32_t epoch = 0; epoch < cfg->num_epochs; epoch++) {
-        float epoch_loss = 0.0f;
+        float epoch_loss = 0.0F;
         uint32_t correct = 0;
 
         // Mini-batch training
@@ -420,7 +420,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
             }
 
             // Compute loss (MSE) and check correctness
-            float sample_loss = 0.0f;
+            float sample_loss = 0.0F;
             uint32_t predicted_class = 0;
             uint32_t target_class = 0;
             float max_pred = decision->output_vector[0];
@@ -473,10 +473,10 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
             } else if (cfg->freeze_sensory || cfg->freeze_cognitive) {
                 // Partial freezing - use weighted average
                 // This approximates layer-specific learning rates
-                float weight_sum = 0.2f + 0.6f + 0.2f;  // Sensory + Cognitive + Classifier
-                float weighted_lr = (0.2f * sensory_lr_multiplier +
-                                    0.6f * cognitive_lr_multiplier +
-                                    0.2f * classifier_lr_multiplier) / weight_sum;
+                float weight_sum = 0.2F + 0.6F + 0.2F;  // Sensory + Cognitive + Classifier
+                float weighted_lr = (0.2F * sensory_lr_multiplier +
+                                    0.6F * cognitive_lr_multiplier +
+                                    0.2F * classifier_lr_multiplier) / weight_sum;
                 effective_lr = cfg->learning_rate * weighted_lr;
             } else {
                 // No freezing - use full learning rate
@@ -493,7 +493,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
             snprintf(label_str, sizeof(label_str), "class_%u", target_class);
 
             float loss = brain_learn_example(brain, input, brain->config.num_inputs,
-                                            label_str, 1.0f);
+                                            label_str, 1.0F);
             (void)loss; // Suppress unused variable warning
 
             // Restore temporary learning rate
@@ -506,7 +506,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
 
         if (cfg->verbose) {
             printf("NIMCP:   Epoch %u/%u: loss=%.4f accuracy=%.2f%%\n",
-                   epoch + 1, cfg->num_epochs, avg_loss, accuracy * 100.0f);
+                   epoch + 1, cfg->num_epochs, avg_loss, accuracy * 100.0F);
         }
     }
 

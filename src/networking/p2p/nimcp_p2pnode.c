@@ -1072,8 +1072,8 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Use peer_ip:peer_port as unique peer ID (hashed to uint64_t)
     uint64_t peer_id = ((uint64_t) inet_addr(peer_ip) << 32) | peer_port;
     uint32_t vertex_idx =
-        nimcp_graph_add_vertex(node->topology_graph, peer_id, 0.0f, 0.0f,
-                               0.0f,  // Coordinates (TODO: calculate from network metrics)
+        nimcp_graph_add_vertex(node->topology_graph, peer_id, 0.0F, 0.0F,
+                               0.0F,  // Coordinates (TODO: calculate from network metrics)
                                0      // Capabilities (TODO: exchange in handshake)
         );
 

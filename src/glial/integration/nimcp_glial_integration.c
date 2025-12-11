@@ -550,7 +550,7 @@ void glial_integration_on_synapse_fired(glial_integration_t* gi, uint32_t pre_ne
                 if (ast) {
                     // Increase calcium with external stimulus
                     // dt = 0.001s (1ms), stimulus = synaptic_weight * 10
-                    astrocyte_update_calcium(ast, 0.001f, synaptic_weight * 10.0f);
+                    astrocyte_update_calcium(ast, 0.001F, synaptic_weight * 10.0F);
                 }
             }
         }
@@ -593,7 +593,7 @@ void glial_integration_on_neuron_fired(glial_integration_t* gi, uint32_t neuron_
                 oligodendrocyte_t* oligo = gi->oligodendrocyte_network->oligodendrocytes[oligo_id];
                 if (oligo) {
                     // Track axon activity for adaptive myelination
-                    oligodendrocyte_track_activity(oligo, neuron_id, 1.0f, timestamp);
+                    oligodendrocyte_track_activity(oligo, neuron_id, 1.0F, timestamp);
                 }
             }
         }
@@ -609,7 +609,7 @@ void glial_integration_on_neuron_fired(glial_integration_t* gi, uint32_t neuron_
 float glial_integration_get_synaptic_modulation(glial_integration_t* gi, uint32_t pre_neuron_id,
                                                  uint32_t post_neuron_id) {
     if (!gi || !gi->enable_astrocyte_modulation) {
-        return 1.0f; // Neutral modulation
+        return 1.0F; // Neutral modulation
     }
 
     uint32_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
@@ -628,11 +628,11 @@ float glial_integration_get_synaptic_modulation(glial_integration_t* gi, uint32_
                 if (ast) {
                     // Get modulation factor based on glutamate pool
                     float glutamate = ast->glutamate_pool;
-                    float modulation = 1.0f + (glutamate / 100.0f); // Simple linear mapping
+                    float modulation = 1.0F + (glutamate / 100.0F); // Simple linear mapping
 
                     // Clamp to range
-                    if (modulation < 0.8f) modulation = 0.8f;
-                    if (modulation > 1.2f) modulation = 1.2f;
+                    if (modulation < 0.8F) modulation = 0.8F;
+                    if (modulation > 1.2F) modulation = 1.2F;
 
                     nimcp_mutex_unlock(&gi->lock);
                     return modulation;
@@ -642,12 +642,12 @@ float glial_integration_get_synaptic_modulation(glial_integration_t* gi, uint32_
     }
 
     nimcp_mutex_unlock(&gi->lock);
-    return 1.0f; // No astrocyte → neutral
+    return 1.0F; // No astrocyte → neutral
 }
 
 float glial_integration_get_myelination_factor(glial_integration_t* gi, uint32_t neuron_id) {
     if (!gi || !gi->enable_oligodendrocyte_myelination) {
-        return 0.0f; // No myelination
+        return 0.0F; // No myelination
     }
 
     nimcp_mutex_lock(&gi->lock);
@@ -672,7 +672,7 @@ float glial_integration_get_myelination_factor(glial_integration_t* gi, uint32_t
     }
 
     nimcp_mutex_unlock(&gi->lock);
-    return 0.0f; // No oligodendrocyte
+    return 0.0F; // No oligodendrocyte
 }
 
 bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pre_neuron_id,
@@ -721,10 +721,10 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
     // Compute timestep in milliseconds (convert from microseconds)
     float dt_ms;
     if (gi->last_update_timestamp_us == 0) {
-        dt_ms = 1.0f;  // Assume 1ms for first call
+        dt_ms = 1.0F;  // Assume 1ms for first call
     } else {
         uint64_t dt_us = timestamp - gi->last_update_timestamp_us;
-        dt_ms = (float)dt_us / 1000.0f;  // Convert µs to ms
+        dt_ms = (float)dt_us / 1000.0F;  // Convert µs to ms
     }
     gi->last_update_timestamp_us = timestamp;
 
@@ -903,7 +903,7 @@ float glial_integration_get_myelin_velocity(glial_integration_t* gi, uint32_t ax
 
 float glial_integration_get_myelin_delay(glial_integration_t* gi, uint32_t axon_id) {
     if (!gi || !gi->enable_myelin_sheath || !gi->myelin_sheath_network) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_mutex_lock(&gi->lock);
@@ -925,7 +925,7 @@ myelin_sheath_t* glial_integration_create_myelin_sheath(
 
     nimcp_mutex_lock(&gi->lock);
     myelin_sheath_t* sheath = myelin_network_create_sheath_for_axon(
-        gi->myelin_sheath_network, axon_id, oligo_id, axon_length, axon_diameter, 0.0f);
+        gi->myelin_sheath_network, axon_id, oligo_id, axon_length, axon_diameter, 0.0F);
     nimcp_mutex_unlock(&gi->lock);
 
     return sheath;

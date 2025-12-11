@@ -82,14 +82,14 @@ float ethics_calculate_perspective_score(const empathy_state_extended_t* state)
 {
     // Guard clause: Validate input
     if (!state)
-        return 0.0f;
+        return 0.0F;
 
     float emotional = state->emotional_valence;
     float material = state->material_impact;
     float autonomy = state->autonomy_impact;
 
     // Average the three impact dimensions
-    float average_score = (emotional + material + autonomy) / 3.0f;
+    float average_score = (emotional + material + autonomy) / 3.0F;
 
     // Weight by impact magnitude for importance
     return average_score * state->impact_magnitude;
@@ -110,7 +110,7 @@ float ethics_simulate_agent_perspective(empathy_network_t network, agent_id_t ag
 {
     // Guard clause: Validate inputs
     if (!network || !action)
-        return 0.0f;
+        return 0.0F;
 
     empathy_state_extended_t state = empathy_network_simulate_agent(network, agent, action);
 
@@ -141,13 +141,13 @@ float ethics_evaluate_golden_rule(ethics_engine_t engine, const action_context_t
 {
     // Guard clause: Validate inputs
     if (!engine || !action)
-        return 0.0f;
+        return 0.0F;
 
     // Guard clause: Check for affected agents
     if (action->num_affected_agents == 0)
-        return 0.0f;
+        return 0.0F;
 
-    float total_impact = 0.0f;
+    float total_impact = 0.0F;
 
     // Single pass through affected agents - O(n)
     for (uint32_t i = 0; i < action->num_affected_agents; i++) {
@@ -314,15 +314,15 @@ empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t networ
 
         if (wm && working_memory_get_size(wm) > 0) {
             /* WHAT: Extract emotional context from working memory */
-            float max_arousal = 0.0f;
-            float avg_valence = 0.0f;
+            float max_arousal = 0.0F;
+            float avg_valence = 0.0F;
             uint32_t emotional_count = 0;
             uint32_t wm_size = working_memory_get_size(wm);
 
             /* WHAT: Aggregate recent emotional experiences */
             for (uint32_t i = 0; i < wm_size && i < 7; i++) {  // Miller's 7±2 limit
                 emotional_tag_t emotion;
-                if (working_memory_get_emotion(wm, i, &emotion) && emotion.intensity > 0.3f) {
+                if (working_memory_get_emotion(wm, i, &emotion) && emotion.intensity > 0.3F) {
                     if (emotion.arousal > max_arousal) {
                         max_arousal = emotion.arousal;
                     }
@@ -337,31 +337,31 @@ empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t networ
                 /* WHAT: High arousal impairs empathetic accuracy */
                 /* WHY:  Emotional flooding reduces cognitive empathy (Decety & Cowell, 2014) */
                 /* HOW:  Increase uncertainty and reduce magnitude for high arousal */
-                if (max_arousal > 0.6f) {
-                    state.uncertainty += (max_arousal - 0.6f) * 0.5f;  // Up to +0.2 uncertainty
-                    if (state.uncertainty > 1.0f) state.uncertainty = 1.0f;
+                if (max_arousal > 0.6F) {
+                    state.uncertainty += (max_arousal - 0.6F) * 0.5F;  // Up to +0.2 uncertainty
+                    if (state.uncertainty > 1.0F) state.uncertainty = 1.0F;
 
                     // Emotional flooding reduces empathetic accuracy
-                    state.impact_magnitude *= (1.0f - (max_arousal - 0.6f) * 0.3f);  // Up to 12% reduction
+                    state.impact_magnitude *= (1.0F - (max_arousal - 0.6F) * 0.3F);  // Up to 12% reduction
                 }
 
                 /* WHAT: Emotional congruence enhances empathy */
                 /* WHY:  Similar emotional states increase affective empathy */
                 /* HOW:  If our emotional valence matches the predicted impact, boost confidence */
-                float emotional_congruence = 1.0f - fabsf(avg_valence - state.emotional_valence);
-                if (emotional_congruence > 0.7f) {
+                float emotional_congruence = 1.0F - fabsf(avg_valence - state.emotional_valence);
+                if (emotional_congruence > 0.7F) {
                     // High congruence: reduce uncertainty, boost magnitude
-                    state.uncertainty *= 0.8f;  // 20% reduction in uncertainty
-                    state.impact_magnitude *= 1.1f;  // 10% boost to empathetic accuracy
-                    if (state.impact_magnitude > 1.0f) state.impact_magnitude = 1.0f;
+                    state.uncertainty *= 0.8F;  // 20% reduction in uncertainty
+                    state.impact_magnitude *= 1.1F;  // 10% boost to empathetic accuracy
+                    if (state.impact_magnitude > 1.0F) state.impact_magnitude = 1.0F;
                 }
 
                 /* WHAT: Emotional incongruence impairs empathy */
                 /* WHY:  Opposite emotional states reduce perspective-taking accuracy */
                 /* HOW:  If emotional states oppose, increase uncertainty */
-                if (emotional_congruence < 0.3f) {
-                    state.uncertainty += 0.1f;  // Increased uncertainty
-                    if (state.uncertainty > 1.0f) state.uncertainty = 1.0f;
+                if (emotional_congruence < 0.3F) {
+                    state.uncertainty += 0.1F;  // Increased uncertainty
+                    if (state.uncertainty > 1.0F) state.uncertainty = 1.0F;
                 }
             }
         }

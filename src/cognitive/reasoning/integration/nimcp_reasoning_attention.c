@@ -83,7 +83,7 @@ reasoning_attention_config_t reasoning_attention_default_config(void) {
         .proof_found_salience = REASONING_ATTENTION_PROOF_FOUND_SALIENCE,
 
         .attention_decay_tau_ms = REASONING_ATTENTION_DECAY_TAU_MS,
-        .min_salience_threshold = 0.1f
+        .min_salience_threshold = 0.1F
     };
     return config;
 }
@@ -96,10 +96,10 @@ bool reasoning_attention_validate_config(const reasoning_attention_config_t* con
     if (!config) return false;
 
     // Validate salience values [0.0, 1.0]
-    if (config->novel_fact_salience < 0.0f || config->novel_fact_salience > 1.0f) return false;
-    if (config->contradiction_salience < 0.0f || config->contradiction_salience > 1.0f) return false;
-    if (config->proof_found_salience < 0.0f || config->proof_found_salience > 1.0f) return false;
-    if (config->min_salience_threshold < 0.0f || config->min_salience_threshold > 1.0f) return false;
+    if (config->novel_fact_salience < 0.0F || config->novel_fact_salience > 1.0F) return false;
+    if (config->contradiction_salience < 0.0F || config->contradiction_salience > 1.0F) return false;
+    if (config->proof_found_salience < 0.0F || config->proof_found_salience > 1.0F) return false;
+    if (config->min_salience_threshold < 0.0F || config->min_salience_threshold > 1.0F) return false;
 
     // Validate decay time constant
     if (config->attention_decay_tau_ms == 0) return false;
@@ -152,7 +152,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
     integration->event_bus = event_bus;
     integration->attention = attention;
     integration->last_boost_time_ms = get_current_time_ms();
-    integration->current_salience = 0.0f;
+    integration->current_salience = 0.0F;
     memset(&integration->stats, 0, sizeof(reasoning_attention_stats_t));
 
     // Subscribe to reasoning events
@@ -220,9 +220,9 @@ float reasoning_attention_compute_fact_salience(
     bool is_novel,
     bool is_contradiction
 ) {
-    if (!integration || !fact_description) return 0.0f;
+    if (!integration || !fact_description) return 0.0F;
 
-    float salience = 0.0f;
+    float salience = 0.0F;
 
     // Contradiction gets maximum salience
     if (is_contradiction && integration->config.enable_contradiction_boost) {
@@ -234,7 +234,7 @@ float reasoning_attention_compute_fact_salience(
     }
     // Default base salience
     else {
-        salience = 0.3f;
+        salience = 0.3F;
     }
 
     // Apply decay based on time since last boost
@@ -269,7 +269,7 @@ void reasoning_attention_callback(const brain_event_t* event, void* context) {
 
     integration->stats.total_events_processed++;
 
-    float salience = 0.0f;
+    float salience = 0.0F;
     bool should_boost = false;
 
     switch (event->type) {

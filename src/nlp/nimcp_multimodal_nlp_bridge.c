@@ -279,7 +279,7 @@ bool multimodal_nlp_process_audio(
     }
 
     // Step 1: Check if audio contains speech
-    bool is_speech = multimodal_nlp_is_speech(audio_cortex, audio_data, num_samples, num_channels, 0.5f);
+    bool is_speech = multimodal_nlp_is_speech(audio_cortex, audio_data, num_samples, num_channels, 0.5F);
 
     if (speech_detected) {
         *speech_detected = is_speech;
@@ -328,7 +328,7 @@ bool multimodal_nlp_visual_to_tokens(
     *num_tokens = 0;
 
     // Try to match visual features to word embeddings
-    float best_similarity = -1.0f;
+    float best_similarity = -1.0F;
     uint32_t best_token = 0;
 
     // Search through vocabulary (simplified: check first 1000 tokens)
@@ -339,7 +339,7 @@ bool multimodal_nlp_visual_to_tokens(
         }
 
         // Compute cosine similarity
-        float dot = 0.0f, norm1 = 0.0f, norm2 = 0.0f;
+        float dot = 0.0F, norm1 = 0.0F, norm2 = 0.0F;
         uint32_t min_dim = (feature_dim < 128) ? feature_dim : 128;
 
         for (uint32_t i = 0; i < min_dim; i++) {
@@ -348,7 +348,7 @@ bool multimodal_nlp_visual_to_tokens(
             norm2 += embedding[i] * embedding[i];
         }
 
-        float similarity = dot / (sqrtf(norm1) * sqrtf(norm2) + 1e-8f);
+        float similarity = dot / (sqrtf(norm1) * sqrtf(norm2) + 1e-8F);
 
         if (similarity > best_similarity) {
             best_similarity = similarity;
@@ -357,7 +357,7 @@ bool multimodal_nlp_visual_to_tokens(
     }
 
     // If similarity is above threshold, use this token
-    if (best_similarity > 0.5f && *num_tokens < max_tokens) {
+    if (best_similarity > 0.5F && *num_tokens < max_tokens) {
         tokens[*num_tokens] = best_token;
         (*num_tokens)++;
     }
@@ -390,11 +390,11 @@ bool multimodal_nlp_contains_text(
     // In production, this would use a trained text detector
     // For now, we use a simple heuristic: high edge density in mid frequencies
 
-    float edge_energy = 0.0f;
+    float edge_energy = 0.0F;
     for (uint32_t i = 20; i < 60 && i < 128; i++) {
         edge_energy += fabsf(features[i]);
     }
-    edge_energy /= 40.0f;
+    edge_energy /= 40.0F;
 
     return edge_energy >= threshold;
 }
@@ -537,7 +537,7 @@ bool multimodal_nlp_fuse_inputs(
     uint32_t fuse_dim = (output_dim < 128) ? output_dim : 128;
 
     for (uint32_t i = 0; i < fuse_dim; i++) {
-        float sum = 0.0f;
+        float sum = 0.0F;
         if (has_visual) sum += visual_output[i];
         if (has_audio) sum += audio_output[i];
         if (has_text) sum += text_output[i];

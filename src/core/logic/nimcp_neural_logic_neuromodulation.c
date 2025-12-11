@@ -45,8 +45,8 @@
  * HOW:  Return max(0, min(1, value))
  */
 static float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
+    if (value < 0.0F) return 0.0F;
+    if (value > 1.0F) return 1.0F;
     return value;
 }
 
@@ -63,8 +63,8 @@ static void read_neuromodulator_levels(
     float* ach_level
 ) {
     // Default baseline levels
-    *da_level = 0.5f;
-    *ach_level = 0.5f;
+    *da_level = 0.5F;
+    *ach_level = 0.5F;
 
     // Guard: NULL brain
     if (!brain) {
@@ -93,8 +93,8 @@ static void read_neuromodulator_levels(
  * HOW:  factor = (1.0 - DA * 0.3) * (1.0 + ACh * 0.2)
  */
 static float compute_modulation_factor(float da_level, float ach_level) {
-    float da_factor = 1.0f - (da_level * DA_MODULATION_FACTOR);
-    float ach_factor = 1.0f + (ach_level * ACH_MODULATION_FACTOR);
+    float da_factor = 1.0F - (da_level * DA_MODULATION_FACTOR);
+    float ach_factor = 1.0F + (ach_level * ACH_MODULATION_FACTOR);
     return da_factor * ach_factor;
 }
 
@@ -124,7 +124,7 @@ bool apply_dopamine_modulation(
     }
 
     // Clamp and warn if out of range
-    if (da_level < 0.0f || da_level > 1.0f) {
+    if (da_level < 0.0F || da_level > 1.0F) {
         LOG_WARNING("apply_dopamine_modulation: da_level %.3f out of range, clamping to [0,1]",
                     da_level);
         da_level = clamp_01(da_level);
@@ -147,7 +147,7 @@ bool apply_dopamine_modulation(
     // HOW:  threshold_new = threshold_base * (1.0 - da * 0.3)
 
     float base_threshold = state.threshold;
-    float da_factor = 1.0f - (da_level * DA_MODULATION_FACTOR);
+    float da_factor = 1.0F - (da_level * DA_MODULATION_FACTOR);
     float modulated_threshold = base_threshold * da_factor;
 
     // NOTE: Actual threshold update would require write-back to network
@@ -182,7 +182,7 @@ bool apply_acetylcholine_modulation(
     }
 
     // Clamp and warn if out of range
-    if (ach_level < 0.0f || ach_level > 1.0f) {
+    if (ach_level < 0.0F || ach_level > 1.0F) {
         LOG_WARNING("apply_acetylcholine_modulation: ach_level %.3f out of range, clamping to [0,1]",
                     ach_level);
         ach_level = clamp_01(ach_level);
@@ -205,7 +205,7 @@ bool apply_acetylcholine_modulation(
     // HOW:  threshold_new = threshold_base * (1.0 + ach * 0.2)
 
     float base_threshold = state.threshold;
-    float ach_factor = 1.0f + (ach_level * ACH_MODULATION_FACTOR);
+    float ach_factor = 1.0F + (ach_level * ACH_MODULATION_FACTOR);
     float modulated_threshold = base_threshold * ach_factor;
 
     // NOTE: Actual threshold update would require write-back to network
@@ -262,7 +262,7 @@ uint32_t update_all_gate_modulation(brain_t brain) {
     uint32_t total_gates = 0;
     uint32_t total_vars = 0;
     uint64_t total_spikes = 0;
-    float avg_eval_time = 0.0f;
+    float avg_eval_time = 0.0F;
     uint64_t gpu_memory = 0;
 
     if (!neural_logic_get_stats(network, &total_gates, &total_vars,

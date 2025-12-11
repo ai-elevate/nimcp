@@ -220,7 +220,7 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
 
     /* Optimizer defaults */
     config.default_optimizer = NIMCP_OPTIMIZER_ADAM;
-    config.default_learning_rate = 0.001f;
+    config.default_learning_rate = 0.001F;
 
     /* Learning rate scheduler defaults */
     config.default_lr_scheduler = NIMCP_LR_STEP;
@@ -228,20 +228,20 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
 
     /* Regularization defaults */
     config.default_reg_type = NIMCP_REG_L2;
-    config.default_reg_lambda = 0.0001f;
-    config.l1_lambda = 0.0f;             /* No L1 by default */
-    config.l2_lambda = 0.0001f;          /* Small L2 weight decay */
-    config.dropout_rate = 0.0f;          /* No dropout by default */
+    config.default_reg_lambda = 0.0001F;
+    config.l1_lambda = 0.0F;             /* No L1 by default */
+    config.l2_lambda = 0.0001F;          /* Small L2 weight decay */
+    config.dropout_rate = 0.0F;          /* No dropout by default */
     config.default_clip_mode = NIMCP_CLIP_BY_NORM;
-    config.default_clip_value = 1.0f;
-    config.gradient_clip_norm = 0.0f;    /* No norm clipping by default */
+    config.default_clip_value = 1.0F;
+    config.gradient_clip_norm = 0.0F;    /* No norm clipping by default */
     config.enable_regularization = false;
     config.enable_gradient_clipping = false;
 
     /* Gradient management defaults */
     config.gradient_accum_steps = 1;          /* No accumulation by default */
     config.gradient_accumulation_steps = 1;   /* Alias */
-    config.gradient_clip_value = 0.0f;        /* No value clipping by default */
+    config.gradient_clip_value = 0.0F;        /* No value clipping by default */
     config.enable_gradient_management = false;
     config.enable_gradient_scaling = false;
     config.enable_gradient_health_check = true;
@@ -249,13 +249,13 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
     /* Early stopping */
     config.enable_early_stopping = false;
     config.early_stop_patience = 10;
-    config.early_stop_min_delta = 1e-4f;
+    config.early_stop_min_delta = 1e-4F;
 
     /* Training parameters */
     config.max_epochs = 1000;
     config.batch_size = 32;
-    config.convergence_threshold = 1e-6f;
-    config.divergence_threshold = 1e6f;
+    config.convergence_threshold = 1e-6F;
+    config.divergence_threshold = 1e6F;
 
     /* Security integration */
     config.enable_security = true;
@@ -271,8 +271,8 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
 
     /* Plasticity Bridge defaults (Phase TPB-1) */
     config.enable_plasticity_bridge = false;  /* Disabled by default */
-    config.rpe_to_da_gain = 0.5f;
-    config.biological_lr_modulation = 0.5f;   /* 50% biological, 50% computational */
+    config.rpe_to_da_gain = 0.5F;
+    config.biological_lr_modulation = 0.5F;   /* 50% biological, 50% computational */
 
     /* Second Messenger Cascade defaults */
     config.enable_second_messengers = true;   /* Enable by default - biological fidelity */
@@ -280,7 +280,7 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
 
     /* Portia Resource Management defaults */
     config.enable_portia_integration = false; /* Disabled by default - opt-in */
-    config.min_batch_size_ratio = 0.25f;      /* Minimum 25% of base batch size */
+    config.min_batch_size_ratio = 0.25F;      /* Minimum 25% of base batch size */
     config.allow_training_pause = true;       /* Allow pause in EMERGENCY mode */
     config.adapt_to_tier_changes = true;      /* Automatically adapt to tier changes */
 
@@ -308,16 +308,16 @@ nimcp_result_t nimcp_brain_training_validate_config(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->default_learning_rate <= 0.0f ||
-        config->default_learning_rate > 10.0f) {
+    if (config->default_learning_rate <= 0.0F ||
+        config->default_learning_rate > 10.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->convergence_threshold <= 0.0f) {
+    if (config->convergence_threshold <= 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->divergence_threshold <= 0.0f) {
+    if (config->divergence_threshold <= 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -365,7 +365,7 @@ nimcp_brain_training_ctx_t* nimcp_brain_training_create(
     ctx->stats.final_lr = local_config.default_learning_rate;
     ctx->stats.lr_min = local_config.default_learning_rate;
     ctx->stats.lr_max = local_config.default_learning_rate;
-    ctx->stats.current_grad_scale = 1.0f;
+    ctx->stats.current_grad_scale = 1.0F;
 
     ctx->last_loss = FLT_MAX;
     ctx->best_loss = FLT_MAX;
@@ -375,8 +375,8 @@ nimcp_brain_training_ctx_t* nimcp_brain_training_create(
     ctx->plasticity_bridge = NULL;
     ctx->biological_modulation_strength = local_config.biological_lr_modulation;
     ctx->prev_loss = FLT_MAX;
-    ctx->cumulative_da = 0.0f;
-    ctx->cumulative_lr_mod = 0.0f;
+    ctx->cumulative_da = 0.0F;
+    ctx->cumulative_lr_mod = 0.0F;
     ctx->bio_update_count = 0;
 
     /* Initialize second messenger cascade system */
@@ -406,8 +406,8 @@ nimcp_brain_training_ctx_t* nimcp_brain_training_create(
     ctx->portia_context = NULL;
     ctx->current_tier = PLATFORM_TIER_FULL;  /* Assume best case initially */
     ctx->resource_aware_training = local_config.enable_portia_integration;
-    ctx->tier_batch_size_multiplier = 1.0f;
-    ctx->tier_lr_multiplier = 1.0f;
+    ctx->tier_batch_size_multiplier = 1.0F;
+    ctx->tier_lr_multiplier = 1.0F;
     ctx->training_paused = false;
     ctx->degradation_level = 0;  /* DEGRADATION_LEVEL_NONE */
 
@@ -1047,7 +1047,7 @@ nimcp_result_t nimcp_brain_training_step(
 
     /* Phase TPB-1: If plasticity bridge is connected and biological modulation > 0,
      * automatically route through biological training step */
-    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0f) {
+    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0F) {
         return nimcp_brain_training_step_biological(
             ctx, loss_id, optimizer_id, params,
             predictions, targets, batch_size, output_size,
@@ -1334,12 +1334,12 @@ float nimcp_brain_training_step_scheduler(
     uint32_t optimizer_id)
 {
     if (!ctx) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_lr_scheduler_ctx_t* sched = nimcp_brain_training_get_scheduler(ctx, scheduler_id);
     if (!sched) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float new_lr = nimcp_lr_scheduler_step(sched);
@@ -1373,12 +1373,12 @@ float nimcp_brain_training_step_scheduler_metric(
     float metric)
 {
     if (!ctx) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_lr_scheduler_ctx_t* sched = nimcp_brain_training_get_scheduler(ctx, scheduler_id);
     if (!sched) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float new_lr = nimcp_lr_scheduler_step_metric(sched, metric);
@@ -1575,10 +1575,10 @@ float nimcp_brain_training_apply_regularization(
     float lambda)
 {
     if (!ctx || !weights || !gradients || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float reg_loss = 0.0f;
+    float reg_loss = 0.0F;
 
     switch (reg_type) {
         case NIMCP_REG_L1:
@@ -1591,11 +1591,11 @@ float nimcp_brain_training_apply_regularization(
             break;
         case NIMCP_REG_ELASTIC_NET: {
             /* Elastic net = alpha*L1 + (1-alpha)*L2, use alpha=0.5 */
-            float alpha = 0.5f;
+            float alpha = 0.5F;
             reg_loss = nimcp_elastic_net_loss(weights, count, lambda, alpha);
             /* Apply both L1 and L2 gradients with appropriate weights */
             nimcp_l1_gradient(weights, gradients, count, lambda * alpha);
-            nimcp_l2_gradient(weights, gradients, count, lambda * (1.0f - alpha));
+            nimcp_l2_gradient(weights, gradients, count, lambda * (1.0F - alpha));
             break;
         }
         default:
@@ -1622,11 +1622,11 @@ float nimcp_brain_training_clip_gradients(
     float threshold)
 {
     if (!ctx || !gradients || count == 0) {
-        return 1.0f;
+        return 1.0F;
     }
 
     float original_norm = nimcp_gradient_norm(gradients, count);
-    float clip_ratio = 1.0f;
+    float clip_ratio = 1.0F;
 
     switch (mode) {
         case NIMCP_CLIP_BY_VALUE:
@@ -1638,18 +1638,18 @@ float nimcp_brain_training_clip_gradients(
             clip_ratio = nimcp_gradient_clip_by_norm(gradients, count, threshold);
             break;
         default:
-            return 1.0f;
+            return 1.0F;
     }
 
     /* For value clipping, compute ratio from norms */
     if (mode == NIMCP_CLIP_BY_VALUE) {
         float clipped_norm = nimcp_gradient_norm(gradients, count);
-        if (clipped_norm > 0.0f) {
+        if (clipped_norm > 0.0F) {
             clip_ratio = original_norm / clipped_norm;
         }
     }
 
-    if (clip_ratio > 1.0f) {
+    if (clip_ratio > 1.0F) {
         ctx->stats.gradient_clips++;
 
         /* Emit clip event */
@@ -1831,13 +1831,13 @@ nimcp_result_t nimcp_brain_training_step_full(
     }
 
     /* Phase TPB-1: Report loss to plasticity bridge for RPE computation */
-    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0f) {
-        float rpe = 0.0f;
+    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0F) {
+        float rpe = 0.0F;
         if (tpb_report_loss(ctx->plasticity_bridge, *loss_value, &rpe) == NIMCP_SUCCESS) {
             ctx->stats.rpe_computations++;
 
             /* Get current dopamine level for tracking */
-            float da_level = 0.5f, ach_level, ht5_level, ne_level;
+            float da_level = 0.5F, ach_level, ht5_level, ne_level;
             if (tpb_get_neuromod_levels(ctx->plasticity_bridge, &da_level, &ach_level,
                                          &ht5_level, &ne_level) == NIMCP_SUCCESS) {
                 ctx->cumulative_da += da_level;
@@ -1856,7 +1856,7 @@ nimcp_result_t nimcp_brain_training_step_full(
         if (health == NIMCP_GRAD_HAS_INF) {
             ctx->stats.grad_inf_count++;
             /* Sanitize infinity values */
-            nimcp_gradient_sanitize(gradients, gradient_count, 0.0f);
+            nimcp_gradient_sanitize(gradients, gradient_count, 0.0F);
         }
     }
 
@@ -1900,16 +1900,16 @@ nimcp_result_t nimcp_brain_training_step_full(
     }
 
     /* Phase TPB-1: Apply biological learning rate modulation before optimization */
-    float original_lr = 0.0f;
+    float original_lr = 0.0F;
     nimcp_optimizer_context_t* opt = NULL;
-    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0f) {
+    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0F) {
         opt = nimcp_brain_training_get_optimizer(ctx, optimizer_id);
         if (opt) {
             original_lr = nimcp_optimizer_get_lr(opt);
             float bio_lr = original_lr;
             if (tpb_get_modulated_lr(ctx->plasticity_bridge, 0, original_lr, &bio_lr) == NIMCP_SUCCESS) {
                 float blend = ctx->biological_modulation_strength;
-                float effective_lr = (1.0f - blend) * original_lr + blend * bio_lr;
+                float effective_lr = (1.0F - blend) * original_lr + blend * bio_lr;
                 nimcp_optimizer_set_lr(opt, effective_lr);
                 ctx->cumulative_lr_mod += (effective_lr / original_lr);
                 ctx->bio_update_count++;
@@ -1922,7 +1922,7 @@ nimcp_result_t nimcp_brain_training_step_full(
     res = nimcp_brain_training_optimize(ctx, optimizer_id, params, gradients, update_count);
 
     /* Restore original learning rate if modified */
-    if (opt && original_lr > 0.0f) {
+    if (opt && original_lr > 0.0F) {
         nimcp_optimizer_set_lr(opt, original_lr);
     }
 
@@ -1994,8 +1994,8 @@ nimcp_result_t nimcp_brain_training_set_biological_modulation(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (strength < 0.0f) strength = 0.0f;
-    if (strength > 1.0f) strength = 1.0f;
+    if (strength < 0.0F) strength = 0.0F;
+    if (strength > 1.0F) strength = 1.0F;
 
     ctx->biological_modulation_strength = strength;
     LOG_DEBUG("Biological modulation strength set to %.2f", strength);
@@ -2007,7 +2007,7 @@ float nimcp_brain_training_get_biological_modulation(
     const nimcp_brain_training_ctx_t* ctx)
 {
     if (!ctx) {
-        return 0.0f;
+        return 0.0F;
     }
     return ctx->biological_modulation_strength;
 }
@@ -2034,7 +2034,7 @@ nimcp_result_t nimcp_brain_training_step_biological(
     }
 
     /* If no plasticity bridge or biological modulation is zero, fallback to regular step */
-    if (!ctx->plasticity_bridge || ctx->biological_modulation_strength <= 0.0f) {
+    if (!ctx->plasticity_bridge || ctx->biological_modulation_strength <= 0.0F) {
         return nimcp_brain_training_step(
             ctx, loss_id, optimizer_id, params,
             predictions, targets, batch_size, output_size,
@@ -2062,13 +2062,13 @@ nimcp_result_t nimcp_brain_training_step_biological(
     }
 
     /* Step 2: Report loss to plasticity bridge and get RPE */
-    float rpe = 0.0f;
+    float rpe = 0.0F;
     res = tpb_report_loss(ctx->plasticity_bridge, *loss_value, &rpe);
     if (res == NIMCP_SUCCESS) {
         ctx->stats.rpe_computations++;
 
         /* Get current dopamine level from neuromodulator system */
-        float da_level = 0.5f, ach_level, ht5_level, ne_level;
+        float da_level = 0.5F, ach_level, ht5_level, ne_level;
         if (tpb_get_neuromod_levels(ctx->plasticity_bridge, &da_level, &ach_level,
                                      &ht5_level, &ne_level) == NIMCP_SUCCESS) {
             ctx->cumulative_da += da_level;
@@ -2076,12 +2076,12 @@ nimcp_result_t nimcp_brain_training_step_biological(
             /* Activate second messenger cascades based on reward signal
              * Positive RPE/dopamine activates Gs-coupled D1 receptors -> cAMP -> PKA
              * This enhances learning for reward-related updates */
-            if (ctx->second_messengers_enabled && ctx->second_messengers && rpe > 0.0f) {
+            if (ctx->second_messengers_enabled && ctx->second_messengers && rpe > 0.0F) {
                 uint64_t timestamp_ms = nimcp_time_get_us() / 1000;
                 /* Activate Gs pathway for first neuron (representative)
                  * occupancy scales with dopamine level [0, 1] */
                 float occupancy = da_level;
-                if (occupancy > 1.0f) occupancy = 1.0f;
+                if (occupancy > 1.0F) occupancy = 1.0F;
 
                 second_messenger_activate_gs(
                     ctx->second_messengers,
@@ -2103,7 +2103,7 @@ nimcp_result_t nimcp_brain_training_step_biological(
     float bio_lr = base_lr;
     tpb_get_modulated_lr(ctx->plasticity_bridge, region_id, base_lr, &bio_lr);
     float blend = ctx->biological_modulation_strength;
-    float effective_lr = (1.0f - blend) * base_lr + blend * bio_lr;
+    float effective_lr = (1.0F - blend) * base_lr + blend * bio_lr;
 
     /* Apply second messenger cascade modulation if enabled
      * PKA/CaMKII activity boosts learning rates for enhanced plasticity
@@ -2117,7 +2117,7 @@ nimcp_result_t nimcp_brain_training_step_biological(
         /* Update second messenger dynamics for this timestep
          * This advances the cascade state based on current activity */
         uint64_t timestamp_ms = nimcp_time_get_us() / 1000;
-        second_messenger_update(ctx->second_messengers, 1.0f, timestamp_ms);
+        second_messenger_update(ctx->second_messengers, 1.0F, timestamp_ms);
     }
 
     ctx->cumulative_lr_mod += (effective_lr / base_lr);
@@ -2143,9 +2143,9 @@ nimcp_result_t nimcp_brain_training_step_biological(
         /* For biological routing, we compute weight delta through the bridge */
         float pre_activity = fabsf(gradients[i]);  /* Use gradient magnitude as proxy */
         float post_activity = fabsf(params[i]);     /* Use weight magnitude as proxy */
-        float spike_delta = (gradients[i] > 0) ? 0.01f : -0.01f;  /* Sign indicates timing */
+        float spike_delta = (gradients[i] > 0) ? 0.01F : -0.01F;  /* Sign indicates timing */
 
-        float weight_delta = 0.0f;
+        float weight_delta = 0.0F;
         nimcp_result_t route_res = tpb_route_weight_update(
             ctx->plasticity_bridge,
             (uint32_t)i,    /* neuron_id - use index */
@@ -2159,13 +2159,13 @@ nimcp_result_t nimcp_brain_training_step_biological(
         float grad_delta = -effective_lr * gradients[i];
         float final_delta;
         if (route_res == NIMCP_SUCCESS) {
-            final_delta = (1.0f - blend) * grad_delta + blend * weight_delta;
+            final_delta = (1.0F - blend) * grad_delta + blend * weight_delta;
 
             /* Enhance STDP-like weight changes with CaMKII activity
              * CaMKII is activated by coincident pre/post activity (calcium influx)
              * and enhances LTP magnitude */
-            if (have_cascade_state && sm_state.calcium.camkii_activity > 0.5f) {
-                float camkii_boost = 1.0f + (sm_state.calcium.camkii_activity - 0.5f);
+            if (have_cascade_state && sm_state.calcium.camkii_activity > 0.5F) {
+                float camkii_boost = 1.0F + (sm_state.calcium.camkii_activity - 0.5F);
                 final_delta *= camkii_boost;
             }
         } else {
@@ -2180,7 +2180,7 @@ nimcp_result_t nimcp_brain_training_step_biological(
     /* Check for CREB phosphorylation signaling consolidation
      * High CREB phosphorylation indicates readiness for long-term plasticity
      * This could trigger additional consolidation mechanisms */
-    if (have_cascade_state && sm_state.gene_expr.creb_phosphorylation > 0.7f) {
+    if (have_cascade_state && sm_state.gene_expr.creb_phosphorylation > 0.7F) {
         LOG_DEBUG("CREB phosphorylation high (%.3f) - consolidation signaled",
                   sm_state.gene_expr.creb_phosphorylation);
 
@@ -2300,12 +2300,12 @@ float nimcp_brain_training_get_cascade_modulation(
 {
     /* Guard: Return baseline modulation if context invalid */
     if (!ctx) {
-        return 1.0f;
+        return 1.0F;
     }
 
     /* Guard: Return baseline if second messengers not enabled */
     if (!ctx->second_messengers_enabled || !ctx->second_messengers) {
-        return 1.0f;
+        return 1.0F;
     }
 
     /* Query plasticity modulation from second messenger system
@@ -2316,8 +2316,8 @@ float nimcp_brain_training_get_cascade_modulation(
     );
 
     /* Guard: Clamp to safe range in case of error */
-    if (modulation < 0.5f) modulation = 0.5f;
-    if (modulation > 2.0f) modulation = 2.0f;
+    if (modulation < 0.5F) modulation = 0.5F;
+    if (modulation > 2.0F) modulation = 2.0F;
 
     return modulation;
 }
@@ -2340,28 +2340,28 @@ static void calculate_tier_multipliers(
 {
     switch (tier) {
         case PLATFORM_TIER_FULL:
-            *batch_multiplier = 1.0f;   /* Full batch */
-            *lr_multiplier = 1.0f;      /* Normal LR */
+            *batch_multiplier = 1.0F;   /* Full batch */
+            *lr_multiplier = 1.0F;      /* Normal LR */
             break;
 
         case PLATFORM_TIER_MEDIUM:
-            *batch_multiplier = 0.75f;  /* 75% batch */
-            *lr_multiplier = 0.9f;      /* 90% LR */
+            *batch_multiplier = 0.75F;  /* 75% batch */
+            *lr_multiplier = 0.9F;      /* 90% LR */
             break;
 
         case PLATFORM_TIER_CONSTRAINED:
-            *batch_multiplier = 0.5f;   /* 50% batch */
-            *lr_multiplier = 0.75f;     /* 75% LR */
+            *batch_multiplier = 0.5F;   /* 50% batch */
+            *lr_multiplier = 0.75F;     /* 75% LR */
             break;
 
         case PLATFORM_TIER_MINIMAL:
-            *batch_multiplier = 0.25f;  /* 25% batch */
-            *lr_multiplier = 0.5f;      /* 50% LR */
+            *batch_multiplier = 0.25F;  /* 25% batch */
+            *lr_multiplier = 0.5F;      /* 50% LR */
             break;
 
         default:
-            *batch_multiplier = 1.0f;
-            *lr_multiplier = 1.0f;
+            *batch_multiplier = 1.0F;
+            *lr_multiplier = 1.0F;
             break;
     }
 }
@@ -2395,8 +2395,8 @@ nimcp_result_t nimcp_brain_training_connect_portia(
     } else {
         /* Reset to defaults when disconnecting */
         ctx->resource_aware_training = false;
-        ctx->tier_batch_size_multiplier = 1.0f;
-        ctx->tier_lr_multiplier = 1.0f;
+        ctx->tier_batch_size_multiplier = 1.0F;
+        ctx->tier_lr_multiplier = 1.0F;
         LOG_INFO("Portia disconnected from training system");
     }
 
@@ -2431,8 +2431,8 @@ nimcp_result_t nimcp_brain_training_on_tier_change(
     LOG_INFO("Training tier change: %s -> %s (batch=%.0f%%, lr=%.0f%%)",
              platform_tier_get_name(old_tier),
              platform_tier_get_name(new_tier),
-             ctx->tier_batch_size_multiplier * 100.0f,
-             ctx->tier_lr_multiplier * 100.0f);
+             ctx->tier_batch_size_multiplier * 100.0F,
+             ctx->tier_lr_multiplier * 100.0F);
 
     /* Handle EMERGENCY tier: pause training if allowed */
     if (new_tier == PLATFORM_TIER_MINIMAL && !ctx->training_paused) {
@@ -2481,7 +2481,7 @@ nimcp_result_t nimcp_brain_training_on_degradation_event(
         }
     } else if (degradation_level >= 3) {  /* DEGRADATION_LEVEL_SEVERE */
         /* Further reduce batch size beyond tier multiplier */
-        ctx->tier_batch_size_multiplier *= 0.5f;
+        ctx->tier_batch_size_multiplier *= 0.5F;
         LOG_INFO("Batch size reduced further due to SEVERE degradation");
     }
 
@@ -2562,7 +2562,7 @@ float nimcp_brain_training_get_adjusted_lr(
 
     /* Guard: Return 0 if training paused */
     if (ctx->training_paused) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Apply tier multiplier */

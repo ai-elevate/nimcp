@@ -313,7 +313,7 @@ bool brain_get_evaluation_stats(
     uint32_t total_gates = 0;
     uint32_t total_vars = 0;
     uint64_t total_spikes = 0;
-    float avg_eval_time = 0.0f;
+    float avg_eval_time = 0.0F;
     uint64_t gpu_memory = 0;
 
     bool success = neural_logic_get_stats(

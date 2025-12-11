@@ -79,23 +79,23 @@ struct portia_deception_struct {
  */
 static float calculate_effectiveness(const portia_deception_t deception)
 {
-    float effectiveness = 0.0f;
+    float effectiveness = 0.0F;
 
     switch (deception->state.mode) {
         case STEALTH_MODE_NONE:
-            effectiveness = 0.0f;
+            effectiveness = 0.0F;
             break;
 
         case STEALTH_MODE_PASSIVE:
             // Effectiveness inversely proportional to emissions
-            effectiveness = 1.0f - deception->state.emission_level;
+            effectiveness = 1.0F - deception->state.emission_level;
             break;
 
         case STEALTH_MODE_ACTIVE:
             // Active mode provides better stealth
-            effectiveness = 0.8f - (deception->state.emission_level * 0.5f);
+            effectiveness = 0.8F - (deception->state.emission_level * 0.5F);
             if (deception->state.jamming_active) {
-                effectiveness += 0.15f;
+                effectiveness += 0.15F;
             }
             break;
 
@@ -106,17 +106,17 @@ static float calculate_effectiveness(const portia_deception_t deception)
                 uint32_t idx = deception->state.mimicry_profile - 1;
                 effectiveness = deception->profiles[idx].effectiveness;
             } else {
-                effectiveness = 0.5f;  // Default mimicry
+                effectiveness = 0.5F;  // Default mimicry
             }
             break;
 
         default:
-            effectiveness = 0.0f;
+            effectiveness = 0.0F;
             break;
     }
 
     // Clamp to [0, 1]
-    return fmaxf(0.0f, fminf(1.0f, effectiveness));
+    return fmaxf(0.0F, fminf(1.0F, effectiveness));
 }
 
 //=============================================================================
@@ -228,8 +228,8 @@ portia_deception_t portia_deception_init(
         return NULL;
     }
 
-    if (config->default_emission_level < 0.0f ||
-        config->default_emission_level > 1.0f) {
+    if (config->default_emission_level < 0.0F ||
+        config->default_emission_level > 1.0F) {
         LOG_ERROR("Invalid default_emission_level: %.2f",
                   config->default_emission_level);
         deception_set_error("Invalid emission level (must be 0.0-1.0)");
@@ -256,7 +256,7 @@ portia_deception_t portia_deception_init(
     deception->state.emission_level = config->default_emission_level;
     deception->state.mimicry_profile = 0;
     deception->state.jamming_active = false;
-    deception->state.effectiveness = 0.0f;
+    deception->state.effectiveness = 0.0F;
     deception->state.mode_started_ms = nimcp_time_monotonic_ms();
 
     // Allocate profile registry if mimicry enabled
@@ -434,7 +434,7 @@ int portia_deception_emit(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (level < 0.0f || level > 1.0f) {
+    if (level < 0.0F || level > 1.0F) {
         LOG_ERROR("Invalid emission level: %.2f", level);
         deception_set_error("Emission level must be 0.0-1.0");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -460,12 +460,12 @@ float portia_deception_get_effectiveness(portia_deception_t deception)
 {
     if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
-        return -1.0f;
+        return -1.0F;
     }
 
     if (deception->magic != DECEPTION_MAGIC) {
         LOG_ERROR("Invalid deception magic");
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_mutex_lock(&deception->lock);

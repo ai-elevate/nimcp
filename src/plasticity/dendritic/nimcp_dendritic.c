@@ -93,7 +93,7 @@ static inline float safe_divide(float numerator, float denominator) {
  * @brief Exponential decay factor
  */
 static inline float decay_factor(float dt, float tau) {
-    return 1.0f - expf(-dt / (tau + EPSILON));
+    return 1.0F - expf(-dt / (tau + EPSILON));
 }
 
 //=============================================================================
@@ -107,13 +107,13 @@ nmda_params_t nmda_params_default(void) {
      * BIOLOGICAL: Mixed NR2A/NR2B subunit composition
      */
     nmda_params_t params = {
-        .g_max = 0.5f,                  /* nS - maximum conductance */
-        .tau_rise = 2.0f,               /* ms - rise time constant */
-        .tau_decay = 100.0f,            /* ms - decay time constant */
+        .g_max = 0.5F,                  /* nS - maximum conductance */
+        .tau_rise = 2.0F,               /* ms - rise time constant */
+        .tau_decay = 100.0F,            /* ms - decay time constant */
         .mg_concentration = NMDA_MG_CONCENTRATION,
         .mg_sensitivity = NMDA_MG_SENSITIVITY,
         .voltage_slope = NMDA_VOLTAGE_SLOPE,
-        .ca_permeability = 0.1f         /* Relative Ca²⁺ permeability */
+        .ca_permeability = 0.1F         /* Relative Ca²⁺ permeability */
     };
     return params;
 }
@@ -125,13 +125,13 @@ nmda_params_t nmda_params_nr2a(void) {
      * BIOLOGICAL: NR2A has τ_decay ≈ 50ms
      */
     nmda_params_t params = {
-        .g_max = 0.5f,
-        .tau_rise = 1.5f,               /* Faster rise */
-        .tau_decay = 50.0f,             /* Faster decay than NR2B */
+        .g_max = 0.5F,
+        .tau_rise = 1.5F,               /* Faster rise */
+        .tau_decay = 50.0F,             /* Faster decay than NR2B */
         .mg_concentration = NMDA_MG_CONCENTRATION,
         .mg_sensitivity = NMDA_MG_SENSITIVITY,
         .voltage_slope = NMDA_VOLTAGE_SLOPE,
-        .ca_permeability = 0.08f        /* Lower Ca²⁺ permeability */
+        .ca_permeability = 0.08F        /* Lower Ca²⁺ permeability */
     };
     return params;
 }
@@ -143,13 +143,13 @@ nmda_params_t nmda_params_nr2b(void) {
      * BIOLOGICAL: NR2B has τ_decay ≈ 200ms, more Ca²⁺ influx
      */
     nmda_params_t params = {
-        .g_max = 0.6f,                  /* Slightly higher conductance */
-        .tau_rise = 3.0f,               /* Slower rise */
-        .tau_decay = 200.0f,            /* Much slower decay */
+        .g_max = 0.6F,                  /* Slightly higher conductance */
+        .tau_rise = 3.0F,               /* Slower rise */
+        .tau_decay = 200.0F,            /* Much slower decay */
         .mg_concentration = NMDA_MG_CONCENTRATION,
         .mg_sensitivity = NMDA_MG_SENSITIVITY,
         .voltage_slope = NMDA_VOLTAGE_SLOPE,
-        .ca_permeability = 0.15f        /* Higher Ca²⁺ permeability */
+        .ca_permeability = 0.15F        /* Higher Ca²⁺ permeability */
     };
     return params;
 }
@@ -164,52 +164,52 @@ compartment_params_t compartment_params_default(compartment_type_t type) {
      */
     compartment_params_t params = {
         .type = type,
-        .membrane_capacitance = 1.0f,   /* pF/μm² - typical value */
-        .axial_resistance = 150.0f,     /* Ω·cm - cytoplasmic resistance */
-        .leak_conductance = 0.1f,       /* nS */
-        .spike_threshold = -30.0f,      /* mV */
-        .spike_amplitude = 40.0f,       /* mV */
-        .spike_duration = 2.0f,         /* ms */
-        .supralinearity_factor = 0.0f   /* Default: no supralinearity */
+        .membrane_capacitance = 1.0F,   /* pF/μm² - typical value */
+        .axial_resistance = 150.0F,     /* Ω·cm - cytoplasmic resistance */
+        .leak_conductance = 0.1F,       /* nS */
+        .spike_threshold = -30.0F,      /* mV */
+        .spike_amplitude = 40.0F,       /* mV */
+        .spike_duration = 2.0F,         /* ms */
+        .supralinearity_factor = 0.0F   /* Default: no supralinearity */
     };
 
     /* Type-specific parameters */
     switch (type) {
         case COMPARTMENT_SOMA:
-            params.length = 20.0f;
-            params.diameter = 20.0f;
-            params.spike_threshold = -50.0f;  /* Lower threshold at soma */
+            params.length = 20.0F;
+            params.diameter = 20.0F;
+            params.spike_threshold = -50.0F;  /* Lower threshold at soma */
             break;
 
         case COMPARTMENT_PROXIMAL:
-            params.length = 50.0f;
-            params.diameter = 3.0f;
-            params.supralinearity_factor = 0.2f;
+            params.length = 50.0F;
+            params.diameter = 3.0F;
+            params.supralinearity_factor = 0.2F;
             break;
 
         case COMPARTMENT_DISTAL:
-            params.length = 100.0f;
-            params.diameter = 1.0f;
-            params.supralinearity_factor = 0.5f;  /* More supralinearity distally */
+            params.length = 100.0F;
+            params.diameter = 1.0F;
+            params.supralinearity_factor = 0.5F;  /* More supralinearity distally */
             break;
 
         case COMPARTMENT_APICAL_TRUNK:
-            params.length = 200.0f;
-            params.diameter = 4.0f;
-            params.supralinearity_factor = 0.3f;
+            params.length = 200.0F;
+            params.diameter = 4.0F;
+            params.supralinearity_factor = 0.3F;
             break;
 
         case COMPARTMENT_APICAL_TUFT:
-            params.length = 150.0f;
-            params.diameter = 0.8f;
-            params.spike_threshold = -25.0f;  /* Higher threshold */
-            params.supralinearity_factor = 0.6f;  /* Strong supralinearity */
+            params.length = 150.0F;
+            params.diameter = 0.8F;
+            params.spike_threshold = -25.0F;  /* Higher threshold */
+            params.supralinearity_factor = 0.6F;  /* Strong supralinearity */
             break;
 
         case COMPARTMENT_BASAL:
-            params.length = 100.0f;
-            params.diameter = 1.5f;
-            params.supralinearity_factor = 0.4f;
+            params.length = 100.0F;
+            params.diameter = 1.5F;
+            params.supralinearity_factor = 0.4F;
             break;
     }
 
@@ -224,8 +224,8 @@ dendritic_tree_config_t dendritic_tree_config_default(void) {
         .num_branches = 8,              /* 8 main branches */
         .compartments_per_branch = 10,  /* 10 compartments per branch */
         .default_type = COMPARTMENT_DISTAL,
-        .default_spike_threshold = -30.0f,
-        .default_supralinearity = 0.3f,
+        .default_spike_threshold = -30.0F,
+        .default_supralinearity = 0.3F,
         .enable_nmda = true,
         .enable_dendritic_spikes = true,
         .enable_calcium_dynamics = true
@@ -242,10 +242,10 @@ dendritic_nmda_state_t nmda_state_init(void) {
      * WHY:  Factory method ensures valid initial state
      */
     dendritic_nmda_state_t state = {
-        .s = 0.0f,
-        .s_rise = 0.0f,
-        .conductance = 0.0f,
-        .calcium_influx = 0.0f,
+        .s = 0.0F,
+        .s_rise = 0.0F,
+        .conductance = 0.0F,
+        .calcium_influx = 0.0F,
         .active = false
     };
     return state;
@@ -262,15 +262,15 @@ float nmda_compute_block(float voltage, const nmda_params_t* params) {
 
     /* Guard: Validate input */
     if (!params) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Compute Mg²⁺ block using Jahr & Stevens 1990 formula */
     float mg_term = params->mg_concentration / params->mg_sensitivity;
     float voltage_term = expf(-params->voltage_slope * voltage);
-    float block = 1.0f / (1.0f + mg_term * voltage_term);
+    float block = 1.0F / (1.0F + mg_term * voltage_term);
 
-    return clamp_f(block, 0.0f, 1.0f);
+    return clamp_f(block, 0.0F, 1.0F);
 }
 
 void nmda_update_kinetics(dendritic_nmda_state_t* state,
@@ -287,17 +287,17 @@ void nmda_update_kinetics(dendritic_nmda_state_t* state,
 
     /* Guard: Validate inputs */
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     /* Clamp glutamate to [0,1] */
-    glutamate = clamp_f(glutamate, 0.0f, 1.0f);
+    glutamate = clamp_f(glutamate, 0.0F, 1.0F);
 
     /* Update active state */
-    state->active = (glutamate > 0.1f);
+    state->active = (glutamate > 0.1F);
 
     /* Rise phase: (1-s)/τ_rise × glutamate */
     float rise_decay = decay_factor(dt, params->tau_rise);
-    float rise_term = (1.0f - state->s) * glutamate * rise_decay;
+    float rise_term = (1.0F - state->s) * glutamate * rise_decay;
 
     /* Decay phase: s/τ_decay */
     float decay_decay_f = decay_factor(dt, params->tau_decay);
@@ -305,7 +305,7 @@ void nmda_update_kinetics(dendritic_nmda_state_t* state,
 
     /* Update gating variable */
     state->s += rise_term - decay_term;
-    state->s = clamp_f(state->s, 0.0f, 1.0f);
+    state->s = clamp_f(state->s, 0.0F, 1.0F);
 
     /* Track rising component separately for dual-exponential */
     state->s_rise += rise_decay * (glutamate - state->s_rise);
@@ -323,7 +323,7 @@ float nmda_compute_current(const dendritic_nmda_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return 0.0f;
+    if (!state || !params) return 0.0F;
 
     /* Compute voltage-dependent block */
     float block = nmda_compute_block(voltage, params);
@@ -349,20 +349,20 @@ float nmda_compute_calcium_influx(const dendritic_nmda_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return 0.0f;
+    if (!state || !params) return 0.0F;
 
     /* Compute block and conductance */
     float block = nmda_compute_block(voltage, params);
     float g_nmda = params->g_max * block * state->s;
 
     /* Ca²⁺ driving force (reversal around +130 mV) */
-    float e_ca = 130.0f;
+    float e_ca = 130.0F;
     float driving_force = voltage - e_ca;
 
     /* Calcium influx (inward = negative voltage × negative driving_force = positive) */
     float influx = -g_nmda * driving_force * params->ca_permeability * CALCIUM_SCALE;
 
-    return fmaxf(influx, 0.0f);  /* Only positive influx */
+    return fmaxf(influx, 0.0F);  /* Only positive influx */
 }
 
 //=============================================================================
@@ -376,11 +376,11 @@ compartment_state_t compartment_state_init(float resting_voltage) {
     compartment_state_t state = {
         .voltage = resting_voltage,
         .voltage_prev = resting_voltage,
-        .total_excitatory = 0.0f,
-        .total_inhibitory = 0.0f,
-        .calcium_concentration = 0.0f,
+        .total_excitatory = 0.0F,
+        .total_inhibitory = 0.0F,
+        .calcium_concentration = 0.0F,
         .spike_active = false,
-        .spike_time_remaining = 0.0f,
+        .spike_time_remaining = 0.0F,
         .spike_count = 0
     };
     return state;
@@ -401,7 +401,7 @@ void compartment_integrate(compartment_state_t* state,
 
     /* Guard: Validate inputs */
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     /* Store previous voltage for spike detection */
     state->voltage_prev = state->voltage;
@@ -409,9 +409,9 @@ void compartment_integrate(compartment_state_t* state,
     /* If spike is active, maintain spike voltage */
     if (state->spike_active) {
         state->spike_time_remaining -= dt;
-        if (state->spike_time_remaining <= 0.0f) {
+        if (state->spike_time_remaining <= 0.0F) {
             state->spike_active = false;
-            state->spike_time_remaining = 0.0f;
+            state->spike_time_remaining = 0.0F;
         }
         /* During spike, don't integrate - voltage is elevated */
         return;
@@ -431,27 +431,27 @@ void compartment_integrate(compartment_state_t* state,
 
     /* Apply supralinear summation if threshold exceeded */
     float total_input = excitatory_input + inhibitory_input;
-    if (params->supralinearity_factor > 0.0f && total_input > 0.0f) {
+    if (params->supralinearity_factor > 0.0F && total_input > 0.0F) {
         float supralinear = compartment_supralinear_factor(
             excitatory_input,
-            0.5f,  /* threshold */
+            0.5F,  /* threshold */
             params->supralinearity_factor
         );
         i_total *= supralinear;
     }
 
     /* Integrate voltage (Euler method) */
-    float capacitance = params->membrane_capacitance * params->length * params->diameter * 3.14159f;
+    float capacitance = params->membrane_capacitance * params->length * params->diameter * 3.14159F;
     capacitance = fmaxf(capacitance, EPSILON);  /* Prevent division by zero */
     float dv = (i_total / capacitance) * dt;
     state->voltage += dv;
 
     /* Clamp voltage to physiological range */
-    state->voltage = clamp_f(state->voltage, -100.0f, 50.0f);
+    state->voltage = clamp_f(state->voltage, -100.0F, 50.0F);
 
     /* Decay calcium */
     float ca_decay = decay_factor(dt, CALCIUM_DECAY_TAU);
-    state->calcium_concentration *= (1.0f - ca_decay);
+    state->calcium_concentration *= (1.0F - ca_decay);
 }
 
 bool compartment_check_spike(compartment_state_t* state,
@@ -480,7 +480,7 @@ bool compartment_check_spike(compartment_state_t* state,
         state->spike_count++;
 
         /* Calcium influx during spike */
-        state->calcium_concentration += 0.5f;  /* μM */
+        state->calcium_concentration += 0.5F;  /* μM */
 
         return true;
     }
@@ -500,15 +500,15 @@ float compartment_supralinear_factor(float total_input,
      */
 
     if (total_input <= threshold) {
-        return 1.0f;  /* Linear region */
+        return 1.0F;  /* Linear region */
     }
 
     /* Supralinear boost */
     float excess = total_input - threshold;
-    float boost = 1.0f + supralinearity_factor * excess;
+    float boost = 1.0F + supralinearity_factor * excess;
 
     /* Clamp to reasonable range */
-    return clamp_f(boost, 1.0f, 3.0f);
+    return clamp_f(boost, 1.0F, 3.0F);
 }
 
 //=============================================================================
@@ -577,7 +577,7 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
         branch->id = b;
         branch->parent_id = 0;  /* All connect to soma */
         branch->num_compartments = config->compartments_per_branch;
-        branch->coupling_resistance = 100.0f;  /* Ω·cm */
+        branch->coupling_resistance = 100.0F;  /* Ω·cm */
 
         /* Allocate compartment parameters */
         branch->params = nimcp_calloc(config->compartments_per_branch,
@@ -690,7 +690,7 @@ void dendritic_tree_inject_input(dendritic_tree_t tree,
     /* Update NMDA if enabled */
     if (tree->config.enable_nmda && tree->nmda_states && tree->nmda_states[branch_id]) {
         dendritic_nmda_state_t* nmda = &tree->nmda_states[branch_id][compartment_id];
-        nmda_update_kinetics(nmda, nmda_glutamate, 1.0f, &tree->nmda_params);
+        nmda_update_kinetics(nmda, nmda_glutamate, 1.0F, &tree->nmda_params);
 
         if (nmda->active) {
             tree->stats.nmda_activations++;
@@ -712,11 +712,11 @@ void dendritic_tree_update(dendritic_tree_t tree, float dt) {
      */
 
     /* Guard: Validate inputs */
-    if (!tree || dt <= 0.0f) return;
+    if (!tree || dt <= 0.0F) return;
 
     tree->stats.total_updates++;
-    float total_voltage = 0.0f;
-    float max_calcium = 0.0f;
+    float total_voltage = 0.0F;
+    float max_calcium = 0.0F;
 
     /* Update each branch */
     for (uint32_t b = 0; b < tree->num_branches; b++) {
@@ -751,8 +751,8 @@ void dendritic_tree_update(dendritic_tree_t tree, float dt) {
                     tree->stats.dendritic_spikes++;
 
                     /* Check for supralinear event */
-                    if (params->supralinearity_factor > 0.0f && exc_input > 0.5f) {
-                        tree->stats.supralinear_events += 1.0f;
+                    if (params->supralinearity_factor > 0.0F && exc_input > 0.5F) {
+                        tree->stats.supralinear_events += 1.0F;
                     }
                 }
             }
@@ -760,13 +760,13 @@ void dendritic_tree_update(dendritic_tree_t tree, float dt) {
             /* Propagate voltage to parent compartment (toward soma) */
             if (c > 0) {
                 compartment_state_t* parent = &branch->states[c - 1];
-                float coupling = safe_divide(1.0f, branch->coupling_resistance);
+                float coupling = safe_divide(1.0F, branch->coupling_resistance);
                 parent->total_excitatory += coupling * (state->voltage - parent->voltage);
             }
 
             /* Clear accumulated inputs for next timestep */
-            state->total_excitatory = 0.0f;
-            state->total_inhibitory = 0.0f;
+            state->total_excitatory = 0.0F;
+            state->total_inhibitory = 0.0F;
 
             /* Track statistics */
             total_voltage += state->voltage;
@@ -778,7 +778,7 @@ void dendritic_tree_update(dendritic_tree_t tree, float dt) {
         /* Couple branch to soma */
         if (branch->num_compartments > 0) {
             compartment_state_t* proximal = &branch->states[0];
-            float coupling = safe_divide(1.0f, branch->coupling_resistance);
+            float coupling = safe_divide(1.0F, branch->coupling_resistance);
             float current_to_soma = coupling * (proximal->voltage - tree->soma_state.voltage);
             tree->soma_state.total_excitatory += current_to_soma;
         }
@@ -789,8 +789,8 @@ void dendritic_tree_update(dendritic_tree_t tree, float dt) {
                           tree->soma_state.total_excitatory,
                           tree->soma_state.total_inhibitory,
                           &tree->soma_params, dt);
-    tree->soma_state.total_excitatory = 0.0f;
-    tree->soma_state.total_inhibitory = 0.0f;
+    tree->soma_state.total_excitatory = 0.0F;
+    tree->soma_state.total_inhibitory = 0.0F;
 
     /* Update statistics */
     uint32_t total_compartments = tree->num_branches * tree->config.compartments_per_branch;
@@ -810,7 +810,7 @@ float dendritic_tree_get_total_calcium(dendritic_tree_t tree) {
     /* WHAT: Sum calcium across all compartments
      * WHY:  Total calcium affects plasticity
      */
-    if (!tree) return 0.0f;
+    if (!tree) return 0.0F;
 
     float total = tree->soma_state.calcium_concentration;
 

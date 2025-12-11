@@ -200,16 +200,16 @@ float community_compute_modularity(
 {
     if (!network || !community_ids) {
         set_error("NULL arguments to compute_modularity");
-        return -1.0f;
+        return -1.0F;
     }
 
     adjacency_list_t* graph = build_adjacency_list(network);
-    if (!graph) return -1.0f;
+    if (!graph) return -1.0F;
 
     float m = (float)graph->total_edges;
     if (m == 0) {
         free_adjacency_list(graph);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute degree for each node
@@ -217,7 +217,7 @@ float community_compute_modularity(
     if (!degree) {
         free_adjacency_list(graph);
         set_error("Failed to allocate degree array");
-        return -1.0f;
+        return -1.0F;
     }
 
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
@@ -228,7 +228,7 @@ float community_compute_modularity(
 
     // Compute modularity Q
     // Q = (1/2m) * Σ [A_ij - (k_i * k_j)/2m] * δ(c_i, c_j)
-    float q = 0.0f;
+    float q = 0.0F;
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
         uint32_t comm_i = community_ids[i];
 
@@ -239,13 +239,13 @@ float community_compute_modularity(
 
             if (comm_i == comm_j) {
                 float a_ij = graph->nodes[i].weights[j];
-                float expected = (degree[i] * degree[neighbor]) / (2.0f * m);
+                float expected = (degree[i] * degree[neighbor]) / (2.0F * m);
                 q += (a_ij - expected);
             }
         }
     }
 
-    q /= (2.0f * m);
+    q /= (2.0F * m);
 
     nimcp_free(degree);
     free_adjacency_list(graph);
@@ -270,7 +270,7 @@ static bool louvain_phase1(
     // Initialize each node in its own community
     for (uint32_t i = 0; i < num_nodes; i++) {
         community_ids[i] = i;
-        total_degree[i] = 0.0f;
+        total_degree[i] = 0.0F;
         for (uint32_t j = 0; j < graph->nodes[i].num_neighbors; j++) {
             total_degree[i] += graph->nodes[i].weights[j];
         }
@@ -283,7 +283,7 @@ static bool louvain_phase1(
         // Try moving each node
         for (uint32_t node = 0; node < num_nodes; node++) {
             uint32_t current_comm = community_ids[node];
-            float best_gain = 0.0f;
+            float best_gain = 0.0F;
             uint32_t best_comm = current_comm;
 
             // Count edges to each neighboring community
@@ -301,12 +301,12 @@ static bool louvain_phase1(
 
             // Try moving to each neighboring community
             for (uint32_t comm = 0; comm < max_comms; comm++) {
-                if (comm_weight[comm] == 0.0f) continue;
+                if (comm_weight[comm] == 0.0F) continue;
                 if (comm == current_comm) continue;
 
                 // Compute modularity gain
                 float k_i = total_degree[node];
-                float sigma_tot = 0.0f;  // Total degree of target community
+                float sigma_tot = 0.0F;  // Total degree of target community
 
                 for (uint32_t n = 0; n < num_nodes; n++) {
                     if (community_ids[n] == comm) {
@@ -315,7 +315,7 @@ static bool louvain_phase1(
                 }
 
                 float delta_q = (comm_weight[comm] / m) -
-                               (config->resolution * k_i * sigma_tot / (2.0f * m * m));
+                               (config->resolution * k_i * sigma_tot / (2.0F * m * m));
 
                 if (delta_q > best_gain + config->min_modularity_gain) {
                     best_gain = delta_q;
@@ -455,9 +455,9 @@ community_structure_t* community_detect(
             uint32_t comm_j = structure->community_ids[neighbor];
 
             if (comm_i == comm_j) {
-                structure->internal_density[comm_i] += 1.0f;
+                structure->internal_density[comm_i] += 1.0F;
             } else {
-                structure->external_density[comm_i] += 1.0f;
+                structure->external_density[comm_i] += 1.0F;
             }
         }
     }
@@ -571,7 +571,7 @@ hub_structure_t* community_detect_hubs(
         return NULL;
     }
 
-    float max_degree = 0.0f;
+    float max_degree = 0.0F;
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (!neuron) continue;
@@ -731,11 +731,11 @@ hub_structure_t* community_detect_hubs(
         // Initialize data structures for this source
         for (uint32_t i = 0; i < num_neurons; i++) {
             pred_counts[i] = 0;
-            sigma[i] = 0.0f;
+            sigma[i] = 0.0F;
             distance[i] = -1;
-            delta[i] = 0.0f;
+            delta[i] = 0.0F;
         }
-        sigma[s] = 1.0f;
+        sigma[s] = 1.0F;
         distance[s] = 0;
 
         //=====================================================================
@@ -814,7 +814,7 @@ hub_structure_t* community_detect_hubs(
             for (uint32_t i = 0; i < pred_counts[w]; i++) {
                 uint32_t v = predecessors[w][i];
                 // Add dependency: how many shortest paths go through v to reach w
-                delta[v] += (sigma[v] / sigma[w]) * (1.0f + delta[w]);
+                delta[v] += (sigma[v] / sigma[w]) * (1.0F + delta[w]);
             }
 
             if (w != s) {
@@ -834,12 +834,12 @@ hub_structure_t* community_detect_hubs(
      *      - For undirected: max = (n-1)*(n-2)/2
      *      - We treat neural networks as directed
      */
-    float normalization = 0.0f;
+    float normalization = 0.0F;
     if (num_neurons > 2) {
         normalization = (float)((num_neurons - 1) * (num_neurons - 2));
     }
 
-    if (normalization > 0.0f) {
+    if (normalization > 0.0F) {
         for (uint32_t i = 0; i < num_neurons; i++) {
             betweenness[i] /= normalization;
         }
@@ -921,7 +921,7 @@ topology_validation_t community_validate_topology(
     }
 
     // Detect hubs
-    hub_structure_t* hubs = community_detect_hubs(network, 0.8f);
+    hub_structure_t* hubs = community_detect_hubs(network, 0.8F);
     if (hubs) {
         result.num_hubs = hubs->num_hubs;
         hub_structure_free(hubs);
@@ -938,7 +938,7 @@ topology_validation_t community_validate_topology(
     } else if (result.num_communities < 2) {
         snprintf(error, 256, "Too few communities: %u", result.num_communities);
         valid = false;
-    } else if (result.clustering_coefficient < 0.1f) {
+    } else if (result.clustering_coefficient < 0.1F) {
         snprintf(error, 256, "Clustering coefficient too low: %.3f", result.clustering_coefficient);
         valid = false;
     } else if (result.num_hubs < (num_neurons / 100)) {
@@ -961,9 +961,9 @@ topology_validation_t community_validate_topology(
 community_detection_config_t community_default_config(void) {
     community_detection_config_t config = {
         .max_iterations = 100,
-        .min_modularity_gain = 1e-5f,
+        .min_modularity_gain = 1e-5F,
         .max_communities = 0,  // No limit
-        .resolution = 1.0f,
+        .resolution = 1.0F,
         .weighted = true,
         .random_seed = 0  // Use time-based
     };
@@ -986,7 +986,7 @@ void community_print_stats(const community_structure_t* structure) {
     for (uint32_t i = 0; i < structure->num_communities; i++) {
         printf("  Community %u: %u neurons (%.1f%%), ",
                i, structure->community_sizes[i],
-               100.0f * structure->community_sizes[i] / structure->num_neurons);
+               100.0F * structure->community_sizes[i] / structure->num_neurons);
         printf("internal_density=%.3f, external_density=%.3f\n",
                structure->internal_density[i],
                structure->external_density[i]);

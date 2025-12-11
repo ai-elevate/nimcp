@@ -122,10 +122,10 @@ bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain)
 
     // Phase 12: Compute personality-modulated neuromodulator baselines
     // Default to moderate levels if no personality
-    float dopamine_base = 0.5f;
-    float serotonin_base = 0.5f;
-    float acetylcholine_base = 0.5f;
-    float norepinephrine_base = 0.5f;
+    float dopamine_base = 0.5F;
+    float serotonin_base = 0.5F;
+    float acetylcholine_base = 0.5F;
+    float norepinephrine_base = 0.5F;
 
     if (brain->personality) {
         // Map personality traits to neurotransmitter baselines
@@ -133,19 +133,19 @@ bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain)
 
         // Dopamine (reward, motivation): Driven by Extraversion
         // Extraverts seek social rewards → higher dopamine baseline
-        dopamine_base = 0.3f + p->traits.extraversion * 0.5f;  // [0.3, 0.8]
+        dopamine_base = 0.3F + p->traits.extraversion * 0.5F;  // [0.3, 0.8]
 
         // Serotonin (mood stability, impulse control): Inverse of Neuroticism
         // High neuroticism → low serotonin (anxiety, mood instability)
-        serotonin_base = 0.7f - p->traits.neuroticism * 0.4f;  // [0.3, 0.7]
+        serotonin_base = 0.7F - p->traits.neuroticism * 0.4F;  // [0.3, 0.7]
 
         // Acetylcholine (attention, learning): Driven by Openness
         // High openness → high acetylcholine (intellectual curiosity)
-        acetylcholine_base = 0.3f + p->traits.openness * 0.5f;  // [0.3, 0.8]
+        acetylcholine_base = 0.3F + p->traits.openness * 0.5F;  // [0.3, 0.8]
 
         // Norepinephrine (arousal, vigilance): Driven by Conscientiousness
         // High conscientiousness → sustained alertness
-        norepinephrine_base = 0.4f + p->traits.conscientiousness * 0.4f;  // [0.4, 0.8]
+        norepinephrine_base = 0.4F + p->traits.conscientiousness * 0.4F;  // [0.4, 0.8]
     }
 
     // Always create neuromodulator system (needed for mental health monitoring)
@@ -158,20 +158,20 @@ bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain)
         .baseline_norepinephrine = norepinephrine_base, // Arousal
 
         // Decay time constants (seconds)
-        .dopamine_decay = 2.0f,         // Fast decay (phasic DA bursts)
-        .serotonin_decay = 10.0f,       // Slow decay (tonic 5-HT)
-        .acetylcholine_decay = 0.5f,    // Very fast decay (attention bursts)
-        .norepinephrine_decay = 3.0f,   // Moderate decay (arousal)
+        .dopamine_decay = 2.0F,         // Fast decay (phasic DA bursts)
+        .serotonin_decay = 10.0F,       // Slow decay (tonic 5-HT)
+        .acetylcholine_decay = 0.5F,    // Very fast decay (attention bursts)
+        .norepinephrine_decay = 3.0F,   // Moderate decay (arousal)
 
         // Response gains
-        .reward_dopamine_gain = 0.5f,
-        .threat_norepinephrine_gain = 0.7f,
-        .salience_acetylcholine_gain = 0.6f,
-        .punishment_serotonin_gain = 0.4f,
+        .reward_dopamine_gain = 0.5F,
+        .threat_norepinephrine_gain = 0.7F,
+        .salience_acetylcholine_gain = 0.6F,
+        .punishment_serotonin_gain = 0.4F,
 
         // Volume transmission
         .enable_volume_transmission = true,
-        .diffusion_rate = 0.1f
+        .diffusion_rate = 0.1F
     };
 
     brain->neuromodulator_system = neuromodulator_system_create(&neuromod_config);
@@ -335,7 +335,7 @@ bool nimcp_brain_factory_init_attention_subsystem(brain_t brain)
         .sequence_length = 32,    // Default sequence length for temporal processing
         .use_thalamic_gate = brain->config.enable_thalamic_gate,
         .use_salience_weighting = brain->config.enable_salience_weighting,
-        .gate_bias = 0.5f        // Default: 50% gate opening
+        .gate_bias = 0.5F        // Default: 50% gate opening
     };
 
     // WHAT: Create multihead attention system
@@ -457,7 +457,7 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
         brain_region_t* v1 = brain_module_get_region_by_type(brain->brain_regions, REGION_VISUAL_V1);
         brain_region_t* pfc = brain_module_get_region_by_type(brain->brain_regions, REGION_PREFRONTAL);
         if (v1 && pfc) {
-            brain_module_connect_regions(brain->brain_regions, v1->id, pfc->id, 0.3f);
+            brain_module_connect_regions(brain->brain_regions, v1->id, pfc->id, 0.3F);
         }
     }
 
@@ -466,7 +466,7 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
         brain_region_t* a1 = brain_module_get_region_by_type(brain->brain_regions, REGION_AUDITORY_A1);
         brain_region_t* pfc = brain_module_get_region_by_type(brain->brain_regions, REGION_PREFRONTAL);
         if (a1 && pfc) {
-            brain_module_connect_regions(brain->brain_regions, a1->id, pfc->id, 0.3f);
+            brain_module_connect_regions(brain->brain_regions, a1->id, pfc->id, 0.3F);
         }
     }
 

@@ -230,9 +230,9 @@ bool brain_compute_empathy(brain_t brain, const float* observed_features,
 
     if (!success || num_activations == 0) {
         // No mirror neuron activity - neutral empathy
-        *empathy_valence = 0.0f;
-        *empathy_arousal = 0.0f;
-        *empathy_confidence = 0.0f;
+        *empathy_valence = 0.0F;
+        *empathy_arousal = 0.0F;
+        *empathy_confidence = 0.0F;
         brain_clear_error();
         return true;
     }
@@ -242,42 +242,42 @@ bool brain_compute_empathy(brain_t brain, const float* observed_features,
     // WHY:  Shared representations enable emotional understanding
     // HOW:  Aggregate activations → infer valence/arousal
 
-    float total_activation = 0.0f;
-    float weighted_valence = 0.0f;
+    float total_activation = 0.0F;
+    float weighted_valence = 0.0F;
 
     // Use observed features to influence empathy calculation
-    float feature_sum = 0.0f;
+    float feature_sum = 0.0F;
     for (uint32_t i = 0; i < num_features && i < 8; i++) {
         feature_sum += observed_features[i];
     }
-    float feature_mean = num_features > 0 ? feature_sum / num_features : 0.5f;
+    float feature_mean = num_features > 0 ? feature_sum / num_features : 0.5F;
 
     for (uint32_t i = 0; i < num_activations; i++) {
         total_activation += mirror_activations[i];
         // Differentiate valence based on feature patterns and activations
         // Higher feature values (joy) → positive valence
         // Lower feature values (distress) → negative valence
-        float valence_sign = (feature_mean > 0.5f) ? 1.0f : -1.0f;
-        weighted_valence += mirror_activations[i] * valence_sign * (0.5f + 0.5f * fabsf(feature_mean - 0.5f));
+        float valence_sign = (feature_mean > 0.5F) ? 1.0F : -1.0F;
+        weighted_valence += mirror_activations[i] * valence_sign * (0.5F + 0.5F * fabsf(feature_mean - 0.5F));
     }
 
     // Normalize
     if (num_activations > 0) {
         *empathy_arousal = total_activation / num_activations;
         *empathy_valence = weighted_valence / total_activation;
-        *empathy_confidence = total_activation > 0.1f ? 0.7f : 0.3f;
+        *empathy_confidence = total_activation > 0.1F ? 0.7F : 0.3F;
 
         // Clamp to valid ranges
-        if (*empathy_valence < -1.0f) *empathy_valence = -1.0f;
-        if (*empathy_valence > 1.0f) *empathy_valence = 1.0f;
-        if (*empathy_arousal < 0.0f) *empathy_arousal = 0.0f;
-        if (*empathy_arousal > 1.0f) *empathy_arousal = 1.0f;
-        if (*empathy_confidence < 0.0f) *empathy_confidence = 0.0f;
-        if (*empathy_confidence > 1.0f) *empathy_confidence = 1.0f;
+        if (*empathy_valence < -1.0F) *empathy_valence = -1.0F;
+        if (*empathy_valence > 1.0F) *empathy_valence = 1.0F;
+        if (*empathy_arousal < 0.0F) *empathy_arousal = 0.0F;
+        if (*empathy_arousal > 1.0F) *empathy_arousal = 1.0F;
+        if (*empathy_confidence < 0.0F) *empathy_confidence = 0.0F;
+        if (*empathy_confidence > 1.0F) *empathy_confidence = 1.0F;
     } else {
-        *empathy_valence = 0.0f;
-        *empathy_arousal = 0.0f;
-        *empathy_confidence = 0.0f;
+        *empathy_valence = 0.0F;
+        *empathy_arousal = 0.0F;
+        *empathy_confidence = 0.0F;
     }
 
     // Step 3: Integrate with emotional system if available
@@ -328,8 +328,8 @@ bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float cover
     }
 
     // Set default coverage radius if not specified
-    if (coverage_radius_um <= 0.0f) {
-        coverage_radius_um = 75.0f;  // Typical: 50-100 µm
+    if (coverage_radius_um <= 0.0F) {
+        coverage_radius_um = 75.0F;  // Typical: 50-100 µm
     }
 
     // Step 1: Create astrocyte network
@@ -389,7 +389,7 @@ bool brain_get_astrocyte_stats(brain_t brain, astrocyte_stats_t* stats) {
 
     // Map to astrocyte-specific stats
     stats->num_astrocytes = gi_stats.num_astrocytes;
-    stats->avg_calcium_um = 0.0f;  // Will be computed if calcium system exists
+    stats->avg_calcium_um = 0.0F;  // Will be computed if calcium system exists
     stats->num_tripartite_synapses = gi_stats.num_tripartite_synapses;
     stats->total_modulations = gi_stats.total_modulations;
     stats->avg_modulation_strength = gi_stats.avg_synaptic_modulation;
@@ -399,10 +399,10 @@ bool brain_get_astrocyte_stats(brain_t brain, astrocyte_stats_t* stats) {
     if (gi_stats.num_astrocytes > 0 && gi_stats.total_modulations > 0) {
         // Estimate average calcium based on modulation activity
         // Active modulation suggests elevated calcium (0.2-0.5 µM)
-        stats->avg_calcium_um = 0.3f;
+        stats->avg_calcium_um = 0.3F;
     } else {
         // Baseline calcium (~0.1 µM)
-        stats->avg_calcium_um = 0.1f;
+        stats->avg_calcium_um = 0.1F;
     }
 
     brain_clear_error();

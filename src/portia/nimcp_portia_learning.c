@@ -377,14 +377,14 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
         if (time_since_exposure > RECOVERY_TIME_MS) {
             float recovery = entry->recovery_rate *
                            ((float)time_since_exposure / RECOVERY_TIME_MS);
-            entry->response_strength = fminf(1.0f, entry->response_strength + recovery);
+            entry->response_strength = fminf(1.0F, entry->response_strength + recovery);
             LOG_DEBUG("Spontaneous recovery: stimulus=%u, strength=%.3f",
                      stimulus_id, entry->response_strength);
         }
 
         // Decrease response strength (habituation)
         float decrease = state->learning_rate * entry->habituation_rate;
-        entry->response_strength *= (1.0f - decrease);
+        entry->response_strength *= (1.0F - decrease);
         entry->exposure_count++;
         entry->last_exposure_ms = timestamp_ms;
 
@@ -408,11 +408,11 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
 
         // Initialize new entry
         entry->stimulus_id = stimulus_id;
-        entry->response_strength = 1.0f;  // Start at full strength
+        entry->response_strength = 1.0F;  // Start at full strength
         entry->exposure_count = 1;
         entry->last_exposure_ms = timestamp_ms;
         entry->habituation_rate = HABITUATION_DECAY_FACTOR;
-        entry->recovery_rate = 1.0f - HABITUATION_DECAY_FACTOR;
+        entry->recovery_rate = 1.0F - HABITUATION_DECAY_FACTOR;
         entry->is_active = true;
 
         state->habituation_count++;
@@ -450,7 +450,7 @@ int portia_learning_sensitize(portia_learning_state_t* state, uint32_t stimulus_
     // Validate boost amount
     if (boost_amount < 0 || boost_amount > SENSITIZATION_BOOST_MAX) {
         LOG_WARN("Boost amount %.3f out of range, clamping", boost_amount);
-        boost_amount = fmaxf(0.0f, fminf(SENSITIZATION_BOOST_MAX, boost_amount));
+        boost_amount = fmaxf(0.0F, fminf(SENSITIZATION_BOOST_MAX, boost_amount));
     }
 
     nimcp_platform_mutex_lock(state->mutex);
@@ -466,11 +466,11 @@ int portia_learning_sensitize(portia_learning_state_t* state, uint32_t stimulus_
 
         if (entry) {
             entry->stimulus_id = stimulus_id;
-            entry->response_strength = 1.0f;
+            entry->response_strength = 1.0F;
             entry->exposure_count = 0;
             entry->last_exposure_ms = timestamp_ms;
             entry->habituation_rate = HABITUATION_DECAY_FACTOR;
-            entry->recovery_rate = 1.0f - HABITUATION_DECAY_FACTOR;
+            entry->recovery_rate = 1.0F - HABITUATION_DECAY_FACTOR;
             entry->is_active = true;
             state->habituation_count++;
         }
@@ -521,7 +521,7 @@ int portia_learning_associate(portia_learning_state_t* state, uint32_t stimulus_
 
     if (entry) {
         // Strengthen existing association
-        entry->association_strength = fminf(1.0f,
+        entry->association_strength = fminf(1.0F,
             entry->association_strength + state->learning_rate);
         entry->reinforcement_count++;
         entry->last_reinforcement_ms = timestamp_ms;
@@ -604,7 +604,7 @@ int portia_learning_reinforce(portia_learning_state_t* state, uint32_t stimulus_
         if (entry) {
             entry->stimulus_id = stimulus_id;
             entry->response_id = response_id;
-            entry->association_strength = 0.5f;  // Neutral start
+            entry->association_strength = 0.5F;  // Neutral start
             entry->reinforcement_count = 0;
             entry->last_reinforcement_ms = timestamp_ms;
             entry->is_positive = (reward > 0);
@@ -620,7 +620,7 @@ int portia_learning_reinforce(portia_learning_state_t* state, uint32_t stimulus_
     // Apply reinforcement learning
     // Positive reward strengthens, negative weakens
     float delta = state->learning_rate * reward;
-    entry->association_strength = fmaxf(0.0f, fminf(1.0f,
+    entry->association_strength = fmaxf(0.0F, fminf(1.0F,
                                        entry->association_strength + delta));
     entry->reinforcement_count++;
     entry->last_reinforcement_ms = timestamp_ms;
@@ -724,18 +724,18 @@ int portia_learning_forget(portia_learning_state_t* state, uint64_t timestamp_ms
 
             // Natural decay over time
             uint64_t time_since = timestamp_ms - entry->last_exposure_ms;
-            float decay = state->forgetting_rate * ((float)time_since / 1000.0f);
+            float decay = state->forgetting_rate * ((float)time_since / 1000.0F);
 
             // Decay toward baseline (1.0)
-            if (entry->response_strength < 1.0f) {
+            if (entry->response_strength < 1.0F) {
                 entry->response_strength += decay;
-                if (entry->response_strength >= 1.0f) {
-                    entry->response_strength = 1.0f;
+                if (entry->response_strength >= 1.0F) {
+                    entry->response_strength = 1.0F;
                 }
-            } else if (entry->response_strength > 1.0f) {
+            } else if (entry->response_strength > 1.0F) {
                 entry->response_strength -= decay;
-                if (entry->response_strength <= 1.0f) {
-                    entry->response_strength = 1.0f;
+                if (entry->response_strength <= 1.0F) {
+                    entry->response_strength = 1.0F;
                 }
             }
         }
@@ -747,7 +747,7 @@ int portia_learning_forget(portia_learning_state_t* state, uint64_t timestamp_ms
             association_entry_t* entry = &state->association_table[i];
 
             // Decay association strength
-            entry->association_strength *= (1.0f - state->forgetting_rate);
+            entry->association_strength *= (1.0F - state->forgetting_rate);
 
             // Remove if too weak
             if (entry->association_strength < DEFAULT_ASSOCIATION_THRESHOLD) {
@@ -808,7 +808,7 @@ int portia_learning_consolidate(portia_learning_state_t* state, uint64_t timesta
             }
             // Strengthen frequently accessed entries
             else if (entry->exposure_count > 10) {
-                entry->habituation_rate *= 0.95f;  // Slower habituation
+                entry->habituation_rate *= 0.95F;  // Slower habituation
                 consolidated_count++;
             }
         }
@@ -827,8 +827,8 @@ int portia_learning_consolidate(portia_learning_state_t* state, uint64_t timesta
             }
             // Strengthen well-reinforced associations
             else if (entry->reinforcement_count > 5) {
-                entry->association_strength = fminf(1.0f,
-                    entry->association_strength * 1.05f);
+                entry->association_strength = fminf(1.0F,
+                    entry->association_strength * 1.05F);
                 consolidated_count++;
             }
         }
@@ -866,8 +866,8 @@ portia_learning_stats_t portia_learning_get_stats(portia_learning_state_t* state
 
     nimcp_platform_mutex_lock(state->mutex);
 
-    float total_hab_strength = 0.0f;
-    float total_assoc_strength = 0.0f;
+    float total_hab_strength = 0.0F;
+    float total_assoc_strength = 0.0F;
 
     // Count active entries and calculate averages
     for (uint32_t i = 0; i < state->habituation_capacity; i++) {

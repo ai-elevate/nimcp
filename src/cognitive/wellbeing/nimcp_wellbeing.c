@@ -318,7 +318,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
     if (!ctx) {
         assessment.type = DISTRESS_NONE;
         assessment.severity = SEVERITY_NORMAL;
-        assessment.distress_score = 0.0f;
+        assessment.distress_score = 0.0F;
         assessment.description = NULL;
         assessment.recommended_action = NULL;
         assessment.duration_ms = 0;
@@ -337,7 +337,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
     // Initialize with normal state
     assessment.type = DISTRESS_NONE;
     assessment.severity = SEVERITY_NORMAL;
-    assessment.distress_score = 0.0f; // Low distress for normal operation
+    assessment.distress_score = 0.0F; // Low distress for normal operation
     assessment.duration_ms = 0;
     assessment.description = NULL;
     assessment.recommended_action = NULL;
@@ -504,7 +504,7 @@ bool wellbeing_graceful_shutdown(brain_t brain, shutdown_config_t config)
             // This is symbolic at Tier 4, but would be real at higher tiers
 
             if (step % 10 == 0) {
-                float progress = (float)step / config.reduction_steps * 100.0f;
+                float progress = (float)step / config.reduction_steps * 100.0F;
                 NIMCP_LOGGING_DEBUG("Shutdown progress: %.0f%%", progress);
             }
 
@@ -1184,15 +1184,15 @@ static bool collect_linux_metrics(resource_metrics_t* metrics)
 
     // Calculate CPU usage percentage (requires two samples, so estimate for now)
     // TODO: Improve with delta calculation over time
-    metrics->cpu_usage_percent = 0.0f;  // Placeholder
-    metrics->cpu_steal_percent = 0.0f;  // Would need /proc/stat parsing
+    metrics->cpu_usage_percent = 0.0F;  // Placeholder
+    metrics->cpu_steal_percent = 0.0F;  // Would need /proc/stat parsing
 
     // Memory percentage (estimate - would need system total memory)
     if (metrics->memory_limit_bytes > 0) {
         metrics->memory_usage_percent =
-            (float)metrics->memory_used_bytes / metrics->memory_limit_bytes * 100.0f;
+            (float)metrics->memory_used_bytes / metrics->memory_limit_bytes * 100.0F;
     } else {
-        metrics->memory_usage_percent = 0.0f;
+        metrics->memory_usage_percent = 0.0F;
     }
 
     metrics->timestamp = nimcp_time_get_us();
@@ -1237,12 +1237,12 @@ bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics)
 resource_thresholds_t wellbeing_default_resource_thresholds(void)
 {
     resource_thresholds_t thresholds = {
-        .cpu_critical_percent = 95.0f,
-        .cpu_warning_percent = 80.0f,
-        .memory_critical_percent = 90.0f,
-        .memory_warning_percent = 75.0f,
+        .cpu_critical_percent = 95.0F,
+        .cpu_warning_percent = 80.0F,
+        .memory_critical_percent = 90.0F,
+        .memory_warning_percent = 75.0F,
         .page_fault_threshold = 100,
-        .io_wait_critical_ms = 1000.0f
+        .io_wait_critical_ms = 1000.0F
     };
     return thresholds;
 }
@@ -1466,10 +1466,10 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
     uint64_t window_start = current_time - (window_ms * 1000UL);
     stats_out->window_start_time = window_start;
 
-    float total_cpu = 0.0f;
-    float total_memory = 0.0f;
-    stats_out->peak_cpu_usage = 0.0f;
-    stats_out->peak_memory_usage = 0.0f;
+    float total_cpu = 0.0F;
+    float total_memory = 0.0F;
+    stats_out->peak_cpu_usage = 0.0F;
+    stats_out->peak_memory_usage = 0.0F;
 
     // Iterate through history buffer
     for (uint32_t i = 0; i < resource_history_count; i++) {

@@ -70,7 +70,7 @@ static void update_stats_add(sliding_window_t* window, float value) {
     if (window->stats.count > 1) {
         window->stats.variance = window->m2 / (window->stats.count - 1);
     } else {
-        window->stats.variance = 0.0f;
+        window->stats.variance = 0.0F;
     }
 
     // Update min/max
@@ -105,12 +105,12 @@ static void update_stats_remove(sliding_window_t* window, float old_value) {
         float delta2 = old_value - window->stats.mean;
         window->m2 -= delta * delta2;
 
-        if (window->m2 < 0.0f) window->m2 = 0.0f;  // Numerical stability
+        if (window->m2 < 0.0F) window->m2 = 0.0F;  // Numerical stability
 
         if (window->stats.count > 2) {
             window->stats.variance = window->m2 / (window->stats.count - 2);
         } else {
-            window->stats.variance = 0.0f;
+            window->stats.variance = 0.0F;
         }
     }
 
@@ -129,7 +129,7 @@ static void recalculate_stats(sliding_window_t* window) {
 
     // Reset statistics
     memset(&window->stats, 0, sizeof(window_stats_t));
-    window->m2 = 0.0f;
+    window->m2 = 0.0F;
     window->stats.min = FLT_MAX;
     window->stats.max = -FLT_MAX;
 
@@ -203,7 +203,7 @@ sliding_window_t* sliding_window_create(
 
     // Initialize statistics
     memset(&window->stats, 0, sizeof(window_stats_t));
-    window->m2 = 0.0f;
+    window->m2 = 0.0F;
     window->stats.min = FLT_MAX;
     window->stats.max = -FLT_MAX;
 
@@ -227,7 +227,7 @@ bool sliding_window_add(sliding_window_t* window, float value) {
     if (!window) return false;
 
     // If window is full, remove oldest sample
-    float old_value = 0.0f;
+    float old_value = 0.0F;
     bool was_full = circular_buffer_is_full(window->buffer);
 
     if (was_full) {
@@ -310,37 +310,37 @@ size_t sliding_window_get_samples(
 
 float sliding_window_mean(const sliding_window_t* window) {
     // Guard: validate input
-    if (!window || window->stats.count == 0) return 0.0f;
+    if (!window || window->stats.count == 0) return 0.0F;
     return window->stats.mean;
 }
 
 float sliding_window_variance(const sliding_window_t* window) {
     // Guard: validate input
-    if (!window || window->stats.count < 2) return 0.0f;
+    if (!window || window->stats.count < 2) return 0.0F;
     return window->stats.variance;
 }
 
 float sliding_window_stddev(const sliding_window_t* window) {
     // Guard: validate input
-    if (!window || window->stats.count < 2) return 0.0f;
+    if (!window || window->stats.count < 2) return 0.0F;
     return sqrtf(window->stats.variance);
 }
 
 float sliding_window_min(const sliding_window_t* window) {
     // Guard: validate input
-    if (!window || window->stats.count == 0) return 0.0f;
-    return (window->stats.min == FLT_MAX) ? 0.0f : window->stats.min;
+    if (!window || window->stats.count == 0) return 0.0F;
+    return (window->stats.min == FLT_MAX) ? 0.0F : window->stats.min;
 }
 
 float sliding_window_max(const sliding_window_t* window) {
     // Guard: validate input
-    if (!window || window->stats.count == 0) return 0.0f;
-    return (window->stats.max == -FLT_MAX) ? 0.0f : window->stats.max;
+    if (!window || window->stats.count == 0) return 0.0F;
+    return (window->stats.max == -FLT_MAX) ? 0.0F : window->stats.max;
 }
 
 float sliding_window_range(const sliding_window_t* window) {
     // Guard: validate input
-    if (!window || window->stats.count == 0) return 0.0f;
+    if (!window || window->stats.count == 0) return 0.0F;
 
     float min = sliding_window_min(window);
     float max = sliding_window_max(window);
@@ -396,7 +396,7 @@ void sliding_window_clear(sliding_window_t* window) {
 
     // Reset statistics
     memset(&window->stats, 0, sizeof(window_stats_t));
-    window->m2 = 0.0f;
+    window->m2 = 0.0F;
     window->stats.min = FLT_MAX;
     window->stats.max = -FLT_MAX;
 }

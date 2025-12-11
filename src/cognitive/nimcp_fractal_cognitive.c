@@ -40,7 +40,7 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     }
 
     // Identify hub neurons (top 10%)
-    if (!topology_identify_hubs(network, 0.9f, &cache->hub_indices, &cache->num_hubs)) {
+    if (!topology_identify_hubs(network, 0.9F, &cache->hub_indices, &cache->num_hubs)) {
         return false;
     }
 
@@ -65,24 +65,24 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     }
 
     // Normalize degrees by maximum degree
-    float max_degree = 0.0f;
+    float max_degree = 0.0F;
     for (uint32_t i = 0; i < N; i++) {
         // Get degree from network (would need network API - use placeholder)
-        float degree = 1.0f;  // TODO: Get actual degree from network
+        float degree = 1.0F;  // TODO: Get actual degree from network
         if (degree > max_degree) {
             max_degree = degree;
         }
     }
 
-    if (max_degree > 0.0f) {
+    if (max_degree > 0.0F) {
         for (uint32_t i = 0; i < N; i++) {
-            float degree = 1.0f;  // TODO: Get actual degree
+            float degree = 1.0F;  // TODO: Get actual degree
             cache->degree_normalized[i] = degree / max_degree;
         }
     } else {
         // All degrees are 0, set uniform
         for (uint32_t i = 0; i < N; i++) {
-            cache->degree_normalized[i] = 0.0f;
+            cache->degree_normalized[i] = 0.0F;
         }
     }
 
@@ -241,11 +241,11 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
 
 float fractal_get_centrality(const fractal_cognitive_cache_t *cache, uint32_t neuron_index) {
     if (!cache || !cache->valid || !cache->centrality_scores) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (neuron_index >= cache->stats.num_neurons) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return cache->centrality_scores[neuron_index];
@@ -253,11 +253,11 @@ float fractal_get_centrality(const fractal_cognitive_cache_t *cache, uint32_t ne
 
 float fractal_get_degree_normalized(const fractal_cognitive_cache_t *cache, uint32_t neuron_index) {
     if (!cache || !cache->valid || !cache->degree_normalized) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (neuron_index >= cache->stats.num_neurons) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return cache->degree_normalized[neuron_index];
@@ -269,7 +269,7 @@ float fractal_get_degree_normalized(const fractal_cognitive_cache_t *cache, uint
 
 float fractal_get_hierarchical_level(const fractal_cognitive_cache_t *cache, uint32_t neuron_index) {
     if (!cache || !cache->valid) {
-        return 0.5f;  // Mid-level default
+        return 0.5F;  // Mid-level default
     }
 
     float centrality = fractal_get_centrality(cache, neuron_index);
@@ -277,7 +277,7 @@ float fractal_get_hierarchical_level(const fractal_cognitive_cache_t *cache, uin
 
     // High centrality + high degree → near root (level ≈ 0)
     // Low centrality + low degree → near leaf (level ≈ 1)
-    float level = 1.0f - sqrtf(centrality * degree);
+    float level = 1.0F - sqrtf(centrality * degree);
 
     return level;
 }
@@ -343,7 +343,7 @@ void fractal_cognitive_print_summary(const fractal_cognitive_cache_t *cache) {
     printf("Total synapses: %u\n", cache->stats.num_synapses);
     printf("Avg degree: %.2f\n", cache->stats.avg_degree);
     printf("Hub neurons: %u (%.1f%%)\n", cache->num_hubs,
-           100.0f * cache->num_hubs / cache->stats.num_neurons);
+           100.0F * cache->num_hubs / cache->stats.num_neurons);
     printf("Clustering coeff: %.3f\n", cache->stats.clustering_coefficient);
     printf("Char. path length: %.2f\n", cache->stats.characteristic_path);
     printf("Power-law fit R²: %.3f\n", cache->stats.power_law_fit);

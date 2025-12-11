@@ -118,7 +118,7 @@ struct shannon_monitor {
 //=============================================================================
 
 static inline float safe_log2(float x) {
-    if (x <= MIN_PROBABILITY) return 0.0f;
+    if (x <= MIN_PROBABILITY) return 0.0F;
     return log2f(x);
 }
 
@@ -136,7 +136,7 @@ static event_type_stats_t* find_or_create_event_type_stats(
         event_type_stats_t* stats = &monitor->event_type_stats[monitor->num_event_types];
         stats->event_type = event_type;
         stats->count = 0;
-        stats->probability = 0.0f;
+        stats->probability = 0.0F;
         monitor->num_event_types++;
         return stats;
     }
@@ -179,7 +179,7 @@ static void update_event_probabilities(shannon_monitor_t* monitor) {
 static float calculate_event_entropy(shannon_monitor_t* monitor) {
     update_event_probabilities(monitor);
 
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < monitor->num_event_types; i++) {
         float p = monitor->event_type_stats[i].probability;
         if (p > MIN_PROBABILITY) {
@@ -193,7 +193,7 @@ static float calculate_event_entropy(shannon_monitor_t* monitor) {
 static float calculate_channel_capacity(const shannon_monitor_t* monitor) {
     float bandwidth = monitor->config.bandwidth_events_per_sec;
     float snr = monitor->config.signal_to_noise_ratio;
-    return bandwidth * safe_log2(1.0f + snr);
+    return bandwidth * safe_log2(1.0F + snr);
 }
 
 static void update_rate_metrics(shannon_monitor_t* monitor) {
@@ -204,7 +204,7 @@ static void update_rate_metrics(shannon_monitor_t* monitor) {
     // Calculate current throughput continuously based on accumulated data
     // Use minimum 1us quantum to avoid division by zero in fast tests
     uint64_t time_quantum_us = elapsed_us > 0 ? elapsed_us : 1;
-    float elapsed_sec = (float)time_quantum_us / 1000000.0f;
+    float elapsed_sec = (float)time_quantum_us / 1000000.0F;
 
     monitor->metrics.current_throughput =
         monitor->total_information_bits / elapsed_sec;
@@ -222,16 +222,16 @@ static void update_rate_metrics(shannon_monitor_t* monitor) {
     // Calculate loss percentage continuously
     float total_input = monitor->total_information_bits +
                        monitor->filtered_information_bits;
-    if (total_input > 0.0f) {
+    if (total_input > 0.0F) {
         monitor->metrics.loss_percentage =
-            (monitor->filtered_information_bits / total_input) * 100.0f;
+            (monitor->filtered_information_bits / total_input) * 100.0F;
     }
 
     // Reset window when it completes
     if (elapsed_us >= window_us) {
         monitor->window_start_us = now_us;
-        monitor->total_information_bits = 0.0f;
-        monitor->filtered_information_bits = 0.0f;
+        monitor->total_information_bits = 0.0F;
+        monitor->filtered_information_bits = 0.0F;
         monitor->events_in_window = 0;
         monitor->filtered_in_window = 0;
     }
@@ -243,17 +243,17 @@ static void update_capacity_metrics(shannon_monitor_t* monitor) {
     monitor->metrics.channel_capacity_bits_per_sec =
         calculate_channel_capacity(monitor);
 
-    if (monitor->metrics.channel_capacity_bits_per_sec > 0.0f) {
+    if (monitor->metrics.channel_capacity_bits_per_sec > 0.0F) {
         monitor->metrics.capacity_utilization =
             monitor->metrics.current_throughput /
             monitor->metrics.channel_capacity_bits_per_sec;
 
         // Cap utilization at 1.0 (100%) - in fast tests throughput can spike
-        if (monitor->metrics.capacity_utilization > 1.0f) {
-            monitor->metrics.capacity_utilization = 1.0f;
+        if (monitor->metrics.capacity_utilization > 1.0F) {
+            monitor->metrics.capacity_utilization = 1.0F;
         }
     } else {
-        monitor->metrics.capacity_utilization = 0.0f;
+        monitor->metrics.capacity_utilization = 0.0F;
     }
 }
 
@@ -265,19 +265,19 @@ static void update_bottleneck_detection(shannon_monitor_t* monitor) {
         monitor->metrics.bottleneck_detected = true;
 
         float excess = utilization - threshold;
-        float headroom = 1.0f - threshold;
+        float headroom = 1.0F - threshold;
         monitor->metrics.bottleneck_severity =
-            headroom > 0.0f ? (excess / headroom) : 1.0f;
+            headroom > 0.0F ? (excess / headroom) : 1.0F;
 
-        if (monitor->metrics.bottleneck_severity > 1.0f) {
-            monitor->metrics.bottleneck_severity = 1.0f;
+        if (monitor->metrics.bottleneck_severity > 1.0F) {
+            monitor->metrics.bottleneck_severity = 1.0F;
         }
 
         LOG_DEBUG("Shannon: Bottleneck detected (utilization=%.2f, severity=%.2f)",
                   utilization, monitor->metrics.bottleneck_severity);
     } else {
         monitor->metrics.bottleneck_detected = false;
-        monitor->metrics.bottleneck_severity = 0.0f;
+        monitor->metrics.bottleneck_severity = 0.0F;
     }
 }
 
@@ -290,7 +290,7 @@ shannon_monitor_config_t shannon_monitor_default_config(void) {
         .history_size = SHANNON_MONITOR_DEFAULT_HISTORY_SIZE,
         .bandwidth_events_per_sec = SHANNON_MONITOR_DEFAULT_BANDWIDTH,
         .bottleneck_threshold = SHANNON_MONITOR_DEFAULT_BOTTLENECK_THRESHOLD,
-        .signal_to_noise_ratio = 50.0f,
+        .signal_to_noise_ratio = 50.0F,
         .measurement_window_ms = 1000,
         .enable_adaptive_snr = false
     };
@@ -493,9 +493,9 @@ float shannon_monitor_measure_event_information(
     const shannon_monitor_t* monitor,
     const event_t* event
 ) {
-    if (!monitor || !event) return 0.0f;
+    if (!monitor || !event) return 0.0F;
 
-    float probability = 0.0f;
+    float probability = 0.0F;
     for (uint32_t i = 0; i < monitor->num_event_types; i++) {
         if (monitor->event_type_stats[i].event_type == event->type) {
             probability = monitor->event_type_stats[i].probability;
@@ -505,11 +505,11 @@ float shannon_monitor_measure_event_information(
 
     if (probability <= MIN_PROBABILITY) {
         if (monitor->num_event_types > 0) {
-            probability = 1.0f / (float)monitor->num_event_types;
+            probability = 1.0F / (float)monitor->num_event_types;
         } else {
             // Unknown events: assume uniform distribution over 100 possible types
             // This gives info = -log2(0.01) ≈ 6.64 bits (medium-high information)
-            probability = 0.01f;
+            probability = 0.01F;
         }
     }
 
@@ -519,21 +519,21 @@ float shannon_monitor_measure_event_information(
 float shannon_monitor_calculate_channel_capacity(
     const shannon_monitor_t* monitor
 ) {
-    if (!monitor) return 0.0f;
+    if (!monitor) return 0.0F;
     return calculate_channel_capacity(monitor);
 }
 
 float shannon_monitor_get_throughput(
     const shannon_monitor_t* monitor
 ) {
-    if (!monitor) return 0.0f;
+    if (!monitor) return 0.0F;
     return monitor->metrics.current_throughput;
 }
 
 float shannon_monitor_get_utilization(
     const shannon_monitor_t* monitor
 ) {
-    if (!monitor) return 0.0f;
+    if (!monitor) return 0.0F;
     return monitor->metrics.capacity_utilization;
 }
 
@@ -545,7 +545,7 @@ float shannon_monitor_detect_bottleneck(
     const shannon_monitor_t* monitor,
     uint32_t* bottleneck_module
 ) {
-    if (!monitor) return 0.0f;
+    if (!monitor) return 0.0F;
 
     if (bottleneck_module) {
         *bottleneck_module = monitor->metrics.bottleneck_module;
@@ -582,21 +582,21 @@ shannon_routing_metrics_t shannon_monitor_get_metrics(
 float shannon_monitor_get_event_entropy(
     const shannon_monitor_t* monitor
 ) {
-    if (!monitor) return 0.0f;
+    if (!monitor) return 0.0F;
     return monitor->cached_event_entropy;
 }
 
 float shannon_monitor_get_mutual_information(
     const shannon_monitor_t* monitor
 ) {
-    if (!monitor) return 0.0f;
+    if (!monitor) return 0.0F;
     return monitor->cached_mutual_information;
 }
 
 float shannon_monitor_get_information_loss_percentage(
     const shannon_monitor_t* monitor
 ) {
-    if (!monitor) return 0.0f;
+    if (!monitor) return 0.0F;
     return monitor->metrics.loss_percentage;
 }
 
@@ -608,7 +608,7 @@ void shannon_monitor_set_snr(
     shannon_monitor_t* monitor,
     float snr
 ) {
-    if (!monitor || snr <= 0.0f) return;
+    if (!monitor || snr <= 0.0F) return;
 
     nimcp_mutex_lock(&monitor->mutex);
     monitor->config.signal_to_noise_ratio = snr;
@@ -621,7 +621,7 @@ void shannon_monitor_set_bottleneck_threshold(
     shannon_monitor_t* monitor,
     float threshold
 ) {
-    if (!monitor || threshold < 0.0f || threshold > 1.0f) return;
+    if (!monitor || threshold < 0.0F || threshold > 1.0F) return;
 
     nimcp_mutex_lock(&monitor->mutex);
     monitor->config.bottleneck_threshold = threshold;
@@ -668,16 +668,16 @@ void shannon_monitor_reset(
     memset(monitor->event_type_stats, 0, sizeof(monitor->event_type_stats));
     monitor->num_event_types = 0;
 
-    monitor->cached_event_entropy = 0.0f;
-    monitor->cached_response_entropy = 0.0f;
-    monitor->cached_mutual_information = 0.0f;
+    monitor->cached_event_entropy = 0.0F;
+    monitor->cached_response_entropy = 0.0F;
+    monitor->cached_mutual_information = 0.0F;
     monitor->last_entropy_recalc_count = 0;
 
     monitor->window_start_us = nimcp_time_get_us();
     monitor->last_update_us = monitor->window_start_us;
 
-    monitor->total_information_bits = 0.0f;
-    monitor->filtered_information_bits = 0.0f;
+    monitor->total_information_bits = 0.0F;
+    monitor->filtered_information_bits = 0.0F;
     monitor->events_in_window = 0;
     monitor->filtered_in_window = 0;
 

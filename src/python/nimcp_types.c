@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 
+#include "core/brain/nimcp_pretrained.h"
 #include "io/serialization/nimcp_network_serialization.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -83,7 +84,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
 {
     PyObject* features_list;
     const char* label;
-    float confidence = 1.0f;
+    float confidence = 1.0F;
 
     static char* kwlist[] = {"features", "label", "confidence", NULL};
 
@@ -267,7 +268,7 @@ static PyObject* Brain_from_pretrained(PyObject* cls, PyObject* args, PyObject* 
     }
 
     // Load pre-trained model
-    nimcp_brain_t brain = brain_load_pretrained(model_name, models_dir);
+    nimcp_brain_t brain = (nimcp_brain_t)brain_load_pretrained(model_name, models_dir);
 
     if (!brain) {
         PyErr_Format(NIMCPError, "Failed to load pre-trained model: %s", model_name);
@@ -293,7 +294,7 @@ static PyObject* Brain_finetune(BrainObject* self, PyObject* args, PyObject* kwd
     PyObject* training_data_list;
     PyObject* labels_list;
     uint32_t num_epochs = 5;
-    float learning_rate = 0.001f;
+    float learning_rate = 0.001F;
     int freeze_sensory = 1;
     int freeze_cognitive = 1;
 
@@ -543,16 +544,16 @@ static int NeuralNetwork_init(NeuralNetworkObject* self, PyObject* args, PyObjec
 
     // Create default configuration
     network_config_t config = {.num_neurons = num_neurons,
-                               .ei_ratio = 0.8f,
-                               .learning_rate = 0.01f,
-                               .hebbian_rate = 0.1f,
-                               .stdp_window = 20.0f,
-                               .homeostatic_rate = 0.001f,
-                               .target_activity = 0.1f,
-                               .adaptation_rate = 0.1f,
-                               .refractory_period = 5.0f,
-                               .min_weight = -1.0f,
-                               .max_weight = 1.0f,
+                               .ei_ratio = 0.8F,
+                               .learning_rate = 0.01F,
+                               .hebbian_rate = 0.1F,
+                               .stdp_window = 20.0F,
+                               .homeostatic_rate = 0.001F,
+                               .target_activity = 0.1F,
+                               .adaptation_rate = 0.1F,
+                               .refractory_period = 5.0F,
+                               .min_weight = -1.0F,
+                               .max_weight = 1.0F,
                                .update_interval = 1000,
                                .input_size = 10,
                                .output_size = 10,
@@ -1577,9 +1578,9 @@ static int NetworkConfig_init(NetworkConfigObject* self, PyObject* args, PyObjec
     self->config.adaptation_rate = adaptation_rate;
 
     // Set defaults for other fields
-    self->config.refractory_period = 5.0f;
-    self->config.min_weight = -1.0f;
-    self->config.max_weight = 1.0f;
+    self->config.refractory_period = 5.0F;
+    self->config.min_weight = -1.0F;
+    self->config.max_weight = 1.0F;
     self->config.update_interval = 1000;
     self->config.input_size = 0;
     self->config.output_size = 0;

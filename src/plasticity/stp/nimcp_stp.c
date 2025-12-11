@@ -62,22 +62,22 @@
  */
 static const stp_params_t PRESET_TABLE[] = {
     // Depressing: High U, long recovery (cortical L4→L2/3)
-    {.U = 0.5f, .tau_D = 800.0f, .tau_F = 50.0f},
+    {.U = 0.5F, .tau_D = 800.0F, .tau_F = 50.0F},
 
     // Facilitating: Low U, fast recovery (cortical L2/3→L5)
-    {.U = 0.15f, .tau_D = 200.0f, .tau_F = 750.0f},
+    {.U = 0.15F, .tau_D = 200.0F, .tau_F = 750.0F},
 
     // Mixed: Intermediate values
-    {.U = 0.3f, .tau_D = 400.0f, .tau_F = 200.0f},
+    {.U = 0.3F, .tau_D = 400.0F, .tau_F = 200.0F},
 
     // Fast Depressing: High U, fast recovery
-    {.U = 0.6f, .tau_D = 100.0f, .tau_F = 30.0f},
+    {.U = 0.6F, .tau_D = 100.0F, .tau_F = 30.0F},
 
     // Slow Depressing: High U, very slow recovery
-    {.U = 0.5f, .tau_D = 1500.0f, .tau_F = 50.0f},
+    {.U = 0.5F, .tau_D = 1500.0F, .tau_F = 50.0F},
 
     // None: No STP (static synapse)
-    {.U = 1.0f, .tau_D = 1.0f, .tau_F = 1.0f}
+    {.U = 1.0F, .tau_D = 1.0F, .tau_F = 1.0F}
 };
 
 /**
@@ -118,8 +118,8 @@ static const char* PRESET_DESCRIPTIONS[] = {
  * COMPLEXITY: O(1)
  */
 static inline float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
+    if (value < 0.0F) return 0.0F;
+    if (value > 1.0F) return 1.0F;
     return value;
 }
 
@@ -134,14 +134,14 @@ static inline float clamp_01(float value) {
  */
 static inline float exp_decay(float dt, float tau) {
     // Guard: Prevent division by zero
-    if (tau <= 0.0f) {
-        return 0.0f;
+    if (tau <= 0.0F) {
+        return 0.0F;
     }
 
     // Guard: Prevent overflow for large dt/tau
     const float ratio = dt / tau;
-    if (ratio > 20.0f) {
-        return 0.0f;  // exp(-20) ≈ 2e-9, effectively zero
+    if (ratio > 20.0F) {
+        return 0.0F;  // exp(-20) ≈ 2e-9, effectively zero
     }
 
     return expf(-ratio);
@@ -158,7 +158,7 @@ void stp_init(stp_state_t* state, const stp_params_t* params, uint64_t timestamp
     }
 
     // Initialize to resting values
-    state->x = 1.0f;  // Full resources available
+    state->x = 1.0F;  // Full resources available
     state->last_update = timestamp;
 
     // Set parameters (use defaults if NULL)
@@ -183,14 +183,14 @@ void stp_update(stp_state_t* state, uint64_t timestamp) {
     const float dt = (float)(timestamp - state->last_update);
 
     // Guard: Skip if no time has passed
-    if (dt <= 0.0f) {
+    if (dt <= 0.0F) {
         return;
     }
 
     // Exact exponential decay integration
     // x(t+dt) = 1 - (1-x(t))exp(-dt/τ_D)
     const float decay_D = exp_decay(dt, state->params.tau_D);
-    state->x = 1.0f - (1.0f - state->x) * decay_D;
+    state->x = 1.0F - (1.0F - state->x) * decay_D;
 
     // u(t+dt) = U + (u(t)-U)exp(-dt/τ_F)
     const float decay_F = exp_decay(dt, state->params.tau_F);
@@ -214,11 +214,11 @@ void stp_process_spike(stp_state_t* state, uint64_t timestamp) {
     stp_update(state, timestamp);
 
     // Instantaneous facilitation jump: u ← u + U(1-u)
-    const float du = state->params.U * (1.0f - state->u);
+    const float du = state->params.U * (1.0F - state->u);
     state->u = clamp_01(state->u + du);
 
     // Instantaneous resource depletion: x ← x(1-u)
-    state->x = state->x * (1.0f - state->u);
+    state->x = state->x * (1.0F - state->u);
     state->x = clamp_01(state->x);
 
     // Timestamp already updated by stp_update()
@@ -227,7 +227,7 @@ void stp_process_spike(stp_state_t* state, uint64_t timestamp) {
 float stp_get_modulation(const stp_state_t* state) {
     // Guard: Validate state pointer
     if (!state) {
-        return 1.0f;  // No modulation if state invalid
+        return 1.0F;  // No modulation if state invalid
     }
 
     // Effective strength = facilitation × available resources
@@ -241,7 +241,7 @@ void stp_reset(stp_state_t* state, uint64_t timestamp) {
     }
 
     // Reset to resting values
-    state->x = 1.0f;
+    state->x = 1.0F;
     state->u = state->params.U;
     state->last_update = timestamp;
 }
@@ -263,8 +263,8 @@ stp_params_t stp_create_params(float U, float tau_D, float tau_F) {
     // Clamp parameters to valid ranges
     stp_params_t params;
     params.U = clamp_01(U);
-    params.tau_D = (tau_D > 0.0f) ? tau_D : STP_DEFAULT_TAU_D;
-    params.tau_F = (tau_F > 0.0f) ? tau_F : STP_DEFAULT_TAU_F;
+    params.tau_D = (tau_D > 0.0F) ? tau_D : STP_DEFAULT_TAU_D;
+    params.tau_F = (tau_F > 0.0F) ? tau_F : STP_DEFAULT_TAU_F;
 
     return params;
 }
@@ -299,14 +299,14 @@ void stp_compute_steady_state(const stp_params_t* params, float frequency, float
     }
 
     // Guard: Validate frequency
-    if (frequency <= 0.0f) {
-        *x_ss = 1.0f;
+    if (frequency <= 0.0F) {
+        *x_ss = 1.0F;
         *u_ss = params->U;
         return;
     }
 
     // Inter-spike interval in milliseconds
-    const float ISI = 1000.0f / frequency;
+    const float ISI = 1000.0F / frequency;
 
     // Compute decay factors
     const float decay_D = exp_decay(ISI, params->tau_D);
@@ -317,16 +317,16 @@ void stp_compute_steady_state(const stp_params_t* params, float frequency, float
 
     // u_ss = U + (u_ss + U(1-u_ss) - U) * exp(-ISI/τ_F)
     // Simplifying: u_ss = U * (1 - exp(-ISI/τ_F)) / (1 - (1-U)*exp(-ISI/τ_F))
-    const float numerator_u = params->U * (1.0f - decay_F);
-    const float denominator_u = 1.0f - (1.0f - params->U) * decay_F;
-    *u_ss = (denominator_u > 1e-6f) ? (numerator_u / denominator_u) : params->U;
+    const float numerator_u = params->U * (1.0F - decay_F);
+    const float denominator_u = 1.0F - (1.0F - params->U) * decay_F;
+    *u_ss = (denominator_u > 1e-6F) ? (numerator_u / denominator_u) : params->U;
     *u_ss = clamp_01(*u_ss);
 
     // x_ss = (1 - (1-x_ss(1-u_ss)) * exp(-ISI/τ_D))
     // Simplifying: x_ss = (1 - exp(-ISI/τ_D)) / (1 - (1-u_ss)*exp(-ISI/τ_D))
-    const float numerator_x = 1.0f - decay_D;
-    const float denominator_x = 1.0f - (1.0f - *u_ss) * decay_D;
-    *x_ss = (denominator_x > 1e-6f) ? (numerator_x / denominator_x) : 1.0f;
+    const float numerator_x = 1.0F - decay_D;
+    const float denominator_x = 1.0F - (1.0F - *u_ss) * decay_D;
+    *x_ss = (denominator_x > 1e-6F) ? (numerator_x / denominator_x) : 1.0F;
     *x_ss = clamp_01(*x_ss);
 }
 
@@ -338,13 +338,13 @@ int stp_classify_synapse(const stp_params_t* params) {
 
     // Compute depression vs facilitation strength
     // Depression index: High U, long τ_D
-    const float depression_index = params->U * (params->tau_D / 1000.0f);
+    const float depression_index = params->U * (params->tau_D / 1000.0F);
 
     // Facilitation index: Low U, long τ_F
-    const float facilitation_index = (1.0f - params->U) * (params->tau_F / 100.0f);
+    const float facilitation_index = (1.0F - params->U) * (params->tau_F / 100.0F);
 
     // Classification thresholds
-    const float threshold = 0.3f;
+    const float threshold = 0.3F;
 
     if (depression_index > facilitation_index + threshold) {
         return 0;  // Depressing

@@ -37,18 +37,13 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include <float.h>
 #include <stdio.h>
 #include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "spatial_neuromod"
-
-
-// Logging macros (fallback if logging not available)
-#define nimcp_log_error(...)   fprintf(stderr, "ERROR: " __VA_ARGS__); fprintf(stderr, "\n")
-#define nimcp_log_warning(...) fprintf(stderr, "WARNING: " __VA_ARGS__); fprintf(stderr, "\n")
-#define LOG_INFO(...)    fprintf(stdout, "INFO: " __VA_ARGS__); fprintf(stdout, "\n")
 
 //=============================================================================
 // Constants
@@ -81,12 +76,12 @@ static const struct {
     float decay;      // Decay rate (1/s)
     float baseline;   // Baseline concentration
 } NEUROMOD_DEFAULTS[NEUROMOD_COUNT] = {
-    [NEUROMOD_DOPAMINE]      = {0.2f, 0.5f, 0.05f},   // Fast diffusion, fast decay
-    [NEUROMOD_SEROTONIN]     = {0.05f, 0.1f, 0.3f},   // Slow diffusion, slow decay
-    [NEUROMOD_ACETYLCHOLINE] = {0.3f, 2.0f, 0.1f},    // Fast diffusion, very fast decay
-    [NEUROMOD_NOREPINEPHRINE]= {0.15f, 0.3f, 0.05f},  // Medium dynamics
-    [NEUROMOD_GABA]          = {0.1f, 10.0f, 0.2f},   // Fast clearance
-    [NEUROMOD_GLUTAMATE]     = {0.1f, 10.0f, 0.1f}    // Fast clearance
+    [NEUROMOD_DOPAMINE]      = {0.2F, 0.5F, 0.05F},   // Fast diffusion, fast decay
+    [NEUROMOD_SEROTONIN]     = {0.05F, 0.1F, 0.3F},   // Slow diffusion, slow decay
+    [NEUROMOD_ACETYLCHOLINE] = {0.3F, 2.0F, 0.1F},    // Fast diffusion, very fast decay
+    [NEUROMOD_NOREPINEPHRINE]= {0.15F, 0.3F, 0.05F},  // Medium dynamics
+    [NEUROMOD_GABA]          = {0.1F, 10.0F, 0.2F},   // Fast clearance
+    [NEUROMOD_GLUTAMATE]     = {0.1F, 10.0F, 0.1F}    // Fast clearance
 };
 
 //=============================================================================
@@ -127,7 +122,7 @@ static nimcp_error_t handle_spatial_diffusion_request(
     (void)user_data;  // Not used
 
     if (!msg || msg_size < sizeof(bio_message_header_t)) {
-        nimcp_log_error("Invalid spatial diffusion request");
+        LOG_ERROR("Invalid spatial diffusion request");
         if (response_promise) {
             nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
         }
@@ -168,7 +163,7 @@ static nimcp_error_t handle_neuromodulator_release_request(
     (void)user_data;  // Not used
 
     if (!msg || msg_size < sizeof(bio_msg_neuromodulator_release_t)) {
-        nimcp_log_error("Invalid neuromodulator release message size");
+        LOG_ERROR("Invalid neuromodulator release message size");
         if (response_promise) {
             nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
         }
@@ -176,7 +171,7 @@ static nimcp_error_t handle_neuromodulator_release_request(
     }
 
     if (!g_spatial_bio_state.system) {
-        nimcp_log_error("Spatial neuromodulator system not initialized");
+        LOG_ERROR("Spatial neuromodulator system not initialized");
         if (response_promise) {
             nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
         }
@@ -199,7 +194,7 @@ static nimcp_error_t handle_neuromodulator_release_request(
     }
 
     if (!field) {
-        nimcp_log_warning("Neuromodulator type %d not enabled in spatial system",
+        LOG_WARN("Neuromodulator type %d not enabled in spatial system",
                          release_msg->neuromodulator);
         if (response_promise) {
             bio_message_header_t response;
@@ -248,7 +243,7 @@ static nimcp_error_t handle_concentration_query(
     (void)user_data;  // Not used
 
     if (!msg || msg_size < sizeof(bio_message_header_t)) {
-        nimcp_log_error("Invalid concentration query");
+        LOG_ERROR("Invalid concentration query");
         if (response_promise) {
             nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
         }
@@ -298,13 +293,13 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
     }
 
     if (!system) {
-        nimcp_log_error("NULL system in bio-async init");
+        LOG_ERROR("NULL system in bio-async init");
         return NIMCP_SUCCESS - 1;
     }
 
     // Check if bio-router is initialized
     if (!bio_router_is_initialized()) {
-        nimcp_log_warning("Bio-router not initialized, skipping bio-async integration");
+        LOG_WARN("Bio-router not initialized, skipping bio-async integration");
         return NIMCP_SUCCESS;
     }
 
@@ -319,7 +314,7 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
 
     g_spatial_bio_state.module_ctx = bio_router_register_module(&module_info);
     if (!g_spatial_bio_state.module_ctx) {
-        nimcp_log_error("Failed to register spatial neuromodulator module with bio-router");
+        LOG_ERROR("Failed to register spatial neuromodulator module with bio-router");
         return NIMCP_SUCCESS - 1;
     }
 
@@ -333,7 +328,7 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
         handle_neuromodulator_release_request
     );
     if (err != NIMCP_SUCCESS) {
-        nimcp_log_error("Failed to register neuromodulator release handler");
+        LOG_ERROR("Failed to register neuromodulator release handler");
         bio_router_unregister_module(g_spatial_bio_state.module_ctx);
         g_spatial_bio_state.module_ctx = NULL;
         return err;
@@ -420,7 +415,7 @@ spatial_neuromod_config_t spatial_neuromod_default_config(neuromodulator_type_t 
 
     if (type >= NEUROMOD_COUNT) {
         type = NEUROMOD_DOPAMINE;  // Fallback
-        nimcp_log_warning("Invalid neuromodulator type, using dopamine defaults");
+        LOG_WARN("Invalid neuromodulator type, using dopamine defaults");
     }
 
     spatial_neuromod_config_t config = {
@@ -428,39 +423,39 @@ spatial_neuromod_config_t spatial_neuromod_default_config(neuromodulator_type_t 
         .diffusion_coeff = NEUROMOD_DEFAULTS[type].diffusion,
         .decay_rate = NEUROMOD_DEFAULTS[type].decay,
         .baseline = NEUROMOD_DEFAULTS[type].baseline,
-        .timestep = 1.0f,  // 1 ms default
+        .timestep = 1.0F,  // 1 ms default
         .substeps = 1,     // No substeps by default
 
         // Phase C4.3: Quantum-Shannon defaults (disabled by default, backward compatible with C2.1)
         .enable_quantum_walk = false,  // Kept for backward compatibility (enables quantum-Shannon now)
         .quantum_walk_steps = 50,
-        .quantum_mixing_ratio = 0.2f,  // 80% quantum, 20% classical
+        .quantum_mixing_ratio = 0.2F,  // 80% quantum, 20% classical
         .quantum_coin_type = COIN_HADAMARD,
-        .quantum_decoherence = 0.05f,
+        .quantum_decoherence = 0.05F,
 
         // Phase C4.4: Adaptive Routing defaults (disabled by default)
         .enable_adaptive_routing = false,       // Opt-in for intelligent source selection
-        .efficiency_weight = 1.0f,              // Weight for propagation efficiency
-        .speedup_weight = 0.5f,                 // Weight for quantum speedup
-        .bottleneck_penalty_weight = 2.0f,      // Weight for bottleneck penalty (higher = avoid more)
-        .info_rate_weight = 0.3f,               // Weight for information rate
+        .efficiency_weight = 1.0F,              // Weight for propagation efficiency
+        .speedup_weight = 0.5F,                 // Weight for quantum speedup
+        .bottleneck_penalty_weight = 2.0F,      // Weight for bottleneck penalty (higher = avoid more)
+        .info_rate_weight = 0.3F,               // Weight for information rate
         .num_adaptive_sources = 3,              // Select 3 optimal sources
-        .min_source_score = 0.1f,               // Minimum score threshold
+        .min_source_score = 0.1F,               // Minimum score threshold
 
         // Phase C4.5: Dynamic Adaptation defaults (disabled by default)
         .enable_dynamic_adaptation = false,     // Opt-in for automatic K tuning
         .min_adaptive_sources = 1,              // Minimum K value
         .max_adaptive_sources = 10,             // Maximum K value
-        .adaptation_rate = 0.1f,                // EMA smoothing factor (10% new, 90% old)
-        .target_efficiency = 0.75f,             // Target efficiency to maintain
-        .efficiency_tolerance = 0.1f,           // Tolerance band (±10%)
+        .adaptation_rate = 0.1F,                // EMA smoothing factor (10% new, 90% old)
+        .target_efficiency = 0.75F,             // Target efficiency to maintain
+        .efficiency_tolerance = 0.1F,           // Tolerance band (±10%)
         .adaptation_cooldown_steps = 100,       // Wait 100 steps between adaptations
 
         // Phase C4.6: Multi-Objective defaults (disabled by default)
         .enable_multi_objective = false,        // Opt-in for Pareto-optimal selection
         .num_objectives = 2,                    // 2 objectives by default
-        .objective_weights = {0.5f, 0.5f, 0.0f, 0.0f},  // Equal weights for 2 objectives
-        .pareto_epsilon = 0.01f,                // 1% epsilon for dominance
+        .objective_weights = {0.5F, 0.5F, 0.0F, 0.0F},  // Equal weights for 2 objectives
+        .pareto_epsilon = 0.01F,                // 1% epsilon for dominance
         .prefer_diversity = true                // Prefer diverse solutions on Pareto front
     };
 
@@ -481,7 +476,7 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     // MEMORY: ~3*N*sizeof(float) + overhead (~12N bytes for 32-bit floats)
 
     if (!config || num_neurons == 0 || num_neurons > MAX_NEURONS) {
-        nimcp_log_error("Invalid parameters for spatial neuromodulator creation");
+        LOG_ERROR("Invalid parameters for spatial neuromodulator creation");
         return NULL;
     }
 
@@ -489,7 +484,7 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     spatial_neuromod_field_t* field = (spatial_neuromod_field_t*)
         nimcp_aligned_alloc(64, sizeof(spatial_neuromod_field_t));
     if (!field) {
-        nimcp_log_error("Failed to allocate spatial neuromodulator field");
+        LOG_ERROR("Failed to allocate spatial neuromodulator field");
         return NULL;
     }
 
@@ -502,8 +497,8 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     field->baseline = config->baseline;
     field->timestep = config->timestep;
     field->substeps = config->substeps;
-    field->max_concentration = 1.0f;
-    field->min_concentration = 0.0f;
+    field->max_concentration = 1.0F;
+    field->min_concentration = 0.0F;
 
     // Allocate concentration arrays (cache-aligned for SIMD)
     field->concentration = (float*)nimcp_aligned_alloc(64, num_neurons * sizeof(float));
@@ -511,7 +506,7 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     field->laplacian_buffer = (float*)nimcp_aligned_alloc(64, num_neurons * sizeof(float));
 
     if (!field->concentration || !field->source_rate || !field->laplacian_buffer) {
-        nimcp_log_error("Failed to allocate concentration arrays");
+        LOG_ERROR("Failed to allocate concentration arrays");
         spatial_neuromod_destroy(field);
         return NULL;
     }
@@ -519,8 +514,8 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     // Initialize arrays to baseline/zero
     for (uint32_t i = 0; i < num_neurons; i++) {
         field->concentration[i] = config->baseline;
-        field->source_rate[i] = 0.0f;
-        field->laplacian_buffer[i] = 0.0f;
+        field->source_rate[i] = 0.0F;
+        field->laplacian_buffer[i] = 0.0F;
     }
 
     field->avg_concentration = config->baseline;
@@ -531,13 +526,13 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     field->quantum_shannon_diffusion = NULL;
 
     // Initialize Shannon metrics
-    field->last_propagation_efficiency = 0.0f;
-    field->last_speedup_vs_classical = 1.0f;
+    field->last_propagation_efficiency = 0.0F;
+    field->last_speedup_vs_classical = 1.0F;
     field->last_num_bottlenecks = 0;
-    field->last_information_rate = 0.0f;
+    field->last_information_rate = 0.0F;
 
     // Initialize Phase C4.5: Dynamic Adaptation state
-    field->efficiency_ema = 0.0f;                        // Start with no history
+    field->efficiency_ema = 0.0F;                        // Start with no history
     field->current_adaptive_sources = config->num_adaptive_sources;  // Start with config value
     field->adaptation_cooldown = 0;                      // No cooldown initially
 
@@ -596,20 +591,20 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
     // HOW:  Create individual fields for each enabled type
 
     if (!network || !enabled_types || !configs) {
-        nimcp_log_error("Invalid parameters for spatial neuromodulator system creation");
+        LOG_ERROR("Invalid parameters for spatial neuromodulator system creation");
         return NULL;
     }
 
     spatial_neuromod_system_t* system = (spatial_neuromod_system_t*)
         nimcp_aligned_alloc(64, sizeof(spatial_neuromod_system_t));
     if (!system) {
-        nimcp_log_error("Failed to allocate spatial neuromodulator system");
+        LOG_ERROR("Failed to allocate spatial neuromodulator system");
         return NULL;
     }
 
     memset(system, 0, sizeof(spatial_neuromod_system_t));
     system->network = network;
-    system->global_diffusion_scale = 1.0f;
+    system->global_diffusion_scale = 1.0F;
     system->use_substeps = false;
 
     // Get number of neurons from network using accessor function
@@ -619,7 +614,7 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
         if (enabled_types[i]) {
             system->fields[i] = spatial_neuromod_create(num_neurons, &configs[i]);
             if (!system->fields[i]) {
-                nimcp_log_error("Failed to create field for neuromodulator type %d", i);
+                LOG_ERROR("Failed to create field for neuromodulator type %d", i);
                 spatial_neuromod_system_destroy(system);
                 return NULL;
             }
@@ -642,7 +637,7 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
             uint32_t source_neuron = num_neurons / 2;
 
             // Initial information: 10 bits (neuromodulator concentration)
-            float source_information = 10.0f;
+            float source_information = 10.0F;
 
             // Create quantum-Shannon diffusion system
             quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
@@ -653,7 +648,7 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
             );
 
             if (!qsd) {
-                nimcp_log_warning("Failed to create quantum-Shannon for neuromodulator type %d, falling back to classical diffusion", i);
+                LOG_WARN("Failed to create quantum-Shannon for neuromodulator type %d, falling back to classical diffusion", i);
                 system->fields[i]->use_quantum_shannon = false;
             } else {
                 system->fields[i]->quantum_shannon_diffusion = (void*)qsd;
@@ -667,7 +662,7 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
     // Initialize bio-async integration
     nimcp_error_t bio_err = spatial_neuromod_bio_async_init(system);
     if (bio_err != NIMCP_SUCCESS) {
-        nimcp_log_warning("Failed to initialize bio-async integration: %d", bio_err);
+        LOG_WARN("Failed to initialize bio-async integration: %d", bio_err);
         // Continue anyway - bio-async is optional
     }
 
@@ -705,17 +700,17 @@ bool spatial_neuromod_system_update(
 
     // Guard: Validate inputs
     if (!system) {
-        nimcp_log_error("Null system in spatial_neuromod_system_update");
+        LOG_ERROR("Null system in spatial_neuromod_system_update");
         return false;
     }
 
     if (!network) {
-        nimcp_log_error("Null network in spatial_neuromod_system_update");
+        LOG_ERROR("Null network in spatial_neuromod_system_update");
         return false;
     }
 
-    if (dt <= 0.0f) {
-        nimcp_log_error("Invalid timestep dt=%.6f in spatial_neuromod_system_update", dt);
+    if (dt <= 0.0F) {
+        LOG_ERROR("Invalid timestep dt=%.6f in spatial_neuromod_system_update", dt);
         return false;
     }
 
@@ -729,7 +724,7 @@ bool spatial_neuromod_system_update(
 
         bool success = spatial_neuromod_update(system->fields[i], network, dt);
         if (!success) {
-            nimcp_log_error("Failed to update field %d in system", i);
+            LOG_ERROR("Failed to update field %d in system", i);
             return false;
         }
     }
@@ -757,7 +752,7 @@ bool spatial_neuromod_compute_laplacian(const spatial_neuromod_field_t* field,
     // PERFORMANCE: ~10μs per 1000 neurons with avg degree 50
 
     if (!field || !network || !laplacian) {
-        nimcp_log_error("Invalid parameters for Laplacian computation");
+        LOG_ERROR("Invalid parameters for Laplacian computation");
         return false;
     }
 
@@ -775,7 +770,7 @@ bool spatial_neuromod_compute_laplacian(const spatial_neuromod_field_t* field,
         }
 
         float c_i = concentration[i];
-        float lap_sum = 0.0f;
+        float lap_sum = 0.0F;
 
         // Sum over outgoing synapses (neighbors)
         for (uint32_t s = 0; s < neuron->num_synapses; s++) {
@@ -825,13 +820,13 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
     // TYPICAL: ~50μs for 1000 neurons, degree=50, 1 substep
 
     if (!field || !network) {
-        nimcp_log_error("Invalid parameters for spatial neuromodulator update");
+        LOG_ERROR("Invalid parameters for spatial neuromodulator update");
         return false;
     }
 
-    if (dt <= 0.0f || dt > 1.0f) {
-        nimcp_log_warning("Unusual timestep dt=%.3f, clamping to [1e-6, 1.0]", dt);
-        dt = clamp(dt, 1e-6f, 1.0f);
+    if (dt <= 0.0F || dt > 1.0F) {
+        LOG_WARN("Unusual timestep dt=%.3f, clamping to [1e-6, 1.0]", dt);
+        dt = clamp(dt, 1e-6F, 1.0F);
     }
 
     const float D = field->diffusion_coeff;
@@ -869,12 +864,12 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
                 field->last_information_rate = metrics.information_rate;
 
                 // Hybrid: Mix quantum probability with classical diffusion
-                float quantum_weight = 1.0f - field->quantum_mixing_ratio;
+                float quantum_weight = 1.0F - field->quantum_mixing_ratio;
                 float classical_weight = field->quantum_mixing_ratio;
 
                 // Find source neurons and apply quantum diffusion
                 for (uint32_t i = 0; i < num_neurons; i++) {
-                    if (source_rate[i] > 1e-6f) {
+                    if (source_rate[i] > 1e-6F) {
                         // Apply quantum distribution scaled by source strength
                         for (uint32_t j = 0; j < num_neurons; j++) {
                             float quantum_contrib = qsd_prob[j] * source_rate[i];
@@ -905,7 +900,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
         }
 
         // Update statistics
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (uint32_t i = 0; i < num_neurons; i++) {
             sum += concentration[i];
         }
@@ -920,13 +915,13 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
     for (uint32_t step = 0; step < substeps; step++) {
         // 1. Compute graph Laplacian
         if (!spatial_neuromod_compute_laplacian(field, network, laplacian)) {
-            nimcp_log_error("Failed to compute Laplacian");
+            LOG_ERROR("Failed to compute Laplacian");
             return false;
         }
 
         // 2. Apply reaction-diffusion equation
-        float total_decay = 0.0f;
-        float sum_concentration = 0.0f;
+        float total_decay = 0.0F;
+        float sum_concentration = 0.0F;
 
         for (uint32_t i = 0; i < num_neurons; i++) {
             float c = concentration[i];
@@ -956,7 +951,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
     // RATIONALE: Phasic releases are bursts, not continuous infusions.
     //            Source term should only apply once per release() call.
     for (uint32_t i = 0; i < num_neurons; i++) {
-        field->source_rate[i] = 0.0f;
+        field->source_rate[i] = 0.0F;
     }
 
     field->update_count++;
@@ -983,18 +978,18 @@ bool spatial_neuromod_release(spatial_neuromod_field_t* field,
     //            This allows diffusion update to handle spatial/temporal dynamics
 
     if (!field) {
-        nimcp_log_error("NULL field in spatial_neuromod_release");
+        LOG_ERROR("NULL field in spatial_neuromod_release");
         return false;
     }
 
     if (!is_valid_neuron_id(neuron_id, field->num_neurons)) {
-        nimcp_log_error("Invalid neuron_id=%u (max=%u)", neuron_id, field->num_neurons);
+        LOG_ERROR("Invalid neuron_id=%u (max=%u)", neuron_id, field->num_neurons);
         return false;
     }
 
-    if (amount < 0.0f) {
-        nimcp_log_warning("Negative release amount=%.3f, clamping to 0", amount);
-        amount = 0.0f;
+    if (amount < 0.0F) {
+        LOG_WARN("Negative release amount=%.3f, clamping to 0", amount);
+        amount = 0.0F;
     }
 
     // Add to source_rate (will be applied in next diffusion update)
@@ -1014,13 +1009,13 @@ bool spatial_neuromod_release_batch(spatial_neuromod_field_t* field,
     // HOW:  Loop over arrays, update source terms
 
     if (!field || !neuron_ids || !amounts) {
-        nimcp_log_error("Invalid parameters for batch release");
+        LOG_ERROR("Invalid parameters for batch release");
         return false;
     }
 
     for (uint32_t i = 0; i < count; i++) {
         if (!spatial_neuromod_release(field, neuron_ids[i], amounts[i])) {
-            nimcp_log_warning("Failed to release at neuron %u", neuron_ids[i]);
+            LOG_WARN("Failed to release at neuron %u", neuron_ids[i]);
             // Continue with other releases
         }
     }
@@ -1039,7 +1034,7 @@ float spatial_neuromod_get_concentration(const spatial_neuromod_field_t* field,
     // HOW:  Direct array access
 
     if (!field || !is_valid_neuron_id(neuron_id, field->num_neurons)) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return field->concentration[neuron_id];
@@ -1070,19 +1065,19 @@ float spatial_neuromod_get_gradient(const spatial_neuromod_field_t* field,
     // HOW:  |∇c| ≈ Σ_neighbors |c_j - c_i| / degree
 
     if (!field || !network || !is_valid_neuron_id(neuron_id, field->num_neurons)) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float c_i = field->concentration[neuron_id];
     neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
     if (!neuron) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float gradient_sum = 0.0f;
+    float gradient_sum = 0.0F;
     uint32_t degree = neuron->num_synapses;
 
-    if (degree == 0) return 0.0f;
+    if (degree == 0) return 0.0F;
 
     for (uint32_t s = 0; s < degree; s++) {
         synapse_t* syn = &neuron->synapses[s];
@@ -1106,10 +1101,10 @@ float spatial_neuromod_get_average(const spatial_neuromod_field_t* field) {
     //            changes via set_concentration() (used in tests and initialization).
     //            Performance impact is minimal (O(N) scan) for this query operation.
 
-    if (!field) return 0.0f;
+    if (!field) return 0.0F;
 
     // Compute average from current concentration array
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < field->num_neurons; i++) {
         sum += field->concentration[i];
     }
@@ -1123,7 +1118,7 @@ float spatial_neuromod_get_max(const spatial_neuromod_field_t* field,
     // WHY:  Track hotspots, saturation
     // HOW:  Linear scan
 
-    if (!field) return 0.0f;
+    if (!field) return 0.0F;
 
     float max_conc = -FLT_MAX;
     uint32_t max_id = 0;
@@ -1217,7 +1212,7 @@ bool spatial_neuromod_compute_stats(const spatial_neuromod_field_t* field,
 
     // Variance
     if (variance_out) {
-        float var_sum = 0.0f;
+        float var_sum = 0.0F;
         for (uint32_t i = 0; i < field->num_neurons; i++) {
             float diff = field->concentration[i] - mean;
             var_sum += diff * diff;
@@ -1227,7 +1222,7 @@ bool spatial_neuromod_compute_stats(const spatial_neuromod_field_t* field,
 
     // Maximum gradient
     if (max_gradient_out && network) {
-        float max_grad = 0.0f;
+        float max_grad = 0.0F;
         for (uint32_t i = 0; i < field->num_neurons; i++) {
             float grad = spatial_neuromod_get_gradient(field, network, i);
             if (grad > max_grad) max_grad = grad;
@@ -1251,14 +1246,14 @@ bool spatial_neuromod_reset(spatial_neuromod_field_t* field) {
 
     for (uint32_t i = 0; i < field->num_neurons; i++) {
         field->concentration[i] = field->baseline;
-        field->source_rate[i] = 0.0f;
-        field->laplacian_buffer[i] = 0.0f;
+        field->source_rate[i] = 0.0F;
+        field->laplacian_buffer[i] = 0.0F;
     }
 
-    field->total_released = 0.0f;
-    field->total_decayed = 0.0f;
+    field->total_released = 0.0F;
+    field->total_decayed = 0.0F;
     field->avg_concentration = field->baseline;
-    field->max_gradient = 0.0f;
+    field->max_gradient = 0.0F;
     field->update_count = 0;
 
     return true;
@@ -1276,14 +1271,14 @@ bool spatial_neuromod_validate(const spatial_neuromod_field_t* field) {
 
         // Check for NaN/inf
         if (!isfinite(c)) {
-            nimcp_log_error("Non-finite concentration at neuron %u: %.3f", i, c);
+            LOG_ERROR("Non-finite concentration at neuron %u: %.3f", i, c);
             return false;
         }
 
         // Check range
         if (c < field->min_concentration - EPSILON ||
             c > field->max_concentration + EPSILON) {
-            nimcp_log_error("Concentration out of range at neuron %u: %.3f", i, c);
+            LOG_ERROR("Concentration out of range at neuron %u: %.3f", i, c);
             return false;
         }
     }
@@ -1309,12 +1304,12 @@ float spatial_neuromod_score_neuron(
 
     // Guard: Validate parameters
     if (!field || !config || !is_valid_neuron_id(neuron_id, field->num_neurons)) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Quantum-Shannon must be enabled
     if (!field->use_quantum_shannon || !field->quantum_shannon_diffusion) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Extract Shannon metrics
@@ -1324,18 +1319,18 @@ float spatial_neuromod_score_neuron(
     float info_rate = field->last_information_rate;         // bits/step
 
     // Normalize speedup to [0, 1] range (assume max speedup = 50x)
-    float speedup_normalized = fminf(speedup / 50.0f, 1.0f);
+    float speedup_normalized = fminf(speedup / 50.0F, 1.0F);
 
     // Normalize information rate to [0, 1] range (assume max = 10.0 bits/step)
-    float info_rate_normalized = fminf(info_rate / 10.0f, 1.0f);
+    float info_rate_normalized = fminf(info_rate / 10.0F, 1.0F);
 
     // Bottleneck penalty: more bottlenecks = lower score
-    float bottleneck_penalty = bottlenecks > 0 ? 1.0f / (1.0f + bottlenecks) : 1.0f;
+    float bottleneck_penalty = bottlenecks > 0 ? 1.0F / (1.0F + bottlenecks) : 1.0F;
 
     // Compute weighted score
     float score = config->efficiency_weight * efficiency
                 + config->speedup_weight * speedup_normalized
-                - config->bottleneck_penalty_weight * (1.0f - bottleneck_penalty)
+                - config->bottleneck_penalty_weight * (1.0F - bottleneck_penalty)
                 + config->info_rate_weight * info_rate_normalized;
 
     // Normalize to [0, 1]
@@ -1343,11 +1338,11 @@ float spatial_neuromod_score_neuron(
                              + config->speedup_weight
                              + config->info_rate_weight;
 
-    if (max_possible_score > 0.0f) {
+    if (max_possible_score > 0.0F) {
         score = score / max_possible_score;
     }
 
-    return fmaxf(0.0f, fminf(score, 1.0f));  // Clamp to [0, 1]
+    return fmaxf(0.0F, fminf(score, 1.0F));  // Clamp to [0, 1]
 }
 
 // Helper structure for sorting neurons by score
@@ -1382,13 +1377,13 @@ bool spatial_neuromod_select_optimal_sources(
 
     // Guard: Validate parameters
     if (!field || !config || !selected_ids || !num_selected) {
-        nimcp_log_error("Invalid parameters for optimal source selection");
+        LOG_ERROR("Invalid parameters for optimal source selection");
         return false;
     }
 
     // Guard: Quantum-Shannon must be enabled
     if (!field->use_quantum_shannon || !field->quantum_shannon_diffusion) {
-        nimcp_log_warning("Quantum-Shannon not enabled, cannot select optimal sources");
+        LOG_WARN("Quantum-Shannon not enabled, cannot select optimal sources");
         return false;
     }
 
@@ -1404,7 +1399,7 @@ bool spatial_neuromod_select_optimal_sources(
     // Allocate temporary array for scoring
     neuron_score_t* scores = (neuron_score_t*)nimcp_malloc(num_neurons * sizeof(neuron_score_t));
     if (!scores) {
-        nimcp_log_error("Failed to allocate memory for neuron scoring");
+        LOG_ERROR("Failed to allocate memory for neuron scoring");
         return false;
     }
 
@@ -1449,13 +1444,13 @@ bool spatial_neuromod_release_adaptive(
 
     // Guard: Validate parameters
     if (!field || !network || !config) {
-        nimcp_log_error("Invalid parameters for adaptive release");
+        LOG_ERROR("Invalid parameters for adaptive release");
         return false;
     }
 
     // Guard: Check if adaptive routing enabled
     if (!config->enable_adaptive_routing) {
-        nimcp_log_warning("Adaptive routing disabled, using fallback (random source)");
+        LOG_WARN("Adaptive routing disabled, using fallback (random source)");
         // Fallback: release at middle neuron
         uint32_t middle = field->num_neurons / 2;
         return spatial_neuromod_release(field, middle, total_amount);
@@ -1463,7 +1458,7 @@ bool spatial_neuromod_release_adaptive(
 
     // Guard: Quantum-Shannon must be enabled
     if (!field->use_quantum_shannon || !field->quantum_shannon_diffusion) {
-        nimcp_log_warning("Quantum-Shannon not enabled, using fallback (random source)");
+        LOG_WARN("Quantum-Shannon not enabled, using fallback (random source)");
         uint32_t middle = field->num_neurons / 2;
         return spatial_neuromod_release(field, middle, total_amount);
     }
@@ -1472,7 +1467,7 @@ bool spatial_neuromod_release_adaptive(
     uint32_t max_sources = config->num_adaptive_sources;
     uint32_t* selected_ids = (uint32_t*)nimcp_malloc(max_sources * sizeof(uint32_t));
     if (!selected_ids) {
-        nimcp_log_error("Failed to allocate memory for source selection");
+        LOG_ERROR("Failed to allocate memory for source selection");
         return false;
     }
 
@@ -1482,7 +1477,7 @@ bool spatial_neuromod_release_adaptive(
         field, network, config, selected_ids, NULL, &num_selected);
 
     if (!success || num_selected == 0) {
-        nimcp_log_warning("No optimal sources found, using fallback");
+        LOG_WARN("No optimal sources found, using fallback");
         nimcp_free(selected_ids);
         uint32_t middle = field->num_neurons / 2;
         return spatial_neuromod_release(field, middle, total_amount);
@@ -1494,7 +1489,7 @@ bool spatial_neuromod_release_adaptive(
     // Release at each selected neuron
     for (uint32_t i = 0; i < num_selected; i++) {
         if (!spatial_neuromod_release(field, selected_ids[i], amount_per_source)) {
-            nimcp_log_warning("Failed to release at optimal neuron %u", selected_ids[i]);
+            LOG_WARN("Failed to release at optimal neuron %u", selected_ids[i]);
         }
     }
 
@@ -1517,7 +1512,7 @@ bool spatial_neuromod_release_adaptive_batch(
 
     // Guard: Validate parameters
     if (!field || !network || !config || !amounts) {
-        nimcp_log_error("Invalid parameters for adaptive batch release");
+        LOG_ERROR("Invalid parameters for adaptive batch release");
         return false;
     }
 
@@ -1525,7 +1520,7 @@ bool spatial_neuromod_release_adaptive_batch(
     bool all_success = true;
     for (uint32_t i = 0; i < count; i++) {
         if (!spatial_neuromod_release_adaptive(field, network, config, amounts[i])) {
-            nimcp_log_warning("Failed adaptive release %u/%u", i + 1, count);
+            LOG_WARN("Failed adaptive release %u/%u", i + 1, count);
             all_success = false;
         }
     }
@@ -1549,7 +1544,7 @@ bool spatial_neuromod_update_dynamic_adaptation(
 
     // Guard: Validate parameters
     if (!field || !config) {
-        nimcp_log_error("Invalid parameters for dynamic adaptation");
+        LOG_ERROR("Invalid parameters for dynamic adaptation");
         return false;
     }
 
@@ -1571,7 +1566,7 @@ bool spatial_neuromod_update_dynamic_adaptation(
     // Update efficiency EMA
     float alpha = config->adaptation_rate;
     float current_efficiency = field->last_propagation_efficiency;
-    field->efficiency_ema = alpha * current_efficiency + (1.0f - alpha) * field->efficiency_ema;
+    field->efficiency_ema = alpha * current_efficiency + (1.0F - alpha) * field->efficiency_ema;
 
     // Decrement cooldown
     if (field->adaptation_cooldown > 0) {
@@ -1649,7 +1644,7 @@ bool spatial_neuromod_score_neuron_multi_objective(
 
     // Guard: Validate parameters
     if (!field || !config || !scores) {
-        nimcp_log_error("Invalid parameters for multi-objective scoring");
+        LOG_ERROR("Invalid parameters for multi-objective scoring");
         return false;
     }
 
@@ -1683,13 +1678,13 @@ bool spatial_neuromod_score_neuron_multi_objective(
     scores[0] = efficiency;
 
     // Objective 1: Quantum speedup (normalized)
-    scores[1] = fminf(speedup / 50.0f, 1.0f);
+    scores[1] = fminf(speedup / 50.0F, 1.0F);
 
     // Objective 2: Bottleneck avoidance [0-1]
-    scores[2] = bottlenecks > 0 ? 1.0f / (1.0f + bottlenecks) : 1.0f;
+    scores[2] = bottlenecks > 0 ? 1.0F / (1.0F + bottlenecks) : 1.0F;
 
     // Objective 3: Information rate (normalized)
-    scores[3] = fminf(info_rate / 10.0f, 1.0f);
+    scores[3] = fminf(info_rate / 10.0F, 1.0F);
 
     return true;
 }
@@ -1738,7 +1733,7 @@ static float compute_weighted_score(
     //
     // COMPLEXITY: O(k)
 
-    float total = 0.0f;
+    float total = 0.0F;
     for (uint32_t i = 0; i < num_objectives; i++) {
         total += weights[i] * scores[i];
     }
@@ -1761,7 +1756,7 @@ bool spatial_neuromod_select_pareto_optimal(
 
     // Guard: Validate parameters
     if (!field || !config || !selected_ids || !num_selected) {
-        nimcp_log_error("Invalid parameters for Pareto selection");
+        LOG_ERROR("Invalid parameters for Pareto selection");
         return false;
     }
 
@@ -1784,7 +1779,7 @@ bool spatial_neuromod_select_pareto_optimal(
     bool* is_dominated = (bool*)nimcp_malloc(N * sizeof(bool));
 
     if (!all_scores || !is_dominated) {
-        nimcp_log_error("Memory allocation failed");
+        LOG_ERROR("Memory allocation failed");
         if (all_scores) nimcp_free(all_scores);
         if (is_dominated) nimcp_free(is_dominated);
         return false;
@@ -1820,7 +1815,7 @@ bool spatial_neuromod_select_pareto_optimal(
     }
 
     if (front_size == 0) {
-        nimcp_log_warning("Empty Pareto front");
+        LOG_WARN("Empty Pareto front");
         nimcp_free(all_scores);
         nimcp_free(is_dominated);
         return false;
@@ -1903,7 +1898,7 @@ bool spatial_neuromod_release_multi_objective(
 
     // Guard: Validate parameters
     if (!field || !network || !config) {
-        nimcp_log_error("Invalid parameters for multi-objective release");
+        LOG_ERROR("Invalid parameters for multi-objective release");
         return false;
     }
 

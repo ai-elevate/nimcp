@@ -137,7 +137,7 @@ void nimcp_brain_learning_adapt_learning_rate(brain_t brain, float current_loss)
     }
 
     // Guard: Initialize base_learning_rate on first call
-    if (brain->base_learning_rate == 0.0f) {
+    if (brain->base_learning_rate == 0.0F) {
         brain->base_learning_rate = brain->config.learning_rate;
     }
 
@@ -154,8 +154,8 @@ void nimcp_brain_learning_adapt_learning_rate(brain_t brain, float current_loss)
     }
 
     // Compute loss trend: recent avg vs older avg
-    float recent_avg = 0.0f;
-    float older_avg = 0.0f;
+    float recent_avg = 0.0F;
+    float older_avg = 0.0F;
     uint32_t half = brain->loss_history_count / 2;
 
     // Older half
@@ -174,15 +174,15 @@ void nimcp_brain_learning_adapt_learning_rate(brain_t brain, float current_loss)
     float trend = recent_avg - older_avg;
 
     // Adapt learning rate
-    if (trend < -0.01f) {
-        brain->config.learning_rate *= 1.05f;  // Accelerate
-    } else if (trend > 0.01f) {
-        brain->config.learning_rate *= 0.9f;   // Slow down
+    if (trend < -0.01F) {
+        brain->config.learning_rate *= 1.05F;  // Accelerate
+    } else if (trend > 0.01F) {
+        brain->config.learning_rate *= 0.9F;   // Slow down
     }
 
     // Bounds: [0.1x, 10x] of base rate
-    float min_lr = brain->base_learning_rate * 0.1f;
-    float max_lr = brain->base_learning_rate * 10.0f;
+    float min_lr = brain->base_learning_rate * 0.1F;
+    float max_lr = brain->base_learning_rate * 10.0F;
     if (brain->config.learning_rate < min_lr) {
         brain->config.learning_rate = min_lr;
     }
@@ -209,7 +209,7 @@ float nimcp_brain_learning_quantum_weight_energy(const float* weights, uint32_t 
                                                   void* user_data)
 {
     (void)user_data;  // Unused
-    float energy = 0.0f;
+    float energy = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         energy += weights[i] * weights[i];
     }
@@ -242,14 +242,14 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // Guard: Validate parameters
     if (!brain || !features || !label) {
         set_error("Invalid parameters to brain_learn_example");
-        return -1.0f;
+        return -1.0F;
     }
 
     // Guard: Check feature dimension
     if (num_features != brain->config.num_inputs) {
         set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
                   num_features);
-        return -1.0f;
+        return -1.0F;
     }
 
     // ========================================================================
@@ -262,7 +262,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         if (isnan(features[i]) || isinf(features[i])) {
             set_error("Invalid feature value at index %u: NaN or Inf detected", i);
             LOG_WARN("Security: Rejected learning example with NaN/Inf feature[%u]", i);
-            return -1.0f;
+            return -1.0F;
         }
     }
 
@@ -287,7 +287,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                       bbb_threat_type_name(bbb_result.threat),
                       bbb_severity_name(bbb_result.severity));
             LOG_WARN("Security: Rejected learning example with malicious label: %s", label);
-            return -1.0f;
+            return -1.0F;
         }
     } else {
         // Fallback validation when BBB is not available
@@ -305,7 +305,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         char* label_lower = nimcp_malloc(label_len + 1);
         if (!label_lower) {
             set_error("Memory allocation failed for security validation");
-            return -1.0f;
+            return -1.0F;
         }
 
         for (size_t i = 0; i < label_len; i++) {
@@ -325,13 +325,13 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         if (found_threat) {
             set_error("Invalid label: malicious pattern detected");
             LOG_WARN("Security: Rejected learning example with malicious label: %s", label);
-            return -1.0f;
+            return -1.0F;
         }
     }
 
     // Phase 2: Ensure network is writable (trigger COW if needed)
     if (!ensure_writable_network(brain)) {
-        return -1.0f;  // Error already set by ensure_writable_network
+        return -1.0F;  // Error already set by ensure_writable_network
     }
 
     // Convert label to target output
@@ -369,7 +369,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // - Applies "extraordinary claims require extraordinary evidence"
     //
     // COMPLEXITY: O(1)
-    float epistemic_confidence_multiplier = 1.0f;  // Default: no adjustment
+    float epistemic_confidence_multiplier = 1.0F;  // Default: no adjustment
     if (brain->epistemic) {
         // Initialize evidence structure (assume moderate quality by default)
         claim_evidence_t evidence;
@@ -380,14 +380,14 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         evidence.plausibility = PLAUSIBLE_NEUTRAL;      // Don't assume plausibility
         evidence.num_sources = 1;                       // Single source (training dataset)
         evidence.is_falsifiable = true;                 // Assume falsifiable
-        evidence.expert_consensus = 0.5f;               // Unknown consensus
+        evidence.expert_consensus = 0.5F;               // Unknown consensus
 
         // Assess the claim
         epistemic_assessment_t assessment;
         epistemic_assessment_init(&assessment);
 
         // Prior probability based on input variance (novel = less certain)
-        float prior_prob = 1.0f - brain->last_novelty_score;  // High novelty = lower prior
+        float prior_prob = 1.0F - brain->last_novelty_score;  // High novelty = lower prior
 
         if (epistemic_assess_claim(brain->epistemic, label, prior_prob, &evidence, &assessment)) {
             // Apply epistemic quality to learning confidence
@@ -397,23 +397,23 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             // If claim is highly suspicious (conspiracy-like, biased), reduce further
             if (assessment.num_biases_detected > 0) {
                 // Each detected bias reduces confidence by 10%
-                float bias_penalty = assessment.num_biases_detected * 0.1f;
-                epistemic_confidence_multiplier *= fmaxf(0.1f, 1.0f - bias_penalty);
+                float bias_penalty = assessment.num_biases_detected * 0.1F;
+                epistemic_confidence_multiplier *= fmaxf(0.1F, 1.0F - bias_penalty);
             }
 
             // Check conspiracy pattern (additional safety)
             float conspiracy_score = epistemic_check_conspiracy_pattern(brain->epistemic, label, &evidence);
-            if (conspiracy_score > 0.7f) {
+            if (conspiracy_score > 0.7F) {
                 // High conspiracy score → severely reduce confidence
-                epistemic_confidence_multiplier *= 0.2f;  // Only learn 20% strength
+                epistemic_confidence_multiplier *= 0.2F;  // Only learn 20% strength
             }
 
             // Update example confidence with epistemic multiplier
             example.confidence *= epistemic_confidence_multiplier;
 
             // Ensure minimum confidence (don't completely ignore, but learn weakly)
-            if (example.confidence < 0.01f) {
-                example.confidence = 0.01f;
+            if (example.confidence < 0.01F) {
+                example.confidence = 0.01F;
             }
         }
     }
@@ -438,11 +438,11 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         // Compute learning rate boost: base + (curiosity × novelty × 40%)
         // Example: LR=0.01, curiosity=0.8, novelty=0.7 → boost=0.224
         //          effective_LR = 0.01 × (1 + 0.224) = 0.01224 (+22.4%)
-        float curiosity_boost = brain->last_curiosity_drive * brain->last_novelty_score * 0.4f;
-        effective_learning_rate *= (1.0f + curiosity_boost);
+        float curiosity_boost = brain->last_curiosity_drive * brain->last_novelty_score * 0.4F;
+        effective_learning_rate *= (1.0F + curiosity_boost);
 
         // Cap boost at 2x to prevent instability
-        float max_lr = brain->config.learning_rate * 2.0f;
+        float max_lr = brain->config.learning_rate * 2.0F;
         if (effective_learning_rate > max_lr) {
             effective_learning_rate = max_lr;
         }
@@ -465,7 +465,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         if (attack == NIMCP_BIO_ATTACK_EXCITOTOXICITY) {
             // CRITICAL: Excitotoxicity detected
             set_error("SECURITY: Excitotoxicity attack detected (%.1f%% activity)",
-                     activity_stats.activity_ratio * 100.0f);
+                     activity_stats.activity_ratio * 100.0F);
 
             if (brain->config.emergency_inhibit_on_attack) {
                 // Emergency response
@@ -473,12 +473,12 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             }
 
             nimcp_free(target);
-            return -1.0f;  // Abort learning
+            return -1.0F;  // Abort learning
         } else if (activity_stats.activity_ratio > brain->config.activity_warning_threshold) {
             // WARNING: Elevated activity - apply graduated inhibition
             nimcp_security_increase_inhibition(
                 adaptive_network_get_base_network(brain->network),
-                1.2f  // Increase inhibition by 20%
+                1.2F  // Increase inhibition by 20%
             );
         }
     }
@@ -528,7 +528,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // Phase E5: Shadow Emotions - Monitor for maladaptive learning patterns
     if (brain->shadow_emotions) {
         // Decay dynamics
-        shadow_update(brain->shadow_emotions, 0.001f, current_time);  // Small dt for incremental updates
+        shadow_update(brain->shadow_emotions, 0.001F, current_time);  // Small dt for incremental updates
 
         // Auto-intervene if shadow emotions detected
         shadow_auto_intervene(brain->shadow_emotions, current_time);
@@ -537,7 +537,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // Phase E6: Bias Detection - Analyze training labels for bias markers
     if (brain->bias_detection) {
         // Update system dynamics
-        bias_update(brain->bias_detection, 0.001f, current_time);
+        bias_update(brain->bias_detection, 0.001F, current_time);
 
         // Simple language analysis of training label for bias markers
         // This allows the system to detect if training data contains biased language
@@ -567,16 +567,16 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
     // Phase E1: Grief and Loss - Monitor for themes of loss in training data
     if (brain->grief_system) {
-        grief_update(brain->grief_system, 0.001f, current_time);
+        grief_update(brain->grief_system, 0.001F, current_time);
         // Could detect loss/grief themes in training labels for empathetic understanding
     }
 
     // Phase E2: Joy and Euphoria - Reward for successful learning steps
     if (brain->joy_system) {
-        joy_update(brain->joy_system, 0.001f, current_time);
+        joy_update(brain->joy_system, 0.001F, current_time);
 
         // If learning was successful (low loss), register as value-aligned success
-        if (network_loss >= 0 && network_loss < 0.1f) {
+        if (network_loss >= 0 && network_loss < 0.1F) {
             // Low loss = successful learning = joy trigger
             // This creates positive reinforcement for good learning
             uint32_t aligned_values[] = {VALUE_CATEGORY_LEARNING, VALUE_CATEGORY_ACCURACY};
@@ -584,7 +584,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 SUCCESS_TYPE_LEARNED_SKILL,
                 aligned_values,
                 2,  // num_values
-                0.5f,  // Difficulty (moderate)
+                0.5F,  // Difficulty (moderate)
                 brain->last_novelty_score,  // Use actual novelty from curiosity system
                 current_time);
         }
@@ -592,10 +592,10 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
     // Phase E3: Remorse and Regret - Monitor for poor decisions or errors
     if (brain->remorse_system) {
-        remorse_update(brain->remorse_system, 0.001f, current_time);
+        remorse_update(brain->remorse_system, 0.001F, current_time);
 
         // If training resulted in high loss, register as regrettable event
-        if (network_loss > 0.5f) {
+        if (network_loss > 0.5F) {
             // High loss = learning failure = potential for improvement
             // Creates motivation to avoid similar failures
             uint32_t violated_values[] = {VALUE_CATEGORY_ACCURACY};
@@ -603,8 +603,8 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 EVENT_POOR_DECISION,
                 violated_values,
                 1,  // num_values
-                0.3f,  // Harm caused (moderate - not severe)
-                0.8f,  // Controllability (we have control over learning)
+                0.3F,  // Harm caused (moderate - not severe)
+                0.8F,  // Controllability (we have control over learning)
                 true,  // Reversible (can learn better next time)
                 current_time);
         }
@@ -612,7 +612,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
     // Phase E4: Love, Loyalty, Friendship - Build positive associations with learning
     if (brain->social_bond_system) {
-        social_update(brain->social_bond_system, 0.001f, current_time);
+        social_update(brain->social_bond_system, 0.001F, current_time);
         // Could strengthen bonds with training data sources that provide good examples
     }
 
@@ -689,10 +689,10 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                         if (neuron && neuron->synapses) {
                             for (uint32_t s = 0; s < neuron->num_synapses; s++) {
                                 // Apply with damping to avoid disrupting learning too much
-                                float alpha = 0.1f;  // Mix 10% optimized, 90% current
+                                float alpha = 0.1F;  // Mix 10% optimized, 90% current
                                 neuron->synapses[s].weight =
                                     alpha * optimized_weights[weight_idx] +
-                                    (1.0f - alpha) * neuron->synapses[s].weight;
+                                    (1.0F - alpha) * neuron->synapses[s].weight;
                                 weight_idx++;
                             }
                         }
@@ -762,7 +762,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             // Note: Use confidence as proxy for emotional arousal
             // Higher confidence learning → higher arousal encoding
             emotional_tag_t emotion = {
-                .valence = (confidence > 0.7f) ? 0.5f : 0.0f,  // Positive valence for high confidence
+                .valence = (confidence > 0.7F) ? 0.5F : 0.0F,  // Positive valence for high confidence
                 .arousal = confidence,                          // Confidence as arousal proxy
                 .timestamp_ms = current_time,
                 .category = EMOTION_CAT_NEUTRAL,
@@ -804,7 +804,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         // For now, we demonstrate the transfer evaluation mechanism
 
         // Evaluate transfer criteria (time delta: typical learning cycle ~0.1s)
-        const float TIME_DELTA_SECONDS = 0.1f;
+        const float TIME_DELTA_SECONDS = 0.1F;
         wm_transfer_evaluate(brain->wm_transfer_system, TIME_DELTA_SECONDS);
     }
 
@@ -887,7 +887,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                     if (neuron) {
                         // Use neuron state as proxy for firing rate
                         // Higher state = higher instantaneous rate estimate
-                        firing_rates[i] = neuron->state > 0 ? neuron->state * 10.0f : 1.0f;
+                        firing_rates[i] = neuron->state > 0 ? neuron->state * 10.0F : 1.0F;
                     }
                 }
 
@@ -917,7 +917,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                         }
 
                         // Update homeostatic controller
-                        const float DT_MS = 1.0f;  // Simulated time step
+                        const float DT_MS = 1.0F;  // Simulated time step
                         homeostatic_controller_update(brain->homeostatic, firing_rates, weights,
                                                      synapses_per_neuron, DT_MS);
 
@@ -942,7 +942,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
         // Inject a sample input into first branch as demonstration
         // Full implementation would distribute inputs across branches based on connectivity
-        const float DT_MS = 1.0f;
+        const float DT_MS = 1.0F;
         dendritic_tree_update(brain->dendritic, DT_MS);
     }
 
@@ -962,7 +962,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
         // Run inference step with learning enabled
         // dt_ms = 1.0 simulates one millisecond of neural dynamics
-        pc_hierarchy_inference_step(brain->predictive_coding, 1.0f, true);
+        pc_hierarchy_inference_step(brain->predictive_coding, 1.0F, true);
     }
 
     // ========================================================================
@@ -1011,17 +1011,17 @@ float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t
     // Guard: Validate parameters
     if (!brain || !examples || num_examples == 0) {
         set_error("Invalid parameters to brain_learn_batch");
-        return -1.0f;
+        return -1.0F;
     }
 
-    float total_loss = 0.0f;
+    float total_loss = 0.0F;
 
     for (uint32_t i = 0; i < num_examples; i++) {
         float loss = brain_learn_example(brain, examples[i].features, examples[i].num_features,
                                          examples[i].label, examples[i].confidence);
 
-        if (loss < 0.0f) {
-            return -1.0f;
+        if (loss < 0.0F) {
+            return -1.0F;
         }
 
         total_loss += loss;
@@ -1059,7 +1059,7 @@ uint32_t brain_apply_reward_learning(brain_t brain, float reward)
     }
 
     // Guard: Validate reward range
-    if (reward < -1.0f || reward > 1.0f) {
+    if (reward < -1.0F || reward > 1.0F) {
         set_error("Reward must be in range [-1.0, 1.0], got %.2f", reward);
         return 0;
     }
@@ -1117,14 +1117,14 @@ float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_featu
     // Guard: Validate parameters
     if (!brain || !input || !llm_fn) {
         set_error("Invalid parameters to brain_learn_from_llm");
-        return -1.0f;
+        return -1.0F;
     }
 
     // Guard: Check dimensions
     if (num_features != brain->config.num_inputs) {
         set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
                   num_features);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Query LLM teacher
@@ -1132,9 +1132,9 @@ float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_featu
     float confidence = llm_fn(input, num_features, llm_context, label, sizeof(label));
 
     // Guard: Validate LLM response
-    if (confidence <= 0.0f) {
+    if (confidence <= 0.0F) {
         set_error("LLM teacher returned invalid confidence: %.2f", confidence);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Learn from LLM's decision

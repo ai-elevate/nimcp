@@ -13,6 +13,7 @@
 #define LOG_MODULE "language_bridge"
 
 #include "core/brain_regions/nimcp_language_production_bridge.h"
+#include "core/brain/factory/init/nimcp_brain_init.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -207,7 +208,7 @@ static void update_stats(language_production_bridge_t* bridge,
             bridge->stats.avg_encoding_time_ms = encoding_time_ms;
         } else {
             bridge->stats.avg_encoding_time_ms =
-                0.9f * bridge->stats.avg_encoding_time_ms + 0.1f * encoding_time_ms;
+                0.9F * bridge->stats.avg_encoding_time_ms + 0.1F * encoding_time_ms;
         }
 
         // Update average confidence
@@ -215,7 +216,7 @@ static void update_stats(language_production_bridge_t* bridge,
             bridge->stats.avg_confidence = confidence;
         } else {
             bridge->stats.avg_confidence =
-                0.9f * bridge->stats.avg_confidence + 0.1f * confidence;
+                0.9F * bridge->stats.avg_confidence + 0.1F * confidence;
         }
     } else {
         bridge->stats.encoding_errors++;
@@ -225,12 +226,12 @@ static void update_stats(language_production_bridge_t* bridge,
         bridge->stats.messages_transmitted++;
 
         // Update compression ratio
-        if (compression_ratio > 0.0f) {
+        if (compression_ratio > 0.0F) {
             if (bridge->stats.messages_transmitted == 1) {
                 bridge->stats.avg_compression_ratio = compression_ratio;
             } else {
                 bridge->stats.avg_compression_ratio =
-                    0.9f * bridge->stats.avg_compression_ratio + 0.1f * compression_ratio;
+                    0.9F * bridge->stats.avg_compression_ratio + 0.1F * compression_ratio;
             }
         }
     } else if (encoding_success) {
@@ -267,15 +268,15 @@ static int encode_neural_pattern(language_production_bridge_t* bridge,
     }
 
     // Calculate normalization factor
-    float norm = 0.0f;
+    float norm = 0.0F;
     for (uint32_t i = 0; i < vec_size; i++) {
         norm += thought_vector[i] * thought_vector[i];
     }
     norm = sqrtf(norm);
 
-    if (norm < 1e-6f) {
+    if (norm < 1e-6F) {
         LOG_WARNING("Thought vector has near-zero magnitude");
-        *confidence_out = 0.0f;
+        *confidence_out = 0.0F;
         return -NIMCP_INVALID_PARAM;
     }
 
@@ -288,19 +289,19 @@ static int encode_neural_pattern(language_production_bridge_t* bridge,
 
         // Convert to spike rate (0-100 Hz range)
         // Use sigmoid to map to [0, 1], then scale to rate
-        float activation = 1.0f / (1.0f + expf(-normalized));
+        float activation = 1.0F / (1.0F + expf(-normalized));
         neural_encoding[i] = activation * bridge->config.encoding_rate;
     }
 
     // Fill remaining with zeros if needed
     for (uint32_t i = copy_size; i < encoding_size; i++) {
-        neural_encoding[i] = 0.0f;
+        neural_encoding[i] = 0.0F;
     }
 
     // Calculate encoding confidence based on information preservation
     float confidence = (float)copy_size / (float)encoding_size;
     if (vec_size > encoding_size) {
-        confidence = 0.9f;  // Lost some information
+        confidence = 0.9F;  // Lost some information
     }
 
     *confidence_out = confidence;
@@ -336,16 +337,16 @@ static int decode_neural_pattern(language_production_bridge_t* bridge,
         float activation = rate / bridge->config.encoding_rate;
 
         // Inverse sigmoid (logit): logit(x) = log(x / (1-x))
-        if (activation <= 0.0f || activation >= 1.0f) {
-            thought_vector[i] = 0.0f;
+        if (activation <= 0.0F || activation >= 1.0F) {
+            thought_vector[i] = 0.0F;
         } else {
-            thought_vector[i] = logf(activation / (1.0f - activation));
+            thought_vector[i] = logf(activation / (1.0F - activation));
         }
     }
 
     // Fill remaining with zeros
     for (uint32_t i = copy_size; i < vec_size; i++) {
-        thought_vector[i] = 0.0f;
+        thought_vector[i] = 0.0F;
     }
 
     LOG_DEBUG("Decoded neural pattern: encoding_dim=%u, output_dim=%u",
@@ -605,7 +606,7 @@ int language_bridge_encode_thought(language_production_bridge_t* bridge,
         if (!bbb_validate_input(bridge->bbb_system, thought_vector,
                                 vec_size * sizeof(float), &bbb_result)) {
             LOG_WARNING("BBB validation failed for thought vector");
-            update_stats(bridge, false, false, 0.0f, 0.0f, 0.0f);
+            update_stats(bridge, false, false, 0.0F, 0.0F, 0.0F);
             return -NIMCP_PERMISSION_DENIED;
         }
     }
@@ -614,7 +615,7 @@ int language_bridge_encode_thought(language_production_bridge_t* bridge,
     out_message->message_id = generate_message_id(bridge);
 
     // Encode neural pattern
-    float confidence = 0.0f;
+    float confidence = 0.0F;
     int result = encode_neural_pattern(bridge, thought_vector, vec_size,
                                        out_message->neural_encoding,
                                        out_message->encoding_size,
@@ -622,7 +623,7 @@ int language_bridge_encode_thought(language_production_bridge_t* bridge,
 
     if (result != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to encode neural pattern: %d", result);
-        update_stats(bridge, false, false, 0.0f, 0.0f, 0.0f);
+        update_stats(bridge, false, false, 0.0F, 0.0F, 0.0F);
         return result;
     }
 
@@ -633,16 +634,16 @@ int language_bridge_encode_thought(language_production_bridge_t* bridge,
     if (confidence < bridge->config.articulation_threshold) {
         LOG_WARNING("Encoding confidence %.3f below threshold %.3f",
                     confidence, bridge->config.articulation_threshold);
-        update_stats(bridge, false, false, 0.0f, 0.0f, confidence);
+        update_stats(bridge, false, false, 0.0F, 0.0F, confidence);
         return -NIMCP_ERROR;
     }
 
     // Calculate encoding time
     uint64_t end_time = nimcp_time_get_us();
-    float encoding_time_ms = (float)(end_time - start_time) / 1000.0f;
+    float encoding_time_ms = (float)(end_time - start_time) / 1000.0F;
 
     // Update statistics
-    update_stats(bridge, true, false, encoding_time_ms, 0.0f, confidence);
+    update_stats(bridge, true, false, encoding_time_ms, 0.0F, confidence);
 
     // Send bio-async event
     if (bridge->bio_async_registered) {
@@ -665,7 +666,7 @@ int language_bridge_transmit(language_production_bridge_t* bridge,
 
     if (!bridge->nlp_connected) {
         LOG_ERROR("NLP node not connected");
-        update_stats(bridge, false, true, 0.0f, 0.0f, 0.0f);
+        update_stats(bridge, false, true, 0.0F, 0.0F, 0.0F);
         return -NIMCP_ERROR;
     }
 
@@ -680,10 +681,10 @@ int language_bridge_transmit(language_production_bridge_t* bridge,
     // 4. Handle acknowledgments
 
     // Simulate compression ratio
-    float compression_ratio = bridge->config.enable_compression ? 0.6f : 1.0f;
+    float compression_ratio = bridge->config.enable_compression ? 0.6F : 1.0F;
 
     // Update statistics
-    update_stats(bridge, true, true, 0.0f, compression_ratio, message->confidence);
+    update_stats(bridge, true, true, 0.0F, compression_ratio, message->confidence);
 
     // Send bio-async event
     if (bridge->bio_async_registered) {

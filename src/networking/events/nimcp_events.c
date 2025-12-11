@@ -711,7 +711,7 @@ static void populate_event_packet(event_packet_t* packet, event_generator_t gene
     packet->timestamp = (timestamp > 0) ? timestamp : nimcp_time_get_us();
 
     // Calculate and set confidence from neuron state
-    float confidence = event_calculate_confidence(neuron_state, 0.5f);
+    float confidence = event_calculate_confidence(neuron_state, 0.5F);
     packet->confidence = EVENT_FLOAT_TO_CONFIDENCE(confidence);
 
     // Set hop count and payload info
@@ -1123,7 +1123,7 @@ static float calculate_neural_input(const event_packet_t* packet)
 {
     // Guard clause: Validate input
     if (!packet)
-        return 0.0f;
+        return 0.0F;
 
     float confidence = EVENT_CONFIDENCE_TO_FLOAT(packet->confidence);
     uint8_t flags = EVENT_GET_FLAGS(packet);
@@ -1283,7 +1283,7 @@ bool event_receiver_map_feature_to_neuron(event_receiver_t receiver, feature_cod
  */
 static float normalize_state(float state, float threshold)
 {
-    return (state - threshold) / (1.0f + fabsf(threshold));
+    return (state - threshold) / (1.0F + fabsf(threshold));
 }
 
 /**
@@ -1296,7 +1296,7 @@ static float normalize_state(float state, float threshold)
  */
 static float apply_sigmoid(float normalized)
 {
-    return 1.0f / (1.0f + expf(-5.0f * normalized));
+    return 1.0F / (1.0F + expf(-5.0F * normalized));
 }
 
 /**
@@ -1309,7 +1309,7 @@ static float apply_sigmoid(float normalized)
  */
 static float clamp_confidence(float value)
 {
-    return (value < 0.0f) ? 0.0f : ((value > 1.0f) ? 1.0f : value);
+    return (value < 0.0F) ? 0.0F : ((value > 1.0F) ? 1.0F : value);
 }
 
 /**

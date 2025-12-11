@@ -33,11 +33,11 @@ phasic_tonic_config_t phasic_tonic_config_dopamine_default(void) {
         .homeostatic_tau = DOPAMINE_HOMEOSTATIC_TAU,
 
         .burst_decay_tau = DOPAMINE_BURST_DECAY_TAU,
-        .burst_amplitude_scale = 1.0f,
+        .burst_amplitude_scale = 1.0F,
         .max_burst_amplitude = DOPAMINE_PHASIC_PEAK,
 
-        .autoreceptor_sensitivity = 0.3f,  // Moderate D2 autoreceptor feedback
-        .feedback_tau = 1.0f
+        .autoreceptor_sensitivity = 0.3F,  // Moderate D2 autoreceptor feedback
+        .feedback_tau = 1.0F
     };
     return config;
 }
@@ -46,16 +46,16 @@ phasic_tonic_config_t phasic_tonic_config_serotonin_default(void) {
     phasic_tonic_config_t config = {
         .initial_tonic = SEROTONIN_TONIC_BASELINE,
         .tonic_target = SEROTONIN_TONIC_BASELINE,
-        .tonic_range_min = SEROTONIN_TONIC_BASELINE * 0.5f,
-        .tonic_range_max = SEROTONIN_TONIC_BASELINE * 2.0f,
-        .homeostatic_tau = 120.0f,  // Slower than dopamine
+        .tonic_range_min = SEROTONIN_TONIC_BASELINE * 0.5F,
+        .tonic_range_max = SEROTONIN_TONIC_BASELINE * 2.0F,
+        .homeostatic_tau = 120.0F,  // Slower than dopamine
 
         .burst_decay_tau = SEROTONIN_BURST_DECAY_TAU,
-        .burst_amplitude_scale = 0.8f,
-        .max_burst_amplitude = SEROTONIN_TONIC_BASELINE * 10.0f,
+        .burst_amplitude_scale = 0.8F,
+        .max_burst_amplitude = SEROTONIN_TONIC_BASELINE * 10.0F,
 
-        .autoreceptor_sensitivity = 0.5f,  // Strong 5-HT1A autoreceptor
-        .feedback_tau = 2.0f
+        .autoreceptor_sensitivity = 0.5F,  // Strong 5-HT1A autoreceptor
+        .feedback_tau = 2.0F
     };
     return config;
 }
@@ -64,16 +64,16 @@ phasic_tonic_config_t phasic_tonic_config_norepinephrine_default(void) {
     phasic_tonic_config_t config = {
         .initial_tonic = NOREPINEPHRINE_TONIC_BASELINE,
         .tonic_target = NOREPINEPHRINE_TONIC_BASELINE,
-        .tonic_range_min = NOREPINEPHRINE_TONIC_BASELINE * 0.3f,
-        .tonic_range_max = NOREPINEPHRINE_TONIC_BASELINE * 3.0f,
-        .homeostatic_tau = 30.0f,  // Fast arousal regulation
+        .tonic_range_min = NOREPINEPHRINE_TONIC_BASELINE * 0.3F,
+        .tonic_range_max = NOREPINEPHRINE_TONIC_BASELINE * 3.0F,
+        .homeostatic_tau = 30.0F,  // Fast arousal regulation
 
         .burst_decay_tau = NOREPINEPHRINE_BURST_DECAY_TAU,
-        .burst_amplitude_scale = 1.2f,  // Strong bursts for salience
-        .max_burst_amplitude = NOREPINEPHRINE_TONIC_BASELINE * 20.0f,
+        .burst_amplitude_scale = 1.2F,  // Strong bursts for salience
+        .max_burst_amplitude = NOREPINEPHRINE_TONIC_BASELINE * 20.0F,
 
-        .autoreceptor_sensitivity = 0.4f,  // α2 autoreceptor
-        .feedback_tau = 0.5f
+        .autoreceptor_sensitivity = 0.4F,  // α2 autoreceptor
+        .feedback_tau = 0.5F
     };
     return config;
 }
@@ -97,7 +97,7 @@ void phasic_tonic_init(
     state->homeostatic_tau = config->homeostatic_tau;
 
     // Phasic initialization
-    state->phasic_burst = 0.0f;
+    state->phasic_burst = 0.0F;
     state->burst_decay_tau = config->burst_decay_tau;
     state->in_burst_state = false;
     state->burst_start_time_us = 0;
@@ -106,8 +106,8 @@ void phasic_tonic_init(
     // Burst parameters
     state->burst_amplitude_scale = config->burst_amplitude_scale;
     state->max_burst_amplitude = config->max_burst_amplitude;
-    state->min_burst_amplitude = config->tonic_target * 0.5f;  // Half of tonic
-    state->burst_threshold = config->tonic_target * 0.1f;
+    state->min_burst_amplitude = config->tonic_target * 0.5F;  // Half of tonic
+    state->burst_threshold = config->tonic_target * 0.1F;
 
     // Autoreceptor
     state->autoreceptor_sensitivity = config->autoreceptor_sensitivity;
@@ -115,12 +115,12 @@ void phasic_tonic_init(
 
     // Output
     state->total_concentration = state->tonic_level;
-    state->release_rate = 0.0f;
+    state->release_rate = 0.0F;
 
     // Statistics
     state->burst_count = 0;
     state->last_burst_time_us = current_time_us;
-    state->avg_inter_burst_interval = 0.0f;
+    state->avg_inter_burst_interval = 0.0F;
 }
 
 // ============================================================================
@@ -135,7 +135,7 @@ void phasic_tonic_update(
     // === 1. Update Homeostatic Tonic Regulation ===
     float tonic_alpha = expf(-dt / state->homeostatic_tau);
     state->tonic_level = tonic_alpha * state->tonic_level +
-                        (1.0f - tonic_alpha) * state->tonic_target;
+                        (1.0F - tonic_alpha) * state->tonic_target;
 
     // Clamp tonic to physiological range
     if (state->tonic_level < state->tonic_min) {
@@ -156,14 +156,14 @@ void phasic_tonic_update(
 
         if (elapsed_us >= duration_us || state->phasic_burst < state->burst_threshold) {
             state->in_burst_state = false;
-            state->phasic_burst = 0.0f;
+            state->phasic_burst = 0.0F;
         }
     }
 
     // === 3. Apply Autoreceptor Feedback ===
     // High concentration → negative feedback → reduced release
     float total = state->tonic_level + state->phasic_burst;
-    float feedback_factor = 1.0f / (1.0f + state->autoreceptor_sensitivity * total);
+    float feedback_factor = 1.0F / (1.0F + state->autoreceptor_sensitivity * total);
 
     // === 4. Compute Release Rate ===
     // Release rate proportional to concentration and feedback
@@ -215,10 +215,10 @@ bool phasic_tonic_trigger_burst(
 
         // Update average inter-burst interval
         if (state->burst_count > 1) {
-            float interval = (current_time_us - state->last_burst_time_us) / 1000000.0f;  // Convert to seconds
-            float alpha = 0.1f;  // Exponential moving average
+            float interval = (current_time_us - state->last_burst_time_us) / 1000000.0F;  // Convert to seconds
+            float alpha = 0.1F;  // Exponential moving average
             state->avg_inter_burst_interval = alpha * interval +
-                                             (1.0f - alpha) * state->avg_inter_burst_interval;
+                                             (1.0F - alpha) * state->avg_inter_burst_interval;
         }
 
         state->last_burst_time_us = current_time_us;
@@ -236,8 +236,8 @@ void phasic_tonic_induce_dip(
     float magnitude
 ) {
     // Clamp magnitude
-    if (magnitude < 0.0f) magnitude = 0.0f;
-    if (magnitude > 1.0f) magnitude = 1.0f;
+    if (magnitude < 0.0F) magnitude = 0.0F;
+    if (magnitude > 1.0F) magnitude = 1.0F;
 
     // Temporarily reduce tonic level
     float reduction = state->tonic_level * magnitude;
@@ -261,16 +261,16 @@ bool phasic_tonic_encode_td_error(
     float td_error,
     uint64_t current_time_us
 ) {
-    if (td_error > 0.0f) {
+    if (td_error > 0.0F) {
         // Positive TD error → phasic burst
         // Scale burst amplitude proportional to error magnitude
         float burst_amplitude = td_error * state->max_burst_amplitude;
         return phasic_tonic_trigger_burst(state, burst_amplitude, 0, current_time_us);
 
-    } else if (td_error < 0.0f) {
+    } else if (td_error < 0.0F) {
         // Negative TD error → tonic dip
         float dip_magnitude = fabs(td_error);  // Convert to positive
-        phasic_tonic_induce_dip(state, dip_magnitude * 0.5f);  // 50% scaling
+        phasic_tonic_induce_dip(state, dip_magnitude * 0.5F);  // 50% scaling
         return false;
 
     } else {
@@ -310,8 +310,8 @@ void phasic_tonic_apply_autoreceptor_modulation(
     float modulation
 ) {
     // Clamp modulation to reasonable range
-    if (modulation < 0.0f) modulation = 0.0f;
-    if (modulation > 2.0f) modulation = 2.0f;
+    if (modulation < 0.0F) modulation = 0.0F;
+    if (modulation > 2.0F) modulation = 2.0F;
 
     // Apply to current tonic level (immediate effect)
     state->tonic_level *= modulation;
@@ -345,7 +345,7 @@ void phasic_tonic_get_burst_statistics(
 
     if (time_since_last) {
         uint64_t elapsed_us = current_time_us - state->last_burst_time_us;
-        *time_since_last = elapsed_us / 1000000.0f;  // Convert to seconds
+        *time_since_last = elapsed_us / 1000000.0F;  // Convert to seconds
     }
 }
 
@@ -355,13 +355,13 @@ void phasic_tonic_reset(
 ) {
     // Reset to baseline
     state->tonic_level = state->tonic_target;
-    state->phasic_burst = 0.0f;
+    state->phasic_burst = 0.0F;
     state->in_burst_state = false;
     state->total_concentration = state->tonic_level;
-    state->release_rate = 0.0f;
+    state->release_rate = 0.0F;
 
     // Reset statistics
     state->burst_count = 0;
     state->last_burst_time_us = current_time_us;
-    state->avg_inter_burst_interval = 0.0f;
+    state->avg_inter_burst_interval = 0.0F;
 }

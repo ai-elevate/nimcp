@@ -193,7 +193,7 @@ static inline float clamp_float(float value, float min, float max) {
  * @return Decayed strength
  */
 static float apply_decay(float original_strength, uint64_t age_ms, float tau_ms) {
-    if (tau_ms <= 0.0f) return original_strength;
+    if (tau_ms <= 0.0F) return original_strength;
     float decay_factor = expf(-(float)age_ms / tau_ms);
     return original_strength * decay_factor;
 }
@@ -215,7 +215,7 @@ static bool resolve_winner_take_all(
     uint32_t* winner_idx,
     float* winner_strength)
 {
-    float max_strength = 0.0f;
+    float max_strength = 0.0F;
     uint32_t max_idx = 0;
     bool found_any = false;
     uint64_t current_time = get_time_ms();
@@ -274,8 +274,8 @@ static bool resolve_priority_based(
     uint32_t* winner_idx,
     float* winner_strength)
 {
-    float max_priority = -1.0f;
-    float max_strength_at_priority = 0.0f;
+    float max_priority = -1.0F;
+    float max_strength_at_priority = 0.0F;
     uint32_t max_idx = 0;
     bool found_any = false;
     uint64_t current_time = get_time_ms();
@@ -300,7 +300,7 @@ static bool resolve_priority_based(
         // Get module priority
         cognitive_module_t module = workspace->competitors[i].module;
         float priority = (module < MODULE_CUSTOM_START) ?
-                          workspace->config.module_priorities[module] : 0.5f;
+                          workspace->config.module_priorities[module] : 0.5F;
 
         // Compare priority first, strength second
         if (priority > max_priority ||
@@ -406,7 +406,7 @@ static void broadcast_winner(
     workspace->current_broadcast.is_valid = true;
 
     // Find runner-up strength (for statistics)
-    float runner_up = 0.0f;
+    float runner_up = 0.0F;
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
         if (i == winner_idx || !workspace->competitors[i].is_active) continue;
         if (workspace->competitors[i].strength > runner_up) {
@@ -723,7 +723,7 @@ bool global_workspace_submit(
     }
 
     // Guard: Validate strength range
-    if (strength < 0.0f || strength > 1.0f) {
+    if (strength < 0.0F || strength > 1.0F) {
         fprintf(stderr, "Invalid strength in global_workspace_submit: %.2f "
                 "(must be 0.0-1.0)\n", strength);
         return false;
@@ -1042,10 +1042,10 @@ cognitive_module_t global_workspace_get_broadcast_source(
 float global_workspace_get_broadcast_strength(
     const global_workspace_t* workspace)
 {
-    if (workspace == NULL) return 0.0f;
+    if (workspace == NULL) return 0.0F;
     const struct global_workspace_struct* ws =
         (const struct global_workspace_struct*)workspace;
-    if (!ws->current_broadcast.is_valid) return 0.0f;
+    if (!ws->current_broadcast.is_valid) return 0.0F;
     return ws->current_broadcast.source_strength;
 }
 
@@ -1276,7 +1276,7 @@ global_workspace_config_t global_workspace_default_config(void) {
 
     // Initialize all module priorities to 0.5 (normal)
     for (uint32_t i = 0; i < MODULE_CUSTOM_START; i++) {
-        config.module_priorities[i] = 0.5f;
+        config.module_priorities[i] = 0.5F;
     }
 
     return config;
@@ -1300,7 +1300,7 @@ bool global_workspace_set_ignition_threshold(
 }
 
 float global_workspace_get_ignition_threshold(const global_workspace_t* workspace) {
-    if (workspace == NULL) return 0.0f;
+    if (workspace == NULL) return 0.0F;
     const struct global_workspace_struct* ws =
         (const struct global_workspace_struct*)workspace;
     return ws->config.ignition_threshold;
@@ -1317,7 +1317,7 @@ bool global_workspace_set_module_priority(
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
     // Clamp to valid range
-    priority = clamp_float(priority, 0.0f, 1.0f);
+    priority = clamp_float(priority, 0.0F, 1.0F);
 
     ws->config.module_priorities[module] = priority;
     return true;
@@ -1419,7 +1419,7 @@ bool global_workspace_validate_config(
     }
 
     // Check competition_decay_tau_ms
-    if (config->competition_decay_tau_ms <= 0.0f) {
+    if (config->competition_decay_tau_ms <= 0.0F) {
         if (error_msg != NULL && error_msg_len > 0) {
             snprintf(error_msg, error_msg_len, "competition_decay_tau_ms must be > 0");
         }

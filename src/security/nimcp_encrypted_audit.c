@@ -61,7 +61,7 @@
 /**
  * @brief Encryption key context
  */
-typedef struct {
+typedef struct encryption_key {
     uint8_t key[NIMCP_AUDIT_KEY_SIZE];
     uint32_t version;
     uint64_t entries_encrypted;
@@ -261,13 +261,13 @@ static nimcp_error_t encrypt_entry(
 #endif
 
     uint64_t end_time = get_time_ns();
-    float encrypt_time_us = (float)(end_time - start_time) / 1000.0f;
+    float encrypt_time_us = (float)(end_time - start_time) / 1000.0F;
 
     // Update statistics
     audit->stats.entries_encrypted++;
     float n = (float)audit->stats.entries_encrypted;
     audit->stats.avg_encryption_time_us =
-        (audit->stats.avg_encryption_time_us * (n - 1.0f) + encrypt_time_us) / n;
+        (audit->stats.avg_encryption_time_us * (n - 1.0F) + encrypt_time_us) / n;
 
     audit->current_key->entries_encrypted++;
 
@@ -331,13 +331,13 @@ static nimcp_error_t decrypt_entry(
 #endif
 
     uint64_t end_time = get_time_ns();
-    float decrypt_time_us = (float)(end_time - start_time) / 1000.0f;
+    float decrypt_time_us = (float)(end_time - start_time) / 1000.0F;
 
     // Update statistics
     audit->stats.entries_decrypted++;
     float n = (float)audit->stats.entries_decrypted;
     audit->stats.avg_decryption_time_us =
-        (audit->stats.avg_decryption_time_us * (n - 1.0f) + decrypt_time_us) / n;
+        (audit->stats.avg_decryption_time_us * (n - 1.0F) + decrypt_time_us) / n;
 
     return NIMCP_SUCCESS;
 }
@@ -941,8 +941,8 @@ void nimcp_encrypted_audit_reset_stats(nimcp_encrypted_audit_t audit) {
     audit->stats.encryption_failures = 0;
     audit->stats.decryption_failures = 0;
     audit->stats.tampering_detected = 0;
-    audit->stats.avg_encryption_time_us = 0.0f;
-    audit->stats.avg_decryption_time_us = 0.0f;
+    audit->stats.avg_encryption_time_us = 0.0F;
+    audit->stats.avg_decryption_time_us = 0.0F;
 
     pthread_mutex_unlock(&audit->lock);
 }

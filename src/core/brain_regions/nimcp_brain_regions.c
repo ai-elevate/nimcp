@@ -86,52 +86,52 @@ static void get_layer_proportions(brain_region_type_t type, float proportions[LA
     switch (type) {
         case REGION_VISUAL_V1:
             // V1 has prominent Layer 4 (input from LGN)
-            proportions[LAYER_1] = 0.05f;  // Thin
-            proportions[LAYER_2] = 0.10f;
-            proportions[LAYER_3] = 0.15f;
-            proportions[LAYER_4] = 0.35f;  // Thick in V1
-            proportions[LAYER_5] = 0.20f;
-            proportions[LAYER_6] = 0.15f;
+            proportions[LAYER_1] = 0.05F;  // Thin
+            proportions[LAYER_2] = 0.10F;
+            proportions[LAYER_3] = 0.15F;
+            proportions[LAYER_4] = 0.35F;  // Thick in V1
+            proportions[LAYER_5] = 0.20F;
+            proportions[LAYER_6] = 0.15F;
             break;
 
         case REGION_AUDITORY_A1:
             // A1 also has prominent Layer 4
-            proportions[LAYER_1] = 0.05f;
-            proportions[LAYER_2] = 0.12f;
-            proportions[LAYER_3] = 0.18f;
-            proportions[LAYER_4] = 0.30f;
-            proportions[LAYER_5] = 0.20f;
-            proportions[LAYER_6] = 0.15f;
+            proportions[LAYER_1] = 0.05F;
+            proportions[LAYER_2] = 0.12F;
+            proportions[LAYER_3] = 0.18F;
+            proportions[LAYER_4] = 0.30F;
+            proportions[LAYER_5] = 0.20F;
+            proportions[LAYER_6] = 0.15F;
             break;
 
         case REGION_MOTOR_M1:
             // M1 has prominent Layer 5 (output to spinal cord)
-            proportions[LAYER_1] = 0.05f;
-            proportions[LAYER_2] = 0.10f;
-            proportions[LAYER_3] = 0.15f;
-            proportions[LAYER_4] = 0.15f;
-            proportions[LAYER_5] = 0.35f;  // Thick in M1
-            proportions[LAYER_6] = 0.20f;
+            proportions[LAYER_1] = 0.05F;
+            proportions[LAYER_2] = 0.10F;
+            proportions[LAYER_3] = 0.15F;
+            proportions[LAYER_4] = 0.15F;
+            proportions[LAYER_5] = 0.35F;  // Thick in M1
+            proportions[LAYER_6] = 0.20F;
             break;
 
         case REGION_PREFRONTAL:
             // Prefrontal has large Layer 3 (associative)
-            proportions[LAYER_1] = 0.05f;
-            proportions[LAYER_2] = 0.15f;
-            proportions[LAYER_3] = 0.30f;  // Thick
-            proportions[LAYER_4] = 0.15f;
-            proportions[LAYER_5] = 0.20f;
-            proportions[LAYER_6] = 0.15f;
+            proportions[LAYER_1] = 0.05F;
+            proportions[LAYER_2] = 0.15F;
+            proportions[LAYER_3] = 0.30F;  // Thick
+            proportions[LAYER_4] = 0.15F;
+            proportions[LAYER_5] = 0.20F;
+            proportions[LAYER_6] = 0.15F;
             break;
 
         default:
             // Standard cortical proportions
-            proportions[LAYER_1] = 0.05f;
-            proportions[LAYER_2] = 0.15f;
-            proportions[LAYER_3] = 0.20f;
-            proportions[LAYER_4] = 0.20f;
-            proportions[LAYER_5] = 0.25f;
-            proportions[LAYER_6] = 0.15f;
+            proportions[LAYER_1] = 0.05F;
+            proportions[LAYER_2] = 0.15F;
+            proportions[LAYER_3] = 0.20F;
+            proportions[LAYER_4] = 0.20F;
+            proportions[LAYER_5] = 0.25F;
+            proportions[LAYER_6] = 0.15F;
             break;
     }
 }
@@ -308,11 +308,11 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
     // Create underlying neural network using public API
     network_config_t config = {0};
     config.num_neurons = num_neurons;
-    config.ei_ratio = 0.8f;  // 80% excitatory
-    config.learning_rate = 0.01f;
-    config.target_activity = 0.1f;
-    config.min_weight = -1.0f;
-    config.max_weight = 1.0f;
+    config.ei_ratio = 0.8F;  // 80% excitatory
+    config.learning_rate = 0.01F;
+    config.target_activity = 0.1F;
+    config.min_weight = -1.0F;
+    config.max_weight = 1.0F;
     // REQUIRED: Set input/output dimensions (needed by neural_network_create validation)
     config.input_size = 100;  // Default input dimension for brain regions
     config.output_size = 10;  // Default output dimension for brain regions
@@ -371,7 +371,7 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
     region->minicolumns = NULL;
     region->num_minicolumns = 0;
 
-    region->activity_level = 0.0f;
+    region->activity_level = 0.0F;
     region->last_update = 0;
 
     nimcp_mutex_init(&region->lock, NULL);
@@ -605,7 +605,7 @@ nimcp_result_t brain_region_process_input(brain_region_t* region,
     for (uint32_t i = 0; i < layer4_size && i < input_size; i++) {
         uint32_t neuron_idx = layer4_start + i;
         if (neuron_idx < region->total_neurons) {
-            float current_state = 0.0f;
+            float current_state = 0.0F;
             neural_network_get_neuron_state(region->network, neuron_idx, &current_state);
             float new_state = current_state + input[i % input_size];
             neural_network_update_neuron(region->network, neuron_idx, new_state, timestamp);
@@ -701,9 +701,9 @@ static nimcp_result_t propagate_inter_region_signals(brain_module_t* brain, uint
 
         // Compute signal strength = source_activity * connection_strength
         float signal = source->activity_level * conn->connection_strength;
-        signal = fmaxf(0.0f, fminf(1.0f, signal));  // Clamp to [0, 1]
+        signal = fmaxf(0.0F, fminf(1.0F, signal));  // Clamp to [0, 1]
 
-        if (signal < 0.01f) {
+        if (signal < 0.01F) {
             continue;  // Skip negligible signals
         }
 
@@ -716,7 +716,7 @@ static nimcp_result_t propagate_inter_region_signals(brain_module_t* brain, uint
 
         // Inject signal into target neurons
         for (uint32_t nid = layer_start; nid < layer_end; nid++) {
-            float current = signal * (float)conn->num_synapses / 100.0f;
+            float current = signal * (float)conn->num_synapses / 100.0F;
             neural_network_update_neuron(target->network, nid, current, delta_t);
         }
     }
@@ -770,7 +770,7 @@ nimcp_result_t brain_region_step(brain_region_t* region, uint64_t delta_t) {
         if (region->total_neurons > 0) {
             float spike_rate = (float)spikes / (float)region->total_neurons;
             // EMA with alpha=0.1 for smoothing
-            region->activity_level = 0.9f * region->activity_level + 0.1f * spike_rate;
+            region->activity_level = 0.9F * region->activity_level + 0.1F * spike_rate;
         }
     }
 
@@ -815,18 +815,18 @@ nimcp_result_t brain_region_get_stats(brain_region_t* region,
             layer_start += region->layer_sizes[l];
         }
 
-        float layer_activity = 0.0f;
+        float layer_activity = 0.0F;
         uint32_t active_count = 0;
         for (uint32_t i = 0; i < region->layer_sizes[layer]; i++) {
             uint32_t neuron_idx = layer_start + i;
             if (neuron_idx < region->total_neurons) {
-                float state = 0.0f;
+                float state = 0.0F;
                 neural_network_get_neuron_state(region->network, neuron_idx, &state);
                 // Normalize: treat state > threshold (1.0) as active
                 // Use sigmoid-like normalization: tanh(state) to map to [0,1]
                 float normalized = tanhf(fabsf(state));
                 layer_activity += normalized;
-                if (fabsf(state) > 0.5f) {
+                if (fabsf(state) > 0.5F) {
                     active_count++;
                 }
             }
@@ -838,7 +838,7 @@ nimcp_result_t brain_region_get_stats(brain_region_t* region,
     }
 
     // Overall average
-    float total_activity = 0.0f;
+    float total_activity = 0.0F;
     for (int l = 0; l < LAYER_COUNT; l++) {
         total_activity += stats->layer_activity[l];
     }

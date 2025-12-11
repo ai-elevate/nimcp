@@ -32,6 +32,7 @@
 
 #include "core/brain/processing/cognitive_processor.h"
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/accessors/nimcp_brain_accessors.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
@@ -65,8 +66,8 @@ static float compute_fallback_confidence(
     uint32_t num_inputs)
 {
     // Compute output variance
-    float output_variance = 0.0f;
-    float output_mean = 0.0f;
+    float output_variance = 0.0F;
+    float output_mean = 0.0F;
 
     for (uint32_t i = 0; i < output_size; i++) {
         output_mean += output_vector[i];
@@ -80,8 +81,8 @@ static float compute_fallback_confidence(
     output_variance /= output_size;
 
     // Higher activity, lower variance → higher confidence
-    float confidence = fminf(1.0f, (float)spikes_generated / (num_inputs * 2.0f));
-    confidence *= (1.0f - fminf(1.0f, output_variance));
+    float confidence = fminf(1.0F, (float)spikes_generated / (num_inputs * 2.0F));
+    confidence *= (1.0F - fminf(1.0F, output_variance));
 
     return confidence;
 }
@@ -93,13 +94,13 @@ static float compute_fallback_salience(
     const float* output_vector,
     uint32_t output_size)
 {
-    float max_activation = 0.0f;
+    float max_activation = 0.0F;
     for (uint32_t i = 0; i < output_size; i++) {
         if (output_vector[i] > max_activation) {
             max_activation = output_vector[i];
         }
     }
-    return fminf(1.0f, max_activation);
+    return fminf(1.0F, max_activation);
 }
 
 /**
@@ -109,9 +110,9 @@ static float compute_fallback_novelty(
     uint32_t spikes_generated,
     uint32_t num_inputs)
 {
-    float expected_spikes = num_inputs * 0.5f;
+    float expected_spikes = num_inputs * 0.5F;
     float spike_diff = fabsf((float)spikes_generated - expected_spikes);
-    return fminf(1.0f, spike_diff / expected_spikes);
+    return fminf(1.0F, spike_diff / expected_spikes);
 }
 
 /**
@@ -123,7 +124,7 @@ static bool check_ethical_output(
 {
     for (uint32_t i = 0; i < output_size; i++) {
         if (isnan(output_vector[i]) || isinf(output_vector[i]) ||
-            fabsf(output_vector[i]) > 1000.0f) {
+            fabsf(output_vector[i]) > 1000.0F) {
             return false;  // Ethical violation
         }
     }
@@ -162,14 +163,14 @@ static bool check_mutual_exclusion(
     }
 
     // Create XOR gate for mutual exclusion check
-    uint32_t xor_gate = neural_logic_create_gate(logic, LOGIC_GATE_XOR, 0.5f);
+    uint32_t xor_gate = neural_logic_create_gate(logic, LOGIC_GATE_XOR, 0.5F);
     if (xor_gate == UINT32_MAX) {
         return true;  // Failed to create gate, assume valid
     }
 
     // Evaluate XOR: true if values differ, false if same
     float inputs[2] = {value_a, value_b};
-    float output = 0.0f;
+    float output = 0.0F;
 
     if (!neural_logic_evaluate(logic, xor_gate, inputs, 2, &output)) {
         return true;  // Evaluation failed, assume valid
@@ -182,7 +183,7 @@ static bool check_mutual_exclusion(
     // - Both active (A=1, B=1) → XOR=0 → INVALID
 
     // Check if both are active (violation)
-    bool both_active = (value_a > 0.5f && value_b > 0.5f);
+    bool both_active = (value_a > 0.5F && value_b > 0.5F);
 
     return !both_active;  // Valid if NOT both active
 }
@@ -218,7 +219,7 @@ static bool check_prerequisite(
     uint32_t implies_gate = neural_logic_create_gate(
         logic,
         LOGIC_GATE_IMPLIES,
-        0.8f
+        0.8F
     );
     if (implies_gate == UINT32_MAX) {
         return true;  // Failed to create gate, assume valid
@@ -226,7 +227,7 @@ static bool check_prerequisite(
 
     // Evaluate A → B
     float inputs[2] = {prerequisite_value, dependent_value};
-    float output = 0.0f;
+    float output = 0.0F;
 
     if (!neural_logic_evaluate(logic, implies_gate, inputs, 2, &output)) {
         return true;  // Evaluation failed, assume valid
@@ -234,7 +235,7 @@ static bool check_prerequisite(
 
     // Implication satisfied if output is true
     // A → B is false only when A=1 and B=0
-    return (output > 0.5f);
+    return (output > 0.5F);
 }
 
 /**
@@ -265,25 +266,25 @@ static bool check_no_conflict(
     }
 
     // Create AND gate
-    uint32_t and_gate = neural_logic_create_gate(logic, LOGIC_GATE_AND, 1.8f);
+    uint32_t and_gate = neural_logic_create_gate(logic, LOGIC_GATE_AND, 1.8F);
     if (and_gate == UINT32_MAX) {
         return true;
     }
 
     // Create NOT gate
-    uint32_t not_gate = neural_logic_create_gate(logic, LOGIC_GATE_NOT, 0.5f);
+    uint32_t not_gate = neural_logic_create_gate(logic, LOGIC_GATE_NOT, 0.5F);
     if (not_gate == UINT32_MAX) {
         return true;
     }
 
     // Connect AND → NOT
-    if (!neural_logic_connect(logic, and_gate, not_gate, 1.0f)) {
+    if (!neural_logic_connect(logic, and_gate, not_gate, 1.0F)) {
         return true;
     }
 
     // Evaluate AND(A, B)
     float and_inputs[2] = {state_a, state_b};
-    float and_output = 0.0f;
+    float and_output = 0.0F;
 
     if (!neural_logic_evaluate(logic, and_gate, and_inputs, 2, &and_output)) {
         return true;
@@ -291,14 +292,14 @@ static bool check_no_conflict(
 
     // Evaluate NOT(AND(A, B))
     float not_inputs[1] = {and_output};
-    float not_output = 0.0f;
+    float not_output = 0.0F;
 
     if (!neural_logic_evaluate(logic, not_gate, not_inputs, 1, &not_output)) {
         return true;
     }
 
     // No conflict if NOT(AND) is true (i.e., both are NOT active together)
-    return (not_output > 0.5f);
+    return (not_output > 0.5F);
 }
 
 /**
@@ -343,8 +344,8 @@ static bool validate_cognitive_constraints(
     // They should sum to ~1.0, check mutual exclusion of extremes
     bool confidence_uncertainty_valid = check_mutual_exclusion(
         logic,
-        confidence_normalized > 0.8f ? 1.0f : 0.0f,  // Very confident
-        uncertainty_normalized > 0.8f ? 1.0f : 0.0f   // Very uncertain
+        confidence_normalized > 0.8F ? 1.0F : 0.0F,  // Very confident
+        uncertainty_normalized > 0.8F ? 1.0F : 0.0F   // Very uncertain
     );
     all_valid = all_valid && confidence_uncertainty_valid;
 
@@ -353,7 +354,7 @@ static bool validate_cognitive_constraints(
     bool prerequisite_valid = check_prerequisite(
         logic,
         confidence_normalized,      // If confident
-        1.0f - uncertainty_normalized  // Then certain (low uncertainty)
+        1.0F - uncertainty_normalized  // Then certain (low uncertainty)
     );
     all_valid = all_valid && prerequisite_valid;
 
@@ -361,7 +362,7 @@ static bool validate_cognitive_constraints(
     // Unethical outputs should not have high salience
     bool ethical_salience_valid = check_no_conflict(
         logic,
-        annotations->ethical_approved ? 0.0f : 1.0f,  // Ethical violation
+        annotations->ethical_approved ? 0.0F : 1.0F,  // Ethical violation
         annotations->salience_score                   // High salience
     );
     all_valid = all_valid && ethical_salience_valid;
@@ -381,14 +382,14 @@ void cognitive_annotations_init(cognitive_annotations_t* annotations)
 
     memset(annotations, 0, sizeof(cognitive_annotations_t));
 
-    annotations->confidence = 0.5f;  // Neutral confidence
-    annotations->uncertainty = 0.5f;
+    annotations->confidence = 0.5F;  // Neutral confidence
+    annotations->uncertainty = 0.5F;
     annotations->ethical_approved = true;  // Assume ethical unless proven otherwise
-    annotations->salience_score = 0.5f;
-    annotations->novelty_score = 0.5f;
-    annotations->urgency_score = 0.0f;
-    annotations->exploration_bonus = 0.0f;
-    annotations->information_gain = 0.0f;
+    annotations->salience_score = 0.5F;
+    annotations->novelty_score = 0.5F;
+    annotations->urgency_score = 0.0F;
+    annotations->exploration_bonus = 0.0F;
+    annotations->information_gain = 0.0F;
     annotations->logic_valid = true;
 }
 
@@ -426,7 +427,7 @@ bool cognitive_process_output(
         );
 
         annotations->uncertainty = uncertainty.total;
-        annotations->confidence = 1.0f - annotations->uncertainty;
+        annotations->confidence = 1.0F - annotations->uncertainty;
     } else {
         // Fallback: Compute confidence from output statistics
         uint32_t num_inputs = brain_get_num_inputs(brain);
@@ -436,7 +437,7 @@ bool cognitive_process_output(
             net_output->spikes_generated,
             num_inputs
         );
-        annotations->uncertainty = 1.0f - annotations->confidence;
+        annotations->uncertainty = 1.0F - annotations->confidence;
     }
 
     // =========================================================================
@@ -490,7 +491,7 @@ bool cognitive_process_output(
             num_inputs
         );
 
-        annotations->urgency_score = 0.0f;  // No urgency without salience module
+        annotations->urgency_score = 0.0F;  // No urgency without salience module
     }
 
     // =========================================================================
@@ -505,8 +506,8 @@ bool cognitive_process_output(
         annotations->information_gain = annotations->novelty_score;
     } else {
         // Fallback: No exploration bonus without curiosity module
-        annotations->exploration_bonus = 0.0f;
-        annotations->information_gain = 0.0f;
+        annotations->exploration_bonus = 0.0F;
+        annotations->information_gain = 0.0F;
     }
 
     // =========================================================================

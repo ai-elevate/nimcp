@@ -237,7 +237,7 @@ static nimcp_error_t handle_wm_retrieve_request(
     }
 
     // Get salience for confidence check
-    float salience = 0.0f;
+    float salience = 0.0F;
     working_memory_get_total_salience(wm, retrieve_msg->slot_id, &salience);
 
     if (salience < retrieve_msg->min_confidence) {
@@ -313,7 +313,7 @@ static void bio_broadcast_item_evicted(working_memory_t* wm, uint32_t slot_id) {
                         bio_module_context_get_id(wm->bio_ctx), 0, sizeof(msg));
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
     msg.target_id = slot_id;
-    msg.attention_weight = 0.0f;  // Item is gone
+    msg.attention_weight = 0.0F;  // Item is gone
     msg.preemptive = false;
 
     bio_router_broadcast(wm->bio_ctx, &msg, sizeof(msg));
@@ -513,7 +513,7 @@ working_memory_t* working_memory_create_custom(
     }
 
     // Guard: Invalid decay tau
-    if (config->decay_tau_ms <= 0.0f) {
+    if (config->decay_tau_ms <= 0.0F) {
         set_error("Invalid decay_tau_ms (must be > 0)");
         LOG_ERROR("Invalid decay_tau_ms: %.2f (must be > 0)", config->decay_tau_ms);
         return NULL;
@@ -763,7 +763,7 @@ bool working_memory_add(
     }
 
     // Guard: Invalid salience
-    if (salience < 0.0f || salience > 1.0f) {
+    if (salience < 0.0F || salience > 1.0F) {
         set_error("salience must be in [0.0, 1.0]");
         return false;
     }
@@ -854,8 +854,8 @@ bool working_memory_add_with_emotion(
     float total_salience = base_salience * emotional_boost;
 
     // Clamp to valid range
-    if (total_salience > 1.0f) {
-        total_salience = 1.0f;
+    if (total_salience > 1.0F) {
+        total_salience = 1.0F;
     }
 
     // Add item with boosted salience (this will acquire the lock)
@@ -1269,12 +1269,12 @@ uint32_t working_memory_get_count(const working_memory_t* wm) {
 float working_memory_get_utilization(const working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Zero capacity (shouldn't happen but guard anyway)
     if (wm->capacity == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Lock mutex for thread-safe access
@@ -1421,9 +1421,9 @@ void working_memory_get_stats(
     stats->total_refreshes = wm->total_refreshes;
 
     // Calculate average salience
-    stats->avg_salience = 0.0f;
+    stats->avg_salience = 0.0F;
     if (wm->current_size > 0) {
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (uint32_t i = 0; i < wm->current_size; i++) {
             sum += wm->salience[i];
         }
@@ -1431,7 +1431,7 @@ void working_memory_get_stats(
     }
 
     // Find oldest item age
-    stats->oldest_item_age_ms = 0.0f;
+    stats->oldest_item_age_ms = 0.0F;
     if (wm->current_size > 0) {
         uint64_t current_time = get_current_time_ms();
         uint64_t oldest_time = wm->timestamps[0];

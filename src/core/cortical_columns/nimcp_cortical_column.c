@@ -374,7 +374,7 @@ static bool validate_minicolumn_config(const minicolumn_config_t* config) {
         return false;
     }
 
-    if (config->receptive_field.radius <= 0.0f) {
+    if (config->receptive_field.radius <= 0.0F) {
         COLUMN_LOG_ERROR("validate_minicolumn_config: Invalid receptive field radius");
         return false;
     }
@@ -439,11 +439,11 @@ minicolumn_t* minicolumn_create(
     col->layers = config->layers;
 
     // Initialize state
-    col->activation_level = 0.0f;
-    col->inhibition_level = 0.0f;
-    col->net_activation = 0.0f;
+    col->activation_level = 0.0F;
+    col->inhibition_level = 0.0F;
+    col->net_activation = 0.0F;
     col->total_activations = 0;
-    col->activation_sum = 0.0f;
+    col->activation_sum = 0.0F;
     col->last_activation_time_us = 0;
 
     // Initialize mutex
@@ -613,23 +613,23 @@ hypercolumn_t* hypercolumn_create(
     hcol->topographic_y = config->topographic_y;
     hcol->competition_mode = config->competition;
     hcol->k_winners = config->k_winners;
-    hcol->temperature = config->temperature > 0.0f ? config->temperature : DEFAULT_TEMPERATURE;
-    hcol->lateral_inhibition_strength = config->lateral_inhibition_strength > 0.0f
+    hcol->temperature = config->temperature > 0.0F ? config->temperature : DEFAULT_TEMPERATURE;
+    hcol->lateral_inhibition_strength = config->lateral_inhibition_strength > 0.0F
         ? config->lateral_inhibition_strength
         : DEFAULT_LATERAL_INHIBITION_STRENGTH;
-    hcol->lateral_inhibition_sigma1 = config->lateral_inhibition_sigma1 > 0.0f
+    hcol->lateral_inhibition_sigma1 = config->lateral_inhibition_sigma1 > 0.0F
         ? config->lateral_inhibition_sigma1
         : DEFAULT_LATERAL_INHIBITION_SIGMA1;
-    hcol->lateral_inhibition_sigma2 = config->lateral_inhibition_sigma2 > 0.0f
+    hcol->lateral_inhibition_sigma2 = config->lateral_inhibition_sigma2 > 0.0F
         ? config->lateral_inhibition_sigma2
         : DEFAULT_LATERAL_INHIBITION_SIGMA2;
 
     // Initialize state
     memset(hcol->activations, 0, config->num_minicolumns * sizeof(float));
     hcol->winner_index = 0;
-    hcol->total_activation = 0.0f;
+    hcol->total_activation = 0.0F;
     hcol->total_computations = 0;
-    hcol->entropy = 0.0f;
+    hcol->entropy = 0.0F;
 
     // Initialize mutex
     if (nimcp_platform_mutex_init(&hcol->mutex, false) != 0) {
@@ -719,12 +719,12 @@ float minicolumn_compute(
     // Guard: validate inputs
     if (!col || !col->initialized) {
         COLUMN_LOG_ERROR("minicolumn_compute: Invalid minicolumn");
-        return -1.0f;
+        return -1.0F;
     }
 
     if (!input || input_size == 0) {
         COLUMN_LOG_ERROR("minicolumn_compute: Invalid input");
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock(&col->mutex);
@@ -733,18 +733,18 @@ float minicolumn_compute(
 
     // Check if this is an orientation distribution input (>3 elements indicates distribution)
     // If tuning_preference is set and we have a distribution, use orientation-based computation
-    if (input_size > 3 && col->tuning_preference >= 0.0f) {
+    if (input_size > 3 && col->tuning_preference >= 0.0F) {
         // Orientation-based computation:
         // Input is a distribution over orientations (0-180°)
         // Sample at the index corresponding to our tuning preference
 
         // Normalize tuning_preference to [0, 180) range
         float pref = col->tuning_preference;
-        while (pref < 0.0f) pref += 180.0f;
-        while (pref >= 180.0f) pref -= 180.0f;
+        while (pref < 0.0F) pref += 180.0F;
+        while (pref >= 180.0F) pref -= 180.0F;
 
         // Compute the fractional index into the input distribution
-        float frac_idx = pref / 180.0f * (float)(input_size - 1);
+        float frac_idx = pref / 180.0F * (float)(input_size - 1);
         uint32_t idx_low = (uint32_t)frac_idx;
         uint32_t idx_high = idx_low + 1;
         float t = frac_idx - (float)idx_low;
@@ -755,13 +755,13 @@ float minicolumn_compute(
         }
 
         // Linear interpolation to sample the distribution at our tuning preference
-        activation = (1.0f - t) * input[idx_low] + t * input[idx_high];
+        activation = (1.0F - t) * input[idx_low] + t * input[idx_high];
     } else {
         // Spatial receptive field computation (original logic)
         // Compute input centroid (simplified - assumes input is 3D feature vector)
-        float input_x = input_size > 0 ? input[0] : 0.0f;
-        float input_y = input_size > 1 ? input[1] : 0.0f;
-        float input_z = input_size > 2 ? input[2] : 0.0f;
+        float input_x = input_size > 0 ? input[0] : 0.0F;
+        float input_y = input_size > 1 ? input[1] : 0.0F;
+        float input_z = input_size > 2 ? input[2] : 0.0F;
 
         // Compute distance from receptive field center
         float distance = euclidean_distance_3d(
@@ -776,7 +776,7 @@ float minicolumn_compute(
     }
 
     // Apply inhibition
-    float net_activation = fmaxf(0.0f, activation - col->inhibition_level);
+    float net_activation = fmaxf(0.0F, activation - col->inhibition_level);
 
     // Update state
     col->activation_level = net_activation;
@@ -800,7 +800,7 @@ static void compute_lateral_inhibition_internal(hypercolumn_t* hcol) {
     // For each minicolumn, compute inhibition from all others
     for (uint32_t i = 0; i < hcol->num_minicolumns; i++) {
         minicolumn_t* col_i = hcol->minicolumns[i];
-        float total_inhibition = 0.0f;
+        float total_inhibition = 0.0F;
 
         for (uint32_t j = 0; j < hcol->num_minicolumns; j++) {
             if (i == j) continue;
@@ -823,7 +823,7 @@ static void compute_lateral_inhibition_internal(hypercolumn_t* hcol) {
         }
 
         // Apply inhibition (clamp to positive)
-        col_i->inhibition_level = fmaxf(0.0f, total_inhibition);
+        col_i->inhibition_level = fmaxf(0.0F, total_inhibition);
     }
 }
 
@@ -858,7 +858,7 @@ void hypercolumn_compute(
     // Step 1: Compute activation for each minicolumn
     for (uint32_t i = 0; i < hcol->num_minicolumns; i++) {
         float activation = minicolumn_compute(hcol->minicolumns[i], input, input_size);
-        hcol->activations[i] = fmaxf(0.0f, activation);
+        hcol->activations[i] = fmaxf(0.0F, activation);
     }
 
     // Step 2: Apply lateral inhibition (Mexican hat)
@@ -867,7 +867,7 @@ void hypercolumn_compute(
     // Re-compute activations after inhibition
     for (uint32_t i = 0; i < hcol->num_minicolumns; i++) {
         minicolumn_t* col = hcol->minicolumns[i];
-        hcol->activations[i] = fmaxf(0.0f, col->activation_level - col->inhibition_level);
+        hcol->activations[i] = fmaxf(0.0F, col->activation_level - col->inhibition_level);
     }
 
     // Step 3: Run competition
@@ -877,7 +877,7 @@ void hypercolumn_compute(
     hcol->total_computations++;
 
     // Compute total activation
-    float total = 0.0f;
+    float total = 0.0F;
     for (uint32_t i = 0; i < hcol->num_minicolumns; i++) {
         total += hcol->activations[i];
     }
@@ -958,8 +958,8 @@ void minicolumn_apply_lateral_inhibition(minicolumn_t* col, float inhibition) {
 
     nimcp_platform_mutex_lock(&col->mutex);
 
-    col->inhibition_level = fmaxf(0.0f, fminf(1.0f, inhibition));
-    col->net_activation = fmaxf(0.0f, col->activation_level - col->inhibition_level);
+    col->inhibition_level = fmaxf(0.0F, fminf(1.0F, inhibition));
+    col->net_activation = fmaxf(0.0F, col->activation_level - col->inhibition_level);
 
     nimcp_platform_mutex_unlock(&col->mutex);
 }
@@ -1050,7 +1050,7 @@ void minicolumn_set_receptive_field(
         return;
     }
 
-    if (radius <= 0.0f) {
+    if (radius <= 0.0F) {
         COLUMN_LOG_ERROR("minicolumn_set_receptive_field: Invalid radius");
         return;
     }
@@ -1077,7 +1077,7 @@ float minicolumn_compute_receptive_weight(
     // Guard: validate input
     if (!col || !col->initialized) {
         COLUMN_LOG_ERROR("minicolumn_compute_receptive_weight: Invalid minicolumn");
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock(&col->mutex);
@@ -1124,7 +1124,7 @@ void minicolumn_get_stats(minicolumn_t* col, minicolumn_stats_t* stats) {
     stats->total_activations = col->total_activations;
     stats->average_activation = col->total_activations > 0
         ? col->activation_sum / col->total_activations
-        : 0.0f;
+        : 0.0F;
     stats->tuning_preference = col->tuning_preference;
     stats->num_neurons = col->num_neurons;
     stats->last_activation_time_us = col->last_activation_time_us;
@@ -1155,7 +1155,7 @@ void hypercolumn_get_stats(hypercolumn_t* hcol, cc_hypercolumn_stats_t* stats) {
     stats->winner_index = hcol->winner_index;
     stats->winner_activation = hcol->winner_index < hcol->num_minicolumns
         ? hcol->activations[hcol->winner_index]
-        : 0.0f;
+        : 0.0F;
     stats->total_activation = hcol->total_activation;
     stats->entropy = hcol->entropy;
     stats->total_computations = hcol->total_computations;
@@ -1175,7 +1175,7 @@ void hypercolumn_get_stats(hypercolumn_t* hcol, cc_hypercolumn_stats_t* stats) {
  */
 static float compute_gaussian_weight(float distance, float sigma) {
     float sigma_sq = sigma * sigma;
-    return expf(-(distance * distance) / (2.0f * sigma_sq));
+    return expf(-(distance * distance) / (2.0F * sigma_sq));
 }
 
 /**
@@ -1188,8 +1188,8 @@ static float compute_mexican_hat(float distance, float sigma1, float sigma2, flo
     float sigma1_sq = sigma1 * sigma1;
     float sigma2_sq = sigma2 * sigma2;
 
-    float excitation = (1.0f - d_sq / sigma1_sq) * expf(-d_sq / (2.0f * sigma1_sq));
-    float inhibition = amplitude * expf(-d_sq / (2.0f * sigma2_sq));
+    float excitation = (1.0F - d_sq / sigma1_sq) * expf(-d_sq / (2.0F * sigma1_sq));
+    float inhibition = amplitude * expf(-d_sq / (2.0F * sigma2_sq));
 
     return excitation - inhibition;
 }
@@ -1200,7 +1200,7 @@ static float compute_mexican_hat(float distance, float sigma1, float sigma2, flo
  * HOW:  p_i = exp(a_i/T) / Σexp(a_j/T)
  */
 static void apply_softmax_inplace(float* activations, uint32_t size, float temperature) {
-    if (!activations || size == 0 || temperature <= 0.0f) {
+    if (!activations || size == 0 || temperature <= 0.0F) {
         return;
     }
 
@@ -1213,7 +1213,7 @@ static void apply_softmax_inplace(float* activations, uint32_t size, float tempe
     }
 
     // Compute exp(a_i/T - max/T) and sum
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         activations[i] = expf((activations[i] - max_val) / temperature);
         sum += activations[i];
@@ -1249,7 +1249,7 @@ static void apply_winner_take_all(float* activations, uint32_t size, uint32_t* w
 
     // Set winner=1.0, others=0.0
     for (uint32_t i = 0; i < size; i++) {
-        activations[i] = (i == max_idx) ? 1.0f : 0.0f;
+        activations[i] = (i == max_idx) ? 1.0F : 0.0F;
     }
 
     *winner_idx = max_idx;
@@ -1298,7 +1298,7 @@ static void apply_k_winners(float* activations, uint32_t size, uint32_t k) {
                 break;
             }
         }
-        activations[i] = is_winner ? 1.0f : 0.0f;
+        activations[i] = is_winner ? 1.0F : 0.0F;
     }
 
     nimcp_free(indices);
@@ -1311,21 +1311,21 @@ static void apply_k_winners(float* activations, uint32_t size, uint32_t k) {
  */
 static float compute_entropy(const float* distribution, uint32_t size) {
     if (!distribution || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute sum for normalization
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         sum += distribution[i];
     }
 
     if (sum < EPSILON) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute entropy: H = -Σ p_i log₂(p_i)
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         float p = distribution[i] / sum;
         if (p > EPSILON) {

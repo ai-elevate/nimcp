@@ -55,6 +55,9 @@
 
 #define LOG_MODULE "BRAIN_BIOLOGICAL"
 
+// External error function declaration
+extern void set_error(const char* format, ...);
+
 //=============================================================================
 // Function Implementations
 //=============================================================================
@@ -180,8 +183,8 @@ bool init_multimodal_subsystems(brain_t brain)
 
             // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
             .enable_fractal_topology = brain->config.enable_fractal_topology,
-            .hub_ratio = 0.15f,        // 15% hub neurons (biological cortex ratio)
-            .power_law_gamma = -2.1f,  // Cortical power-law exponent
+            .hub_ratio = 0.15F,        // 15% hub neurons (biological cortex ratio)
+            .power_law_gamma = -2.1F,  // Cortical power-law exponent
             .internal_neurons = 32 * 10 // 10 neurons per filter (V1 columnar structure)
         };
 
@@ -216,8 +219,8 @@ bool init_multimodal_subsystems(brain_t brain)
 
             // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
             .enable_fractal_topology = brain->config.enable_fractal_topology,
-            .hub_ratio = 0.15f,        // 15% hub neurons (biological A1 ratio)
-            .power_law_gamma = -2.1f,  // Tonotopic power-law exponent
+            .hub_ratio = 0.15F,        // 15% hub neurons (biological A1 ratio)
+            .power_law_gamma = -2.1F,  // Tonotopic power-law exponent
             .internal_neurons = 40 * 10 // 10 neurons per mel filter (A1 tonotopic structure)
         };
 
@@ -252,8 +255,8 @@ bool init_multimodal_subsystems(brain_t brain)
 
         // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
         speech_config.enable_fractal_topology = brain->config.enable_fractal_topology;
-        speech_config.hub_ratio = 0.15f;          // 15% hub neurons (biological STG ratio)
-        speech_config.power_law_gamma = -2.1f;    // Speech network power-law exponent
+        speech_config.hub_ratio = 0.15F;          // 15% hub neurons (biological STG ratio)
+        speech_config.power_law_gamma = -2.1F;    // Speech network power-law exponent
         speech_config.internal_neurons = SPEECH_NUM_PHONEMES * 10; // 10 neurons per phoneme
 
         brain->speech_cortex = speech_cortex_create(&speech_config);
@@ -326,7 +329,7 @@ bool init_multimodal_subsystems(brain_t brain)
         nlp_config.network_config.enable_hebbian = false;
         nlp_config.network_config.enable_oja = false;
         nlp_config.network_config.enable_homeostasis = false;
-        nlp_config.network_config.learning_rate = 0.01f;
+        nlp_config.network_config.learning_rate = 0.01F;
 
         // Configure attention (required for multihead_attention_create)
         nlp_config.attention_config.num_heads = brain->config.num_attention_heads > 0 ? brain->config.num_attention_heads : 4;
@@ -335,23 +338,23 @@ bool init_multimodal_subsystems(brain_t brain)
         nlp_config.attention_config.sequence_length = nlp_config.max_sequence_length;
         nlp_config.attention_config.use_thalamic_gate = false;
         nlp_config.attention_config.use_salience_weighting = false;
-        nlp_config.attention_config.gate_bias = 0.5f;
+        nlp_config.attention_config.gate_bias = 0.5F;
 
         // Configure neuromodulators (required for neuromodulator_system_create)
-        nlp_config.neuromod_config.baseline_dopamine = 0.2f;
-        nlp_config.neuromod_config.baseline_serotonin = 0.2f;
-        nlp_config.neuromod_config.baseline_acetylcholine = 0.2f;
-        nlp_config.neuromod_config.baseline_norepinephrine = 0.2f;
-        nlp_config.neuromod_config.dopamine_decay = 2.0f;
-        nlp_config.neuromod_config.serotonin_decay = 10.0f;
-        nlp_config.neuromod_config.acetylcholine_decay = 0.5f;
-        nlp_config.neuromod_config.norepinephrine_decay = 3.0f;
-        nlp_config.neuromod_config.reward_dopamine_gain = 0.5f;
-        nlp_config.neuromod_config.threat_norepinephrine_gain = 0.7f;
-        nlp_config.neuromod_config.salience_acetylcholine_gain = 0.6f;
-        nlp_config.neuromod_config.punishment_serotonin_gain = 0.4f;
+        nlp_config.neuromod_config.baseline_dopamine = 0.2F;
+        nlp_config.neuromod_config.baseline_serotonin = 0.2F;
+        nlp_config.neuromod_config.baseline_acetylcholine = 0.2F;
+        nlp_config.neuromod_config.baseline_norepinephrine = 0.2F;
+        nlp_config.neuromod_config.dopamine_decay = 2.0F;
+        nlp_config.neuromod_config.serotonin_decay = 10.0F;
+        nlp_config.neuromod_config.acetylcholine_decay = 0.5F;
+        nlp_config.neuromod_config.norepinephrine_decay = 3.0F;
+        nlp_config.neuromod_config.reward_dopamine_gain = 0.5F;
+        nlp_config.neuromod_config.threat_norepinephrine_gain = 0.7F;
+        nlp_config.neuromod_config.salience_acetylcholine_gain = 0.6F;
+        nlp_config.neuromod_config.punishment_serotonin_gain = 0.4F;
         nlp_config.neuromod_config.enable_volume_transmission = true;
-        nlp_config.neuromod_config.diffusion_rate = 0.1f;
+        nlp_config.neuromod_config.diffusion_rate = 0.1F;
 
         brain->nlp_network = nlp_network_create(&nlp_config);
         if (!brain->nlp_network) {
@@ -405,16 +408,16 @@ bool init_pink_noise_subsystem(brain_t brain)
     neuromod_pink_config_t pink_config = neuromod_pink_default_config();
 
     // Adjust baselines for brain-level processing
-    pink_config.dopamine_baseline = 0.3f;      // Moderate baseline for learning
-    pink_config.serotonin_baseline = 0.4f;     // Moderate baseline for stability
-    pink_config.acetylcholine_baseline = 0.5f; // Moderate baseline for attention
-    pink_config.norepinephrine_baseline = 0.2f;// Lower baseline for arousal
+    pink_config.dopamine_baseline = 0.3F;      // Moderate baseline for learning
+    pink_config.serotonin_baseline = 0.4F;     // Moderate baseline for stability
+    pink_config.acetylcholine_baseline = 0.5F; // Moderate baseline for attention
+    pink_config.norepinephrine_baseline = 0.2F;// Lower baseline for arousal
 
     // Configure noise amplitudes for exploration-exploitation balance
-    pink_config.dopamine_noise_amplitude = 0.15f;      // 15% noise for exploration
-    pink_config.serotonin_noise_amplitude = 0.08f;     // 8% noise for stability modulation
-    pink_config.acetylcholine_noise_amplitude = 0.20f; // 20% noise for dynamic attention
-    pink_config.norepinephrine_noise_amplitude = 0.10f;// 10% noise for arousal variation
+    pink_config.dopamine_noise_amplitude = 0.15F;      // 15% noise for exploration
+    pink_config.serotonin_noise_amplitude = 0.08F;     // 8% noise for stability modulation
+    pink_config.acetylcholine_noise_amplitude = 0.20F; // 20% noise for dynamic attention
+    pink_config.norepinephrine_noise_amplitude = 0.10F;// 10% noise for arousal variation
 
     brain->pink_noise = neuromod_pink_create(&pink_config);
     if (!brain->pink_noise) {
@@ -458,10 +461,10 @@ bool init_neuromodulator_system(brain_t brain)
 
     // Phase 12: Compute personality-modulated neuromodulator baselines
     // Default to moderate levels if no personality
-    float dopamine_base = 0.5f;
-    float serotonin_base = 0.5f;
-    float acetylcholine_base = 0.5f;
-    float norepinephrine_base = 0.5f;
+    float dopamine_base = 0.5F;
+    float serotonin_base = 0.5F;
+    float acetylcholine_base = 0.5F;
+    float norepinephrine_base = 0.5F;
 
     if (brain->personality) {
         // Map personality traits to neurotransmitter baselines
@@ -469,19 +472,19 @@ bool init_neuromodulator_system(brain_t brain)
 
         // Dopamine (reward, motivation): Driven by Extraversion
         // Extraverts seek social rewards → higher dopamine baseline
-        dopamine_base = 0.3f + p->traits.extraversion * 0.5f;  // [0.3, 0.8]
+        dopamine_base = 0.3F + p->traits.extraversion * 0.5F;  // [0.3, 0.8]
 
         // Serotonin (mood stability, impulse control): Inverse of Neuroticism
         // High neuroticism → low serotonin (anxiety, mood instability)
-        serotonin_base = 0.7f - p->traits.neuroticism * 0.4f;  // [0.3, 0.7]
+        serotonin_base = 0.7F - p->traits.neuroticism * 0.4F;  // [0.3, 0.7]
 
         // Acetylcholine (attention, learning): Driven by Openness
         // High openness → high acetylcholine (intellectual curiosity)
-        acetylcholine_base = 0.3f + p->traits.openness * 0.5f;  // [0.3, 0.8]
+        acetylcholine_base = 0.3F + p->traits.openness * 0.5F;  // [0.3, 0.8]
 
         // Norepinephrine (arousal, vigilance): Driven by Conscientiousness
         // High conscientiousness → sustained alertness
-        norepinephrine_base = 0.4f + p->traits.conscientiousness * 0.4f;  // [0.4, 0.8]
+        norepinephrine_base = 0.4F + p->traits.conscientiousness * 0.4F;  // [0.4, 0.8]
     }
 
     // Always create neuromodulator system (needed for mental health monitoring)
@@ -494,20 +497,20 @@ bool init_neuromodulator_system(brain_t brain)
         .baseline_norepinephrine = norepinephrine_base, // Arousal
 
         // Decay time constants (seconds)
-        .dopamine_decay = 2.0f,         // Fast decay (phasic DA bursts)
-        .serotonin_decay = 10.0f,       // Slow decay (tonic 5-HT)
-        .acetylcholine_decay = 0.5f,    // Very fast decay (attention bursts)
-        .norepinephrine_decay = 3.0f,   // Moderate decay (arousal)
+        .dopamine_decay = 2.0F,         // Fast decay (phasic DA bursts)
+        .serotonin_decay = 10.0F,       // Slow decay (tonic 5-HT)
+        .acetylcholine_decay = 0.5F,    // Very fast decay (attention bursts)
+        .norepinephrine_decay = 3.0F,   // Moderate decay (arousal)
 
         // Response gains
-        .reward_dopamine_gain = 0.5f,
-        .threat_norepinephrine_gain = 0.7f,
-        .salience_acetylcholine_gain = 0.6f,
-        .punishment_serotonin_gain = 0.4f,
+        .reward_dopamine_gain = 0.5F,
+        .threat_norepinephrine_gain = 0.7F,
+        .salience_acetylcholine_gain = 0.6F,
+        .punishment_serotonin_gain = 0.4F,
 
         // Volume transmission
         .enable_volume_transmission = true,
-        .diffusion_rate = 0.1f
+        .diffusion_rate = 0.1F
     };
 
     brain->neuromodulator_system = neuromodulator_system_create(&neuromod_config);

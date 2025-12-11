@@ -53,10 +53,10 @@ static int SignalFilter_init(SignalFilterObject* self, PyObject* args, PyObject*
                               "sample_rate", "order", "window", NULL};
 
     const char* filter_type_str = "bandpass";
-    float low_freq = 4.0f;
-    float high_freq = 8.0f;
-    float cutoff_freq = 0.0f;
-    float sample_rate = 1000.0f;
+    float low_freq = 4.0F;
+    float high_freq = 8.0F;
+    float cutoff_freq = 0.0F;
+    float sample_rate = 1000.0F;
     int order = 64;
     const char* window_str = "hamming";
 

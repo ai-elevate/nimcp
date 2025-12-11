@@ -67,11 +67,11 @@ static void bio_broadcast_concept_activated(semantic_memory_system_t* system, ui
  * HOW:  Dot product divided by magnitudes
  */
 static float compute_similarity(const float* a, const float* b, uint32_t dim) {
-    if (!a || !b || dim == 0) return 0.0f;
+    if (!a || !b || dim == 0) return 0.0F;
 
-    float dot = 0.0f;
-    float mag_a = 0.0f;
-    float mag_b = 0.0f;
+    float dot = 0.0F;
+    float mag_a = 0.0F;
+    float mag_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         dot += a[i] * b[i];
@@ -79,7 +79,7 @@ static float compute_similarity(const float* a, const float* b, uint32_t dim) {
         mag_b += b[i] * b[i];
     }
 
-    if (mag_a == 0.0f || mag_b == 0.0f) return 0.0f;
+    if (mag_a == 0.0F || mag_b == 0.0F) return 0.0F;
 
     return dot / (sqrtf(mag_a) * sqrtf(mag_b));
 }
@@ -305,7 +305,7 @@ static void bio_broadcast_concept_activated(semantic_memory_system_t* system, ui
     msg.stimulus_id = concept_id;
     msg.salience_score = activation;
     msg.attention_priority = activation;
-    msg.requires_immediate_attention = (activation > 0.8f);
+    msg.requires_immediate_attention = (activation > 0.8F);
     bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast concept activated: id=%u, activation=%.2f", concept_id, activation);
 }
@@ -512,8 +512,8 @@ uint64_t semantic_memory_create_concept(
     }
 
     // Initialize metadata
-    concept->activation = 0.0f;
-    concept->base_activation = 0.1f;
+    concept->activation = 0.0F;
+    concept->base_activation = 0.1F;
     concept->creation_time_ms = nimcp_platform_time_monotonic_ms();
     concept->access_count = 0;
 
@@ -859,7 +859,7 @@ semantic_query_result_t* semantic_memory_activate(
     // Clear previous activations
     for (uint32_t i = 0; i < system->concept_count; i++) {
         if (system->concepts[i]) {
-            system->concepts[i]->activation = 0.0f;
+            system->concepts[i]->activation = 0.0F;
         }
     }
 
@@ -936,7 +936,7 @@ semantic_query_result_t* semantic_memory_query(
         features,
         feature_dim,
         1,      // Get best match
-        0.5f    // 50% similarity threshold
+        0.5F    // 50% similarity threshold
     );
 
     if (!similar || similar->count == 0) {
@@ -1113,10 +1113,10 @@ void semantic_memory_get_statistics(
  */
 spreading_activation_params_t semantic_memory_get_default_spread_params(void) {
     spreading_activation_params_t params = {
-        .decay_rate = 0.8f,        // 20% decay per hop (Collins & Loftus, 1975)
-        .threshold = 0.3f,         // 30% activation threshold
+        .decay_rate = 0.8F,        // 20% decay per hop (Collins & Loftus, 1975)
+        .threshold = 0.3F,         // 30% activation threshold
         .max_hops = 3,             // Spread up to 3 hops
-        .min_activation = 0.1f     // Stop below 10% activation
+        .min_activation = 0.1F     // Stop below 10% activation
     };
     return params;
 }

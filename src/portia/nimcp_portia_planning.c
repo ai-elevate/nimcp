@@ -101,14 +101,14 @@ static float calculate_distance(float x1, float y1, float z1,
  */
 static float decay_confidence(float initial, uint64_t last_seen_ms)
 {
-    if (initial <= 0.0f) return 0.0f;
+    if (initial <= 0.0F) return 0.0F;
 
     uint64_t current_ms = nimcp_time_monotonic_ms();
     if (current_ms <= last_seen_ms) return initial;
 
-    float elapsed_s = (current_ms - last_seen_ms) / 1000.0f;
-    float half_life_s = 1.0f;
-    float decay_factor = expf(-0.693147f * elapsed_s / half_life_s);
+    float elapsed_s = (current_ms - last_seen_ms) / 1000.0F;
+    float half_life_s = 1.0F;
+    float decay_factor = expf(-0.693147F * elapsed_s / half_life_s);
 
     return initial * decay_factor;
 }
@@ -140,9 +140,9 @@ static portia_plan_t* find_plan(portia_planner_t planner, uint32_t plan_id)
  */
 static float calculate_plan_cost(const portia_plan_t* plan)
 {
-    if (!plan || plan->waypoint_count < 2) return 0.0f;
+    if (!plan || plan->waypoint_count < 2) return 0.0F;
 
-    float total = 0.0f;
+    float total = 0.0F;
     for (uint32_t i = 0; i < plan->waypoint_count - 1; i++) {
         const plan_waypoint_t* wp1 = &plan->waypoints[i];
         const plan_waypoint_t* wp2 = &plan->waypoints[i + 1];
@@ -330,8 +330,8 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
     plan->waypoint_count = 1;
     plan->current_waypoint = 0;
     plan->state = PLAN_STATE_SCANNING;
-    plan->total_cost = 0.0f;
-    plan->progress = 0.0f;
+    plan->total_cost = 0.0F;
+    plan->progress = 0.0F;
     plan->requires_detour = false;
     plan->detour_depth = 0;
 
@@ -349,7 +349,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
     plan->waypoints[0].x = target_x;
     plan->waypoints[0].y = target_y;
     plan->waypoints[0].z = target_z;
-    plan->waypoints[0].confidence = 1.0f;
+    plan->waypoints[0].confidence = 1.0F;
     plan->waypoints[0].last_seen_ms = nimcp_time_monotonic_ms();
     plan->waypoints[0].visible = true;
 
@@ -378,7 +378,7 @@ bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
     }
 
     // Validate confidence
-    if (confidence < 0.0f || confidence > 1.0f) {
+    if (confidence < 0.0F || confidence > 1.0F) {
         portia_set_error("Invalid confidence: %.2f", confidence);
         return false;
     }
@@ -512,7 +512,7 @@ bool portia_planning_execute_step(portia_planner_t planner, uint32_t plan_id)
     if (plan->current_waypoint >= plan->waypoint_count) {
         // Reached end of plan
         plan->state = PLAN_STATE_COMPLETE;
-        plan->progress = 1.0f;
+        plan->progress = 1.0F;
         LOG_INFO("Plan %u completed successfully", plan_id);
         broadcast_plan_event(planner, plan_id, "plan_completed");
         nimcp_mutex_unlock(&planner->lock);

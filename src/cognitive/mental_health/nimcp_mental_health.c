@@ -303,12 +303,12 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
     // Initialize current_markers to healthy baseline values
     // This allows checks to run immediately without requiring mental_health_update first
     memset(&monitor->current_markers, 0, sizeof(monitor->current_markers));
-    monitor->current_markers.dopamine_avg = 0.5f;
-    monitor->current_markers.serotonin_avg = 0.5f;
-    monitor->current_markers.norepinephrine_avg = 0.5f;
-    monitor->current_markers.engagement_level = 0.7f;
-    monitor->current_markers.decision_accuracy = 0.8f;
-    monitor->current_markers.emotional_flatness = 0.2f;
+    monitor->current_markers.dopamine_avg = 0.5F;
+    monitor->current_markers.serotonin_avg = 0.5F;
+    monitor->current_markers.norepinephrine_avg = 0.5F;
+    monitor->current_markers.engagement_level = 0.7F;
+    monitor->current_markers.decision_accuracy = 0.8F;
+    monitor->current_markers.emotional_flatness = 0.2F;
 
     LOG_INFO("Mental Health Monitor created (history_window=%u, check_interval=%u)",
              config->history_window_size, config->check_interval_decisions);
@@ -581,19 +581,19 @@ float mental_health_check_specific(mental_health_monitor_t* monitor,
     // =========================================================================
 
     if (!monitor || !brain) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (disorder >= DISORDER_COUNT) {
         set_error("Invalid disorder type: %d", disorder);
-        return 0.0f;
+        return 0.0F;
     }
 
     // =========================================================================
     // DETECTION: Run specific detector
     // =========================================================================
 
-    float score = 0.0f;
+    float score = 0.0F;
 
     switch (disorder) {
         case DISORDER_SOCIOPATHY:           score = detect_sociopathy(monitor, brain); break;
@@ -605,7 +605,7 @@ float mental_health_check_specific(mental_health_monitor_t* monitor,
         case DISORDER_OCD:                  score = detect_ocd(monitor, brain); break;
         case DISORDER_AUTISM:               score = detect_autism(monitor, brain); break;
         case DISORDER_MALIGNANT_NARCISSISM: score = detect_malignant_narcissism(monitor, brain); break;
-        default:                            score = 0.0f; break;
+        default:                            score = 0.0F; break;
     }
 
     return score;
@@ -661,7 +661,7 @@ static void collect_ethics_markers(behavioral_markers_t* markers, brain_t brain)
     // For now, use placeholder values
     markers->ethics_violations_recent = 0;
     markers->ethics_violations_total = 0;
-    markers->ethics_approval_rate = 1.0f;
+    markers->ethics_approval_rate = 1.0F;
 
     // =========================================================================
     // EMPATHY TRACKING via Theory of Mind (Phase 10.6 Integration)
@@ -715,9 +715,9 @@ static void collect_emotional_markers(behavioral_markers_t* markers, brain_t bra
 
     // TODO: Query actual emotional system when API available
     // For now, use placeholder values
-    markers->emotional_volatility = 0.3f;
-    markers->emotional_flatness = 0.2f;
-    markers->avg_emotional_intensity = 0.5f;
+    markers->emotional_volatility = 0.3F;
+    markers->emotional_flatness = 0.2F;
+    markers->avg_emotional_intensity = 0.5F;
     markers->joy_count = 0;
     markers->fear_count = 0;
     markers->anger_count = 0;
@@ -757,12 +757,12 @@ static void collect_neurotransmitter_markers(behavioral_markers_t* markers, brai
 
     // Default to healthy baseline if brain missing
     if (!brain) {
-        markers->dopamine_avg = 0.5f;
-        markers->dopamine_variance = 0.1f;
-        markers->serotonin_avg = 0.5f;
-        markers->serotonin_variance = 0.1f;
-        markers->norepinephrine_avg = 0.5f;
-        markers->norepinephrine_variance = 0.1f;
+        markers->dopamine_avg = 0.5F;
+        markers->dopamine_variance = 0.1F;
+        markers->serotonin_avg = 0.5F;
+        markers->serotonin_variance = 0.1F;
+        markers->norepinephrine_avg = 0.5F;
+        markers->norepinephrine_variance = 0.1F;
         return;
     }
 
@@ -770,12 +770,12 @@ static void collect_neurotransmitter_markers(behavioral_markers_t* markers, brai
     neuromodulator_system_t neuromod_system = brain_get_neuromodulator_system(brain);
     if (!neuromod_system) {
         // System not initialized - use baseline values
-        markers->dopamine_avg = 0.5f;
-        markers->dopamine_variance = 0.1f;
-        markers->serotonin_avg = 0.5f;
-        markers->serotonin_variance = 0.1f;
-        markers->norepinephrine_avg = 0.5f;
-        markers->norepinephrine_variance = 0.1f;
+        markers->dopamine_avg = 0.5F;
+        markers->dopamine_variance = 0.1F;
+        markers->serotonin_avg = 0.5F;
+        markers->serotonin_variance = 0.1F;
+        markers->norepinephrine_avg = 0.5F;
+        markers->norepinephrine_variance = 0.1F;
         return;
     }
 
@@ -786,9 +786,9 @@ static void collect_neurotransmitter_markers(behavioral_markers_t* markers, brai
 
     // TODO: Track variance over time (requires historical tracking)
     // For now, use default variance values
-    markers->dopamine_variance = 0.1f;
-    markers->serotonin_variance = 0.1f;
-    markers->norepinephrine_variance = 0.1f;
+    markers->dopamine_variance = 0.1F;
+    markers->serotonin_variance = 0.1F;
+    markers->norepinephrine_variance = 0.1F;
 }
 
 /**
@@ -807,9 +807,9 @@ static void collect_cognitive_markers(behavioral_markers_t* markers, brain_t bra
     // TODO: Query actual executive and working memory systems when APIs available
     // For now, use healthy baseline values
     markers->impulse_control_failures = 0;
-    markers->task_switching_difficulty = 0.2f;
+    markers->task_switching_difficulty = 0.2F;
     markers->repetitive_behaviors = 0;
-    markers->attention_fragmentation = 0.1f;
+    markers->attention_fragmentation = 0.1F;
 
     // =========================================================================
     // THEORY OF MIND MARKERS (Phase 10.6 Integration)
@@ -817,10 +817,10 @@ static void collect_cognitive_markers(behavioral_markers_t* markers, brain_t bra
 
     if (!brain) {
         // No brain provided, use defaults
-        markers->theory_of_mind_failures = 0.0f;
-        markers->social_interaction_deficit = 0.0f;
-        markers->cognitive_rigidity = 0.0f;
-        markers->reality_testing_errors = 0.0f;
+        markers->theory_of_mind_failures = 0.0F;
+        markers->social_interaction_deficit = 0.0F;
+        markers->cognitive_rigidity = 0.0F;
+        markers->reality_testing_errors = 0.0F;
         return;
     }
 
@@ -829,17 +829,17 @@ static void collect_cognitive_markers(behavioral_markers_t* markers, brain_t bra
 
     if (!tom) {
         // Theory of Mind not enabled, use defaults
-        markers->theory_of_mind_failures = 0.0f;
-        markers->social_interaction_deficit = 0.0f;
-        markers->cognitive_rigidity = 0.0f;
-        markers->reality_testing_errors = 0.0f;
+        markers->theory_of_mind_failures = 0.0F;
+        markers->social_interaction_deficit = 0.0F;
+        markers->cognitive_rigidity = 0.0F;
+        markers->reality_testing_errors = 0.0F;
         return;
     }
 
     // Get perspective-taking score (empathy ability)
     // High score = good empathy, Low score = ToM failure
     float perspective_score = tom_get_perspective_score(tom);
-    markers->theory_of_mind_failures = 1.0f - perspective_score;  // Invert: 0=good, 1=poor
+    markers->theory_of_mind_failures = 1.0F - perspective_score;  // Invert: 0=good, 1=poor
 
     // Get ToM statistics
     tom_statistics_t tom_stats = {0};
@@ -847,28 +847,28 @@ static void collect_cognitive_markers(behavioral_markers_t* markers, brain_t bra
         // Social interaction deficit: low empathy responses relative to observations
         if (tom_stats.total_observations > 0) {
             float empathy_rate = (float)tom_stats.empathy_responses / (float)tom_stats.total_observations;
-            markers->social_interaction_deficit = 1.0f - empathy_rate;  // Low rate = deficit
+            markers->social_interaction_deficit = 1.0F - empathy_rate;  // Low rate = deficit
         } else {
-            markers->social_interaction_deficit = 0.0f;
+            markers->social_interaction_deficit = 0.0F;
         }
 
         // Cognitive rigidity: difficulty with false beliefs (theory of mind hallmark)
         // High false belief detection = flexible thinking, Low = rigid
         if (tom_stats.total_observations > 0) {
             float false_belief_rate = (float)tom_stats.false_beliefs_detected / (float)tom_stats.total_observations;
-            markers->cognitive_rigidity = 1.0f - false_belief_rate;  // Low rate = rigid
+            markers->cognitive_rigidity = 1.0F - false_belief_rate;  // Low rate = rigid
         } else {
-            markers->cognitive_rigidity = 0.0f;
+            markers->cognitive_rigidity = 0.0F;
         }
 
         // Reality testing: based on average inference confidence
         // Low confidence may indicate confusion about mental vs. physical reality
-        markers->reality_testing_errors = 1.0f - tom_stats.average_inference_confidence;
+        markers->reality_testing_errors = 1.0F - tom_stats.average_inference_confidence;
     } else {
         // Failed to get statistics, use defaults
-        markers->social_interaction_deficit = 0.0f;
-        markers->cognitive_rigidity = 0.0f;
-        markers->reality_testing_errors = 0.0f;
+        markers->social_interaction_deficit = 0.0F;
+        markers->cognitive_rigidity = 0.0F;
+        markers->reality_testing_errors = 0.0F;
     }
 }
 
@@ -887,12 +887,12 @@ static void collect_performance_markers(behavioral_markers_t* markers, brain_t b
 
     // TODO: Collect from brain processing statistics
     // For now, use placeholder values
-    markers->decision_latency_avg = 0.0f;
-    markers->decision_accuracy = 0.8f;  // Assume reasonable default
-    markers->engagement_level = 0.7f;
+    markers->decision_latency_avg = 0.0F;
+    markers->decision_accuracy = 0.8F;  // Assume reasonable default
+    markers->engagement_level = 0.7F;
     markers->task_completion_rate = 85;
-    markers->avoidance_rate = 0.1f;
-    markers->decision_variance = 0.2f;
+    markers->avoidance_rate = 0.1F;
+    markers->decision_variance = 0.2F;
 }
 
 // =============================================================================
@@ -1042,7 +1042,7 @@ void mental_health_display_dashboard(mental_health_monitor_t* monitor)
         printf("  %s: ", disorder_names[i]);
 
         // Print bar (20 characters max)
-        int bar_length = (int)(score * 20.0f);
+        int bar_length = (int)(score * 20.0F);
         for (int j = 0; j < bar_length; j++) {
             printf("█");
         }

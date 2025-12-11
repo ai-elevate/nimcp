@@ -55,7 +55,7 @@ static void calculate_v_formation_position(const nimcp_flocking_engine_t *engine
 
     position->x = engine->formation_center.x + side * row * spacing;
     position->y = engine->formation_center.y;
-    position->z = engine->formation_center.z - row * spacing * 0.5f;
+    position->z = engine->formation_center.z - row * spacing * 0.5F;
 }
 
 /**
@@ -66,9 +66,9 @@ static void calculate_sphere_formation_position(const nimcp_flocking_engine_t *e
                                                nimcp_vec3_t *position) {
     if (!engine || !position) return;
 
-    const float radius = engine->config.formation_spacing * 2.0f;
-    const float phi = acosf(1.0f - 2.0f * (boid_index + 0.5f) / engine->boid_count);
-    const float theta = M_PI * (1.0f + sqrtf(5.0f)) * boid_index;
+    const float radius = engine->config.formation_spacing * 2.0F;
+    const float phi = acosf(1.0F - 2.0F * (boid_index + 0.5F) / engine->boid_count);
+    const float theta = M_PI * (1.0F + sqrtf(5.0F)) * boid_index;
 
     position->x = engine->formation_center.x + radius * sinf(phi) * cosf(theta);
     position->y = engine->formation_center.y + radius * sinf(phi) * sinf(theta);
@@ -103,9 +103,9 @@ static void calculate_grid_formation_position(const nimcp_flocking_engine_t *eng
     const uint32_t row = boid_index / grid_size;
     const uint32_t col = boid_index % grid_size;
 
-    position->x = engine->formation_center.x + (col - grid_size / 2.0f) * spacing;
+    position->x = engine->formation_center.x + (col - grid_size / 2.0F) * spacing;
     position->y = engine->formation_center.y;
-    position->z = engine->formation_center.z + (row - grid_size / 2.0f) * spacing;
+    position->z = engine->formation_center.z + (row - grid_size / 2.0F) * spacing;
 }
 
 /**
@@ -117,8 +117,8 @@ static void calculate_spiral_formation_position(const nimcp_flocking_engine_t *e
     if (!engine || !position) return;
 
     const float spacing = engine->config.formation_spacing;
-    const float angle = boid_index * 0.5f;
-    const float radius = boid_index * spacing * 0.2f;
+    const float angle = boid_index * 0.5F;
+    const float radius = boid_index * spacing * 0.2F;
 
     position->x = engine->formation_center.x + radius * cosf(angle);
     position->y = engine->formation_center.y;
@@ -137,7 +137,7 @@ static void calculate_wedge_formation_position(const nimcp_flocking_engine_t *en
     const int row = (int)sqrtf((float)boid_index * 2);
     const int pos_in_row = boid_index - (row * (row + 1)) / 2;
 
-    position->x = engine->formation_center.x + (pos_in_row - row / 2.0f) * spacing;
+    position->x = engine->formation_center.x + (pos_in_row - row / 2.0F) * spacing;
     position->y = engine->formation_center.y;
     position->z = engine->formation_center.z - row * spacing;
 }
@@ -180,44 +180,44 @@ void nimcp_flocking_get_default_config(nimcp_flocking_config_t *config) {
     memset(config, 0, sizeof(nimcp_flocking_config_t));
 
     // Core flocking weights
-    config->separation_weight = 1.5f;
-    config->alignment_weight = 1.0f;
-    config->cohesion_weight = 1.0f;
+    config->separation_weight = 1.5F;
+    config->alignment_weight = 1.0F;
+    config->cohesion_weight = 1.0F;
 
     // Radii
-    config->separation_radius = 2.0f;
-    config->alignment_radius = 5.0f;
-    config->cohesion_radius = 5.0f;
+    config->separation_radius = 2.0F;
+    config->alignment_radius = 5.0F;
+    config->cohesion_radius = 5.0F;
 
     // Speed and force limits
-    config->max_speed = 5.0f;
-    config->max_force = 0.5f;
-    config->max_acceleration = 2.0f;
+    config->max_speed = 5.0F;
+    config->max_force = 0.5F;
+    config->max_acceleration = 2.0F;
 
     // Advanced behavior weights
-    config->obstacle_weight = 2.0f;
-    config->goal_weight = 1.0f;
-    config->boundary_weight = 1.5f;
-    config->predator_weight = 3.0f;
+    config->obstacle_weight = 2.0F;
+    config->goal_weight = 1.0F;
+    config->boundary_weight = 1.5F;
+    config->predator_weight = 3.0F;
 
     // Obstacle avoidance
-    config->obstacle_detect_radius = 10.0f;
-    config->obstacle_avoid_distance = 3.0f;
+    config->obstacle_detect_radius = 10.0F;
+    config->obstacle_avoid_distance = 3.0F;
 
     // Boundary (default: large box)
-    config->boundary_min = nimcp_vec3_create(-100.0f, -100.0f, -100.0f);
-    config->boundary_max = nimcp_vec3_create(100.0f, 100.0f, 100.0f);
-    config->boundary_margin = 10.0f;
+    config->boundary_min = nimcp_vec3_create(-100.0F, -100.0F, -100.0F);
+    config->boundary_max = nimcp_vec3_create(100.0F, 100.0F, 100.0F);
+    config->boundary_margin = 10.0F;
 
     // Formation
-    config->formation_tightness = 1.0f;
-    config->formation_spacing = 3.0f;
+    config->formation_tightness = 1.0F;
+    config->formation_spacing = 3.0F;
 
     // Neighbor detection
     config->max_neighbors = 10;
 
     // Update rate (60 FPS)
-    config->update_dt = 0.016f;
+    config->update_dt = 0.016F;
 }
 
 nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *config) {
@@ -346,7 +346,7 @@ uint32_t nimcp_flocking_add_boid(nimcp_flocking_engine_t *engine,
     boid->velocity = *velocity;
     boid->acceleration = nimcp_vec3_create(0, 0, 0);
 
-    boid->mass = 1.0f;
+    boid->mass = 1.0F;
     boid->max_speed = engine->config.max_speed;
     boid->max_force = engine->config.max_force;
 
@@ -864,16 +864,16 @@ int nimcp_flocking_obstacle_avoidance(nimcp_flocking_engine_t *engine,
         if (dist < engine->config.obstacle_detect_radius) {
             // Predictive avoidance
             nimcp_vec3_t future_pos = nimcp_vec3_add(boid->position,
-                                                     nimcp_vec3_mul(boid->velocity, 2.0f));
+                                                     nimcp_vec3_mul(boid->velocity, 2.0F));
             float future_dist = nimcp_vec3_distance(future_pos, engine->obstacles[i].position);
 
             if (future_dist < min_dist || dist < min_dist) {
                 // Avoidance force inversely proportional to distance
                 float strength = (min_dist - dist) / min_dist;
-                strength = fmaxf(0.0f, fminf(1.0f, strength));
+                strength = fmaxf(0.0F, fminf(1.0F, strength));
 
                 nimcp_vec3_t avoid = nimcp_vec3_normalize(diff);
-                avoid = nimcp_vec3_mul(avoid, boid->max_speed * (1.0f + strength));
+                avoid = nimcp_vec3_mul(avoid, boid->max_speed * (1.0F + strength));
 
                 *force = nimcp_vec3_add(*force, avoid);
             }
@@ -903,8 +903,8 @@ int nimcp_flocking_goal_seek(nimcp_flocking_engine_t *engine,
         desired = nimcp_vec3_normalize(desired);
 
         // Slow down when approaching goal
-        if (dist < 10.0f) {
-            float speed = boid->max_speed * (dist / 10.0f);
+        if (dist < 10.0F) {
+            float speed = boid->max_speed * (dist / 10.0F);
             desired = nimcp_vec3_mul(desired, speed);
         } else {
             desired = nimcp_vec3_mul(desired, boid->max_speed);
@@ -969,12 +969,12 @@ int nimcp_flocking_predator_evasion(nimcp_flocking_engine_t *engine,
         desired = nimcp_vec3_normalize(desired);
 
         // Panic response: max speed
-        float panic = 1.0f - (dist / engine->predator_radius);
-        float speed = boid->max_speed * (1.0f + panic * 2.0f);
+        float panic = 1.0F - (dist / engine->predator_radius);
+        float speed = boid->max_speed * (1.0F + panic * 2.0F);
 
         desired = nimcp_vec3_mul(desired, speed);
         *force = nimcp_vec3_sub(desired, boid->velocity);
-        *force = nimcp_vec3_limit(*force, boid->max_force * 2.0f);  // Extra force for evasion
+        *force = nimcp_vec3_limit(*force, boid->max_force * 2.0F);  // Extra force for evasion
     }
 
     return 0;
@@ -1100,27 +1100,27 @@ int nimcp_flocking_update(nimcp_flocking_engine_t *engine, float dt) {
         // Hard boundary enforcement
         if (boid->position.x < engine->config.boundary_min.x) {
             boid->position.x = engine->config.boundary_min.x;
-            boid->velocity.x *= -0.5f;
+            boid->velocity.x *= -0.5F;
         }
         if (boid->position.x > engine->config.boundary_max.x) {
             boid->position.x = engine->config.boundary_max.x;
-            boid->velocity.x *= -0.5f;
+            boid->velocity.x *= -0.5F;
         }
         if (boid->position.y < engine->config.boundary_min.y) {
             boid->position.y = engine->config.boundary_min.y;
-            boid->velocity.y *= -0.5f;
+            boid->velocity.y *= -0.5F;
         }
         if (boid->position.y > engine->config.boundary_max.y) {
             boid->position.y = engine->config.boundary_max.y;
-            boid->velocity.y *= -0.5f;
+            boid->velocity.y *= -0.5F;
         }
         if (boid->position.z < engine->config.boundary_min.z) {
             boid->position.z = engine->config.boundary_min.z;
-            boid->velocity.z *= -0.5f;
+            boid->velocity.z *= -0.5F;
         }
         if (boid->position.z > engine->config.boundary_max.z) {
             boid->position.z = engine->config.boundary_max.z;
-            boid->velocity.z *= -0.5f;
+            boid->velocity.z *= -0.5F;
         }
     }
 
@@ -1196,7 +1196,7 @@ int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
         total_dist += nimcp_vec3_distance(engine->boids[i].position, stats->center_of_mass);
     }
     float avg_dist = total_dist / engine->boid_count;
-    stats->cohesion_metric = 1.0f / (1.0f + avg_dist / 10.0f);
+    stats->cohesion_metric = 1.0F / (1.0F + avg_dist / 10.0F);
 
     // Calculate alignment metric (average velocity alignment)
     nimcp_vec3_t avg_velocity = nimcp_vec3_create(0, 0, 0);
@@ -1210,7 +1210,7 @@ int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
         nimcp_vec3_t vel_norm = nimcp_vec3_normalize(engine->boids[i].velocity);
         nimcp_vec3_t avg_norm = nimcp_vec3_normalize(avg_velocity);
         float dot = nimcp_vec3_dot(vel_norm, avg_norm);
-        alignment_sum += (dot + 1.0f) / 2.0f;  // Normalize to 0-1
+        alignment_sum += (dot + 1.0F) / 2.0F;  // Normalize to 0-1
     }
     stats->alignment_metric = alignment_sum / engine->boid_count;
 
@@ -1225,7 +1225,7 @@ int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
             }
         }
         float avg_error = error_sum / engine->boid_count;
-        stats->formation_quality = 1.0f / (1.0f + avg_error / engine->config.formation_spacing);
+        stats->formation_quality = 1.0F / (1.0F + avg_error / engine->config.formation_spacing);
     } else {
         stats->formation_quality = 0;
     }

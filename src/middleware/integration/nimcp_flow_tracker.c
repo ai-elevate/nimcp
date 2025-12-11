@@ -154,7 +154,7 @@ static void update_latency_histogram(latency_histogram_t* hist, float latency_us
 }
 
 static float calculate_percentile(const latency_histogram_t* hist, float percentile) {
-    if (hist->total_samples == 0) return 0.0f;
+    if (hist->total_samples == 0) return 0.0F;
 
     // For p99 with 100 samples, we want the value where 99% are below/equal
     // That means we want to exceed 99 samples, so target_count should be 99
@@ -183,7 +183,7 @@ static void update_path_metrics(path_flow_state_t* path) {
 
     // Calculate time-based metrics (rates, throughput)
     if (elapsed_us > 0) {
-        float elapsed_sec = (float)elapsed_us / 1000000.0f;
+        float elapsed_sec = (float)elapsed_us / 1000000.0F;
 
         // Calculate rates
         path->throughput_bits_per_sec = path->total_information_bits / elapsed_sec;
@@ -191,9 +191,9 @@ static void update_path_metrics(path_flow_state_t* path) {
 
     // Calculate efficiency (independent of time)
     float total_input = path->total_information_bits + path->filtered_information_bits;
-    if (total_input > 0.0f) {
+    if (total_input > 0.0F) {
         path->flow_efficiency = path->total_information_bits / total_input;
-        path->loss_percentage = (path->filtered_information_bits / total_input) * 100.0f;
+        path->loss_percentage = (path->filtered_information_bits / total_input) * 100.0F;
     }
 
     // Calculate latency statistics (independent of time)
@@ -203,12 +203,12 @@ static void update_path_metrics(path_flow_state_t* path) {
         // Standard deviation
         float mean_sq = (float)path->latency_sq_sum_us / (float)path->total_events;
         float variance = mean_sq - (path->avg_latency_us * path->avg_latency_us);
-        path->stddev_latency_us = sqrtf(fmaxf(0.0f, variance));
+        path->stddev_latency_us = sqrtf(fmaxf(0.0F, variance));
 
         // Percentiles from histogram
-        path->p50_latency_us = calculate_percentile(&path->latency_hist, 0.50f);
-        path->p90_latency_us = calculate_percentile(&path->latency_hist, 0.90f);
-        path->p99_latency_us = calculate_percentile(&path->latency_hist, 0.99f);
+        path->p50_latency_us = calculate_percentile(&path->latency_hist, 0.50F);
+        path->p90_latency_us = calculate_percentile(&path->latency_hist, 0.90F);
+        path->p99_latency_us = calculate_percentile(&path->latency_hist, 0.99F);
     }
 
     path->last_update_time_us = now_us;
@@ -230,8 +230,8 @@ flow_tracker_config_t flow_tracker_default_config(void) {
     flow_tracker_config_t config = {
         .measurement_window_ms = FLOW_TRACKER_MEASUREMENT_WINDOW_MS,
         .latency_histogram_bins = FLOW_TRACKER_LATENCY_BINS,
-        .efficiency_warning_threshold = 0.7f,
-        .bottleneck_threshold = 0.8f,
+        .efficiency_warning_threshold = 0.7F,
+        .bottleneck_threshold = 0.8F,
         .enable_latency_tracking = true
     };
     return config;
@@ -266,9 +266,9 @@ flow_tracker_t* flow_tracker_create_custom(
         path->measurement_window_start_us = now_us;
         path->last_update_time_us = now_us;
         path->min_latency_us = INFINITY;
-        path->max_latency_us = 0.0f;
+        path->max_latency_us = 0.0F;
         path->latency_hist.min_value_us = INFINITY;
-        path->latency_hist.max_value_us = 0.0f;
+        path->latency_hist.max_value_us = 0.0F;
 
         if (nimcp_mutex_init(&path->mutex, NULL) != NIMCP_SUCCESS) {
             LOG_ERROR("FlowTracker: Failed to init mutex for path %d", i);
@@ -281,7 +281,7 @@ flow_tracker_t* flow_tracker_create_custom(
     }
 
     tracker->worst_path = PATH_MIDDLEWARE_TO_EXECUTIVE;
-    tracker->worst_path_efficiency = 1.0f;
+    tracker->worst_path_efficiency = 1.0F;
     tracker->last_global_update_us = now_us;
 
     // Bio-async registration
@@ -484,7 +484,7 @@ float flow_tracker_calculate_efficiency(
     const flow_tracker_t* tracker,
     integration_path_t path
 ) {
-    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0f;
+    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0F;
 
     const path_flow_state_t* path_state = &tracker->paths[path];
     return path_state->flow_efficiency;
@@ -494,7 +494,7 @@ float flow_tracker_get_throughput(
     const flow_tracker_t* tracker,
     integration_path_t path
 ) {
-    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0f;
+    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0F;
 
     const path_flow_state_t* path_state = &tracker->paths[path];
     return path_state->throughput_bits_per_sec;
@@ -504,7 +504,7 @@ float flow_tracker_get_utilization(
     const flow_tracker_t* tracker,
     integration_path_t path
 ) {
-    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0f;
+    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0F;
 
     const path_flow_state_t* path_state = &tracker->paths[path];
     return path_state->capacity_utilization;
@@ -514,7 +514,7 @@ float flow_tracker_get_avg_latency(
     const flow_tracker_t* tracker,
     integration_path_t path
 ) {
-    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0f;
+    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0F;
 
     const path_flow_state_t* path_state = &tracker->paths[path];
     return path_state->avg_latency_us;
@@ -524,7 +524,7 @@ float flow_tracker_get_p99_latency(
     const flow_tracker_t* tracker,
     integration_path_t path
 ) {
-    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0f;
+    if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return 0.0F;
 
     const path_flow_state_t* path_state = &tracker->paths[path];
     return path_state->p99_latency_us;
@@ -539,11 +539,11 @@ integration_path_t flow_tracker_find_bottleneck(
     float* efficiency
 ) {
     if (!tracker) {
-        if (efficiency) *efficiency = 1.0f;
+        if (efficiency) *efficiency = 1.0F;
         return PATH_MIDDLEWARE_TO_EXECUTIVE;
     }
 
-    float worst_eff = 1.0f;
+    float worst_eff = 1.0F;
     integration_path_t worst = PATH_MIDDLEWARE_TO_EXECUTIVE;
 
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
@@ -576,9 +576,9 @@ bool flow_tracker_has_bottleneck(
 float flow_tracker_get_total_throughput(
     const flow_tracker_t* tracker
 ) {
-    if (!tracker) return 0.0f;
+    if (!tracker) return 0.0F;
 
-    float total = 0.0f;
+    float total = 0.0F;
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
         total += tracker->paths[i].throughput_bits_per_sec;
     }
@@ -589,9 +589,9 @@ float flow_tracker_get_total_throughput(
 float flow_tracker_get_avg_efficiency(
     const flow_tracker_t* tracker
 ) {
-    if (!tracker) return 0.0f;
+    if (!tracker) return 0.0F;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     uint32_t count = 0;
 
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
@@ -601,7 +601,7 @@ float flow_tracker_get_avg_efficiency(
         }
     }
 
-    return count > 0 ? (sum / (float)count) : 0.0f;
+    return count > 0 ? (sum / (float)count) : 0.0F;
 }
 
 //=============================================================================
@@ -626,16 +626,16 @@ void flow_tracker_reset(
         path->measurement_window_start_us = now_us;
         path->last_update_time_us = now_us;
         path->min_latency_us = INFINITY;
-        path->max_latency_us = 0.0f;
+        path->max_latency_us = 0.0F;
         path->latency_hist.min_value_us = INFINITY;
-        path->latency_hist.max_value_us = 0.0f;
+        path->latency_hist.max_value_us = 0.0F;
 
         nimcp_mutex_unlock(&path->mutex);
     }
 
-    tracker->total_throughput_bits_per_sec = 0.0f;
-    tracker->avg_flow_efficiency = 0.0f;
-    tracker->worst_path_efficiency = 1.0f;
+    tracker->total_throughput_bits_per_sec = 0.0F;
+    tracker->avg_flow_efficiency = 0.0F;
+    tracker->worst_path_efficiency = 1.0F;
     tracker->worst_path = PATH_MIDDLEWARE_TO_EXECUTIVE;
     tracker->any_bottleneck_detected = false;
     tracker->num_bottlenecked_paths = 0;

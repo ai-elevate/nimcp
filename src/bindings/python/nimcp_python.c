@@ -191,7 +191,7 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
 static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     PyObject* features_list;
     const char* label;
-    float confidence = 1.0f;
+    float confidence = 1.0F;
 
     if (!PyArg_ParseTuple(args, "Os|f", &features_list, &label, &confidence)) {
         return NULL;
@@ -207,7 +207,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
                                            (uint32_t)num_features, label, confidence);
     free(features);
 
-    if (loss < 0.0f) {
+    if (loss < 0.0F) {
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return NULL;
     }
@@ -518,8 +518,8 @@ static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
  * @return Tuple (utilization, saturation) where both are floats [0.0, 1.0]
  */
 static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args) {
-    float utilization = 0.0f;
-    float saturation = 0.0f;
+    float utilization = 0.0F;
+    float saturation = 0.0F;
 
     // CRITICAL FIX: Pass internal brain, not handle wrapper
     bool success = nimcp_brain_get_utilization_metrics(self->brain, &utilization, &saturation);

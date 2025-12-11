@@ -235,7 +235,7 @@ static bool eligibility_table_init(eligibility_table_t* table, uint32_t capacity
 
     /* Initialize entries as empty */
     for (uint32_t i = 0; i < capacity; i++) {
-        table->entries[i].eligibility = 0.0f;
+        table->entries[i].eligibility = 0.0F;
     }
 
     return true;
@@ -263,13 +263,13 @@ static edp_eligibility_entry_t* eligibility_find_or_create(
         uint32_t idx = (hash + probe) % table->capacity;
         edp_eligibility_entry_t* entry = &table->entries[idx];
 
-        if (entry->eligibility == 0.0f && entry->pre_neuron == 0 && entry->post_neuron == 0) {
+        if (entry->eligibility == 0.0F && entry->pre_neuron == 0 && entry->post_neuron == 0) {
             /* Empty slot - create new entry */
             entry->pre_neuron = pre_neuron;
             entry->post_neuron = post_neuron;
-            entry->eligibility = 0.0f;
+            entry->eligibility = 0.0F;
             entry->last_update_ns = 0;
-            entry->accumulated_delta = 0.0f;
+            entry->accumulated_delta = 0.0F;
             table->count++;
             return entry;
         }
@@ -304,10 +304,10 @@ static void edp_event_callback(const brain_event_t* event, void* context)
 
 static edp_spike_timing_t classify_spike_timing(int64_t delta_ns, float window_ns)
 {
-    float delta_ms = (float)delta_ns / 1000000.0f;
-    float window_ms = window_ns / 1000000.0f;
+    float delta_ms = (float)delta_ns / 1000000.0F;
+    float window_ms = window_ns / 1000000.0F;
 
-    if (fabsf(delta_ms) < 1.0f) {
+    if (fabsf(delta_ms) < 1.0F) {
         return EDP_SPIKE_SYNCHRONOUS;
     } else if (delta_ms > 0 && delta_ms < window_ms) {
         return EDP_SPIKE_PRE_BEFORE_POST;  /* LTP */
@@ -321,24 +321,24 @@ static float compute_stdp_weight_change(edp_context_t* ctx,
                                         int64_t delta_ns,
                                         edp_spike_timing_t timing)
 {
-    float delta_ms = (float)delta_ns / 1000000.0f;
-    float window_ms = ctx->stdp_window_ns / 1000000.0f;
+    float delta_ms = (float)delta_ns / 1000000.0F;
+    float window_ms = ctx->stdp_window_ns / 1000000.0F;
 
     switch (timing) {
         case EDP_SPIKE_PRE_BEFORE_POST:
             /* LTP: exponential decay with positive dt */
-            return ctx->config.ltp_rate * expf(-fabsf(delta_ms) / (window_ms * 0.5f));
+            return ctx->config.ltp_rate * expf(-fabsf(delta_ms) / (window_ms * 0.5F));
 
         case EDP_SPIKE_POST_BEFORE_PRE:
             /* LTD: exponential decay with negative dt */
-            return -ctx->config.ltd_rate * expf(-fabsf(delta_ms) / (window_ms * 0.5f));
+            return -ctx->config.ltd_rate * expf(-fabsf(delta_ms) / (window_ms * 0.5F));
 
         case EDP_SPIKE_SYNCHRONOUS:
             /* Slight LTP for synchronous firing */
-            return ctx->config.ltp_rate * 0.5f;
+            return ctx->config.ltp_rate * 0.5F;
 
         default:
-            return 0.0f;
+            return 0.0F;
     }
 }
 
@@ -376,19 +376,19 @@ static nimcp_result_t process_spike_pair(edp_context_t* ctx,
             &ctx->eligibility, pre->neuron_id, post->neuron_id);
         if (entry) {
             entry->accumulated_delta += weight_change;
-            entry->eligibility = 1.0f;  /* Reset eligibility on activity */
+            entry->eligibility = 1.0F;  /* Reset eligibility on activity */
             entry->last_update_ns = nimcp_time_monotonic_ns();
         }
         nimcp_platform_rwlock_wrunlock(&ctx->eligibility.rwlock);
     } else {
         /* Apply weight change immediately through plasticity bridge */
-        float weight_delta = 0.0f;
+        float weight_delta = 0.0F;
         nimcp_result_t res = tpb_route_weight_update(
             ctx->plasticity_bridge,
             post->neuron_id,
             pre->amplitude,
             post->amplitude,
-            (float)delta_ns / 1000000.0f,  /* Convert to ms */
+            (float)delta_ns / 1000000.0F,  /* Convert to ms */
             &weight_delta
         );
 
@@ -460,18 +460,18 @@ edp_config_t edp_config_default(void)
     config.batch_size = 32;
     config.batch_timeout_ms = 10;
 
-    config.stdp_window_ms = 40.0f;  /* ±40ms STDP window */
-    config.ltp_rate = 0.01f;
-    config.ltd_rate = 0.012f;       /* Slightly stronger LTD */
-    config.spike_threshold = 0.1f;
+    config.stdp_window_ms = 40.0F;  /* ±40ms STDP window */
+    config.ltp_rate = 0.01F;
+    config.ltd_rate = 0.012F;       /* Slightly stronger LTD */
+    config.spike_threshold = 0.1F;
 
     config.enable_eligibility = true;
     config.eligibility_tau_ms = EDP_DEFAULT_ELIGIBILITY_TAU;
-    config.eligibility_threshold = 0.01f;
+    config.eligibility_threshold = 0.01F;
 
-    config.error_gain = 1.0f;
-    config.reward_gain = 1.0f;
-    config.novelty_gain = 0.5f;
+    config.error_gain = 1.0F;
+    config.reward_gain = 1.0F;
+    config.novelty_gain = 0.5F;
 
     config.filter_by_region = false;
     config.region_filter = NULL;
@@ -495,10 +495,10 @@ edp_config_t edp_config_high_performance(void)
 
     /* Fast processing mode with minimal overhead */
     config.mode = EDP_MODE_IMMEDIATE;
-    config.stdp_window_ms = 15.0f;  /* Shorter window for speed */
+    config.stdp_window_ms = 15.0F;  /* Shorter window for speed */
 
     config.enable_eligibility = false;  /* Faster without traces */
-    config.eligibility_tau_ms = 50.0f;
+    config.eligibility_tau_ms = 50.0F;
     config.enable_async_processing = true;
     config.async_queue_size = 4096;
 
@@ -511,12 +511,12 @@ edp_config_t edp_config_biological(void)
 
     /* Biologically realistic parameters */
     config.mode = EDP_MODE_BATCHED;      /* Batch for biological coherence */
-    config.stdp_window_ms = 50.0f;       /* Longer biological STDP window */
-    config.ltp_rate = 0.005f;            /* More conservative LTP */
-    config.ltd_rate = 0.0055f;           /* Balanced with LTP */
+    config.stdp_window_ms = 50.0F;       /* Longer biological STDP window */
+    config.ltp_rate = 0.005F;            /* More conservative LTP */
+    config.ltd_rate = 0.0055F;           /* Balanced with LTP */
 
     config.enable_eligibility = true;
-    config.eligibility_tau_ms = 1000.0f; /* Long trace (1s) for credit assignment */
+    config.eligibility_tau_ms = 1000.0F; /* Long trace (1s) for credit assignment */
 
     return config;
 }
@@ -529,22 +529,22 @@ nimcp_result_t edp_validate_config(const edp_config_t* config)
 {
     if (!config) return NIMCP_ERROR_INVALID_PARAM;
 
-    if (config->stdp_window_ms <= 0.0f || config->stdp_window_ms > 1000.0f) {
+    if (config->stdp_window_ms <= 0.0F || config->stdp_window_ms > 1000.0F) {
         LOG_ERROR("Invalid STDP window: %.2f (must be 0-1000ms)", config->stdp_window_ms);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->ltp_rate < 0.0f || config->ltp_rate > 1.0f) {
+    if (config->ltp_rate < 0.0F || config->ltp_rate > 1.0F) {
         LOG_ERROR("Invalid LTP rate: %.4f (must be 0-1)", config->ltp_rate);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->ltd_rate < 0.0f || config->ltd_rate > 1.0f) {
+    if (config->ltd_rate < 0.0F || config->ltd_rate > 1.0F) {
         LOG_ERROR("Invalid LTD rate: %.4f (must be 0-1)", config->ltd_rate);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->eligibility_tau_ms <= 0.0f) {
+    if (config->eligibility_tau_ms <= 0.0F) {
         LOG_ERROR("Invalid eligibility tau: %.2f (must be > 0)", config->eligibility_tau_ms);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -571,7 +571,7 @@ edp_context_t* edp_create(const edp_config_t* config)
     }
 
     ctx->config = local_config;
-    ctx->stdp_window_ns = local_config.stdp_window_ms * 1000000.0f;
+    ctx->stdp_window_ns = local_config.stdp_window_ms * 1000000.0F;
 
     /* Initialize spike buffer */
     if (!spike_buffer_init(&ctx->spike_buffer, EDP_SPIKE_BUFFER_SIZE)) {
@@ -819,7 +819,7 @@ nimcp_result_t edp_process_event(edp_context_t* ctx, const brain_event_t* event)
             category = EDP_CATEGORY_SPIKE;
             /* LTP event - boost relevant synapses */
             if (ctx->plasticity_bridge) {
-                result = edp_process_reward(ctx, 0.5f);  /* Positive reinforcement */
+                result = edp_process_reward(ctx, 0.5F);  /* Positive reinforcement */
             }
             break;
 
@@ -827,7 +827,7 @@ nimcp_result_t edp_process_event(edp_context_t* ctx, const brain_event_t* event)
             category = EDP_CATEGORY_SPIKE;
             /* LTD event - weaken relevant synapses */
             if (ctx->plasticity_bridge) {
-                result = edp_process_reward(ctx, -0.3f);  /* Negative adjustment */
+                result = edp_process_reward(ctx, -0.3F);  /* Negative adjustment */
             }
             break;
 
@@ -843,7 +843,7 @@ nimcp_result_t edp_process_event(edp_context_t* ctx, const brain_event_t* event)
             if (event->data.size >= sizeof(float)) {
                 float batch_loss = *(const float*)event->data.data;
                 /* Convert loss improvement to reward signal */
-                float reward = (batch_loss < ctx->stats.last_batch_loss) ? 0.2f : -0.1f;
+                float reward = (batch_loss < ctx->stats.last_batch_loss) ? 0.2F : -0.1F;
                 ctx->stats.last_batch_loss = batch_loss;
                 result = edp_process_reward(ctx, reward);
             }
@@ -855,7 +855,7 @@ nimcp_result_t edp_process_event(edp_context_t* ctx, const brain_event_t* event)
             if (ctx->plasticity_bridge && event->data.size >= sizeof(float)) {
                 float attention = *(const float*)event->data.data;
                 /* Boost acetylcholine for attention-gated learning */
-                tpb_set_neuromod_levels(ctx->plasticity_bridge, -1.0f, attention, -1.0f, -1.0f);
+                tpb_set_neuromod_levels(ctx->plasticity_bridge, -1.0F, attention, -1.0F, -1.0F);
             }
             break;
 
@@ -961,7 +961,7 @@ nimcp_result_t edp_process_prediction_error(edp_context_t* ctx,
     float scaled_error = prediction_error * ctx->config.error_gain;
 
     /* Report error as negative reward (error = bad) */
-    float rpe = 0.0f;
+    float rpe = 0.0F;
     nimcp_result_t res = tpb_report_loss(ctx->plasticity_bridge, fabsf(scaled_error), &rpe);
 
     uint64_t elapsed = nimcp_time_monotonic_ns() - start_time;
@@ -971,8 +971,8 @@ nimcp_result_t edp_process_prediction_error(edp_context_t* ctx,
         ctx->stats.total_events_processed++;
     }
     ctx->stats.total_processing_time_ns += elapsed;
-    ctx->stats.avg_prediction_error = (ctx->stats.avg_prediction_error * 0.99f) +
-                                      (fabsf(prediction_error) * 0.01f);
+    ctx->stats.avg_prediction_error = (ctx->stats.avg_prediction_error * 0.99F) +
+                                      (fabsf(prediction_error) * 0.01F);
     ctx->stats.category_stats[EDP_CATEGORY_ERROR].events_received++;
     if (res == NIMCP_SUCCESS) {
         ctx->stats.category_stats[EDP_CATEGORY_ERROR].events_processed++;
@@ -997,7 +997,7 @@ nimcp_result_t edp_process_reward(edp_context_t* ctx, float reward_signal)
     nimcp_result_t res = tpb_inject_reward(ctx->plasticity_bridge, scaled_reward);
 
     /* Consolidate eligibility traces if enabled */
-    if (ctx->config.enable_eligibility && fabsf(scaled_reward) > 0.01f) {
+    if (ctx->config.enable_eligibility && fabsf(scaled_reward) > 0.01F) {
         uint32_t consolidated = edp_consolidate_eligibility(ctx, scaled_reward);
         if (consolidated > 0) {
             LOG_DEBUG("Consolidated %u eligibility traces with reward %.3f",
@@ -1012,8 +1012,8 @@ nimcp_result_t edp_process_reward(edp_context_t* ctx, float reward_signal)
         ctx->stats.total_events_processed++;
     }
     ctx->stats.total_processing_time_ns += elapsed;
-    ctx->stats.avg_reward_signal = (ctx->stats.avg_reward_signal * 0.99f) +
-                                   (reward_signal * 0.01f);
+    ctx->stats.avg_reward_signal = (ctx->stats.avg_reward_signal * 0.99F) +
+                                   (reward_signal * 0.01F);
     ctx->stats.cumulative_reward += reward_signal;
     ctx->stats.category_stats[EDP_CATEGORY_REWARD].events_received++;
     if (res == NIMCP_SUCCESS) {
@@ -1038,13 +1038,13 @@ nimcp_result_t edp_process_novelty(edp_context_t* ctx,
     float scaled_novelty = novelty_score * ctx->config.novelty_gain;
 
     /* Novelty boosts norepinephrine (arousal/attention) */
-    float ne_boost = scaled_novelty * 0.5f;
-    tpb_set_neuromod_levels(ctx->plasticity_bridge, -1.0f, -1.0f, -1.0f,
-                            0.5f + ne_boost);  /* Boost NE */
+    float ne_boost = scaled_novelty * 0.5F;
+    tpb_set_neuromod_levels(ctx->plasticity_bridge, -1.0F, -1.0F, -1.0F,
+                            0.5F + ne_boost);  /* Boost NE */
 
     /* Mild positive reward for novel stimuli (curiosity) */
-    if (scaled_novelty > 0.5f) {
-        tpb_inject_reward(ctx->plasticity_bridge, scaled_novelty * 0.2f);
+    if (scaled_novelty > 0.5F) {
+        tpb_inject_reward(ctx->plasticity_bridge, scaled_novelty * 0.2F);
     }
 
     uint64_t elapsed = nimcp_time_monotonic_ns() - start_time;
@@ -1109,26 +1109,26 @@ uint32_t edp_consolidate_eligibility(edp_context_t* ctx, float reward)
         edp_eligibility_entry_t* entry = &ctx->eligibility.entries[i];
 
         if (entry->eligibility > ctx->config.eligibility_threshold &&
-            fabsf(entry->accumulated_delta) > 0.0001f) {
+            fabsf(entry->accumulated_delta) > 0.0001F) {
 
             /* Three-factor learning: eligibility × reward × accumulated_delta */
             float weight_change = entry->eligibility * reward * entry->accumulated_delta;
 
             /* Apply through plasticity bridge */
-            float actual_delta = 0.0f;
+            float actual_delta = 0.0F;
             nimcp_result_t res = tpb_route_weight_update(
                 ctx->plasticity_bridge,
                 entry->post_neuron,
-                1.0f,  /* Pre activity placeholder */
-                1.0f,  /* Post activity placeholder */
-                0.0f,  /* Timing handled by accumulated_delta */
+                1.0F,  /* Pre activity placeholder */
+                1.0F,  /* Post activity placeholder */
+                0.0F,  /* Timing handled by accumulated_delta */
                 &actual_delta
             );
 
             if (res == NIMCP_SUCCESS) {
                 consolidated++;
-                entry->accumulated_delta = 0.0f;
-                entry->eligibility *= 0.5f;  /* Partial decay on consolidation */
+                entry->accumulated_delta = 0.0F;
+                entry->eligibility *= 0.5F;  /* Partial decay on consolidation */
             }
         }
     }
@@ -1152,8 +1152,8 @@ nimcp_result_t edp_clear_eligibility(edp_context_t* ctx)
     nimcp_platform_rwlock_wrlock(&ctx->eligibility.rwlock);
 
     for (uint32_t i = 0; i < ctx->eligibility.capacity; i++) {
-        ctx->eligibility.entries[i].eligibility = 0.0f;
-        ctx->eligibility.entries[i].accumulated_delta = 0.0f;
+        ctx->eligibility.entries[i].eligibility = 0.0F;
+        ctx->eligibility.entries[i].accumulated_delta = 0.0F;
     }
     ctx->eligibility.count = 0;
 
@@ -1179,10 +1179,10 @@ nimcp_result_t edp_get_stats(const edp_context_t* ctx, edp_stats_t* stats)
 
     /* Compute derived metrics */
     if (stats->total_processing_time_ns > 0) {
-        float total_time_sec = (float)stats->total_processing_time_ns / 1e9f;
+        float total_time_sec = (float)stats->total_processing_time_ns / 1e9F;
         stats->events_per_second = (float)stats->total_events_processed / total_time_sec;
         stats->avg_latency_us = (float)stats->total_processing_time_ns /
-                                (float)(stats->total_events_processed + 1) / 1000.0f;
+                                (float)(stats->total_events_processed + 1) / 1000.0F;
     }
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&ctx->stats_mutex);

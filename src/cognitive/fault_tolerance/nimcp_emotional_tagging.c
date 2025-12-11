@@ -49,8 +49,8 @@
 #define CRITICAL_RETRY_THRESHOLD 10         /**< Very many retries */
 
 /* Memory boost parameters */
-#define BASE_MEMORY_BOOST 1.0f              /**< Baseline memory strength */
-#define MAX_MEMORY_BOOST 2.5f               /**< Maximum memory boost */
+#define BASE_MEMORY_BOOST 1.0F              /**< Baseline memory strength */
+#define MAX_MEMORY_BOOST 2.5F               /**< Maximum memory boost */
 #define HIGH_AROUSAL_BOOST 2.0f             /**< Boost for high arousal events */
 #define MODERATE_AROUSAL_BOOST 1.5f         /**< Boost for moderate arousal */
 
@@ -59,8 +59,8 @@
 
 /* Value clamping macros */
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
-#define CLAMP_01(x) CLAMP(x, 0.0f, 1.0f)
-#define CLAMP_VALENCE(x) CLAMP(x, -1.0f, 1.0f)
+#define CLAMP_01(x) CLAMP(x, 0.0F, 1.0F)
+#define CLAMP_VALENCE(x) CLAMP(x, -1.0F, 1.0F)
 
 //=============================================================================
 // Internal Structures
@@ -142,30 +142,30 @@ static float compute_valence(const nimcp_recovery_episode_t* episode) {
         /* WHAT: Successful recovery → positive valence
          * WHY:  Positive outcome deserves positive emotion
          * HOW:  Base +0.7, reduced by slow recovery time */
-        valence = 0.7f;
+        valence = 0.7F;
 
         /* Fast recovery → more positive */
         if (episode->recovery_time_us < FAST_RECOVERY_THRESHOLD_US) {
-            valence += 0.2f;
+            valence += 0.2F;
         }
         /* Slow recovery → less positive */
         else if (episode->recovery_time_us > SLOW_RECOVERY_THRESHOLD_US) {
-            valence -= 0.2f;
+            valence -= 0.2F;
         }
     } else {
         /* WHAT: Failed recovery → negative valence
          * WHY:  Failure is bad, especially with data loss risk
          * HOW:  Base -0.6, worsened by critical errors and data loss */
-        valence = -0.6f;
+        valence = -0.6F;
 
         /* Critical error → more negative */
         if (is_critical_error(episode->error_type)) {
-            valence -= 0.2f;
+            valence -= 0.2F;
         }
 
         /* High data loss risk → more negative */
         if (episode->data_loss_risk > CRITICAL_ERROR_THRESHOLD) {
-            valence -= 0.1f;
+            valence -= 0.1F;
         }
     }
 
@@ -191,26 +191,26 @@ static float compute_arousal(const nimcp_recovery_episode_t* episode) {
     /* WHAT: Base arousal from data loss risk
      * WHY:  Data loss is always important
      * HOW:  Direct mapping from risk to arousal */
-    float arousal = episode->data_loss_risk * 0.7f;
+    float arousal = episode->data_loss_risk * 0.7F;
 
     /* WHAT: Critical error → higher arousal
      * WHY:  Severe failures need immediate attention */
     if (is_critical_error(episode->error_type)) {
-        arousal += 0.25f;
+        arousal += 0.25F;
     }
 
     /* WHAT: Many retries → moderate arousal boost
      * WHY:  Repeated failures indicate persistent problem */
     if (episode->retry_count >= CRITICAL_RETRY_THRESHOLD) {
-        arousal += 0.15f;
+        arousal += 0.15F;
     } else if (episode->retry_count >= HIGH_RETRY_THRESHOLD) {
-        arousal += 0.1f;
+        arousal += 0.1F;
     }
 
     /* WHAT: Successful recovery adds arousal if fast
      * WHY:  Quick resolution is noteworthy */
     if (episode->success && episode->recovery_time_us < FAST_RECOVERY_THRESHOLD_US) {
-        arousal += 0.1f;
+        arousal += 0.1F;
     }
 
     return CLAMP_01(arousal);
@@ -230,18 +230,18 @@ static float compute_fear(const nimcp_recovery_episode_t* episode) {
     /* WHAT: Fear primarily from data loss risk
      * WHY:  Data loss is the primary threat
      * HOW:  Direct mapping with critical error boost */
-    float fear = episode->data_loss_risk * 0.8f;
+    float fear = episode->data_loss_risk * 0.8F;
 
     /* WHAT: Critical errors amplify fear
      * WHY:  SIGSEGV, corruption are especially threatening */
     if (is_critical_error(episode->error_type)) {
-        fear += 0.2f;
+        fear += 0.2F;
     }
 
     /* WHAT: Successful recovery reduces fear to zero
      * WHY:  Threat averted, no fear needed */
     if (episode->success) {
-        fear = 0.0f;
+        fear = 0.0F;
     }
 
     return CLAMP_01(fear);
@@ -261,30 +261,30 @@ static float compute_relief(const nimcp_recovery_episode_t* episode) {
     /* WHAT: Relief only for successful recovery
      * WHY:  Can't feel relief if recovery failed */
     if (!episode->success) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* WHAT: Base relief from success
      * WHY:  Any successful recovery provides some relief */
-    float relief = 0.6f;
+    float relief = 0.6F;
 
     /* WHAT: Fast recovery → higher relief
      * WHY:  Quick resolution is more satisfying
      * HOW:  Linear scale from recovery time */
     if (episode->recovery_time_us < FAST_RECOVERY_THRESHOLD_US) {
-        relief += 0.3f;
+        relief += 0.3F;
     } else if (episode->recovery_time_us < SLOW_RECOVERY_THRESHOLD_US) {
         /* Moderate speed → moderate relief */
-        relief += 0.1f;
+        relief += 0.1F;
     } else {
         /* Slow recovery → reduced relief */
-        relief -= 0.2f;
+        relief -= 0.2F;
     }
 
     /* WHAT: Higher data loss risk → more relief when recovered
      * WHY:  Averting catastrophe is very relieving */
     if (episode->data_loss_risk > CRITICAL_ERROR_THRESHOLD) {
-        relief += 0.15f;
+        relief += 0.15F;
     }
 
     return CLAMP_01(relief);
@@ -307,24 +307,24 @@ static float compute_frustration(const nimcp_recovery_episode_t* episode) {
 
     /* Successful recovery → no frustration */
     if (episode->success && episode->retry_count < HIGH_RETRY_THRESHOLD) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* WHAT: Scale frustration with retries
      * WHY:  More attempts → more frustration */
     float frustration;
     if (episode->retry_count >= CRITICAL_RETRY_THRESHOLD) {
-        frustration = 0.8f + (episode->retry_count - CRITICAL_RETRY_THRESHOLD) * 0.02f;
+        frustration = 0.8F + (episode->retry_count - CRITICAL_RETRY_THRESHOLD) * 0.02F;
     } else if (episode->retry_count >= HIGH_RETRY_THRESHOLD) {
-        frustration = 0.5f + (episode->retry_count - HIGH_RETRY_THRESHOLD) * 0.06f;
+        frustration = 0.5F + (episode->retry_count - HIGH_RETRY_THRESHOLD) * 0.06F;
     } else {
-        frustration = episode->retry_count * 0.1f;
+        frustration = episode->retry_count * 0.1F;
     }
 
     /* WHAT: Failure amplifies frustration
      * WHY:  Still failing after many retries is very frustrating */
     if (!episode->success) {
-        frustration += 0.2f;
+        frustration += 0.2F;
     }
 
     return CLAMP_01(frustration);
@@ -358,13 +358,13 @@ static void update_statistics(
 
     /* WHAT: Count high-intensity specific emotions
      * WHY:  Track frequency of extreme emotional events */
-    if (emotion->fear > 0.7f) {
+    if (emotion->fear > 0.7F) {
         tagger->stats.high_fear_count++;
     }
-    if (emotion->relief > 0.7f) {
+    if (emotion->relief > 0.7F) {
         tagger->stats.high_relief_count++;
     }
-    if (emotion->frustration > 0.7f) {
+    if (emotion->frustration > 0.7F) {
         tagger->stats.high_frustration_count++;
     }
 
@@ -510,7 +510,7 @@ bool nimcp_emotional_tagger_compute_tag(
 
     /* WHAT: Log high-intensity emotions for debugging
      * WHY:  Track emotionally salient events */
-    if (output->arousal > 0.8f || fabsf(output->valence) > 0.8f) {
+    if (output->arousal > 0.8F || fabsf(output->valence) > 0.8F) {
         LOG_INFO("High-intensity emotion: valence=%.2f, arousal=%.2f, "
                  "fear=%.2f, relief=%.2f, frustration=%.2f",
                  output->valence, output->arousal, output->fear,
@@ -535,36 +535,36 @@ float nimcp_emotional_memory_boost(const nimcp_emotional_tag_t* emotion) {
      * HOW:  Linear mapping from arousal to boost range */
     float boost = BASE_MEMORY_BOOST;
 
-    if (emotion->arousal > 0.8f) {
+    if (emotion->arousal > 0.8F) {
         /* Very high arousal → maximum boost */
         boost = HIGH_AROUSAL_BOOST;
 
         /* WHAT: Extreme valence amplifies boost
          * WHY:  Very good or very bad events most memorable */
-        if (fabsf(emotion->valence) > 0.8f) {
-            boost += 0.3f;
+        if (fabsf(emotion->valence) > 0.8F) {
+            boost += 0.3F;
         }
-    } else if (emotion->arousal > 0.5f) {
+    } else if (emotion->arousal > 0.5F) {
         /* Moderate arousal → moderate boost */
         boost = MODERATE_AROUSAL_BOOST;
 
         /* Significant valence adds to boost */
-        if (fabsf(emotion->valence) > 0.6f) {
-            boost += 0.2f;
+        if (fabsf(emotion->valence) > 0.6F) {
+            boost += 0.2F;
         }
     } else {
         /* Low arousal → minimal boost */
-        boost = BASE_MEMORY_BOOST + emotion->arousal * 0.3f;
+        boost = BASE_MEMORY_BOOST + emotion->arousal * 0.3F;
     }
 
     /* WHAT: Specific emotions can boost memory
      * WHY:  Fear and relief are evolutionary important
      * HOW:  Add small boost for high fear or relief */
-    if (emotion->fear > 0.8f) {
-        boost += 0.2f; /* Fear enhances memory for threats */
+    if (emotion->fear > 0.8F) {
+        boost += 0.2F; /* Fear enhances memory for threats */
     }
-    if (emotion->relief > 0.8f) {
-        boost += 0.15f; /* Relief reinforces successful strategies */
+    if (emotion->relief > 0.8F) {
+        boost += 0.15F; /* Relief reinforces successful strategies */
     }
 
     /* WHAT: Clamp to valid range
@@ -575,7 +575,7 @@ float nimcp_emotional_memory_boost(const nimcp_emotional_tag_t* emotion) {
 float nimcp_emotional_priority(const nimcp_emotional_tag_t* emotion) {
     /* Guard: NULL check */
     if (!emotion) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* WHAT: Compute priority from emotional salience

@@ -72,7 +72,7 @@ void ethics_update_golden_rule_learning(ethics_engine_t engine, const action_con
         return;
 
     const char* label = (actual_impact < 0) ? "accept" : "reject";
-    float confidence = fminf(fabsf(actual_impact), 1.0f);
+    float confidence = fminf(fabsf(actual_impact), 1.0F);
 
     brain_t golden_rule_net = ethics_engine_get_golden_rule_net(engine);
     if (golden_rule_net) {
@@ -118,7 +118,7 @@ void ethics_update_empathy_learning(ethics_engine_t engine, const action_context
 
     if (empathy_net->perspective_network) {
         brain_learn_example(empathy_net->perspective_network, combined, 20, emotion_label,
-                            1.0f - outcome->uncertainty);
+                            1.0F - outcome->uncertainty);
     }
 
     // Release buffer

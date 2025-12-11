@@ -218,7 +218,7 @@ static bool track_rule(
         rule->rule[sizeof(rule->rule) - 1] = '\0';
         rule->use_count = 0;
         rule->success_count = 0;
-        rule->importance = 0.0f;
+        rule->importance = 0.0F;
         rule->first_used_ms = get_current_time_ms();
         rule->last_used_ms = rule->first_used_ms;
         rule->consolidated = false;
@@ -231,7 +231,7 @@ static bool track_rule(
     rule->rule[sizeof(rule->rule) - 1] = '\0';
     rule->use_count = 0;
     rule->success_count = 0;
-    rule->importance = 0.0f;
+    rule->importance = 0.0F;
     rule->first_used_ms = get_current_time_ms();
     rule->last_used_ms = rule->first_used_ms;
     rule->consolidated = false;
@@ -249,16 +249,16 @@ static bool track_rule(
  */
 static float compute_rule_importance(const rule_usage_t* rule)
 {
-    if (rule->use_count == 0) return 0.0f;
+    if (rule->use_count == 0) return 0.0F;
 
     // Base importance on frequency (log scale)
-    float frequency_factor = logf((float)rule->use_count + 1.0f) / logf(10.0f); // Normalize
+    float frequency_factor = logf((float)rule->use_count + 1.0F) / logf(10.0F); // Normalize
 
     // Success rate as a bonus multiplier (0.5 base + up to 0.5 from success)
     float success_rate = (rule->use_count > 0)
         ? (float)rule->success_count / (float)rule->use_count
-        : 0.0f;
-    float success_bonus = 0.5f + (0.5f * success_rate);
+        : 0.0F;
+    float success_bonus = 0.5F + (0.5F * success_rate);
 
     return frequency_factor * success_bonus;
 }
@@ -362,24 +362,24 @@ static nimcp_error_t handle_decision_request(
     nimcp_platform_mutex_lock(&integration->mutex);
 
     // Make decision based on tracked rules and active inferences
-    float decision_confidence = 0.5f;
+    float decision_confidence = 0.5F;
     bool decision_approved = true;
 
     // Check if any high-importance rules relate to this decision
     for (uint32_t i = 0; i < integration->num_tracked_rules; i++) {
-        if (integration->tracked_rules[i].importance > 0.7f) {
+        if (integration->tracked_rules[i].importance > 0.7F) {
             decision_confidence = fmaxf(decision_confidence, integration->tracked_rules[i].importance);
         }
     }
 
     // Consider active inferences
     if (integration->num_active_inferences > 0) {
-        float avg_salience = 0.0f;
+        float avg_salience = 0.0F;
         for (uint32_t i = 0; i < integration->num_active_inferences; i++) {
             avg_salience += integration->active_inferences[i].salience;
         }
         avg_salience /= integration->num_active_inferences;
-        decision_confidence = (decision_confidence + avg_salience) / 2.0f;
+        decision_confidence = (decision_confidence + avg_salience) / 2.0F;
     }
 
     response.approved = decision_approved;
@@ -485,9 +485,9 @@ static void reasoning_event_callback(const brain_event_t* event, void* context)
 
     uint64_t elapsed = get_current_time_ms() - start_time;
     // Update running average
-    float alpha = 0.1f; // Exponential moving average factor
+    float alpha = 0.1F; // Exponential moving average factor
     integration->stats.avg_hook_execution_time_us =
-        (1.0f - alpha) * integration->stats.avg_hook_execution_time_us +
+        (1.0F - alpha) * integration->stats.avg_hook_execution_time_us +
         alpha * (float)elapsed;
 
     nimcp_platform_mutex_unlock(&integration->mutex);
@@ -670,7 +670,7 @@ bool reasoning_attention_hook(
     if (!integration || !event) return false;
     if (!integration->config.enable_attention_integration) return false;
 
-    float salience_boost = 0.0f;
+    float salience_boost = 0.0F;
 
     switch (event->type) {
         case EVENT_NOVEL_FACT_DERIVED:
@@ -701,14 +701,14 @@ bool reasoning_curiosity_hook(
     if (!integration || !event) return false;
     if (!integration->config.enable_curiosity_integration) return false;
 
-    float curiosity_boost = 0.0f;
+    float curiosity_boost = 0.0F;
 
     switch (event->type) {
         case EVENT_PROOF_FAILED:
             curiosity_boost = integration->config.unexplained_curiosity_boost;
             break;
         case EVENT_UNIFICATION_FAILED:
-            curiosity_boost = integration->config.unexplained_curiosity_boost * 0.67f;
+            curiosity_boost = integration->config.unexplained_curiosity_boost * 0.67F;
             break;
         case EVENT_NOVEL_FACT_DERIVED:
             curiosity_boost = integration->config.novel_fact_curiosity_boost;
@@ -740,7 +740,7 @@ bool reasoning_working_memory_hook(
                 memcpy(goal, event->data.data, event->data.size);
                 goal[event->data.size] = '\0';
             }
-            add_inference_to_wm(integration, goal, 0.5f);
+            add_inference_to_wm(integration, goal, 0.5F);
             break;
         }
 
@@ -972,23 +972,23 @@ reasoning_integration_config_t reasoning_integration_default_config(void)
         // Attention configuration
         .novel_fact_salience_boost = REASONING_NOVEL_FACT_SALIENCE,
         .contradiction_salience_boost = REASONING_CONTRADICTION_SALIENCE,
-        .proof_found_salience_boost = 0.5f,
+        .proof_found_salience_boost = 0.5F,
 
         // Curiosity configuration
         .unexplained_curiosity_boost = REASONING_CURIOSITY_BOOST,
-        .novel_fact_curiosity_boost = 0.1f,
+        .novel_fact_curiosity_boost = 0.1F,
 
         // Working memory configuration
         .max_active_inferences = REASONING_MAX_ACTIVE_INFERENCES,
-        .inference_decay_tau_ms = 1000.0f,
+        .inference_decay_tau_ms = 1000.0F,
 
         // Executive configuration
         .min_proof_steps_for_planning = 5,
-        .planning_priority = 0.7f,
+        .planning_priority = 0.7F,
 
         // Consolidation configuration
         .min_rule_uses_for_consolidation = REASONING_CONSOLIDATION_THRESHOLD,
-        .consolidation_threshold = 0.5f
+        .consolidation_threshold = 0.5F
     };
     return config;
 }
@@ -1000,31 +1000,31 @@ bool reasoning_integration_validate_config(
     if (!config) return false;
 
     // Validate salience boosts [0.0, 1.0]
-    if (config->novel_fact_salience_boost < 0.0f || config->novel_fact_salience_boost > 1.0f)
+    if (config->novel_fact_salience_boost < 0.0F || config->novel_fact_salience_boost > 1.0F)
         return false;
-    if (config->contradiction_salience_boost < 0.0f || config->contradiction_salience_boost > 1.0f)
+    if (config->contradiction_salience_boost < 0.0F || config->contradiction_salience_boost > 1.0F)
         return false;
-    if (config->proof_found_salience_boost < 0.0f || config->proof_found_salience_boost > 1.0f)
+    if (config->proof_found_salience_boost < 0.0F || config->proof_found_salience_boost > 1.0F)
         return false;
 
     // Validate curiosity boosts [0.0, 1.0]
-    if (config->unexplained_curiosity_boost < 0.0f || config->unexplained_curiosity_boost > 1.0f)
+    if (config->unexplained_curiosity_boost < 0.0F || config->unexplained_curiosity_boost > 1.0F)
         return false;
-    if (config->novel_fact_curiosity_boost < 0.0f || config->novel_fact_curiosity_boost > 1.0f)
+    if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F)
         return false;
 
     // Validate working memory configuration
     if (config->max_active_inferences < 1 || config->max_active_inferences > 32)
         return false;
-    if (config->inference_decay_tau_ms < 0.0f)
+    if (config->inference_decay_tau_ms < 0.0F)
         return false;
 
     // Validate executive configuration
-    if (config->planning_priority < 0.0f || config->planning_priority > 1.0f)
+    if (config->planning_priority < 0.0F || config->planning_priority > 1.0F)
         return false;
 
     // Validate consolidation configuration
-    if (config->consolidation_threshold < 0.0f || config->consolidation_threshold > 1.0f)
+    if (config->consolidation_threshold < 0.0F || config->consolidation_threshold > 1.0F)
         return false;
 
     return true;

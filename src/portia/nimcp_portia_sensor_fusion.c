@@ -118,8 +118,8 @@ portia_fusion_config_t portia_fusion_default_config(void) {
     // Initialize all sensors
     for (int i = 0; i < SENSOR_TYPE_COUNT; i++) {
         config.sensors[i].type = i;
-        config.sensors[i].weight = 1.0f / SENSOR_TYPE_COUNT;
-        config.sensors[i].noise_variance = 0.1f;
+        config.sensors[i].weight = 1.0F / SENSOR_TYPE_COUNT;
+        config.sensors[i].noise_variance = 0.1F;
         config.sensors[i].update_rate_hz = 10;
         config.sensors[i].enabled = true;
         config.sensors[i].required = false;
@@ -161,7 +161,7 @@ static void initialize_kalman(kalman_state_t* kalman, float process_noise) {
 
     // Initialize covariance matrix with high uncertainty
     for (int i = 0; i < KALMAN_STATE_DIM; i++) {
-        kalman->covariance[i][i] = 1.0f;
+        kalman->covariance[i][i] = 1.0F;
     }
 
     // Initialize process noise matrix
@@ -179,8 +179,8 @@ static void initialize_kalman(kalman_state_t* kalman, float process_noise) {
  * Kalman filter prediction step
  */
 static void kalman_predict(kalman_state_t* kalman, float dt) {
-    if (dt <= 0.0f || dt > 1.0f) {
-        dt = 0.01f;  // Default 10ms
+    if (dt <= 0.0F || dt > 1.0F) {
+        dt = 0.01F;  // Default 10ms
     }
 
     // State transition: position += velocity * dt, velocity += acceleration * dt
@@ -210,8 +210,8 @@ static void kalman_update(kalman_state_t* kalman, const sensor_reading_t* readin
     // Innovation covariance
     float S = kalman->covariance[0][0] + noise_variance;
 
-    if (S < 1e-6f) {
-        S = 1e-6f;  // Avoid division by zero
+    if (S < 1e-6F) {
+        S = 1e-6F;  // Avoid division by zero
     }
 
     // Kalman gain
@@ -249,7 +249,7 @@ static bool is_outlier(const portia_fusion_ctx_t* ctx, const sensor_reading_t* r
     }
 
     float std_dev = sqrtf(history->running_variance);
-    float z_score = fabsf(reading->value - history->running_mean) / (std_dev + 1e-6f);
+    float z_score = fabsf(reading->value - history->running_mean) / (std_dev + 1e-6F);
 
     bool outlier = z_score > ctx->config.outlier_threshold;
 
@@ -284,8 +284,8 @@ static void update_sensor_statistics(sensor_history_t* history, const sensor_rea
  * Calculate overall confidence
  */
 static float calculate_overall_confidence(const portia_fusion_ctx_t* ctx) {
-    float total_weight = 0.0f;
-    float weighted_confidence = 0.0f;
+    float total_weight = 0.0F;
+    float weighted_confidence = 0.0F;
     uint32_t active_count = 0;
 
     for (int i = 0; i < SENSOR_TYPE_COUNT; i++) {
@@ -294,7 +294,7 @@ static float calculate_overall_confidence(const portia_fusion_ctx_t* ctx) {
         }
 
         const sensor_history_t* history = &ctx->sensors[i];
-        if (history->reading.valid && history->reading.confidence > 0.0f) {
+        if (history->reading.valid && history->reading.confidence > 0.0F) {
             float weight = ctx->config.sensors[i].weight;
             weighted_confidence += weight * history->reading.confidence;
             total_weight += weight;
@@ -302,7 +302,7 @@ static float calculate_overall_confidence(const portia_fusion_ctx_t* ctx) {
         }
     }
 
-    if (total_weight < 1e-6f || active_count == 0) {
+    if (total_weight < 1e-6F || active_count == 0) {
         return MIN_CONFIDENCE;
     }
 
@@ -311,7 +311,7 @@ static float calculate_overall_confidence(const portia_fusion_ctx_t* ctx) {
 
     // Reduce confidence if fewer sensors are active
     if (active_count < ctx->config.min_sensors) {
-        confidence *= 0.5f;
+        confidence *= 0.5F;
     }
 
     return fminf(fmaxf(confidence, MIN_CONFIDENCE), MAX_CONFIDENCE);
@@ -341,7 +341,7 @@ static void broadcast_fusion_event(portia_fusion_ctx_t* ctx, const char* event_t
             .timestamp_us = ctx->current_state.timestamp_ms * 1000,
             .flags = BIO_MSG_FLAG_BROADCAST
         };
-        bio_router_broadcast(ctx->bio_ctx, &header, sizeof(header));
+        bio_router_broadcast((bio_module_context_t)ctx->bio_ctx, &header, sizeof(header));
     }
 }
 
@@ -349,8 +349,8 @@ static void broadcast_fusion_event(portia_fusion_ctx_t* ctx, const char* event_t
  * Process weighted average fusion
  */
 static bool process_weighted_average(portia_fusion_ctx_t* ctx) {
-    float sum_x = 0.0f, sum_y = 0.0f, sum_z = 0.0f;
-    float sum_weights = 0.0f;
+    float sum_x = 0.0F, sum_y = 0.0F, sum_z = 0.0F;
+    float sum_weights = 0.0F;
     uint32_t active_sensors = 0;
 
     uint64_t current_time_ms = nimcp_time_monotonic_ms();
@@ -377,15 +377,15 @@ static bool process_weighted_average(portia_fusion_ctx_t* ctx) {
 
         // For simplicity, map sensor value to position
         sum_x += weight * history->reading.value;
-        sum_y += weight * history->reading.value * 0.5f;  // Simplified mapping
-        sum_z += weight * history->reading.value * 0.25f;
+        sum_y += weight * history->reading.value * 0.5F;  // Simplified mapping
+        sum_z += weight * history->reading.value * 0.25F;
         sum_weights += weight;
         active_sensors++;
 
-        ctx->active_sensors_mask |= (1u << i);
+        ctx->active_sensors_mask |= (1U << i);
     }
 
-    if (sum_weights < 1e-6f) {
+    if (sum_weights < 1e-6F) {
         LOG_WARN("No valid sensor data for fusion");
         return false;
     }
@@ -397,8 +397,8 @@ static bool process_weighted_average(portia_fusion_ctx_t* ctx) {
 
     // Simple velocity estimation
     if (ctx->last_fusion_ms > 0) {
-        float dt = (current_time_ms - ctx->last_fusion_ms) / 1000.0f;
-        if (dt > 0.0f && dt < 1.0f) {
+        float dt = (current_time_ms - ctx->last_fusion_ms) / 1000.0F;
+        if (dt > 0.0F && dt < 1.0F) {
             ctx->current_state.vx = (ctx->current_state.x - ctx->kalman.state[0]) / dt;
             ctx->current_state.vy = (ctx->current_state.y - ctx->kalman.state[1]) / dt;
             ctx->current_state.vz = (ctx->current_state.z - ctx->kalman.state[2]) / dt;
@@ -428,7 +428,7 @@ static bool process_kalman_filter(portia_fusion_ctx_t* ctx) {
 
     // Prediction step
     if (ctx->kalman.last_update_ms > 0) {
-        float dt = (current_time_ms - ctx->kalman.last_update_ms) / 1000.0f;
+        float dt = (current_time_ms - ctx->kalman.last_update_ms) / 1000.0F;
         kalman_predict(&ctx->kalman, dt);
     }
 
@@ -455,7 +455,7 @@ static bool process_kalman_filter(portia_fusion_ctx_t* ctx) {
 
         kalman_update(&ctx->kalman, &history->reading, ctx->config.sensors[i].noise_variance);
         update_count++;
-        ctx->active_sensors_mask |= (1u << i);
+        ctx->active_sensors_mask |= (1U << i);
     }
 
     if (update_count == 0) {
@@ -505,7 +505,7 @@ portia_fusion_ctx_t* portia_fusion_init(
         return NULL;
     }
 
-    if (config->outlier_threshold < 1.0f || config->outlier_threshold > 10.0f) {
+    if (config->outlier_threshold < 1.0F || config->outlier_threshold > 10.0F) {
         LOG_ERROR("Invalid outlier threshold: %.2f", config->outlier_threshold);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid outlier threshold");
         return NULL;
@@ -615,7 +615,7 @@ bool portia_fusion_update_sensor(
         return false;
     }
 
-    if (reading->confidence < 0.0f || reading->confidence > 1.0f) {
+    if (reading->confidence < 0.0F || reading->confidence > 1.0F) {
         LOG_ERROR("Invalid confidence: %.3f", reading->confidence);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor confidence");
         return false;
@@ -748,7 +748,7 @@ bool portia_fusion_set_weight(
         return false;
     }
 
-    if (weight < 0.0f || weight > 1.0f) {
+    if (weight < 0.0F || weight > 1.0F) {
         LOG_ERROR("Invalid weight: %.3f", weight);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor weight");
         return false;
@@ -796,7 +796,7 @@ bool portia_fusion_enable_sensor(
  */
 float portia_fusion_get_confidence(const portia_fusion_ctx_t* ctx) {
     if (!validate_fusion_ctx(ctx)) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
@@ -853,8 +853,8 @@ bool portia_fusion_reset(portia_fusion_ctx_t* ctx) {
         ctx->sensors[i].reading.valid = false;
         ctx->sensors[i].dropout_count = 0;
         ctx->sensors[i].sample_count = 0;
-        ctx->sensors[i].running_mean = 0.0f;
-        ctx->sensors[i].running_variance = 0.0f;
+        ctx->sensors[i].running_mean = 0.0F;
+        ctx->sensors[i].running_variance = 0.0F;
     }
 
     // Reset statistics

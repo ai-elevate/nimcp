@@ -156,12 +156,12 @@ static float compute_coincidence_rate(synchrony_detector_t* detector,
                                       const spike_window_t* window,
                                       float coincidence_window_ms) {
     if (!detector || !window || window->count == 0 || detector->num_neurons == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Count unique neurons that fired - Phase 1.5 O(1) pool allocation
     bool* neuron_fired = (bool*)memory_pool_acquire(detector->neuron_bool_pool);
-    if (!neuron_fired) return 0.0f;
+    if (!neuron_fired) return 0.0F;
     memset(neuron_fired, 0, detector->num_neurons * sizeof(bool));
 
     uint32_t neurons_fired = 0;
@@ -190,12 +190,12 @@ static float compute_coincidence_rate(synchrony_detector_t* detector,
 static float compute_mean_correlation(synchrony_detector_t* detector,
                                       const spike_window_t* window) {
     if (!detector || !window || window->count < 2 || detector->num_neurons < 2) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Build per-neuron spike lists - Phase 1.5 O(1) pool allocation
     uint32_t* spike_counts = (uint32_t*)memory_pool_acquire(detector->spike_counts_pool);
-    if (!spike_counts) return 0.0f;
+    if (!spike_counts) return 0.0F;
     memset(spike_counts, 0, detector->num_neurons * sizeof(uint32_t));
 
     // Count spikes per neuron
@@ -209,7 +209,7 @@ static float compute_mean_correlation(synchrony_detector_t* detector,
 
     // Compute mean and variance
     float mean = (float)window->count / (float)detector->num_neurons;
-    float variance = 0.0f;
+    float variance = 0.0F;
 
     for (uint32_t i = 0; i < detector->num_neurons; i++) {
         float diff = (float)spike_counts[i] - mean;
@@ -222,9 +222,9 @@ static float compute_mean_correlation(synchrony_detector_t* detector,
 
     // Return normalized variance as correlation proxy
     // High variance = low correlation, low variance = high correlation
-    if (variance < 1e-6f) return 1.0f;  // Perfect synchrony
-    float cv = sqrtf(variance) / (mean + 1e-6f);  // Coefficient of variation
-    return 1.0f / (1.0f + cv);  // Map to [0, 1]
+    if (variance < 1e-6F) return 1.0F;  // Perfect synchrony
+    float cv = sqrtf(variance) / (mean + 1e-6F);  // Coefficient of variation
+    return 1.0F / (1.0F + cv);  // Map to [0, 1]
 }
 
 /**
@@ -470,8 +470,8 @@ bool synchrony_detector_detect(synchrony_detector_t* detector,
     }
 
     // Compute overall synchrony index (weighted combination)
-    result->synchrony_index = 0.5f * result->coincidence_rate +
-                             0.5f * result->mean_correlation;
+    result->synchrony_index = 0.5F * result->coincidence_rate +
+                             0.5F * result->mean_correlation;
 
     // Set flags
     result->is_synchronized = (result->synchrony_index >= detector->config.high_threshold);
@@ -514,7 +514,7 @@ bool synchrony_detector_get_stats(const synchrony_detector_t* detector,
 
     if (mean_synchrony) {
         *mean_synchrony = (detector->synchrony_measurements > 0) ?
-                         (float)(detector->sum_synchrony / detector->synchrony_measurements) : 0.0f;
+                         (float)(detector->sum_synchrony / detector->synchrony_measurements) : 0.0F;
     }
 
     return true;
@@ -526,7 +526,7 @@ float synchrony_detector_compute_correlation(const synchrony_detector_t* detecto
                                               float window_ms) {
     if (!detector || neuron_a >= detector->num_neurons ||
         neuron_b >= detector->num_neurons || neuron_a == neuron_b) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Find appropriate window
@@ -568,8 +568,8 @@ float synchrony_detector_compute_correlation(const synchrony_detector_t* detecto
     }
 
     // Compute correlation (Jaccard-like similarity)
-    if (total_a == 0 && total_b == 0) return 0.0f;
-    if (total_a == 0 || total_b == 0) return 0.0f;
+    if (total_a == 0 && total_b == 0) return 0.0F;
+    if (total_a == 0 || total_b == 0) return 0.0F;
 
     return (float)coincident / (float)(total_a + total_b - coincident + 1);
 }

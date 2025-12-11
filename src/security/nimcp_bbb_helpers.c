@@ -304,7 +304,7 @@ bbb_threat_type_t bbb_detect_threat(const void* data, size_t length)
 
 bool bbb_verify_message_integrity(const void* message, size_t length)
 {
-    if (!bbb_validate_pointer(message, "bbb_verify_message_integrity")) {
+    if (!bbb_check_pointer(message, "bbb_verify_message_integrity")) {
         return false;
     }
 
@@ -322,7 +322,7 @@ bool bbb_verify_message_integrity(const void* message, size_t length)
 
 bool bbb_validate_privileged_operation(const void* operation_data, bbb_privilege_t privilege)
 {
-    if (!bbb_validate_pointer(operation_data, "bbb_validate_privileged_operation")) {
+    if (!bbb_check_pointer(operation_data, "bbb_validate_privileged_operation")) {
         return false;
     }
 

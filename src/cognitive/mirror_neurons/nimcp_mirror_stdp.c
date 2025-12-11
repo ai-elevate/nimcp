@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -129,7 +130,7 @@ static const stdp_spike_t* find_recent_spike(const stdp_spike_t* history, uint8_
                                               uint64_t current_us, float window_ms) {
     if (count == 0) return NULL;
 
-    uint64_t window_us = (uint64_t)(window_ms * 1000.0f);
+    uint64_t window_us = (uint64_t)(window_ms * 1000.0F);
 
     // Search from most recent (end of array)
     for (int i = count - 1; i >= 0; i--) {
@@ -294,18 +295,18 @@ mirror_stdp_config_t mirror_stdp_get_default_config(void) {
         // Triplet STDP
         .enable_triplet = true,
         .tau_triplet = NIMCP_STDP_TAU_TRIPLET,
-        .A_triplet = 0.1f,
+        .A_triplet = 0.1F,
 
         // Neuromodulator gating
         .enable_dopamine_gating = true,
         .enable_ach_gating = true,
-        .dopamine_ltp_boost = 2.0f,
-        .ach_attention_boost = 1.5f,
+        .dopamine_ltp_boost = 2.0F,
+        .ach_attention_boost = 1.5F,
 
         // Metaplasticity
         .enable_metaplasticity = true,
-        .meta_tau = 10000.0f,
-        .meta_threshold = 0.5f
+        .meta_tau = 10000.0F,
+        .meta_threshold = 0.5F
     };
     return config;
 }
@@ -356,11 +357,11 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
     }
 
     // Initialize neuromodulator levels to baseline
-    stdp->dopamine_level = 0.5f;
-    stdp->ach_level = 0.5f;
+    stdp->dopamine_level = 0.5F;
+    stdp->ach_level = 0.5F;
 
     // Initialize global scale factor
-    stdp->global_scale_factor = 1.0f;
+    stdp->global_scale_factor = 1.0F;
 
     // Register with bio-async router
     if (bio_router_is_initialized()) {
@@ -470,28 +471,28 @@ uint32_t mirror_stdp_create_synapse(mirror_stdp_t stdp, uint32_t action_id, floa
     syn->initial_weight = syn->weight;
 
     // Initialize traces
-    syn->r1 = 0.0f;
-    syn->r2 = 0.0f;
-    syn->o1 = 0.0f;
-    syn->o2 = 0.0f;
+    syn->r1 = 0.0F;
+    syn->r2 = 0.0F;
+    syn->o1 = 0.0F;
+    syn->o2 = 0.0F;
 
     // Initialize spike history
     syn->obs_spike_count = 0;
     syn->exec_spike_count = 0;
 
     // Initialize rate tracking
-    syn->avg_obs_rate = 0.0f;
-    syn->avg_exec_rate = 0.0f;
+    syn->avg_obs_rate = 0.0F;
+    syn->avg_exec_rate = 0.0F;
 
     // Initialize metaplasticity
-    syn->meta_state = 0.0f;
-    syn->activity_history = 0.0f;
+    syn->meta_state = 0.0F;
+    syn->activity_history = 0.0F;
 
     // Initialize statistics
     syn->ltp_events = 0;
     syn->ltd_events = 0;
-    syn->total_ltp = 0.0f;
-    syn->total_ltd = 0.0f;
+    syn->total_ltp = 0.0F;
+    syn->total_ltd = 0.0F;
     syn->last_update_us = 0;
 
     // Add to action map
@@ -511,7 +512,7 @@ bool mirror_stdp_get_synapse(mirror_stdp_t stdp, uint32_t synapse_id, mirror_std
 
 float mirror_stdp_get_weight(mirror_stdp_t stdp, uint32_t synapse_id) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
-        return -1.0f;
+        return -1.0F;
     }
     return stdp->synapses[synapse_id].weight;
 }
@@ -541,13 +542,13 @@ uint32_t mirror_stdp_find_synapse(mirror_stdp_t stdp, uint32_t action_id) {
 
 float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float current_weight,
                                    float dopamine_level, float ach_level) {
-    if (!stdp) return 0.0f;
+    if (!stdp) return 0.0F;
 
     const mirror_stdp_config_t* cfg = &stdp->config;
-    float delta_w = 0.0f;
+    float delta_w = 0.0F;
 
     // Base STDP computation
-    if (delta_t_ms > 0.0f && delta_t_ms <= cfg->ltp_window_ms) {
+    if (delta_t_ms > 0.0F && delta_t_ms <= cfg->ltp_window_ms) {
         // LTP: Observation preceded execution (correct pairing for imitation)
         // Soft bounds: scale by distance from max
         float headroom = cfg->w_max - current_weight;
@@ -555,10 +556,10 @@ float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float cu
 
         // Dopamine gating (reward enhances LTP)
         if (cfg->enable_dopamine_gating) {
-            float da_factor = 1.0f + (dopamine_level - 0.5f) * cfg->dopamine_ltp_boost;
-            delta_w *= clamp_f(da_factor, 0.1f, 3.0f);
+            float da_factor = 1.0F + (dopamine_level - 0.5F) * cfg->dopamine_ltp_boost;
+            delta_w *= clamp_f(da_factor, 0.1F, 3.0F);
         }
-    } else if (delta_t_ms < 0.0f && -delta_t_ms <= cfg->ltd_window_ms) {
+    } else if (delta_t_ms < 0.0F && -delta_t_ms <= cfg->ltd_window_ms) {
         // LTD: Execution preceded observation (temporal confusion)
         // Soft bounds: scale by distance from min
         float footroom = current_weight - cfg->w_min;
@@ -567,8 +568,8 @@ float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float cu
 
     // ACh gating (attention enhances all plasticity)
     if (cfg->enable_ach_gating) {
-        float ach_factor = 1.0f + (ach_level - 0.5f) * cfg->ach_attention_boost;
-        delta_w *= clamp_f(ach_factor, 0.1f, 2.0f);
+        float ach_factor = 1.0F + (ach_level - 0.5F) * cfg->ach_attention_boost;
+        delta_w *= clamp_f(ach_factor, 0.1F, 2.0F);
     }
 
     return delta_w;
@@ -581,12 +582,12 @@ float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float cu
 float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
                                      uint64_t timestamp_us, float strength) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
-        return 0.0f;
+        return 0.0F;
     }
 
     mirror_stdp_synapse_t* syn = &stdp->synapses[synapse_id];
     const mirror_stdp_config_t* cfg = &stdp->config;
-    float total_delta_w = 0.0f;
+    float total_delta_w = 0.0F;
 
     // Update current time
     stdp->current_time_us = timestamp_us;
@@ -597,9 +598,9 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 
     // Update presynaptic traces
     float r1_before = syn->r1;
-    syn->r1 += 1.0f;  // Increment fast trace
+    syn->r1 += 1.0F;  // Increment fast trace
     if (cfg->enable_triplet) {
-        syn->r2 += 1.0f;  // Increment slow trace
+        syn->r2 += 1.0F;  // Increment slow trace
     }
 
     // Look for recent execution spikes for LTD
@@ -611,7 +612,7 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 
     if (recent_exec) {
         // Δt = obs_time - exec_time (negative means exec was before obs -> LTD)
-        float delta_t_ms = (float)(timestamp_us - recent_exec->timestamp_us) / 1000.0f;
+        float delta_t_ms = (float)(timestamp_us - recent_exec->timestamp_us) / 1000.0F;
 
         // Compute base weight change
         float delta_w = mirror_stdp_compute_delta_w(
@@ -623,13 +624,13 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 
         // Apply triplet rule (modulate by postsynaptic trace)
         if (cfg->enable_triplet) {
-            delta_w *= (1.0f + cfg->A_triplet * syn->o2);
+            delta_w *= (1.0F + cfg->A_triplet * syn->o2);
         }
 
         // Apply metaplasticity
         if (cfg->enable_metaplasticity) {
-            float meta_mod = 1.0f - syn->meta_state * cfg->meta_threshold;
-            delta_w *= clamp_f(meta_mod, 0.1f, 2.0f);
+            float meta_mod = 1.0F - syn->meta_state * cfg->meta_threshold;
+            delta_w *= clamp_f(meta_mod, 0.1F, 2.0F);
         }
 
         // Apply weight change
@@ -637,7 +638,7 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
         total_delta_w += delta_w;
 
         // Update statistics
-        if (delta_w < 0.0f) {
+        if (delta_w < 0.0F) {
             syn->ltd_events++;
             syn->total_ltd += fabsf(delta_w);
             stdp->total_ltd_events++;
@@ -647,8 +648,8 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
     }
 
     // Update rate tracking (exponential moving average)
-    float rate_alpha = 0.01f;  // Smoothing factor
-    syn->avg_obs_rate = syn->avg_obs_rate * (1.0f - rate_alpha) + strength * rate_alpha * 1000.0f;
+    float rate_alpha = 0.01F;  // Smoothing factor
+    syn->avg_obs_rate = syn->avg_obs_rate * (1.0F - rate_alpha) + strength * rate_alpha * 1000.0F;
 
     syn->last_update_us = timestamp_us;
 
@@ -658,12 +659,12 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
                                    uint64_t timestamp_us, float strength) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
-        return 0.0f;
+        return 0.0F;
     }
 
     mirror_stdp_synapse_t* syn = &stdp->synapses[synapse_id];
     const mirror_stdp_config_t* cfg = &stdp->config;
-    float total_delta_w = 0.0f;
+    float total_delta_w = 0.0F;
 
     // Update current time
     stdp->current_time_us = timestamp_us;
@@ -674,9 +675,9 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 
     // Update postsynaptic traces
     float o1_before = syn->o1;
-    syn->o1 += 1.0f;  // Increment fast trace
+    syn->o1 += 1.0F;  // Increment fast trace
     if (cfg->enable_triplet) {
-        syn->o2 += 1.0f;  // Increment slow trace
+        syn->o2 += 1.0F;  // Increment slow trace
     }
 
     // Look for recent observation spikes for LTP
@@ -688,11 +689,11 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 
     if (recent_obs) {
         // Δt = obs_time - exec_time (positive means obs was before exec -> LTP)
-        float delta_t_ms = (float)(recent_obs->timestamp_us - timestamp_us) / 1000.0f;
+        float delta_t_ms = (float)(recent_obs->timestamp_us - timestamp_us) / 1000.0F;
         // Actually we want: obs_time - exec_time, but exec is "now"
         // So it's: recent_obs->timestamp_us - timestamp_us which is negative
         // We need positive Δt for LTP, so:
-        delta_t_ms = (float)(timestamp_us - recent_obs->timestamp_us) / 1000.0f;
+        delta_t_ms = (float)(timestamp_us - recent_obs->timestamp_us) / 1000.0F;
 
         // Compute base weight change
         float delta_w = mirror_stdp_compute_delta_w(
@@ -704,13 +705,13 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 
         // Apply triplet rule (modulate by presynaptic trace)
         if (cfg->enable_triplet) {
-            delta_w *= (1.0f + cfg->A_triplet * syn->r2);
+            delta_w *= (1.0F + cfg->A_triplet * syn->r2);
         }
 
         // Apply metaplasticity
         if (cfg->enable_metaplasticity) {
-            float meta_mod = 1.0f + syn->meta_state * cfg->meta_threshold;
-            delta_w *= clamp_f(meta_mod, 0.5f, 1.5f);
+            float meta_mod = 1.0F + syn->meta_state * cfg->meta_threshold;
+            delta_w *= clamp_f(meta_mod, 0.5F, 1.5F);
         }
 
         // Apply weight change
@@ -718,7 +719,7 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
         total_delta_w += delta_w;
 
         // Update statistics
-        if (delta_w > 0.0f) {
+        if (delta_w > 0.0F) {
             syn->ltp_events++;
             syn->total_ltp += delta_w;
             stdp->total_ltp_events++;
@@ -728,12 +729,12 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
     }
 
     // Update rate tracking
-    float rate_alpha = 0.01f;
-    syn->avg_exec_rate = syn->avg_exec_rate * (1.0f - rate_alpha) + strength * rate_alpha * 1000.0f;
+    float rate_alpha = 0.01F;
+    syn->avg_exec_rate = syn->avg_exec_rate * (1.0F - rate_alpha) + strength * rate_alpha * 1000.0F;
 
     // Update activity history for metaplasticity
     if (cfg->enable_metaplasticity) {
-        syn->activity_history = syn->activity_history * 0.999f + strength * 0.001f;
+        syn->activity_history = syn->activity_history * 0.999F + strength * 0.001F;
     }
 
     syn->last_update_us = timestamp_us;
@@ -752,7 +753,7 @@ void mirror_stdp_update_traces(mirror_stdp_t stdp, float dt_ms) {
 
     // Compute decay factors
     float decay_fast = exp_decay(dt_ms, cfg->tau_plus);
-    float decay_slow = cfg->enable_triplet ? exp_decay(dt_ms, cfg->tau_triplet) : 0.0f;
+    float decay_slow = cfg->enable_triplet ? exp_decay(dt_ms, cfg->tau_triplet) : 0.0F;
 
     // Update all synapse traces
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
@@ -772,14 +773,14 @@ void mirror_stdp_update_traces(mirror_stdp_t stdp, float dt_ms) {
 
 float mirror_stdp_get_obs_trace(mirror_stdp_t stdp, uint32_t synapse_id) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
-        return 0.0f;
+        return 0.0F;
     }
     return stdp->synapses[synapse_id].r1;
 }
 
 float mirror_stdp_get_exec_trace(mirror_stdp_t stdp, uint32_t synapse_id) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
-        return 0.0f;
+        return 0.0F;
     }
     return stdp->synapses[synapse_id].o1;
 }
@@ -794,11 +795,11 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
     const mirror_stdp_config_t* cfg = &stdp->config;
 
     // Compute global average rate
-    float total_rate = 0.0f;
+    float total_rate = 0.0F;
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
         total_rate += stdp->synapses[i].avg_exec_rate;
     }
-    float avg_rate = (stdp->num_synapses > 0) ? total_rate / stdp->num_synapses : 0.0f;
+    float avg_rate = (stdp->num_synapses > 0) ? total_rate / stdp->num_synapses : 0.0F;
 
     // Compute rate deviation
     float rate_error = cfg->target_rate - avg_rate;
@@ -806,9 +807,9 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
     // Compute scaling factor (multiplicative homeostasis)
     // Small time constant means slow adaptation
     float adapt_rate = dt_ms / cfg->tau_homeostasis;
-    float scale_change = rate_error * adapt_rate * 0.01f;
+    float scale_change = rate_error * adapt_rate * 0.01F;
 
-    stdp->global_scale_factor = clamp_f(stdp->global_scale_factor + scale_change, 0.5f, 2.0f);
+    stdp->global_scale_factor = clamp_f(stdp->global_scale_factor + scale_change, 0.5F, 2.0F);
 
     // Apply scaling to all synapses
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
@@ -817,7 +818,7 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
         // Multiplicative scaling (preserves relative weights)
         float new_weight = syn->weight * stdp->global_scale_factor;
 
-        if (fabsf(new_weight - syn->weight) > 1e-6f) {
+        if (fabsf(new_weight - syn->weight) > 1e-6F) {
             syn->weight = clamp_f(new_weight, cfg->w_min, cfg->w_max);
             stdp->homeostatic_adjustments++;
         }
@@ -839,8 +840,8 @@ void mirror_stdp_update_metaplasticity(mirror_stdp_t stdp, float dt_ms) {
         float activity_error = syn->activity_history - target_activity;
 
         // Update metaplastic state
-        syn->meta_state = syn->meta_state * decay + activity_error * (1.0f - decay);
-        syn->meta_state = clamp_f(syn->meta_state, -1.0f, 1.0f);
+        syn->meta_state = syn->meta_state * decay + activity_error * (1.0F - decay);
+        syn->meta_state = clamp_f(syn->meta_state, -1.0F, 1.0F);
     }
 }
 
@@ -850,12 +851,12 @@ void mirror_stdp_update_metaplasticity(mirror_stdp_t stdp, float dt_ms) {
 
 void mirror_stdp_set_dopamine(mirror_stdp_t stdp, float level) {
     if (!stdp) return;
-    stdp->dopamine_level = clamp_f(level, 0.0f, 1.0f);
+    stdp->dopamine_level = clamp_f(level, 0.0F, 1.0F);
 }
 
 void mirror_stdp_set_acetylcholine(mirror_stdp_t stdp, float level) {
     if (!stdp) return;
-    stdp->ach_level = clamp_f(level, 0.0f, 1.0f);
+    stdp->ach_level = clamp_f(level, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -870,12 +871,12 @@ bool mirror_stdp_get_stats(mirror_stdp_t stdp, mirror_stdp_stats_t* stats) {
     stats->num_synapses = stdp->num_synapses;
 
     // Count active synapses and compute weight statistics
-    float sum_weight = 0.0f;
-    float sum_weight_sq = 0.0f;
+    float sum_weight = 0.0F;
+    float sum_weight_sq = 0.0F;
     stats->min_weight = stdp->config.w_max;
     stats->max_weight = stdp->config.w_min;
-    float sum_obs_rate = 0.0f;
-    float sum_exec_rate = 0.0f;
+    float sum_obs_rate = 0.0F;
+    float sum_exec_rate = 0.0F;
 
     uint64_t activity_threshold_us = stdp->current_time_us - 1000000;  // 1 second
 
@@ -904,7 +905,7 @@ bool mirror_stdp_get_stats(mirror_stdp_t stdp, mirror_stdp_stats_t* stats) {
         stats->mean_weight = sum_weight / stdp->num_synapses;
         float mean_sq = sum_weight_sq / stdp->num_synapses;
         stats->weight_variance = mean_sq - stats->mean_weight * stats->mean_weight;
-        if (stats->weight_variance < 0.0f) stats->weight_variance = 0.0f;
+        if (stats->weight_variance < 0.0F) stats->weight_variance = 0.0F;
 
         stats->mean_obs_rate = sum_obs_rate / stdp->num_synapses;
         stats->mean_exec_rate = sum_exec_rate / stdp->num_synapses;
@@ -966,14 +967,14 @@ void mirror_stdp_step(mirror_stdp_t stdp, float dt_ms) {
     // Apply homeostatic scaling (periodically, not every step)
     stdp->last_homeostasis_us += (uint64_t)(dt_ms * 1000);
     if (stdp->last_homeostasis_us >= 100000) {  // Every 100ms
-        mirror_stdp_apply_homeostasis(stdp, 100.0f);
+        mirror_stdp_apply_homeostasis(stdp, 100.0F);
         stdp->last_homeostasis_us = 0;
     }
 
     // Update metaplasticity (periodically)
     stdp->last_metaplasticity_us += (uint64_t)(dt_ms * 1000);
     if (stdp->last_metaplasticity_us >= 1000000) {  // Every 1s
-        mirror_stdp_update_metaplasticity(stdp, 1000.0f);
+        mirror_stdp_update_metaplasticity(stdp, 1000.0F);
         stdp->last_metaplasticity_us = 0;
     }
 }
@@ -984,10 +985,10 @@ void mirror_stdp_reset_stats(mirror_stdp_t stdp) {
     // Reset global statistics
     stdp->total_ltp_events = 0;
     stdp->total_ltd_events = 0;
-    stdp->sum_ltp_magnitude = 0.0f;
-    stdp->sum_ltd_magnitude = 0.0f;
-    stdp->sum_delta_t_ltp = 0.0f;
-    stdp->sum_delta_t_ltd = 0.0f;
+    stdp->sum_ltp_magnitude = 0.0F;
+    stdp->sum_ltd_magnitude = 0.0F;
+    stdp->sum_delta_t_ltp = 0.0F;
+    stdp->sum_delta_t_ltd = 0.0F;
     stdp->homeostatic_adjustments = 0;
 
     // Reset per-synapse statistics
@@ -995,7 +996,7 @@ void mirror_stdp_reset_stats(mirror_stdp_t stdp) {
         mirror_stdp_synapse_t* syn = &stdp->synapses[i];
         syn->ltp_events = 0;
         syn->ltd_events = 0;
-        syn->total_ltp = 0.0f;
-        syn->total_ltd = 0.0f;
+        syn->total_ltp = 0.0F;
+        syn->total_ltd = 0.0F;
     }
 }

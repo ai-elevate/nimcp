@@ -46,11 +46,11 @@
  * WHY: Standard acosh may not handle edge cases well
  */
 static inline float safe_acosh(float x) {
-    if (x < 1.0f + POINCARE_EPSILON) {
-        return 0.0f;  // Distance near origin
+    if (x < 1.0F + POINCARE_EPSILON) {
+        return 0.0F;  // Distance near origin
     }
-    if (x > 1e10f) {
-        return logf(2.0f * x);  // Asymptotic form for large x
+    if (x > 1e10F) {
+        return logf(2.0F * x);  // Asymptotic form for large x
     }
     return acoshf(x);
 }
@@ -62,8 +62,8 @@ static inline float safe_acosh(float x) {
  * WHY: atanh is undefined at x = ±1
  */
 static inline float safe_atanh(float x) {
-    if (fabsf(x) >= 1.0f - POINCARE_EPSILON) {
-        x = copysignf(1.0f - POINCARE_EPSILON, x);  // Clip to valid range
+    if (fabsf(x) >= 1.0F - POINCARE_EPSILON) {
+        x = copysignf(1.0F - POINCARE_EPSILON, x);  // Clip to valid range
     }
     return atanhf(x);
 }
@@ -72,7 +72,7 @@ static inline float safe_atanh(float x) {
  * @brief Dot product of two vectors
  */
 static float dot_product(const float *a, const float *b, uint32_t dim) {
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         sum += a[i] * b[i];
     }
@@ -176,9 +176,9 @@ poincare_point_t* poincare_point_copy(const poincare_point_t *src) {
 
 float poincare_norm(const poincare_point_t *point) {
     if (!point || !point->coords) {
-        return 0.0f;
+        return 0.0F;
     }
-    float sum_squares = 0.0f;
+    float sum_squares = 0.0F;
     for (uint32_t i = 0; i < point->dim; i++) {
         sum_squares += point->coords[i] * point->coords[i];
     }
@@ -202,10 +202,10 @@ void poincare_clip(poincare_point_t *point) {
 
 float poincare_euclidean_dist_squared(const poincare_point_t *x, const poincare_point_t *y) {
     if (!x || !y || !x->coords || !y->coords || x->dim != y->dim) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < x->dim; i++) {
         float diff = x->coords[i] - y->coords[i];
         sum += diff * diff;
@@ -215,7 +215,7 @@ float poincare_euclidean_dist_squared(const poincare_point_t *x, const poincare_
 
 float poincare_distance(const poincare_point_t *x, const poincare_point_t *y) {
     if (!x || !y || !x->coords || !y->coords || x->dim != y->dim) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute ||x-y||²
@@ -223,12 +223,12 @@ float poincare_distance(const poincare_point_t *x, const poincare_point_t *y) {
 
     // Compute (1 - ||x||²)
     float x_norm_sq = squared_norm(x->coords, x->dim);
-    float one_minus_x_sq = 1.0f - x_norm_sq;
+    float one_minus_x_sq = 1.0F - x_norm_sq;
     one_minus_x_sq = fmaxf(one_minus_x_sq, POINCARE_EPSILON);  // Prevent division by zero
 
     // Compute (1 - ||y||²)
     float y_norm_sq = squared_norm(y->coords, y->dim);
-    float one_minus_y_sq = 1.0f - y_norm_sq;
+    float one_minus_y_sq = 1.0F - y_norm_sq;
     one_minus_y_sq = fmaxf(one_minus_y_sq, POINCARE_EPSILON);  // Prevent division by zero
 
     // Compute denominator: (1 - ||x||²)(1 - ||y||²)
@@ -238,7 +238,7 @@ float poincare_distance(const poincare_point_t *x, const poincare_point_t *y) {
     float delta = numerator / denominator;
 
     // Compute distance: d = acosh(1 + 2Δ)
-    float arg = 1.0f + 2.0f * delta;
+    float arg = 1.0F + 2.0F * delta;
     return safe_acosh(arg);
 }
 
@@ -263,7 +263,7 @@ poincare_point_t* poincare_exp_map(const poincare_point_t *base, const float *ta
     }
 
     // Compute tanh(λ_p * ||v|| / 2)
-    float tanh_arg = lambda_p * v_norm / 2.0f;
+    float tanh_arg = lambda_p * v_norm / 2.0F;
     float tanh_val = tanhf(tanh_arg);
 
     // Compute scaled direction: (tanh(...) / ||v||) * v
@@ -298,7 +298,7 @@ float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *po
     if (!neg_base) {
         return NULL;
     }
-    vector_scale(neg_base, -1.0f, base->coords, base->dim);
+    vector_scale(neg_base, -1.0F, base->coords, base->dim);
 
     // Create point for -base
     poincare_point_t *neg_base_point = poincare_point_create(base->dim, neg_base, base->curvature);
@@ -338,7 +338,7 @@ float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *po
     float artanh_norm = safe_atanh(diff_norm);
 
     // Compute scale: (2/λ_p) * artanh(||diff||) / ||diff||
-    float scale = (2.0f / lambda_p) * (artanh_norm / diff_norm);
+    float scale = (2.0F / lambda_p) * (artanh_norm / diff_norm);
 
     // Compute result: scale * diff
     vector_scale(tangent, scale, diff->coords, base->dim);
@@ -366,11 +366,11 @@ poincare_point_t* poincare_mobius_add(const poincare_point_t *x, const poincare_
     float y_norm_sq = squared_norm(y->coords, y->dim);
 
     // Compute numerator coefficients
-    float coeff_x = 1.0f + 2.0f * dot_xy + y_norm_sq;
-    float coeff_y = 1.0f - x_norm_sq;
+    float coeff_x = 1.0F + 2.0F * dot_xy + y_norm_sq;
+    float coeff_y = 1.0F - x_norm_sq;
 
     // Compute denominator: 1 + 2⟨x,y⟩ + ||x||²||y||²
-    float denominator = 1.0f + 2.0f * dot_xy + x_norm_sq * y_norm_sq;
+    float denominator = 1.0F + 2.0F * dot_xy + x_norm_sq * y_norm_sq;
     denominator = fmaxf(denominator, POINCARE_EPSILON);  // Prevent division by zero
 
     // Allocate result coordinates
@@ -440,8 +440,8 @@ float* poincare_riemannian_gradient(const poincare_point_t *point, const float *
 
     // Compute conformal factor: (1-||x||²)²/4
     float x_norm_sq = squared_norm(point->coords, point->dim);
-    float one_minus_x_sq = 1.0f - x_norm_sq;
-    float conformal = (one_minus_x_sq * one_minus_x_sq) / 4.0f;
+    float one_minus_x_sq = 1.0F - x_norm_sq;
+    float conformal = (one_minus_x_sq * one_minus_x_sq) / 4.0F;
 
     // Allocate result
     float *riem_grad = (float*)nimcp_malloc(point->dim * sizeof(float));
@@ -498,22 +498,22 @@ bool poincare_sgd_step(poincare_point_t *point, const float *euclidean_grad, flo
 
 float poincare_conformal_factor(const poincare_point_t *point) {
     if (!point || !point->coords) {
-        return 2.0f;  // Factor at origin
+        return 2.0F;  // Factor at origin
     }
 
     float norm_sq = squared_norm(point->coords, point->dim);
-    float one_minus_norm_sq = 1.0f - norm_sq;
+    float one_minus_norm_sq = 1.0F - norm_sq;
     one_minus_norm_sq = fmaxf(one_minus_norm_sq, POINCARE_EPSILON);  // Prevent division by zero
 
-    return 2.0f / one_minus_norm_sq;
+    return 2.0F / one_minus_norm_sq;
 }
 
 hyperbolic_config_t poincare_default_config(void) {
     hyperbolic_config_t config = {
         .dim = 5,                      // 5D sufficient for most hierarchies
-        .curvature = -1.0f,            // Standard hyperbolic space
-        .learning_rate = 0.01f,        // Conservative default
-        .clip_norm = 1.0f,             // Gradient clipping
+        .curvature = -1.0F,            // Standard hyperbolic space
+        .learning_rate = 0.01F,        // Conservative default
+        .clip_norm = 1.0F,             // Gradient clipping
         .use_exponential_map = true    // Use accurate exponential map
     };
     return config;
@@ -559,7 +559,7 @@ bool poincare_point_is_valid(const poincare_point_t *point) {
 
     // Check norm is within ball
     float norm = poincare_norm(point);
-    if (norm >= 1.0f) {
+    if (norm >= 1.0F) {
         return false;
     }
 

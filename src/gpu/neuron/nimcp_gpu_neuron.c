@@ -152,7 +152,7 @@ NIMCP_EXPORT gpu_network_config_t gpu_get_optimal_config(uint32_t num_neurons)
     // Learning configuration
     config.enable_stdp = true;
     config.enable_bcm = false;
-    config.global_learning_rate = 0.01f;
+    config.global_learning_rate = 0.01F;
 
     return config;
 }
@@ -396,7 +396,7 @@ static uint32_t cpu_update_neurons(
         }
 
         // Compute synaptic input
-        float synaptic_input = 0.0f;
+        float synaptic_input = 0.0F;
         for (uint32_t s = 0; s < network->synapses_count; s++) {
             gpu_synapse_t* syn = &network->synapses_host[s];
             if (syn->target_id == i) {
@@ -409,14 +409,14 @@ static uint32_t cpu_update_neurons(
 
         // Update membrane potential
         float potential = neuron->bias + synaptic_input;
-        potential *= (1.0f + neuron->calcium_concentration);
+        potential *= (1.0F + neuron->calcium_concentration);
 
         // Store old state
         float old_state = neuron->state;
 
         // Update state with leaky integration
-        float decay = expf(-(float)delta_t / 20000.0f);  // 20ms time constant
-        neuron->membrane_potential = neuron->membrane_potential * decay + potential * (1.0f - decay);
+        float decay = expf(-(float)delta_t / 20000.0F);  // 20ms time constant
+        neuron->membrane_potential = neuron->membrane_potential * decay + potential * (1.0F - decay);
         neuron->state = neuron->membrane_potential;
 
         // Check for spike
@@ -426,11 +426,11 @@ static uint32_t cpu_update_neurons(
             spike_count++;
 
             // Update calcium concentration
-            neuron->calcium_concentration += 0.1f;
+            neuron->calcium_concentration += 0.1F;
         }
 
         // Decay calcium
-        neuron->calcium_concentration *= 0.99f;
+        neuron->calcium_concentration *= 0.99F;
     }
 
     return spike_count;
@@ -493,16 +493,16 @@ NIMCP_EXPORT uint32_t gpu_neural_network_apply_stdp(
             int64_t delta_t = (int64_t)post->last_spike - (int64_t)pre->last_spike;
 
             if (delta_t > 0 && delta_t < 20000) {  // Pre before post (LTP)
-                syn->weight += learning_rate * expf(-(float)delta_t / 20000.0f);
+                syn->weight += learning_rate * expf(-(float)delta_t / 20000.0F);
                 modified_count++;
             } else if (delta_t < 0 && delta_t > -20000) {  // Post before pre (LTD)
-                syn->weight -= learning_rate * expf((float)delta_t / 20000.0f);
+                syn->weight -= learning_rate * expf((float)delta_t / 20000.0F);
                 modified_count++;
             }
 
             // Clamp weights
-            if (syn->weight < 0.0f) syn->weight = 0.0f;
-            if (syn->weight > 1.0f) syn->weight = 1.0f;
+            if (syn->weight < 0.0F) syn->weight = 0.0F;
+            if (syn->weight > 1.0F) syn->weight = 1.0F;
         }
     }
 
@@ -593,7 +593,7 @@ NIMCP_EXPORT bool gpu_neural_network_get_stats(
             *avg_firing_rate = (float)network->total_spikes /
                               (float)(network->total_updates * network->neurons_count);
         } else {
-            *avg_firing_rate = 0.0f;
+            *avg_firing_rate = 0.0F;
         }
     }
 

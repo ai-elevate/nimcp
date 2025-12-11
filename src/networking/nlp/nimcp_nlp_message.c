@@ -33,6 +33,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/time/nimcp_time.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"

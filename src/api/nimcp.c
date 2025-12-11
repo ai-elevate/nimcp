@@ -309,7 +309,7 @@ nimcp_status_t nimcp_brain_learn_example(
     float loss = brain_learn_example(brain->internal_brain, features, num_features, label, confidence);
 
     // brain_learn_example returns -1.0f on error, >= 0.0f on success (where value is the loss)
-    if (loss < 0.0f) {
+    if (loss < 0.0F) {
         LOG_ERROR("Brain learning failed for label '%s'", label);
         set_error("Brain learning failed");
         return NIMCP_ERROR;
@@ -419,7 +419,7 @@ nimcp_status_t nimcp_brain_infer(
 
     // Fill remaining with zeros if requested more outputs than available
     for (uint32_t i = copy_size; i < num_outputs; i++) {
-        outputs[i] = 0.0f;
+        outputs[i] = 0.0F;
     }
 
     // Free decision
@@ -1265,7 +1265,7 @@ nimcp_status_t nimcp_brain_workspace_compete(
         return NIMCP_ERROR_INVALID;
     }
 
-    if (strength < 0.0f || strength > 1.0f) {
+    if (strength < 0.0F || strength > 1.0F) {
         set_error("Strength must be in range [0.0, 1.0]");
         return NIMCP_ERROR_INVALID;
     }
@@ -1477,7 +1477,7 @@ nimcp_status_t nimcp_brain_workspace_stats(
         *total_broadcasts = (uint32_t)stats.total_broadcasts;
         *total_competitions = (uint32_t)stats.total_competitions;
         // Note: avg_strength not tracked in statistics, return 0.0
-        *avg_strength = 0.0f;
+        *avg_strength = 0.0F;
         set_error("No error");
         return NIMCP_OK;
     } else {
@@ -1606,12 +1606,12 @@ nimcp_ethics_t nimcp_ethics_create(void) {
     config.num_policies = 0;
     config.callback = NULL;
     config.callback_context = NULL;
-    config.default_severity = 0.5f;
+    config.default_severity = 0.5F;
     config.enable_learning = true;
     config.action_feature_size = 32;
     config.max_agents = 16;
-    config.golden_rule_threshold = 0.0f;
-    config.empathy_weight = 0.5f;
+    config.golden_rule_threshold = 0.0F;
+    config.empathy_weight = 0.5F;
 
     // Create internal ethics engine
     handle->internal_ethics = ethics_engine_create(&config);
@@ -1665,7 +1665,7 @@ nimcp_status_t nimcp_ethics_check(
     action.num_features = num_features;
     action.affected_agents = NULL;
     action.num_affected_agents = 0;
-    action.predicted_harm = 0.0f;
+    action.predicted_harm = 0.0F;
 
     // Evaluate using internal ethics engine
     ethics_evaluation_t eval = ethics_engine_evaluate_action(ethics->internal_ethics, &action);
@@ -1741,7 +1741,7 @@ nimcp_status_t nimcp_knowledge_add_fact(
 
     // Set defaults
     item.domain = KNOWLEDGE_DOMAIN_GENERAL;
-    item.confidence = 1.0f;
+    item.confidence = 1.0F;
     item.examples = NULL;
     item.num_examples = 0;
     item.related_concepts = NULL;
@@ -1856,7 +1856,7 @@ nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
     nimcp_brain_t brain,
     uint32_t neuron_id)
 {
-    nimcp_oscillation_phasor_t result = {0.0f, 0.0f};
+    nimcp_oscillation_phasor_t result = {0.0F, 0.0F};
 
     // Guard: Validate parameters
     if (!brain) {
@@ -1915,35 +1915,35 @@ float nimcp_get_phase_coherence(
     // Guard: Validate parameters
     if (!brain) {
         set_error("NULL brain provided to nimcp_get_phase_coherence");
-        return 0.0f;
+        return 0.0F;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
-        return 0.0f;
+        return 0.0F;
     }
 
     if (!neuron_ids) {
         set_error("NULL neuron_ids provided");
-        return 0.0f;
+        return 0.0F;
     }
 
     if (count == 0) {
         set_error("Invalid count (0) provided");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check if complex oscillations are enabled
     if (!brain_complex_oscillation_is_enabled(brain->internal_brain)) {
         set_error("Complex oscillations not enabled");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Get brain's oscillation analyzer
     brain_oscillation_analyzer_t* analyzer = brain_get_oscillations(brain->internal_brain);
     if (!analyzer) {
         set_error("Brain oscillation analyzer not available");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Access complex oscillation state
@@ -1955,7 +1955,7 @@ float nimcp_get_phase_coherence(
     if (!brain_complex_oscillation_compute_coherence_subset(
             complex_state, neuron_ids, count, &result)) {
         set_error("Failed to compute phase coherence");
-        return 0.0f;
+        return 0.0F;
     }
 
     set_error("No error");
@@ -1973,36 +1973,36 @@ float nimcp_get_pac_modulation(
     // Guard: Validate parameters
     if (!brain) {
         set_error("NULL brain provided to nimcp_get_pac_modulation");
-        return 0.0f;
+        return 0.0F;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Validate frequency ranges
-    if (theta_freq < 4.0f || theta_freq > 8.0f) {
+    if (theta_freq < 4.0F || theta_freq > 8.0F) {
         set_error("Theta frequency should be in range 4-8 Hz");
-        return 0.0f;
+        return 0.0F;
     }
 
-    if (gamma_freq < 30.0f || gamma_freq > 100.0f) {
+    if (gamma_freq < 30.0F || gamma_freq > 100.0F) {
         set_error("Gamma frequency should be in range 30-100 Hz");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check if complex oscillations are enabled
     if (!brain_complex_oscillation_is_enabled(brain->internal_brain)) {
         set_error("Complex oscillations not enabled");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Get brain's oscillation analyzer
     brain_oscillation_analyzer_t* analyzer = brain_get_oscillations(brain->internal_brain);
     if (!analyzer) {
         set_error("Brain oscillation analyzer not available");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Access complex oscillation state
@@ -2020,7 +2020,7 @@ float nimcp_get_pac_modulation(
 
     if (num_neurons == 0) {
         set_error("No neurons in complex oscillation state");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Allocate arrays for phase and amplitude
@@ -2031,7 +2031,7 @@ float nimcp_get_pac_modulation(
         set_error("Failed to allocate memory for PAC computation");
         if (phase_indices) nimcp_free(phase_indices);
         if (amplitude_values) nimcp_free(amplitude_values);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Populate indices and extract amplitude values
@@ -2042,7 +2042,7 @@ float nimcp_get_pac_modulation(
         if (brain_complex_oscillation_get_phasor(complex_state, i, &phasor)) {
             amplitude_values[i] = phasor_amplitude(phasor);
         } else {
-            amplitude_values[i] = 0.0f;
+            amplitude_values[i] = 0.0F;
         }
     }
 
@@ -2063,7 +2063,7 @@ float nimcp_get_pac_modulation(
 
     if (!success) {
         set_error("Failed to compute PAC modulation index");
-        return 0.0f;
+        return 0.0F;
     }
 
     set_error("No error");
@@ -2182,22 +2182,22 @@ nimcp_training_config_t nimcp_training_config_default(void) {
         .optimizer_type = NIMCP_API_OPT_ADAM,
         .scheduler_type = NIMCP_API_SCHED_COSINE,
 
-        .learning_rate = 0.001f,
-        .weight_decay = 0.0f,
-        .momentum = 0.9f,
-        .beta1 = 0.9f,
-        .beta2 = 0.999f,
-        .epsilon = 1e-8f,
+        .learning_rate = 0.001F,
+        .weight_decay = 0.0F,
+        .momentum = 0.9F,
+        .beta1 = 0.9F,
+        .beta2 = 0.999F,
+        .epsilon = 1e-8F,
 
         .scheduler_step_size = 1000,
-        .scheduler_gamma = 0.1f,
+        .scheduler_gamma = 0.1F,
         .warmup_steps = 0,
 
         .enable_gradient_clipping = true,
-        .gradient_clip_value = 1.0f,
+        .gradient_clip_value = 1.0F,
 
         .enable_biological_modulation = true,
-        .biological_blend = 0.5f
+        .biological_blend = 0.5F
     };
     return config;
 }
@@ -2356,7 +2356,7 @@ nimcp_status_t nimcp_brain_configure_training(
             sched_config.params.warmup.target_lr = config->learning_rate;
             break;
         case NIMCP_LR_CYCLIC:
-            sched_config.params.cyclic.base_lr = config->learning_rate * 0.1f;
+            sched_config.params.cyclic.base_lr = config->learning_rate * 0.1F;
             sched_config.params.cyclic.max_lr = config->learning_rate;
             sched_config.params.cyclic.step_size_up = config->scheduler_step_size;
             break;
@@ -2509,7 +2509,7 @@ nimcp_status_t nimcp_brain_train_step(
     }
 
     // Step 3: Use training coordinator for full training step
-    float loss_value = 0.0f;
+    float loss_value = 0.0F;
     nimcp_result_t res = nimcp_brain_training_step_full(
         training_ctx,
         state->loss_id,
@@ -2526,7 +2526,7 @@ nimcp_status_t nimcp_brain_train_step(
     );
 
     // Step 4: Fire loss computed callback (if callbacks enabled)
-    float current_lr = 0.0f;
+    float current_lr = 0.0F;
     nimcp_lr_scheduler_ctx_t* sched = nimcp_brain_training_get_scheduler(
         training_ctx, state->scheduler_id);
     if (sched) {
@@ -2536,7 +2536,7 @@ nimcp_status_t nimcp_brain_train_step(
     tcb_action_t cb_action = TCB_ACTION_CONTINUE;
     if (state->callbacks && state->callbacks_enabled) {
         tcb_update_metrics(state->callbacks, loss_value, current_lr,
-                          state->step_count + 1, 0.0f);
+                          state->step_count + 1, 0.0F);
 
         tcb_event_t loss_event = {
             .event_type = TCB_EVENT_LOSS_COMPUTED,
@@ -2544,7 +2544,7 @@ nimcp_status_t nimcp_brain_train_step(
                 .step = state->step_count + 1,
                 .loss = loss_value,
                 .learning_rate = current_lr,
-                .gradient_norm = 0.0f
+                .gradient_norm = 0.0F
             },
             .user_data = NULL,
             .checkpoint_path = NULL,
@@ -2562,7 +2562,7 @@ nimcp_status_t nimcp_brain_train_step(
                 result->step = state->step_count;
                 result->early_stopped = false;
                 result->learning_rate = current_lr;
-                result->gradient_norm = 0.0f;
+                result->gradient_norm = 0.0F;
             }
             set_error("No error");
             return NIMCP_OK;
@@ -2578,7 +2578,7 @@ nimcp_status_t nimcp_brain_train_step(
                 result->step = state->step_count;
                 result->early_stopped = true;
                 result->learning_rate = current_lr;
-                result->gradient_norm = 0.0f;
+                result->gradient_norm = 0.0F;
             }
             set_error("No error");
             return NIMCP_OK;
@@ -2605,7 +2605,7 @@ nimcp_status_t nimcp_brain_train_step(
                     .step = state->step_count + 1,
                     .loss = loss_value,
                     .learning_rate = current_lr,
-                    .gradient_norm = 0.0f
+                    .gradient_norm = 0.0F
                 },
                 .user_data = NULL,
                 .checkpoint_path = NULL,
@@ -2624,7 +2624,7 @@ nimcp_status_t nimcp_brain_train_step(
         result->early_stopped = (res == NIMCP_TRAINING_ERROR_EARLY_STOP) ||
                                (cb_action == TCB_ACTION_STOP_TRAINING);
         result->learning_rate = current_lr;
-        result->gradient_norm = 0.0f;  // TODO: get from gradient manager
+        result->gradient_norm = 0.0F;  // TODO: get from gradient manager
     }
 
     // Step 7: Fire step complete callback
@@ -2635,7 +2635,7 @@ nimcp_status_t nimcp_brain_train_step(
                 .step = state->step_count,
                 .loss = loss_value,
                 .learning_rate = current_lr,
-                .gradient_norm = 0.0f
+                .gradient_norm = 0.0F
             },
             .user_data = NULL,
             .checkpoint_path = NULL,
@@ -2681,7 +2681,7 @@ nimcp_status_t nimcp_brain_train_batch(
     }
 
     // Train on each example and average results
-    float total_loss = 0.0f;
+    float total_loss = 0.0F;
     nimcp_training_result_t step_result = {0};
 
     for (uint32_t i = 0; i < batch_size; i++) {
@@ -2764,19 +2764,19 @@ nimcp_status_t nimcp_brain_get_training_stats(
 float nimcp_brain_step_scheduler(nimcp_brain_t brain, float validation_metric) {
     if (!brain) {
         set_error("Brain handle is NULL");
-        return 0.0f;
+        return 0.0F;
     }
 
     brain_t internal = brain->internal_brain;
     if (!internal || !internal->training_ctx) {
         set_error("Training not enabled");
-        return 0.0f;
+        return 0.0F;
     }
 
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state || !state->configured) {
         set_error("Training not configured");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Step scheduler and update optimizer
@@ -2865,8 +2865,8 @@ nimcp_callback_config_t nimcp_callback_config_default(void) {
         .checkpoint_interval = 1000,
         .enable_early_stopping = true,
         .patience = 100,
-        .min_delta = 1e-4f,
-        .divergence_threshold = 10.0f,
+        .min_delta = 1e-4F,
+        .divergence_threshold = 10.0F,
         .log_interval = 0  // Disabled by default
     };
     return config;
@@ -3067,7 +3067,7 @@ nimcp_status_t nimcp_brain_get_callback_stats(
     if (!state || !state->callbacks) {
         // No callbacks configured - return zeros
         if (total_fired) *total_fired = 0;
-        if (avg_time_us) *avg_time_us = 0.0f;
+        if (avg_time_us) *avg_time_us = 0.0F;
         if (early_stops) *early_stops = 0;
         set_error("No error");
         return NIMCP_OK;

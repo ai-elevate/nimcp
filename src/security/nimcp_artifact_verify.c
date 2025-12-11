@@ -39,8 +39,8 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
-/* External context accessor */
-extern struct nimcp_supply_chain {
+/* Supply chain structure definition */
+struct nimcp_supply_chain {
     uint32_t magic;
     nimcp_supply_chain_config_t config;
     nimcp_supply_chain_stats_t stats;

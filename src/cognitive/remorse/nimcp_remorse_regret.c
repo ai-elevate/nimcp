@@ -64,7 +64,7 @@ static void bio_broadcast_remorse_state(remorse_regret_system_t* system) {
                         bio_module_context_get_id(system->bio_ctx_ptr), 0, sizeof(msg));
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
     msg.action_id = 0;
-    msg.ethical_score = 1.0f - system->emotion.remorse_intensity;
+    msg.ethical_score = 1.0F - system->emotion.remorse_intensity;
     msg.confidence = system->emotion.guilt_intensity;
     msg.veto = system->emotion.experiencing_shame;
     msg.primary_concern = (uint32_t)system->emotion.dominant_emotion;
@@ -87,8 +87,8 @@ static float calculate_emotion_intensity(float harm, float controllability, floa
     // WHY:  Greater harm + more control = stronger emotion
     // HOW:  Weighted combination of factors
 
-    float base = harm * 0.5f + controllability * 0.3f + moral_severity * 0.2f;
-    return fminf(1.0f, fmaxf(0.0f, base));
+    float base = harm * 0.5F + controllability * 0.3F + moral_severity * 0.2F;
+    return fminf(1.0F, fmaxf(0.0F, base));
 }
 
 /**
@@ -103,7 +103,7 @@ static moral_emotion_type_t determine_emotion_type(
     // WHY:  Different events elicit different moral emotions
     // HOW:  Use severity thresholds and violation type
 
-    if (!moral_violation && harm_caused < 0.3f) {
+    if (!moral_violation && harm_caused < 0.3F) {
         return MORAL_EMOTION_NONE;
     }
 
@@ -131,9 +131,9 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
     if (!system) return NULL;
 
     // Set personality defaults (neutral values)
-    system->conscientiousness = 0.5f;
-    system->neuroticism = 0.5f;
-    system->self_compassion = 0.5f;
+    system->conscientiousness = 0.5F;
+    system->neuroticism = 0.5F;
+    system->self_compassion = 0.5F;
 
     // Enable integration by default
     system->integrate_with_ethics = true;
@@ -142,7 +142,7 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
     system->learns_from_mistakes = true;
 
     // Initialize emotional state
-    system->emotion.self_worth = 0.7f;  // Start with moderate self-worth
+    system->emotion.self_worth = 0.7F;  // Start with moderate self-worth
 
     
     // Bio-async registration
@@ -205,7 +205,7 @@ void remorse_regret_system_reset(remorse_regret_system_t* system) {
     memset(&system->counterfactual, 0, sizeof(system->counterfactual));
     system->event_count = 0;
     system->event_history_index = 0;
-    system->lessons_learned = 0.0f;
+    system->lessons_learned = 0.0F;
     system->total_update_calls = 0;
     system->total_regrets = 0;
     system->total_remorse_events = 0;
@@ -219,7 +219,7 @@ void remorse_regret_system_reset(remorse_regret_system_t* system) {
     system->integrate_with_theory_of_mind = integrate_tom;
     system->integrate_with_learning = integrate_learn;
     system->learns_from_mistakes = true;
-    system->emotion.self_worth = 0.7f;
+    system->emotion.self_worth = 0.7F;
 }
 
 //=============================================================================
@@ -256,7 +256,7 @@ void remorse_process_event(
 
     // Check for moral violation
     event->was_moral_violation = (num_values > 0);
-    event->moral_severity = (num_values > 0) ? harm_caused : 0.0f;
+    event->moral_severity = (num_values > 0) ? harm_caused : 0.0F;
     event->num_violated_values = (num_values > 16) ? 16 : num_values;
     if (violated_values && num_values > 0) {
         memcpy(event->violated_value_ids, violated_values,
@@ -272,36 +272,36 @@ void remorse_process_event(
         harm_caused, controllability, event->moral_severity);
 
     // Modulate by personality
-    base_intensity *= (0.5f + system->conscientiousness * 0.5f);
+    base_intensity *= (0.5F + system->conscientiousness * 0.5F);
 
     switch (event->emotion_type) {
         case MORAL_EMOTION_GUILT:
-            event->regret_intensity = base_intensity * 0.6f;
-            event->remorse_intensity = 0.0f;
-            event->shame_intensity = 0.0f;
+            event->regret_intensity = base_intensity * 0.6F;
+            event->remorse_intensity = 0.0F;
+            event->shame_intensity = 0.0F;
             system->total_regrets++;
             break;
 
         case MORAL_EMOTION_REMORSE:
-            event->regret_intensity = base_intensity * 0.5f;
+            event->regret_intensity = base_intensity * 0.5F;
             event->remorse_intensity = base_intensity;
-            event->shame_intensity = 0.0f;
+            event->shame_intensity = 0.0F;
             system->total_remorse_events++;
             break;
 
         case MORAL_EMOTION_SHAME:
-            event->regret_intensity = base_intensity * 0.3f;
-            event->remorse_intensity = base_intensity * 0.7f;
+            event->regret_intensity = base_intensity * 0.3F;
+            event->remorse_intensity = base_intensity * 0.7F;
             event->shame_intensity = base_intensity;
             system->total_shame_events++;
             // Shame impacts self-worth
-            system->emotion.self_worth *= (1.0f - base_intensity * 0.3f);
+            system->emotion.self_worth *= (1.0F - base_intensity * 0.3F);
             break;
 
         default:
-            event->regret_intensity = base_intensity * 0.3f;
-            event->remorse_intensity = 0.0f;
-            event->shame_intensity = 0.0f;
+            event->regret_intensity = base_intensity * 0.3F;
+            event->remorse_intensity = 0.0F;
+            event->shame_intensity = 0.0F;
             break;
     }
 
@@ -323,7 +323,7 @@ void remorse_process_event(
 
     if (system->emotion.experiencing_remorse) {
         system->emotion.remorse_onset_time = current_time_us;
-        system->emotion.atonement_motivation = event->remorse_intensity * 0.8f;
+        system->emotion.atonement_motivation = event->remorse_intensity * 0.8F;
     }
 
     // Advance ring buffer
@@ -333,7 +333,7 @@ void remorse_process_event(
     }
 
     /* Broadcast remorse state if significant */
-    if (system->emotion.remorse_intensity > 0.3f || system->emotion.guilt_intensity > 0.3f) {
+    if (system->emotion.remorse_intensity > 0.3F || system->emotion.guilt_intensity > 0.3F) {
         bio_broadcast_remorse_state(system);
     }
 }
@@ -357,28 +357,28 @@ void remorse_run_counterfactual(
 
     // Update counterfactual system
     system->counterfactual.simulations_run++;
-    system->counterfactual.actual_outcome_value = 1.0f - event->harm_caused;
+    system->counterfactual.actual_outcome_value = 1.0F - event->harm_caused;
     system->counterfactual.best_alternative_value = alternative_outcome;
 
     // Adjust regret based on direction
     if (direction == COUNTERFACTUAL_UPWARD) {
         // "If only I had..." increases regret
-        float regret_boost = (alternative_outcome - system->counterfactual.actual_outcome_value) * 0.5f;
+        float regret_boost = (alternative_outcome - system->counterfactual.actual_outcome_value) * 0.5F;
         event->regret_intensity += regret_boost;
-        event->regret_intensity = fminf(1.0f, event->regret_intensity);
-        system->counterfactual.upward_tendency += 0.1f;
+        event->regret_intensity = fminf(1.0F, event->regret_intensity);
+        system->counterfactual.upward_tendency += 0.1F;
     } else if (direction == COUNTERFACTUAL_DOWNWARD) {
         // "At least I didn't..." decreases regret
-        float regret_reduction = (system->counterfactual.actual_outcome_value - alternative_outcome) * 0.3f;
+        float regret_reduction = (system->counterfactual.actual_outcome_value - alternative_outcome) * 0.3F;
         event->regret_intensity -= regret_reduction;
-        event->regret_intensity = fmaxf(0.0f, event->regret_intensity);
-        system->counterfactual.downward_tendency += 0.1f;
+        event->regret_intensity = fmaxf(0.0F, event->regret_intensity);
+        system->counterfactual.downward_tendency += 0.1F;
     }
 
     // Learn from counterfactual
     if (system->learns_from_mistakes) {
-        system->lessons_learned += 0.05f;
-        system->lessons_learned = fminf(1.0f, system->lessons_learned);
+        system->lessons_learned += 0.05F;
+        system->lessons_learned = fminf(1.0F, system->lessons_learned);
     }
 }
 
@@ -401,23 +401,23 @@ void remorse_attempt_atonement(
     event->forgiven_by_others = forgiven;
 
     // Reduce remorse based on effectiveness
-    float reduction = effectiveness * 0.6f;
+    float reduction = effectiveness * 0.6F;
     if (forgiven) {
-        reduction *= 1.5f;  // Forgiveness amplifies reduction
+        reduction *= 1.5F;  // Forgiveness amplifies reduction
     }
 
-    event->remorse_intensity *= (1.0f - reduction);
-    event->regret_intensity *= (1.0f - reduction * 0.8f);
+    event->remorse_intensity *= (1.0F - reduction);
+    event->regret_intensity *= (1.0F - reduction * 0.8F);
 
     // Update system emotional state
-    system->emotion.remorse_intensity *= (1.0f - reduction * 0.5f);
-    system->emotion.guilt_intensity *= (1.0f - reduction * 0.4f);
-    system->emotion.atonement_motivation *= (1.0f - effectiveness);
+    system->emotion.remorse_intensity *= (1.0F - reduction * 0.5F);
+    system->emotion.guilt_intensity *= (1.0F - reduction * 0.4F);
+    system->emotion.atonement_motivation *= (1.0F - effectiveness);
 
     // Restore self-worth if shame was involved
-    if (event->shame_intensity > 0.0f) {
-        system->emotion.self_worth += effectiveness * 0.2f;
-        system->emotion.self_worth = fminf(1.0f, system->emotion.self_worth);
+    if (event->shame_intensity > 0.0F) {
+        system->emotion.self_worth += effectiveness * 0.2F;
+        system->emotion.self_worth = fminf(1.0F, system->emotion.self_worth);
     }
 }
 
@@ -437,20 +437,20 @@ void remorse_practice_self_forgiveness(
 
     // Self-forgiveness requires time and compassion
     float forgiveness_progress = compassion_level * system->self_compassion;
-    event->self_forgiveness = (forgiveness_progress > 0.6f);
+    event->self_forgiveness = (forgiveness_progress > 0.6F);
 
     if (event->self_forgiveness) {
         // Reduce all negative emotions
-        event->shame_intensity *= 0.5f;
-        event->remorse_intensity *= 0.7f;
-        event->regret_intensity *= 0.8f;
+        event->shame_intensity *= 0.5F;
+        event->remorse_intensity *= 0.7F;
+        event->regret_intensity *= 0.8F;
 
         // Restore self-worth
-        system->emotion.self_worth += 0.15f;
-        system->emotion.self_worth = fminf(1.0f, system->emotion.self_worth);
+        system->emotion.self_worth += 0.15F;
+        system->emotion.self_worth = fminf(1.0F, system->emotion.self_worth);
 
         // Update system state
-        system->emotion.shame_intensity *= 0.6f;
+        system->emotion.shame_intensity *= 0.6F;
         system->emotion.experiencing_shame = (system->emotion.shame_intensity > SHAME_THRESHOLD);
     }
 }
@@ -474,7 +474,7 @@ void remorse_update(remorse_regret_system_t* system, float dt, uint64_t current_
     system->total_update_calls++;
 
     // Decay rate influenced by neuroticism (higher = slower decay)
-    float decay_rate = 0.995f - (system->neuroticism * 0.01f);
+    float decay_rate = 0.995F - (system->neuroticism * 0.01F);
 
     // Decay all active events
     for (uint32_t i = 0; i < REGRET_MAX_EVENTS; i++) {
@@ -488,9 +488,9 @@ void remorse_update(remorse_regret_system_t* system, float dt, uint64_t current_
         event->shame_intensity *= decay_rate;
 
         // Deactivate if negligible
-        if (event->regret_intensity < 0.01f &&
-            event->remorse_intensity < 0.01f &&
-            event->shame_intensity < 0.01f) {
+        if (event->regret_intensity < 0.01F &&
+            event->remorse_intensity < 0.01F &&
+            event->shame_intensity < 0.01F) {
             event->active = false;
         }
     }
@@ -500,11 +500,11 @@ void remorse_update(remorse_regret_system_t* system, float dt, uint64_t current_
     system->emotion.remorse_intensity *= decay_rate;
     system->emotion.shame_intensity *= decay_rate;
     system->emotion.regret_intensity *= decay_rate;
-    system->emotion.rumination_level *= 0.98f;
+    system->emotion.rumination_level *= 0.98F;
 
     // Gradually restore self-worth
-    if (system->emotion.self_worth < 0.7f) {
-        system->emotion.self_worth += 0.001f * system->self_compassion;
+    if (system->emotion.self_worth < 0.7F) {
+        system->emotion.self_worth += 0.001F * system->self_compassion;
     }
 
     // Update flags
@@ -542,15 +542,15 @@ bool remorse_is_ashamed(const remorse_regret_system_t* system) {
 }
 
 float remorse_get_regret_intensity(const remorse_regret_system_t* system) {
-    return system ? system->emotion.regret_intensity : 0.0f;
+    return system ? system->emotion.regret_intensity : 0.0F;
 }
 
 float remorse_get_self_worth(const remorse_regret_system_t* system) {
-    return system ? system->emotion.self_worth : 0.7f;
+    return system ? system->emotion.self_worth : 0.7F;
 }
 
 float remorse_get_lessons_learned(const remorse_regret_system_t* system) {
-    return system ? system->lessons_learned : 0.0f;
+    return system ? system->lessons_learned : 0.0F;
 }
 
 void remorse_get_neuromodulator_effects(
@@ -568,13 +568,13 @@ void remorse_get_neuromodulator_effects(
     }
 
     // Remorse/guilt/shame reduce dopamine (reduced motivation)
-    float negative_emotion = (system->emotion.guilt_intensity * 0.3f +
-                             system->emotion.remorse_intensity * 0.5f +
-                             system->emotion.shame_intensity * 0.7f);
+    float negative_emotion = (system->emotion.guilt_intensity * 0.3F +
+                             system->emotion.remorse_intensity * 0.5F +
+                             system->emotion.shame_intensity * 0.7F);
 
-    *dopamine_factor = 1.0f - negative_emotion * 0.4f;
-    *serotonin_factor = 1.0f - negative_emotion * 0.5f;  // Lower mood
-    *norepinephrine_factor = 1.0f + system->emotion.rumination_level * 0.3f;  // Stress
+    *dopamine_factor = 1.0F - negative_emotion * 0.4F;
+    *serotonin_factor = 1.0F - negative_emotion * 0.5F;  // Lower mood
+    *norepinephrine_factor = 1.0F + system->emotion.rumination_level * 0.3F;  // Stress
 }
 
 emotional_tag_t remorse_get_emotion(const remorse_regret_system_t* system) {
@@ -587,27 +587,27 @@ emotional_tag_t remorse_get_emotion(const remorse_regret_system_t* system) {
 
     switch (system->emotion.dominant_emotion) {
         case MORAL_EMOTION_GUILT:
-            tag.valence = -0.3f - system->emotion.guilt_intensity * 0.3f;
-            tag.arousal = 0.4f + system->emotion.guilt_intensity * 0.2f;
+            tag.valence = -0.3F - system->emotion.guilt_intensity * 0.3F;
+            tag.arousal = 0.4F + system->emotion.guilt_intensity * 0.2F;
             tag.intensity = system->emotion.guilt_intensity;
             break;
 
         case MORAL_EMOTION_REMORSE:
-            tag.valence = -0.6f - system->emotion.remorse_intensity * 0.3f;
-            tag.arousal = 0.6f + system->emotion.remorse_intensity * 0.2f;
+            tag.valence = -0.6F - system->emotion.remorse_intensity * 0.3F;
+            tag.arousal = 0.6F + system->emotion.remorse_intensity * 0.2F;
             tag.intensity = system->emotion.remorse_intensity;
             break;
 
         case MORAL_EMOTION_SHAME:
-            tag.valence = -0.7f - system->emotion.shame_intensity * 0.25f;
-            tag.arousal = 0.2f + system->emotion.shame_intensity * 0.2f;  // Withdrawal
+            tag.valence = -0.7F - system->emotion.shame_intensity * 0.25F;
+            tag.arousal = 0.2F + system->emotion.shame_intensity * 0.2F;  // Withdrawal
             tag.intensity = system->emotion.shame_intensity;
             break;
 
         default:
-            tag.valence = 0.0f;
-            tag.arousal = 0.0f;
-            tag.intensity = 0.0f;
+            tag.valence = 0.0F;
+            tag.arousal = 0.0F;
+            tag.intensity = 0.0F;
             break;
     }
 

@@ -107,7 +107,7 @@ static bool validate_config(const neural_logic_config_t* config) {
     }
 
     // Validate integration_window_ms
-    if (config->integration_window_ms < 1.0f || config->integration_window_ms > 1000.0f) {
+    if (config->integration_window_ms < 1.0F || config->integration_window_ms > 1000.0F) {
         LOG_WARNING("validate_config: integration_window_ms %.1f outside practical range [1,1000]",
                     config->integration_window_ms);
     }
@@ -143,12 +143,12 @@ neural_logic_config_t get_default_neural_logic_config(uint32_t max_neurons) {
     config.pin_host_memory = true;
 
     // Temporal parameters
-    config.timestep_us = 100.0f;         // 10 kHz update rate
-    config.integration_window_ms = 10.0f; // 10 ms integration
+    config.timestep_us = 100.0F;         // 10 kHz update rate
+    config.integration_window_ms = 10.0F; // 10 ms integration
 
     // Learning configuration
     config.enable_learning = false;      // Static gates by default
-    config.learning_rate = 0.0f;
+    config.learning_rate = 0.0F;
 
     LOG_DEBUG("get_default_neural_logic_config: created config for %u neurons (GPU=%s)",
               max_neurons, config.use_gpu ? "enabled" : "disabled");

@@ -67,12 +67,12 @@ static void update_avg_utilization(circular_buffer_t* buf, size_t current_size) 
 
     size_t total_ops = buf->stats.total_writes + buf->stats.total_reads;
     if (total_ops == 0) {
-        buf->stats.avg_usage = 0.0f;
+        buf->stats.avg_usage = 0.0F;
         return;
     }
 
     float current_pct = (buf->capacity > 0) ?
-        (100.0f * current_size / buf->capacity) : 0.0f;
+        (100.0F * current_size / buf->capacity) : 0.0F;
 
     // Incremental average
     buf->stats.avg_usage = buf->stats.avg_usage +
@@ -360,12 +360,12 @@ bool circular_buffer_is_full(const circular_buffer_t* buffer) {
 
 float circular_buffer_utilization(const circular_buffer_t* buffer) {
     // Guard: validate input
-    if (!buffer || buffer->capacity <= 1) return 0.0f;
+    if (!buffer || buffer->capacity <= 1) return 0.0F;
 
     size_t size = circular_buffer_size(buffer);
     size_t capacity = buffer->capacity - 1;
 
-    return (100.0f * size) / capacity;
+    return (100.0F * size) / capacity;
 }
 
 //=============================================================================

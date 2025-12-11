@@ -588,7 +588,7 @@ static nimcp_bio_shared_state_t* shared_state_create(
         case BIO_CHANNEL_SEROTONIN: baseline = BIO_5HT_BASELINE_UM; break;
         case BIO_CHANNEL_NOREPINEPHRINE: baseline = BIO_NE_BASELINE_UM; break;
         case BIO_CHANNEL_ACETYLCHOLINE: baseline = BIO_ACH_BASELINE_UM; break;
-        default: baseline = 0.0f;
+        default: baseline = 0.0F;
     }
     atomic_store_float(&shared->concentration_bits, baseline);
     LOG_DEBUG("Shared state baseline concentration: %.4f µM", baseline);
@@ -678,7 +678,7 @@ static void shared_state_release(nimcp_bio_shared_state_t* shared) {
 static float shared_state_update_concentration(nimcp_bio_shared_state_t* shared) {
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
     if (state != BIO_FUTURE_COMPLETED) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float elapsed_ms = (float)(bio_time_ms() - shared->complete_time_ms);
@@ -692,24 +692,24 @@ static float shared_state_update_concentration(nimcp_bio_shared_state_t* shared)
             baseline = BIO_DA_BASELINE_UM;
             break;
         case BIO_CHANNEL_SEROTONIN:
-            peak = 1.0f;
+            peak = 1.0F;
             baseline = BIO_5HT_BASELINE_UM;
             break;
         case BIO_CHANNEL_NOREPINEPHRINE:
-            peak = 1.0f;
+            peak = 1.0F;
             baseline = BIO_NE_BASELINE_UM;
             break;
         case BIO_CHANNEL_ACETYLCHOLINE:
-            peak = 1.0f;
+            peak = 1.0F;
             baseline = BIO_ACH_BASELINE_UM;
             break;
         default:
-            peak = 1.0f;
-            baseline = 0.0f;
+            peak = 1.0F;
+            baseline = 0.0F;
     }
 
     /* Exponential decay: c(t) = baseline + (peak - baseline) * exp(-t/tau) */
-    float concentration = baseline + (peak - baseline) * bio_exponential_decay(1.0f, elapsed_ms, tau);
+    float concentration = baseline + (peak - baseline) * bio_exponential_decay(1.0F, elapsed_ms, tau);
     atomic_store_float(&shared->concentration_bits, concentration);
 
     /* Check for full decay */
@@ -738,12 +738,12 @@ static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
             baseline = BIO_DA_BASELINE_UM;
             break;
         default:
-            peak = 1.0f;
-            baseline = 0.0f;
+            peak = 1.0F;
+            baseline = 0.0F;
     }
-    float confidence = (peak > baseline) ? (concentration - baseline) / (peak - baseline) : 0.0f;
-    if (confidence < 0.0f) confidence = 0.0f;
-    if (confidence > 1.0f) confidence = 1.0f;
+    float confidence = (peak > baseline) ? (concentration - baseline) / (peak - baseline) : 0.0F;
+    if (confidence < 0.0F) confidence = 0.0F;
+    if (confidence > 1.0F) confidence = 1.0F;
 
     nimcp_error_t error = (state == BIO_FUTURE_FAILED) ? shared->error : NIMCP_SUCCESS;
     const void* result = (state == BIO_FUTURE_COMPLETED) ? shared->result : NULL;
@@ -770,34 +770,34 @@ nimcp_bio_async_config_t nimcp_bio_async_default_config(void) {
         .peak_concentration = BIO_DA_PEAK_PHASIC_UM,
         .decay_tau_ms = BIO_COMP_DA_DECAY_TAU_MS,
         .diffusion_coef = BIO_DA_DIFFUSION_COEF,
-        .refractory_period_ms = 10.0f,
+        .refractory_period_ms = 10.0F,
         .enable_diffusion = false
     };
 
     config.channel_configs[BIO_CHANNEL_SEROTONIN] = (nimcp_channel_config_t){
         .baseline_concentration = BIO_5HT_BASELINE_UM,
-        .peak_concentration = 1.0f,
+        .peak_concentration = 1.0F,
         .decay_tau_ms = BIO_COMP_5HT_DECAY_TAU_MS,
         .diffusion_coef = BIO_5HT_DIFFUSION_COEF,
-        .refractory_period_ms = 100.0f,
+        .refractory_period_ms = 100.0F,
         .enable_diffusion = false
     };
 
     config.channel_configs[BIO_CHANNEL_NOREPINEPHRINE] = (nimcp_channel_config_t){
         .baseline_concentration = BIO_NE_BASELINE_UM,
-        .peak_concentration = 1.0f,
+        .peak_concentration = 1.0F,
         .decay_tau_ms = BIO_COMP_NE_DECAY_TAU_MS,
         .diffusion_coef = BIO_NE_DIFFUSION_COEF,
-        .refractory_period_ms = 20.0f,
+        .refractory_period_ms = 20.0F,
         .enable_diffusion = false
     };
 
     config.channel_configs[BIO_CHANNEL_ACETYLCHOLINE] = (nimcp_channel_config_t){
         .baseline_concentration = BIO_ACH_BASELINE_UM,
-        .peak_concentration = 1.0f,
+        .peak_concentration = 1.0F,
         .decay_tau_ms = BIO_COMP_ACH_DECAY_TAU_MS,
         .diffusion_coef = BIO_ACH_DIFFUSION_COEF,
-        .refractory_period_ms = 5.0f,
+        .refractory_period_ms = 5.0F,
         .enable_diffusion = false
     };
 
@@ -805,7 +805,7 @@ nimcp_bio_async_config_t nimcp_bio_async_default_config(void) {
     config.phase_config = (nimcp_phase_config_t){
         .coherence_threshold = BIO_PHASE_COHERENCE_THRESHOLD,
         .coupling_strength = BIO_KURAMOTO_K_GAMMA,
-        .frequency_spread = 0.1f,
+        .frequency_spread = 0.1F,
         .max_oscillators = BIO_MAX_OSCILLATORS,
         .enable_cross_frequency = false
     };
@@ -823,7 +823,7 @@ nimcp_bio_async_config_t nimcp_bio_async_default_config(void) {
     config.glial_config = (nimcp_glial_config_t){
         .wave_speed_um_s = BIO_COMP_CA_WAVE_SPEED,
         .wave_threshold_um = BIO_CA_WAVE_THRESHOLD_UM,
-        .decay_rate = 0.1f,
+        .decay_rate = 0.1F,
         .max_concurrent_waves = 16,
         .mode = BIO_WAVE_ISOTROPIC
     };
@@ -837,9 +837,9 @@ nimcp_bio_async_config_t nimcp_bio_async_default_config(void) {
     config.use_unified_memory = true;
 
     /* Timing */
-    config.simulation_dt_ms = 1.0f;
+    config.simulation_dt_ms = 1.0F;
     config.use_real_time = true;
-    config.time_acceleration = 1.0f;
+    config.time_acceleration = 1.0F;
 
     /* Debug */
     config.enable_statistics = true;
@@ -981,7 +981,7 @@ nimcp_error_t nimcp_bio_async_step(float dt_ms) {
         return NIMCP_BIO_ERROR_NOT_INITIALIZED;
     }
 
-    if (dt_ms <= 0.0f) {
+    if (dt_ms <= 0.0F) {
         dt_ms = g_bio_async.config.simulation_dt_ms;
     }
 
@@ -1094,10 +1094,10 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
     float peak;
     switch (shared->channel) {
         case BIO_CHANNEL_DOPAMINE: peak = BIO_DA_PEAK_PHASIC_UM; break;
-        case BIO_CHANNEL_SEROTONIN: peak = 1.0f; break;
-        case BIO_CHANNEL_NOREPINEPHRINE: peak = 1.0f; break;
-        case BIO_CHANNEL_ACETYLCHOLINE: peak = 1.0f; break;
-        default: peak = 1.0f;
+        case BIO_CHANNEL_SEROTONIN: peak = 1.0F; break;
+        case BIO_CHANNEL_NOREPINEPHRINE: peak = 1.0F; break;
+        case BIO_CHANNEL_ACETYLCHOLINE: peak = 1.0F; break;
+        default: peak = 1.0F;
     }
     atomic_store_float(&shared->concentration_bits, peak);
     LOG_DEBUG("nimcp_bio_promise_complete: set peak concentration %.4f µM", peak);
@@ -1341,12 +1341,12 @@ handle_result:
 
 float nimcp_bio_future_get_confidence(nimcp_bio_future_t future) {
     if (!future || future->magic != BIO_MAGIC_FUTURE) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_bio_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Update concentration */
@@ -1360,27 +1360,27 @@ float nimcp_bio_future_get_confidence(nimcp_bio_future_t future) {
             baseline = BIO_DA_BASELINE_UM;
             break;
         case BIO_CHANNEL_SEROTONIN:
-            peak = 1.0f;
+            peak = 1.0F;
             baseline = BIO_5HT_BASELINE_UM;
             break;
         case BIO_CHANNEL_NOREPINEPHRINE:
-            peak = 1.0f;
+            peak = 1.0F;
             baseline = BIO_NE_BASELINE_UM;
             break;
         case BIO_CHANNEL_ACETYLCHOLINE:
-            peak = 1.0f;
+            peak = 1.0F;
             baseline = BIO_ACH_BASELINE_UM;
             break;
         default:
-            peak = 1.0f;
-            baseline = 0.0f;
+            peak = 1.0F;
+            baseline = 0.0F;
     }
 
-    if (peak <= baseline) return 0.0f;
+    if (peak <= baseline) return 0.0F;
 
     float confidence = (concentration - baseline) / (peak - baseline);
-    if (confidence < 0.0f) confidence = 0.0f;
-    if (confidence > 1.0f) confidence = 1.0f;
+    if (confidence < 0.0F) confidence = 0.0F;
+    if (confidence > 1.0F) confidence = 1.0F;
 
     return confidence;
 }
@@ -1392,17 +1392,17 @@ bool nimcp_bio_future_is_ready(nimcp_bio_future_t future) {
 
 float nimcp_bio_future_get_age_ms(nimcp_bio_future_t future) {
     if (!future || future->magic != BIO_MAGIC_FUTURE) {
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_bio_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        return -1.0f;
+        return -1.0F;
     }
 
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
     if (state == BIO_FUTURE_PENDING) {
-        return -1.0f;
+        return -1.0F;
     }
 
     return (float)(bio_time_ms() - shared->complete_time_ms);
@@ -1561,13 +1561,13 @@ nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
         case BIO_OSC_ALPHA: sync->coupling_K = BIO_KURAMOTO_K_ALPHA; break;
         case BIO_OSC_BETA: sync->coupling_K = BIO_KURAMOTO_K_BETA; break;
         case BIO_OSC_GAMMA: sync->coupling_K = BIO_KURAMOTO_K_GAMMA; break;
-        default: sync->coupling_K = 1.0f;
+        default: sync->coupling_K = 1.0F;
     }
     sync->coherence_threshold = g_bio_async.config.phase_config.coherence_threshold;
 
     /* Initialize order parameter */
-    atomic_store_float(&sync->order_r_bits, 0.0f);
-    atomic_store_float(&sync->mean_phase_bits, 0.0f);
+    atomic_store_float(&sync->order_r_bits, 0.0F);
+    atomic_store_float(&sync->mean_phase_bits, 0.0F);
 
     /* Initialize synchronization */
     if (nimcp_rwlock_init(&sync->rwlock) != NIMCP_SUCCESS) {
@@ -1613,18 +1613,18 @@ nimcp_error_t nimcp_phase_sync_add_future(
 
     /* Create oscillator with random initial phase and natural frequency */
     float center_freq = nimcp_oscillation_center_freq(sync->band);
-    float omega = center_freq * 2.0f * (float)M_PI / 1000.0f;  /* rad/ms */
+    float omega = center_freq * 2.0F * (float)M_PI / 1000.0F;  /* rad/ms */
     float spread = g_bio_async.config.phase_config.frequency_spread;
 
     /* Add small random variation (simple LCG for now) */
     static uint32_t seed = 12345;
     seed = seed * 1103515245 + 12345;
     float rand_01 = (float)(seed & 0x7FFFFFFF) / (float)0x7FFFFFFF;
-    float freq_variation = (rand_01 - 0.5f) * 2.0f * spread;
+    float freq_variation = (rand_01 - 0.5F) * 2.0F * spread;
 
     oscillator_t* osc = &sync->oscillators[sync->count];
-    osc->phase = rand_01 * 2.0f * (float)M_PI;  /* Random initial phase */
-    osc->natural_freq = omega * (1.0f + freq_variation);
+    osc->phase = rand_01 * 2.0F * (float)M_PI;  /* Random initial phase */
+    osc->natural_freq = omega * (1.0F + freq_variation);
     osc->future = future;
     osc->completed = false;
 
@@ -1640,7 +1640,7 @@ nimcp_error_t nimcp_phase_sync_add_future(
         float r, psi;
         bio_kuramoto_order_parameter(phases, count, &r, &psi);
         /* Wrap mean phase to [0, 2π] range (atan2 returns [-π, π]) */
-        if (psi < 0.0f) psi += 2.0f * (float)M_PI;
+        if (psi < 0.0F) psi += 2.0F * (float)M_PI;
         atomic_store_float(&sync->order_r_bits, r);
         atomic_store_float(&sync->mean_phase_bits, psi);
     }
@@ -1683,7 +1683,7 @@ static void phase_sync_update(nimcp_phase_sync_t sync, float dt_ms) {
     float r, psi;
     bio_kuramoto_order_parameter(phases, sync->count, &r, &psi);
     /* Wrap mean phase to [0, 2π] range (atan2 returns [-π, π]) */
-    if (psi < 0.0f) psi += 2.0f * (float)M_PI;
+    if (psi < 0.0F) psi += 2.0F * (float)M_PI;
     atomic_store_float(&sync->order_r_bits, r);
     atomic_store_float(&sync->mean_phase_bits, psi);
 
@@ -1775,14 +1775,14 @@ nimcp_error_t nimcp_phase_sync_wait_coherent(
 
 float nimcp_phase_sync_get_coherence(nimcp_phase_sync_t sync) {
     if (!sync || sync->magic != BIO_MAGIC_PHASE) {
-        return 0.0f;
+        return 0.0F;
     }
     return atomic_load_float(&sync->order_r_bits);
 }
 
 float nimcp_phase_sync_get_mean_phase(nimcp_phase_sync_t sync) {
     if (!sync || sync->magic != BIO_MAGIC_PHASE) {
-        return 0.0f;
+        return 0.0F;
     }
     return atomic_load_float(&sync->mean_phase_bits);
 }
@@ -1840,7 +1840,7 @@ nimcp_predictive_model_t nimcp_predictive_create(
     model->prediction = initial_prediction;
     model->precision = (initial_precision > 0) ? initial_precision :
                        g_bio_async.config.predictive_config.default_prior_precision;
-    model->last_surprise = 0.0f;
+    model->last_surprise = 0.0F;
     model->learning_rate = g_bio_async.config.predictive_config.learning_rate;
 
     model->callbacks = NULL;
@@ -1940,7 +1940,7 @@ nimcp_error_t nimcp_predictive_observe(
 
 float nimcp_predictive_get_prediction(nimcp_predictive_model_t model) {
     if (!model || model->magic != BIO_MAGIC_PREDICT) {
-        return 0.0f;
+        return 0.0F;
     }
     nimcp_rwlock_rdlock(&model->rwlock);
     float pred = model->prediction;
@@ -1950,7 +1950,7 @@ float nimcp_predictive_get_prediction(nimcp_predictive_model_t model) {
 
 float nimcp_predictive_get_precision(nimcp_predictive_model_t model) {
     if (!model || model->magic != BIO_MAGIC_PREDICT) {
-        return 0.0f;
+        return 0.0F;
     }
     nimcp_rwlock_rdlock(&model->rwlock);
     float prec = model->precision;
@@ -1960,7 +1960,7 @@ float nimcp_predictive_get_precision(nimcp_predictive_model_t model) {
 
 float nimcp_predictive_get_last_surprise(nimcp_predictive_model_t model) {
     if (!model || model->magic != BIO_MAGIC_PREDICT) {
-        return 0.0f;
+        return 0.0F;
     }
     nimcp_rwlock_rdlock(&model->rwlock);
     float surp = model->last_surprise;
@@ -1979,7 +1979,7 @@ nimcp_error_t nimcp_predictive_set_prediction(
 
     nimcp_rwlock_wrlock(&model->rwlock);
     model->prediction = new_prediction;
-    if (new_precision > 0.0f) {
+    if (new_precision > 0.0F) {
         model->precision = new_precision;
     }
     nimcp_rwlock_unlock(&model->rwlock);
@@ -2041,7 +2041,7 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
     /* Initialize regions */
     for (size_t i = 0; i < wave->num_regions; i++) {
         wave->regions[i].calcium = BIO_CA_BASELINE_UM;
-        wave->regions[i].ip3 = 0.0f;
+        wave->regions[i].ip3 = 0.0F;
         wave->regions[i].reached = false;
         wave->regions[i].callback = NULL;
         wave->regions[i].callback_data = NULL;
@@ -2053,8 +2053,8 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
         wave->regions[source_region].reached = true;
     }
 
-    wave->radius = 0.0f;
-    wave->speed = g_bio_async.config.glial_config.wave_speed_um_s / 1000.0f;  /* um/ms */
+    wave->radius = 0.0F;
+    wave->speed = g_bio_async.config.glial_config.wave_speed_um_s / 1000.0F;  /* um/ms */
     wave->active = true;
 
     if (nimcp_rwlock_init(&wave->rwlock) != NIMCP_SUCCESS) {
@@ -2089,7 +2089,7 @@ nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
         return NIMCP_BIO_ERROR_WAVE_EXTINCT;
     }
 
-    if (dt_ms <= 0.0f) {
+    if (dt_ms <= 0.0F) {
         dt_ms = g_bio_async.config.simulation_dt_ms;
     }
 
@@ -2104,7 +2104,7 @@ nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
     float decay_rate = g_bio_async.config.glial_config.decay_rate;
 
     /* Update each region */
-    float max_calcium = 0.0f;
+    float max_calcium = 0.0F;
     for (size_t i = 0; i < wave->num_regions; i++) {
         region_state_t* region = &wave->regions[i];
 
@@ -2116,8 +2116,8 @@ nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
              * Use constant attenuation length for biological realism.
              * Calcium waves attenuate with distance regardless of propagation time.
              * Attenuation length of 5 units ensures significant distance-based decay */
-            const float ATTENUATION_LENGTH = 5.0f;
-            region->calcium = wave->initial_calcium * bio_exponential_decay(1.0f, distance, ATTENUATION_LENGTH);
+            const float ATTENUATION_LENGTH = 5.0F;
+            region->calcium = wave->initial_calcium * bio_exponential_decay(1.0F, distance, ATTENUATION_LENGTH);
 
             if (region->calcium >= threshold) {
                 region->reached = true;
@@ -2132,7 +2132,7 @@ nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
         /* Decay calcium */
         if (region->calcium > BIO_CA_BASELINE_UM) {
             region->calcium = BIO_CA_BASELINE_UM +
-                (region->calcium - BIO_CA_BASELINE_UM) * (1.0f - decay_rate * dt_ms / 1000.0f);
+                (region->calcium - BIO_CA_BASELINE_UM) * (1.0F - decay_rate * dt_ms / 1000.0F);
         }
 
         if (region->calcium > max_calcium) {
@@ -2157,11 +2157,11 @@ nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
 
 float nimcp_glial_wave_get_level_at(nimcp_glial_wave_t wave, uint32_t region_id) {
     if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (region_id >= wave->num_regions) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_rwlock_rdlock(&wave->rwlock);
@@ -2256,7 +2256,7 @@ nimcp_error_t nimcp_glial_wave_on_arrival(
 
 float nimcp_glial_wave_get_radius(nimcp_glial_wave_t wave) {
     if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
-        return 0.0f;
+        return 0.0F;
     }
     nimcp_rwlock_rdlock(&wave->rwlock);
     float radius = wave->radius;

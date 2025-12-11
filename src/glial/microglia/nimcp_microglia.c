@@ -96,9 +96,9 @@ static nimcp_error_t handle_microglia_alert_message(
         "microglia.alert_severity", severity);
 
     // If high severity, escalate state
-    if (severity > 0.7f) {
+    if (severity > 0.7F) {
         LOG_MODULE_INFO("MICROGLIA", "High severity alert - escalating state");
-        bio_router_publish_signal(g_microglia_bio_ctx, "microglia.state_escalation", 1.0f);
+        bio_router_publish_signal(g_microglia_bio_ctx, "microglia.state_escalation", 1.0F);
     }
 
     return result;
@@ -130,7 +130,7 @@ static nimcp_error_t handle_microglia_prune_request_message(
     LOG_MODULE_DEBUG("MICROGLIA", "Prune request for synapse %u", synapse_id);
 
     // Publish pruning decision via NOREPINEPHRINE
-    bio_router_publish_signal(g_microglia_bio_ctx, "microglia.pruning", 1.0f);
+    bio_router_publish_signal(g_microglia_bio_ctx, "microglia.pruning", 1.0F);
 
     return NIMCP_SUCCESS;
 }
@@ -156,7 +156,7 @@ static nimcp_error_t handle_metabolic_demand_message(
                      demand->region_id, demand->atp_deficit, demand->urgency);
 
     // High ATP deficit may indicate neuronal distress - trigger alert
-    if (demand->atp_deficit > 0.5f || demand->urgency > 0.7f) {
+    if (demand->atp_deficit > 0.5F || demand->urgency > 0.7F) {
         LOG_MODULE_WARN("MICROGLIA", "High metabolic distress detected - activating surveillance");
         bio_router_publish_signal(g_microglia_bio_ctx, "microglia.metabolic_distress", demand->atp_deficit);
     }
@@ -185,7 +185,7 @@ static nimcp_error_t handle_glial_sync_message(
 
     // Publish sync acknowledgment
     nimcp_error_t result = bio_router_publish_signal(g_microglia_bio_ctx,
-        "microglia.sync_ack", 1.0f);
+        "microglia.sync_ack", 1.0F);
 
     return result;
 }
@@ -366,27 +366,27 @@ static void state_derivatives(const float* state, float t, void* params, float* 
 
     // Inflammation dynamics: driven by external input, decays naturally
     float inflammation_input = mg->inflammation_level;
-    float inflammation_decay = 0.2f;
+    float inflammation_decay = 0.2F;
     deriv[STATE_IDX_INFLAMMATION] = inflammation_input - inflammation_decay * inflammation;
 
     // Activation dynamics: follows inflammation with delay
-    float activation_rate = 0.5f;
+    float activation_rate = 0.5F;
     float activation_target = inflammation;  // Activation tracks inflammation
     deriv[STATE_IDX_ACTIVATION] = activation_rate * (activation_target - activation);
 
     // Process extension dynamics: depends on state
-    float process_rate = NIMCP_MICROGLIA_PROCESS_EXTENSION_RATE / 100.0f;
+    float process_rate = NIMCP_MICROGLIA_PROCESS_EXTENSION_RATE / 100.0F;
     if (inflammation < NIMCP_MICROGLIA_ACTIVATION_THRESHOLD) {
         // Ramified: extend processes
-        deriv[STATE_IDX_PROCESS] = process_rate * (1.0f - process);
+        deriv[STATE_IDX_PROCESS] = process_rate * (1.0F - process);
     } else {
         // Activated/Phagocytic: retract processes
-        deriv[STATE_IDX_PROCESS] = -process_rate * 2.0f * process;
+        deriv[STATE_IDX_PROCESS] = -process_rate * 2.0F * process;
     }
 
     // Energy dynamics: depletes with activity, regenerates at rest
-    float energy_cost = 0.1f * activation;
-    float energy_regen = 0.05f * (1.0f - activation);
+    float energy_cost = 0.1F * activation;
+    float energy_regen = 0.05F * (1.0F - activation);
     deriv[STATE_IDX_ENERGY] = energy_regen - energy_cost;
 }
 
@@ -415,12 +415,12 @@ static float compute_effective_threshold(const microglia_t* mg,
     // Centrality protection: higher centrality = higher threshold needed to prune
     if (syn->protected_by_centrality &&
         syn->centrality_score >= NIMCP_CENTRALITY_PROTECTION_MIN) {
-        base_threshold *= (1.0f + syn->centrality_score * NIMCP_CENTRALITY_PROTECTION_FACTOR);
+        base_threshold *= (1.0F + syn->centrality_score * NIMCP_CENTRALITY_PROTECTION_FACTOR);
     }
 
     // C3-tagged synapses are easier to prune (lower effective threshold)
     if (syn->complement.tag == COMPLEMENT_C3) {
-        base_threshold *= 1.5f;  // Raise threshold meaning lower activity is OK to prune
+        base_threshold *= 1.5F;  // Raise threshold meaning lower activity is OK to prune
     }
 
     return base_threshold;
@@ -441,7 +441,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
         }
     }
 
-    if (surveillance_radius <= 0.0f) {
+    if (surveillance_radius <= 0.0F) {
         LOG_MODULE_ERROR("MICROGLIA", "Invalid surveillance radius: %.2f", surveillance_radius);
         return NULL;
     }
@@ -460,15 +460,15 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
     mg->position[1] = y;
     mg->position[2] = z;
     mg->surveillance_radius = surveillance_radius;
-    mg->process_extension = 1.0f;  // Start fully extended (ramified)
+    mg->process_extension = 1.0F;  // Start fully extended (ramified)
 
     // State dynamics
     mg->state = MICROGLIA_STATE_RAMIFIED;
-    mg->inflammation_level = 0.0f;
-    mg->state_variables[STATE_IDX_INFLAMMATION] = 0.0f;
-    mg->state_variables[STATE_IDX_ACTIVATION] = 0.0f;
-    mg->state_variables[STATE_IDX_PROCESS] = 1.0f;
-    mg->state_variables[STATE_IDX_ENERGY] = 1.0f;
+    mg->inflammation_level = 0.0F;
+    mg->state_variables[STATE_IDX_INFLAMMATION] = 0.0F;
+    mg->state_variables[STATE_IDX_ACTIVATION] = 0.0F;
+    mg->state_variables[STATE_IDX_PROCESS] = 1.0F;
+    mg->state_variables[STATE_IDX_ENERGY] = 1.0F;
 
     // Cytokine state
     memset(&mg->cytokines, 0, sizeof(microglia_cytokine_state_t));
@@ -502,7 +502,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
 
     for (uint32_t i = 0; i < mg->max_monitored_synapses; i++) {
         mg->monitored_synapse_ids[i] = UINT32_MAX;
-        mg->synapse_activity_scores[i] = 0.0f;
+        mg->synapse_activity_scores[i] = 0.0F;
         mg->last_activity_times[i] = 0;
     }
 
@@ -557,7 +557,7 @@ microglia_network_config_t microglia_network_default_config(void)
         .enable_complement_cascade = true,
         .enable_cytokine_signaling = true,
         .enable_state_dynamics = true,
-        .filter_cutoff_hz = 1.0f
+        .filter_cutoff_hz = 1.0F
     };
     return config;
 }
@@ -599,15 +599,15 @@ microglia_network_t* microglia_network_create_enhanced(
     // Global parameters
     network->global_pruning_threshold = config->pruning_threshold;
     network->min_activity_window_ms = NIMCP_MICROGLIA_MIN_ACTIVITY_WINDOW_MS;
-    network->global_inflammation = 0.0f;
+    network->global_inflammation = 0.0F;
 
     // Activity filter
     network->filter_cutoff_hz = config->filter_cutoff_hz;
     // alpha = 2πf_c / (2πf_c + f_s), simplified for ~1000Hz sample rate
-    network->filter_alpha = 2.0f * M_PI * config->filter_cutoff_hz /
-                            (2.0f * M_PI * config->filter_cutoff_hz + 1000.0f);
-    if (network->filter_alpha < 0.01f) network->filter_alpha = 0.01f;
-    if (network->filter_alpha > 1.0f) network->filter_alpha = 1.0f;
+    network->filter_alpha = 2.0F * M_PI * config->filter_cutoff_hz /
+                            (2.0F * M_PI * config->filter_cutoff_hz + 1000.0F);
+    if (network->filter_alpha < 0.01F) network->filter_alpha = 0.01F;
+    if (network->filter_alpha > 1.0F) network->filter_alpha = 1.0F;
 
     // Centrality (will be populated later)
     network->synapse_centrality = NULL;
@@ -713,18 +713,18 @@ nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint32_t synapse_id
     syn->position[0] = x;
     syn->position[1] = y;
     syn->position[2] = z;
-    syn->activity_score = 0.0f;
-    syn->filtered_activity = 0.0f;
+    syn->activity_score = 0.0F;
+    syn->filtered_activity = 0.0F;
     syn->last_activity_time = nimcp_time_monotonic_us();
     syn->complement.tag = COMPLEMENT_NONE;
-    syn->complement.tag_strength = 0.0f;
+    syn->complement.tag_strength = 0.0F;
     syn->complement.tag_time = 0;
-    syn->centrality_score = 0.0f;
+    syn->centrality_score = 0.0F;
     syn->protected_by_centrality = false;
 
     // Update legacy arrays
     mg->monitored_synapse_ids[idx] = synapse_id;
-    mg->synapse_activity_scores[idx] = 0.0f;
+    mg->synapse_activity_scores[idx] = 0.0F;
     mg->last_activity_times[idx] = syn->last_activity_time;
 
     mg->num_monitored_synapses++;
@@ -746,7 +746,7 @@ void microglia_track_synapse_activity(microglia_t* mg, uint32_t synapse_id,
 {
     if (!mg) return;
 
-    activity = clamp_f(activity, 0.0f, 10.0f);
+    activity = clamp_f(activity, 0.0F, 10.0F);
 
     nimcp_spinlock_lock(&mg->lock);
 
@@ -756,14 +756,14 @@ void microglia_track_synapse_activity(microglia_t* mg, uint32_t synapse_id,
 
         // Apply low-pass filter to activity
         float alpha = DEFAULT_FILTER_ALPHA;
-        syn->filtered_activity = alpha * activity + (1.0f - alpha) * syn->filtered_activity;
+        syn->filtered_activity = alpha * activity + (1.0F - alpha) * syn->filtered_activity;
 
         // Update raw activity score with EMA
-        if (syn->activity_score < 0.001f) {
+        if (syn->activity_score < 0.001F) {
             syn->activity_score = activity;
         } else {
-            float ema_alpha = 0.3f;
-            syn->activity_score = ema_alpha * activity + (1.0f - ema_alpha) * syn->activity_score;
+            float ema_alpha = 0.3F;
+            syn->activity_score = ema_alpha * activity + (1.0F - ema_alpha) * syn->activity_score;
         }
 
         syn->last_activity_time = timestamp;
@@ -782,24 +782,24 @@ void microglia_update_activity_scores(microglia_t* mg, uint64_t current_time)
 
     nimcp_spinlock_lock(&mg->lock);
 
-    float tau_us = NIMCP_MICROGLIA_ACTIVITY_DECAY_TAU_S * 1000000.0f;
+    float tau_us = NIMCP_MICROGLIA_ACTIVITY_DECAY_TAU_S * 1000000.0F;
 
     for (uint32_t i = 0; i < mg->num_monitored_synapses; i++) {
         monitored_synapse_t* syn = &mg->synapses[i];
         uint64_t dt_us = current_time - syn->last_activity_time;
-        float dt_s = (float)dt_us / 1000000.0f;
+        float dt_s = (float)dt_us / 1000000.0F;
 
         // Exponential decay
-        float decay_factor = expf(-dt_s * 1000000.0f / tau_us);
+        float decay_factor = expf(-dt_s * 1000000.0F / tau_us);
         syn->activity_score *= decay_factor;
         syn->filtered_activity *= decay_factor;
 
         // Clamp to zero
-        if (syn->activity_score < 0.001f) {
-            syn->activity_score = 0.0f;
+        if (syn->activity_score < 0.001F) {
+            syn->activity_score = 0.0F;
         }
-        if (syn->filtered_activity < 0.001f) {
-            syn->filtered_activity = 0.0f;
+        if (syn->filtered_activity < 0.001F) {
+            syn->filtered_activity = 0.0F;
         }
 
         // Update legacy arrays
@@ -811,12 +811,12 @@ void microglia_update_activity_scores(microglia_t* mg, uint64_t current_time)
 
 float microglia_get_synapse_activity_score(microglia_t* mg, uint32_t synapse_id)
 {
-    if (!mg) return 0.0f;
+    if (!mg) return 0.0F;
 
     nimcp_spinlock_lock(&mg->lock);
 
     int32_t idx = find_synapse_index(mg, synapse_id);
-    float score = (idx >= 0) ? mg->synapses[idx].activity_score : 0.0f;
+    float score = (idx >= 0) ? mg->synapses[idx].activity_score : 0.0F;
 
     nimcp_spinlock_unlock(&mg->lock);
     return score;
@@ -827,7 +827,7 @@ void microglia_set_synapse_centrality(microglia_t* mg, uint32_t synapse_id,
 {
     if (!mg) return;
 
-    centrality = clamp_f(centrality, 0.0f, 1.0f);
+    centrality = clamp_f(centrality, 0.0F, 1.0F);
 
     nimcp_spinlock_lock(&mg->lock);
 
@@ -847,7 +847,7 @@ void microglia_set_synapse_centrality(microglia_t* mg, uint32_t synapse_id,
 
 void microglia_update_state_dynamics(microglia_t* mg, float dt)
 {
-    if (!mg || dt <= 0.0f) return;
+    if (!mg || dt <= 0.0F) return;
 
     // Process pending bio-async messages before state update
     if (g_microglia_bio_initialized && g_microglia_bio_ctx) {
@@ -861,19 +861,19 @@ void microglia_update_state_dynamics(microglia_t* mg, float dt)
     float temp_state[4];
 
     // k1 = f(state, t)
-    state_derivatives(mg->state_variables, 0.0f, mg, k1);
+    state_derivatives(mg->state_variables, 0.0F, mg, k1);
 
     // k2 = f(state + dt/2 * k1, t + dt/2)
     for (int i = 0; i < 4; i++) {
-        temp_state[i] = mg->state_variables[i] + 0.5f * dt * k1[i];
+        temp_state[i] = mg->state_variables[i] + 0.5F * dt * k1[i];
     }
-    state_derivatives(temp_state, dt * 0.5f, mg, k2);
+    state_derivatives(temp_state, dt * 0.5F, mg, k2);
 
     // k3 = f(state + dt/2 * k2, t + dt/2)
     for (int i = 0; i < 4; i++) {
-        temp_state[i] = mg->state_variables[i] + 0.5f * dt * k2[i];
+        temp_state[i] = mg->state_variables[i] + 0.5F * dt * k2[i];
     }
-    state_derivatives(temp_state, dt * 0.5f, mg, k3);
+    state_derivatives(temp_state, dt * 0.5F, mg, k3);
 
     // k4 = f(state + dt * k3, t + dt)
     for (int i = 0; i < 4; i++) {
@@ -883,18 +883,18 @@ void microglia_update_state_dynamics(microglia_t* mg, float dt)
 
     // Update state: state_new = state + dt/6 * (k1 + 2*k2 + 2*k3 + k4)
     for (int i = 0; i < 4; i++) {
-        mg->state_variables[i] += dt / 6.0f * (k1[i] + 2.0f*k2[i] + 2.0f*k3[i] + k4[i]);
+        mg->state_variables[i] += dt / 6.0F * (k1[i] + 2.0F*k2[i] + 2.0F*k3[i] + k4[i]);
     }
 
     // Clamp values
     mg->state_variables[STATE_IDX_INFLAMMATION] =
-        clamp_f(mg->state_variables[STATE_IDX_INFLAMMATION], 0.0f, 1.0f);
+        clamp_f(mg->state_variables[STATE_IDX_INFLAMMATION], 0.0F, 1.0F);
     mg->state_variables[STATE_IDX_ACTIVATION] =
-        clamp_f(mg->state_variables[STATE_IDX_ACTIVATION], 0.0f, 1.0f);
+        clamp_f(mg->state_variables[STATE_IDX_ACTIVATION], 0.0F, 1.0F);
     mg->state_variables[STATE_IDX_PROCESS] =
-        clamp_f(mg->state_variables[STATE_IDX_PROCESS], 0.0f, 1.0f);
+        clamp_f(mg->state_variables[STATE_IDX_PROCESS], 0.0F, 1.0F);
     mg->state_variables[STATE_IDX_ENERGY] =
-        clamp_f(mg->state_variables[STATE_IDX_ENERGY], 0.0f, 1.0f);
+        clamp_f(mg->state_variables[STATE_IDX_ENERGY], 0.0F, 1.0F);
 
     // Update derived values
     mg->process_extension = mg->state_variables[STATE_IDX_PROCESS];
@@ -914,7 +914,7 @@ void microglia_set_inflammation(microglia_t* mg, float inflammation)
     if (!mg) return;
 
     nimcp_spinlock_lock(&mg->lock);
-    mg->inflammation_level = clamp_f(inflammation, 0.0f, 1.0f);
+    mg->inflammation_level = clamp_f(inflammation, 0.0F, 1.0F);
     nimcp_spinlock_unlock(&mg->lock);
 
     // Publish inflammation via NOREPINEPHRINE (alerting) channel
@@ -926,7 +926,7 @@ void microglia_set_inflammation(microglia_t* mg, float inflammation)
 
 float microglia_get_process_extension(const microglia_t* mg)
 {
-    if (!mg) return 0.0f;
+    if (!mg) return 0.0F;
     return mg->process_extension;
 }
 
@@ -942,7 +942,7 @@ uint32_t microglia_apply_complement_tags(microglia_t* mg, uint64_t current_time)
 
     uint32_t newly_tagged = 0;
     float c1q_threshold = NIMCP_COMPLEMENT_C1Q_THRESHOLD;
-    uint64_t conversion_time_us = (uint64_t)(C1Q_TO_C3_CONVERSION_TIME_S * 1000000.0f);
+    uint64_t conversion_time_us = (uint64_t)(C1Q_TO_C3_CONVERSION_TIME_S * 1000000.0F);
 
     for (uint32_t i = 0; i < mg->num_monitored_synapses; i++) {
         monitored_synapse_t* syn = &mg->synapses[i];
@@ -952,7 +952,7 @@ uint32_t microglia_apply_complement_tags(microglia_t* mg, uint64_t current_time)
             if (syn->complement.tag == COMPLEMENT_NONE) {
                 // Apply C1q tag
                 syn->complement.tag = COMPLEMENT_C1Q;
-                syn->complement.tag_strength = 1.0f - (syn->filtered_activity / c1q_threshold);
+                syn->complement.tag_strength = 1.0F - (syn->filtered_activity / c1q_threshold);
                 syn->complement.tag_time = current_time;
                 mg->total_c1q_tags++;
                 newly_tagged++;
@@ -961,17 +961,17 @@ uint32_t microglia_apply_complement_tags(microglia_t* mg, uint64_t current_time)
                 uint64_t tag_age = current_time - syn->complement.tag_time;
                 if (tag_age >= conversion_time_us) {
                     syn->complement.tag = COMPLEMENT_C3;
-                    syn->complement.tag_strength = 1.0f;
+                    syn->complement.tag_strength = 1.0F;
                     mg->total_c3_conversions++;
                 }
             }
         } else {
             // Activity recovered - decay tag
             if (syn->complement.tag != COMPLEMENT_NONE) {
-                syn->complement.tag_strength -= 0.1f;
-                if (syn->complement.tag_strength <= 0.0f) {
+                syn->complement.tag_strength -= 0.1F;
+                if (syn->complement.tag_strength <= 0.0F) {
                     syn->complement.tag = COMPLEMENT_NONE;
-                    syn->complement.tag_strength = 0.0f;
+                    syn->complement.tag_strength = 0.0F;
                 }
             }
         }
@@ -996,7 +996,7 @@ complement_tag_t microglia_get_complement_tag(const microglia_t* mg, uint32_t sy
 
 void microglia_decay_complement_tags(microglia_t* mg, float dt)
 {
-    if (!mg || dt <= 0.0f) return;
+    if (!mg || dt <= 0.0F) return;
 
     nimcp_spinlock_lock(&mg->lock);
 
@@ -1006,9 +1006,9 @@ void microglia_decay_complement_tags(microglia_t* mg, float dt)
         monitored_synapse_t* syn = &mg->synapses[i];
         if (syn->complement.tag != COMPLEMENT_NONE) {
             syn->complement.tag_strength -= decay;
-            if (syn->complement.tag_strength <= 0.0f) {
+            if (syn->complement.tag_strength <= 0.0F) {
                 syn->complement.tag = COMPLEMENT_NONE;
-                syn->complement.tag_strength = 0.0f;
+                syn->complement.tag_strength = 0.0F;
             }
         }
     }
@@ -1022,7 +1022,7 @@ void microglia_decay_complement_tags(microglia_t* mg, float dt)
 
 void microglia_update_cytokines(microglia_t* mg, float dt)
 {
-    if (!mg || dt <= 0.0f) return;
+    if (!mg || dt <= 0.0F) return;
 
     nimcp_spinlock_lock(&mg->lock);
 
@@ -1032,29 +1032,29 @@ void microglia_update_cytokines(microglia_t* mg, float dt)
     switch (mg->state) {
         case MICROGLIA_STATE_RAMIFIED:
             // Low baseline production
-            production[CYTOKINE_IL1B] = 0.01f;
-            production[CYTOKINE_TNFA] = 0.01f;
-            production[CYTOKINE_IL6] = 0.01f;
-            production[CYTOKINE_IL10] = 0.02f;
-            production[CYTOKINE_TGFB] = 0.02f;
+            production[CYTOKINE_IL1B] = 0.01F;
+            production[CYTOKINE_TNFA] = 0.01F;
+            production[CYTOKINE_IL6] = 0.01F;
+            production[CYTOKINE_IL10] = 0.02F;
+            production[CYTOKINE_TGFB] = 0.02F;
             break;
 
         case MICROGLIA_STATE_ACTIVATED:
             // High pro-inflammatory
-            production[CYTOKINE_IL1B] = 0.5f;
-            production[CYTOKINE_TNFA] = 0.4f;
-            production[CYTOKINE_IL6] = 0.3f;
-            production[CYTOKINE_IL10] = 0.05f;
-            production[CYTOKINE_TGFB] = 0.05f;
+            production[CYTOKINE_IL1B] = 0.5F;
+            production[CYTOKINE_TNFA] = 0.4F;
+            production[CYTOKINE_IL6] = 0.3F;
+            production[CYTOKINE_IL10] = 0.05F;
+            production[CYTOKINE_TGFB] = 0.05F;
             break;
 
         case MICROGLIA_STATE_PHAGOCYTIC:
             // Resolution phase - anti-inflammatory
-            production[CYTOKINE_IL1B] = 0.1f;
-            production[CYTOKINE_TNFA] = 0.1f;
-            production[CYTOKINE_IL6] = 0.1f;
-            production[CYTOKINE_IL10] = 0.5f;
-            production[CYTOKINE_TGFB] = 0.4f;
+            production[CYTOKINE_IL1B] = 0.1F;
+            production[CYTOKINE_TNFA] = 0.1F;
+            production[CYTOKINE_IL6] = 0.1F;
+            production[CYTOKINE_IL10] = 0.5F;
+            production[CYTOKINE_TGFB] = 0.4F;
             break;
     }
 
@@ -1064,7 +1064,7 @@ void microglia_update_cytokines(microglia_t* mg, float dt)
         float dC = production[i] - NIMCP_CYTOKINE_DECAY_RATE * mg->cytokines.concentrations[i];
         mg->cytokines.concentrations[i] += dC * dt;
         mg->cytokines.concentrations[i] = clamp_f(mg->cytokines.concentrations[i],
-                                                   0.0f, NIMCP_CYTOKINE_MAX_CONCENTRATION);
+                                                   0.0F, NIMCP_CYTOKINE_MAX_CONCENTRATION);
     }
 
     mg->cytokines.last_update_time = nimcp_time_monotonic_us();
@@ -1074,7 +1074,7 @@ void microglia_update_cytokines(microglia_t* mg, float dt)
 
 float microglia_get_cytokine(const microglia_t* mg, cytokine_type_t type)
 {
-    if (!mg || type >= NIMCP_CYTOKINE_COUNT) return 0.0f;
+    if (!mg || type >= NIMCP_CYTOKINE_COUNT) return 0.0F;
     return mg->cytokines.concentrations[type];
 }
 
@@ -1085,13 +1085,13 @@ void microglia_add_cytokine(microglia_t* mg, cytokine_type_t type, float amount)
     nimcp_spinlock_lock(&mg->lock);
     mg->cytokines.concentrations[type] = clamp_f(
         mg->cytokines.concentrations[type] + amount,
-        0.0f, NIMCP_CYTOKINE_MAX_CONCENTRATION);
+        0.0F, NIMCP_CYTOKINE_MAX_CONCENTRATION);
     nimcp_spinlock_unlock(&mg->lock);
 }
 
 float microglia_get_net_inflammation(const microglia_t* mg)
 {
-    if (!mg) return 0.0f;
+    if (!mg) return 0.0F;
 
     float pro = mg->cytokines.concentrations[CYTOKINE_IL1B] +
                 mg->cytokines.concentrations[CYTOKINE_TNFA] +
@@ -1316,11 +1316,11 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
     static uint64_t last_step_time = 0;
     float dt_s;
     if (last_step_time == 0) {
-        dt_s = 0.001f;
+        dt_s = 0.001F;
     } else {
-        dt_s = (float)(current_time - last_step_time) / 1000000.0f;
-        if (dt_s > 0.1f) dt_s = 0.1f;  // Cap at 100ms
-        if (dt_s < 0.0001f) dt_s = 0.0001f;  // Min 0.1ms
+        dt_s = (float)(current_time - last_step_time) / 1000000.0F;
+        if (dt_s > 0.1F) dt_s = 0.1F;  // Cap at 100ms
+        if (dt_s < 0.0001F) dt_s = 0.0001F;  // Min 0.1ms
     }
     last_step_time = current_time;
 
@@ -1385,7 +1385,7 @@ microglia_t* microglia_network_find_nearest(microglia_network_t* network,
     // Use KD-tree if valid
     if (network->spatial_index_valid && network->microglia_tree) {
         kdtree_point_t query = {x, y, z};
-        float dist_sq = 0.0f;
+        float dist_sq = 0.0F;
 
         void* nearest = kdtree_nearest(network->microglia_tree, query, &dist_sq);
         if (nearest) {
@@ -1448,10 +1448,10 @@ uint32_t microglia_network_find_in_radius(microglia_network_t* network,
 
 void microglia_network_diffuse_cytokines(microglia_network_t* network, float dt)
 {
-    if (!network || dt <= 0.0f || network->num_microglia < 2) return;
+    if (!network || dt <= 0.0F || network->num_microglia < 2) return;
 
     // Simple diffusion: each microglia shares cytokines with nearby neighbors
-    float diffusion_radius = 200.0f;  // µm
+    float diffusion_radius = 200.0F;  // µm
     float diffusion_rate = NIMCP_CYTOKINE_DIFFUSION_COEFF * dt / (diffusion_radius * diffusion_radius);
 
     // For each pair of nearby microglia, exchange cytokines
@@ -1467,7 +1467,7 @@ void microglia_network_diffuse_cytokines(microglia_network_t* network, float dt)
             if (dist > diffusion_radius) continue;
 
             // Distance-weighted diffusion
-            float weight = diffusion_rate * (1.0f - dist / diffusion_radius);
+            float weight = diffusion_rate * (1.0F - dist / diffusion_radius);
 
             for (int c = 0; c < NIMCP_CYTOKINE_COUNT; c++) {
                 float c1 = mg1->cytokines.concentrations[c];
@@ -1497,8 +1497,8 @@ void microglia_network_get_stats(const microglia_network_t* network,
 
     stats->total_microglia = network->num_microglia;
 
-    float total_inflammation = 0.0f;
-    float total_activity = 0.0f;
+    float total_inflammation = 0.0F;
+    float total_activity = 0.0F;
     uint32_t total_synapses = 0;
 
     for (uint32_t i = 0; i < network->num_microglia; i++) {

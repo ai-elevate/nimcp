@@ -210,13 +210,13 @@ engram_system_t* engram_system_create(void) {
 
     // Set defaults
     system->systems_consolidation_enabled = true;
-    system->hippocampal_capacity = 1.0f;
-    system->cortical_capacity = 1.0f;
-    system->sleep_consolidation_rate = 2.0f;  // 2x faster during sleep
+    system->hippocampal_capacity = 1.0F;
+    system->cortical_capacity = 1.0F;
+    system->sleep_consolidation_rate = 2.0F;  // 2x faster during sleep
     system->baseline_decay_rate = ENGRAM_BASE_DECAY_RATE;
     system->use_interference = true;
-    system->separation_threshold = 0.3f;
-    system->completion_threshold = 0.4f;
+    system->separation_threshold = 0.3F;
+    system->completion_threshold = 0.4F;
 
     // Enable integrations
     system->integrate_with_sleep = true;
@@ -282,7 +282,7 @@ static void bio_broadcast_engram_encoded(engram_system_t* system, uint32_t engra
     msg.stimulus_id = engram_id;
     msg.salience_score = strength;
     msg.attention_priority = strength;
-    msg.requires_immediate_attention = (strength > 0.8f);
+    msg.requires_immediate_attention = (strength > 0.8F);
     bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast engram encoded: id=%u, strength=%.2f", engram_id, strength);
 }
@@ -372,7 +372,7 @@ void engram_system_reset(engram_system_t* system) {
     system->total_recalls = 0;
     system->total_consolidations = 0;
     system->total_extinctions = 0;
-    system->average_consolidation_time = 0.0f;
+    system->average_consolidation_time = 0.0F;
 
     // Restore configuration
     system->systems_consolidation_enabled = sys_consol;
@@ -426,7 +426,7 @@ uint64_t engram_encode(
 
     // Set initial state
     engram->state = ENGRAM_STATE_ENCODING;
-    engram->consolidation_strength = 0.0f;
+    engram->consolidation_strength = 0.0F;
     engram->primary_location = ENGRAM_LOCATION_HIPPOCAMPUS;  // Always starts here
     engram->secondary_location = ENGRAM_LOCATION_CORTEX;     // Target for systems consolidation
 
@@ -437,20 +437,20 @@ uint64_t engram_encode(
     engram->decay_rate = system->baseline_decay_rate;
 
     // IEG tagging - strength modulated by arousal
-    engram->is_tagged = (emotion.arousal > 0.5f);  // Tag if arousal above threshold
+    engram->is_tagged = (emotion.arousal > 0.5F);  // Tag if arousal above threshold
     // Tag strength scales with arousal: higher arousal = stronger tagging
-    engram->tag_strength = 0.5f + (emotion.arousal * 0.5f);  // Range: 0.5 to 1.0
+    engram->tag_strength = 0.5F + (emotion.arousal * 0.5F);  // Range: 0.5 to 1.0
     engram->tag_onset_time_us = 0;  // Will be set by caller
 
     // Emotional context
     engram->emotion = emotion;
-    engram->vividness = 1.0f;  // Starts vivid
-    engram->confidence = 1.0f;
+    engram->vividness = 1.0F;  // Starts vivid
+    engram->confidence = 1.0F;
 
     // Emotional enhancement
-    if (system->integrate_with_emotion && emotion.arousal > 0.6f) {
-        engram->decay_rate *= 0.5f;  // Emotional memories resist forgetting
-        engram->vividness *= 1.3f;   // More vivid
+    if (system->integrate_with_emotion && emotion.arousal > 0.6F) {
+        engram->decay_rate *= 0.5F;  // Emotional memories resist forgetting
+        engram->vividness *= 1.3F;   // More vivid
     }
 
     // Reconsolidation
@@ -458,7 +458,7 @@ uint64_t engram_encode(
     engram->reconsolidation_start_us = 0;
 
     // Statistics
-    engram->recall_latency_ms = 0.0f;
+    engram->recall_latency_ms = 0.0F;
     engram->successful_recalls = 0;
 
     // Update system counters
@@ -492,7 +492,7 @@ uint64_t engram_recall(
     if (cue_count == 0) return 0;
     if (!activation_out || !activations_out) return 0;
 
-    float best_match = 0.0f;
+    float best_match = 0.0F;
     uint64_t best_engram_id = 0;
     memory_engram_t* best_engram = NULL;
 
@@ -523,7 +523,7 @@ uint64_t engram_recall(
 
     // No match found
     if (best_engram_id == 0) {
-        if (confidence_out) *confidence_out = 0.0f;
+        if (confidence_out) *confidence_out = 0.0F;
         return 0;
     }
 
@@ -574,7 +574,7 @@ bool engram_recognize(
     if (!pattern) return false;
     if (count == 0) return false;
 
-    float max_familiarity = 0.0f;
+    float max_familiarity = 0.0F;
 
     // Check all engrams
     for (uint32_t i = 0; i < system->capacity; i++) {
@@ -623,7 +623,7 @@ void engram_consolidate_update(
     // HOW:  Time-dependent strengthening, sleep boost
 
     if (!system) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     float consolidation_rate = is_sleeping ?
         (dt / ENGRAM_SYNAPTIC_CONSOLIDATION_TIME) * system->sleep_consolidation_rate :
@@ -644,12 +644,12 @@ void engram_consolidate_update(
             engram->state = ENGRAM_STATE_LABILE;
             engram->consolidation_strength += consolidation_rate;
 
-            if (engram->consolidation_strength >= 1.0f) {
-                engram->consolidation_strength = 1.0f;
+            if (engram->consolidation_strength >= 1.0F) {
+                engram->consolidation_strength = 1.0F;
                 engram->state = ENGRAM_STATE_CONSOLIDATED;
                 system->total_consolidations++;
                 consolidated++;
-            } else if (engram->consolidation_strength > 0.0f) {
+            } else if (engram->consolidation_strength > 0.0F) {
                 engram->state = ENGRAM_STATE_CONSOLIDATING;
                 consolidating++;
             } else {
@@ -662,8 +662,8 @@ void engram_consolidate_update(
             // Increase consolidation strength
             engram->consolidation_strength += consolidation_rate;
 
-            if (engram->consolidation_strength >= 1.0f) {
-                engram->consolidation_strength = 1.0f;
+            if (engram->consolidation_strength >= 1.0F) {
+                engram->consolidation_strength = 1.0F;
                 engram->state = ENGRAM_STATE_CONSOLIDATED;
                 system->total_consolidations++;
                 consolidated++;
@@ -713,9 +713,9 @@ void engram_sleep_replay(
             engram->state == ENGRAM_STATE_CONSOLIDATING) {
 
             // Replay strengthens
-            engram->consolidation_strength += 0.01f;
-            if (engram->consolidation_strength > 1.0f) {
-                engram->consolidation_strength = 1.0f;
+            engram->consolidation_strength += 0.01F;
+            if (engram->consolidation_strength > 1.0F) {
+                engram->consolidation_strength = 1.0F;
             }
 
             engram->reactivation_count++;
@@ -771,7 +771,7 @@ bool engram_block_reconsolidation(
     // Block = put in degrading state
     engram->state = ENGRAM_STATE_DEGRADING;
     engram->is_reconsolidating = false;
-    engram->consolidation_strength *= 0.5f;  // Weaken significantly
+    engram->consolidation_strength *= 0.5F;  // Weaken significantly
 
     return true;
 }
@@ -789,7 +789,7 @@ void engram_apply_decay(
     // HOW:  Exponential decay of unused engrams
 
     if (!system) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     for (uint32_t i = 0; i < system->capacity; i++) {
         memory_engram_t* engram = &system->engrams[i];
@@ -802,24 +802,24 @@ void engram_apply_decay(
         // Apply decay
         float decay = engram->decay_rate * dt;
         engram->consolidation_strength -= decay;
-        engram->vividness -= decay * 0.5f;
+        engram->vividness -= decay * 0.5F;
 
         // Clamp
-        if (engram->consolidation_strength < 0.0f) {
-            engram->consolidation_strength = 0.0f;
+        if (engram->consolidation_strength < 0.0F) {
+            engram->consolidation_strength = 0.0F;
         }
-        if (engram->vividness < 0.0f) {
-            engram->vividness = 0.0f;
+        if (engram->vividness < 0.0F) {
+            engram->vividness = 0.0F;
         }
 
         // Mark as degrading if very weak
-        if (engram->consolidation_strength < 0.1f) {
+        if (engram->consolidation_strength < 0.1F) {
             engram->state = ENGRAM_STATE_DEGRADING;
         }
 
         // Mark as forgotten if extremely weak (but keep active for tracking)
         // Very old/forgotten memories remain in system as degraded traces
-        if (engram->consolidation_strength < 0.01f) {
+        if (engram->consolidation_strength < 0.01F) {
             engram->state = ENGRAM_STATE_DEGRADING;
             // Don't deactivate - allow tracking of degraded memories
         }
@@ -837,30 +837,30 @@ void engram_extinction(
 
     if (!system) return;
     if (engram_id == 0) return;
-    if (extinction_strength <= 0.0f) return;
+    if (extinction_strength <= 0.0F) return;
 
     memory_engram_t* engram = engram_get_by_id(system, engram_id);
     if (!engram) return;
 
     // Weaken engram - affects consolidation, confidence, and vividness
     engram->consolidation_strength -= extinction_strength;
-    if (engram->consolidation_strength < 0.0f) {
-        engram->consolidation_strength = 0.0f;
+    if (engram->consolidation_strength < 0.0F) {
+        engram->consolidation_strength = 0.0F;
     }
 
     // Extinction also reduces confidence and vividness of the memory
-    engram->confidence -= extinction_strength * 0.5f;  // Confidence drops with extinction
-    if (engram->confidence < 0.0f) {
-        engram->confidence = 0.0f;
+    engram->confidence -= extinction_strength * 0.5F;  // Confidence drops with extinction
+    if (engram->confidence < 0.0F) {
+        engram->confidence = 0.0F;
     }
 
-    engram->vividness -= extinction_strength * 0.3f;  // Memory becomes less vivid
-    if (engram->vividness < 0.0f) {
-        engram->vividness = 0.0f;
+    engram->vividness -= extinction_strength * 0.3F;  // Memory becomes less vivid
+    if (engram->vividness < 0.0F) {
+        engram->vividness = 0.0F;
     }
 
     // Update state
-    if (engram->consolidation_strength < 0.1f) {
+    if (engram->consolidation_strength < 0.1F) {
         engram->state = ENGRAM_STATE_DEGRADING;
         system->total_extinctions++;
     }
@@ -911,7 +911,7 @@ float engram_get_consolidation_strength(
     const engram_system_t* system,
     uint64_t engram_id) {
 
-    if (!system || engram_id == 0) return 0.0f;
+    if (!system || engram_id == 0) return 0.0F;
 
     for (uint32_t i = 0; i < system->capacity; i++) {
         if (system->engrams[i].active &&
@@ -920,7 +920,7 @@ float engram_get_consolidation_strength(
         }
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 bool engram_is_reconsolidating(
@@ -944,17 +944,17 @@ float engram_get_age_seconds(
     uint64_t engram_id,
     uint64_t current_time_us) {
 
-    if (!system || engram_id == 0) return 0.0f;
+    if (!system || engram_id == 0) return 0.0F;
 
     for (uint32_t i = 0; i < system->capacity; i++) {
         if (system->engrams[i].active &&
             system->engrams[i].engram_id == engram_id) {
             uint64_t age_us = current_time_us - system->engrams[i].encoding_time_us;
-            return (float)age_us / 1000000.0f;
+            return (float)age_us / 1000000.0F;
         }
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 uint32_t engram_get_active_count(const engram_system_t* system) {

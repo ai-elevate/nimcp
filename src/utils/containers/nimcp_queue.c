@@ -392,13 +392,13 @@ nimcp_result_t nimcp_queue_reset_stats(nimcp_queue_handle_t queue) {
 }
 
 float nimcp_queue_get_utilization(nimcp_queue_handle_t queue) {
-    if (!queue) return 0.0f;
+    if (!queue) return 0.0F;
 
     size_t cap = nimcp_queue_get_capacity(queue);
-    if (cap == 0) return 0.0f;
+    if (cap == 0) return 0.0F;
 
     size_t size = nimcp_queue_get_size(queue);
-    return (float)size / (float)cap * 100.0f;
+    return (float)size / (float)cap * 100.0F;
 }
 
 //=============================================================================

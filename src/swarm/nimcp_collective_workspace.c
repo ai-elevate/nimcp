@@ -81,6 +81,10 @@
  * WHY:  Consistent logging across NIMCP modules with proper categorization
  * HOW:  Wrap nimcp_log calls with appropriate log levels
  */
+#undef LOG_ERROR
+#undef LOG_WARN
+#undef LOG_INFO
+#undef LOG_DEBUG
 #define LOG_ERROR(fmt, ...)   nimcp_log(LOG_LEVEL_ERROR, MODULE_NAME, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_WARN(fmt, ...)    nimcp_log(LOG_LEVEL_WARN, MODULE_NAME, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_INFO(fmt, ...)    nimcp_log(LOG_LEVEL_INFO, MODULE_NAME, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
@@ -192,9 +196,9 @@ static float cosine_similarity(
     const float* b,
     uint32_t dim
 ) {
-    float dot = 0.0f;
-    float norm_a = 0.0f;
-    float norm_b = 0.0f;
+    float dot = 0.0F;
+    float norm_a = 0.0F;
+    float norm_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         dot += a[i] * b[i];
@@ -203,8 +207,8 @@ static float cosine_similarity(
     }
 
     float denom = sqrtf(norm_a) * sqrtf(norm_b);
-    if (denom < 1e-9f) {
-        return 0.0f;  // Zero vectors
+    if (denom < 1e-9F) {
+        return 0.0F;  // Zero vectors
     }
 
     return dot / denom;
@@ -228,7 +232,7 @@ static void blend_content_vectors(
     float weight_source,
     uint32_t dim
 ) {
-    float weight_dest = 1.0f - weight_source;
+    float weight_dest = 1.0F - weight_source;
     for (uint32_t i = 0; i < dim; i++) {
         dest[i] = weight_dest * dest[i] + weight_source * source[i];
     }
@@ -436,15 +440,15 @@ static void update_collective_metrics(
     uint64_t current_time_ms
 ) {
     if (!workspace->meta_cognition_active || workspace->item_count == 0) {
-        workspace->collective_coherence = 0.0f;
-        workspace->collective_salience = 0.0f;
+        workspace->collective_coherence = 0.0F;
+        workspace->collective_salience = 0.0F;
         memset(workspace->swarm_focus_vector, 0,
                COLLECTIVE_WORKSPACE_CONTENT_DIM * sizeof(float));
         return;
     }
 
     // Compute average salience
-    float total_salience = 0.0f;
+    float total_salience = 0.0F;
     for (uint32_t i = 0; i < workspace->item_count; i++) {
         total_salience += workspace->items[i].salience;
     }
@@ -467,14 +471,14 @@ static void update_collective_metrics(
     }
 
     if (window_items == 0) {
-        workspace->collective_coherence = 0.0f;
+        workspace->collective_coherence = 0.0F;
         memset(workspace->swarm_focus_vector, 0,
                COLLECTIVE_WORKSPACE_CONTENT_DIM * sizeof(float));
         return;
     }
 
     // Normalize focus vector
-    float total_weight = 0.0f;
+    float total_weight = 0.0F;
     for (uint32_t i = 0; i < workspace->item_count; i++) {
         uint64_t age_ms = current_time_ms - workspace->items[i].timestamp_ms;
         if (age_ms <= workspace->config.coherence_window_ms) {
@@ -482,7 +486,7 @@ static void update_collective_metrics(
         }
     }
 
-    if (total_weight > 0.0f) {
+    if (total_weight > 0.0F) {
         for (uint32_t d = 0; d < COLLECTIVE_WORKSPACE_CONTENT_DIM; d++) {
             focus_vector[d] /= total_weight;
         }
@@ -492,7 +496,7 @@ static void update_collective_metrics(
            COLLECTIVE_WORKSPACE_CONTENT_DIM * sizeof(float));
 
     // Compute coherence as average similarity to focus vector
-    float total_similarity = 0.0f;
+    float total_similarity = 0.0F;
     uint32_t similarity_count = 0;
 
     for (uint32_t i = 0; i < workspace->item_count; i++) {
@@ -509,14 +513,14 @@ static void update_collective_metrics(
     }
 
     workspace->collective_coherence = (similarity_count > 0) ?
-        (total_similarity / similarity_count) : 0.0f;
+        (total_similarity / similarity_count) : 0.0F;
 
     // Clamp to [0,1]
-    if (workspace->collective_coherence < 0.0f) {
-        workspace->collective_coherence = 0.0f;
+    if (workspace->collective_coherence < 0.0F) {
+        workspace->collective_coherence = 0.0F;
     }
-    if (workspace->collective_coherence > 1.0f) {
-        workspace->collective_coherence = 1.0f;
+    if (workspace->collective_coherence > 1.0F) {
+        workspace->collective_coherence = 1.0F;
     }
 }
 
@@ -542,7 +546,7 @@ static bool validate_workspace_item(
     uint16_t swarm_size
 ) {
     // Validate salience
-    if (item->salience < 0.0f || item->salience > 1.0f || isnan(item->salience)) {
+    if (item->salience < 0.0F || item->salience > 1.0F || isnan(item->salience)) {
         LOG_ERROR("Invalid salience: %.3f", item->salience);
         bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "validation_failed",
                      "Invalid salience: %.3f", item->salience);
@@ -656,8 +660,8 @@ collective_workspace_t* collective_workspace_create(
     workspace->swarm_size = config->swarm_size;
     workspace->local_clock = 0;
     workspace->item_count = 0;
-    workspace->collective_coherence = 0.0f;
-    workspace->collective_salience = 0.0f;
+    workspace->collective_coherence = 0.0F;
+    workspace->collective_salience = 0.0F;
     workspace->meta_cognition_active = config->enable_meta_cognition;
     workspace->creation_time_ms = get_time_ms();
     workspace->last_prune_time_ms = workspace->creation_time_ms;
@@ -904,15 +908,15 @@ bool collective_workspace_merge_item(
                       "id=0x%08x, existing_salience=%.3f, incoming_salience=%.3f",
                       item->item_id, existing->salience, item->salience);
 
-        } else if (salience_diff < 0.05f &&
+        } else if (salience_diff < 0.05F &&
                    types_compatible(item->type, existing->type)) {
             // Similar salience and compatible types - blend content
-            float blend_weight = 0.5f;  // Equal weight
+            float blend_weight = 0.5F;  // Equal weight
             blend_content_vectors(existing->content, item->content,
                                 blend_weight, COLLECTIVE_WORKSPACE_CONTENT_DIM);
 
             // Average salience
-            existing->salience = (existing->salience + item->salience) / 2.0f;
+            existing->salience = (existing->salience + item->salience) / 2.0F;
 
             blended = true;
 
@@ -1160,7 +1164,7 @@ float collective_workspace_get_coherence(
     const collective_workspace_t* workspace
 ) {
     if (!bbb_check_pointer(workspace, "collective_workspace_get_coherence")) {
-        return 0.0f;
+        return 0.0F;
     }
 
     pthread_mutex_lock((pthread_mutex_t*)&workspace->mutex);
@@ -1349,7 +1353,7 @@ bool collective_workspace_validate_config(
         return false;
     }
 
-    if (config->broadcast_threshold < 0.0f || config->broadcast_threshold > 1.0f) {
+    if (config->broadcast_threshold < 0.0F || config->broadcast_threshold > 1.0F) {
         if (error_msg) {
             snprintf(error_msg, error_msg_len,
                     "broadcast_threshold (%.3f) must be in [0.0, 1.0]",
@@ -1358,7 +1362,7 @@ bool collective_workspace_validate_config(
         return false;
     }
 
-    if (config->min_salience < 0.0f || config->min_salience > 1.0f) {
+    if (config->min_salience < 0.0F || config->min_salience > 1.0F) {
         if (error_msg) {
             snprintf(error_msg, error_msg_len,
                     "min_salience (%.3f) must be in [0.0, 1.0]",

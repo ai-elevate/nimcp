@@ -117,7 +117,7 @@ static void refill_tokens(float* tokens, uint64_t* last_refill_ms,
     uint64_t elapsed_ms = now - *last_refill_ms;
 
     if (elapsed_ms > 0) {
-        float new_tokens = ((float)elapsed_ms / 1000.0f) * rate_per_second;
+        float new_tokens = ((float)elapsed_ms / 1000.0F) * rate_per_second;
         *tokens += new_tokens;
 
         if (*tokens > max_tokens) {
@@ -162,7 +162,7 @@ static void apply_penalty(nimcp_rate_limiter_t limiter,
 
         case PENALTY_REDUCE_RATE_25:
             bucket->state = CLIENT_STATE_RATE_REDUCED;
-            bucket->stats.current_rate *= 0.75f;
+            bucket->stats.current_rate *= 0.75F;
             bucket->penalty_level++;
             LOG_MODULE_WARN("rate_limiter",
                 "Client %s rate reduced to 75%% (violations=%u)",
@@ -171,7 +171,7 @@ static void apply_penalty(nimcp_rate_limiter_t limiter,
 
         case PENALTY_REDUCE_RATE_50:
             bucket->state = CLIENT_STATE_RATE_REDUCED;
-            bucket->stats.current_rate *= 0.50f;
+            bucket->stats.current_rate *= 0.50F;
             bucket->penalty_level++;
             LOG_MODULE_WARN("rate_limiter",
                 "Client %s rate reduced to 50%% (violations=%u)",
@@ -180,7 +180,7 @@ static void apply_penalty(nimcp_rate_limiter_t limiter,
 
         case PENALTY_REDUCE_RATE_75:
             bucket->state = CLIENT_STATE_RATE_REDUCED;
-            bucket->stats.current_rate *= 0.25f;
+            bucket->stats.current_rate *= 0.25F;
             bucket->penalty_level++;
             LOG_MODULE_WARN("rate_limiter",
                 "Client %s rate reduced to 25%% (violations=%u)",
@@ -245,7 +245,7 @@ static void check_good_behavior(nimcp_rate_limiter_t limiter,
 
         // Restore some rate
         bucket->stats.current_rate = limiter->config.requests_per_second *
-                                      powf(0.75f, (float)bucket->penalty_level);
+                                      powf(0.75F, (float)bucket->penalty_level);
 
         if (bucket->penalty_level == 0) {
             bucket->state = CLIENT_STATE_NORMAL;
@@ -357,7 +357,7 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     }
 
     // Validate
-    if (actual_config.requests_per_second <= 0.0f ||
+    if (actual_config.requests_per_second <= 0.0F ||
         actual_config.burst_size == 0) {
         LOG_ERROR("Invalid rate limiter configuration");
         return NULL;
@@ -470,9 +470,9 @@ bool nimcp_rate_limiter_allow(
                       limiter->config.requests_per_second,
                       (float)limiter->config.burst_size);
 
-        bool allowed = (limiter->global_tokens >= 1.0f);
+        bool allowed = (limiter->global_tokens >= 1.0F);
         if (allowed) {
-            limiter->global_tokens -= 1.0f;
+            limiter->global_tokens -= 1.0F;
             limiter->stats.requests_allowed++;
         } else {
             limiter->stats.requests_denied++;
@@ -523,10 +523,10 @@ bool nimcp_rate_limiter_allow(
                   (float)limiter->config.burst_size);
 
     // Check tokens
-    bool allowed = (bucket->tokens >= 1.0f);
+    bool allowed = (bucket->tokens >= 1.0F);
 
     if (allowed) {
-        bucket->tokens -= 1.0f;
+        bucket->tokens -= 1.0F;
         bucket->stats.requests_allowed++;
         bucket->stats.last_request_time_ms = get_time_ms();
         bucket->stats.tokens_available = (uint32_t)bucket->tokens;
@@ -538,7 +538,7 @@ bool nimcp_rate_limiter_allow(
         limiter->stats.requests_allowed++;
         limiter->stats.overall_allow_rate =
             (float)limiter->stats.requests_allowed /
-            (float)limiter->stats.total_requests * 100.0f;
+            (float)limiter->stats.total_requests * 100.0F;
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
     } else {
         bucket->stats.requests_denied++;
@@ -550,7 +550,7 @@ bool nimcp_rate_limiter_allow(
         limiter->stats.requests_denied++;
         limiter->stats.overall_allow_rate =
             (float)limiter->stats.requests_allowed /
-            (float)limiter->stats.total_requests * 100.0f;
+            (float)limiter->stats.total_requests * 100.0F;
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
     }
 
@@ -622,7 +622,7 @@ bool nimcp_rate_limiter_check(
                   bucket->stats.current_rate,
                   (float)limiter->config.burst_size);
 
-    bool would_allow = (bucket->tokens >= 1.0f) &&
+    bool would_allow = (bucket->tokens >= 1.0F) &&
                        (bucket->state != CLIENT_STATE_BLOCKED_PERM) &&
                        (bucket->state != CLIENT_STATE_BLOCKED_TEMP ||
                         get_time_ms() >= bucket->block_until_ms);
@@ -652,9 +652,9 @@ uint64_t nimcp_rate_limiter_time_until_ready(
                   (float)limiter->config.burst_size);
 
     uint64_t wait_ms = 0;
-    if (bucket->tokens < 1.0f) {
-        float tokens_needed = 1.0f - bucket->tokens;
-        wait_ms = (uint64_t)(tokens_needed / bucket->stats.current_rate * 1000.0f);
+    if (bucket->tokens < 1.0F) {
+        float tokens_needed = 1.0F - bucket->tokens;
+        wait_ms = (uint64_t)(tokens_needed / bucket->stats.current_rate * 1000.0F);
     }
 
     nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
@@ -836,7 +836,7 @@ nimcp_error_t nimcp_rate_limiter_set_rate(
     nimcp_rate_limiter_t limiter,
     float requests_per_second)
 {
-    if (!is_valid_limiter(limiter) || requests_per_second <= 0.0f) {
+    if (!is_valid_limiter(limiter) || requests_per_second <= 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

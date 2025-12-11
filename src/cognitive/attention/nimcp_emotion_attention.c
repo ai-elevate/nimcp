@@ -85,18 +85,18 @@ static nimcp_pos_encoder_t* create_priority_encoder(uint32_t max_seq, uint32_t d
 static float compute_attention_width(float arousal, float valence,
                                      const emotion_attention_config_t* config) {
     /* WHAT: Start with neutral width */
-    float width = 0.5f;
+    float width = 0.5F;
 
     /* WHAT: Apply arousal-based narrowing (Easterbrook) */
     /* WHY:  High arousal (fear, anger) narrows attention to threats */
     float narrowing = arousal * config->arousal_narrowing_factor;
-    width -= narrowing * 0.4f;  /* Up to 40% narrowing */
+    width -= narrowing * 0.4F;  /* Up to 40% narrowing */
 
     /* WHAT: Apply valence-based broadening (Fredrickson) */
     /* WHY:  Positive emotions (joy) broaden attention scope */
-    if (valence > 0.0f) {
+    if (valence > 0.0F) {
         float broadening = valence * config->valence_broadening_factor;
-        width += broadening * 0.5f;  /* Up to 50% broadening */
+        width += broadening * 0.5F;  /* Up to 50% broadening */
     }
 
     /* WHAT: Clamp to configured limits */
@@ -177,13 +177,13 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
     system->stats.current_attention_width = system->current_attention_width;
 
     /* Update running averages */
-    float alpha = 0.1f;  /* EMA smoothing */
+    float alpha = 0.1F;  /* EMA smoothing */
     system->stats.avg_arousal_modulation =
-        alpha * msg->arousal + (1.0f - alpha) * system->stats.avg_arousal_modulation;
+        alpha * msg->arousal + (1.0F - alpha) * system->stats.avg_arousal_modulation;
     system->stats.avg_valence_modulation =
-        alpha * msg->valence + (1.0f - alpha) * system->stats.avg_valence_modulation;
+        alpha * msg->valence + (1.0F - alpha) * system->stats.avg_valence_modulation;
     system->stats.avg_attention_width =
-        alpha * system->current_attention_width + (1.0f - alpha) * system->stats.avg_attention_width;
+        alpha * system->current_attention_width + (1.0F - alpha) * system->stats.avg_attention_width;
 
     pthread_rwlock_unlock(&system->lock);
 
@@ -197,11 +197,11 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
 
 emotion_attention_config_t emotion_attention_default_config(void) {
     emotion_attention_config_t config = {
-        .arousal_narrowing_factor = 0.7f,    /* Strong narrowing effect */
-        .valence_broadening_factor = 0.5f,   /* Moderate broadening */
-        .emotion_salience_boost = 2.0f,      /* 2x boost for emotional stimuli */
-        .min_attention_width = 0.2f,         /* Can narrow to 20% */
-        .max_attention_width = 0.9f,         /* Can broaden to 90% */
+        .arousal_narrowing_factor = 0.7F,    /* Strong narrowing effect */
+        .valence_broadening_factor = 0.5F,   /* Moderate broadening */
+        .emotion_salience_boost = 2.0F,      /* 2x boost for emotional stimuli */
+        .min_attention_width = 0.2F,         /* Can narrow to 20% */
+        .max_attention_width = 0.9F,         /* Can broaden to 90% */
         .enable_emotion_gating = true,
         .enable_congruency_bias = true,
 
@@ -247,15 +247,15 @@ emotion_attention_system_t* emotion_attention_create(
     system->attention = attention;
 
     /* WHAT: Initialize state */
-    system->current_arousal = 0.0f;
-    system->current_valence = 0.0f;
-    system->current_attention_width = 0.5f;  /* Neutral */
+    system->current_arousal = 0.0F;
+    system->current_valence = 0.0F;
+    system->current_attention_width = 0.5F;  /* Neutral */
     system->dominant_emotion = TENSOR_JOY;
 
     /* WHAT: Initialize statistics */
     memset(&system->stats, 0, sizeof(emotion_attention_stats_t));
-    system->stats.current_attention_width = 0.5f;
-    system->stats.avg_attention_width = 0.5f;
+    system->stats.current_attention_width = 0.5F;
+    system->stats.avg_attention_width = 0.5F;
 
     /* WHAT: Initialize lock */
     if (pthread_rwlock_init(&system->lock, NULL) != 0) {
@@ -329,7 +329,7 @@ bool emotion_attention_modulate(emotion_attention_system_t* system) {
     /* WHAT: Apply emotional gating if enabled */
     if (system->config.enable_emotion_gating) {
         /* WHAT: High arousal emotions gate attention more strongly */
-        float gate_signal = 0.5f + (system->current_arousal * 0.5f);
+        float gate_signal = 0.5F + (system->current_arousal * 0.5F);
         multihead_attention_set_gate(system->attention, gate_signal);
         system->stats.emotional_gating_events++;
     }
@@ -337,7 +337,7 @@ bool emotion_attention_modulate(emotion_attention_system_t* system) {
     pthread_rwlock_unlock(&system->lock);
 
     EA_LOG_DEBUG("Applied emotion modulation: gate=%.3f width=%.3f",
-                 0.5f + (system->current_arousal * 0.5f), system->current_attention_width);
+                 0.5F + (system->current_arousal * 0.5F), system->current_attention_width);
 
     return true;
 }
@@ -352,8 +352,8 @@ float emotion_attention_compute_salience(
     }
 
     /* Guard: Clamp input */
-    if (base_salience < 0.0f) base_salience = 0.0f;
-    if (base_salience > 1.0f) base_salience = 1.0f;
+    if (base_salience < 0.0F) base_salience = 0.0F;
+    if (base_salience > 1.0F) base_salience = 1.0F;
 
     pthread_rwlock_rdlock(&system->lock);
 
@@ -374,8 +374,8 @@ float emotion_attention_compute_salience(
     pthread_rwlock_unlock(&system->lock);
 
     /* Guard: Clamp output */
-    if (modulated_salience > 1.0f) {
-        modulated_salience = 1.0f;
+    if (modulated_salience > 1.0F) {
+        modulated_salience = 1.0F;
     }
 
     return modulated_salience;
@@ -383,7 +383,7 @@ float emotion_attention_compute_salience(
 
 float emotion_attention_get_width(const emotion_attention_system_t* system) {
     if (!system) {
-        return -1.0f;
+        return -1.0F;
     }
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
@@ -550,9 +550,9 @@ static nimcp_pos_encoder_t* create_priority_encoder(uint32_t max_seq, uint32_t d
     learned_config.base.embedding_dim = dim;
     learned_config.base.cache_enabled = true;
     learned_config.base.thread_safe = true;
-    learned_config.init_std = 0.02f;        /* Standard initialization */
-    learned_config.learning_rate = 0.001f;  /* Conservative learning rate */
-    learned_config.weight_decay = 0.0001f;  /* Light regularization */
+    learned_config.init_std = 0.02F;        /* Standard initialization */
+    learned_config.learning_rate = 0.001F;  /* Conservative learning rate */
+    learned_config.weight_decay = 0.0001F;  /* Light regularization */
 
     nimcp_pos_config_t config = {
         .type = NIMCP_POS_LEARNED,

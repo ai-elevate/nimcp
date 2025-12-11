@@ -1028,7 +1028,7 @@ void sparse_synapse_pool_reset_stats(sparse_synapse_pool_t pool) {
 
 float sparse_synapse_pool_utilization(sparse_synapse_pool_t pool) {
     if (!validate_pool(pool)) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Aggregate utilization across all size-class pools
@@ -1044,7 +1044,7 @@ float sparse_synapse_pool_utilization(sparse_synapse_pool_t pool) {
     }
 
     if (total_blocks == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return (float)allocated_blocks / (float)total_blocks;
@@ -1077,7 +1077,7 @@ float sparse_synapse_memory_savings(
 ) {
     if (!validate_pool(pool) || num_neurons == 0 ||
         dense_synapses_per_neuron == 0 || bytes_per_synapse == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Calculate dense allocation
@@ -1086,18 +1086,18 @@ float sparse_synapse_memory_savings(
     // Calculate sparse allocation
     sparse_synapse_stats_t stats;
     if (sparse_synapse_pool_get_stats(pool, &stats) != 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     size_t sparse_memory = stats.total_memory_bytes;
 
     // Calculate savings percentage
     if (dense_memory == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float savings = 1.0f - ((float)sparse_memory / (float)dense_memory);
-    return fmaxf(0.0f, fminf(1.0f, savings));  // Clamp to [0, 1]
+    float savings = 1.0F - ((float)sparse_memory / (float)dense_memory);
+    return fmaxf(0.0F, fminf(1.0F, savings));  // Clamp to [0, 1]
 }
 
 void sparse_synapse_pool_print_stats(sparse_synapse_pool_t pool, bool verbose) {
@@ -1419,11 +1419,11 @@ synapse_t* synapse_metadata_pool_get(
 
 float synapse_metadata_pool_utilization(synapse_metadata_pool_t pool) {
     if (!validate_metadata_pool(pool)) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (pool->pool_size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return (float)(pool->pool_size - pool->free_count) / (float)pool->pool_size;
@@ -1488,11 +1488,11 @@ int sparse_synapse_add_with_metadata(
         syn->target_id = target_neuron_id;
         syn->weight = weight;
         syn->type = (synapse_type_t)synapse_type;
-        syn->plasticity = 1.0f;
-        syn->strength = 1.0f;
-        syn->meta_plasticity = 1.0f;
-        syn->trace = 0.0f;
-        syn->last_change = 0.0f;
+        syn->plasticity = 1.0F;
+        syn->strength = 1.0F;
+        syn->meta_plasticity = 1.0F;
+        syn->trace = 0.0F;
+        syn->last_change = 0.0F;
         syn->last_active = 0;
 
         // Initialize type-specific state based on synapse type

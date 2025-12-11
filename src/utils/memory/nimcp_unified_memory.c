@@ -42,6 +42,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <sys/mman.h>
@@ -520,7 +521,6 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
     bool success = false;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
         case UNIFIED_STRATEGY_OBJECT_COW: {
             // Create CoW manager for this allocation
             cow_manager_config_t cow_cfg = {
@@ -695,7 +695,6 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
     bool success = false;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
         case UNIFIED_STRATEGY_OBJECT_COW: {
             // Acquire another handle from same CoW manager
             clone->impl.object.cow_mgr = handle->impl.object.cow_mgr;
@@ -786,7 +785,6 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
 
     // Strategy-specific cleanup
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
         case UNIFIED_STRATEGY_OBJECT_COW: {
             if (handle->impl.object.cow_handle) {
                 LOG_DEBUG("Entering if");
@@ -882,7 +880,6 @@ NIMCP_EXPORT void* unified_mem_write(unified_mem_handle_t handle) {
     void* result = NULL;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
         case UNIFIED_STRATEGY_OBJECT_COW: {
             result = cow_write(handle->impl.object.cow_handle);
             if (result && !cow_is_shared(handle->impl.object.cow_handle)) {
@@ -1003,7 +1000,6 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
     bool success = false;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
         case UNIFIED_STRATEGY_OBJECT_COW: {
             // Full copy for object CoW (cow_acquire doesn't capture current state)
             const void* current_data = cow_read(handle->impl.object.cow_handle);
@@ -1069,7 +1065,6 @@ NIMCP_EXPORT bool unified_mem_snapshot_restore(
     if (handle->strategy != snapshot->strategy) return false;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
         case UNIFIED_STRATEGY_OBJECT_COW: {
             // Get writable pointer and copy snapshot data back
             void* dest = cow_write(handle->impl.object.cow_handle);
@@ -1129,7 +1124,6 @@ NIMCP_EXPORT size_t unified_mem_snapshot_get_delta_bytes(
     if (handle != snapshot->source) return 0;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
         case UNIFIED_STRATEGY_OBJECT_COW: {
             // Compare current data with snapshot data
             const char* current = cow_read(handle->impl.object.cow_handle);

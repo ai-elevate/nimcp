@@ -1,3 +1,7 @@
+/home/bbrelin/nimcp/build/CMakeFiles/lint.dir
+/home/bbrelin/nimcp/build/CMakeFiles/lint-fix.dir
+/home/bbrelin/nimcp/build/CMakeFiles/cppcheck.dir
+/home/bbrelin/nimcp/build/CMakeFiles/check.dir
 /home/bbrelin/nimcp/build/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/CMakeFiles/rebuild_cache.dir

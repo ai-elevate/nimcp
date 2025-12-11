@@ -506,7 +506,7 @@ static bool load_working_memory_item(working_memory_t* wm, FILE* file)
     }
 
     // Add to working memory (use default salience since not persisted)
-    const float DEFAULT_SALIENCE = 0.5f;
+    const float DEFAULT_SALIENCE = 0.5F;
     bool success = working_memory_add(wm, item, item_size, DEFAULT_SALIENCE);
 
     nimcp_free(item);
@@ -907,8 +907,8 @@ brain_t brain_load(const char* filepath)
         // Use defaults if no metadata
         brain->config.size = BRAIN_SIZE_SMALL;
         brain->config.task = BRAIN_TASK_CLASSIFICATION;
-        brain->config.learning_rate = 0.01f;
-        brain->config.sparsity_target = 0.8f;
+        brain->config.learning_rate = 0.01F;
+        brain->config.sparsity_target = 0.8F;
         brain->config.enable_explanations = true;
         snprintf(brain->config.task_name, sizeof(brain->config.task_name), "loaded_brain");
     }
@@ -956,7 +956,7 @@ brain_t brain_load(const char* filepath)
             .final_temperature = brain->config.annealing_temperature_final,
             .num_iterations = brain->config.annealing_steps,
             .cooling_schedule = COOLING_EXPONENTIAL,
-            .quantum_strength = 0.5f,
+            .quantum_strength = 0.5F,
             .enable_tunneling = true,
             .seed = (uint32_t)time(NULL)
         };

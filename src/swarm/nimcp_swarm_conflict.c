@@ -101,7 +101,7 @@ conflict_config_t conflict_resolver_default_config(void) {
         .enable_negotiation = true,
         .enable_arbitration = true,
         .enable_auto_resolution = false,
-        .convergence_threshold = 0.05f,
+        .convergence_threshold = 0.05F,
         .max_negotiation_rounds = 10,
         .default_strategy = RESOLUTION_STRATEGY_PRIORITY_WINS
     };
@@ -336,40 +336,40 @@ float conflict_resolver_calculate_severity(
 
     /* Guard: Validate inputs */
     if (!resolver || !conflict) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float severity = 0.0f;
+    float severity = 0.0F;
 
     /* Base severity by type */
     switch (conflict->type) {
         case CONFLICT_TYPE_RESOURCE:
-            severity = 0.6f;
+            severity = 0.6F;
             break;
         case CONFLICT_TYPE_GOAL:
-            severity = 0.7f;
+            severity = 0.7F;
             break;
         case CONFLICT_TYPE_TERRITORY:
-            severity = 0.5f;
+            severity = 0.5F;
             break;
         case CONFLICT_TYPE_PRIORITY:
-            severity = 0.8f;
+            severity = 0.8F;
             break;
         case CONFLICT_TYPE_COMMUNICATION:
-            severity = 0.4f;
+            severity = 0.4F;
             break;
         default:
-            severity = 0.5f;
+            severity = 0.5F;
     }
 
     /* Increase severity based on number of swarms involved */
     if (conflict->swarm_count > 2) {
-        severity += (conflict->swarm_count - 2) * 0.1f;
+        severity += (conflict->swarm_count - 2) * 0.1F;
     }
 
     /* Clamp to [0, 1] */
-    if (severity > 1.0f) severity = 1.0f;
-    if (severity < 0.0f) severity = 0.0f;
+    if (severity > 1.0F) severity = 1.0F;
+    if (severity < 0.0F) severity = 0.0F;
 
     return severity;
 }
@@ -475,7 +475,7 @@ nimcp_result_t conflict_resolver_detect_territory_conflicts(
 
                 snprintf(c->description, sizeof(c->description),
                         "Territory overlap (%.1f%%) between swarms %lu and %lu",
-                        overlap * 100.0f, c->swarm_ids[0], c->swarm_ids[1]);
+                        overlap * 100.0F, c->swarm_ids[0], c->swarm_ids[1]);
 
                 (*count)++;
             }
@@ -652,7 +652,7 @@ nimcp_result_t conflict_resolver_resolve(
 
     /* Calculate resolution time */
     uint64_t end_time = nimcp_time_get_us();
-    result->resolution_time_ms = (end_time - start_time) / 1000.0f;
+    result->resolution_time_ms = (end_time - start_time) / 1000.0F;
 
     /* Mark conflict as resolved */
     conflict->is_resolved = true;
@@ -707,7 +707,7 @@ nimcp_result_t conflict_resolver_priority_wins(
 
     /* Find highest priority swarm */
     uint64_t winner_id = conflict->swarm_ids[0];
-    float highest_priority = 0.0f;
+    float highest_priority = 0.0F;
 
     for (uint32_t i = 0; i < conflict->swarm_count; i++) {
         nimcp_swarm_identity_t* swarm = nimcp_swarm_get(resolver->coordinator, conflict->swarm_ids[i]);
@@ -727,7 +727,7 @@ nimcp_result_t conflict_resolver_priority_wins(
 
     /* Winner gets 100%, others get 0% */
     for (uint32_t i = 0; i < conflict->swarm_count; i++) {
-        result->terms[i] = (conflict->swarm_ids[i] == winner_id) ? 1.0f : 0.0f;
+        result->terms[i] = (conflict->swarm_ids[i] == winner_id) ? 1.0F : 0.0F;
     }
     result->term_count = conflict->swarm_count;
 
@@ -761,13 +761,13 @@ nimcp_result_t conflict_resolver_fair_share(
     }
 
     /* Calculate total priority */
-    float total_priority = 0.0f;
+    float total_priority = 0.0F;
     float priorities[NIMCP_MAX_CONFLICT_SWARMS] = {0};
 
     for (uint32_t i = 0; i < conflict->swarm_count; i++) {
         nimcp_swarm_identity_t* swarm = nimcp_swarm_get(resolver->coordinator, conflict->swarm_ids[i]);
         if (!swarm) {
-            priorities[i] = 1.0f;  /* Default */
+            priorities[i] = 1.0F;  /* Default */
         } else {
             priorities[i] = swarm->health_percentage;
         }
@@ -775,10 +775,10 @@ nimcp_result_t conflict_resolver_fair_share(
     }
 
     /* Guard: Prevent division by zero */
-    if (total_priority < 0.001f) {
+    if (total_priority < 0.001F) {
         total_priority = (float)conflict->swarm_count;
         for (uint32_t i = 0; i < conflict->swarm_count; i++) {
-            priorities[i] = 1.0f;
+            priorities[i] = 1.0F;
         }
     }
 
@@ -976,11 +976,11 @@ nimcp_result_t conflict_resolver_make_offer(
     memcpy(offer->proposal, proposal, proposal_size * sizeof(float));
 
     /* Calculate acceptance score (simple sum check) */
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < proposal_size; i++) {
         sum += proposal[i];
     }
-    offer->acceptance_score = fabsf(1.0f - sum) < 0.1f ? 0.9f : 0.5f;
+    offer->acceptance_score = fabsf(1.0F - sum) < 0.1F ? 0.9F : 0.5F;
 
     LOG_DEBUG("Negotiation offer from swarm %lu: round=%u score=%.2f",
               swarm_id, neg->current_round, offer->acceptance_score);
@@ -1157,7 +1157,7 @@ nimcp_result_t conflict_resolver_check_convergence(
         negotiation_offer_t* offer2 = &neg->offers[neg->offer_count - 1];
 
         if (offer1->proposal_size == offer2->proposal_size) {
-            float max_diff = 0.0f;
+            float max_diff = 0.0F;
             for (uint32_t i = 0; i < offer1->proposal_size; i++) {
                 float diff = fabsf(offer1->proposal[i] - offer2->proposal[i]);
                 if (diff > max_diff) max_diff = diff;
@@ -1276,7 +1276,7 @@ nimcp_result_t conflict_resolver_get_stats(
 
     /* Calculate average severity from history */
     if (resolver->history_count > 0) {
-        float total_severity = 0.0f;
+        float total_severity = 0.0F;
         for (uint32_t i = 0; i < resolver->history_count; i++) {
             total_severity += resolver->history[i].severity;
         }
@@ -1629,7 +1629,7 @@ static float calculate_territory_overlap(
 
     /* Calculate overlap volume as fraction of smaller territory */
     if (!territories_overlap(a, b)) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Calculate intersection volume */
@@ -1637,7 +1637,7 @@ static float calculate_territory_overlap(
     float iy = fminf(a->max.y, b->max.y) - fmaxf(a->min.y, b->min.y);
     float iz = fminf(a->max.z, b->max.z) - fmaxf(a->min.z, b->min.z);
 
-    if (ix < 0 || iy < 0 || iz < 0) return 0.0f;
+    if (ix < 0 || iy < 0 || iz < 0) return 0.0F;
 
     float intersection = ix * iy * iz;
 
@@ -1647,7 +1647,7 @@ static float calculate_territory_overlap(
 
     float smaller_vol = fminf(vol_a, vol_b);
 
-    if (smaller_vol < 0.0001f) return 0.0f;
+    if (smaller_vol < 0.0001F) return 0.0F;
 
     return intersection / smaller_vol;
 }

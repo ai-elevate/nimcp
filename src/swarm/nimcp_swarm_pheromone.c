@@ -28,8 +28,8 @@
 
 #define PHEROMONE_MODULE "PheromoneSystem"
 #define MAX_GRID_DIMENSION 1000
-#define MIN_VOXEL_SIZE 0.1f
-#define MAX_VOXEL_SIZE 100.0f
+#define MIN_VOXEL_SIZE 0.1F
+#define MAX_VOXEL_SIZE 100.0F
 #define EPSILON 1e-6f
 
 /* Bio-async message types */
@@ -126,9 +126,9 @@ static nimcp_position3d_t grid_to_position(
     const grid_index_t* idx
 ) {
     nimcp_position3d_t pos;
-    pos.x = system->config.world_min.x + (idx->x + 0.5f) * system->config.voxel_size;
-    pos.y = system->config.world_min.y + (idx->y + 0.5f) * system->config.voxel_size;
-    pos.z = system->config.world_min.z + (idx->z + 0.5f) * system->config.voxel_size;
+    pos.x = system->config.world_min.x + (idx->x + 0.5F) * system->config.voxel_size;
+    pos.y = system->config.world_min.y + (idx->y + 0.5F) * system->config.voxel_size;
+    pos.z = system->config.world_min.z + (idx->z + 0.5F) * system->config.voxel_size;
     return pos;
 }
 
@@ -187,7 +187,7 @@ static voxel_entry_t* get_or_create_voxel(
     }
 
     entry->index = *idx;
-    entry->voxel.environmental_modifier = 1.0f;
+    entry->voxel.environmental_modifier = 1.0F;
     entry->voxel.last_update = nimcp_time_get_us() / 1000;
 
     /* Insert at head of chain */
@@ -288,24 +288,24 @@ void nimcp_pheromone_default_config(nimcp_pheromone_config_t* out_config) {
     memset(out_config, 0, sizeof(nimcp_pheromone_config_t));
 
     /* Default world: 100x100x100 units */
-    out_config->world_min = (nimcp_position3d_t){-50.0f, -50.0f, -50.0f};
-    out_config->world_max = (nimcp_position3d_t){50.0f, 50.0f, 50.0f};
-    out_config->voxel_size = 1.0f;
+    out_config->world_min = (nimcp_position3d_t){-50.0F, -50.0F, -50.0F};
+    out_config->world_max = (nimcp_position3d_t){50.0F, 50.0F, 50.0F};
+    out_config->voxel_size = 1.0F;
 
     /* Decay rates (per second) - different types decay at different rates */
-    out_config->decay_rates[PHEROMONE_DANGER] = 0.05f;    /* Long-lasting */
-    out_config->decay_rates[PHEROMONE_RESOURCE] = 0.1f;   /* Medium */
-    out_config->decay_rates[PHEROMONE_PATH] = 0.2f;       /* Quick decay */
-    out_config->decay_rates[PHEROMONE_AVOID] = 0.15f;     /* Medium-slow */
-    out_config->decay_rates[PHEROMONE_RALLY] = 0.08f;     /* Slow */
-    out_config->decay_rates[PHEROMONE_TARGET] = 0.05f;    /* Long-lasting */
+    out_config->decay_rates[PHEROMONE_DANGER] = 0.05F;    /* Long-lasting */
+    out_config->decay_rates[PHEROMONE_RESOURCE] = 0.1F;   /* Medium */
+    out_config->decay_rates[PHEROMONE_PATH] = 0.2F;       /* Quick decay */
+    out_config->decay_rates[PHEROMONE_AVOID] = 0.15F;     /* Medium-slow */
+    out_config->decay_rates[PHEROMONE_RALLY] = 0.08F;     /* Slow */
+    out_config->decay_rates[PHEROMONE_TARGET] = 0.05F;    /* Long-lasting */
 
-    out_config->evaporation_rate = 0.01f;
-    out_config->max_concentration = 100.0f;
-    out_config->deposit_amount = 1.0f;
-    out_config->reinforcement_factor = 1.5f;
-    out_config->detection_threshold = 0.1f;
-    out_config->gradient_sample_distance = 2.0f;
+    out_config->evaporation_rate = 0.01F;
+    out_config->max_concentration = 100.0F;
+    out_config->deposit_amount = 1.0F;
+    out_config->reinforcement_factor = 1.5F;
+    out_config->detection_threshold = 0.1F;
+    out_config->gradient_sample_distance = 2.0F;
 
     out_config->enable_bio_async = true;
     out_config->broadcast_interval_ms = 1000;
@@ -352,16 +352,16 @@ nimcp_result_t nimcp_pheromone_validate_config(
 
     /* Validate decay rates */
     for (int i = 0; i < PHEROMONE_TYPE_COUNT; i++) {
-        if (config->decay_rates[i] < 0.0f || config->decay_rates[i] > 10.0f) {
+        if (config->decay_rates[i] < 0.0F || config->decay_rates[i] > 10.0F) {
             LOG_ERROR("Invalid decay rate for type %d: %f", i, config->decay_rates[i]);
             return NIMCP_INVALID_PARAM;
         }
     }
 
     /* Validate other parameters */
-    if (config->max_concentration <= 0.0f || config->deposit_amount <= 0.0f ||
-        config->reinforcement_factor <= 0.0f || config->detection_threshold < 0.0f ||
-        config->gradient_sample_distance <= 0.0f) {
+    if (config->max_concentration <= 0.0F || config->deposit_amount <= 0.0F ||
+        config->reinforcement_factor <= 0.0F || config->detection_threshold < 0.0F ||
+        config->gradient_sample_distance <= 0.0F) {
         LOG_ERROR("Invalid parameter values");
         return NIMCP_INVALID_PARAM;
     }
@@ -496,7 +496,7 @@ nimcp_result_t nimcp_pheromone_deposit(
     nimcp_pheromone_type_t type,
     float amount
 ) {
-    return nimcp_pheromone_deposit_modified(system, position, type, amount, 1.0f);
+    return nimcp_pheromone_deposit_modified(system, position, type, amount, 1.0F);
 }
 
 nimcp_result_t nimcp_pheromone_deposit_modified(
@@ -515,12 +515,12 @@ nimcp_result_t nimcp_pheromone_deposit_modified(
         return NIMCP_INVALID_PARAM;
     }
 
-    if (amount <= 0.0f) {
+    if (amount <= 0.0F) {
         LOG_ERROR("Invalid deposit amount: %f", amount);
         return NIMCP_INVALID_PARAM;
     }
 
-    if (env_modifier < 0.0f || env_modifier > 1.0f) {
+    if (env_modifier < 0.0F || env_modifier > 1.0F) {
         LOG_ERROR("Invalid environmental modifier: %f", env_modifier);
         return NIMCP_INVALID_PARAM;
     }
@@ -603,7 +603,7 @@ nimcp_result_t nimcp_pheromone_reinforce_path(
         return NIMCP_INVALID_PARAM;
     }
 
-    if (success_factor <= 0.0f) {
+    if (success_factor <= 0.0F) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -646,7 +646,7 @@ nimcp_result_t nimcp_pheromone_get_concentration(
     }
 
     if (!validate_position(system, position)) {
-        *out_concentration = 0.0f;
+        *out_concentration = 0.0F;
         return NIMCP_SUCCESS; /* Out of bounds = no pheromone */
     }
 
@@ -658,7 +658,7 @@ nimcp_result_t nimcp_pheromone_get_concentration(
     if (entry) {
         *out_concentration = entry->voxel.concentration[type];
     } else {
-        *out_concentration = 0.0f;
+        *out_concentration = 0.0F;
     }
 
     system->stats.total_queries++;
@@ -748,7 +748,7 @@ nimcp_result_t nimcp_pheromone_query_radius(
         return NIMCP_INVALID_PARAM;
     }
 
-    if (radius <= 0.0f) {
+    if (radius <= 0.0F) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -898,7 +898,7 @@ nimcp_result_t nimcp_pheromone_update(
         return NIMCP_SUCCESS;
     }
 
-    float delta_time_s = delta_time_ms / 1000.0f;
+    float delta_time_s = delta_time_ms / 1000.0F;
 
     nimcp_platform_mutex_lock(&system->mutex);
 
@@ -965,7 +965,7 @@ nimcp_result_t nimcp_pheromone_set_environment(
         return NIMCP_INVALID_PARAM;
     }
 
-    if (radius <= 0.0f || modifier < 0.0f || modifier > 1.0f) {
+    if (radius <= 0.0F || modifier < 0.0F || modifier > 1.0F) {
         return NIMCP_INVALID_PARAM;
     }
 

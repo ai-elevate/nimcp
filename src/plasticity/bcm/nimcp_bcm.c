@@ -116,12 +116,12 @@ bcm_synapse_t bcm_synapse_init(float initial_weight, float initial_threshold) {
     /* WHAT: Initialize average activity to zero
      * WHY:  Will be computed from actual activity
      */
-    synapse.avg_post_activity = 0.0f;
+    synapse.avg_post_activity = 0.0F;
 
     /* WHAT: Initialize eligibility to zero
      * WHY:  Used for delayed reward assignment
      */
-    synapse.eligibility = 0.0f;
+    synapse.eligibility = 0.0F;
 
     /* WHAT: Initialize spinlock for thread-safe updates
      * WHY:  Allow concurrent access when synapse is shared across threads
@@ -168,7 +168,7 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
      * WHY:  Convert dt from ms to decay fraction
      * FORMULA: decay = 1 - exp(-dt/τ)
      */
-    float decay = 1.0f - expf(-dt / (params->threshold_time_constant + BCM_EPSILON));
+    float decay = 1.0F - expf(-dt / (params->threshold_time_constant + BCM_EPSILON));
 
     /* WHAT: Exponential moving average toward target
      * WHY:  Smooth threshold adaptation, prevents oscillations
@@ -185,7 +185,7 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
     /* WHAT: Update running average of post-synaptic activity
      * WHY:  Used for statistics and monitoring
      */
-    float activity_decay = 1.0f - expf(-dt / (params->activity_time_constant + BCM_EPSILON));
+    float activity_decay = 1.0F - expf(-dt / (params->activity_time_constant + BCM_EPSILON));
     synapse->avg_post_activity += activity_decay * (post_activity - synapse->avg_post_activity);
 
     /* WHAT: Release spinlock
@@ -250,7 +250,7 @@ void bcm_apply_rule(bcm_synapse_t* synapse, float pre_activity, float post_activ
      * WHY:  Allows credit assignment when reward is delayed
      * FORMULA: e_new = e_old × decay + Δw
      */
-    float eligibility_decay = 0.95f;  // Fast decay (~20ms time constant)
+    float eligibility_decay = 0.95F;  // Fast decay (~20ms time constant)
     synapse->eligibility = synapse->eligibility * eligibility_decay + delta_w;
 
     /* WHAT: Release spinlock
@@ -282,7 +282,7 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
     /* WHAT: Clamp neuromodulator to valid range
      * WHY:  Ensure modulation factor is in [0, 1]
      */
-    float modulation = clamp_f(neuromodulator_level, 0.0f, 1.0f);
+    float modulation = clamp_f(neuromodulator_level, 0.0F, 1.0F);
 
     /* WHAT: Compute BCM plasticity factor
      * WHY:  Same as standard BCM rule
@@ -304,7 +304,7 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
     /* WHAT: Update eligibility trace
      * WHY:  Track recent plasticity for delayed reward
      */
-    float eligibility_decay = 0.95f;
+    float eligibility_decay = 0.95F;
     synapse->eligibility = synapse->eligibility * eligibility_decay + delta_w;
 }
 
@@ -329,29 +329,29 @@ bcm_params_t bcm_params_cortical(void) {
     /* WHAT: Set learning rate for adult cortex
      * WHY:  Adult cortex has moderate plasticity
      */
-    params.learning_rate = 0.01f;
+    params.learning_rate = 0.01F;
 
     /* WHAT: Set threshold adaptation time constant
      * WHY:  Threshold should adapt slowly relative to activity
      * BIOLOGICAL: ~1 second timescale in cortex
      */
-    params.threshold_time_constant = 1000.0f;  // ms
+    params.threshold_time_constant = 1000.0F;  // ms
 
     /* WHAT: Set activity averaging time constant
      * WHY:  Average over multiple spikes for stability
      * BIOLOGICAL: ~100 ms integration window
      */
-    params.activity_time_constant = 100.0f;  // ms
+    params.activity_time_constant = 100.0F;  // ms
 
     /* WHAT: Set minimum threshold
      * WHY:  Prevent over-depression (all weights → 0)
      */
-    params.min_threshold = 0.1f;
+    params.min_threshold = 0.1F;
 
     /* WHAT: Set maximum threshold
      * WHY:  Prevent runaway potentiation
      */
-    params.max_threshold = 10.0f;
+    params.max_threshold = 10.0F;
 
     return params;
 }
@@ -374,27 +374,27 @@ bcm_params_t bcm_params_critical_period(void) {
      * WHY:  Rapid learning during development
      * BIOLOGICAL: Critical periods have elevated plasticity
      */
-    params.learning_rate = 0.1f;  // 10x adult
+    params.learning_rate = 0.1F;  // 10x adult
 
     /* WHAT: Faster threshold adaptation
      * WHY:  Development requires rapid tuning
      */
-    params.threshold_time_constant = 500.0f;  // ms (2x faster)
+    params.threshold_time_constant = 500.0F;  // ms (2x faster)
 
     /* WHAT: Faster activity averaging
      * WHY:  Developmental plasticity responds to shorter timescales
      */
-    params.activity_time_constant = 50.0f;  // ms
+    params.activity_time_constant = 50.0F;  // ms
 
     /* WHAT: Lower minimum threshold
      * WHY:  Allow stronger depression during refinement
      */
-    params.min_threshold = 0.05f;
+    params.min_threshold = 0.05F;
 
     /* WHAT: Higher maximum threshold
      * WHY:  Allow stronger potentiation during development
      */
-    params.max_threshold = 20.0f;
+    params.max_threshold = 20.0F;
 
     return params;
 }
@@ -417,23 +417,23 @@ bcm_params_t bcm_params_mature(void) {
      * WHY:  Stability over plasticity in adults
      * BIOLOGICAL: Adult cortex resists change
      */
-    params.learning_rate = 0.001f;  // 10x lower than developmental
+    params.learning_rate = 0.001F;  // 10x lower than developmental
 
     /* WHAT: Slow threshold adaptation
      * WHY:  Mature brain has stable activity statistics
      */
-    params.threshold_time_constant = 2000.0f;  // ms (very slow)
+    params.threshold_time_constant = 2000.0F;  // ms (very slow)
 
     /* WHAT: Slow activity averaging
      * WHY:  Integrate over longer timescales for stability
      */
-    params.activity_time_constant = 200.0f;  // ms
+    params.activity_time_constant = 200.0F;  // ms
 
     /* WHAT: Narrow threshold range
      * WHY:  Prevent large weight fluctuations in mature brain
      */
-    params.min_threshold = 0.2f;
-    params.max_threshold = 5.0f;
+    params.min_threshold = 0.2F;
+    params.max_threshold = 5.0F;
 
     return params;
 }
@@ -464,9 +464,9 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
     /* WHAT: Accumulate sums for mean computation
      * WHY:  Single pass for efficiency
      */
-    float sum_weight = 0.0f;
-    float sum_threshold = 0.0f;
-    float sum_weight_squared = 0.0f;
+    float sum_weight = 0.0F;
+    float sum_threshold = 0.0F;
+    float sum_weight_squared = 0.0F;
 
     for (uint32_t i = 0; i < num_synapses; i++) {
         const bcm_synapse_t* syn = &synapses[i];
@@ -479,9 +479,9 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
          * WHY:  Balance indicates learning dynamics
          * NOTE: Eligibility > 0 suggests recent LTP, < 0 suggests LTD
          */
-        if (syn->eligibility > 0.0f) {
+        if (syn->eligibility > 0.0F) {
             stats->ltp_events++;
-        } else if (syn->eligibility < 0.0f) {
+        } else if (syn->eligibility < 0.0F) {
             stats->ltd_events++;
         }
     }

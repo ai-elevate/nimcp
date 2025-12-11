@@ -138,89 +138,89 @@ struct speech_motor_planner {
  */
 static const phoneme_features_t phoneme_table[256] = {
     /* Default/silence (all neutral) */
-    [0]   = {0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 50.0f},
-    [' '] = {0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 50.0f},
-    ['_'] = {0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 100.0f},  /* Pause */
+    [0]   = {0.5F, 0.5F, 0.5F, 0.0F, 0.0F, 50.0F},
+    [' '] = {0.5F, 0.5F, 0.5F, 0.0F, 0.0F, 50.0F},
+    ['_'] = {0.5F, 0.5F, 0.5F, 0.0F, 0.0F, 100.0F},  /* Pause */
 
     /*=========================================================================
      * VOWELS - Cardinal vowels and common allophones
      *=======================================================================*/
 
     /* Front vowels (low tongue_position) */
-    ['i'] = {0.7f, 0.1f, 0.3f, 0.8f, 0.0f, 70.0f},   /* /i/ - close front unrounded */
-    ['I'] = {0.6f, 0.2f, 0.4f, 0.8f, 0.0f, 65.0f},   /* /ɪ/ - near-close front */
-    ['e'] = {0.7f, 0.2f, 0.5f, 0.8f, 0.0f, 75.0f},   /* /e/ - close-mid front */
-    ['E'] = {0.7f, 0.3f, 0.6f, 0.8f, 0.0f, 80.0f},   /* /ɛ/ - open-mid front */
-    ['&'] = {0.8f, 0.3f, 0.8f, 0.8f, 0.0f, 85.0f},   /* /æ/ - near-open front */
+    ['i'] = {0.7F, 0.1F, 0.3F, 0.8F, 0.0F, 70.0F},   /* /i/ - close front unrounded */
+    ['I'] = {0.6F, 0.2F, 0.4F, 0.8F, 0.0F, 65.0F},   /* /ɪ/ - near-close front */
+    ['e'] = {0.7F, 0.2F, 0.5F, 0.8F, 0.0F, 75.0F},   /* /e/ - close-mid front */
+    ['E'] = {0.7F, 0.3F, 0.6F, 0.8F, 0.0F, 80.0F},   /* /ɛ/ - open-mid front */
+    ['&'] = {0.8F, 0.3F, 0.8F, 0.8F, 0.0F, 85.0F},   /* /æ/ - near-open front */
 
     /* Central vowels */
-    ['@'] = {0.6f, 0.5f, 0.5f, 0.7f, 0.0f, 60.0f},   /* /ə/ - schwa */
-    ['3'] = {0.6f, 0.5f, 0.6f, 0.8f, 0.0f, 90.0f},   /* /ɜ/ - open-mid central */
-    ['V'] = {0.7f, 0.5f, 0.7f, 0.8f, 0.0f, 75.0f},   /* /ʌ/ - open-mid back unrounded */
+    ['@'] = {0.6F, 0.5F, 0.5F, 0.7F, 0.0F, 60.0F},   /* /ə/ - schwa */
+    ['3'] = {0.6F, 0.5F, 0.6F, 0.8F, 0.0F, 90.0F},   /* /ɜ/ - open-mid central */
+    ['V'] = {0.7F, 0.5F, 0.7F, 0.8F, 0.0F, 75.0F},   /* /ʌ/ - open-mid back unrounded */
 
     /* Back vowels (high tongue_position) */
-    ['u'] = {0.2f, 0.9f, 0.3f, 0.8f, 0.0f, 70.0f},   /* /u/ - close back rounded */
-    ['U'] = {0.3f, 0.8f, 0.4f, 0.8f, 0.0f, 65.0f},   /* /ʊ/ - near-close back */
-    ['o'] = {0.4f, 0.8f, 0.5f, 0.8f, 0.0f, 75.0f},   /* /o/ - close-mid back rounded */
-    ['O'] = {0.5f, 0.7f, 0.6f, 0.8f, 0.0f, 80.0f},   /* /ɔ/ - open-mid back rounded */
-    ['a'] = {0.8f, 0.6f, 0.9f, 0.8f, 0.0f, 85.0f},   /* /a/ - open front */
-    ['A'] = {0.8f, 0.8f, 0.9f, 0.8f, 0.0f, 90.0f},   /* /ɑ/ - open back unrounded */
-    ['Q'] = {0.6f, 0.9f, 0.8f, 0.8f, 0.0f, 85.0f},   /* /ɒ/ - open back rounded */
+    ['u'] = {0.2F, 0.9F, 0.3F, 0.8F, 0.0F, 70.0F},   /* /u/ - close back rounded */
+    ['U'] = {0.3F, 0.8F, 0.4F, 0.8F, 0.0F, 65.0F},   /* /ʊ/ - near-close back */
+    ['o'] = {0.4F, 0.8F, 0.5F, 0.8F, 0.0F, 75.0F},   /* /o/ - close-mid back rounded */
+    ['O'] = {0.5F, 0.7F, 0.6F, 0.8F, 0.0F, 80.0F},   /* /ɔ/ - open-mid back rounded */
+    ['a'] = {0.8F, 0.6F, 0.9F, 0.8F, 0.0F, 85.0F},   /* /a/ - open front */
+    ['A'] = {0.8F, 0.8F, 0.9F, 0.8F, 0.0F, 90.0F},   /* /ɑ/ - open back unrounded */
+    ['Q'] = {0.6F, 0.9F, 0.8F, 0.8F, 0.0F, 85.0F},   /* /ɒ/ - open back rounded */
 
     /* Front rounded vowels */
-    ['y'] = {0.3f, 0.1f, 0.3f, 0.8f, 0.0f, 75.0f},   /* /y/ - close front rounded */
-    ['Y'] = {0.4f, 0.2f, 0.4f, 0.8f, 0.0f, 70.0f},   /* /ʏ/ - near-close front rounded */
-    ['2'] = {0.4f, 0.2f, 0.5f, 0.8f, 0.0f, 80.0f},   /* /ø/ - close-mid front rounded */
-    ['9'] = {0.5f, 0.3f, 0.6f, 0.8f, 0.0f, 85.0f},   /* /œ/ - open-mid front rounded */
+    ['y'] = {0.3F, 0.1F, 0.3F, 0.8F, 0.0F, 75.0F},   /* /y/ - close front rounded */
+    ['Y'] = {0.4F, 0.2F, 0.4F, 0.8F, 0.0F, 70.0F},   /* /ʏ/ - near-close front rounded */
+    ['2'] = {0.4F, 0.2F, 0.5F, 0.8F, 0.0F, 80.0F},   /* /ø/ - close-mid front rounded */
+    ['9'] = {0.5F, 0.3F, 0.6F, 0.8F, 0.0F, 85.0F},   /* /œ/ - open-mid front rounded */
 
     /*=========================================================================
      * PLOSIVES/STOPS - Complete closures with release burst
      *=======================================================================*/
 
     /* Bilabial stops */
-    ['p'] = {0.0f, 0.5f, 0.3f, 0.0f, 0.0f, 60.0f},   /* /p/ - voiceless bilabial */
-    ['b'] = {0.0f, 0.5f, 0.3f, 0.9f, 0.0f, 65.0f},   /* /b/ - voiced bilabial */
+    ['p'] = {0.0F, 0.5F, 0.3F, 0.0F, 0.0F, 60.0F},   /* /p/ - voiceless bilabial */
+    ['b'] = {0.0F, 0.5F, 0.3F, 0.9F, 0.0F, 65.0F},   /* /b/ - voiced bilabial */
 
     /* Alveolar stops */
-    ['t'] = {0.5f, 0.2f, 0.3f, 0.0f, 0.0f, 55.0f},   /* /t/ - voiceless alveolar */
-    ['d'] = {0.5f, 0.2f, 0.3f, 0.9f, 0.0f, 60.0f},   /* /d/ - voiced alveolar */
+    ['t'] = {0.5F, 0.2F, 0.3F, 0.0F, 0.0F, 55.0F},   /* /t/ - voiceless alveolar */
+    ['d'] = {0.5F, 0.2F, 0.3F, 0.9F, 0.0F, 60.0F},   /* /d/ - voiced alveolar */
 
     /* Velar stops */
-    ['k'] = {0.5f, 0.8f, 0.4f, 0.0f, 0.0f, 65.0f},   /* /k/ - voiceless velar */
-    ['g'] = {0.5f, 0.8f, 0.4f, 0.9f, 0.0f, 70.0f},   /* /g/ - voiced velar */
+    ['k'] = {0.5F, 0.8F, 0.4F, 0.0F, 0.0F, 65.0F},   /* /k/ - voiceless velar */
+    ['g'] = {0.5F, 0.8F, 0.4F, 0.9F, 0.0F, 70.0F},   /* /g/ - voiced velar */
 
     /* Glottal stop */
-    ['?'] = {0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 40.0f},   /* /ʔ/ - glottal stop */
+    ['?'] = {0.5F, 0.5F, 0.5F, 0.0F, 0.0F, 40.0F},   /* /ʔ/ - glottal stop */
 
     /*=========================================================================
      * FRICATIVES - Narrow constrictions with turbulent airflow
      *=======================================================================*/
 
     /* Labiodental fricatives */
-    ['f'] = {0.1f, 0.5f, 0.4f, 0.0f, 0.0f, 90.0f},   /* /f/ - voiceless labiodental */
-    ['v'] = {0.1f, 0.5f, 0.4f, 0.9f, 0.0f, 85.0f},   /* /v/ - voiced labiodental */
+    ['f'] = {0.1F, 0.5F, 0.4F, 0.0F, 0.0F, 90.0F},   /* /f/ - voiceless labiodental */
+    ['v'] = {0.1F, 0.5F, 0.4F, 0.9F, 0.0F, 85.0F},   /* /v/ - voiced labiodental */
 
     /* Dental fricatives */
-    ['T'] = {0.4f, 0.15f, 0.4f, 0.0f, 0.0f, 95.0f},  /* /θ/ - voiceless dental */
-    ['D'] = {0.4f, 0.15f, 0.4f, 0.9f, 0.0f, 90.0f},  /* /ð/ - voiced dental */
+    ['T'] = {0.4F, 0.15F, 0.4F, 0.0F, 0.0F, 95.0F},  /* /θ/ - voiceless dental */
+    ['D'] = {0.4F, 0.15F, 0.4F, 0.9F, 0.0F, 90.0F},  /* /ð/ - voiced dental */
 
     /* Alveolar fricatives */
-    ['s'] = {0.5f, 0.2f, 0.4f, 0.0f, 0.0f, 100.0f},  /* /s/ - voiceless alveolar */
-    ['z'] = {0.5f, 0.2f, 0.4f, 0.9f, 0.0f, 95.0f},   /* /z/ - voiced alveolar */
+    ['s'] = {0.5F, 0.2F, 0.4F, 0.0F, 0.0F, 100.0F},  /* /s/ - voiceless alveolar */
+    ['z'] = {0.5F, 0.2F, 0.4F, 0.9F, 0.0F, 95.0F},   /* /z/ - voiced alveolar */
 
     /* Post-alveolar fricatives */
-    ['S'] = {0.4f, 0.35f, 0.4f, 0.0f, 0.0f, 100.0f}, /* /ʃ/ - voiceless post-alveolar */
-    ['Z'] = {0.4f, 0.35f, 0.4f, 0.9f, 0.0f, 95.0f},  /* /ʒ/ - voiced post-alveolar */
+    ['S'] = {0.4F, 0.35F, 0.4F, 0.0F, 0.0F, 100.0F}, /* /ʃ/ - voiceless post-alveolar */
+    ['Z'] = {0.4F, 0.35F, 0.4F, 0.9F, 0.0F, 95.0F},  /* /ʒ/ - voiced post-alveolar */
 
     /* Palatal fricatives */
-    ['C'] = {0.5f, 0.3f, 0.4f, 0.0f, 0.0f, 90.0f},   /* /ç/ - voiceless palatal */
+    ['C'] = {0.5F, 0.3F, 0.4F, 0.0F, 0.0F, 90.0F},   /* /ç/ - voiceless palatal */
 
     /* Velar fricatives */
-    ['x'] = {0.5f, 0.8f, 0.5f, 0.0f, 0.0f, 85.0f},   /* /x/ - voiceless velar */
-    ['G'] = {0.5f, 0.8f, 0.5f, 0.9f, 0.0f, 80.0f},   /* /ɣ/ - voiced velar */
+    ['x'] = {0.5F, 0.8F, 0.5F, 0.0F, 0.0F, 85.0F},   /* /x/ - voiceless velar */
+    ['G'] = {0.5F, 0.8F, 0.5F, 0.9F, 0.0F, 80.0F},   /* /ɣ/ - voiced velar */
 
     /* Glottal fricative */
-    ['h'] = {0.7f, 0.5f, 0.6f, 0.0f, 0.0f, 80.0f},   /* /h/ - voiceless glottal */
+    ['h'] = {0.7F, 0.5F, 0.6F, 0.0F, 0.0F, 80.0F},   /* /h/ - voiceless glottal */
 
     /*=========================================================================
      * AFFRICATES - Stop + fricative combinations
@@ -233,28 +233,28 @@ static const phoneme_features_t phoneme_table[256] = {
      * NASALS - Velum open for nasal coupling
      *=======================================================================*/
 
-    ['m'] = {0.0f, 0.5f, 0.4f, 0.9f, 1.0f, 75.0f},   /* /m/ - bilabial nasal */
-    ['n'] = {0.5f, 0.2f, 0.4f, 0.9f, 1.0f, 70.0f},   /* /n/ - alveolar nasal */
-    ['N'] = {0.5f, 0.8f, 0.4f, 0.9f, 1.0f, 75.0f},   /* /ŋ/ - velar nasal */
-    ['J'] = {0.5f, 0.3f, 0.4f, 0.9f, 1.0f, 70.0f},   /* /ɲ/ - palatal nasal */
+    ['m'] = {0.0F, 0.5F, 0.4F, 0.9F, 1.0F, 75.0F},   /* /m/ - bilabial nasal */
+    ['n'] = {0.5F, 0.2F, 0.4F, 0.9F, 1.0F, 70.0F},   /* /n/ - alveolar nasal */
+    ['N'] = {0.5F, 0.8F, 0.4F, 0.9F, 1.0F, 75.0F},   /* /ŋ/ - velar nasal */
+    ['J'] = {0.5F, 0.3F, 0.4F, 0.9F, 1.0F, 70.0F},   /* /ɲ/ - palatal nasal */
 
     /*=========================================================================
      * LIQUIDS - Lateral and rhotic approximants
      *=======================================================================*/
 
-    ['l'] = {0.6f, 0.2f, 0.5f, 0.9f, 0.0f, 65.0f},   /* /l/ - alveolar lateral */
-    ['L'] = {0.6f, 0.8f, 0.5f, 0.9f, 0.0f, 70.0f},   /* /ɫ/ - velarized lateral (dark L) */
-    ['r'] = {0.6f, 0.35f, 0.5f, 0.9f, 0.0f, 70.0f},  /* /ɹ/ - alveolar approximant */
-    ['R'] = {0.6f, 0.9f, 0.5f, 0.9f, 0.0f, 75.0f},   /* /ʁ/ - uvular fricative */
-    ['4'] = {0.6f, 0.2f, 0.5f, 0.9f, 0.0f, 40.0f},   /* /ɾ/ - alveolar tap */
+    ['l'] = {0.6F, 0.2F, 0.5F, 0.9F, 0.0F, 65.0F},   /* /l/ - alveolar lateral */
+    ['L'] = {0.6F, 0.8F, 0.5F, 0.9F, 0.0F, 70.0F},   /* /ɫ/ - velarized lateral (dark L) */
+    ['r'] = {0.6F, 0.35F, 0.5F, 0.9F, 0.0F, 70.0F},  /* /ɹ/ - alveolar approximant */
+    ['R'] = {0.6F, 0.9F, 0.5F, 0.9F, 0.0F, 75.0F},   /* /ʁ/ - uvular fricative */
+    ['4'] = {0.6F, 0.2F, 0.5F, 0.9F, 0.0F, 40.0F},   /* /ɾ/ - alveolar tap */
 
     /*=========================================================================
      * GLIDES/SEMIVOWELS - Rapid transitions
      *=======================================================================*/
 
-    ['w'] = {0.2f, 0.9f, 0.4f, 0.9f, 0.0f, 60.0f},   /* /w/ - labial-velar approximant */
-    ['j'] = {0.7f, 0.1f, 0.4f, 0.9f, 0.0f, 55.0f},   /* /j/ - palatal approximant */
-    ['H'] = {0.3f, 0.1f, 0.4f, 0.9f, 0.0f, 55.0f},   /* /ɥ/ - labial-palatal approximant */
+    ['w'] = {0.2F, 0.9F, 0.4F, 0.9F, 0.0F, 60.0F},   /* /w/ - labial-velar approximant */
+    ['j'] = {0.7F, 0.1F, 0.4F, 0.9F, 0.0F, 55.0F},   /* /j/ - palatal approximant */
+    ['H'] = {0.3F, 0.1F, 0.4F, 0.9F, 0.0F, 55.0F},   /* /ɥ/ - labial-palatal approximant */
 };
 
 //=============================================================================
@@ -269,8 +269,8 @@ static float calculate_velocity(float distance, float duration_ms);
  */
 static void init_articulator(articulator_state_t* art) {
     if (!art) return;
-    art->position = 0.5f;  // Neutral/rest position
-    art->velocity = 0.0f;
+    art->position = 0.5F;  // Neutral/rest position
+    art->velocity = 0.0F;
     art->last_update_time = 0.0;
 }
 
@@ -314,7 +314,7 @@ static float apply_coarticulation(
 
     // Blend current and previous targets
     float strength = planner->config.coarticulation_strength;
-    return current_target * (1.0f - strength) + previous_target * strength;
+    return current_target * (1.0F - strength) + previous_target * strength;
 }
 
 /**
@@ -395,8 +395,8 @@ speech_motor_config_t speech_motor_default_config(void) {
     config.max_commands = SPEECH_MOTOR_MAX_COMMANDS;
     config.planning_window_ms = SPEECH_MOTOR_DEFAULT_PLANNING_WINDOW_MS;
     config.enable_coarticulation = true;
-    config.coarticulation_strength = 0.7f;
-    config.default_velocity = 5.0f;
+    config.coarticulation_strength = 0.7F;
+    config.default_velocity = 5.0F;
     return config;
 }
 
@@ -573,7 +573,7 @@ bool speech_motor_set_articulator(
 ) {
     if (!planner) return false;
     if (articulator >= SPEECH_MOTOR_NUM_ARTICULATORS) return false;
-    if (position < 0.0f || position > 1.0f) return false;
+    if (position < 0.0F || position > 1.0F) return false;
 
     planner->articulators[articulator].position = position;
     planner->articulators[articulator].last_update_time = planner->current_time_ms;
@@ -625,17 +625,17 @@ bool speech_motor_validate_config(const speech_motor_config_t* config) {
     }
 
     // Validate planning_window_ms
-    if (config->planning_window_ms < 0.0f || config->planning_window_ms > 1000.0f) {
+    if (config->planning_window_ms < 0.0F || config->planning_window_ms > 1000.0F) {
         return false;
     }
 
     // Validate coarticulation_strength
-    if (config->coarticulation_strength < 0.0f || config->coarticulation_strength > 1.0f) {
+    if (config->coarticulation_strength < 0.0F || config->coarticulation_strength > 1.0F) {
         return false;
     }
 
     // Validate default_velocity
-    if (config->default_velocity < 0.0f || config->default_velocity > 100.0f) {
+    if (config->default_velocity < 0.0F || config->default_velocity > 100.0F) {
         return false;
     }
 
@@ -664,16 +664,16 @@ float speech_motor_interpolate_position(
      */
 
     /* Clamp t to [0, 1] */
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+    if (t < 0.0F) t = 0.0F;
+    if (t > 1.0F) t = 1.0F;
 
     /* Hermite basis functions */
     float t2 = t * t;
     float t3 = t2 * t;
 
-    float h00 = 2.0f * t3 - 3.0f * t2 + 1.0f;  /* Basis for p0 */
-    float h10 = t3 - 2.0f * t2 + t;             /* Basis for m0 (tangent at p0) */
-    float h01 = -2.0f * t3 + 3.0f * t2;         /* Basis for p1 */
+    float h00 = 2.0F * t3 - 3.0F * t2 + 1.0F;  /* Basis for p0 */
+    float h10 = t3 - 2.0F * t2 + t;             /* Basis for m0 (tangent at p0) */
+    float h01 = -2.0F * t3 + 3.0F * t2;         /* Basis for p1 */
     float h11 = t3 - t2;                         /* Basis for m1 (tangent at p1) */
 
     /* Interpolate position */
@@ -683,8 +683,8 @@ float speech_motor_interpolate_position(
                      h11 * end_vel;
 
     /* Clamp to valid range [0, 1] */
-    if (position < 0.0f) position = 0.0f;
-    if (position > 1.0f) position = 1.0f;
+    if (position < 0.0F) position = 0.0F;
+    if (position > 1.0F) position = 1.0F;
 
     return position;
 }
@@ -715,14 +715,14 @@ bool speech_motor_set_interpolation(
  * HOW:  v = distance / time, with min/max clamping
  */
 static float calculate_velocity(float distance, float duration_ms) {
-    if (duration_ms <= 0.0f) return 0.0f;
+    if (duration_ms <= 0.0F) return 0.0F;
 
     /* Convert to distance per ms, then scale */
-    float velocity = fabsf(distance) / duration_ms * 1000.0f;
+    float velocity = fabsf(distance) / duration_ms * 1000.0F;
 
     /* Clamp to reasonable range (units per second) */
-    if (velocity < 1.0f) velocity = 1.0f;
-    if (velocity > 20.0f) velocity = 20.0f;
+    if (velocity < 1.0F) velocity = 1.0F;
+    if (velocity > 20.0F) velocity = 20.0F;
 
     return velocity;
 }

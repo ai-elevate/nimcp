@@ -205,9 +205,9 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     uint8_t seed[64];
     err = secure_random_bytes(seed, sizeof(seed));
     if (err != NIMCP_OK) {
-        secure_zero(seed, sizeof(seed));
+        _local_secure_zero(seed, sizeof(seed));
         free(public_key);
-        secure_zero(secret_key, secret_key_len);
+        _local_secure_zero(secret_key, secret_key_len);
         free(secret_key);
         LOG_ERROR("nimcp_kyber_keygen: Random generation failed");
         return err;
@@ -222,9 +222,9 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     /* Public key: seed-derived matrix A and vector t */
     err = secure_random_bytes(public_key, public_key_len);
     if (err != NIMCP_OK) {
-        secure_zero(seed, sizeof(seed));
+        _local_secure_zero(seed, sizeof(seed));
         free(public_key);
-        secure_zero(secret_key, secret_key_len);
+        _local_secure_zero(secret_key, secret_key_len);
         free(secret_key);
         return err;
     }
@@ -232,9 +232,9 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     /* Secret key: vector s and public key */
     err = secure_random_bytes(secret_key, secret_key_len);
     if (err != NIMCP_OK) {
-        secure_zero(seed, sizeof(seed));
+        _local_secure_zero(seed, sizeof(seed));
         free(public_key);
-        secure_zero(secret_key, secret_key_len);
+        _local_secure_zero(secret_key, secret_key_len);
         free(secret_key);
         return err;
     }
@@ -247,7 +247,7 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     keypair->secret_key = secret_key;
     keypair->secret_key_len = secret_key_len;
 
-    secure_zero(seed, sizeof(seed));
+    _local_secure_zero(seed, sizeof(seed));
 
     LOG_DEBUG("nimcp_kyber_keygen: Generated Kyber-%d keypair (pk=%zu, sk=%zu)",
                     variant == NIMCP_PQ_KYBER_512 ? 512 :
@@ -312,20 +312,20 @@ nimcp_error_t nimcp_kyber_encapsulate(
     /* Generate shared secret */
     err = secure_random_bytes(shared_secret, shared_secret_len);
     if (err != NIMCP_OK) {
-        secure_zero(message, sizeof(message));
+        _local_secure_zero(message, sizeof(message));
         return err;
     }
 
     /* Generate ciphertext (would be encryption of message under public key) */
     err = secure_random_bytes(ciphertext, expected_ct_len);
     if (err != NIMCP_OK) {
-        secure_zero(message, sizeof(message));
-        secure_zero(shared_secret, shared_secret_len);
+        _local_secure_zero(message, sizeof(message));
+        _local_secure_zero(shared_secret, shared_secret_len);
         return err;
     }
 
     *ciphertext_len = expected_ct_len;
-    secure_zero(message, sizeof(message));
+    _local_secure_zero(message, sizeof(message));
 
     LOG_DEBUG("nimcp_kyber_encapsulate: Generated ciphertext (ct=%zu, ss=%zu)",
                     *ciphertext_len, shared_secret_len);
@@ -415,7 +415,7 @@ void nimcp_kyber_keypair_free(nimcp_kyber_keypair_t* keypair) {
 
     /* Securely zero and free secret key */
     if (keypair->secret_key) {
-        secure_zero(keypair->secret_key, keypair->secret_key_len);
+        _local_secure_zero(keypair->secret_key, keypair->secret_key_len);
         free(keypair->secret_key);
         keypair->secret_key = NULL;
     }

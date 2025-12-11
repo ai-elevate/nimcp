@@ -90,9 +90,9 @@ static float rand_float(uint64_t* state) {
 }
 
 static float sign(float x) {
-    if (x > 0.0f) return 1.0f;
-    if (x < 0.0f) return -1.0f;
-    return 0.0f;
+    if (x > 0.0F) return 1.0F;
+    if (x < 0.0F) return -1.0F;
+    return 0.0F;
 }
 
 /* ============================================================================
@@ -101,29 +101,29 @@ static float sign(float x) {
 
 nimcp_l1_config_t nimcp_l1_default_config(float lambda) {
     nimcp_l1_config_t config = {
-        .lambda = lambda > 0.0f ? lambda : 0.01f
+        .lambda = lambda > 0.0F ? lambda : 0.01F
     };
     return config;
 }
 
 nimcp_l2_config_t nimcp_l2_default_config(float lambda) {
     nimcp_l2_config_t config = {
-        .lambda = lambda > 0.0f ? lambda : 0.01f
+        .lambda = lambda > 0.0F ? lambda : 0.01F
     };
     return config;
 }
 
 nimcp_elastic_net_config_t nimcp_elastic_net_default_config(float lambda, float alpha) {
     nimcp_elastic_net_config_t config = {
-        .lambda = lambda > 0.0f ? lambda : 0.01f,
-        .alpha = (alpha >= 0.0f && alpha <= 1.0f) ? alpha : 0.5f
+        .lambda = lambda > 0.0F ? lambda : 0.01F,
+        .alpha = (alpha >= 0.0F && alpha <= 1.0F) ? alpha : 0.5F
     };
     return config;
 }
 
 nimcp_dropout_config_t nimcp_dropout_default_config(float rate) {
     nimcp_dropout_config_t config = {
-        .rate = (rate >= NIMCP_DROPOUT_MIN && rate < NIMCP_DROPOUT_MAX) ? rate : 0.5f,
+        .rate = (rate >= NIMCP_DROPOUT_MIN && rate < NIMCP_DROPOUT_MAX) ? rate : 0.5F,
         .mode = NIMCP_DROPOUT_STANDARD,
         .training = true,
         .seed = 0
@@ -134,14 +134,14 @@ nimcp_dropout_config_t nimcp_dropout_default_config(float rate) {
 nimcp_clip_config_t nimcp_clip_default_config(nimcp_clip_mode_t mode, float threshold) {
     nimcp_clip_config_t config = {
         .mode = mode,
-        .threshold = threshold > 0.0f ? threshold : 1.0f
+        .threshold = threshold > 0.0F ? threshold : 1.0F
     };
     return config;
 }
 
 nimcp_label_smooth_config_t nimcp_label_smooth_default_config(float smoothing, uint32_t num_classes) {
     nimcp_label_smooth_config_t config = {
-        .smoothing = (smoothing >= 0.0f && smoothing <= 1.0f) ? smoothing : 0.1f,
+        .smoothing = (smoothing >= 0.0F && smoothing <= 1.0F) ? smoothing : 0.1F,
         .num_classes = num_classes > 0 ? num_classes : 10
     };
     return config;
@@ -150,7 +150,7 @@ nimcp_label_smooth_config_t nimcp_label_smooth_default_config(float smoothing, u
 nimcp_early_stop_config_t nimcp_early_stop_default_config(uint32_t patience) {
     nimcp_early_stop_config_t config = {
         .patience = (patience > 0 && patience <= NIMCP_REG_MAX_PATIENCE) ? patience : 10,
-        .min_delta = 1e-4f,
+        .min_delta = 1e-4F,
         .mode = NIMCP_EARLY_STOP_MIN,
         .restore_best = true
     };
@@ -162,21 +162,21 @@ nimcp_regularization_config_t nimcp_regularization_default_config(void) {
     memset(&config, 0, sizeof(config));
 
     config.weight_reg_type = NIMCP_REG_NONE;
-    config.weight_reg.l2.lambda = 0.01f;
+    config.weight_reg.l2.lambda = 0.01F;
 
     config.gradient_clip.mode = NIMCP_CLIP_NONE;
-    config.gradient_clip.threshold = 1.0f;
+    config.gradient_clip.threshold = 1.0F;
 
-    config.dropout.rate = 0.0f;
+    config.dropout.rate = 0.0F;
     config.dropout.mode = NIMCP_DROPOUT_STANDARD;
     config.dropout.training = true;
 
-    config.label_smooth.smoothing = 0.0f;
+    config.label_smooth.smoothing = 0.0F;
     config.label_smooth.num_classes = 10;
     config.use_label_smoothing = false;
 
     config.early_stop.patience = 10;
-    config.early_stop.min_delta = 1e-4f;
+    config.early_stop.min_delta = 1e-4F;
     config.early_stop.mode = NIMCP_EARLY_STOP_MIN;
     config.early_stop.restore_best = true;
     config.use_early_stopping = false;
@@ -296,10 +296,10 @@ float nimcp_regularization_loss(
     size_t num_weights
 ) {
     if (!ctx || !weights || num_weights == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float loss = 0.0f;
+    float loss = 0.0F;
 
     switch (ctx->config.weight_reg_type) {
         case NIMCP_REG_NONE:
@@ -334,11 +334,11 @@ float nimcp_regularization_loss(
 }
 
 float nimcp_l1_loss(const float* weights, size_t num_weights, float lambda) {
-    if (!weights || num_weights == 0 || lambda <= 0.0f) {
-        return 0.0f;
+    if (!weights || num_weights == 0 || lambda <= 0.0F) {
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < num_weights; i++) {
         sum += fabsf(weights[i]);
     }
@@ -347,16 +347,16 @@ float nimcp_l1_loss(const float* weights, size_t num_weights, float lambda) {
 }
 
 float nimcp_l2_loss(const float* weights, size_t num_weights, float lambda) {
-    if (!weights || num_weights == 0 || lambda <= 0.0f) {
-        return 0.0f;
+    if (!weights || num_weights == 0 || lambda <= 0.0F) {
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < num_weights; i++) {
         sum += weights[i] * weights[i];
     }
 
-    return 0.5f * lambda * sum;
+    return 0.5F * lambda * sum;
 }
 
 float nimcp_elastic_net_loss(
@@ -365,14 +365,14 @@ float nimcp_elastic_net_loss(
     float lambda,
     float alpha
 ) {
-    if (!weights || num_weights == 0 || lambda <= 0.0f) {
-        return 0.0f;
+    if (!weights || num_weights == 0 || lambda <= 0.0F) {
+        return 0.0F;
     }
 
-    float l1_loss = nimcp_l1_loss(weights, num_weights, 1.0f);
-    float l2_loss = nimcp_l2_loss(weights, num_weights, 1.0f);
+    float l1_loss = nimcp_l1_loss(weights, num_weights, 1.0F);
+    float l2_loss = nimcp_l2_loss(weights, num_weights, 1.0F);
 
-    return lambda * (alpha * l1_loss + (1.0f - alpha) * l2_loss);
+    return lambda * (alpha * l1_loss + (1.0F - alpha) * l2_loss);
 }
 
 nimcp_result_t nimcp_regularization_apply_gradient(
@@ -415,7 +415,7 @@ nimcp_result_t nimcp_regularization_apply_gradient(
 
             /* L2 contribution */
             for (size_t i = 0; i < num_weights; i++) {
-                gradients[i] += lambda * (1.0f - alpha) * weights[i];
+                gradients[i] += lambda * (1.0F - alpha) * weights[i];
             }
             break;
         }
@@ -433,7 +433,7 @@ void nimcp_l1_gradient(
     size_t num_weights,
     float lambda
 ) {
-    if (!weights || !gradients || num_weights == 0 || lambda <= 0.0f) {
+    if (!weights || !gradients || num_weights == 0 || lambda <= 0.0F) {
         return;
     }
 
@@ -448,7 +448,7 @@ void nimcp_l2_gradient(
     size_t num_weights,
     float lambda
 ) {
-    if (!weights || !gradients || num_weights == 0 || lambda <= 0.0f) {
+    if (!weights || !gradients || num_weights == 0 || lambda <= 0.0F) {
         return;
     }
 
@@ -467,10 +467,10 @@ float nimcp_gradient_clip(
     size_t num_gradients
 ) {
     if (!ctx || !gradients || num_gradients == 0) {
-        return 1.0f;
+        return 1.0F;
     }
 
-    float clip_ratio = 1.0f;
+    float clip_ratio = 1.0F;
 
     switch (ctx->config.gradient_clip.mode) {
         case NIMCP_CLIP_NONE:
@@ -482,7 +482,7 @@ float nimcp_gradient_clip(
             );
             if (clipped > 0) {
                 ctx->stats.clip_count++;
-                clip_ratio = 1.0f - (float)clipped / (float)num_gradients;
+                clip_ratio = 1.0F - (float)clipped / (float)num_gradients;
             }
             break;
         }
@@ -492,7 +492,7 @@ float nimcp_gradient_clip(
             clip_ratio = nimcp_gradient_clip_by_norm(
                 gradients, num_gradients, ctx->config.gradient_clip.threshold
             );
-            if (clip_ratio < 1.0f) {
+            if (clip_ratio < 1.0F) {
                 ctx->stats.clip_count++;
             }
             break;
@@ -517,7 +517,7 @@ uint64_t nimcp_gradient_clip_by_value(
     size_t num_gradients,
     float threshold
 ) {
-    if (!gradients || num_gradients == 0 || threshold <= 0.0f) {
+    if (!gradients || num_gradients == 0 || threshold <= 0.0F) {
         return 0;
     }
 
@@ -540,13 +540,13 @@ float nimcp_gradient_clip_by_norm(
     size_t num_gradients,
     float max_norm
 ) {
-    if (!gradients || num_gradients == 0 || max_norm <= 0.0f) {
-        return 1.0f;
+    if (!gradients || num_gradients == 0 || max_norm <= 0.0F) {
+        return 1.0F;
     }
 
     float norm = nimcp_gradient_norm(gradients, num_gradients);
     if (norm <= max_norm) {
-        return 1.0f;
+        return 1.0F;
     }
 
     float scale = max_norm / norm;
@@ -559,10 +559,10 @@ float nimcp_gradient_clip_by_norm(
 
 float nimcp_gradient_norm(const float* gradients, size_t num_gradients) {
     if (!gradients || num_gradients == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum_sq = 0.0f;
+    float sum_sq = 0.0F;
     for (size_t i = 0; i < num_gradients; i++) {
         sum_sq += gradients[i] * gradients[i];
     }
@@ -637,14 +637,14 @@ nimcp_result_t nimcp_dropout_forward(
     }
 
     float rate = ctx->config.rate;
-    float scale = 1.0f / (1.0f - rate);  /* Inverted dropout scaling */
+    float scale = 1.0F / (1.0F - rate);  /* Inverted dropout scaling */
 
     uint64_t drops = 0;
 
     for (size_t i = 0; i < num_activations; i++) {
         float r = rand_float(&ctx->rng_state);
         if (r < rate) {
-            activations[i] = 0.0f;
+            activations[i] = 0.0F;
             if (mask) mask[i] = 0;
             drops++;
         } else {
@@ -674,11 +674,11 @@ nimcp_result_t nimcp_dropout_backward(
         return NIMCP_SUCCESS;
     }
 
-    float scale = 1.0f / (1.0f - ctx->config.rate);
+    float scale = 1.0F / (1.0F - ctx->config.rate);
 
     if (mask) {
         for (size_t i = 0; i < num_gradients; i++) {
-            gradients[i] = mask[i] ? gradients[i] * scale : 0.0f;
+            gradients[i] = mask[i] ? gradients[i] * scale : 0.0F;
         }
     }
 
@@ -692,7 +692,7 @@ void nimcp_dropout_set_training(nimcp_dropout_ctx_t* ctx, bool training) {
 }
 
 float nimcp_dropout_get_rate(const nimcp_dropout_ctx_t* ctx) {
-    return ctx ? ctx->config.rate : 0.0f;
+    return ctx ? ctx->config.rate : 0.0F;
 }
 
 nimcp_result_t nimcp_dropout_set_rate(nimcp_dropout_ctx_t* ctx, float rate) {
@@ -722,17 +722,17 @@ void nimcp_label_smooth(
         return;
     }
 
-    if (smoothing <= 0.0f || smoothing >= 1.0f) {
+    if (smoothing <= 0.0F || smoothing >= 1.0F) {
         return;  /* No smoothing */
     }
 
     float smooth_val = smoothing / (float)num_classes;
-    float confident_val = 1.0f - smoothing + smooth_val;
+    float confident_val = 1.0F - smoothing + smooth_val;
 
     for (size_t s = 0; s < num_samples; s++) {
         for (uint32_t c = 0; c < num_classes; c++) {
             size_t idx = s * num_classes + c;
-            if (labels[idx] > 0.5f) {
+            if (labels[idx] > 0.5F) {
                 labels[idx] = confident_val;
             } else {
                 labels[idx] = smooth_val;
@@ -752,7 +752,7 @@ void nimcp_label_smooth_single(
     }
 
     float smooth_val = smoothing / (float)num_classes;
-    float confident_val = 1.0f - smoothing + smooth_val;
+    float confident_val = 1.0F - smoothing + smooth_val;
 
     for (uint32_t c = 0; c < num_classes; c++) {
         output[c] = (c == true_class) ? confident_val : smooth_val;
@@ -858,7 +858,7 @@ void nimcp_early_stop_reset(nimcp_early_stop_ctx_t* ctx) {
 }
 
 float nimcp_early_stop_get_best(const nimcp_early_stop_ctx_t* ctx) {
-    return ctx ? ctx->best_metric : 0.0f;
+    return ctx ? ctx->best_metric : 0.0F;
 }
 
 uint64_t nimcp_early_stop_get_best_epoch(const nimcp_early_stop_ctx_t* ctx) {
@@ -939,23 +939,23 @@ nimcp_result_t nimcp_regularization_validate_config(
 
     switch (config->weight_reg_type) {
         case NIMCP_REG_L1:
-            if (config->weight_reg.l1.lambda < 0.0f) {
+            if (config->weight_reg.l1.lambda < 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NIMCP_REG_L2:
-            if (config->weight_reg.l2.lambda < 0.0f) {
+            if (config->weight_reg.l2.lambda < 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
 
         case NIMCP_REG_ELASTIC_NET:
-            if (config->weight_reg.elastic_net.lambda < 0.0f) {
+            if (config->weight_reg.elastic_net.lambda < 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (config->weight_reg.elastic_net.alpha < 0.0f ||
-                config->weight_reg.elastic_net.alpha > 1.0f) {
+            if (config->weight_reg.elastic_net.alpha < 0.0F ||
+                config->weight_reg.elastic_net.alpha > 1.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
@@ -970,14 +970,14 @@ nimcp_result_t nimcp_regularization_validate_config(
     }
 
     if (config->gradient_clip.mode != NIMCP_CLIP_NONE &&
-        config->gradient_clip.threshold <= 0.0f) {
+        config->gradient_clip.threshold <= 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Validate dropout */
     if (config->dropout.rate < NIMCP_DROPOUT_MIN ||
         config->dropout.rate >= NIMCP_DROPOUT_MAX) {
-        if (config->dropout.rate != 0.0f) {  /* Allow 0.0 explicitly */
+        if (config->dropout.rate != 0.0F) {  /* Allow 0.0 explicitly */
             return NIMCP_ERROR_INVALID_PARAM;
         }
     }
@@ -988,8 +988,8 @@ nimcp_result_t nimcp_regularization_validate_config(
 
     /* Validate label smoothing */
     if (config->use_label_smoothing) {
-        if (config->label_smooth.smoothing < 0.0f ||
-            config->label_smooth.smoothing > 1.0f) {
+        if (config->label_smooth.smoothing < 0.0F ||
+            config->label_smooth.smoothing > 1.0F) {
             return NIMCP_ERROR_INVALID_PARAM;
         }
         if (config->label_smooth.num_classes == 0) {

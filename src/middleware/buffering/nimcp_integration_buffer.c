@@ -200,7 +200,7 @@ float integration_buffer_get_latest(
 ) {
     // Guard: validate inputs
     if (!buffer || level >= TIMESCALE_COUNT || channel >= buffer->num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     channel_buffers_t* cbuf = &buffer->channels[channel];
@@ -213,7 +213,7 @@ float integration_buffer_get_latest(
         return sample.value;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 size_t integration_buffer_get_time_range(
@@ -286,7 +286,7 @@ float integration_buffer_mean(
 ) {
     // Guard: validate inputs
     if (!buffer || level >= TIMESCALE_COUNT || channel >= buffer->num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return sliding_window_mean(buffer->channels[channel].windows[level]);
@@ -299,7 +299,7 @@ float integration_buffer_variance(
 ) {
     // Guard: validate inputs
     if (!buffer || level >= TIMESCALE_COUNT || channel >= buffer->num_channels) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return sliding_window_variance(buffer->channels[channel].windows[level]);
@@ -310,7 +310,7 @@ float integration_buffer_trend(
     size_t channel
 ) {
     // Guard: validate inputs
-    if (!buffer || channel >= buffer->num_channels) return 0.0f;
+    if (!buffer || channel >= buffer->num_channels) return 0.0F;
 
     // Trend = slow mean - fast mean (positive = increasing over time)
     float slow_mean = integration_buffer_mean(buffer, TIMESCALE_SLOW, channel);

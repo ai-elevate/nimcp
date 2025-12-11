@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
@@ -133,11 +134,11 @@ portia_power_config_t portia_power_default_config(void) {
     config.critical_threshold = DEFAULT_CRITICAL_THRESHOLD;
 
     // Thermal
-    config.max_safe_temp_c = 45.0f;
-    config.thermal_throttle_temp_c = 40.0f;
+    config.max_safe_temp_c = 45.0F;
+    config.thermal_throttle_temp_c = 40.0F;
 
     // Runtime estimation
-    config.discharge_history_s = 60.0f;
+    config.discharge_history_s = 60.0F;
 
     // Platform
     config.battery_path = NULL;
@@ -250,7 +251,7 @@ void portia_power_shutdown(portia_power_manager_t mgr) {
     mgr->poll_thread_running = false;
     if (mgr->poll_thread) {
         nimcp_thread_join(mgr->poll_thread, NULL);
-        mgr->poll_thread = NULL;
+        mgr->poll_thread = 0;
     }
 
     // Cleanup
@@ -345,12 +346,12 @@ power_profile_t portia_power_set_profile(portia_power_manager_t mgr, power_profi
 
 float portia_power_estimate_runtime(portia_power_manager_t mgr, float safety_margin) {
     if (!mgr || mgr->magic != POWER_MAGIC) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Validate safety margin
-    if (safety_margin < 0.0f || safety_margin > 1.0f) {
-        safety_margin = 0.9f;  // Default
+    if (safety_margin < 0.0F || safety_margin > 1.0F) {
+        safety_margin = 0.9F;  // Default
     }
 
     nimcp_platform_mutex_lock(&mgr->state_mutex);
@@ -359,22 +360,22 @@ float portia_power_estimate_runtime(portia_power_manager_t mgr, float safety_mar
     if (mgr->current_status.source == POWER_SOURCE_AC ||
         mgr->current_status.plugged_in) {
         nimcp_platform_mutex_unlock(&mgr->state_mutex);
-        return 0.0f;  // 0 = unlimited
+        return 0.0F;  // 0 = unlimited
     }
 
     // Calculate average discharge rate
     float avg_rate_mw = calculate_avg_discharge_rate(&mgr->discharge_history);
-    if (avg_rate_mw <= 0.0f) {
+    if (avg_rate_mw <= 0.0F) {
         avg_rate_mw = mgr->current_status.discharge_rate_mw;
     }
 
     // Estimate remaining capacity (assume 50Wh typical battery)
-    float capacity_wh = 50.0f * (mgr->current_status.battery_level_pct / 100.0f);
-    float capacity_mw_s = capacity_wh * 3600.0f * 1000.0f;  // Convert to mW*s
+    float capacity_wh = 50.0F * (mgr->current_status.battery_level_pct / 100.0F);
+    float capacity_mw_s = capacity_wh * 3600.0F * 1000.0F;  // Convert to mW*s
 
     // Runtime = capacity / discharge_rate
-    float runtime_s = 0.0f;
-    if (avg_rate_mw > 0.0f) {
+    float runtime_s = 0.0F;
+    if (avg_rate_mw > 0.0F) {
         runtime_s = capacity_mw_s / avg_rate_mw;
         runtime_s *= safety_margin;
     }
@@ -406,29 +407,29 @@ power_tier_config_t portia_power_get_tier_config(
     platform_tier_config_t base_config = platform_tier_get_config(base_tier);
 
     // Apply power profile scaling
-    float neuron_scale = 1.0f;
-    float rate_scale = 1.0f;
+    float neuron_scale = 1.0F;
+    float rate_scale = 1.0F;
     uint32_t cognitive_modules = base_config.cognitive_modules_enabled;
 
     switch (profile) {
         case POWER_PROFILE_PERFORMANCE:
             // Full capabilities
-            neuron_scale = 1.0f;
-            rate_scale = 1.0f;
+            neuron_scale = 1.0F;
+            rate_scale = 1.0F;
             // All modules enabled
             break;
 
         case POWER_PROFILE_BALANCED:
             // Moderate reduction
-            neuron_scale = 0.75f;
-            rate_scale = 0.8f;
+            neuron_scale = 0.75F;
+            rate_scale = 0.8F;
             // Most modules enabled
             break;
 
         case POWER_PROFILE_SAVER:
             // Significant reduction
-            neuron_scale = 0.5f;
-            rate_scale = 0.5f;
+            neuron_scale = 0.5F;
+            rate_scale = 0.5F;
             // Disable non-essential modules
             cognitive_modules &= ~(COGNITIVE_MODULE_CURIOSITY |
                                    COGNITIVE_MODULE_META_LEARNING |
@@ -438,8 +439,8 @@ power_tier_config_t portia_power_get_tier_config(
 
         case POWER_PROFILE_CRITICAL:
             // Minimal operation
-            neuron_scale = 0.25f;
-            rate_scale = 0.2f;
+            neuron_scale = 0.25F;
+            rate_scale = 0.2F;
             // Essential modules only
             cognitive_modules = (COGNITIVE_MODULE_ATTENTION |
                                 COGNITIVE_MODULE_WORKING_MEMORY |
@@ -448,15 +449,15 @@ power_tier_config_t portia_power_get_tier_config(
 
         case POWER_PROFILE_EMERGENCY:
             // Survival mode
-            neuron_scale = 0.1f;
-            rate_scale = 0.05f;
+            neuron_scale = 0.1F;
+            rate_scale = 0.05F;
             // Reactive only
             cognitive_modules = COGNITIVE_MODULE_ATTENTION;
             break;
 
         default:
-            neuron_scale = 1.0f;
-            rate_scale = 1.0f;
+            neuron_scale = 1.0F;
+            rate_scale = 1.0F;
             break;
     }
 
@@ -464,7 +465,7 @@ power_tier_config_t portia_power_get_tier_config(
     config.max_neurons = (uint32_t)(base_config.max_neurons * neuron_scale);
     config.max_synapses = config.max_neurons * 100;  // Typical synapse ratio
     config.cognitive_modules = cognitive_modules;
-    config.processing_rate_hz = 100.0f * rate_scale;
+    config.processing_rate_hz = 100.0F * rate_scale;
     config.sampling_rate = base_config.sampling_rate * rate_scale;
     config.batch_size = base_config.update_batch_size;
 
@@ -476,11 +477,11 @@ power_tier_config_t portia_power_get_tier_config(
 
     // Sleep/wake for low power modes
     if (profile >= POWER_PROFILE_SAVER) {
-        config.wake_interval_s = 1.0f / config.processing_rate_hz;
-        config.active_duty_cycle = (profile == POWER_PROFILE_SAVER) ? 0.5f : 0.25f;
+        config.wake_interval_s = 1.0F / config.processing_rate_hz;
+        config.active_duty_cycle = (profile == POWER_PROFILE_SAVER) ? 0.5F : 0.25F;
     } else {
-        config.wake_interval_s = 0.0f;
-        config.active_duty_cycle = 1.0f;
+        config.wake_interval_s = 0.0F;
+        config.active_duty_cycle = 1.0F;
     }
 
     // Resource budgets
@@ -575,7 +576,7 @@ static void* power_poll_thread(void* arg) {
             mgr->current_status = new_status;
 
             // Update discharge history
-            if (!new_status.charging && new_status.discharge_rate_mw > 0.0f) {
+            if (!new_status.charging && new_status.discharge_rate_mw > 0.0F) {
                 update_discharge_history(&mgr->discharge_history, new_status.discharge_rate_mw);
             }
 
@@ -649,10 +650,10 @@ static bool read_battery_status(portia_power_manager_t mgr, power_status_t* stat
     if (!mgr->battery_available) {
         // No battery, assume AC power
         status->source = POWER_SOURCE_AC;
-        status->battery_level_pct = 100.0f;
-        status->discharge_rate_mw = 0.0f;
-        status->estimated_runtime_s = 0.0f;
-        status->temperature_c = 25.0f;
+        status->battery_level_pct = 100.0F;
+        status->discharge_rate_mw = 0.0F;
+        status->estimated_runtime_s = 0.0F;
+        status->temperature_c = 25.0F;
         status->charging = false;
         status->health_good = true;
         status->plugged_in = true;
@@ -662,7 +663,7 @@ static bool read_battery_status(portia_power_manager_t mgr, power_status_t* stat
 
     // Read capacity
     float capacity = read_sysfs_float(mgr->battery_path, "capacity");
-    if (capacity < 0.0f) {
+    if (capacity < 0.0F) {
         return false;
     }
     status->battery_level_pct = capacity;
@@ -675,18 +676,18 @@ static bool read_battery_status(portia_power_manager_t mgr, power_status_t* stat
 
     // Read power draw
     float power_now = read_sysfs_float(mgr->battery_path, "power_now");
-    if (power_now > 0.0f) {
-        status->discharge_rate_mw = power_now / 1000.0f;  // Convert μW to mW
+    if (power_now > 0.0F) {
+        status->discharge_rate_mw = power_now / 1000.0F;  // Convert μW to mW
     } else {
-        status->discharge_rate_mw = 0.0f;
+        status->discharge_rate_mw = 0.0F;
     }
 
     // Read temperature
     float temp = read_sysfs_float(mgr->battery_path, "temp");
-    if (temp > 0.0f) {
-        status->temperature_c = temp / 10.0f;  // 0.1°C units
+    if (temp > 0.0F) {
+        status->temperature_c = temp / 10.0F;  // 0.1°C units
     } else {
-        status->temperature_c = 25.0f;  // Default
+        status->temperature_c = 25.0F;  // Default
     }
 
     // Determine power source
@@ -711,12 +712,12 @@ static float read_sysfs_float(const char* path, const char* file) {
 
     FILE* fp = fopen(filepath, "r");
     if (!fp) {
-        return -1.0f;
+        return -1.0F;
     }
 
-    float value = -1.0f;
+    float value = -1.0F;
     if (fscanf(fp, "%f", &value) != 1) {
-        value = -1.0f;
+        value = -1.0F;
     }
 
     fclose(fp);
@@ -817,7 +818,7 @@ static void update_discharge_history(discharge_history_t* hist, float rate) {
 
 static float calculate_avg_discharge_rate(const discharge_history_t* hist) {
     if (hist->count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
     return hist->sum / hist->count;
 }

@@ -325,7 +325,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
     /* Initialize pattern learning */
     memset(&memory->pattern_stats, 0, sizeof(swarm_pattern_stats_t));
     memory->next_pattern_id = 1;
-    memory->pattern_similarity_threshold = 0.7f;
+    memory->pattern_similarity_threshold = 0.7F;
     memory->max_patterns = (max_capacity > 0) ? max_capacity : 1000;
 
     /* Initialize mutex */
@@ -626,7 +626,7 @@ nimcp_result_t nimcp_swarm_memory_access(
     entry->access_count++;
 
     /* Boost strength slightly on access */
-    entry->strength = fminf(1.0f, entry->strength + 0.01f);
+    entry->strength = fminf(1.0F, entry->strength + 0.01F);
 
     nimcp_platform_mutex_unlock(memory->mutex);
 
@@ -658,7 +658,7 @@ nimcp_result_t nimcp_swarm_memory_rehearse(
 
     /* Apply rehearsal boost from forgetting curve */
     NimcpForgettingCurve *curve = &memory->curves[entry->type];
-    entry->strength = fminf(1.0f, entry->strength + curve->rehearsal_boost);
+    entry->strength = fminf(1.0F, entry->strength + curve->rehearsal_boost);
 
     /* Update decay rate based on rehearsals */
     float modifier = calculate_decay_modifier(entry->importance, entry->rehearsal_count);
@@ -814,7 +814,7 @@ nimcp_result_t nimcp_swarm_memory_replay_cycle(
         /* Update replay entry */
         replay->replay_count++;
         replay->next_replay_time = current_time +
-            (uint64_t)(3600000.0f / replay->replay_priority);  /* Schedule next replay */
+            (uint64_t)(3600000.0F / replay->replay_priority);  /* Schedule next replay */
 
         /* Re-insert if still valuable */
         if (replay->replay_count < 10 && replay->memory->strength > NIMCP_MIN_MEMORY_STRENGTH) {
@@ -843,7 +843,7 @@ float nimcp_swarm_memory_calculate_replay_priority(
     const NimcpMemoryEntry *memory_entry)
 {
     if (!memory || !memory_entry) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Calculate priority based on multiple factors */
@@ -853,14 +853,14 @@ float nimcp_swarm_memory_calculate_replay_priority(
     /* Recency factor */
     uint64_t current_time = nimcp_time_get_us();
     uint64_t age = current_time - memory_entry->created_at;
-    float recency_factor = expf(-(float)age / 3600000.0f);  /* Decay over hours */
+    float recency_factor = expf(-(float)age / 3600000.0F);  /* Decay over hours */
 
     /* Combine factors */
-    float priority = (novelty_factor * 0.4f) +
-                     (importance_factor * 0.4f) +
-                     (recency_factor * 0.2f);
+    float priority = (novelty_factor * 0.4F) +
+                     (importance_factor * 0.4F) +
+                     (recency_factor * 0.2F);
 
-    return fminf(1.0f, fmaxf(0.0f, priority));
+    return fminf(1.0F, fmaxf(0.0F, priority));
 }
 
 /* ============================================================================
@@ -1003,7 +1003,7 @@ float nimcp_swarm_memory_calculate_strength(
     uint64_t current_time)
 {
     if (!memory || !memory_entry) {
-        return 0.0f;
+        return 0.0F;
     }
 
     NimcpForgettingCurve *curve = &memory->curves[memory_entry->type];
@@ -1017,13 +1017,13 @@ float nimcp_swarm_memory_calculate_strength(
                                                     memory_entry->rehearsal_count);
     float effective_decay = curve->decay_rate * decay_modifier;
 
-    float strength = curve->initial_strength * expf(-effective_decay * (float)time_since / 1000.0f);
+    float strength = curve->initial_strength * expf(-effective_decay * (float)time_since / 1000.0F);
 
     /* Add importance modifier */
-    strength *= (1.0f + curve->importance_modifier * (float)memory_entry->importance /
+    strength *= (1.0F + curve->importance_modifier * (float)memory_entry->importance /
                  (float)NIMCP_IMPORTANCE_CRITICAL);
 
-    return fminf(1.0f, fmaxf(0.0f, strength));
+    return fminf(1.0F, fmaxf(0.0F, strength));
 }
 
 nimcp_result_t nimcp_swarm_memory_apply_forgetting(
@@ -1208,7 +1208,7 @@ nimcp_result_t nimcp_swarm_memory_register_node(
     node->is_active = true;
     node->memory_count = 0;
     node->last_sync_time = nimcp_time_get_us();
-    node->health_score = 1.0f;
+    node->health_score = 1.0F;
     node->replica_capacity = capacity;
 
     /* Register in hash table */
@@ -1647,21 +1647,21 @@ uint32_t nimcp_swarm_memory_get_count_by_type(
 float nimcp_swarm_memory_get_health_score(const NimcpSwarmMemory *memory)
 {
     if (!memory || !memory->is_initialized) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Calculate health based on multiple factors */
     float node_health = (memory->stats.active_nodes > 0) ?
-        (float)memory->stats.active_nodes / (float)memory->replication_factor : 0.0f;
+        (float)memory->stats.active_nodes / (float)memory->replication_factor : 0.0F;
 
     float replication_health = (memory->stats.distributed_memories > 0) ?
-        (float)memory->stats.distributed_memories / (float)memory->stats.total_memories : 0.0f;
+        (float)memory->stats.distributed_memories / (float)memory->stats.total_memories : 0.0F;
 
-    float consolidation_health = (memory->consolidation_count > 0) ? 1.0f : 0.5f;
+    float consolidation_health = (memory->consolidation_count > 0) ? 1.0F : 0.5F;
 
-    float health = (node_health * 0.4f) + (replication_health * 0.4f) + (consolidation_health * 0.2f);
+    float health = (node_health * 0.4F) + (replication_health * 0.4F) + (consolidation_health * 0.2F);
 
-    return fminf(1.0f, fmaxf(0.0f, health));
+    return fminf(1.0F, fmaxf(0.0F, health));
 }
 
 void nimcp_swarm_memory_print_status(
@@ -1710,12 +1710,12 @@ static float calculate_cosine_similarity(
     uint32_t size)
 {
     if (!vec1 || !vec2 || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float dot_product = 0.0f;
-    float mag1 = 0.0f;
-    float mag2 = 0.0f;
+    float dot_product = 0.0F;
+    float mag1 = 0.0F;
+    float mag2 = 0.0F;
 
     for (uint32_t i = 0; i < size; i++) {
         dot_product += vec1[i] * vec2[i];
@@ -1724,8 +1724,8 @@ static float calculate_cosine_similarity(
     }
 
     float magnitude_product = sqrtf(mag1) * sqrtf(mag2);
-    if (magnitude_product < 1e-6f) {
-        return 0.0f;
+    if (magnitude_product < 1e-6F) {
+        return 0.0F;
     }
 
     return dot_product / magnitude_product;
@@ -1781,7 +1781,7 @@ nimcp_result_t swarm_memory_detect_pattern(
     nimcp_platform_mutex_lock(mem->mutex);
 
     /* Find best matching pattern */
-    float best_similarity = 0.0f;
+    float best_similarity = 0.0F;
     swarm_pattern_t *best_pattern = NULL;
 
     /* Iterate through patterns (simplified - would need hash table iteration) */
@@ -1835,7 +1835,7 @@ nimcp_result_t swarm_memory_store_pattern(
     /* Check capacity */
     if (mem->pattern_stats.total_patterns >= mem->max_patterns) {
         LOG_WARN("Pattern capacity reached, triggering forget");
-        swarm_memory_forget_weak_patterns(mem, 0.3f);
+        swarm_memory_forget_weak_patterns(mem, 0.3F);
     }
 
     /* Create pattern copy */
@@ -1982,7 +1982,7 @@ nimcp_result_t swarm_memory_associate_pattern(
     float reward)
 {
     NIMCP_VALIDATE_NOT_NULL(mem);
-    NIMCP_VALIDATE(reward >= -1.0f && reward <= 1.0f);
+    NIMCP_VALIDATE(reward >= -1.0F && reward <= 1.0F);
 
     if (!mem->is_initialized) {
         return NIMCP_ERROR;
@@ -2003,13 +2003,13 @@ nimcp_result_t swarm_memory_associate_pattern(
         assoc->reinforcement_count++;
 
         /* Update strength with learning rate */
-        float learning_rate = 0.1f;
+        float learning_rate = 0.1F;
         assoc->association_strength +=
             learning_rate * (reward - assoc->association_strength);
 
         /* Clamp to [0, 1] */
-        assoc->association_strength = fmaxf(0.0f,
-            fminf(1.0f, assoc->association_strength));
+        assoc->association_strength = fmaxf(0.0F,
+            fminf(1.0F, assoc->association_strength));
     } else {
         /* Create new association */
         assoc = (pattern_association_t *)nimcp_malloc(
@@ -2021,7 +2021,7 @@ nimcp_result_t swarm_memory_associate_pattern(
 
         assoc->pattern_id = pattern_id;
         assoc->outcome_id = outcome_id;
-        assoc->association_strength = (reward + 1.0f) / 2.0f;  /* Map [-1,1] to [0,1] */
+        assoc->association_strength = (reward + 1.0F) / 2.0F;  /* Map [-1,1] to [0,1] */
         assoc->reinforcement_count = 1;
 
         if (nimcp_hash_table_insert(mem->pattern_associations, key, assoc) !=
@@ -2059,12 +2059,12 @@ nimcp_result_t swarm_memory_predict_outcome(
     nimcp_platform_mutex_lock(mem->mutex);
 
     /* Find strongest association for this pattern */
-    float best_strength = 0.0f;
+    float best_strength = 0.0F;
     uint32_t best_outcome = 0;
 
     /* NOTE: Simplified implementation - would need to iterate associations */
 
-    if (best_strength > 0.0f) {
+    if (best_strength > 0.0F) {
         *predicted_outcome = best_outcome;
         *confidence = best_strength;
         nimcp_platform_mutex_unlock(mem->mutex);
@@ -2220,7 +2220,7 @@ nimcp_result_t swarm_memory_forget_weak_patterns(
     float threshold)
 {
     NIMCP_VALIDATE_NOT_NULL(mem);
-    NIMCP_VALIDATE(threshold >= 0.0f && threshold <= 1.0f);
+    NIMCP_VALIDATE(threshold >= 0.0F && threshold <= 1.0F);
 
     if (!mem->is_initialized) {
         return NIMCP_ERROR;
@@ -2282,7 +2282,7 @@ int32_t swarm_memory_recognize_pattern(
 
     nimcp_platform_mutex_lock(memory->mutex);
 
-    float best_similarity = 0.0f;
+    float best_similarity = 0.0F;
     int32_t best_pattern_id = -1;
 
     /* Iterate through all patterns - NOTE: Hash table iteration needs implementation */
@@ -2331,7 +2331,7 @@ int32_t swarm_memory_store_pattern_labeled(
     if (memory->pattern_stats.total_patterns >= memory->max_patterns) {
         LOG_WARN("Pattern capacity reached (%u/%u), triggering cleanup",
                  memory->pattern_stats.total_patterns, memory->max_patterns);
-        swarm_memory_forget_weak_patterns(memory, 0.3f);
+        swarm_memory_forget_weak_patterns(memory, 0.3F);
     }
 
     /* Create new pattern */
@@ -2361,8 +2361,8 @@ int32_t swarm_memory_store_pattern_labeled(
     pattern->data_len = len;
 
     /* Initialize fields */
-    pattern->strength = 1.0f;
-    pattern->confidence = 1.0f;
+    pattern->strength = 1.0F;
+    pattern->confidence = 1.0F;
     pattern->occurrence_count = 1;
     pattern->access_count = 0;
     pattern->first_seen_ms = nimcp_time_get_us() / 1000;
@@ -2415,7 +2415,7 @@ nimcp_result_t swarm_memory_associate_patterns(
         return NIMCP_INVALID_PARAM;
     }
 
-    if (strength < 0.0f || strength > 1.0f) {
+    if (strength < 0.0F || strength > 1.0F) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -2553,7 +2553,7 @@ nimcp_result_t swarm_memory_detect_temporal_pattern(
     }
 
     /* Calculate confidence based on regularity */
-    float period_variance = 0.0f;
+    float period_variance = 0.0F;
     if (valid_count >= 3 && result->period_ms > 0) {
         for (size_t i = 1; i < valid_count; i++) {
             uint64_t period_i = timestamps[i] - timestamps[i - 1];
@@ -2564,9 +2564,9 @@ nimcp_result_t swarm_memory_detect_temporal_pattern(
 
         /* Lower variance = higher confidence */
         float normalized_variance = period_variance / ((float)result->period_ms * (float)result->period_ms);
-        result->confidence = 1.0f / (1.0f + normalized_variance);
+        result->confidence = 1.0F / (1.0F + normalized_variance);
     } else {
-        result->confidence = 0.5f;
+        result->confidence = 0.5F;
     }
 
     nimcp_platform_mutex_unlock(memory->mutex);
@@ -2815,7 +2815,7 @@ int32_t swarm_memory_find_similar_patterns(
         return -1;
     }
 
-    if (threshold < 0.0f || threshold > 1.0f) {
+    if (threshold < 0.0F || threshold > 1.0F) {
         return -1;
     }
 
@@ -2915,9 +2915,9 @@ static NimcpMemoryEntry *create_memory_entry(
     entry->last_rehearsed = 0;
     entry->access_count = 0;
     entry->rehearsal_count = 0;
-    entry->strength = 1.0f;
+    entry->strength = 1.0F;
     entry->decay_rate = NIMCP_DEFAULT_DECAY_RATE;
-    entry->novelty_score = 0.0f;
+    entry->novelty_score = 0.0F;
     entry->is_compressed = false;
     entry->is_consolidated = false;
     entry->is_distributed = false;
@@ -2957,10 +2957,10 @@ static float calculate_decay_modifier(
     uint32_t rehearsal_count)
 {
     /* More important memories decay slower */
-    float importance_factor = 1.0f - ((float)importance / (float)NIMCP_IMPORTANCE_CRITICAL) * 0.5f;
+    float importance_factor = 1.0F - ((float)importance / (float)NIMCP_IMPORTANCE_CRITICAL) * 0.5F;
 
     /* More rehearsals reduce decay */
-    float rehearsal_factor = 1.0f / (1.0f + logf(1.0f + (float)rehearsal_count));
+    float rehearsal_factor = 1.0F / (1.0F + logf(1.0F + (float)rehearsal_count));
 
     return importance_factor * rehearsal_factor;
 }
@@ -3073,9 +3073,9 @@ static nimcp_result_t send_bio_message(
 static void initialize_default_forgetting_curves(NimcpSwarmMemory *memory)
 {
     for (int i = 0; i < NIMCP_MEMORY_TYPE_COUNT; i++) {
-        memory->curves[i].initial_strength = 1.0f;
+        memory->curves[i].initial_strength = 1.0F;
         memory->curves[i].decay_rate = NIMCP_DEFAULT_DECAY_RATE;
-        memory->curves[i].importance_modifier = 0.5f;
+        memory->curves[i].importance_modifier = 0.5F;
         memory->curves[i].rehearsal_boost = NIMCP_DEFAULT_REHEARSAL_BOOST;
         memory->curves[i].half_life_ms = NIMCP_DEFAULT_HALF_LIFE_MS;
 
@@ -3083,16 +3083,16 @@ static void initialize_default_forgetting_curves(NimcpSwarmMemory *memory)
         switch (i) {
             case NIMCP_MEMORY_THREAT:
                 /* Threat memories decay slower */
-                memory->curves[i].decay_rate *= 0.5f;
+                memory->curves[i].decay_rate *= 0.5F;
                 memory->curves[i].half_life_ms *= 2;
                 break;
             case NIMCP_MEMORY_EPISODIC:
                 /* Episodic memories decay faster */
-                memory->curves[i].decay_rate *= 1.5f;
+                memory->curves[i].decay_rate *= 1.5F;
                 break;
             case NIMCP_MEMORY_SEMANTIC:
                 /* Semantic memories very stable */
-                memory->curves[i].decay_rate *= 0.3f;
+                memory->curves[i].decay_rate *= 0.3F;
                 memory->curves[i].half_life_ms *= 3;
                 break;
             default:

@@ -350,13 +350,13 @@ uint32_t portia_classification_add_target(
 
     target->id = target_id;
     target->classification = TARGET_CLASS_UNKNOWN;
-    target->confidence = 0.0f;
+    target->confidence = 0.0F;
     target->x = x;
     target->y = y;
     target->z = z;
-    target->vx = 0.0f;
-    target->vy = 0.0f;
-    target->vz = 0.0f;
+    target->vx = 0.0F;
+    target->vy = 0.0F;
+    target->vz = 0.0F;
     target->size = size;
     target->first_seen_ms = nimcp_time_monotonic_ms();
     target->last_seen_ms = target->first_seen_ms;
@@ -419,9 +419,9 @@ int portia_classification_update(
 
     // Compute velocity
     uint64_t now_ms = nimcp_time_monotonic_ms();
-    float dt = (now_ms - target->last_seen_ms) / 1000.0f;
+    float dt = (now_ms - target->last_seen_ms) / 1000.0F;
 
-    if (dt > 0.001f) {  // Avoid division by zero
+    if (dt > 0.001F) {  // Avoid division by zero
         target->vx = (x - target->x) / dt;
         target->vy = (y - target->y) / dt;
         target->vz = (z - target->z) / dt;
@@ -486,43 +486,43 @@ int portia_classification_classify(
                        target->vy * target->vy +
                        target->vz * target->vz);
 
-    float conf = 0.0f;
+    float conf = 0.0F;
     target_class_t class = TARGET_CLASS_UNKNOWN;
 
     // Need multiple observations for confidence
     if (target->observation_count < 3) {
         class = TARGET_CLASS_UNKNOWN;
-        conf = 0.1f;
+        conf = 0.1F;
     }
     // Fast moving = threat or prey
-    else if (speed > 2.0f) {
-        if (target->size > 1.0f) {
+    else if (speed > 2.0F) {
+        if (target->size > 1.0F) {
             class = TARGET_CLASS_THREAT;
-            conf = 0.7f + (speed / 10.0f) * 0.2f;
+            conf = 0.7F + (speed / 10.0F) * 0.2F;
         } else {
             class = TARGET_CLASS_PREY;
-            conf = 0.6f + (speed / 10.0f) * 0.3f;
+            conf = 0.6F + (speed / 10.0F) * 0.3F;
         }
     }
     // Slow/stationary = neutral or obstacle
-    else if (speed < 0.5f) {
-        if (target->size < 0.5f) {
+    else if (speed < 0.5F) {
+        if (target->size < 0.5F) {
             class = TARGET_CLASS_NEUTRAL;
-            conf = 0.8f;
+            conf = 0.8F;
         } else {
             class = TARGET_CLASS_OBSTACLE;
-            conf = 0.9f;
+            conf = 0.9F;
         }
     }
     // Medium speed = prey
     else {
         class = TARGET_CLASS_PREY;
-        conf = 0.7f;
+        conf = 0.7F;
     }
 
     // Confidence increases with observations
-    float obs_bonus = fminf(target->observation_count / 10.0f, 0.2f);
-    conf = fminf(conf + obs_bonus, 1.0f);
+    float obs_bonus = fminf(target->observation_count / 10.0F, 0.2F);
+    conf = fminf(conf + obs_bonus, 1.0F);
 
     // Update target
     target->classification = class;

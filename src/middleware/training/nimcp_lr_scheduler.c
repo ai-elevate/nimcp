@@ -93,7 +93,7 @@ struct nimcp_lr_scheduler_ctx {
 
 static float clamp_lr(float lr) {
     /* Allow 0.0 explicitly for warmup schedulers that start at 0 */
-    if (lr == 0.0f) return 0.0f;
+    if (lr == 0.0F) return 0.0F;
     if (lr < NIMCP_LR_MIN_VALUE) return NIMCP_LR_MIN_VALUE;
     if (lr > NIMCP_LR_MAX_VALUE) return NIMCP_LR_MAX_VALUE;
     return lr;
@@ -117,7 +117,7 @@ nimcp_step_lr_config_t nimcp_step_lr_default_config(float initial_lr, uint32_t s
     nimcp_step_lr_config_t config = {
         .initial_lr = initial_lr,
         .step_size = step_size > 0 ? step_size : 30,
-        .gamma = 0.1f,
+        .gamma = 0.1F,
         .min_lr = NIMCP_LR_MIN_VALUE
     };
     return config;
@@ -126,7 +126,7 @@ nimcp_step_lr_config_t nimcp_step_lr_default_config(float initial_lr, uint32_t s
 nimcp_exponential_lr_config_t nimcp_exponential_lr_default_config(float initial_lr, float gamma) {
     nimcp_exponential_lr_config_t config = {
         .initial_lr = initial_lr,
-        .gamma = gamma > 0.0f ? gamma : 0.95f,
+        .gamma = gamma > 0.0F ? gamma : 0.95F,
         .min_lr = NIMCP_LR_MIN_VALUE
     };
     return config;
@@ -136,7 +136,7 @@ nimcp_cosine_lr_config_t nimcp_cosine_lr_default_config(float initial_lr, uint32
     nimcp_cosine_lr_config_t config = {
         .initial_lr = initial_lr,
         .T_max = T_max > 0 ? T_max : 100,
-        .eta_min = 0.0f,
+        .eta_min = 0.0F,
         .restart = false,
         .T_mult = 1
     };
@@ -145,7 +145,7 @@ nimcp_cosine_lr_config_t nimcp_cosine_lr_default_config(float initial_lr, uint32
 
 nimcp_warmup_lr_config_t nimcp_warmup_lr_default_config(float target_lr, uint32_t warmup_steps) {
     nimcp_warmup_lr_config_t config = {
-        .start_lr = 0.0f,
+        .start_lr = 0.0F,
         .target_lr = target_lr,
         .warmup_steps = warmup_steps > 0 ? warmup_steps : 1000,
         .hold_after_warmup = true
@@ -157,9 +157,9 @@ nimcp_plateau_lr_config_t nimcp_plateau_lr_default_config(float initial_lr) {
     nimcp_plateau_lr_config_t config = {
         .initial_lr = initial_lr,
         .mode = NIMCP_PLATEAU_MIN,
-        .factor = 0.1f,
+        .factor = 0.1F,
         .patience = 10,
-        .threshold = 1e-4f,
+        .threshold = 1e-4F,
         .cooldown = 0,
         .min_lr = NIMCP_LR_MIN_VALUE
     };
@@ -173,7 +173,7 @@ nimcp_cyclic_lr_config_t nimcp_cyclic_lr_default_config(float base_lr, float max
         .step_size_up = step_size_up > 0 ? step_size_up : 2000,
         .step_size_down = 0,  /* Same as up */
         .mode = NIMCP_CYCLIC_TRIANGULAR,
-        .gamma = 1.0f
+        .gamma = 1.0F
     };
     return config;
 }
@@ -182,9 +182,9 @@ nimcp_one_cycle_lr_config_t nimcp_one_cycle_lr_default_config(float max_lr, uint
     nimcp_one_cycle_lr_config_t config = {
         .max_lr = max_lr,
         .total_steps = total_steps > 0 ? total_steps : 10000,
-        .pct_start = 0.3f,
-        .div_factor = 25.0f,
-        .final_div_factor = 10000.0f,
+        .pct_start = 0.3F,
+        .div_factor = 25.0F,
+        .final_div_factor = 10000.0F,
         .anneal_strategy_cos = true
     };
     return config;
@@ -228,7 +228,7 @@ static float compute_cosine_lr(const nimcp_lr_scheduler_ctx_t* ctx, uint64_t epo
 
     /* Cosine annealing formula */
     float cos_val = cosf((float)M_PI * (float)T_cur / (float)T_max);
-    float lr = cfg->eta_min + (cfg->initial_lr - cfg->eta_min) * (1.0f + cos_val) / 2.0f;
+    float lr = cfg->eta_min + (cfg->initial_lr - cfg->eta_min) * (1.0F + cos_val) / 2.0F;
 
     return lr;
 }
@@ -275,7 +275,7 @@ static float compute_cyclic_lr(nimcp_lr_scheduler_ctx_t* ctx, uint64_t step) {
     /* Apply mode-specific scaling */
     switch (cfg->mode) {
         case NIMCP_CYCLIC_TRIANGULAR2:
-            max_lr = base_lr + (cfg->max_lr - base_lr) / powf(2.0f, (float)cycle);
+            max_lr = base_lr + (cfg->max_lr - base_lr) / powf(2.0F, (float)cycle);
             break;
         case NIMCP_CYCLIC_EXP_RANGE:
             max_lr = base_lr + (cfg->max_lr - base_lr) * powf(cfg->gamma, (float)step);
@@ -314,18 +314,18 @@ static float compute_one_cycle_lr(const nimcp_lr_scheduler_ctx_t* ctx, uint64_t 
         /* Warmup phase: increase to max_lr */
         float pct = (float)step / (float)warmup_steps;
         if (cfg->anneal_strategy_cos) {
-            pct = (1.0f - cosf((float)M_PI * pct)) / 2.0f;
+            pct = (1.0F - cosf((float)M_PI * pct)) / 2.0F;
         }
         lr = initial_lr + (cfg->max_lr - initial_lr) * pct;
     } else {
         /* Annealing phase: decrease to final_lr */
         float pct = (float)(step - warmup_steps) / (float)(cfg->total_steps - warmup_steps);
-        if (pct > 1.0f) pct = 1.0f;
+        if (pct > 1.0F) pct = 1.0F;
 
         if (cfg->anneal_strategy_cos) {
-            pct = (1.0f + cosf((float)M_PI * pct)) / 2.0f;
+            pct = (1.0F + cosf((float)M_PI * pct)) / 2.0F;
         } else {
-            pct = 1.0f - pct;
+            pct = 1.0F - pct;
         }
         lr = final_lr + (cfg->max_lr - final_lr) * pct;
     }
@@ -340,7 +340,7 @@ static float compute_polynomial_lr(const nimcp_lr_scheduler_ctx_t* ctx, uint64_t
         return cfg->end_lr;
     }
 
-    float decay = 1.0f - (float)step / (float)cfg->total_steps;
+    float decay = 1.0F - (float)step / (float)cfg->total_steps;
     float lr = (cfg->initial_lr - cfg->end_lr) * powf(decay, cfg->power) + cfg->end_lr;
 
     return lr;
@@ -373,7 +373,7 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create(const nimcp_lr_scheduler_con
     ctx->current_epoch = 0;
 
     /* Set initial learning rate based on type */
-    float initial_lr = 0.001f;  /* Default */
+    float initial_lr = 0.001F;  /* Default */
     switch (config->type) {
         case NIMCP_LR_CONSTANT:
         case NIMCP_LR_STEP:
@@ -428,7 +428,7 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create(const nimcp_lr_scheduler_con
     ctx->stats.total_epochs = 0;
     ctx->stats.num_reductions = 0;
     ctx->stats.num_cycles = 0;
-    ctx->stats.best_metric = 0.0f;
+    ctx->stats.best_metric = 0.0F;
 
     ctx->initialized = true;
 
@@ -475,7 +475,7 @@ void nimcp_lr_scheduler_destroy(nimcp_lr_scheduler_ctx_t* ctx) {
 
 float nimcp_lr_scheduler_step(nimcp_lr_scheduler_ctx_t* ctx) {
     if (!ctx || !ctx->initialized) {
-        return 0.0f;
+        return 0.0F;
     }
 
     ctx->current_step++;
@@ -543,7 +543,7 @@ float nimcp_lr_scheduler_step(nimcp_lr_scheduler_ctx_t* ctx) {
 
 float nimcp_lr_scheduler_step_epoch(nimcp_lr_scheduler_ctx_t* ctx) {
     if (!ctx || !ctx->initialized) {
-        return 0.0f;
+        return 0.0F;
     }
 
     ctx->current_epoch++;
@@ -592,7 +592,7 @@ float nimcp_lr_scheduler_step_epoch(nimcp_lr_scheduler_ctx_t* ctx) {
 
 float nimcp_lr_scheduler_step_metric(nimcp_lr_scheduler_ctx_t* ctx, float metric) {
     if (!ctx || !ctx->initialized) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (ctx->config.type != NIMCP_LR_REDUCE_ON_PLATEAU) {
@@ -663,7 +663,7 @@ float nimcp_lr_scheduler_step_metric(nimcp_lr_scheduler_ctx_t* ctx, float metric
 
 float nimcp_lr_scheduler_get_lr(const nimcp_lr_scheduler_ctx_t* ctx) {
     if (!ctx) {
-        return 0.0f;
+        return 0.0F;
     }
     return ctx->current_lr;
 }
@@ -681,7 +681,7 @@ nimcp_result_t nimcp_lr_scheduler_set_lr(nimcp_lr_scheduler_ctx_t* ctx, float lr
 
 float nimcp_lr_scheduler_get_lr_at_step(const nimcp_lr_scheduler_ctx_t* ctx, uint64_t step) {
     if (!ctx) {
-        return 0.0f;
+        return 0.0F;
     }
 
     switch (ctx->config.type) {
@@ -698,7 +698,7 @@ float nimcp_lr_scheduler_get_lr_at_step(const nimcp_lr_scheduler_ctx_t* ctx, uin
 
 float nimcp_lr_scheduler_get_lr_at_epoch(const nimcp_lr_scheduler_ctx_t* ctx, uint64_t epoch) {
     if (!ctx) {
-        return 0.0f;
+        return 0.0F;
     }
 
     switch (ctx->config.type) {
@@ -849,64 +849,64 @@ nimcp_result_t nimcp_lr_scheduler_validate_config(const nimcp_lr_scheduler_confi
     /* Type-specific validation */
     switch (config->type) {
         case NIMCP_LR_STEP:
-            if (config->params.step.initial_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.step.initial_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.step.step_size == 0) return NIMCP_ERROR_INVALID_PARAM;
-            if (config->params.step.gamma <= 0.0f || config->params.step.gamma > 1.0f)
+            if (config->params.step.gamma <= 0.0F || config->params.step.gamma > 1.0F)
                 return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_EXPONENTIAL:
-            if (config->params.exponential.initial_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
-            if (config->params.exponential.gamma <= 0.0f || config->params.exponential.gamma > 1.0f)
+            if (config->params.exponential.initial_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.exponential.gamma <= 0.0F || config->params.exponential.gamma > 1.0F)
                 return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_COSINE_ANNEALING:
-            if (config->params.cosine.initial_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.cosine.initial_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.cosine.T_max == 0) return NIMCP_ERROR_INVALID_PARAM;
-            if (config->params.cosine.eta_min < 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.cosine.eta_min < 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_COSINE_WARMUP:
             /* Composite scheduler - validate warmup parameters */
-            if (config->params.warmup.target_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.warmup.target_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.warmup.warmup_steps == 0) return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_LINEAR_WARMUP:
-            if (config->params.warmup.target_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.warmup.target_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.warmup.warmup_steps == 0) return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_MULTI_STEP:
-            if (config->params.multi_step.initial_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.multi_step.initial_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.multi_step.num_milestones == 0) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.multi_step.num_milestones > NIMCP_LR_MAX_MILESTONES)
                 return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_REDUCE_ON_PLATEAU:
-            if (config->params.plateau.initial_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
-            if (config->params.plateau.factor <= 0.0f || config->params.plateau.factor >= 1.0f)
+            if (config->params.plateau.initial_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.plateau.factor <= 0.0F || config->params.plateau.factor >= 1.0F)
                 return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_CYCLIC:
-            if (config->params.cyclic.base_lr < 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.cyclic.base_lr < 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.cyclic.max_lr <= config->params.cyclic.base_lr)
                 return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.cyclic.step_size_up == 0) return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_ONE_CYCLE:
-            if (config->params.one_cycle.max_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.one_cycle.max_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.one_cycle.total_steps == 0) return NIMCP_ERROR_INVALID_PARAM;
-            if (config->params.one_cycle.pct_start < 0.0f || config->params.one_cycle.pct_start > 1.0f)
+            if (config->params.one_cycle.pct_start < 0.0F || config->params.one_cycle.pct_start > 1.0F)
                 return NIMCP_ERROR_INVALID_PARAM;
             break;
 
         case NIMCP_LR_POLYNOMIAL:
-            if (config->params.polynomial.initial_lr <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (config->params.polynomial.initial_lr <= 0.0F) return NIMCP_ERROR_INVALID_PARAM;
             if (config->params.polynomial.total_steps == 0) return NIMCP_ERROR_INVALID_PARAM;
             break;
 
@@ -930,7 +930,7 @@ nimcp_lr_scheduler_config_t nimcp_lr_scheduler_config_from_type(
 
     config.type = type;
     config.verbose = false;
-    config.lr_epsilon = 1e-8f;
+    config.lr_epsilon = 1e-8F;
 
     switch (type) {
         case NIMCP_LR_CONSTANT:
@@ -942,7 +942,7 @@ nimcp_lr_scheduler_config_t nimcp_lr_scheduler_config_from_type(
             break;
 
         case NIMCP_LR_EXPONENTIAL:
-            config.params.exponential = nimcp_exponential_lr_default_config(initial_lr, 0.95f);
+            config.params.exponential = nimcp_exponential_lr_default_config(initial_lr, 0.95F);
             break;
 
         case NIMCP_LR_COSINE_ANNEALING:
@@ -960,7 +960,7 @@ nimcp_lr_scheduler_config_t nimcp_lr_scheduler_config_from_type(
 
         case NIMCP_LR_MULTI_STEP: {
             config.params.multi_step.initial_lr = initial_lr;
-            config.params.multi_step.gamma = 0.1f;
+            config.params.multi_step.gamma = 0.1F;
             config.params.multi_step.milestones[0] = 30;
             config.params.multi_step.milestones[1] = 60;
             config.params.multi_step.milestones[2] = 90;
@@ -974,7 +974,7 @@ nimcp_lr_scheduler_config_t nimcp_lr_scheduler_config_from_type(
             break;
 
         case NIMCP_LR_CYCLIC:
-            config.params.cyclic = nimcp_cyclic_lr_default_config(initial_lr / 10.0f, initial_lr, 2000);
+            config.params.cyclic = nimcp_cyclic_lr_default_config(initial_lr / 10.0F, initial_lr, 2000);
             break;
 
         case NIMCP_LR_ONE_CYCLE:
@@ -983,9 +983,9 @@ nimcp_lr_scheduler_config_t nimcp_lr_scheduler_config_from_type(
 
         case NIMCP_LR_POLYNOMIAL:
             config.params.polynomial.initial_lr = initial_lr;
-            config.params.polynomial.end_lr = initial_lr / 100.0f;
+            config.params.polynomial.end_lr = initial_lr / 100.0F;
             config.params.polynomial.total_steps = 10000;
-            config.params.polynomial.power = 1.0f;
+            config.params.polynomial.power = 1.0F;
             break;
 
         default:

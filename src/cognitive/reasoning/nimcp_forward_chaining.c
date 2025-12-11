@@ -148,7 +148,7 @@ bool brain_forward_chain(
     if (brain->working_memory && brain->config.enable_working_memory && num_new_facts > 0) {
         int wm_count = (num_new_facts < MAX_WM_FACTS) ? num_new_facts : MAX_WM_FACTS;
         for (int i = 0; i < wm_count; i++) {
-            float fact_encoding[4] = {DEFAULT_SALIENCE, 1.0f, (float)i, 0.0f};
+            float fact_encoding[4] = {DEFAULT_SALIENCE, 1.0F, (float)i, 0.0F};
             working_memory_add(brain->working_memory, fact_encoding, 4, DEFAULT_SALIENCE);
         }
         NIMCP_LOGGING_DEBUG("Stored %d new inferences in working memory", wm_count);
@@ -172,7 +172,7 @@ bool brain_forward_chain(
     result->new_facts = new_facts;
     result->num_new_facts = num_new_facts;
     result->iterations_performed = max_iterations; // Actual iterations may be less
-    result->confidence = (num_new_facts > 0) ? 0.8f : 0.0f;
+    result->confidence = (num_new_facts > 0) ? 0.8F : 0.0F;
     result->inference_time_ms = end_time - start_time;
     result->converged = (num_new_facts == 0); // Converged if no new facts
 

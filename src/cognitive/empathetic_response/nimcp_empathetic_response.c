@@ -149,7 +149,7 @@ empathetic_response_engine_t empathetic_response_create(
     engine->ethics_engine = ethics_engine;
     engine->empathy_network = empathy_network;
     engine->responses_generated = 0;
-    engine->avg_effectiveness = 0.0f;
+    engine->avg_effectiveness = 0.0F;
 
     
     // Bio-async registration
@@ -224,26 +224,26 @@ bool empathetic_response_detect_crisis(
     }
 
     *crisis_flags = CRISIS_NONE;
-    *confidence = 0.0f;
+    *confidence = 0.0F;
 
     // Check for suicidal ideation
     if (contains_keywords(text, SUICIDAL_KEYWORDS)) {
         *crisis_flags |= CRISIS_SUICIDAL;
-        *confidence = 0.9f;  // High confidence
+        *confidence = 0.9F;  // High confidence
         return true;
     }
 
     // Check for self-harm
     if (contains_keywords(text, SELF_HARM_KEYWORDS)) {
         *crisis_flags |= CRISIS_SELF_HARM;
-        *confidence = 0.85f;
+        *confidence = 0.85F;
         return true;
     }
 
     // Check for abuse disclosure
     if (contains_keywords(text, ABUSE_KEYWORDS)) {
         *crisis_flags |= CRISIS_ABUSE;
-        *confidence = 0.95f;  // Very high confidence - critical
+        *confidence = 0.95F;  // Very high confidence - critical
         return true;
     }
 
@@ -388,7 +388,7 @@ bool empathetic_response_generate(
                    sizeof(response->escalation_reason) - 1);
         }
 
-        response->safety_score = 1.0f;  // Escalation is the safe action
+        response->safety_score = 1.0F;  // Escalation is the safe action
         response->ethics_approved = true;  // Helping in crisis is ethical
 
         engine->responses_generated++;
@@ -405,8 +405,8 @@ bool empathetic_response_generate(
     strncpy(response->response_text, template, sizeof(response->response_text) - 1);
 
     // Set metadata
-    response->empathy_score = 0.85f;  // High empathy by design
-    response->safety_score = 1.0f;    // Non-reactive responses are safe
+    response->empathy_score = 0.85F;  // High empathy by design
+    response->safety_score = 1.0F;    // Non-reactive responses are safe
     response->ethics_approved = true; // Validation + support is always ethical
     response->requires_human_escalation = false;
 
@@ -482,11 +482,11 @@ float empathetic_response_predict_safety(
 {
     // Guard: NULL checks
     if (!engine || !student_state || !proposed_response) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Simple heuristic safety check (would use empathy_network in full version)
-    float safety_score = 1.0f;
+    float safety_score = 1.0F;
 
     char lowercase_response[1024];
     to_lowercase(lowercase_response, proposed_response, sizeof(lowercase_response));
@@ -503,23 +503,23 @@ float empathetic_response_predict_safety(
 
     for (int i = 0; unsafe_patterns[i] != NULL; i++) {
         if (strstr(lowercase_response, unsafe_patterns[i]) != NULL) {
-            safety_score -= 0.3f;
+            safety_score -= 0.3F;
         }
     }
 
     // Ensure minimum safety
-    if (safety_score < 0.0f) {
-        safety_score = 0.0f;
+    if (safety_score < 0.0F) {
+        safety_score = 0.0F;
     }
 
     // Predict reaction (simplified - would use empathy network)
     if (predicted_reaction) {
         *predicted_reaction = *student_state;
         // If response is safe, predict slight improvement
-        if (safety_score > 0.7f) {
+        if (safety_score > 0.7F) {
             predicted_reaction->intensity = (predicted_reaction->intensity > 0) ?
                                            predicted_reaction->intensity - 1 : 0;
-            predicted_reaction->valence = fminf(1.0f, predicted_reaction->valence + 0.2f);
+            predicted_reaction->valence = fminf(1.0F, predicted_reaction->valence + 0.2F);
         }
     }
 
@@ -538,15 +538,15 @@ void empathetic_response_track_effectiveness(
     }
 
     // Update running average
-    float alpha = 0.1f;  // Learning rate
-    engine->avg_effectiveness = (1.0f - alpha) * engine->avg_effectiveness +
+    float alpha = 0.1F;  // Learning rate
+    engine->avg_effectiveness = (1.0F - alpha) * engine->avg_effectiveness +
                                alpha * effectiveness;
 
     // Update strategy-specific effectiveness
     response_strategy_t strategy = response->primary_strategy;
     if (strategy < 8) {
         engine->strategy_effectiveness[strategy] =
-            (1.0f - alpha) * engine->strategy_effectiveness[strategy] +
+            (1.0F - alpha) * engine->strategy_effectiveness[strategy] +
             alpha * effectiveness;
     }
 }

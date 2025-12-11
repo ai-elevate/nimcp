@@ -602,13 +602,13 @@ void nimcp_cache_analyze_efficiency(void) {
            stats.memory_saved / (1024.0 * 1024.0));
 
     if (stats.references_created > 0) {
-        float copy_rate = (float)stats.copies_triggered / stats.references_created * 100.0f;
+        float copy_rate = (float)stats.copies_triggered / stats.references_created * 100.0F;
         printf("Copy rate: %.2f%% (lower is better)\n", copy_rate);
     }
 
     if (stats.memory_saved > 0) {
         float efficiency = (float)stats.memory_saved /
-                          (stats.memory_saved + stats.memory_allocated) * 100.0f;
+                          (stats.memory_saved + stats.memory_allocated) * 100.0F;
         printf("Memory efficiency: %.2f%%\n", efficiency);
     }
 

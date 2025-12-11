@@ -63,11 +63,11 @@ struct hash_table_t {
 static uint32_t hash_fnv1a(const void* key, size_t key_size)
 {
     const uint8_t* data = (const uint8_t*) key;
-    uint32_t hash = 2166136261u;  // FNV offset basis
+    uint32_t hash = 2166136261U;  // FNV offset basis
 
     for (size_t i = 0; i < key_size; i++) {
         hash ^= data[i];
-        hash *= 16777619u;  // FNV prime
+        hash *= 16777619U;  // FNV prime
     }
 
     return hash;
@@ -710,7 +710,7 @@ void hash_table_stats(const hash_table_t* table, size_t* max_chain_length, float
         if (max_chain_length)
             *max_chain_length = 0;
         if (avg_chain_length)
-            *avg_chain_length = 0.0f;
+            *avg_chain_length = 0.0F;
         if (empty_buckets)
             *empty_buckets = 0;
         return;
@@ -746,7 +746,7 @@ void hash_table_stats(const hash_table_t* table, size_t* max_chain_length, float
     }
 
     if (avg_chain_length) {
-        *avg_chain_length = non_empty > 0 ? (float) total_len / non_empty : 0.0f;
+        *avg_chain_length = non_empty > 0 ? (float) total_len / non_empty : 0.0F;
     }
 
     if (empty_buckets) {

@@ -177,7 +177,7 @@ static void matmul_mv(const float* matrix, const float* vector,
      * NOTE: Single loop, no nesting
      */
     for (uint32_t i = 0; i < m; i++) {
-        float sum = 0.0f;
+        float sum = 0.0F;
         const float* row = matrix + (i * n);
 
         /* WHAT: Dot product of row with vector
@@ -210,8 +210,8 @@ static void softmax_inplace(float* vector, uint32_t n, float temperature)
         return;
     }
 
-    if (temperature <= 0.0f) {
-        temperature = 1.0f;
+    if (temperature <= 0.0F) {
+        temperature = 1.0F;
     }
 
     /* WHAT: Find maximum for numerical stability
@@ -227,7 +227,7 @@ static void softmax_inplace(float* vector, uint32_t n, float temperature)
     /* WHAT: Compute exp(scaled values) and sum
      * WHY:  Numerically stable softmax computation
      */
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < n; i++) {
         float scaled = (vector[i] - max_val) / temperature;
         vector[i] = expf(scaled);
@@ -237,7 +237,7 @@ static void softmax_inplace(float* vector, uint32_t n, float temperature)
     /* WHAT: Normalize by sum
      * WHY:  Make it a probability distribution
      */
-    if (sum > 0.0f) {
+    if (sum > 0.0F) {
         for (uint32_t i = 0; i < n; i++) {
             vector[i] /= sum;
         }
@@ -374,7 +374,7 @@ static void compute_attention_scores(const float* query,
      * WHY:  score(q, k) = (q · k) / sqrt(d_k)
      * NOTE: Single loop, no nesting
      */
-    const float scale = 1.0f / sqrtf((float)key_dim);
+    const float scale = 1.0F / sqrtf((float)key_dim);
 
     for (uint32_t i = 0; i < seq_len; i++) {
         const float* key = keys + (i * key_dim);
@@ -471,11 +471,11 @@ static void apply_thalamic_gate(float* output,
     /* WHAT: Guard against invalid gate
      * WHY:  Clamp to valid range
      */
-    if (gate_signal < 0.0f) {
-        gate_signal = 0.0f;
+    if (gate_signal < 0.0F) {
+        gate_signal = 0.0F;
     }
-    if (gate_signal > 1.0f) {
-        gate_signal = 1.0f;
+    if (gate_signal > 1.0F) {
+        gate_signal = 1.0F;
     }
 
     /* WHAT: Scale output by gate
@@ -507,29 +507,29 @@ static bool initialize_weights(attention_head_t head)
     /* WHAT: Xavier initialization scale
      * WHY:  Maintains variance across layers
      */
-    const float query_scale = sqrtf(2.0f / (input_dim + key_dim));
-    const float key_scale = sqrtf(2.0f / (input_dim + key_dim));
-    const float value_scale = sqrtf(2.0f / (input_dim + value_dim));
-    const float output_scale = sqrtf(2.0f / (value_dim + output_dim));
+    const float query_scale = sqrtf(2.0F / (input_dim + key_dim));
+    const float key_scale = sqrtf(2.0F / (input_dim + key_dim));
+    const float value_scale = sqrtf(2.0F / (input_dim + value_dim));
+    const float output_scale = sqrtf(2.0F / (value_dim + output_dim));
 
     /* WHAT: Initialize each weight matrix
      * WHY:  Random initialization for symmetry breaking
      * NOTE: Single-level loops, no nesting
      */
     for (uint32_t i = 0; i < input_dim * key_dim; i++) {
-        head->query_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * query_scale;
+        head->query_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * query_scale;
     }
 
     for (uint32_t i = 0; i < input_dim * key_dim; i++) {
-        head->key_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * key_scale;
+        head->key_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * key_scale;
     }
 
     for (uint32_t i = 0; i < input_dim * value_dim; i++) {
-        head->value_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * value_scale;
+        head->value_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * value_scale;
     }
 
     for (uint32_t i = 0; i < value_dim * output_dim; i++) {
-        head->output_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * output_scale;
+        head->output_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * output_scale;
     }
 
     return true;
@@ -773,14 +773,14 @@ bool attention_head_forward(attention_head_t head,
              * WHY:  Each head has different distance decay rate
              * HOW:  Slopes computed geometrically by encoder
              */
-            float head_slope = 0.0f;
+            float head_slope = 0.0F;
             // ALiBi bias: scores[j] += -slope * |t - j|
             for (uint32_t j = 0; j < sequence_length; j++) {
                 int distance = (int)t - (int)j;
                 if (distance < 0) distance = -distance;
                 // Compute slope: 2^(-8 * (head_idx+1) / num_heads)
                 // Simplified: use head_idx directly for slope scaling
-                head_slope = powf(2.0f, -8.0f * ((float)(head_idx + 1) / 8.0f));
+                head_slope = powf(2.0F, -8.0F * ((float)(head_idx + 1) / 8.0F));
                 scores[j] += -head_slope * (float)distance;
             }
         }
@@ -856,7 +856,7 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
      */
     atomic_init(&mha->forward_calls, 0);
     atomic_init(&mha->avg_entropy_scaled, 0);
-    atomic_init(&mha->gate_signal, (uint32_t)(config->gate_bias * 1000.0f));
+    atomic_init(&mha->gate_signal, (uint32_t)(config->gate_bias * 1000.0F));
 
     /* WHAT: Initialize positional encoder to NULL
      * WHY:  Created on-demand via multihead_attention_set_pe_type()
@@ -884,8 +884,8 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
             .output_dim = head_dim,
             .key_dim = head_dim,
             .value_dim = head_dim,
-            .temperature = 1.0f,
-            .dropout_rate = 0.0f
+            .temperature = 1.0F,
+            .dropout_rate = 0.0F
         };
 
         mha->heads[i] = attention_head_create(&head_config);
@@ -978,7 +978,7 @@ bool multihead_attention_forward(multihead_attention_t mha,
      * WHY:  Top-down attention modulation
      */
     const uint32_t gate_scaled = atomic_load(&mha->gate_signal);
-    const float gate = (float)gate_scaled / 1000.0f;
+    const float gate = (float)gate_scaled / 1000.0F;
 
     /* WHAT: Allocate temporary buffers from pool (Phase MP)
      * WHY:  Need workspace for head outputs and attention weights - use pool for O(1)
@@ -1060,7 +1060,7 @@ bool multihead_attention_forward(multihead_attention_t mha,
      * WHY:  Track attention focus characteristics
      */
     float entropy = attention_compute_entropy(attention_weights, sequence_length);
-    uint32_t entropy_scaled = (uint32_t)(entropy * 1000.0f);
+    uint32_t entropy_scaled = (uint32_t)(entropy * 1000.0F);
 
     /* WHAT: Update running average of entropy (simple moving average)
      * WHY:  Track typical attention behavior over time
@@ -1096,17 +1096,17 @@ bool multihead_attention_set_gate(multihead_attention_t mha, float gate_signal)
     /* WHAT: Clamp gate to valid range
      * WHY:  Prevent invalid values
      */
-    if (gate_signal < 0.0f) {
-        gate_signal = 0.0f;
+    if (gate_signal < 0.0F) {
+        gate_signal = 0.0F;
     }
-    if (gate_signal > 1.0f) {
-        gate_signal = 1.0f;
+    if (gate_signal > 1.0F) {
+        gate_signal = 1.0F;
     }
 
     /* WHAT: Store as fixed-point atomic
      * WHY:  Lock-free thread-safe update
      */
-    const uint32_t gate_scaled = (uint32_t)(gate_signal * 1000.0f);
+    const uint32_t gate_scaled = (uint32_t)(gate_signal * 1000.0F);
     atomic_store(&mha->gate_signal, gate_scaled);
 
     return true;
@@ -1125,10 +1125,10 @@ bool multihead_attention_get_stats(multihead_attention_t mha, attention_stats_t*
      * WHY:  Lock-free thread-safe read
      */
     stats->forward_calls = atomic_load(&mha->forward_calls);
-    stats->avg_gate_activation = (float)atomic_load(&mha->gate_signal) / 1000.0f;
+    stats->avg_gate_activation = (float)atomic_load(&mha->gate_signal) / 1000.0F;
     stats->active_heads = mha->config.num_heads;
-    stats->avg_attention_entropy = (float)atomic_load(&mha->avg_entropy_scaled) / 1000.0f;
-    stats->computation_time_ms = 0.0f;  // TODO: Add timing
+    stats->avg_attention_entropy = (float)atomic_load(&mha->avg_entropy_scaled) / 1000.0F;
+    stats->computation_time_ms = 0.0F;  // TODO: Add timing
 
     return true;
 }
@@ -1159,13 +1159,13 @@ float attention_compute_entropy(const float* attention_weights, uint32_t sequenc
      * WHY:  Early return prevents crash
      */
     if (!attention_weights || sequence_length == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* WHAT: Compute entropy: H = -sum(p * log(p))
      * WHY:  Measure attention focus (lower = more focused)
      */
-    float entropy = 0.0f;
+    float entropy = 0.0F;
 
     for (uint32_t i = 0; i < sequence_length; i++) {
         const float p = attention_weights[i];
@@ -1173,7 +1173,7 @@ float attention_compute_entropy(const float* attention_weights, uint32_t sequenc
         /* WHAT: Skip zero probabilities
          * WHY:  Avoid log(0) = -inf
          */
-        if (p > 1e-10f) {
+        if (p > 1e-10F) {
             entropy -= p * logf(p);
         }
     }
@@ -1234,26 +1234,26 @@ float multihead_attention_get_strength(multihead_attention_t mha)
 {
     // Guard: NULL check
     if (!mha) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Guard: Check if attention has been used (forward_calls > 0)
     uint64_t calls = atomic_load(&mha->forward_calls);
     if (calls == 0) {
         // No forward passes yet, return neutral strength
-        return 0.5f;
+        return 0.5F;
     }
 
     // Read atomic gate signal (fixed-point [0, 1000] → [0.0, 1.0])
     uint32_t gate_scaled = atomic_load(&mha->avg_gate_scaled);
-    float gate_strength = (float)gate_scaled / 1000.0f;
+    float gate_strength = (float)gate_scaled / 1000.0F;
 
     // Ensure bounded [0.0, 1.0]
-    if (gate_strength > 1.0f) {
-        gate_strength = 1.0f;
+    if (gate_strength > 1.0F) {
+        gate_strength = 1.0F;
     }
-    if (gate_strength < 0.0f) {
-        gate_strength = 0.0f;
+    if (gate_strength < 0.0F) {
+        gate_strength = 0.0F;
     }
 
     return gate_strength;
@@ -1319,9 +1319,9 @@ bool multihead_attention_set_pe_type(multihead_attention_t mha,
         pe_config.config.rope.base.embedding_dim = mha->config.input_dim / mha->config.num_heads;
         pe_config.config.rope.base.cache_enabled = true;
         pe_config.config.rope.base.thread_safe = false;  // Single-threaded forward pass
-        pe_config.config.rope.rope_base = mha->config.rope_base > 0.0f ?
+        pe_config.config.rope.rope_base = mha->config.rope_base > 0.0F ?
                                           mha->config.rope_base : NIMCP_ROPE_DEFAULT_BASE;
-        pe_config.config.rope.rope_scaling = 1.0f;
+        pe_config.config.rope.rope_scaling = 1.0F;
         pe_config.config.rope.rope_dim = 0;  // Apply to all dimensions
         pe_config.config.rope.use_ntk_scaling = false;
 
@@ -1339,8 +1339,8 @@ bool multihead_attention_set_pe_type(multihead_attention_t mha,
         pe_config.config.alibi.base.cache_enabled = true;
         pe_config.config.alibi.base.thread_safe = false;
         pe_config.config.alibi.num_heads = mha->config.num_heads;
-        pe_config.config.alibi.slope_base = mha->config.alibi_slope_base > 0.0f ?
-                                            mha->config.alibi_slope_base : 2.0f;
+        pe_config.config.alibi.slope_base = mha->config.alibi_slope_base > 0.0F ?
+                                            mha->config.alibi_slope_base : 2.0F;
         pe_config.config.alibi.use_symmetric = true;  // Bidirectional attention
 
         NIMCP_LOGGING_DEBUG("Creating ALiBi encoder: seq_len=%u, num_heads=%u, slope_base=%.1f",

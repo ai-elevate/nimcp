@@ -140,7 +140,7 @@ static float calculate_transmission_intensity(
     float connection_strength,
     float proximity) {
 
-    if (!ec) return 0.0f;
+    if (!ec) return 0.0F;
 
     /* Base transmission */
     float intensity = source_intensity * ec->config.contagion_rate;
@@ -150,7 +150,7 @@ static float calculate_transmission_intensity(
 
     /* Apply resistance (inverted) */
     if (ec->config.enable_resistance) {
-        intensity *= (1.0f - resistance);
+        intensity *= (1.0F - resistance);
     }
 
     /* Apply connection strength */
@@ -168,9 +168,9 @@ static float calculate_transmission_intensity(
  * HOW:  Exponential decay formula
  */
 static float apply_decay(float intensity, float decay_rate, uint64_t delta_ms) {
-    if (intensity <= EPSILON) return 0.0f;
+    if (intensity <= EPSILON) return 0.0F;
 
-    float decay_factor = expf(-decay_rate * (delta_ms / 1000.0f));
+    float decay_factor = expf(-decay_rate * (delta_ms / 1000.0F));
     return intensity * decay_factor;
 }
 
@@ -208,12 +208,12 @@ static void decay_resistances(
 
     if (!state) return;
 
-    float decay_factor = expf(-decay_rate * (delta_ms / 1000.0f));
+    float decay_factor = expf(-decay_rate * (delta_ms / 1000.0F));
 
     for (size_t i = 0; i < EMOTION_TYPE_COUNT; i++) {
         state->resistance[i] *= decay_factor;
         if (state->resistance[i] < EPSILON) {
-            state->resistance[i] = 0.0f;
+            state->resistance[i] = 0.0F;
         }
     }
 }
@@ -230,7 +230,7 @@ static void recompute_collective_state(emotional_contagion_t* ec) {
     memset(&ec->collective, 0, sizeof(collective_emotion_state_t));
 
     uint32_t emotion_counts[EMOTION_TYPE_COUNT] = {0};
-    float total_intensity = 0.0f;
+    float total_intensity = 0.0F;
     uint32_t active_agents = 0;
 
     /* Count emotions across all agents */
@@ -272,7 +272,7 @@ static void recompute_collective_state(emotional_contagion_t* ec) {
 
     /* Calculate average intensity of dominant */
     if (max_count > 0) {
-        float dominant_total = 0.0f;
+        float dominant_total = 0.0F;
         uint32_t dominant_count = 0;
 
         for (size_t h = 0; h < ec->hash_size; h++) {
@@ -291,7 +291,7 @@ static void recompute_collective_state(emotional_contagion_t* ec) {
 
     /* Calculate emotional diversity (Shannon entropy) */
     if (ec->agent_count > 0) {
-        float entropy = 0.0f;
+        float entropy = 0.0F;
         for (size_t i = 0; i < EMOTION_TYPE_COUNT; i++) {
             if (emotion_counts[i] > 0) {
                 float p = (float)emotion_counts[i] / (float)ec->agent_count;
@@ -301,7 +301,7 @@ static void recompute_collective_state(emotional_contagion_t* ec) {
         /* Normalize by maximum entropy */
         float max_entropy = log2f((float)EMOTION_TYPE_COUNT);
         ec->collective.emotional_diversity = (max_entropy > EPSILON) ?
-            (entropy / max_entropy) : 0.0f;
+            (entropy / max_entropy) : 0.0F;
     }
 
     /* Calculate coherence (simplified - fraction with dominant emotion) */
@@ -326,24 +326,24 @@ static void recompute_collective_state(emotional_contagion_t* ec) {
 void emotional_contagion_get_default_config(emotional_contagion_config_t* out_config) {
     if (!out_config) return;
 
-    out_config->contagion_rate = 0.3f;
-    out_config->decay_rate = 0.1f;
-    out_config->susceptibility_threshold = 0.2f;
+    out_config->contagion_rate = 0.3F;
+    out_config->decay_rate = 0.1F;
+    out_config->susceptibility_threshold = 0.2F;
     out_config->max_propagation_depth = 3;
     out_config->enable_resistance = true;
 
     out_config->max_agents = 1000;
     out_config->max_connections_per_agent = 10;
-    out_config->proximity_decay = 0.5f;
+    out_config->proximity_decay = 0.5F;
 
     out_config->enable_emotional_dampening = true;
-    out_config->dampening_threshold = 0.95f;
+    out_config->dampening_threshold = 0.95F;
     out_config->enable_refractory_period = true;
     out_config->refractory_duration_ms = 1000;
 
-    out_config->resistance_buildup_rate = 0.01f;
-    out_config->resistance_decay_rate = 0.05f;
-    out_config->max_resistance = 0.9f;
+    out_config->resistance_buildup_rate = 0.01F;
+    out_config->resistance_decay_rate = 0.05F;
+    out_config->max_resistance = 0.9F;
 
     out_config->enable_bio_async = false;
     out_config->broadcast_interval_ms = 1000;
@@ -355,17 +355,17 @@ nimcp_result_t emotional_contagion_validate_config(
     if (!config) return NIMCP_ERROR_NULL_POINTER;
 
     /* Validate rates */
-    if (config->contagion_rate < 0.0f || config->contagion_rate > 1.0f) {
+    if (config->contagion_rate < 0.0F || config->contagion_rate > 1.0F) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid contagion_rate: %.2f", config->contagion_rate);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->decay_rate < 0.0f || config->decay_rate > 1.0f) {
+    if (config->decay_rate < 0.0F || config->decay_rate > 1.0F) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid decay_rate: %.2f", config->decay_rate);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->susceptibility_threshold < 0.0f || config->susceptibility_threshold > 1.0f) {
+    if (config->susceptibility_threshold < 0.0F || config->susceptibility_threshold > 1.0F) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid susceptibility_threshold: %.2f",
                   config->susceptibility_threshold);
         return NIMCP_ERROR_INVALID_PARAM;
@@ -480,7 +480,7 @@ nimcp_result_t emotional_contagion_reset(
         agent_entry_t* entry = ec->agent_hash[h];
         while (entry) {
             entry->state.emotion = EMOTION_NEUTRAL;
-            entry->state.intensity = 0.0f;
+            entry->state.intensity = 0.0F;
             entry->state.in_refractory = false;
             memset(entry->state.resistance, 0, sizeof(entry->state.resistance));
 
@@ -526,7 +526,7 @@ nimcp_result_t emotional_contagion_register_agent(
     /* Validate parameters */
     if (!ec) return NIMCP_ERROR_NULL_POINTER;
 
-    if (susceptibility < 0.0f || susceptibility > 1.0f) {
+    if (susceptibility < 0.0F || susceptibility > 1.0F) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid susceptibility: %.2f", susceptibility);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -560,9 +560,9 @@ nimcp_result_t emotional_contagion_register_agent(
     /* Initialize agent state */
     entry->state.agent_id = agent_id;
     entry->state.emotion = EMOTION_NEUTRAL;
-    entry->state.intensity = 0.0f;
+    entry->state.intensity = 0.0F;
     entry->state.susceptibility = susceptibility;
-    entry->state.emotional_inertia = 0.0f;
+    entry->state.emotional_inertia = 0.0F;
     entry->state.last_update_ms = nimcp_time_get_us() / 1000;
     entry->state.in_refractory = false;
 
@@ -641,7 +641,7 @@ nimcp_result_t emotional_contagion_set_emotion(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (intensity < 0.0f || intensity > 1.0f) {
+    if (intensity < 0.0F || intensity > 1.0F) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid intensity: %.2f", intensity);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -668,7 +668,7 @@ nimcp_result_t emotional_contagion_set_emotion(
     entry->state.last_update_ms = nimcp_time_get_us() / 1000;
 
     /* Set refractory period if enabled and intensity is high */
-    if (ec->config.enable_refractory_period && intensity > 0.8f) {
+    if (ec->config.enable_refractory_period && intensity > 0.8F) {
         entry->state.in_refractory = true;
         entry->state.refractory_until_ms =
             entry->state.last_update_ms + ec->config.refractory_duration_ms;
@@ -717,7 +717,7 @@ nimcp_result_t emotional_contagion_set_susceptibility(
 
     if (!ec) return NIMCP_ERROR_NULL_POINTER;
 
-    if (susceptibility < 0.0f || susceptibility > 1.0f) {
+    if (susceptibility < 0.0F || susceptibility > 1.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -749,8 +749,8 @@ nimcp_result_t emotional_contagion_add_connection(
 
     if (!ec) return NIMCP_ERROR_NULL_POINTER;
 
-    if (connection_strength < 0.0f || connection_strength > 1.0f ||
-        proximity < 0.0f || proximity > 1.0f) {
+    if (connection_strength < 0.0F || connection_strength > 1.0F ||
+        proximity < 0.0F || proximity > 1.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -866,8 +866,8 @@ nimcp_result_t emotional_contagion_update_connection(
 
     if (!ec) return NIMCP_ERROR_NULL_POINTER;
 
-    if (new_strength < 0.0f || new_strength > 1.0f ||
-        new_proximity < 0.0f || new_proximity > 1.0f) {
+    if (new_strength < 0.0F || new_strength > 1.0F ||
+        new_proximity < 0.0F || new_proximity > 1.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -946,14 +946,14 @@ nimcp_result_t emotional_contagion_propagate(
                 }
 
                 /* Get resistance for this emotion type */
-                float resistance = 0.0f;
+                float resistance = 0.0F;
                 if (ec->config.enable_resistance &&
                     source_entry->state.emotion < EMOTION_TYPE_COUNT) {
                     resistance = target_entry->state.resistance[source_entry->state.emotion];
                 }
 
                 /* Check if resistance blocks transmission */
-                if (resistance > 0.9f) {
+                if (resistance > 0.9F) {
                     ec->stats.blocked_by_resistance++;
                     continue;
                 }
@@ -1041,7 +1041,7 @@ nimcp_result_t emotional_contagion_apply_decay(
                 /* Return to neutral if intensity too low */
                 if (entry->state.intensity < EPSILON) {
                     entry->state.emotion = EMOTION_NEUTRAL;
-                    entry->state.intensity = 0.0f;
+                    entry->state.intensity = 0.0F;
                 }
             }
             entry = entry->next;
@@ -1161,7 +1161,7 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (initial_intensity < 0.0f || initial_intensity > 1.0f) {
+    if (initial_intensity < 0.0F || initial_intensity > 1.0F) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid intensity: %.2f", initial_intensity);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -1247,7 +1247,7 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
 
             /* Apply resistance if enabled */
             if (ec->config.enable_resistance) {
-                strength *= (1.0f - target->state.resistance[emotion]);
+                strength *= (1.0F - target->state.resistance[emotion]);
             }
 
             /* Skip if strength too low */
@@ -1255,7 +1255,7 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
 
             /* Infect target */
             target->state.emotion = emotion;
-            target->state.intensity = fminf(strength, 1.0f);
+            target->state.intensity = fminf(strength, 1.0F);
             target->state.last_update_ms = nimcp_time_get_us() / 1000;
             infected_count++;
 

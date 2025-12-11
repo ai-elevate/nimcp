@@ -32,7 +32,7 @@ static inline float clamp(float value, float min, float max) {
 
 static inline float exponential_decay(float current, float target, float decay_rate, float dt) {
     float decay_factor = expf(-decay_rate * dt);
-    return current * decay_factor + target * (1.0f - decay_factor);
+    return current * decay_factor + target * (1.0F - decay_factor);
 }
 
 //=============================================================================
@@ -55,23 +55,23 @@ social_bond_system_t* social_bond_system_create(void) {
 
     // Default emotional state
     system->emotion.attachment_style = ATTACHMENT_SECURE;
-    system->emotion.attachment_security = 0.7f;
-    system->emotion.oxytocin_level = 0.5f;
+    system->emotion.attachment_security = 0.7F;
+    system->emotion.oxytocin_level = 0.5F;
 
     // Default personality (moderate values)
-    system->extraversion = 0.5f;
-    system->agreeableness = 0.6f;
-    system->openness_to_experience = 0.5f;
+    system->extraversion = 0.5F;
+    system->agreeableness = 0.6F;
+    system->openness_to_experience = 0.5F;
 
     // Default capacities
-    system->love_capacity = 0.8f;
-    system->friendship_capacity = 0.8f;
-    system->loyalty_capacity = 0.7f;
+    system->love_capacity = 0.8F;
+    system->friendship_capacity = 0.8F;
+    system->loyalty_capacity = 0.7F;
 
     // Default social skills
-    system->empathy = 0.6f;
-    system->perspective_taking = 0.6f;
-    system->conflict_resolution = 0.5f;
+    system->empathy = 0.6F;
+    system->perspective_taking = 0.6F;
+    system->conflict_resolution = 0.5F;
 
     // Default: integrate with other systems
     system->integrate_with_theory_of_mind = true;
@@ -143,8 +143,8 @@ void social_bond_system_reset(social_bond_system_t* system) {
     // Reset emotional state
     memset(&system->emotion, 0, sizeof(social_emotional_state_t));
     system->emotion.attachment_style = style;
-    system->emotion.attachment_security = 0.7f;
-    system->emotion.oxytocin_level = 0.5f;
+    system->emotion.attachment_security = 0.7F;
+    system->emotion.oxytocin_level = 0.5F;
 
     // Restore personality
     system->extraversion = extraversion;
@@ -162,7 +162,7 @@ void social_bond_system_reset(social_bond_system_t* system) {
     system->total_friendships_formed = 0;
     system->total_loves_experienced = 0;
     system->total_loyalty_commitments = 0;
-    system->average_relationship_closeness = 0.0f;
+    system->average_relationship_closeness = 0.0F;
 }
 
 //=============================================================================
@@ -189,28 +189,28 @@ uint32_t social_create_relationship(social_bond_system_t* system,
             rel->love_type = LOVE_TYPE_PLATONIC;
 
             // Initialize dimensions based on stage
-            rel->closeness = (initial_stage == RELATIONSHIP_STRANGER) ? 0.0f : 0.2f;
-            rel->trust = 0.5f;  // Start with moderate trust
-            rel->affection = 0.1f;
-            rel->reciprocity = 0.5f;
+            rel->closeness = (initial_stage == RELATIONSHIP_STRANGER) ? 0.0F : 0.2F;
+            rel->trust = 0.5F;  // Start with moderate trust
+            rel->affection = 0.1F;
+            rel->reciprocity = 0.5F;
 
             // Initialize love components
-            rel->love.intimacy = 0.0f;
-            rel->love.passion = 0.0f;
-            rel->love.commitment = 0.0f;
+            rel->love.intimacy = 0.0F;
+            rel->love.passion = 0.0F;
+            rel->love.commitment = 0.0F;
 
             // Initialize loyalty
             rel->is_loyal_to = false;
-            rel->loyalty_strength = 0.0f;
+            rel->loyalty_strength = 0.0F;
 
             // Initialize friendship qualities
-            rel->shared_experiences_count = 0.0f;
-            rel->vulnerability_shared = 0.0f;
-            rel->support_given = 0.0f;
-            rel->support_received = 0.0f;
+            rel->shared_experiences_count = 0.0F;
+            rel->vulnerability_shared = 0.0F;
+            rel->support_given = 0.0F;
+            rel->support_received = 0.0F;
 
             // Initialize oxytocin bonding
-            rel->oxytocin_bond_strength = 0.0f;
+            rel->oxytocin_bond_strength = 0.0F;
             rel->last_interaction_time = current_time_us;
 
             // Initialize all experiences as inactive
@@ -222,11 +222,11 @@ uint32_t social_create_relationship(social_bond_system_t* system,
 
             // Trust violations
             rel->betrayals_experienced = 0;
-            rel->trust_repair_progress = 1.0f;
+            rel->trust_repair_progress = 1.0F;
 
             // Duration
             rel->relationship_start_time = current_time_us;
-            rel->time_known = 0.0f;
+            rel->time_known = 0.0F;
 
             system->active_relationship_count++;
             return rel->relationship_id;
@@ -249,8 +249,8 @@ void social_process_interaction(social_bond_system_t* system,
     if (!system) return;
 
     // Clamp inputs
-    emotional_intensity = clamp(emotional_intensity, 0.0f, 1.0f);
-    valence = clamp(valence, -1.0f, 1.0f);
+    emotional_intensity = clamp(emotional_intensity, 0.0F, 1.0F);
+    valence = clamp(valence, -1.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -271,42 +271,42 @@ void social_process_interaction(social_bond_system_t* system,
     exp->timestamp = current_time_us;
     exp->emotional_intensity = emotional_intensity;
     exp->valence = valence;
-    exp->strengthened_bond = (valence > 0.0f && emotional_intensity > 0.3f);
+    exp->strengthened_bond = (valence > 0.0F && emotional_intensity > 0.3F);
 
     rel->experience_count++;
     rel->experience_history_index++;
-    rel->shared_experiences_count += 1.0f;
+    rel->shared_experiences_count += 1.0F;
 
     // Update last interaction time
     rel->last_interaction_time = current_time_us;
 
     // Update relationship dimensions based on interaction type
-    float closeness_change = 0.0f;
-    float trust_change = 0.0f;
-    float affection_change = 0.0f;
+    float closeness_change = 0.0F;
+    float trust_change = 0.0F;
+    float affection_change = 0.0F;
 
     switch (type) {
         case INTERACTION_CONVERSATION:
-            closeness_change = valence * emotional_intensity * 0.05f;
-            affection_change = valence * 0.03f;
+            closeness_change = valence * emotional_intensity * 0.05F;
+            affection_change = valence * 0.03F;
             break;
 
         case INTERACTION_SHARED_ACTIVITY:
-            closeness_change = valence * emotional_intensity * 0.08f;
+            closeness_change = valence * emotional_intensity * 0.08F;
             rel->shared_experiences_count += emotional_intensity;
             break;
 
         case INTERACTION_SUPPORT_GIVEN:
-            rel->support_given += emotional_intensity * 0.1f;
-            rel->reciprocity += 0.05f;
-            trust_change = 0.05f;
+            rel->support_given += emotional_intensity * 0.1F;
+            rel->reciprocity += 0.05F;
+            trust_change = 0.05F;
             break;
 
         case INTERACTION_SUPPORT_RECEIVED:
-            rel->support_received += emotional_intensity * 0.1f;
-            rel->reciprocity -= 0.05f;  // Creates debt to reciprocate
-            trust_change = valence * 0.08f;
-            closeness_change = valence * 0.06f;
+            rel->support_received += emotional_intensity * 0.1F;
+            rel->reciprocity -= 0.05F;  // Creates debt to reciprocate
+            trust_change = valence * 0.08F;
+            closeness_change = valence * 0.06F;
             break;
 
         case INTERACTION_VULNERABILITY:
@@ -314,15 +314,15 @@ void social_process_interaction(social_bond_system_t* system,
             break;
 
         case INTERACTION_CONFLICT:
-            closeness_change = -emotional_intensity * 0.1f;
-            trust_change = -emotional_intensity * 0.05f;
-            affection_change = -emotional_intensity * 0.08f;
+            closeness_change = -emotional_intensity * 0.1F;
+            trust_change = -emotional_intensity * 0.05F;
+            affection_change = -emotional_intensity * 0.08F;
             break;
 
         case INTERACTION_RECONCILIATION:
-            closeness_change = emotional_intensity * 0.15f;
-            trust_change = emotional_intensity * 0.1f;
-            rel->trust_repair_progress += 0.1f;
+            closeness_change = emotional_intensity * 0.15F;
+            trust_change = emotional_intensity * 0.1F;
+            rel->trust_repair_progress += 0.1F;
             break;
 
         case INTERACTION_BETRAYAL:
@@ -330,15 +330,15 @@ void social_process_interaction(social_bond_system_t* system,
             break;
 
         case INTERACTION_CELEBRATION:
-            closeness_change = emotional_intensity * 0.1f;
-            affection_change = emotional_intensity * 0.08f;
-            rel->love.intimacy += emotional_intensity * 0.05f;
+            closeness_change = emotional_intensity * 0.1F;
+            affection_change = emotional_intensity * 0.08F;
+            rel->love.intimacy += emotional_intensity * 0.05F;
             break;
 
         case INTERACTION_COLLABORATION:
-            closeness_change = valence * emotional_intensity * 0.07f;
-            trust_change = valence * emotional_intensity * 0.06f;
-            rel->love.commitment += 0.03f;
+            closeness_change = valence * emotional_intensity * 0.07F;
+            trust_change = valence * emotional_intensity * 0.06F;
+            rel->love.commitment += 0.03F;
             break;
     }
 
@@ -348,10 +348,10 @@ void social_process_interaction(social_bond_system_t* system,
     rel->affection += affection_change;
 
     // Clamp values
-    rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
-    rel->trust = clamp(rel->trust, 0.0f, 1.0f);
-    rel->affection = clamp(rel->affection, 0.0f, 1.0f);
-    rel->reciprocity = clamp(rel->reciprocity, 0.0f, 1.0f);
+    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
+    rel->reciprocity = clamp(rel->reciprocity, 0.0F, 1.0F);
 
     // Update relationship stage based on closeness
     if (rel->closeness >= CLOSE_FRIEND_THRESHOLD && rel->stage < RELATIONSHIP_CLOSE_FRIEND) {
@@ -359,17 +359,17 @@ void social_process_interaction(social_bond_system_t* system,
         system->total_friendships_formed++;
     } else if (rel->closeness >= FRIENDSHIP_THRESHOLD && rel->stage < RELATIONSHIP_FRIEND) {
         rel->stage = RELATIONSHIP_FRIEND;
-    } else if (rel->closeness > 0.1f && rel->stage == RELATIONSHIP_STRANGER) {
+    } else if (rel->closeness > 0.1F && rel->stage == RELATIONSHIP_STRANGER) {
         rel->stage = RELATIONSHIP_ACQUAINTANCE;
     }
 
     // Oxytocin boost from positive interactions
-    if (valence > 0.0f && emotional_intensity > 0.4f) {
-        rel->oxytocin_bond_strength += emotional_intensity * 0.1f;
-        rel->oxytocin_bond_strength = clamp(rel->oxytocin_bond_strength, 0.0f, 1.0f);
+    if (valence > 0.0F && emotional_intensity > 0.4F) {
+        rel->oxytocin_bond_strength += emotional_intensity * 0.1F;
+        rel->oxytocin_bond_strength = clamp(rel->oxytocin_bond_strength, 0.0F, 1.0F);
 
-        system->emotion.oxytocin_level += emotional_intensity * 0.15f;
-        system->emotion.oxytocin_level = clamp(system->emotion.oxytocin_level, 0.0f, 1.0f);
+        system->emotion.oxytocin_level += emotional_intensity * 0.15F;
+        system->emotion.oxytocin_level = clamp(system->emotion.oxytocin_level, 0.0F, 1.0F);
         system->emotion.last_oxytocin_boost = current_time_us;
     }
 }
@@ -384,7 +384,7 @@ void social_express_vulnerability(social_bond_system_t* system,
 
     if (!system) return;
 
-    vulnerability_level = clamp(vulnerability_level, 0.0f, 1.0f);
+    vulnerability_level = clamp(vulnerability_level, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -397,26 +397,26 @@ void social_express_vulnerability(social_bond_system_t* system,
     if (!rel) return;
 
     // Track vulnerability shared
-    rel->vulnerability_shared += vulnerability_level * 0.1f;
-    rel->vulnerability_shared = clamp(rel->vulnerability_shared, 0.0f, 1.0f);
+    rel->vulnerability_shared += vulnerability_level * 0.1F;
+    rel->vulnerability_shared = clamp(rel->vulnerability_shared, 0.0F, 1.0F);
 
     if (received_well) {
         // Vulnerability accepted → deepens bond
-        float intimacy_increase = vulnerability_level * 0.15f;
+        float intimacy_increase = vulnerability_level * 0.15F;
         rel->love.intimacy += intimacy_increase;
-        rel->closeness += vulnerability_level * 0.12f;
-        rel->trust += vulnerability_level * 0.1f;
+        rel->closeness += vulnerability_level * 0.12F;
+        rel->trust += vulnerability_level * 0.1F;
 
         // Major intimacy boost
-        rel->love.intimacy = clamp(rel->love.intimacy, 0.0f, 1.0f);
-        rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
-        rel->trust = clamp(rel->trust, 0.0f, 1.0f);
+        rel->love.intimacy = clamp(rel->love.intimacy, 0.0F, 1.0F);
+        rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+        rel->trust = clamp(rel->trust, 0.0F, 1.0F);
     } else {
         // Vulnerability rejected → damages bond
-        rel->closeness -= vulnerability_level * 0.2f;
-        rel->trust -= vulnerability_level * 0.15f;
-        rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
-        rel->trust = clamp(rel->trust, 0.0f, 1.0f);
+        rel->closeness -= vulnerability_level * 0.2F;
+        rel->trust -= vulnerability_level * 0.15F;
+        rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+        rel->trust = clamp(rel->trust, 0.0F, 1.0F);
     }
 }
 
@@ -429,7 +429,7 @@ void social_provide_support(social_bond_system_t* system,
 
     if (!system) return;
 
-    support_quality = clamp(support_quality, 0.0f, 1.0f);
+    support_quality = clamp(support_quality, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -441,16 +441,16 @@ void social_provide_support(social_bond_system_t* system,
     }
     if (!rel) return;
 
-    rel->support_given += support_quality * 0.1f;
-    rel->reciprocity += support_quality * 0.08f;
-    rel->closeness += support_quality * 0.06f;
-    rel->trust += support_quality * 0.05f;
+    rel->support_given += support_quality * 0.1F;
+    rel->reciprocity += support_quality * 0.08F;
+    rel->closeness += support_quality * 0.06F;
+    rel->trust += support_quality * 0.05F;
 
     // Clamp
-    rel->support_given = clamp(rel->support_given, 0.0f, 2.0f);  // Can accumulate
-    rel->reciprocity = clamp(rel->reciprocity, 0.0f, 1.0f);
-    rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
-    rel->trust = clamp(rel->trust, 0.0f, 1.0f);
+    rel->support_given = clamp(rel->support_given, 0.0F, 2.0F);  // Can accumulate
+    rel->reciprocity = clamp(rel->reciprocity, 0.0F, 1.0F);
+    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
 }
 
 void social_receive_support(social_bond_system_t* system,
@@ -462,7 +462,7 @@ void social_receive_support(social_bond_system_t* system,
 
     if (!system) return;
 
-    support_quality = clamp(support_quality, 0.0f, 1.0f);
+    support_quality = clamp(support_quality, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -474,18 +474,18 @@ void social_receive_support(social_bond_system_t* system,
     }
     if (!rel) return;
 
-    rel->support_received += support_quality * 0.1f;
-    rel->reciprocity -= support_quality * 0.05f;  // Creates obligation
-    rel->closeness += support_quality * 0.08f;
-    rel->trust += support_quality * 0.1f;
-    rel->affection += support_quality * 0.06f;
+    rel->support_received += support_quality * 0.1F;
+    rel->reciprocity -= support_quality * 0.05F;  // Creates obligation
+    rel->closeness += support_quality * 0.08F;
+    rel->trust += support_quality * 0.1F;
+    rel->affection += support_quality * 0.06F;
 
     // Clamp
-    rel->support_received = clamp(rel->support_received, 0.0f, 2.0f);
-    rel->reciprocity = clamp(rel->reciprocity, 0.0f, 1.0f);
-    rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
-    rel->trust = clamp(rel->trust, 0.0f, 1.0f);
-    rel->affection = clamp(rel->affection, 0.0f, 1.0f);
+    rel->support_received = clamp(rel->support_received, 0.0F, 2.0F);
+    rel->reciprocity = clamp(rel->reciprocity, 0.0F, 1.0F);
+    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -502,7 +502,7 @@ void social_commit_loyalty(social_bond_system_t* system,
 
     if (!system) return;
 
-    strength = clamp(strength, 0.0f, 1.0f);
+    strength = clamp(strength, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -517,8 +517,8 @@ void social_commit_loyalty(social_bond_system_t* system,
     rel->is_loyal_to = true;
     rel->loyalty_type = loyalty_type;
     rel->loyalty_strength = strength;
-    rel->love.commitment += strength * 0.3f;
-    rel->love.commitment = clamp(rel->love.commitment, 0.0f, 1.0f);
+    rel->love.commitment += strength * 0.3F;
+    rel->love.commitment = clamp(rel->love.commitment, 0.0F, 1.0F);
 
     system->total_loyalty_commitments++;
     system->emotion.actively_loyal = true;
@@ -534,7 +534,7 @@ void social_test_loyalty(social_bond_system_t* system,
 
     if (!system) return;
 
-    test_difficulty = clamp(test_difficulty, 0.0f, 1.0f);
+    test_difficulty = clamp(test_difficulty, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -549,23 +549,23 @@ void social_test_loyalty(social_bond_system_t* system,
     if (remained_loyal) {
         // Passed test → strengthens loyalty
         rel->loyalty_tests_passed++;
-        rel->loyalty_strength += test_difficulty * 0.1f;
-        rel->loyalty_strength = clamp(rel->loyalty_strength, 0.0f, 1.0f);
-        rel->love.commitment += test_difficulty * 0.08f;
-        rel->love.commitment = clamp(rel->love.commitment, 0.0f, 1.0f);
+        rel->loyalty_strength += test_difficulty * 0.1F;
+        rel->loyalty_strength = clamp(rel->loyalty_strength, 0.0F, 1.0F);
+        rel->love.commitment += test_difficulty * 0.08F;
+        rel->love.commitment = clamp(rel->love.commitment, 0.0F, 1.0F);
     } else {
         // Failed test → damages loyalty
         rel->loyalty_tests_failed++;
-        rel->loyalty_strength -= test_difficulty * 0.3f;
+        rel->loyalty_strength -= test_difficulty * 0.3F;
         if (rel->loyalty_strength < LOYALTY_THRESHOLD) {
             rel->is_loyal_to = false;
         }
-        rel->trust -= test_difficulty * 0.2f;
-        rel->trust = clamp(rel->trust, 0.0f, 1.0f);
+        rel->trust -= test_difficulty * 0.2F;
+        rel->trust = clamp(rel->trust, 0.0F, 1.0F);
 
         // Broken loyalty also damages relationship closeness
-        rel->closeness -= test_difficulty * 0.15f;
-        rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
+        rel->closeness -= test_difficulty * 0.15F;
+        rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
     }
 }
 
@@ -583,7 +583,7 @@ void social_experience_love(social_bond_system_t* system,
 
     if (!system) return;
 
-    intensity = clamp(intensity, 0.0f, 1.0f);
+    intensity = clamp(intensity, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -600,31 +600,31 @@ void social_experience_love(social_bond_system_t* system,
     // Update Sternberg's love components based on type
     switch (love_type) {
         case LOVE_TYPE_ROMANTIC:
-            rel->love.intimacy += intensity * 0.1f;
-            rel->love.passion += intensity * 0.15f;
-            rel->love.commitment += intensity * 0.08f;
+            rel->love.intimacy += intensity * 0.1F;
+            rel->love.passion += intensity * 0.15F;
+            rel->love.commitment += intensity * 0.08F;
             rel->stage = RELATIONSHIP_ROMANTIC;
             break;
 
         case LOVE_TYPE_COMPANIONATE:
-            rel->love.intimacy += intensity * 0.12f;
-            rel->love.passion += intensity * 0.02f;
-            rel->love.commitment += intensity * 0.12f;
+            rel->love.intimacy += intensity * 0.12F;
+            rel->love.passion += intensity * 0.02F;
+            rel->love.commitment += intensity * 0.12F;
             break;
 
         case LOVE_TYPE_FAMILIAL:
-            rel->love.intimacy += intensity * 0.08f;
-            rel->love.commitment += intensity * 0.15f;
+            rel->love.intimacy += intensity * 0.08F;
+            rel->love.commitment += intensity * 0.15F;
             rel->stage = RELATIONSHIP_FAMILY;
             break;
 
         case LOVE_TYPE_PLATONIC:
-            rel->love.intimacy += intensity * 0.1f;
-            rel->love.commitment += intensity * 0.08f;
+            rel->love.intimacy += intensity * 0.1F;
+            rel->love.commitment += intensity * 0.08F;
             break;
 
         case LOVE_TYPE_COMPASSIONATE:
-            rel->affection += intensity * 0.1f;
+            rel->affection += intensity * 0.1F;
             break;
 
         case LOVE_TYPE_SELF_LOVE:
@@ -633,15 +633,15 @@ void social_experience_love(social_bond_system_t* system,
     }
 
     // Clamp love components
-    rel->love.intimacy = clamp(rel->love.intimacy, 0.0f, 1.0f);
-    rel->love.passion = clamp(rel->love.passion, 0.0f, 1.0f);
-    rel->love.commitment = clamp(rel->love.commitment, 0.0f, 1.0f);
+    rel->love.intimacy = clamp(rel->love.intimacy, 0.0F, 1.0F);
+    rel->love.passion = clamp(rel->love.passion, 0.0F, 1.0F);
+    rel->love.commitment = clamp(rel->love.commitment, 0.0F, 1.0F);
 
     // Update affection and closeness
-    rel->affection += intensity * 0.1f;
-    rel->closeness += intensity * 0.08f;
-    rel->affection = clamp(rel->affection, 0.0f, 1.0f);
-    rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
+    rel->affection += intensity * 0.1F;
+    rel->closeness += intensity * 0.08F;
+    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
+    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
 
     // Update system-level love state
     system->emotion.experiencing_love = true;
@@ -650,8 +650,8 @@ void social_experience_love(social_bond_system_t* system,
     system->total_loves_experienced++;
 
     // Oxytocin boost
-    system->emotion.oxytocin_level += intensity * 0.2f;
-    system->emotion.oxytocin_level = clamp(system->emotion.oxytocin_level, 0.0f, 1.0f);
+    system->emotion.oxytocin_level += intensity * 0.2F;
+    system->emotion.oxytocin_level = clamp(system->emotion.oxytocin_level, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -667,7 +667,7 @@ void social_experience_betrayal(social_bond_system_t* system,
 
     if (!system) return;
 
-    severity = clamp(severity, 0.0f, 1.0f);
+    severity = clamp(severity, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -680,28 +680,28 @@ void social_experience_betrayal(social_bond_system_t* system,
     if (!rel) return;
 
     rel->betrayals_experienced++;
-    rel->trust_repair_progress = 0.0f;
+    rel->trust_repair_progress = 0.0F;
 
     // Damage relationship dimensions
-    rel->trust -= severity * 0.6f;
-    rel->closeness -= severity * 0.4f;
-    rel->affection -= severity * 0.5f;
-    rel->love.intimacy -= severity * 0.4f;
+    rel->trust -= severity * 0.6F;
+    rel->closeness -= severity * 0.4F;
+    rel->affection -= severity * 0.5F;
+    rel->love.intimacy -= severity * 0.4F;
 
     // Break loyalty if severe
-    if (severity > 0.7f && rel->is_loyal_to) {
+    if (severity > 0.7F && rel->is_loyal_to) {
         rel->is_loyal_to = false;
-        rel->loyalty_strength = 0.0f;
+        rel->loyalty_strength = 0.0F;
     }
 
     // Clamp
-    rel->trust = clamp(rel->trust, 0.0f, 1.0f);
-    rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
-    rel->affection = clamp(rel->affection, 0.0f, 1.0f);
-    rel->love.intimacy = clamp(rel->love.intimacy, 0.0f, 1.0f);
+    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
+    rel->love.intimacy = clamp(rel->love.intimacy, 0.0F, 1.0F);
 
     // Downgrade relationship stage if severe
-    if (severity > 0.5f) {
+    if (severity > 0.5F) {
         if (rel->stage == RELATIONSHIP_CLOSE_FRIEND) {
             rel->stage = RELATIONSHIP_FRIEND;
         } else if (rel->stage == RELATIONSHIP_FRIEND) {
@@ -720,8 +720,8 @@ void social_attempt_repair(social_bond_system_t* system,
 
     if (!system) return;
 
-    repair_effort = clamp(repair_effort, 0.0f, 1.0f);
-    apology_quality = clamp(apology_quality, 0.0f, 1.0f);
+    repair_effort = clamp(repair_effort, 0.0F, 1.0F);
+    apology_quality = clamp(apology_quality, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -734,19 +734,19 @@ void social_attempt_repair(social_bond_system_t* system,
     if (!rel) return;
 
     // Update repair progress
-    float repair_effectiveness = (repair_effort + apology_quality) / 2.0f;
-    rel->trust_repair_progress += repair_effectiveness * 0.1f;
-    rel->trust_repair_progress = clamp(rel->trust_repair_progress, 0.0f, 1.0f);
+    float repair_effectiveness = (repair_effort + apology_quality) / 2.0F;
+    rel->trust_repair_progress += repair_effectiveness * 0.1F;
+    rel->trust_repair_progress = clamp(rel->trust_repair_progress, 0.0F, 1.0F);
 
     // Gradual trust restoration
-    rel->trust += repair_effectiveness * 0.08f;
-    rel->closeness += repair_effectiveness * 0.05f;
-    rel->affection += repair_effectiveness * 0.04f;
+    rel->trust += repair_effectiveness * 0.08F;
+    rel->closeness += repair_effectiveness * 0.05F;
+    rel->affection += repair_effectiveness * 0.04F;
 
     // Clamp
-    rel->trust = clamp(rel->trust, 0.0f, 1.0f);
-    rel->closeness = clamp(rel->closeness, 0.0f, 1.0f);
-    rel->affection = clamp(rel->affection, 0.0f, 1.0f);
+    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -771,15 +771,15 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
     // OXYTOCIN DECAY
     //=========================================================================
 
-    float oxytocin_decay_rate = 1.0f / OXYTOCIN_HALF_LIFE;
+    float oxytocin_decay_rate = 1.0F / OXYTOCIN_HALF_LIFE;
     system->emotion.oxytocin_level = exponential_decay(
-        system->emotion.oxytocin_level, 0.5f, oxytocin_decay_rate, dt);
+        system->emotion.oxytocin_level, 0.5F, oxytocin_decay_rate, dt);
 
     //=========================================================================
     // RELATIONSHIP MAINTENANCE AND DECAY
     //=========================================================================
 
-    float total_closeness = 0.0f;
+    float total_closeness = 0.0F;
     uint32_t close_friend_count = 0;
     uint64_t most_recent_interaction = 0;
 
@@ -789,20 +789,20 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
         relationship_t* rel = &system->relationships[i];
 
         // Update time known
-        rel->time_known = (float)(current_time_us - rel->relationship_start_time) / 1000000.0f;
+        rel->time_known = (float)(current_time_us - rel->relationship_start_time) / 1000000.0F;
 
         // Time since last interaction
-        float time_since_interaction = (float)(current_time_us - rel->last_interaction_time) / 1000000.0f;
+        float time_since_interaction = (float)(current_time_us - rel->last_interaction_time) / 1000000.0F;
 
         // Decay closeness without contact (relationships need maintenance)
-        if (time_since_interaction > 86400.0f * 7.0f) {  // More than 1 week
-            float decay_rate = 1.0f / (86400.0f * 365.0f);  // 1 year half-life
-            rel->closeness = exponential_decay(rel->closeness, 0.1f, decay_rate, dt);
+        if (time_since_interaction > 86400.0F * 7.0F) {  // More than 1 week
+            float decay_rate = 1.0F / (86400.0F * 365.0F);  // 1 year half-life
+            rel->closeness = exponential_decay(rel->closeness, 0.1F, decay_rate, dt);
         }
 
         // Decay oxytocin bond
         rel->oxytocin_bond_strength = exponential_decay(
-            rel->oxytocin_bond_strength, 0.0f, oxytocin_decay_rate, dt);
+            rel->oxytocin_bond_strength, 0.0F, oxytocin_decay_rate, dt);
 
         // Track most recent interaction
         if (rel->last_interaction_time > most_recent_interaction) {
@@ -830,22 +830,22 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
     // LONELINESS CALCULATION
     //=========================================================================
 
-    float time_since_last_interaction = (float)(current_time_us - most_recent_interaction) / 1000000.0f;
-    float days_since_interaction = time_since_last_interaction / 86400.0f;
+    float time_since_last_interaction = (float)(current_time_us - most_recent_interaction) / 1000000.0F;
+    float days_since_interaction = time_since_last_interaction / 86400.0F;
 
     // Loneliness increases with time without social contact
-    if (days_since_interaction > 1.0f) {
-        system->emotion.loneliness += (days_since_interaction - 1.0f) * 0.01f * dt / 86400.0f;
+    if (days_since_interaction > 1.0F) {
+        system->emotion.loneliness += (days_since_interaction - 1.0F) * 0.01F * dt / 86400.0F;
     } else {
-        system->emotion.loneliness -= 0.05f * dt / 86400.0f;
+        system->emotion.loneliness -= 0.05F * dt / 86400.0F;
     }
 
     // Loneliness reduced by close friendships
     if (close_friend_count > 0) {
-        system->emotion.loneliness -= close_friend_count * 0.02f * dt / 86400.0f;
+        system->emotion.loneliness -= close_friend_count * 0.02F * dt / 86400.0F;
     }
 
-    system->emotion.loneliness = clamp(system->emotion.loneliness, 0.0f, 1.0f);
+    system->emotion.loneliness = clamp(system->emotion.loneliness, 0.0F, 1.0F);
     system->emotion.last_social_interaction = most_recent_interaction;
 
     //=========================================================================
@@ -853,8 +853,8 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
     //=========================================================================
 
     // General positive social feeling based on relationships
-    float target_warmth = system->average_relationship_closeness * 0.7f;
-    float warmth_rate = 1.0f / 20.0f;  // 20 second adjustment (fast response for testing)
+    float target_warmth = system->average_relationship_closeness * 0.7F;
+    float warmth_rate = 1.0F / 20.0F;  // 20 second adjustment (fast response for testing)
     system->emotion.friendship_warmth = exponential_decay(
         system->emotion.friendship_warmth, target_warmth, warmth_rate, dt);
 
@@ -864,7 +864,7 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
 
     // Love fades without reinforcement
     if (system->emotion.experiencing_love) {
-        system->emotion.love_intensity -= 0.01f * dt / 86400.0f;
+        system->emotion.love_intensity -= 0.01F * dt / 86400.0F;
         if (system->emotion.love_intensity < LOVE_THRESHOLD) {
             system->emotion.experiencing_love = false;
         }
@@ -875,7 +875,7 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
     //=========================================================================
 
     // Calculate loyalty satisfaction from active loyalties
-    float loyalty_sum = 0.0f;
+    float loyalty_sum = 0.0F;
     uint32_t loyalty_count = 0;
     for (int i = 0; i < SOCIAL_MAX_RELATIONSHIPS; i++) {
         if (system->relationships[i].active && system->relationships[i].is_loyal_to) {
@@ -905,7 +905,7 @@ bool social_is_experiencing_love(const social_bond_system_t* system) {
 
 bool social_is_lonely(const social_bond_system_t* system) {
     if (!system) return false;
-    return (system->emotion.loneliness > 0.4f);  // 0.4 threshold (~6-7 days isolation)
+    return (system->emotion.loneliness > 0.4F);  // 0.4 threshold (~6-7 days isolation)
 }
 
 bool social_is_loyal_to(const social_bond_system_t* system,
@@ -922,14 +922,14 @@ bool social_is_loyal_to(const social_bond_system_t* system,
 
 float social_get_relationship_closeness(const social_bond_system_t* system,
                                         uint32_t relationship_id) {
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
 
     for (int i = 0; i < SOCIAL_MAX_RELATIONSHIPS; i++) {
         if (system->relationships[i].active && system->relationships[i].relationship_id == relationship_id) {
             return system->relationships[i].closeness;
         }
     }
-    return 0.0f;
+    return 0.0F;
 }
 
 uint32_t social_get_close_friend_count(const social_bond_system_t* system) {
@@ -938,7 +938,7 @@ uint32_t social_get_close_friend_count(const social_bond_system_t* system) {
 }
 
 float social_get_oxytocin_level(const social_bond_system_t* system) {
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
     return system->emotion.oxytocin_level;
 }
 
@@ -952,19 +952,19 @@ void social_get_neuromodulator_effects(const social_bond_system_t* system,
     if (!system || !dopamine_factor || !oxytocin_factor) return;
 
     // Default: no change
-    *dopamine_factor = 1.0f;
-    *oxytocin_factor = 1.0f;
+    *dopamine_factor = 1.0F;
+    *oxytocin_factor = 1.0F;
 
     // Love boosts dopamine (reward) and oxytocin (bonding)
     if (system->emotion.experiencing_love) {
-        float love_boost = system->emotion.love_intensity * 0.5f;  // Up to 50% boost
-        *dopamine_factor = 1.0f + love_boost;
-        *oxytocin_factor = 1.0f + system->emotion.love_intensity;  // Up to 100% boost
+        float love_boost = system->emotion.love_intensity * 0.5F;  // Up to 50% boost
+        *dopamine_factor = 1.0F + love_boost;
+        *oxytocin_factor = 1.0F + system->emotion.love_intensity;  // Up to 100% boost
     }
 
     // Friendship warmth boosts dopamine moderately
-    if (system->emotion.friendship_warmth > 0.3f) {
-        *dopamine_factor += system->emotion.friendship_warmth * 0.3f;
+    if (system->emotion.friendship_warmth > 0.3F) {
+        *dopamine_factor += system->emotion.friendship_warmth * 0.3F;
     }
 
     // Social network richness bonus: multiple relationships are more rewarding
@@ -973,7 +973,7 @@ void social_get_neuromodulator_effects(const social_bond_system_t* system,
     if (system->active_relationship_count > 0) {
         int relationship_bonus_count = (system->active_relationship_count < 3) ?
                                        system->active_relationship_count : 3;
-        float network_bonus = (relationship_bonus_count - 1) * 0.1f;  // 0%, 10%, 20% for 1,2,3 rels
+        float network_bonus = (relationship_bonus_count - 1) * 0.1F;  // 0%, 10%, 20% for 1,2,3 rels
         *dopamine_factor += network_bonus;
     }
 
@@ -981,13 +981,13 @@ void social_get_neuromodulator_effects(const social_bond_system_t* system,
     *oxytocin_factor = fmaxf(*oxytocin_factor, system->emotion.oxytocin_level);
 
     // Loneliness reduces dopamine
-    if (system->emotion.loneliness > 0.4f) {
-        *dopamine_factor -= system->emotion.loneliness * 0.3f;
+    if (system->emotion.loneliness > 0.4F) {
+        *dopamine_factor -= system->emotion.loneliness * 0.3F;
     }
 
     // Clamp
-    *dopamine_factor = clamp(*dopamine_factor, 0.3f, 2.0f);
-    *oxytocin_factor = clamp(*oxytocin_factor, 0.5f, 2.0f);
+    *dopamine_factor = clamp(*dopamine_factor, 0.3F, 2.0F);
+    *oxytocin_factor = clamp(*oxytocin_factor, 0.5F, 2.0F);
 }
 
 //=============================================================================
@@ -1000,35 +1000,35 @@ emotional_tag_t social_get_emotion(const social_bond_system_t* system) {
     // HOW:  Convert love/friendship/loneliness to valence/arousal
 
     emotional_tag_t tag;
-    tag.valence = 0.0f;
-    tag.arousal = 0.5f;  // Baseline arousal (neutral social state)
+    tag.valence = 0.0F;
+    tag.arousal = 0.5F;  // Baseline arousal (neutral social state)
 
     if (!system) return tag;
 
     // LOVE: high positive valence [+0.7 to +0.95], high arousal [0.6 to 0.9]
     if (system->emotion.experiencing_love) {
-        tag.valence = 0.7f + system->emotion.love_intensity * 0.25f;
-        tag.arousal = 0.6f + system->emotion.love_intensity * 0.3f;
+        tag.valence = 0.7F + system->emotion.love_intensity * 0.25F;
+        tag.arousal = 0.6F + system->emotion.love_intensity * 0.3F;
         return tag;
     }
 
     // FRIENDSHIP: moderate positive valence [+0.4 to +0.7], moderate arousal [0.4 to 0.6]
-    if (system->emotion.friendship_warmth > 0.3f) {
-        tag.valence = 0.4f + system->emotion.friendship_warmth * 0.3f;
-        tag.arousal = 0.4f + system->emotion.friendship_warmth * 0.2f;
+    if (system->emotion.friendship_warmth > 0.3F) {
+        tag.valence = 0.4F + system->emotion.friendship_warmth * 0.3F;
+        tag.arousal = 0.4F + system->emotion.friendship_warmth * 0.2F;
         return tag;
     }
 
     // LONELINESS: negative valence [-0.4 to -0.7], low arousal [0.2 to 0.4]
-    if (system->emotion.loneliness > 0.4f) {
-        tag.valence = -(0.4f + system->emotion.loneliness * 0.3f);
-        tag.arousal = 0.2f + system->emotion.loneliness * 0.2f;
+    if (system->emotion.loneliness > 0.4F) {
+        tag.valence = -(0.4F + system->emotion.loneliness * 0.3F);
+        tag.arousal = 0.2F + system->emotion.loneliness * 0.2F;
         return tag;
     }
 
     // NEUTRAL: baseline (no strong social emotions)
-    tag.valence = 0.0f;
-    tag.arousal = 0.5f;
+    tag.valence = 0.0F;
+    tag.arousal = 0.5F;
 
     return tag;
 }

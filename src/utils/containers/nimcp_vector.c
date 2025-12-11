@@ -26,10 +26,10 @@ float nimcp_vector_dot_product(const float* a, const float* b, uint32_t size)
 {
     LOG_DEBUG("Entering nimcp_vector_dot_product");
     if (!a || !b || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float dot = 0.0f;
+    float dot = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         dot += a[i] * b[i];
     }
@@ -41,10 +41,10 @@ float nimcp_vector_norm_l2(const float* vec, uint32_t size)
 {
     LOG_DEBUG("Entering nimcp_vector_norm_l2");
     if (!vec || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum_sq = 0.0f;
+    float sum_sq = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         sum_sq += vec[i] * vec[i];
     }
@@ -56,10 +56,10 @@ float nimcp_vector_norm_l1(const float* vec, uint32_t size)
 {
     LOG_DEBUG("Entering nimcp_vector_norm_l1");
     if (!vec || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         sum += fabsf(vec[i]);
     }
@@ -85,7 +85,7 @@ float nimcp_vector_cosine_similarity(const float* a, const float* b, uint32_t si
 {
     LOG_DEBUG("Entering nimcp_vector_cosine_similarity");
     if (!a || !b || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /**
@@ -93,9 +93,9 @@ float nimcp_vector_cosine_similarity(const float* a, const float* b, uint32_t si
      * WHY: More efficient than separate passes
      * HOW: Accumulate all values in one loop
      */
-    float dot_product = 0.0f;
-    float norm_a = 0.0f;
-    float norm_b = 0.0f;
+    float dot_product = 0.0F;
+    float norm_a = 0.0F;
+    float norm_b = 0.0F;
 
     for (uint32_t i = 0; i < size; i++) {
         dot_product += a[i] * b[i];
@@ -119,9 +119,9 @@ float nimcp_vector_cosine_similarity(const float* a, const float* b, uint32_t si
          *  - One zero, one non-zero: No similarity (0.0)
          */
         if (norm_a < NIMCP_VECTOR_EPSILON && norm_b < NIMCP_VECTOR_EPSILON) {
-            return 1.0f; /* Both zero = perfect match */
+            return 1.0F; /* Both zero = perfect match */
         }
-        return 0.0f; /* One zero, one non-zero = no similarity */
+        return 0.0F; /* One zero, one non-zero = no similarity */
     }
 
     return dot_product / denom;
@@ -140,17 +140,17 @@ float nimcp_vector_cosine_distance(const float* a, const float* b, uint32_t size
      *   1.0 = orthogonal
      *   2.0 = opposite direction
      */
-    return 1.0f - nimcp_vector_cosine_similarity(a, b, size);
+    return 1.0F - nimcp_vector_cosine_similarity(a, b, size);
 }
 
 float nimcp_vector_euclidean_distance(const float* a, const float* b, uint32_t size)
 {
     LOG_DEBUG("Entering nimcp_vector_euclidean_distance");
     if (!a || !b || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum_sq_diff = 0.0f;
+    float sum_sq_diff = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         float diff = a[i] - b[i];
         sum_sq_diff += diff * diff;
@@ -167,7 +167,7 @@ float nimcp_vector_normalize_l2(float* vec, uint32_t size, float target_norm)
 {
     LOG_DEBUG("Entering nimcp_vector_normalize_l2");
     if (!vec || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /**
@@ -182,7 +182,7 @@ float nimcp_vector_normalize_l2(float* vec, uint32_t size, float target_norm)
      * HOW: Return 0.0 and leave vector unchanged
      */
     if (current_norm < NIMCP_VECTOR_EPSILON) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /**
@@ -202,7 +202,7 @@ float nimcp_vector_normalize_l1(float* vec, uint32_t size, float target_norm)
 {
     LOG_DEBUG("Entering nimcp_vector_normalize_l1");
     if (!vec || size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /**
@@ -217,7 +217,7 @@ float nimcp_vector_normalize_l1(float* vec, uint32_t size, float target_norm)
      * HOW: Return 0.0 and leave vector unchanged
      */
     if (current_norm < NIMCP_VECTOR_EPSILON) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /**

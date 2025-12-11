@@ -80,7 +80,7 @@ bool extract_rule_pattern(const rule_example_t* examples, uint32_t count,
 
         // Count how many examples have this feature active
         for (uint32_t i = 0; i < count; i++) {
-            if (examples[i].features[f] > 0.5f) {
+            if (examples[i].features[f] > 0.5F) {
                 present_count++;
             }
         }
@@ -141,18 +141,18 @@ bool add_learned_rule_to_kb(brain_t brain, const char* rule, float confidence) {
 
 float compute_rule_confidence(uint32_t support_count, uint32_t total_count) {
     if (total_count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Laplace smoothing
-    const float alpha = 1.0f;
-    const float beta = 2.0f;
+    const float alpha = 1.0F;
+    const float beta = 2.0F;
 
     float confidence = (float)(support_count + alpha) / (float)(total_count + beta);
 
     // Clamp to [0.0, 1.0]
-    if (confidence < 0.0f) confidence = 0.0f;
-    if (confidence > 1.0f) confidence = 1.0f;
+    if (confidence < 0.0F) confidence = 0.0F;
+    if (confidence > 1.0F) confidence = 1.0F;
 
     return confidence;
 }

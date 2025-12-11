@@ -235,11 +235,11 @@ static void two_comp_init(neuron_model_state_t state_opaque, const void* params_
     state->V_dend = state->params.E_leak;
 
     // Clear currents
-    state->I_soma = 0.0f;
-    state->I_dend = 0.0f;
+    state->I_soma = 0.0F;
+    state->I_dend = 0.0F;
 
     // Clear spike tracking
-    state->t_last_spike = -1000.0f;  // Large negative value
+    state->t_last_spike = -1000.0F;  // Large negative value
     state->in_refractory = false;
 }
 
@@ -296,8 +296,8 @@ static void two_comp_update(neuron_model_state_t state_opaque, float dt, float i
             state->in_refractory = false;
         }
         // During refractory, voltage is clamped - don't integrate
-        state->I_soma = 0.0f;
-        state->I_dend = 0.0f;
+        state->I_soma = 0.0F;
+        state->I_dend = 0.0F;
         return;
     }
 
@@ -324,7 +324,7 @@ static void two_comp_update(neuron_model_state_t state_opaque, float dt, float i
         method,
         two_compartment_derivatives,
         voltage_state,
-        0.0f,  // t (time-invariant system)
+        0.0F,  // t (time-invariant system)
         dt,
         2,     // dimension (V_soma, V_dend)
         state  // params (passed to derivative function)
@@ -337,8 +337,8 @@ static void two_comp_update(neuron_model_state_t state_opaque, float dt, float i
     // If integration fails, voltages remain unchanged (safe fallback)
 
     // Clear current accumulators for next step
-    state->I_soma = 0.0f;
-    state->I_dend = 0.0f;
+    state->I_soma = 0.0F;
+    state->I_dend = 0.0F;
 }
 
 /**
@@ -385,16 +385,16 @@ static void two_comp_post_spike(neuron_model_state_t state_opaque)
     // Partially reset dendrite (back-propagating action potential)
     // Dendrite reset is attenuated (50% of reset magnitude)
     float reset_magnitude = state->params.V_threshold - state->params.V_reset;
-    state->V_dend -= 0.5f * reset_magnitude;
+    state->V_dend -= 0.5F * reset_magnitude;
 
     // Clamp dendrite to reasonable range
-    if (state->V_dend < state->params.V_reset - 10.0f) {
-        state->V_dend = state->params.V_reset - 10.0f;
+    if (state->V_dend < state->params.V_reset - 10.0F) {
+        state->V_dend = state->params.V_reset - 10.0F;
     }
 
     // Enter refractory period
     state->in_refractory = true;
-    state->t_last_spike = 0.0f;
+    state->t_last_spike = 0.0F;
 }
 
 /**
@@ -438,9 +438,9 @@ static void two_comp_reset(neuron_model_state_t state_opaque)
 
     state->V_soma = state->params.E_leak;
     state->V_dend = state->params.E_leak;
-    state->I_soma = 0.0f;
-    state->I_dend = 0.0f;
-    state->t_last_spike = -1000.0f;
+    state->I_soma = 0.0F;
+    state->I_dend = 0.0F;
+    state->t_last_spike = -1000.0F;
     state->in_refractory = false;
 }
 
@@ -509,14 +509,14 @@ two_compartment_params_t two_compartment_create_params(
 float two_compartment_calculate_attenuation(const two_compartment_params_t* params)
 {
     if (params == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Steady-state transfer coefficient from dendrite to soma
     // transfer = g_couple / (g_leak + g_couple)
     // attenuation = 1 - transfer
     float transfer = params->g_couple / (params->g_leak + params->g_couple);
-    float attenuation = 1.0f - transfer;
+    float attenuation = 1.0F - transfer;
 
     return attenuation;
 }
@@ -598,8 +598,8 @@ void two_compartment_add_current(
         case COMPARTMENT_AUTO:
         default:
             // Default: split 70% soma, 30% dendrite
-            state->I_soma += 0.7f * current;
-            state->I_dend += 0.3f * current;
+            state->I_soma += 0.7F * current;
+            state->I_dend += 0.3F * current;
             break;
     }
 }

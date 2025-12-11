@@ -72,7 +72,7 @@
  * Uses Hill equation: J = J_max * (IP3^n / (K^n + IP3^n)) * (Ca_ER - Ca)
  */
 static inline float compute_ca_release_flux(float ip3, float ca_cytosol, float ca_er, float flux_coeff) {
-    if (ip3 < 0.01f) return 0.0f; // No release without IP3
+    if (ip3 < 0.01F) return 0.0F; // No release without IP3
 
     // Hill function for IP3 receptor activation
     float ip3_n = powf(ip3, IP3_HILL_COEFFICIENT);
@@ -81,7 +81,7 @@ static inline float compute_ca_release_flux(float ip3, float ca_cytosol, float c
 
     // Driving force (Ca gradient)
     float driving_force = ca_er - ca_cytosol;
-    if (driving_force < 0.0f) driving_force = 0.0f;
+    if (driving_force < 0.0F) driving_force = 0.0F;
 
     return flux_coeff * activation * driving_force;
 }
@@ -111,7 +111,7 @@ static float compute_graph_laplacian(
     astrocyte_t* astro,
     astrocyte_network_t* network)
 {
-    float laplacian = 0.0f;
+    float laplacian = 0.0F;
 
     // Sum contributions from all coupled neighbors
     for (uint32_t i = 0; i < astro->num_coupled_astrocytes; i++) {
@@ -137,7 +137,7 @@ static float compute_graph_laplacian(
             float distance_sq = dx*dx + dy*dy + dz*dz;
 
             // Avoid division by zero (minimum 1 µm² to prevent singularity)
-            if (distance_sq < 1.0f) distance_sq = 1.0f;
+            if (distance_sq < 1.0F) distance_sq = 1.0F;
 
             // Discrete Laplacian: ΔC / Δx²
             float diff = concentration[neighbor_idx] - concentration[astrocyte_idx];
@@ -190,7 +190,7 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
     // Initialize state arrays
     for (uint32_t i = 0; i < num; i++) {
         system->calcium[i] = ASTROCYTE_BASELINE_CALCIUM_UM;
-        system->ip3[i] = 0.0f;
+        system->ip3[i] = 0.0F;
         system->calcium_er[i] = ER_CALCIUM_BASELINE;
         system->last_wave_time[i] = 0;
     }
@@ -206,7 +206,7 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
     // Initialize performance tracking
     system->total_update_time_us = 0;
     system->num_updates = 0;
-    system->wave_speed_measured = 0.0f;
+    system->wave_speed_measured = 0.0F;
 
     // Initialize lock
     nimcp_spinlock_init(&system->lock);
@@ -243,7 +243,7 @@ void astrocyte_calcium_system_update(
     float dt,
     float* external_stimulus)
 {
-    if (!system || !system->network || dt <= 0.0f) {
+    if (!system || !system->network || dt <= 0.0F) {
         return;
     }
 
@@ -279,7 +279,7 @@ void astrocyte_calcium_system_update(
         float J_uptake = compute_ca_uptake_flux(ca, system->ca_uptake_rate);
 
         // External stimulus (if provided)
-        float stimulus = external_stimulus ? external_stimulus[i] : 0.0f;
+        float stimulus = external_stimulus ? external_stimulus[i] : 0.0F;
 
         // dCa/dt = D∇²Ca + J_release - J_uptake + stimulus
         dCa_dt[i] = ca_diffusion + J_release - J_uptake + stimulus;
@@ -312,9 +312,9 @@ void astrocyte_calcium_system_update(
         system->calcium_er[i] += dt * dCa_ER_dt[i];
 
         // Clamp to biological ranges
-        system->calcium[i] = fmaxf(0.0f, fminf(10.0f, system->calcium[i]));
-        system->ip3[i] = fmaxf(0.0f, fminf(5.0f, system->ip3[i]));
-        system->calcium_er[i] = fmaxf(100.0f, fminf(500.0f, system->calcium_er[i]));
+        system->calcium[i] = fmaxf(0.0F, fminf(10.0F, system->calcium[i]));
+        system->ip3[i] = fmaxf(0.0F, fminf(5.0F, system->ip3[i]));
+        system->calcium_er[i] = fmaxf(100.0F, fminf(500.0F, system->calcium_er[i]));
 
         // Update individual astrocyte state (always sync)
         astrocyte_t* astro = network->astrocytes[i];
@@ -331,7 +331,7 @@ void astrocyte_calcium_system_update(
 
     // Estimate wave speed by tracking wavefront propagation over time
     // Method: Find pairs of neighbors where one recently crossed threshold after the other
-    float total_distance = 0.0f;
+    float total_distance = 0.0F;
     uint64_t total_time_us = 0;
     int num_measurements = 0;
 
@@ -365,7 +365,7 @@ void astrocyte_calcium_system_update(
                                 float dz = astro->position[2] - neighbor->position[2];
                                 float distance = sqrtf(dx*dx + dy*dy + dz*dz);
 
-                                if (distance > 1.0f) { // Valid distance
+                                if (distance > 1.0F) { // Valid distance
                                     total_distance += distance;
                                     total_time_us += time_diff_us;
                                     num_measurements++;
@@ -382,16 +382,16 @@ void astrocyte_calcium_system_update(
     // Compute average wave speed from measurements
     if (num_measurements > 0 && total_time_us > 0) {
         // speed = total_distance (µm) / total_time (s)
-        float total_time_s = total_time_us / 1000000.0f;  // Convert µs to s
+        float total_time_s = total_time_us / 1000000.0F;  // Convert µs to s
         float speed_um_per_s = total_distance / total_time_s;
 
         // Update measurement with exponential moving average for stability
-        if (system->wave_speed_measured == 0.0f) {
+        if (system->wave_speed_measured == 0.0F) {
             system->wave_speed_measured = speed_um_per_s;
         } else {
             // Smooth with previous measurements (α = 0.1)
-            system->wave_speed_measured = 0.9f * system->wave_speed_measured +
-                                          0.1f * speed_um_per_s;
+            system->wave_speed_measured = 0.9F * system->wave_speed_measured +
+                                          0.1F * speed_um_per_s;
         }
     }
 
@@ -424,12 +424,12 @@ void astrocyte_calcium_system_stimulate(
     // Increase Ca²⁺ and IP3 to initiate wave (biologically calibrated)
     // Strong perturbation to exceed 2.0µM wave threshold
     // Higher IP3 coefficient needed since we reduced release flux
-    system->calcium[astrocyte_id] += intensity * 0.3f; // µM (exceed wave threshold)
-    system->ip3[astrocyte_id] += intensity * 0.5f; // µM - HIGH IP3 for strong wave propagation
+    system->calcium[astrocyte_id] += intensity * 0.3F; // µM (exceed wave threshold)
+    system->ip3[astrocyte_id] += intensity * 0.5F; // µM - HIGH IP3 for strong wave propagation
 
     // Clamp to biological ranges
-    system->calcium[astrocyte_id] = fmaxf(0.0f, fminf(10.0f, system->calcium[astrocyte_id]));
-    system->ip3[astrocyte_id] = fmaxf(0.0f, fminf(5.0f, system->ip3[astrocyte_id]));
+    system->calcium[astrocyte_id] = fmaxf(0.0F, fminf(10.0F, system->calcium[astrocyte_id]));
+    system->ip3[astrocyte_id] = fmaxf(0.0F, fminf(5.0F, system->ip3[astrocyte_id]));
 
     // Mark wave time
     system->last_wave_time[astrocyte_id] = nimcp_time_monotonic_us();
@@ -440,7 +440,7 @@ void astrocyte_calcium_system_stimulate(
 float astrocyte_calcium_system_get_wave_speed(astrocyte_calcium_system_t* system)
 {
     if (!system) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_spinlock_lock(&system->lock);
@@ -459,11 +459,11 @@ float astrocyte_calcium_system_get_overhead_percent(
     uint64_t total_sim_time_us)
 {
     if (!system || total_sim_time_us == 0 || system->num_updates == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_spinlock_lock(&system->lock);
-    float overhead = (100.0f * system->total_update_time_us) / (float)total_sim_time_us;
+    float overhead = (100.0F * system->total_update_time_us) / (float)total_sim_time_us;
     nimcp_spinlock_unlock(&system->lock);
 
     return overhead;
@@ -497,7 +497,7 @@ float astrocyte_calcium_system_get_calcium(
     uint32_t astrocyte_id)
 {
     if (!system || astrocyte_id >= system->num_astrocytes) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_spinlock_lock(&system->lock);
@@ -512,7 +512,7 @@ float astrocyte_calcium_system_get_ip3(
     uint32_t astrocyte_id)
 {
     if (!system || astrocyte_id >= system->num_astrocytes) {
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_spinlock_lock(&system->lock);

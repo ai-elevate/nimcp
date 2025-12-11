@@ -71,11 +71,11 @@ static uint32_t fnv1a_hash(const char* str)
     if (!str)
         return 0;
 
-    uint32_t hash = 2166136261u;  // FNV offset basis
+    uint32_t hash = 2166136261U;  // FNV offset basis
 
     for (const char* p = str; *p; p++) {
         hash ^= (uint8_t)*p;
-        hash *= 16777619u;  // FNV prime
+        hash *= 16777619U;  // FNV prime
     }
 
     return hash;

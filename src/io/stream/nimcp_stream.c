@@ -474,8 +474,8 @@ stream_config_t stream_default_config(void)
                               .batch_size = 10,               // 10 inputs per batch
 
                               // Thresholds for events
-                              .high_salience_threshold = 0.8f,
-                              .high_surprise_threshold = 0.8f,
+                              .high_salience_threshold = 0.8F,
+                              .high_surprise_threshold = 0.8F,
 
                               // Event callbacks (NULL = not used)
                               .on_high_salience = NULL,
@@ -541,7 +541,7 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
     nimcp_mutex_init(&stream->control_lock, NULL);
 
     stream->cached_decision = NULL;
-    stream->cached_salience = 0.0f;
+    stream->cached_salience = 0.0F;
     stream->paused = false;
 
     // Initialize statistics
@@ -801,7 +801,7 @@ brain_decision_t* brain_stream_get_decision(brain_stream_t stream)
 float brain_stream_get_salience(brain_stream_t stream)
 {
     if (!stream) {
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_mutex_lock(&stream->decision_lock);
@@ -831,14 +831,14 @@ bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats)
     uint64_t total_time_ns = atomic_load(&stream->stats_processing_time_ns);
     uint64_t processed = stats->inputs_processed;
     stats->avg_processing_time_ms =
-        processed > 0 ? (float) total_time_ns / processed / 1000000.0f : 0.0f;
+        processed > 0 ? (float) total_time_ns / processed / 1000000.0F : 0.0F;
 
     // Calculate current throughput
     uint64_t elapsed_ns = nimcp_time_elapsed_ns(stream->last_stats_time);
     double elapsed = elapsed_ns / 1e9;
 
     uint64_t count_delta = stats->inputs_processed - stream->last_stats_count;
-    stats->current_throughput = elapsed > 0 ? (float) count_delta / elapsed : 0.0f;
+    stats->current_throughput = elapsed > 0 ? (float) count_delta / elapsed : 0.0F;
 
     // Queue stats
     stats->queue_size = ring_buffer_size(stream->input_queue);
@@ -965,7 +965,7 @@ static void stream_process_single_input(brain_stream_t stream, const float* feat
         if (stream->config.on_decision_ready) {
             stream_event_t event = {.type = STREAM_EVENT_DECISION_READY,
                                     .timestamp = timestamp,
-                                    .magnitude = 1.0f,
+                                    .magnitude = 1.0F,
                                     .decision = decision,
                                     .message = "Decision ready"};
 

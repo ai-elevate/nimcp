@@ -113,7 +113,7 @@ static void bio_broadcast_emotion_state(emotional_system_t* system) {
     msg.stimulus_id = 0;
     msg.salience_score = system->state.intensity;
     msg.attention_priority = system->state.arousal;
-    msg.requires_immediate_attention = (system->state.intensity > 0.7f);
+    msg.requires_immediate_attention = (system->state.intensity > 0.7F);
 
     bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast emotion state: intensity=%.2f, arousal=%.2f",
@@ -146,7 +146,7 @@ static float clamp(float value, float min, float max) {
  */
 static float calculate_intensity(float valence, float arousal) {
     float valence_extremity = fabsf(valence);
-    return arousal * (1.0f + valence_extremity) / 2.0f;
+    return arousal * (1.0F + valence_extremity) / 2.0F;
 }
 
 /**
@@ -162,7 +162,7 @@ static float update_average(float old_avg, float new_value, uint64_t count) {
     }
 
     // Use exponential moving average with alpha = 0.1
-    return old_avg * 0.9f + new_value * 0.1f;
+    return old_avg * 0.9F + new_value * 0.1F;
 }
 
 /**
@@ -176,9 +176,9 @@ static float calculate_stability(float current_valence, float current_arousal,
                                 float avg_valence, float avg_arousal) {
     float valence_diff = fabsf(current_valence - avg_valence);
     float arousal_diff = fabsf(current_arousal - avg_arousal);
-    float total_diff = (valence_diff + arousal_diff) / 2.0f;
+    float total_diff = (valence_diff + arousal_diff) / 2.0F;
 
-    return clamp(1.0f - total_diff, 0.0f, 1.0f);
+    return clamp(1.0F - total_diff, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -235,10 +235,10 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
 
     // Initialize state to neutral
     memset(&system->state, 0, sizeof(emotion_state_t));
-    system->state.valence = 0.0f;
-    system->state.arousal = 0.0f;
-    system->state.intensity = 0.0f;
-    system->state.emotional_stability = 1.0f;
+    system->state.valence = 0.0F;
+    system->state.arousal = 0.0F;
+    system->state.intensity = 0.0F;
+    system->state.emotional_stability = 1.0F;
     LOG_INFO(LOG_MODULE, "Initialized emotional state to neutral (valence=0.0, arousal=0.0)");
 
     // Initialize statistics
@@ -344,14 +344,14 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
     LOG_DEBUG(LOG_MODULE, "Setting emotional state: valence=%.3f, arousal=%.3f", valence, arousal);
 
     // Clamp inputs to valid ranges
-    valence = clamp(valence, -1.0f, 1.0f);
-    arousal = clamp(arousal, 0.0f, 1.0f);
+    valence = clamp(valence, -1.0F, 1.0F);
+    arousal = clamp(arousal, 0.0F, 1.0F);
 
     // Update state
     system->state.valence = valence * system->config.valence_sensitivity;
     system->state.arousal = arousal * system->config.arousal_sensitivity;
-    system->state.valence = clamp(system->state.valence, -1.0f, 1.0f);
-    system->state.arousal = clamp(system->state.arousal, 0.0f, 1.0f);
+    system->state.valence = clamp(system->state.valence, -1.0F, 1.0F);
+    system->state.arousal = clamp(system->state.arousal, 0.0F, 1.0F);
 
     // Recalculate intensity
     system->state.intensity = calculate_intensity(system->state.valence,
@@ -386,7 +386,7 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
               system->stats.total_updates, system->state.emotional_stability);
 
     /* Broadcast emotional state change if significant */
-    if (system->state.intensity > 0.4f) {
+    if (system->state.intensity > 0.4F) {
         bio_broadcast_emotion_state(system);
     }
 
@@ -404,7 +404,7 @@ bool emotion_system_decay(emotional_system_t* system, float delta_time,
     system->state.arousal *= decay_factor;
 
     // Clamp to prevent negative values
-    system->state.arousal = clamp(system->state.arousal, 0.0f, 1.0f);
+    system->state.arousal = clamp(system->state.arousal, 0.0F, 1.0F);
 
     // Recalculate intensity
     system->state.intensity = calculate_intensity(system->state.valence,
@@ -439,7 +439,7 @@ bool emotion_system_update_multimodal(emotional_system_t* system,
     // Placeholder: if any input provided, generate small arousal bump
     if (visual_data || audio_data || text) {
         float current_arousal = system->state.arousal;
-        float new_arousal = current_arousal + 0.05f;
+        float new_arousal = current_arousal + 0.05F;
         emotion_system_set_state(system, system->state.valence, new_arousal, timestamp_ms);
     }
 
@@ -468,20 +468,20 @@ bool emotion_system_regulate(emotional_system_t* system, uint32_t strategy) {
 
     switch (strategy) {
         case 0:  // Reappraisal
-            if (system->state.valence < 0.0f) {
-                system->state.valence *= (1.0f - REGULATION_STRENGTH);
+            if (system->state.valence < 0.0F) {
+                system->state.valence *= (1.0F - REGULATION_STRENGTH);
             }
             break;
 
         case 1:  // Suppression
-            system->state.arousal *= (1.0f - REGULATION_STRENGTH);
+            system->state.arousal *= (1.0F - REGULATION_STRENGTH);
             break;
 
         case 2:  // Distraction
-            if (system->state.valence < 0.0f) {
-                system->state.valence *= (1.0f - REGULATION_STRENGTH);
+            if (system->state.valence < 0.0F) {
+                system->state.valence *= (1.0F - REGULATION_STRENGTH);
             }
-            system->state.arousal *= (1.0f - REGULATION_STRENGTH);
+            system->state.arousal *= (1.0F - REGULATION_STRENGTH);
             break;
 
         default:
@@ -529,9 +529,9 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
     // Apply regulation
     // Choose strategy based on state
     uint32_t strategy;
-    if (system->state.valence < -0.5f && system->state.arousal > 0.7f) {
+    if (system->state.valence < -0.5F && system->state.arousal > 0.7F) {
         strategy = 2;  // Distraction for severe negative high-arousal
-    } else if (system->state.valence < 0.0f) {
+    } else if (system->state.valence < 0.0F) {
         strategy = 0;  // Reappraisal for negative valence
     } else {
         strategy = 1;  // Suppression for high arousal
@@ -546,19 +546,19 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
 
 float emotion_system_get_salience_boost(const emotional_system_t* system) {
     if (!system) {
-        return 1.0f;  // No boost if NULL
+        return 1.0F;  // No boost if NULL
     }
 
     // High arousal increases salience
     // Boost range: [1.0, 2.0]
-    float boost = 1.0f + system->state.arousal * system->config.arousal_sensitivity;
+    float boost = 1.0F + system->state.arousal * system->config.arousal_sensitivity;
 
-    return clamp(boost, 1.0f, 3.0f);
+    return clamp(boost, 1.0F, 3.0F);
 }
 
 float emotion_system_get_memory_priority(const emotional_system_t* system) {
     if (!system) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Memory priority based on emotional intensity
@@ -566,14 +566,14 @@ float emotion_system_get_memory_priority(const emotional_system_t* system) {
     // Priority = (arousal + |valence|) / 2
 
     float valence_extremity = fabsf(system->state.valence);
-    float priority = (system->state.arousal + valence_extremity) / 2.0f;
+    float priority = (system->state.arousal + valence_extremity) / 2.0F;
 
-    return clamp(priority, 0.0f, 1.0f);
+    return clamp(priority, 0.0F, 1.0F);
 }
 
 float emotion_system_get_mental_health_impact(const emotional_system_t* system) {
     if (!system) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Mental health impact based on:
@@ -582,22 +582,22 @@ float emotion_system_get_mental_health_impact(const emotional_system_t* system) 
     // 3. Low stability
     // 4. Shadow emotion intensity
 
-    float negative_valence_impact = 0.0f;
-    if (system->state.valence < 0.0f) {
+    float negative_valence_impact = 0.0F;
+    if (system->state.valence < 0.0F) {
         negative_valence_impact = fabsf(system->state.valence);
     }
 
     float arousal_impact = system->state.arousal;
-    float stability_impact = 1.0f - system->state.emotional_stability;
+    float stability_impact = 1.0F - system->state.emotional_stability;
     float shadow_impact = system->state.shadow_intensity;
 
     // Weighted combination
-    float impact = (negative_valence_impact * 0.3f +
-                   arousal_impact * 0.2f +
-                   stability_impact * 0.2f +
-                   shadow_impact * 0.3f);
+    float impact = (negative_valence_impact * 0.3F +
+                   arousal_impact * 0.2F +
+                   stability_impact * 0.2F +
+                   shadow_impact * 0.3F);
 
-    return clamp(impact, 0.0f, 1.0f);
+    return clamp(impact, 0.0F, 1.0F);
 }
 
 //=============================================================================

@@ -64,8 +64,8 @@ static inline float carg_inline(neural_phasor_t z) {
 // Complex division: z1/z2 = z1 * conj(z2) / |z2|²
 static inline neural_phasor_t cdiv(neural_phasor_t z1, neural_phasor_t z2) {
     float denom = z2.real * z2.real + z2.imag * z2.imag;
-    if (denom < 1e-20f) {
-        return (neural_phasor_t){0.0f, 0.0f};
+    if (denom < 1e-20F) {
+        return (neural_phasor_t){0.0F, 0.0F};
     }
     neural_phasor_t result = cmul(z1, cconj(z2));
     result.real /= denom;
@@ -163,9 +163,9 @@ float phasor_phase_difference(neural_phasor_t z1, neural_phasor_t z2) {
 
 neural_phasor_t phasor_normalize(neural_phasor_t z) {
     float amp = cabs_inline(z);
-    if (amp < 1e-10f) {
+    if (amp < 1e-10F) {
         // Avoid division by zero for very small amplitudes
-        return (neural_phasor_t){1.0f, 0.0f};
+        return (neural_phasor_t){1.0F, 0.0F};
     }
     return (neural_phasor_t){z.real / amp, z.imag / amp};
 }
@@ -179,7 +179,7 @@ neural_phasor_t phasor_normalize(neural_phasor_t z) {
 // Processes 4 phasors per iteration (256 bits = 4 x 64-bit complex)
 static float phasor_array_coherence_avx2(const neural_phasor_t* signals, uint32_t n) {
     if (n == 0 || signals == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     __m256 sum_real = _mm256_setzero_ps();
@@ -207,9 +207,9 @@ static float phasor_array_coherence_avx2(const neural_phasor_t* signals, uint32_
         __m256 mag = _mm256_sqrt_ps(mag_sq);
 
         // Normalize: real/mag, imag/mag (with safe division)
-        __m256 epsilon = _mm256_set1_ps(1e-10f);
+        __m256 epsilon = _mm256_set1_ps(1e-10F);
         mag = _mm256_max_ps(mag, epsilon);
-        __m256 rcp_mag = _mm256_div_ps(_mm256_set1_ps(1.0f), mag);
+        __m256 rcp_mag = _mm256_div_ps(_mm256_set1_ps(1.0F), mag);
 
         __m256 norm_real = _mm256_mul_ps(real, rcp_mag);
         __m256 norm_imag = _mm256_mul_ps(imag, rcp_mag);
@@ -245,7 +245,7 @@ static float phasor_array_synchrony_avx2(const neural_phasor_t* signals1,
                                          const neural_phasor_t* signals2,
                                          uint32_t n) {
     if (n == 0 || signals1 == NULL || signals2 == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     __m256 sum_real = _mm256_setzero_ps();
@@ -264,9 +264,9 @@ static float phasor_array_synchrony_avx2(const neural_phasor_t* signals1,
 
         __m256 mag1_sq = _mm256_add_ps(_mm256_mul_ps(r1, r1), _mm256_mul_ps(i1, i1));
         __m256 mag1 = _mm256_sqrt_ps(mag1_sq);
-        __m256 epsilon = _mm256_set1_ps(1e-10f);
+        __m256 epsilon = _mm256_set1_ps(1e-10F);
         mag1 = _mm256_max_ps(mag1, epsilon);
-        __m256 rcp_mag1 = _mm256_div_ps(_mm256_set1_ps(1.0f), mag1);
+        __m256 rcp_mag1 = _mm256_div_ps(_mm256_set1_ps(1.0F), mag1);
 
         __m256 n1_real = _mm256_mul_ps(r1, rcp_mag1);
         __m256 n1_imag = _mm256_mul_ps(i1, rcp_mag1);
@@ -282,7 +282,7 @@ static float phasor_array_synchrony_avx2(const neural_phasor_t* signals1,
         __m256 mag2_sq = _mm256_add_ps(_mm256_mul_ps(r2, r2), _mm256_mul_ps(i2, i2));
         __m256 mag2 = _mm256_sqrt_ps(mag2_sq);
         mag2 = _mm256_max_ps(mag2, epsilon);
-        __m256 rcp_mag2 = _mm256_div_ps(_mm256_set1_ps(1.0f), mag2);
+        __m256 rcp_mag2 = _mm256_div_ps(_mm256_set1_ps(1.0F), mag2);
 
         __m256 n2_real = _mm256_mul_ps(r2, rcp_mag2);
         __m256 n2_imag = _mm256_mul_ps(i2, rcp_mag2);
@@ -319,7 +319,7 @@ static float phasor_array_synchrony_avx2(const neural_phasor_t* signals1,
 // SIMD version of phasor_array_mean_phase using AVX2
 static float phasor_array_mean_phase_avx2(const neural_phasor_t* signals, uint32_t n) {
     if (n == 0 || signals == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     __m256 sum_real = _mm256_setzero_ps();
@@ -338,9 +338,9 @@ static float phasor_array_mean_phase_avx2(const neural_phasor_t* signals, uint32
 
         __m256 mag_sq = _mm256_add_ps(_mm256_mul_ps(real, real), _mm256_mul_ps(imag, imag));
         __m256 mag = _mm256_sqrt_ps(mag_sq);
-        __m256 epsilon = _mm256_set1_ps(1e-10f);
+        __m256 epsilon = _mm256_set1_ps(1e-10F);
         mag = _mm256_max_ps(mag, epsilon);
-        __m256 rcp_mag = _mm256_div_ps(_mm256_set1_ps(1.0f), mag);
+        __m256 rcp_mag = _mm256_div_ps(_mm256_set1_ps(1.0F), mag);
 
         sum_real = _mm256_add_ps(sum_real, _mm256_mul_ps(real, rcp_mag));
         sum_imag = _mm256_add_ps(sum_imag, _mm256_mul_ps(imag, rcp_mag));
@@ -375,19 +375,19 @@ float phasor_array_coherence(const neural_phasor_t* signals, uint32_t n) {
     }
 #endif
     if (n == 0 || signals == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // ITPC = |mean(z_i/|z_i|)|
     // Normalize each phasor to unit length, then take mean
-    neural_phasor_t sum = {0.0f, 0.0f};
+    neural_phasor_t sum = {0.0F, 0.0F};
 
     for (uint32_t i = 0; i < n; i++) {
         neural_phasor_t normalized = phasor_normalize(signals[i]);
         sum = cadd(sum, normalized);
     }
 
-    neural_phasor_t mean = cscale(sum, 1.0f / (float)n);
+    neural_phasor_t mean = cscale(sum, 1.0F / (float)n);
     return cabs_inline(mean);
 }
 
@@ -400,11 +400,11 @@ float phasor_array_synchrony(const neural_phasor_t* signals1,
     }
 #endif
     if (n == 0 || signals1 == NULL || signals2 == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // PLV = |mean(exp(i·(φ1 - φ2)))|
-    neural_phasor_t sum = {0.0f, 0.0f};
+    neural_phasor_t sum = {0.0F, 0.0F};
 
     for (uint32_t i = 0; i < n; i++) {
         // Phase difference as unit phasor
@@ -413,7 +413,7 @@ float phasor_array_synchrony(const neural_phasor_t* signals1,
         sum = cadd(sum, diff);
     }
 
-    neural_phasor_t mean = cscale(sum, 1.0f / (float)n);
+    neural_phasor_t mean = cscale(sum, 1.0F / (float)n);
     return cabs_inline(mean);
 }
 
@@ -424,11 +424,11 @@ float phasor_array_mean_phase(const neural_phasor_t* signals, uint32_t n) {
     }
 #endif
     if (n == 0 || signals == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Circular mean phase: arg(mean(normalized phasors))
-    neural_phasor_t sum = {0.0f, 0.0f};
+    neural_phasor_t sum = {0.0F, 0.0F};
 
     for (uint32_t i = 0; i < n; i++) {
         neural_phasor_t normalized = phasor_normalize(signals[i]);
@@ -440,12 +440,12 @@ float phasor_array_mean_phase(const neural_phasor_t* signals, uint32_t n) {
 
 float phasor_array_phase_variance(const neural_phasor_t* signals, uint32_t n) {
     if (n == 0 || signals == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Circular variance: 1 - |mean(normalized phasors)|
     float coherence = phasor_array_coherence(signals, n);
-    return 1.0f - coherence;
+    return 1.0F - coherence;
 }
 
 void phasor_array_statistics(const neural_phasor_t* signals, uint32_t n,
@@ -462,7 +462,7 @@ void phasor_array_statistics(const neural_phasor_t* signals, uint32_t n,
     }
 
     // Compute mean amplitude
-    float amp_sum = 0.0f;
+    float amp_sum = 0.0F;
     for (uint32_t i = 0; i < n; i++) {
         amp_sum += cabs_inline(signals[i]);
     }
@@ -534,21 +534,21 @@ static void fft_internal(neural_phasor_t* data, uint32_t n, bool inverse) {
     }
 
     // FFT butterfly operations
-    float direction = inverse ? 1.0f : -1.0f;
+    float direction = inverse ? 1.0F : -1.0F;
 
     for (uint32_t size = 2; size <= n; size *= 2) {
-        float angle = direction * 2.0f * M_PI / (float)size;
+        float angle = direction * 2.0F * M_PI / (float)size;
         neural_phasor_t wlen = {cosf(angle), sinf(angle)};
 
         for (uint32_t start = 0; start < n; start += size) {
-            neural_phasor_t w = {1.0f, 0.0f};
+            neural_phasor_t w = {1.0F, 0.0F};
 
             for (uint32_t k = 0; k < size / 2; k++) {
                 neural_phasor_t u = data[start + k];
                 neural_phasor_t t = cmul(w, data[start + k + size / 2]);
 
                 data[start + k] = cadd(u, t);
-                data[start + k + size / 2] = cadd(u, cscale(t, -1.0f));
+                data[start + k + size / 2] = cadd(u, cscale(t, -1.0F));
 
                 w = cmul(w, wlen);
             }
@@ -558,7 +558,7 @@ static void fft_internal(neural_phasor_t* data, uint32_t n, bool inverse) {
     // Normalize for inverse FFT
     if (inverse) {
         for (uint32_t i = 0; i < n; i++) {
-            data[i] = cscale(data[i], 1.0f / (float)n);
+            data[i] = cscale(data[i], 1.0F / (float)n);
         }
     }
 }
@@ -646,7 +646,7 @@ static float phasor_pac_modulation_index_avx2(const neural_phasor_t* theta_phase
     // Vectorized phase binning - process 8 samples at a time
     uint32_t simd_count = (n / 8) * 8;
     __m256 pi = _mm256_set1_ps(M_PI);
-    __m256 two_pi = _mm256_set1_ps(2.0f * M_PI);
+    __m256 two_pi = _mm256_set1_ps(2.0F * M_PI);
     __m256 num_bins = _mm256_set1_ps((float)NUM_PHASE_BINS);
 
     for (uint32_t i = 0; i < simd_count; i += 8) {
@@ -681,7 +681,7 @@ static float phasor_pac_modulation_index_avx2(const neural_phasor_t* theta_phase
     // Scalar tail
     for (uint32_t i = simd_count; i < n; i++) {
         float phase = atan2f(theta_phase[i].imag, theta_phase[i].real);
-        float phase_normalized = (phase + M_PI) / (2.0f * M_PI);
+        float phase_normalized = (phase + M_PI) / (2.0F * M_PI);
         uint32_t bin = (uint32_t)(phase_normalized * NUM_PHASE_BINS);
         if (bin >= NUM_PHASE_BINS) bin = NUM_PHASE_BINS - 1;
         amplitude_by_phase[bin] += gamma_amplitude[i];
@@ -689,7 +689,7 @@ static float phasor_pac_modulation_index_avx2(const neural_phasor_t* theta_phase
     }
 
     // Compute mean amplitude per bin (vectorized)
-    float total_amplitude = 0.0f;
+    float total_amplitude = 0.0F;
     for (uint32_t i = 0; i < NUM_PHASE_BINS; i++) {
         if (counts[i] > 0) {
             amplitude_by_phase[i] /= counts[i];
@@ -697,8 +697,8 @@ static float phasor_pac_modulation_index_avx2(const neural_phasor_t* theta_phase
         }
     }
 
-    if (total_amplitude < 1e-10f) {
-        return 0.0f;
+    if (total_amplitude < 1e-10F) {
+        return 0.0F;
     }
 
     // Normalize to probability distribution
@@ -707,9 +707,9 @@ static float phasor_pac_modulation_index_avx2(const neural_phasor_t* theta_phase
     }
 
     // Compute Shannon entropy (scalar - log2 vectorization not worth the complexity for 18 bins)
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < NUM_PHASE_BINS; i++) {
-        if (amplitude_by_phase[i] > 1e-10f) {
+        if (amplitude_by_phase[i] > 1e-10F) {
             entropy -= amplitude_by_phase[i] * log2f(amplitude_by_phase[i]);
         }
     }
@@ -731,7 +731,7 @@ float phasor_pac_modulation_index(const neural_phasor_t* theta_phase,
     }
 #endif
     if (theta_phase == NULL || gamma_amplitude == NULL || n == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Bin gamma amplitude by theta phase
@@ -742,7 +742,7 @@ float phasor_pac_modulation_index(const neural_phasor_t* theta_phase,
     for (uint32_t i = 0; i < n; i++) {
         float phase = carg_inline(theta_phase[i]);
         // Normalize to [0, 1]
-        float phase_normalized = (phase + M_PI) / (2.0f * M_PI);
+        float phase_normalized = (phase + M_PI) / (2.0F * M_PI);
 
         uint32_t bin = (uint32_t)(phase_normalized * NUM_PHASE_BINS);
         if (bin >= NUM_PHASE_BINS) {
@@ -754,7 +754,7 @@ float phasor_pac_modulation_index(const neural_phasor_t* theta_phase,
     }
 
     // Compute mean amplitude per bin
-    float total_amplitude = 0.0f;
+    float total_amplitude = 0.0F;
     for (uint32_t i = 0; i < NUM_PHASE_BINS; i++) {
         if (counts[i] > 0) {
             amplitude_by_phase[i] /= counts[i];
@@ -762,8 +762,8 @@ float phasor_pac_modulation_index(const neural_phasor_t* theta_phase,
         }
     }
 
-    if (total_amplitude < 1e-10f) {
-        return 0.0f;
+    if (total_amplitude < 1e-10F) {
+        return 0.0F;
     }
 
     // Normalize to probability distribution
@@ -772,9 +772,9 @@ float phasor_pac_modulation_index(const neural_phasor_t* theta_phase,
     }
 
     // Compute Shannon entropy
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < NUM_PHASE_BINS; i++) {
-        if (amplitude_by_phase[i] > 1e-10f) {
+        if (amplitude_by_phase[i] > 1e-10F) {
             entropy -= amplitude_by_phase[i] * log2f(amplitude_by_phase[i]);
         }
     }
@@ -807,20 +807,20 @@ bool phasor_hilbert_transform(const float* real_signal,
 
     // Convert real signal to complex (imaginary = 0)
     for (uint32_t i = 0; i < n; i++) {
-        fft_buffer[i] = (neural_phasor_t){real_signal[i], 0.0f};
+        fft_buffer[i] = (neural_phasor_t){real_signal[i], 0.0F};
     }
 
     // Forward FFT
     fft_internal(fft_buffer, n, false);
 
     // Zero out negative frequencies, double positive frequencies
-    fft_buffer[0] = cscale(fft_buffer[0], 1.0f);  // DC unchanged
+    fft_buffer[0] = cscale(fft_buffer[0], 1.0F);  // DC unchanged
     for (uint32_t i = 1; i < n / 2; i++) {
-        fft_buffer[i] = cscale(fft_buffer[i], 2.0f);  // Positive frequencies
+        fft_buffer[i] = cscale(fft_buffer[i], 2.0F);  // Positive frequencies
     }
-    fft_buffer[n / 2] = cscale(fft_buffer[n / 2], 1.0f);  // Nyquist unchanged
+    fft_buffer[n / 2] = cscale(fft_buffer[n / 2], 1.0F);  // Nyquist unchanged
     for (uint32_t i = n / 2 + 1; i < n; i++) {
-        fft_buffer[i] = (neural_phasor_t){0.0f, 0.0f};  // Negative frequencies
+        fft_buffer[i] = (neural_phasor_t){0.0F, 0.0F};  // Negative frequencies
     }
 
     // Inverse FFT

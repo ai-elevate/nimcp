@@ -150,9 +150,9 @@ static inline uint8_t hash_ptr(const void* ptr)
  */
 static float calculate_pressure_index(const struct unified_pools* pools)
 {
-    if (!pools) return 0.0f;
+    if (!pools) return 0.0F;
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     int count = 0;
 
     for (int i = 0; i < UNIFIED_POOL_COUNT; i++) {
@@ -164,7 +164,7 @@ static float calculate_pressure_index(const struct unified_pools* pools)
         }
     }
 
-    return count > 0 ? sqrtf(sum / count) : 0.0f;
+    return count > 0 ? sqrtf(sum / count) : 0.0F;
 }
 
 /**
@@ -285,7 +285,7 @@ static unified_pool_type_t select_pool(
     }
 
     /* Find pool with best available space */
-    float best_ratio = 1.0f;
+    float best_ratio = 1.0F;
     unified_pool_type_t best = UNIFIED_POOL_GENERIC;
 
     for (int i = 0; i < UNIFIED_POOL_COUNT; i++) {
@@ -396,7 +396,7 @@ unified_pools_config_t unified_pools_default_config(void)
     for (int i = 0; i < UNIFIED_POOL_COUNT; i++) {
         config.quotas[i].max_bytes = 1024 * 1024;
         config.quotas[i].reserved_bytes = 64 * 1024;
-        config.quotas[i].priority = 1.0f;
+        config.quotas[i].priority = 1.0F;
         config.quotas[i].mode = QUOTA_MODE_ADAPTIVE;
     }
 
@@ -405,20 +405,20 @@ unified_pools_config_t unified_pools_default_config(void)
 
     /* Adaptive sizing */
     config.adaptive.enabled = true;
-    config.adaptive.entropy_threshold = 0.1f;
-    config.adaptive.min_utilization = 0.3f;
-    config.adaptive.max_utilization = 0.85f;
+    config.adaptive.entropy_threshold = 0.1F;
+    config.adaptive.min_utilization = 0.3F;
+    config.adaptive.max_utilization = 0.85F;
     config.adaptive.sample_window_ms = 1000;
     config.adaptive.resize_cooldown_ms = 5000;
-    config.adaptive.growth_factor = 1.5f;
-    config.adaptive.shrink_factor = 0.75f;
+    config.adaptive.growth_factor = 1.5F;
+    config.adaptive.shrink_factor = 0.75F;
 
     /* Pressure management */
     config.pressure.enabled = true;
-    config.pressure.low_threshold = 0.5f;
-    config.pressure.medium_threshold = 0.7f;
-    config.pressure.high_threshold = 0.85f;
-    config.pressure.critical_threshold = 0.95f;
+    config.pressure.low_threshold = 0.5F;
+    config.pressure.medium_threshold = 0.7F;
+    config.pressure.high_threshold = 0.85F;
+    config.pressure.critical_threshold = 0.95F;
     config.pressure.enable_cow_on_pressure = true;
     config.pressure.enable_gc_on_pressure = true;
     config.pressure.gc_interval_ms = 1000;
@@ -881,7 +881,7 @@ bool unified_pools_get_pressure_metrics(
 
     metrics->current_level = pools->current_pressure;
     metrics->pressure_index = calculate_pressure_index(pools);
-    metrics->pressure_trend = 0.0f;  /* TODO: Track trend */
+    metrics->pressure_trend = 0.0F;  /* TODO: Track trend */
     metrics->gc_runs = pools->gc_runs;
     metrics->cow_forced = 0;  /* TODO: Track forced COW */
     metrics->borrowing_events = 0;  /* TODO: Track borrowing */
@@ -1024,8 +1024,8 @@ bool unified_pools_get_adaptive_metrics(
     metrics->expansions = pools->expansion_count;
     metrics->contractions = pools->contraction_count;
     metrics->entropy_current = pools->last_entropy;
-    metrics->entropy_delta = 0.0f;  /* TODO */
-    metrics->utilization_trend = 0.0f;  /* TODO */
+    metrics->entropy_delta = 0.0F;  /* TODO */
+    metrics->utilization_trend = 0.0F;  /* TODO */
     metrics->last_resize_ms = pools->last_resize_ms;
 
     nimcp_platform_mutex_unlock(&pools->mutex);
@@ -1082,7 +1082,7 @@ bool unified_pools_get_metrics(
         metrics->pools[i].allocated_bytes = state->current_bytes;
         metrics->pools[i].quota_bytes = state->quota.max_bytes;
         metrics->pools[i].utilization = state->quota.max_bytes > 0 ?
-            (float)state->current_bytes / (float)state->quota.max_bytes : 0.0f;
+            (float)state->current_bytes / (float)state->quota.max_bytes : 0.0F;
         metrics->pools[i].total_acquires = state->total_acquires;
         metrics->pools[i].total_releases = state->total_releases;
         metrics->pools[i].cow_triggers = state->cow_triggers;
@@ -1094,7 +1094,7 @@ bool unified_pools_get_metrics(
     metrics->total_allocated = total_alloc;
     metrics->total_limit = pools->config.total_memory_limit;
     metrics->global_utilization = pools->config.total_memory_limit > 0 ?
-        (float)total_alloc / (float)pools->config.total_memory_limit : 0.0f;
+        (float)total_alloc / (float)pools->config.total_memory_limit : 0.0F;
 
     /* Pressure metrics */
     metrics->pressure.current_level = pools->current_pressure;
@@ -1130,7 +1130,7 @@ bool unified_pools_get_pool_metrics(
     metrics->allocated_bytes = state->current_bytes;
     metrics->quota_bytes = state->quota.max_bytes;
     metrics->utilization = state->quota.max_bytes > 0 ?
-        (float)state->current_bytes / (float)state->quota.max_bytes : 0.0f;
+        (float)state->current_bytes / (float)state->quota.max_bytes : 0.0F;
     metrics->total_acquires = state->total_acquires;
     metrics->total_releases = state->total_releases;
     metrics->cow_triggers = state->cow_triggers;
@@ -1171,9 +1171,9 @@ bool unified_pools_get_cow_metrics(
     metrics->memory_saved_bytes = saved;
     metrics->copy_overhead_bytes = overhead;
     metrics->cow_efficiency = (saved + overhead) > 0 ?
-        (float)saved / (float)(saved + overhead) : 0.0f;
+        (float)saved / (float)(saved + overhead) : 0.0F;
     metrics->avg_refcount = pools->template_count > 0 ?
-        (float)total_refs / (float)pools->template_count : 0.0f;
+        (float)total_refs / (float)pools->template_count : 0.0F;
 
     nimcp_platform_mutex_unlock(&pools->mutex);
 

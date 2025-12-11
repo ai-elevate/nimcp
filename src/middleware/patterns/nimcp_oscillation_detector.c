@@ -37,11 +37,11 @@
 
 // Band frequency ranges (Hz)
 static const float BAND_RANGES[OSC_NUM_BANDS][2] = {
-    {0.0f, 4.0f},      // Delta
-    {4.0f, 8.0f},      // Theta
-    {8.0f, 13.0f},     // Alpha
-    {13.0f, 30.0f},    // Beta
-    {30.0f, 100.0f}    // Gamma
+    {0.0F, 4.0F},      // Delta
+    {4.0F, 8.0F},      // Theta
+    {8.0F, 13.0F},     // Alpha
+    {13.0F, 30.0F},    // Beta
+    {30.0F, 100.0F}    // Gamma
 };
 
 static const char* BAND_NAMES[OSC_NUM_BANDS] = {
@@ -155,12 +155,12 @@ static void compute_dft(const float* signal, uint32_t length,
                        const float* window,
                        float* real, float* imag) {
     for (uint32_t k = 0; k < length / 2; k++) {
-        real[k] = 0.0f;
-        imag[k] = 0.0f;
+        real[k] = 0.0F;
+        imag[k] = 0.0F;
 
         for (uint32_t n = 0; n < length; n++) {
-            float angle = 2.0f * M_PI * (float)k * (float)n / (float)length;
-            float windowed = signal[n] * (window ? window[n] : 1.0f);
+            float angle = 2.0F * M_PI * (float)k * (float)n / (float)length;
+            float windowed = signal[n] * (window ? window[n] : 1.0F);
             real[k] += windowed * cosf(angle);
             imag[k] += windowed * sinf(-angle);
         }
@@ -191,7 +191,7 @@ static float compute_band_power(const float* power_spectrum,
 
     if (bin_end > fft_size / 2) bin_end = fft_size / 2;
 
-    float total_power = 0.0f;
+    float total_power = 0.0F;
     for (uint32_t i = bin_start; i < bin_end; i++) {
         total_power += power_spectrum[i];
     }
@@ -214,7 +214,7 @@ static float find_peak_frequency(const float* power_spectrum,
     if (bin_end > fft_size / 2) bin_end = fft_size / 2;
 
     uint32_t peak_bin = bin_start;
-    float peak_power = 0.0f;
+    float peak_power = 0.0F;
 
     for (uint32_t i = bin_start; i < bin_end; i++) {
         if (power_spectrum[i] > peak_power) {
@@ -231,7 +231,7 @@ static float find_peak_frequency(const float* power_spectrum,
  */
 static void init_hann_window(float* window, uint32_t length) {
     for (uint32_t i = 0; i < length; i++) {
-        window[i] = 0.5f * (1.0f - cosf(2.0f * M_PI * (float)i / (float)(length - 1)));
+        window[i] = 0.5F * (1.0F - cosf(2.0F * M_PI * (float)i / (float)(length - 1)));
     }
 }
 
@@ -241,18 +241,18 @@ static void init_hann_window(float* window, uint32_t length) {
 static bool detect_burst(band_state_t* state, float power, double timestamp_ms,
                         float threshold_std, float min_duration_ms) {
     // Update statistics (online mean/std)
-    if (state->mean_power == 0.0f) {
+    if (state->mean_power == 0.0F) {
         state->mean_power = power;
-        state->std_power = 0.0f;
+        state->std_power = 0.0F;
     } else {
-        float alpha = 0.01f;  // Slow adaptation
-        state->mean_power = (1.0f - alpha) * state->mean_power + alpha * power;
+        float alpha = 0.01F;  // Slow adaptation
+        state->mean_power = (1.0F - alpha) * state->mean_power + alpha * power;
 
         float diff = power - state->mean_power;
-        state->std_power = (1.0f - alpha) * state->std_power + alpha * (diff * diff);
+        state->std_power = (1.0F - alpha) * state->std_power + alpha * (diff * diff);
     }
 
-    float threshold = state->mean_power + threshold_std * sqrtf(state->std_power + 1e-6f);
+    float threshold = state->mean_power + threshold_std * sqrtf(state->std_power + 1e-6F);
 
     // Check burst condition
     if (power > threshold) {
@@ -312,7 +312,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
     // This ensures we compute power for the specific band, not the entire broadband signal
     // For Delta band (min_freq ≈ 0), use lowpass filter; for others, use bandpass
     signal_filter_config_t filter_config;
-    if (min_freq < 0.5f) {  // Delta band (0-4Hz) → lowpass filter
+    if (min_freq < 0.5F) {  // Delta band (0-4Hz) → lowpass filter
         filter_config = signal_filter_lowpass_config(max_freq, sample_rate);
     } else {  // All other bands → bandpass filter
         filter_config = signal_filter_bandpass_config(min_freq, max_freq, sample_rate);
@@ -347,7 +347,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
     }
 
     // Compute band power from amplitudes (faster than manual loop)
-    float total_power = 0.0f;
+    float total_power = 0.0F;
     for (uint32_t i = 0; i < length; i++) {
         total_power += amplitude[i] * amplitude[i];
     }
@@ -362,7 +362,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
         if (bin_end > length / 2) bin_end = length / 2;
 
         uint32_t peak_bin = bin_start;
-        float max_amp = 0.0f;
+        float max_amp = 0.0F;
         for (uint32_t i = bin_start; i < bin_end; i++) {
             float amp = phasor_amplitude(spectrum[i]);
             if (amp > max_amp) {
@@ -372,7 +372,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
         }
         *peak_frequency = (float)peak_bin * freq_resolution;
     } else {
-        *peak_frequency = (min_freq + max_freq) / 2.0f;  // Fallback
+        *peak_frequency = (min_freq + max_freq) / 2.0F;  // Fallback
     }
 
     // Release all buffers back to pool (Phase 1.5 - O(1) deallocation)
@@ -396,13 +396,13 @@ oscillation_detector_config_t oscillation_detector_default_config(void) {
     config.enable_burst_detection = true;
     config.enable_plv = false;  // Expensive, off by default
     config.enable_pac = false;  // Expensive, off by default
-    config.overlap_fraction = 0.5f;
+    config.overlap_fraction = 0.5F;
     config.use_phasor_detection = true;  // Use phasor methods by default (faster)
     return config;
 }
 
 oscillation_detector_t* oscillation_detector_create(const oscillation_detector_config_t* config) {
-    if (!config || config->window_size == 0 || config->sample_rate_hz <= 0.0f) {
+    if (!config || config->window_size == 0 || config->sample_rate_hz <= 0.0F) {
         return NULL;
     }
 
@@ -564,8 +564,8 @@ bool oscillation_detector_detect(oscillation_detector_t* detector,
                           detector->config.window_size, detector->power_spectrum);
 
     // Analyze each band
-    result->total_power = 0.0f;
-    float max_power = 0.0f;
+    result->total_power = 0.0F;
+    float max_power = 0.0F;
 
     for (uint32_t b = 0; b < OSC_NUM_BANDS; b++) {
         band_power_t* bp = &result->bands[b];
@@ -573,7 +573,7 @@ bool oscillation_detector_detect(oscillation_detector_t* detector,
 
         // Use phasor-based detection with Hilbert transform if enabled
         if (detector->config.use_phasor_detection && detector->hilbert) {
-            float coherence = 0.0f;
+            float coherence = 0.0F;
             if (detect_oscillation_phasor_hilbert(detector,
                                                    signal_window,
                                                    detector->config.window_size,
@@ -639,14 +639,14 @@ bool oscillation_detector_detect(oscillation_detector_t* detector,
     // Compute relative powers
     for (uint32_t b = 0; b < OSC_NUM_BANDS; b++) {
         result->bands[b].relative_power = result->bands[b].power /
-                                         (result->total_power + 1e-6f);
+                                         (result->total_power + 1e-6F);
     }
 
     // Set flags
-    result->has_gamma = (result->bands[OSC_BAND_GAMMA].relative_power > 0.1f);
+    result->has_gamma = (result->bands[OSC_BAND_GAMMA].relative_power > 0.1F);
     result->has_theta_gamma_coupling =
-        (result->bands[OSC_BAND_THETA].relative_power > 0.15f &&
-         result->bands[OSC_BAND_GAMMA].relative_power > 0.15f);
+        (result->bands[OSC_BAND_THETA].relative_power > 0.15F &&
+         result->bands[OSC_BAND_GAMMA].relative_power > 0.15F);
 
     // Update statistics
     detector->sum_power += result->total_power;
@@ -677,18 +677,18 @@ bool oscillation_detector_compute_plv(oscillation_detector_t* detector,
     // Simple phase estimation (not full Hilbert transform, but functional)
     // Use sign changes as phase proxy
     uint32_t sync_count = 0;
-    float sum_phase_diff = 0.0f;
+    float sum_phase_diff = 0.0F;
 
     for (uint32_t i = 1; i < length; i++) {
-        float sign1 = (signal1[i] >= 0.0f) ? 1.0f : -1.0f;
-        float sign2 = (signal2[i] >= 0.0f) ? 1.0f : -1.0f;
+        float sign1 = (signal1[i] >= 0.0F) ? 1.0F : -1.0F;
+        float sign2 = (signal2[i] >= 0.0F) ? 1.0F : -1.0F;
 
         if (sign1 == sign2) {
             sync_count++;
         }
 
         // Approximate phase difference
-        float phase_diff = atan2f(signal2[i], signal1[i] + 1e-6f);
+        float phase_diff = atan2f(signal2[i], signal1[i] + 1e-6F);
         sum_phase_diff += phase_diff;
     }
 
@@ -727,11 +727,11 @@ bool oscillation_detector_detect_pac(oscillation_detector_t* detector,
         // Define frequency band ranges
         typedef struct { float low; float high; } band_range_t;
         band_range_t bands[] = {
-            {1.0f, 4.0f},    // DELTA
-            {4.0f, 8.0f},    // THETA
-            {8.0f, 13.0f},   // ALPHA
-            {13.0f, 30.0f},  // BETA
-            {30.0f, 80.0f}   // GAMMA (limited to 80Hz for practical PAC)
+            {1.0F, 4.0F},    // DELTA
+            {4.0F, 8.0F},    // THETA
+            {8.0F, 13.0F},   // ALPHA
+            {13.0F, 30.0F},  // BETA
+            {30.0F, 80.0F}   // GAMMA (limited to 80Hz for practical PAC)
         };
 
         // Common PAC combinations: phase band should be slower than amplitude band
@@ -801,7 +801,7 @@ bool oscillation_detector_detect_pac(oscillation_detector_t* detector,
 
                         // Significant coupling threshold (entropy-based MI is conservative)
                         // Even strong coupling may yield MI ~ 0.04-0.08 after filtering
-                        if (pac_strength > 0.04f) {
+                        if (pac_strength > 0.04F) {
                             couplings[*num_found].phase_band = phase_band;
                             couplings[*num_found].amp_band = amp_band;
                             couplings[*num_found].coupling_strength = pac_strength;
@@ -829,8 +829,8 @@ bool oscillation_detector_detect_pac(oscillation_detector_t* detector,
         if (*num_found < max_couplings) {
             couplings[0].phase_band = OSC_BAND_THETA;
             couplings[0].amp_band = OSC_BAND_GAMMA;
-            couplings[0].coupling_strength = 0.5f;
-            couplings[0].preferred_phase = 0.0f;
+            couplings[0].coupling_strength = 0.5F;
+            couplings[0].preferred_phase = 0.0F;
             *num_found = 1;
         }
     }
@@ -849,11 +849,11 @@ bool oscillation_detector_get_band_power(const oscillation_detector_t* detector,
 
     power->band = band;
     power->power = detector->band_states[band].mean_power;
-    power->relative_power = 0.0f;  // Would need total power
-    power->peak_frequency = (BAND_RANGES[band][0] + BAND_RANGES[band][1]) / 2.0f;
+    power->relative_power = 0.0F;  // Would need total power
+    power->peak_frequency = (BAND_RANGES[band][0] + BAND_RANGES[band][1]) / 2.0F;
     power->is_burst = detector->band_states[band].in_burst;
     power->burst_duration_ms = detector->band_states[band].in_burst ?
-        100.0f : 0.0f;  // Placeholder
+        100.0F : 0.0F;  // Placeholder
 
     return true;
 }
@@ -877,7 +877,7 @@ bool oscillation_detector_get_stats(const oscillation_detector_t* detector,
 
     if (avg_power) {
         *avg_power = (detector->power_measurements > 0) ?
-                    (float)(detector->sum_power / detector->power_measurements) : 0.0f;
+                    (float)(detector->sum_power / detector->power_measurements) : 0.0F;
     }
 
     return true;
@@ -890,8 +890,8 @@ const char* oscillation_band_name(oscillation_band_t band) {
 
 void oscillation_band_range(oscillation_band_t band, float* min_hz, float* max_hz) {
     if (band >= OSC_NUM_BANDS) {
-        if (min_hz) *min_hz = 0.0f;
-        if (max_hz) *max_hz = 0.0f;
+        if (min_hz) *min_hz = 0.0F;
+        if (max_hz) *max_hz = 0.0F;
         return;
     }
 

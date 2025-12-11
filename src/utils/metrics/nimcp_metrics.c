@@ -176,7 +176,7 @@ nimcp_metrics_collector_t nimcp_metrics_create_with_config(
         snprintf(timestamp, sizeof(timestamp), "%lu", ts);
 
         snprintf(collector->current_filename, NIMCP_METRICS_MAX_PATH,
-                 "%s/metrics_%s.csv",
+                 "%.450s/metrics_%s.csv",
                  collector->config.output_directory, timestamp);
 
         collector->stream_file = fopen(collector->current_filename, "w");
@@ -557,7 +557,7 @@ bool nimcp_metrics_export_tableau_csv(
         (nimcp_metrics_collector_internal_t*)collector;
 
     char filepath[NIMCP_METRICS_MAX_PATH];
-    snprintf(filepath, sizeof(filepath), "%s/%s",
+    snprintf(filepath, sizeof(filepath), "%.450s/%.60s",
              internal->config.output_directory, filename);
 
     FILE* file = fopen(filepath, "w");
@@ -599,7 +599,7 @@ bool nimcp_metrics_export_powerbi_json(
         (nimcp_metrics_collector_internal_t*)collector;
 
     char filepath[NIMCP_METRICS_MAX_PATH];
-    snprintf(filepath, sizeof(filepath), "%s/%s",
+    snprintf(filepath, sizeof(filepath), "%.450s/%.60s",
              internal->config.output_directory, filename);
 
     FILE* file = fopen(filepath, "w");

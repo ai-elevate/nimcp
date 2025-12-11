@@ -41,7 +41,7 @@ static inline float clamp(float value, float min, float max) {
  * HOW:  EMA formula: avg_new = α × sample + (1-α) × avg_old
  */
 static inline float update_ema(float current_avg, float new_sample, float alpha) {
-    return alpha * new_sample + (1.0f - alpha) * current_avg;
+    return alpha * new_sample + (1.0F - alpha) * current_avg;
 }
 
 //=============================================================================
@@ -71,37 +71,37 @@ void metabolic_state_init_with_config(metabolic_state_t* state,
 
     // Initialize synthesis pathway
     state->synthesis.precursor_concentration = config->precursor_level;
-    state->synthesis.precursor_influx_rate = 0.0f;  // No external influx by default
+    state->synthesis.precursor_influx_rate = 0.0F;  // No external influx by default
     state->synthesis.enzyme_activity = config->enzyme_activity;
-    state->synthesis.cofactor_availability = 1.0f;  // Full cofactor availability
+    state->synthesis.cofactor_availability = 1.0F;  // Full cofactor availability
     state->synthesis.base_synthesis_rate = config->synthesis_rate;
     state->synthesis.current_synthesis_rate = config->synthesis_rate;
     state->synthesis.total_synthesized = 0;
-    state->synthesis.avg_synthesis_rate = 0.0f;
+    state->synthesis.avg_synthesis_rate = 0.0F;
 
     // Initialize degradation pathway
     state->degradation.enzyme_activity = config->enzyme_expression;
     state->degradation.degradation_rate = config->degradation_rate;
-    state->degradation.inhibitor_blockade = 0.0f;  // No inhibition
-    state->degradation.metabolite_concentration = 0.0f;
+    state->degradation.inhibitor_blockade = 0.0F;  // No inhibition
+    state->degradation.metabolite_concentration = 0.0F;
     state->degradation.total_degraded = 0;
-    state->degradation.avg_degradation_rate = 0.0f;
+    state->degradation.avg_degradation_rate = 0.0F;
 
     // Initialize reuptake transporter
     state->reuptake.km = config->reuptake_km;
     state->reuptake.vmax = config->reuptake_vmax;
     state->reuptake.transporter_density = config->transporter_density;
-    state->reuptake.inhibitor_concentration = 0.0f;
-    state->reuptake.inhibitor_ki = 0.0f;
+    state->reuptake.inhibitor_concentration = 0.0F;
+    state->reuptake.inhibitor_ki = 0.0F;
     state->reuptake.is_reversed = false;
-    state->reuptake.reversal_magnitude = 0.0f;
+    state->reuptake.reversal_magnitude = 0.0F;
     state->reuptake.total_reuptake_events = 0;
-    state->reuptake.avg_reuptake_rate = 0.0f;
+    state->reuptake.avg_reuptake_rate = 0.0F;
 
     // Initialize concentrations
-    state->concentration = 0.0f;
-    state->vesicular_concentration = 0.0f;
-    state->vesicular_uptake_rate = 0.001f;  // 1 µM/s typical VMAT rate
+    state->concentration = 0.0F;
+    state->vesicular_concentration = 0.0F;
+    state->vesicular_uptake_rate = 0.001F;  // 1 µM/s typical VMAT rate
     state->last_update_time_us = 0;
 }
 
@@ -143,12 +143,12 @@ metabolic_config_t metabolic_config_dopamine_default(void) {
     metabolic_config_t config = {
         .synthesis_rate = METABOLISM_SYNTHESIS_RATE_DOPAMINE,
         .precursor_level = METABOLISM_PRECURSOR_TYROSINE,
-        .enzyme_activity = 1.0f,
+        .enzyme_activity = 1.0F,
         .degradation_rate = METABOLISM_DEGRADATION_RATE_MAO,
-        .enzyme_expression = 1.0f,
+        .enzyme_expression = 1.0F,
         .reuptake_km = METABOLISM_REUPTAKE_KM_DAT,
         .reuptake_vmax = METABOLISM_REUPTAKE_VMAX_DAT,
-        .transporter_density = 1.0f,
+        .transporter_density = 1.0F,
         .enable_synthesis = true,
         .enable_degradation = true,
         .enable_reuptake = true
@@ -164,12 +164,12 @@ metabolic_config_t metabolic_config_serotonin_default(void) {
     metabolic_config_t config = {
         .synthesis_rate = METABOLISM_SYNTHESIS_RATE_SEROTONIN,
         .precursor_level = METABOLISM_PRECURSOR_TRYPTOPHAN,
-        .enzyme_activity = 1.0f,
+        .enzyme_activity = 1.0F,
         .degradation_rate = METABOLISM_DEGRADATION_RATE_MAO,
-        .enzyme_expression = 1.0f,
+        .enzyme_expression = 1.0F,
         .reuptake_km = METABOLISM_REUPTAKE_KM_SERT,
         .reuptake_vmax = METABOLISM_REUPTAKE_VMAX_SERT,
-        .transporter_density = 1.0f,
+        .transporter_density = 1.0F,
         .enable_synthesis = true,
         .enable_degradation = true,
         .enable_reuptake = true
@@ -185,12 +185,12 @@ metabolic_config_t metabolic_config_norepinephrine_default(void) {
     metabolic_config_t config = {
         .synthesis_rate = METABOLISM_SYNTHESIS_RATE_NOREPINEPHRINE,
         .precursor_level = METABOLISM_PRECURSOR_TYROSINE,  // Via DA intermediate
-        .enzyme_activity = 1.0f,
-        .degradation_rate = (METABOLISM_DEGRADATION_RATE_MAO + METABOLISM_DEGRADATION_RATE_COMT) / 2.0f,
-        .enzyme_expression = 1.0f,
+        .enzyme_activity = 1.0F,
+        .degradation_rate = (METABOLISM_DEGRADATION_RATE_MAO + METABOLISM_DEGRADATION_RATE_COMT) / 2.0F,
+        .enzyme_expression = 1.0F,
         .reuptake_km = METABOLISM_REUPTAKE_KM_NET,
         .reuptake_vmax = METABOLISM_REUPTAKE_VMAX_NET,
-        .transporter_density = 1.0f,
+        .transporter_density = 1.0F,
         .enable_synthesis = true,
         .enable_degradation = true,
         .enable_reuptake = true
@@ -206,12 +206,12 @@ metabolic_config_t metabolic_config_acetylcholine_default(void) {
     metabolic_config_t config = {
         .synthesis_rate = METABOLISM_SYNTHESIS_RATE_ACETYLCHOLINE,
         .precursor_level = METABOLISM_PRECURSOR_CHOLINE,
-        .enzyme_activity = 1.0f,
+        .enzyme_activity = 1.0F,
         .degradation_rate = METABOLISM_DEGRADATION_RATE_ACHE,  // Very fast
-        .enzyme_expression = 1.0f,
+        .enzyme_expression = 1.0F,
         .reuptake_km = METABOLISM_REUPTAKE_KM_CHT,
         .reuptake_vmax = METABOLISM_REUPTAKE_VMAX_CHT,
-        .transporter_density = 1.0f,
+        .transporter_density = 1.0F,
         .enable_synthesis = true,
         .enable_degradation = true,
         .enable_reuptake = true
@@ -228,20 +228,20 @@ float metabolic_synthesize(metabolic_state_t* state, float dt) {
     // WHY:  Synthesis maintains neurotransmitter stores
     // HOW:  Rate limited by enzyme activity and precursor availability
 
-    if (!state || dt <= 0.0f) return 0.0f;
+    if (!state || dt <= 0.0F) return 0.0F;
 
     synthesis_pathway_state_t* syn = &state->synthesis;
 
     // Check precursor availability (can't synthesize without substrate)
-    if (syn->precursor_concentration <= 0.0f) {
-        syn->current_synthesis_rate = 0.0f;
-        return 0.0f;
+    if (syn->precursor_concentration <= 0.0F) {
+        syn->current_synthesis_rate = 0.0F;
+        return 0.0F;
     }
 
     // Compute effective synthesis rate
     // Rate = base_rate × enzyme_activity × cofactor × precursor_saturation
     float precursor_saturation = syn->precursor_concentration /
-                                 (syn->precursor_concentration + 10.0f);  // Km ~10 µM
+                                 (syn->precursor_concentration + 10.0F);  // Km ~10 µM
 
     syn->current_synthesis_rate = syn->base_synthesis_rate *
                                   syn->enzyme_activity *
@@ -253,15 +253,15 @@ float metabolic_synthesize(metabolic_state_t* state, float dt) {
 
     // Consume precursor (1:1 stoichiometry assumed)
     syn->precursor_concentration -= amount_synthesized;
-    if (syn->precursor_concentration < 0.0f) {
-        syn->precursor_concentration = 0.0f;
+    if (syn->precursor_concentration < 0.0F) {
+        syn->precursor_concentration = 0.0F;
     }
 
     // Update statistics
     syn->total_synthesized++;
     syn->avg_synthesis_rate = update_ema(syn->avg_synthesis_rate,
                                          syn->current_synthesis_rate,
-                                         0.1f);
+                                         0.1F);
 
     return amount_synthesized;
 }
@@ -273,7 +273,7 @@ void metabolic_set_precursor(metabolic_state_t* state, float precursor_level) {
 
     if (!state) return;
 
-    state->synthesis.precursor_concentration = clamp(precursor_level, 0.0f, 1000.0f);
+    state->synthesis.precursor_concentration = clamp(precursor_level, 0.0F, 1000.0F);
 }
 
 void metabolic_set_enzyme_activity(metabolic_state_t* state, float activity) {
@@ -283,7 +283,7 @@ void metabolic_set_enzyme_activity(metabolic_state_t* state, float activity) {
 
     if (!state) return;
 
-    state->synthesis.enzyme_activity = clamp(activity, 0.0f, 2.0f);  // Allow up to 2x upregulation
+    state->synthesis.enzyme_activity = clamp(activity, 0.0F, 2.0F);  // Allow up to 2x upregulation
 }
 
 //=============================================================================
@@ -295,34 +295,34 @@ float metabolic_degrade(metabolic_state_t* state, float dt) {
     // WHY:  Clearance terminates neurotransmitter action
     // HOW:  First-order kinetics: dC/dt = -k × C
 
-    if (!state || dt <= 0.0f) return 0.0f;
+    if (!state || dt <= 0.0F) return 0.0F;
 
     degradation_pathway_state_t* deg = &state->degradation;
 
     // No degradation if no neurotransmitter present
-    if (state->concentration <= 0.0f) {
-        return 0.0f;
+    if (state->concentration <= 0.0F) {
+        return 0.0F;
     }
 
     // Effective degradation rate with inhibitor blockade
     float effective_rate = deg->degradation_rate *
                           deg->enzyme_activity *
-                          (1.0f - deg->inhibitor_blockade);
+                          (1.0F - deg->inhibitor_blockade);
 
     // First-order kinetics: amount = C × (1 - e^(-k×dt))
-    float decay_factor = 1.0f - expf(-effective_rate * dt);
+    float decay_factor = 1.0F - expf(-effective_rate * dt);
     float amount_degraded = state->concentration * decay_factor;
 
     // Update metabolite concentration
     deg->metabolite_concentration += amount_degraded;
 
     // Update statistics
-    if (amount_degraded > 0.0f) {
+    if (amount_degraded > 0.0F) {
         deg->total_degraded++;
     }
     deg->avg_degradation_rate = update_ema(deg->avg_degradation_rate,
                                            effective_rate,
-                                           0.1f);
+                                           0.1F);
 
     return amount_degraded;
 }
@@ -334,7 +334,7 @@ void metabolic_apply_mao_inhibitor(metabolic_state_t* state, float inhibition) {
 
     if (!state) return;
 
-    state->degradation.inhibitor_blockade = clamp(inhibition, 0.0f, 1.0f);
+    state->degradation.inhibitor_blockade = clamp(inhibition, 0.0F, 1.0F);
 }
 
 void metabolic_apply_comt_inhibitor(metabolic_state_t* state, float inhibition) {
@@ -346,7 +346,7 @@ void metabolic_apply_comt_inhibitor(metabolic_state_t* state, float inhibition) 
 
     // COMT inhibition reduces effective degradation rate
     // For simplicity, treat similarly to MAO inhibition
-    state->degradation.inhibitor_blockade = clamp(inhibition, 0.0f, 1.0f);
+    state->degradation.inhibitor_blockade = clamp(inhibition, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -358,7 +358,7 @@ float metabolic_reuptake(metabolic_state_t* state, float concentration, float dt
     // WHY:  Reuptake is primary inactivation mechanism (>80%)
     // HOW:  Michaelis-Menten kinetics with competitive inhibition
 
-    if (!state || dt <= 0.0f || concentration <= 0.0f) return 0.0f;
+    if (!state || dt <= 0.0F || concentration <= 0.0F) return 0.0F;
 
     reuptake_transporter_state_t* rpt = &state->reuptake;
 
@@ -372,8 +372,8 @@ float metabolic_reuptake(metabolic_state_t* state, float concentration, float dt
     // Michaelis-Menten kinetics: v = Vmax × [S] / (Km + [S])
     // With competitive inhibition: Km_app = Km × (1 + [I]/Ki)
     float km_apparent = rpt->km;
-    if (rpt->inhibitor_concentration > 0.0f && rpt->inhibitor_ki > 0.0f) {
-        km_apparent *= (1.0f + rpt->inhibitor_concentration / rpt->inhibitor_ki);
+    if (rpt->inhibitor_concentration > 0.0F && rpt->inhibitor_ki > 0.0F) {
+        km_apparent *= (1.0F + rpt->inhibitor_concentration / rpt->inhibitor_ki);
     }
 
     // Compute reuptake rate
@@ -389,12 +389,12 @@ float metabolic_reuptake(metabolic_state_t* state, float concentration, float dt
     }
 
     // Update statistics
-    if (amount_removed > 0.0f) {
+    if (amount_removed > 0.0F) {
         rpt->total_reuptake_events++;
     }
     rpt->avg_reuptake_rate = update_ema(rpt->avg_reuptake_rate,
                                         reuptake_rate,
-                                        0.1f);
+                                        0.1F);
 
     return amount_removed;
 }
@@ -408,8 +408,8 @@ void metabolic_apply_reuptake_inhibitor(metabolic_state_t* state,
 
     if (!state) return;
 
-    state->reuptake.inhibitor_concentration = clamp(inhibitor_concentration, 0.0f, 100.0f);
-    state->reuptake.inhibitor_ki = clamp(inhibitor_ki, 0.001f, 10.0f);
+    state->reuptake.inhibitor_concentration = clamp(inhibitor_concentration, 0.0F, 100.0F);
+    state->reuptake.inhibitor_ki = clamp(inhibitor_ki, 0.001F, 10.0F);
 }
 
 void metabolic_reverse_transporter(metabolic_state_t* state, float magnitude) {
@@ -419,8 +419,8 @@ void metabolic_reverse_transporter(metabolic_state_t* state, float magnitude) {
 
     if (!state) return;
 
-    state->reuptake.is_reversed = (magnitude > 0.0f);
-    state->reuptake.reversal_magnitude = clamp(magnitude, 0.0f, 0.01f);  // Max 0.01 µM/s
+    state->reuptake.is_reversed = (magnitude > 0.0F);
+    state->reuptake.reversal_magnitude = clamp(magnitude, 0.0F, 0.01F);  // Max 0.01 µM/s
 }
 
 //=============================================================================
@@ -432,7 +432,7 @@ float metabolic_update(metabolic_state_t* state, float dt, float release_amount)
     // WHY:  Integrates all pathways into unified dynamics
     // HOW:  dC/dt = synthesis + release - degradation - reuptake
 
-    if (!state || dt <= 0.0f) return state ? state->concentration : 0.0f;
+    if (!state || dt <= 0.0F) return state ? state->concentration : 0.0F;
 
     // Synthesis: produces new neurotransmitter
     // Newly synthesized neurotransmitter goes into vesicular stores
@@ -442,7 +442,7 @@ float metabolic_update(metabolic_state_t* state, float dt, float release_amount)
     // Vesicular uptake: cytoplasmic → vesicular
     // This removes from cytoplasm and stores in vesicles
     float vesicular_uptake = state->vesicular_uptake_rate * dt * state->concentration;
-    vesicular_uptake = clamp(vesicular_uptake, 0.0f, state->concentration);
+    vesicular_uptake = clamp(vesicular_uptake, 0.0F, state->concentration);
     state->vesicular_concentration += vesicular_uptake;
 
     // Release: vesicular → synaptic cleft
@@ -458,8 +458,8 @@ float metabolic_update(metabolic_state_t* state, float dt, float release_amount)
     state->concentration -= degraded;
 
     // Clamp concentration to valid range
-    state->concentration = clamp(state->concentration, 0.0f, 100.0f);
-    state->vesicular_concentration = clamp(state->vesicular_concentration, 0.0f, 1000.0f);
+    state->concentration = clamp(state->concentration, 0.0F, 100.0F);
+    state->vesicular_concentration = clamp(state->vesicular_concentration, 0.0F, 1000.0F);
 
     return state->concentration;
 }

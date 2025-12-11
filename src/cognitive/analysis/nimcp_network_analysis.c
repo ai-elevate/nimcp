@@ -56,7 +56,7 @@ network_analyzer_t* network_analyzer_create(brain_t brain)
     analyzer->brain = brain;
     analyzer->auto_analyze = true;  // Enable auto-analyze by default
     analyzer->analysis_interval = 10;  // Default interval
-    analyzer->hub_threshold = 0.7f;
+    analyzer->hub_threshold = 0.7F;
     analyzer->iteration_counter = 0;
     analyzer->topology_is_valid = true;
     analyzer->history_capacity = 1000;
@@ -362,15 +362,15 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
     // Calculate network density
     uint32_t max_possible_connections = num_neurons * (num_neurons - 1);
     analyzer->metrics.density = (max_possible_connections > 0) ?
-                                (float)total_synapses / (float)max_possible_connections : 0.0f;
+                                (float)total_synapses / (float)max_possible_connections : 0.0F;
 
     // For now, use estimates for complex metrics
     // TODO: Implement full graph conversion and use compute_graph_metrics()
     // These are reasonable defaults based on typical brain networks
-    analyzer->metrics.clustering_coefficient = 0.45f;  // Typical for brain networks
-    analyzer->metrics.avg_path_length = 3.0f;           // Typical for small-world networks
-    analyzer->metrics.small_worldness = 1.5f;           // (C/C_rand) / (L/L_rand)
-    analyzer->metrics.assortativity = 0.0f;             // Neutral mixing
+    analyzer->metrics.clustering_coefficient = 0.45F;  // Typical for brain networks
+    analyzer->metrics.avg_path_length = 3.0F;           // Typical for small-world networks
+    analyzer->metrics.small_worldness = 1.5F;           // (C/C_rand) / (L/L_rand)
+    analyzer->metrics.assortativity = 0.0F;             // Neutral mixing
     analyzer->metrics.num_edges = total_synapses;
 
     NIMCP_LOGGING_INFO("Computed metrics: density=%.3f, edges=%u",

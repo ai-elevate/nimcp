@@ -140,7 +140,7 @@ struct laminar_structure {
  * HOW:  f(x) = 1 / (1 + exp(-k*x))
  */
 static float sigmoid(float x, float steepness) {
-    return 1.0f / (1.0f + expf(-steepness * x));
+    return 1.0F / (1.0F + expf(-steepness * x));
 }
 
 /**
@@ -151,7 +151,7 @@ static float sigmoid(float x, float steepness) {
 static float divisive_normalize(float value, float sum_squares, float sigma) {
     float numerator = powf(fabsf(value), NORMALIZATION_EXPONENT);
     float denominator = powf(sigma, NORMALIZATION_EXPONENT) + sum_squares;
-    return numerator / (denominator + 1e-6f);  // Avoid division by zero
+    return numerator / (denominator + 1e-6F);  // Avoid division by zero
 }
 
 /**
@@ -160,7 +160,7 @@ static float divisive_normalize(float value, float sum_squares, float sigma) {
  * HOW:  Σ c_j^n
  */
 static float compute_sum_squares(const float* values, uint32_t count) {
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         sum += powf(fabsf(values[i]), NORMALIZATION_EXPONENT);
     }
@@ -205,8 +205,8 @@ static bool init_layer_state(layer_state_t* layer,
     }
 
     // Initialize statistics
-    layer->mean_activation = 0.0f;
-    layer->variance_activation = 0.0f;
+    layer->mean_activation = 0.0F;
+    layer->variance_activation = 0.0F;
 
     return true;
 }
@@ -238,14 +238,14 @@ static void update_layer_stats(layer_state_t* layer) {
     if (!layer || !layer->neurons) return;
 
     // Compute mean
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         sum += layer->neurons[i];
     }
     layer->mean_activation = sum / layer->neuron_count;
 
     // Compute variance
-    float var_sum = 0.0f;
+    float var_sum = 0.0F;
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         float diff = layer->neurons[i] - layer->mean_activation;
         var_sum += diff * diff;
@@ -267,9 +267,9 @@ static void process_layer_I(layer_state_t* layer) {
 
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         // Simple gain modulation
-        layer->neurons[i] = layer->inputs[i] * 0.5f;  // Attenuate
+        layer->neurons[i] = layer->inputs[i] * 0.5F;  // Attenuate
         layer->outputs[i] = layer->neurons[i];
-        layer->inputs[i] = 0.0f;  // Clear for next cycle
+        layer->inputs[i] = 0.0F;  // Clear for next cycle
     }
 }
 
@@ -283,7 +283,7 @@ static void process_layer_II_III(layer_state_t* layer, float dt) {
 
     const float tau = DEFAULT_TIME_CONSTANT;
     const float decay = dt / tau;
-    const float input_threshold = 1e-8f;  // Very low threshold - divisive normalization produces small values
+    const float input_threshold = 1e-8F;  // Very low threshold - divisive normalization produces small values
 
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         // Recurrent dynamics: decay old state, add new input
@@ -295,16 +295,16 @@ static void process_layer_II_III(layer_state_t* layer, float dt) {
         if (fabsf(input_current) > input_threshold) {
             // Scale input for sigmoid (divisive normalization gives small values)
             // Use input directly in sigmoid, which handles the scaling
-            float f_input = sigmoid(input_current * 10.0f, SIGMOID_STEEPNESS);
+            float f_input = sigmoid(input_current * 10.0F, SIGMOID_STEEPNESS);
             activation += decay * (-activation + f_input);
         } else {
             // No input: pure decay toward zero
-            activation *= (1.0f - decay);
+            activation *= (1.0F - decay);
         }
 
         layer->neurons[i] = activation;
         layer->outputs[i] = activation;
-        layer->inputs[i] = 0.0f;
+        layer->inputs[i] = 0.0F;
     }
 }
 
@@ -316,13 +316,13 @@ static void process_layer_II_III(layer_state_t* layer, float dt) {
 static void process_layer_IV(layer_state_t* layer) {
     if (!layer) return;
 
-    const float decay_rate = 0.9f;  // Activation persistence (90% retention per step)
+    const float decay_rate = 0.9F;  // Activation persistence (90% retention per step)
 
     // Compute normalization pool
     float sum_squares = compute_sum_squares(layer->inputs, layer->neuron_count);
 
     // Check if there's meaningful input
-    bool has_input = sum_squares > 1e-6f;
+    bool has_input = sum_squares > 1e-6F;
 
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         if (has_input) {
@@ -338,7 +338,7 @@ static void process_layer_IV(layer_state_t* layer) {
             layer->neurons[i] *= decay_rate;
         }
         layer->outputs[i] = layer->neurons[i];
-        layer->inputs[i] = 0.0f;
+        layer->inputs[i] = 0.0F;
     }
 }
 
@@ -350,23 +350,23 @@ static void process_layer_IV(layer_state_t* layer) {
 static void process_layer_V(layer_state_t* layer) {
     if (!layer) return;
 
-    const float integration_rate = 0.3f;  // Rate of input integration
-    const float decay_rate = 0.8f;        // Decay when no input
-    const float input_scale = 20.0f;      // Scale small inputs up
+    const float integration_rate = 0.3F;  // Rate of input integration
+    const float decay_rate = 0.8F;        // Decay when no input
+    const float input_scale = 20.0F;      // Scale small inputs up
 
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         float input = layer->inputs[i];
         float current = layer->neurons[i];
 
         // Integrate new input with existing state (scale small normalized values)
-        if (input > 1e-8f) {
+        if (input > 1e-8F) {
             // Has input: scale up and integrate
             float scaled_input = input * input_scale;
-            current = current * (1.0f - integration_rate) + scaled_input * integration_rate;
+            current = current * (1.0F - integration_rate) + scaled_input * integration_rate;
 
             // Threshold and burst
             if (current > BURST_THRESHOLD) {
-                current = 1.0f;  // Burst spike
+                current = 1.0F;  // Burst spike
             } else {
                 // Apply sigmoid to integrated value
                 current = sigmoid(current, SIGMOID_STEEPNESS);
@@ -378,7 +378,7 @@ static void process_layer_V(layer_state_t* layer) {
 
         layer->neurons[i] = current;
         layer->outputs[i] = current;
-        layer->inputs[i] = 0.0f;
+        layer->inputs[i] = 0.0F;
     }
 }
 
@@ -403,7 +403,7 @@ static void process_layer_VI(layer_state_t* layer,
         layer->neurons[i] = error;
         layer->outputs[i] = prediction_buffer[i];  // Send prediction
 
-        layer->inputs[i] = 0.0f;
+        layer->inputs[i] = 0.0F;
     }
 }
 
@@ -417,38 +417,38 @@ cortical_layer_config_t cortical_layer_get_default_config(cc_cortical_layer_t la
 
     switch (layer) {
         case CC_LAYER_I:
-            config.thickness_ratio = 0.05f;
+            config.thickness_ratio = 0.05F;
             config.neuron_density = 500;
-            config.excitatory_ratio = 0.60f;
-            config.default_connectivity = 0.10f;
+            config.excitatory_ratio = 0.60F;
+            config.default_connectivity = 0.10F;
             break;
 
         case CC_LAYER_II_III:
-            config.thickness_ratio = 0.40f;
+            config.thickness_ratio = 0.40F;
             config.neuron_density = 2000;
-            config.excitatory_ratio = 0.80f;
-            config.default_connectivity = 0.30f;
+            config.excitatory_ratio = 0.80F;
+            config.default_connectivity = 0.30F;
             break;
 
         case CC_LAYER_IV:
-            config.thickness_ratio = 0.15f;
+            config.thickness_ratio = 0.15F;
             config.neuron_density = 3000;
-            config.excitatory_ratio = 0.85f;
-            config.default_connectivity = 0.40f;
+            config.excitatory_ratio = 0.85F;
+            config.default_connectivity = 0.40F;
             break;
 
         case CC_LAYER_V:
-            config.thickness_ratio = 0.20f;
+            config.thickness_ratio = 0.20F;
             config.neuron_density = 1500;
-            config.excitatory_ratio = 0.75f;
-            config.default_connectivity = 0.25f;
+            config.excitatory_ratio = 0.75F;
+            config.default_connectivity = 0.25F;
             break;
 
         case CC_LAYER_VI:
-            config.thickness_ratio = 0.20f;
+            config.thickness_ratio = 0.20F;
             config.neuron_density = 1200;
-            config.excitatory_ratio = 0.70f;
-            config.default_connectivity = 0.20f;
+            config.excitatory_ratio = 0.70F;
+            config.default_connectivity = 0.20F;
             break;
 
         default:
@@ -468,16 +468,16 @@ void cortical_layer_set_config(cortical_layer_config_t* config,
     }
 
     // Validate and clamp parameters
-    if (config->thickness_ratio <= 0.0f || config->thickness_ratio > 1.0f) {
+    if (config->thickness_ratio <= 0.0F || config->thickness_ratio > 1.0F) {
         LOG_WARNING("Invalid thickness_ratio %f, clamping",
                    config->thickness_ratio);
-        config->thickness_ratio = (config->thickness_ratio <= 0.0f) ? 0.01f : 1.0f;
+        config->thickness_ratio = (config->thickness_ratio <= 0.0F) ? 0.01F : 1.0F;
     }
 
-    if (config->excitatory_ratio <= 0.0f || config->excitatory_ratio > 1.0f) {
+    if (config->excitatory_ratio <= 0.0F || config->excitatory_ratio > 1.0F) {
         LOG_WARNING("Invalid excitatory_ratio %f, clamping",
                    config->excitatory_ratio);
-        config->excitatory_ratio = (config->excitatory_ratio <= 0.0f) ? 0.5f : 1.0f;
+        config->excitatory_ratio = (config->excitatory_ratio <= 0.0F) ? 0.5F : 1.0F;
     }
 
     config->layer = layer;
@@ -638,7 +638,7 @@ void laminar_process_feedforward(laminar_structure_t* ls) {
 
     nimcp_platform_mutex_lock(&ls->mutex);
 
-    const float dt = 0.001f;  // 1ms timestep
+    const float dt = 0.001F;  // 1ms timestep
 
     // Process Layer IV (thalamic input)
     process_layer_IV(&ls->layers[CC_LAYER_IV]);
@@ -649,7 +649,7 @@ void laminar_process_feedforward(laminar_structure_t* ls) {
     uint32_t transfer_size = (layer4->neuron_count < layer23->neuron_count) ?
                             layer4->neuron_count : layer23->neuron_count;
     for (uint32_t i = 0; i < transfer_size; i++) {
-        layer23->inputs[i] += layer4->outputs[i] * 1.0f;  // Full strength
+        layer23->inputs[i] += layer4->outputs[i] * 1.0F;  // Full strength
     }
 
     // Process Layer II/III (recurrent integration)
@@ -660,7 +660,7 @@ void laminar_process_feedforward(laminar_structure_t* ls) {
     transfer_size = (layer23->neuron_count < layer5->neuron_count) ?
                    layer23->neuron_count : layer5->neuron_count;
     for (uint32_t i = 0; i < transfer_size; i++) {
-        layer5->inputs[i] += layer23->outputs[i] * 0.8f;  // Moderate strength
+        layer5->inputs[i] += layer23->outputs[i] * 0.8F;  // Moderate strength
     }
 
     // Process Layer V (output bursting)
@@ -693,7 +693,7 @@ void laminar_process_feedback(laminar_structure_t* ls) {
     uint32_t transfer_size = (layer6->neuron_count < layer4->neuron_count) ?
                             layer6->neuron_count : layer4->neuron_count;
     for (uint32_t i = 0; i < transfer_size; i++) {
-        layer4->inputs[i] += layer6->outputs[i] * 0.5f;  // Modulatory
+        layer4->inputs[i] += layer6->outputs[i] * 0.5F;  // Modulatory
     }
 
     // Layer I → Layer II/III (attentional modulation)
@@ -706,11 +706,11 @@ void laminar_process_feedback(laminar_structure_t* ls) {
                    layer1->neuron_count : layer23->neuron_count;
     for (uint32_t i = 0; i < transfer_size; i++) {
         // Multiplicative modulation (gain control)
-        layer23->inputs[i] *= (1.0f + layer1->outputs[i] * 0.4f);
+        layer23->inputs[i] *= (1.0F + layer1->outputs[i] * 0.4F);
     }
 
     // Process Layer II/III with the modulated inputs
-    const float dt = 0.001f;  // 1ms timestep
+    const float dt = 0.001F;  // 1ms timestep
     process_layer_II_III(layer23, dt);
 
     nimcp_platform_mutex_unlock(&ls->mutex);
@@ -732,7 +732,7 @@ void laminar_process_lateral(laminar_structure_t* ls) {
     for (uint32_t i = 1; i < layer23->neuron_count - 1; i++) {
         float left = layer23->neurons[i - 1];
         float right = layer23->neurons[i + 1];
-        layer23->inputs[i] += (left + right) * 0.1f;  // Weak lateral
+        layer23->inputs[i] += (left + right) * 0.1F;  // Weak lateral
     }
 
     nimcp_platform_mutex_unlock(&ls->mutex);
@@ -773,12 +773,12 @@ float laminar_get_layer_activation(laminar_structure_t* ls,
     // Guard clauses
     if (!ls) {
         LOG_ERROR("NULL laminar structure");
-        return 0.0f;
+        return 0.0F;
     }
 
     if (layer < 0 || layer >= CC_LAYER_COUNT) {
         LOG_ERROR("Invalid layer: %d", layer);
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock(&ls->mutex);
@@ -913,16 +913,16 @@ void laminar_apply_canonical_circuit(laminar_structure_t* ls) {
     LOG_INFO("Applying canonical microcircuit (Douglas & Martin 1991)");
 
     // Feedforward connections
-    laminar_connect_feedforward(ls, CC_LAYER_IV, CC_LAYER_II_III, 1.0f);
-    laminar_connect_feedforward(ls, CC_LAYER_II_III, CC_LAYER_V, 0.8f);
-    laminar_connect_feedforward(ls, CC_LAYER_V, CC_LAYER_VI, 0.7f);
+    laminar_connect_feedforward(ls, CC_LAYER_IV, CC_LAYER_II_III, 1.0F);
+    laminar_connect_feedforward(ls, CC_LAYER_II_III, CC_LAYER_V, 0.8F);
+    laminar_connect_feedforward(ls, CC_LAYER_V, CC_LAYER_VI, 0.7F);
 
     // Feedback connections
-    laminar_connect_feedback(ls, CC_LAYER_VI, CC_LAYER_IV, 0.5f);
-    laminar_connect_feedback(ls, CC_LAYER_I, CC_LAYER_II_III, 0.4f);
+    laminar_connect_feedback(ls, CC_LAYER_VI, CC_LAYER_IV, 0.5F);
+    laminar_connect_feedback(ls, CC_LAYER_I, CC_LAYER_II_III, 0.4F);
 
     // Recurrent connections within Layer II/III
-    laminar_connect_feedforward(ls, CC_LAYER_II_III, CC_LAYER_II_III, 0.6f);
+    laminar_connect_feedforward(ls, CC_LAYER_II_III, CC_LAYER_II_III, 0.6F);
 
     LOG_INFO("Canonical circuit applied: %u connections", ls->connection_count);
 }
@@ -946,14 +946,14 @@ void laminar_get_profile(laminar_structure_t* ls,
         profile->layer_activations[i] = ls->layers[i].mean_activation;
 
         // Compute mean input
-        float input_sum = 0.0f;
+        float input_sum = 0.0F;
         for (uint32_t j = 0; j < ls->layers[i].neuron_count; j++) {
             input_sum += ls->layers[i].inputs[j];
         }
         profile->layer_inputs[i] = input_sum / ls->layers[i].neuron_count;
 
         // Compute mean output
-        float output_sum = 0.0f;
+        float output_sum = 0.0F;
         for (uint32_t j = 0; j < ls->layers[i].neuron_count; j++) {
             output_sum += ls->layers[i].outputs[j];
         }

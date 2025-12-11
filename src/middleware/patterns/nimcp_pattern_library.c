@@ -66,7 +66,7 @@ static uint32_t hash_pattern_id(uint32_t id) {
 }
 
 static float compute_l2_distance(const float* a, const float* b, uint32_t dim) {
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         float diff = a[i] - b[i];
         sum += diff * diff;
@@ -75,9 +75,9 @@ static float compute_l2_distance(const float* a, const float* b, uint32_t dim) {
 }
 
 static float compute_cosine_similarity(const float* a, const float* b, uint32_t dim) {
-    float dot = 0.0f;
-    float norm_a = 0.0f;
-    float norm_b = 0.0f;
+    float dot = 0.0F;
+    float norm_a = 0.0F;
+    float norm_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         dot += a[i] * b[i];
@@ -88,8 +88,8 @@ static float compute_cosine_similarity(const float* a, const float* b, uint32_t 
     norm_a = sqrtf(norm_a);
     norm_b = sqrtf(norm_b);
 
-    if (norm_a < 1e-10f || norm_b < 1e-10f) {
-        return 0.0f;
+    if (norm_a < 1e-10F || norm_b < 1e-10F) {
+        return 0.0F;
     }
 
     return dot / (norm_a * norm_b);
@@ -97,8 +97,8 @@ static float compute_cosine_similarity(const float* a, const float* b, uint32_t 
 
 static float compute_correlation(const float* a, const float* b, uint32_t dim) {
     // Pearson correlation
-    float mean_a = 0.0f;
-    float mean_b = 0.0f;
+    float mean_a = 0.0F;
+    float mean_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         mean_a += a[i];
@@ -107,9 +107,9 @@ static float compute_correlation(const float* a, const float* b, uint32_t dim) {
     mean_a /= (float)dim;
     mean_b /= (float)dim;
 
-    float cov = 0.0f;
-    float var_a = 0.0f;
-    float var_b = 0.0f;
+    float cov = 0.0F;
+    float var_a = 0.0F;
+    float var_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         float da = a[i] - mean_a;
@@ -122,8 +122,8 @@ static float compute_correlation(const float* a, const float* b, uint32_t dim) {
     float std_a = sqrtf(var_a / (float)dim);
     float std_b = sqrtf(var_b / (float)dim);
 
-    if (std_a < 1e-10f || std_b < 1e-10f) {
-        return 0.0f;
+    if (std_a < 1e-10F || std_b < 1e-10F) {
+        return 0.0F;
     }
 
     return cov / (std_a * std_b * (float)dim);
@@ -135,14 +135,14 @@ static float compute_jaccard_similarity(const float* a, const float* b, uint32_t
     uint32_t union_count = 0;
 
     for (uint32_t i = 0; i < dim; i++) {
-        bool a_active = (a[i] > 0.5f);
-        bool b_active = (b[i] > 0.5f);
+        bool a_active = (a[i] > 0.5F);
+        bool b_active = (b[i] > 0.5F);
 
         if (a_active && b_active) intersection++;
         if (a_active || b_active) union_count++;
     }
 
-    if (union_count == 0) return 1.0f;
+    if (union_count == 0) return 1.0F;
 
     return (float)intersection / (float)union_count;
 }
@@ -153,12 +153,12 @@ static float compute_similarity(const pattern_library_t* library,
         case SIMILARITY_L2_DISTANCE: {
             float dist = compute_l2_distance(a, b, dim);
             // Convert distance to similarity [0, 1]
-            return 1.0f / (1.0f + dist);
+            return 1.0F / (1.0F + dist);
         }
         case SIMILARITY_COSINE:
             return compute_cosine_similarity(a, b, dim);
         case SIMILARITY_CORRELATION:
-            return (compute_correlation(a, b, dim) + 1.0f) / 2.0f;  // Map [-1,1] to [0,1]
+            return (compute_correlation(a, b, dim) + 1.0F) / 2.0F;  // Map [-1,1] to [0,1]
         case SIMILARITY_JACCARD:
             return compute_jaccard_similarity(a, b, dim);
         default:
@@ -204,7 +204,7 @@ pattern_library_config_t pattern_library_default_config(void) {
     config.enable_pruning = true;
     config.pruning_threshold = PATTERN_PRUNING_THRESHOLD;
     config.enable_incremental_learning = true;
-    config.learning_rate = 0.1f;
+    config.learning_rate = 0.1F;
     return config;
 }
 
@@ -311,7 +311,7 @@ bool pattern_library_add(pattern_library_t* library,
     node->pattern.pattern_id = library->next_pattern_id++;
     node->pattern.usage_count = 0;
     node->pattern.last_used_ms = 0;
-    node->pattern.avg_similarity = 0.0f;
+    node->pattern.avg_similarity = 0.0F;
 
     // Copy metadata if provided
     if (metadata && metadata_size > 0) {
@@ -349,7 +349,7 @@ bool pattern_library_match(pattern_library_t* library,
         return false;
     }
 
-    float best_similarity = -1.0f;
+    float best_similarity = -1.0F;
     uint32_t best_id = 0;
 
     // Search all patterns
@@ -377,16 +377,16 @@ bool pattern_library_match(pattern_library_t* library,
         best_node->pattern.usage_count++;
         best_node->pattern.last_used_ms++;  // Placeholder timestamp
 
-        float alpha = 0.1f;
+        float alpha = 0.1F;
         best_node->pattern.avg_similarity =
-            (1.0f - alpha) * best_node->pattern.avg_similarity + alpha * best_similarity;
+            (1.0F - alpha) * best_node->pattern.avg_similarity + alpha * best_similarity;
 
         // Incremental learning
         if (library->config.enable_incremental_learning) {
             float lr = library->config.learning_rate;
             for (uint32_t i = 0; i < dimension; i++) {
                 best_node->pattern.data[i] =
-                    (1.0f - lr) * best_node->pattern.data[i] + lr * data[i];
+                    (1.0F - lr) * best_node->pattern.data[i] + lr * data[i];
             }
             library->total_updates++;
         }
@@ -395,7 +395,7 @@ bool pattern_library_match(pattern_library_t* library,
     match->pattern_id = best_id;
     match->similarity = best_similarity;
     match->num_mismatches = 0;  // Would need element-wise comparison
-    match->is_exact = (best_similarity > 0.99f);
+    match->is_exact = (best_similarity > 0.99F);
 
     library->total_matches++;
 
@@ -458,7 +458,7 @@ bool pattern_library_knn(pattern_library_t* library,
         matches[i].pattern_id = all_sims[i].pattern_id;
         matches[i].similarity = all_sims[i].similarity;
         matches[i].num_mismatches = 0;
-        matches[i].is_exact = (all_sims[i].similarity > 0.99f);
+        matches[i].is_exact = (all_sims[i].similarity > 0.99F);
     }
 
     *num_found = num_to_return;
@@ -494,7 +494,7 @@ bool pattern_library_update(pattern_library_t* library,
 
     float lr = library->config.learning_rate;
     for (uint32_t i = 0; i < dimension; i++) {
-        node->pattern.data[i] = (1.0f - lr) * node->pattern.data[i] + lr * data[i];
+        node->pattern.data[i] = (1.0F - lr) * node->pattern.data[i] + lr * data[i];
     }
 
     library->total_updates++;
@@ -580,7 +580,7 @@ bool pattern_library_get_stats(const pattern_library_t* library,
             }
             *avg_dimension = (float)sum_dim / (float)library->num_patterns;
         } else {
-            *avg_dimension = 0.0f;
+            *avg_dimension = 0.0F;
         }
     }
 
@@ -604,7 +604,7 @@ float pattern_library_compute_similarity(const pattern_library_t* library,
                                          const float* pattern2,
                                          uint32_t dimension) {
     if (!library || !pattern1 || !pattern2 || dimension == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return compute_similarity(library, pattern1, pattern2, dimension);

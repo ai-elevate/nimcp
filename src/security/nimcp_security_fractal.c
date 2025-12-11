@@ -493,7 +493,7 @@ nimcp_result_t nimcp_fractal_security_compute_dimension(
     // D = log(N) / log(1/s) where N = count at scale s
 
     if (fsc->stats.total_nodes < 2) {
-        *dimension = 0.0f;
+        *dimension = 0.0F;
         nimcp_mutex_unlock(&fsc->lock);
         return NIMCP_SUCCESS;
     }
@@ -503,10 +503,10 @@ nimcp_result_t nimcp_fractal_security_compute_dimension(
     float n = (float)fsc->stats.total_nodes;
     float scale = (float)(fsc->stats.current_depth * fsc->config.branching_factor);
 
-    if (scale > 1.0f) {
+    if (scale > 1.0F) {
         *dimension = logf(n) / logf(scale);
     } else {
-        *dimension = 1.0f;
+        *dimension = 1.0F;
     }
 
     fsc->stats.measured_dimension = *dimension;
@@ -536,7 +536,7 @@ float nimcp_fractal_security_local_dimension(
     nimcp_fractal_security_t* fsc,
     nimcp_fsc_node_t* node
 ) {
-    if (!fsc || !node) return 0.0f;
+    if (!fsc || !node) return 0.0F;
     return compute_local_dimension(node);
 }
 
@@ -704,13 +704,13 @@ nimcp_result_t nimcp_fractal_security_propagate_trust(
 }
 
 static float compute_trust_recursive(nimcp_fsc_node_t* node) {
-    if (!node) return 0.0f;
+    if (!node) return 0.0F;
 
     if (node->num_children == 0) {
-        return node->verified ? 1.0f : 0.0f;
+        return node->verified ? 1.0F : 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < node->num_children; i++) {
         sum += compute_trust_recursive(node->children[i]);
     }
@@ -722,7 +722,7 @@ float nimcp_fractal_security_trust_level(
     nimcp_fractal_security_t* fsc,
     nimcp_fsc_node_t* node
 ) {
-    if (!fsc || !node) return 0.0f;
+    if (!fsc || !node) return 0.0F;
 
     nimcp_mutex_lock(&fsc->lock);
     float trust = compute_trust_recursive(node);
@@ -973,7 +973,7 @@ nimcp_result_t nimcp_fractal_security_register_coverage(
 float nimcp_fractal_security_coverage_contribution(
     nimcp_fractal_security_t* fsc
 ) {
-    if (!fsc || !fsc->initialized) return 0.0f;
+    if (!fsc || !fsc->initialized) return 0.0F;
 
     nimcp_fsc_stats_t stats;
     nimcp_fractal_security_get_stats(fsc, &stats);
@@ -1187,7 +1187,7 @@ static nimcp_fsc_node_t* find_insertion_point(nimcp_fractal_security_t* fsc) {
 
 static float compute_local_dimension(nimcp_fsc_node_t* node) {
     if (!node || node->num_children == 0) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Local dimension based on branching
@@ -1198,7 +1198,7 @@ static float compute_local_dimension(nimcp_fsc_node_t* node) {
         return logf(n) / logf(depth + 1);
     }
 
-    return 1.0f;
+    return 1.0F;
 }
 
 static bool verify_hash(nimcp_fsc_node_t* node) {

@@ -305,7 +305,7 @@ nimcp_network_serial_result_t nimcp_network_serialize(
         stats->num_synapses_serialized = total_synapses;
         stats->timestamp = (uint64_t)time(NULL);
         stats->compression_ratio = compress ?
-            (float)uncompressed_size / (float)stats->compressed_bytes : 1.0f;
+            (float)uncompressed_size / (float)stats->compressed_bytes : 1.0F;
     }
 
     return NIMCP_NETWORK_SERIAL_SUCCESS;
@@ -607,7 +607,7 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
         stats->num_neurons_serialized = num_neurons;
         stats->num_synapses_serialized = total_synapses;
         stats->timestamp = (uint64_t)time(NULL);
-        stats->compression_ratio = 1.0f;
+        stats->compression_ratio = 1.0F;
     }
 
     *network_out = network;

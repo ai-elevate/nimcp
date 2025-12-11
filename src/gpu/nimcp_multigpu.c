@@ -128,8 +128,8 @@ static void init_mock_device_info(multigpu_device_info_t* info, int device_id)
     info->multiprocessor_count = 68;
     info->max_threads_per_block = 1024;
     info->peer_access_available = true;  // Mock always supports P2P
-    info->compute_utilization = 0.0f;
-    info->memory_utilization = 0.125f;  // 1 GB / 8 GB = 12.5%
+    info->compute_utilization = 0.0F;
+    info->memory_utilization = 0.125F;  // 1 GB / 8 GB = 12.5%
 }
 
 /**
@@ -436,7 +436,7 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
         // Initialize performance tracking
         dev->operations_executed = 0;
         dev->total_time_ms = 0.0;
-        dev->current_utilization = 0.0f;
+        dev->current_utilization = 0.0F;
     }
 
     // Setup P2P access if enabled
@@ -715,8 +715,8 @@ bool multigpu_rebalance_work(multigpu_context_t ctx)
     }
 
     // Calculate utilization imbalance
-    float min_util = 1.0f;
-    float max_util = 0.0f;
+    float min_util = 1.0F;
+    float max_util = 0.0F;
 
     for (uint32_t i = 0; i < ctx->num_devices; i++) {
         float util = ctx->devices[i].current_utilization;
@@ -1069,9 +1069,9 @@ bool multigpu_get_performance_stats(multigpu_context_t ctx,
 
     uint64_t ops_sum = 0;
     double time_max = 0.0;  // Wall-clock time is max, not sum
-    float util_sum = 0.0f;
-    float util_min = 1.0f;
-    float util_max = 0.0f;
+    float util_sum = 0.0F;
+    float util_min = 1.0F;
+    float util_max = 0.0F;
 
     for (uint32_t i = 0; i < ctx->num_devices; i++) {
         device_context_t* dev = &ctx->devices[i];
@@ -1172,7 +1172,7 @@ multigpu_config_t multigpu_default_config(void)
 
     // Load balancing
     config.loadbalance_interval = 100;
-    config.imbalance_threshold = 0.15f;  // 15%
+    config.imbalance_threshold = 0.15F;  // 15%
     config.enable_work_stealing = false;
 
     // Monitoring
@@ -1196,10 +1196,10 @@ multigpu_config_t multigpu_get_optimal_config(uint32_t num_neurons,
     // Choose partition strategy based on network shape
     float depth_to_width = (float)num_layers / (float)num_neurons;
 
-    if (depth_to_width > 0.001f) {
+    if (depth_to_width > 0.001F) {
         // Deep network: Layer partition
         config.partition_strategy = MULTIGPU_PARTITION_LAYER;
-    } else if (depth_to_width < 0.0001f) {
+    } else if (depth_to_width < 0.0001F) {
         // Wide network: Neuron partition
         config.partition_strategy = MULTIGPU_PARTITION_NEURON;
     } else {

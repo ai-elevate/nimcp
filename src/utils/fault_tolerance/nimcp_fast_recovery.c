@@ -107,7 +107,7 @@ static fast_recovery_status_t action_clear_nan(brain_t brain)
         float* activations = b->cached_decision->output_vector;
         for (uint32_t i = 0; i < b->cached_decision->output_size && i < 1000; i++) {
             if (isnan(activations[i]) || isinf(activations[i])) {
-                activations[i] = 0.0f;
+                activations[i] = 0.0F;
                 cleared_count++;
             }
         }
@@ -117,7 +117,7 @@ static fast_recovery_status_t action_clear_nan(brain_t brain)
     if (b->last_input && b->input_size > 0) {
         for (uint32_t i = 0; i < b->input_size; i++) {
             if (isnan(b->last_input[i]) || isinf(b->last_input[i])) {
-                b->last_input[i] = 0.0f;
+                b->last_input[i] = 0.0F;
                 cleared_count++;
             }
         }
@@ -126,7 +126,7 @@ static fast_recovery_status_t action_clear_nan(brain_t brain)
     // Clear loss history if needed
     for (uint32_t i = 0; i < b->loss_history_count; i++) {
         if (isnan(b->loss_history[i]) || isinf(b->loss_history[i])) {
-            b->loss_history[i] = 0.0f;
+            b->loss_history[i] = 0.0F;
             cleared_count++;
         }
     }
@@ -154,7 +154,7 @@ static fast_recovery_status_t action_clip_gradients(brain_t brain)
 
     // Access brain internal structure for gradient-related state
     brain_struct_t* b = (brain_struct_t*)brain;
-    const float clip_threshold = 5.0f;
+    const float clip_threshold = 5.0F;
     uint32_t clipped_count = 0;
 
     // Clip loss history values (reflect gradient magnitude during training)
@@ -172,17 +172,17 @@ static fast_recovery_status_t action_clip_gradients(brain_t brain)
 
         // Also handle NaN as max clipped value
         if (isnan(old_val) || isinf(old_val)) {
-            b->loss_history[i] = clip_threshold * 0.5f;  // Mid-range safe value
+            b->loss_history[i] = clip_threshold * 0.5F;  // Mid-range safe value
             clipped_count++;
         }
     }
 
     // Clip learning rate adjustment to safe bounds
-    if (b->base_learning_rate > 1.0f) {
-        b->base_learning_rate = 1.0f;
+    if (b->base_learning_rate > 1.0F) {
+        b->base_learning_rate = 1.0F;
         clipped_count++;
-    } else if (b->base_learning_rate < 0.00001f && b->base_learning_rate > 0.0f) {
-        b->base_learning_rate = 0.00001f;
+    } else if (b->base_learning_rate < 0.00001F && b->base_learning_rate > 0.0F) {
+        b->base_learning_rate = 0.00001F;
         clipped_count++;
     }
 
@@ -323,12 +323,12 @@ static fast_recovery_status_t action_reset_state(brain_t brain)
     reset_fields += 3;
 
     // Reset base learning rate to default (0.001)
-    b->base_learning_rate = 0.001f;
+    b->base_learning_rate = 0.001F;
     reset_fields++;
 
     // Reset curiosity-driven learning state
-    b->last_curiosity_drive = 0.0f;
-    b->last_novelty_score = 0.0f;
+    b->last_curiosity_drive = 0.0F;
+    b->last_novelty_score = 0.0F;
     reset_fields += 2;
 
     // Invalidate cached decision (set as stale)
@@ -655,21 +655,21 @@ float fast_recovery_get_hit_rate(void)
     uint64_t total = hits + misses;
 
     if (total == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    return (float)hits * 100.0f / (float)total;
+    return (float)hits * 100.0F / (float)total;
 }
 
 float fast_recovery_get_success_rate(void)
 {
     uint64_t hits = __atomic_load_n(&g_stats.fast_hits, __ATOMIC_RELAXED);
     if (hits == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint64_t successes = __atomic_load_n(&g_stats.successful_recoveries, __ATOMIC_RELAXED);
-    return (float)successes * 100.0f / (float)hits;
+    return (float)successes * 100.0F / (float)hits;
 }
 
 //=============================================================================

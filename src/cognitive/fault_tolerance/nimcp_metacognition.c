@@ -176,7 +176,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
     // WHAT: Initialize self-awareness metrics
     // WHY: Start with moderate confidence and low uncertainty
     meta->self_confidence = METACOGNITION_DEFAULT_CONFIDENCE;
-    meta->uncertainty = 0.5f;  // Moderate uncertainty initially
+    meta->uncertainty = 0.5F;  // Moderate uncertainty initially
 
     // Mark as initialized
     meta->initialized = true;
@@ -304,16 +304,16 @@ bool metacognition_monitor_self(
 
     // WHAT: Adjust confidence based on health
     // WHY: Lower confidence when degraded
-    if (baseline_valid && meta->current_health.overall_health < 0.7f) {
+    if (baseline_valid && meta->current_health.overall_health < 0.7F) {
         // Degraded performance lowers confidence
-        meta->self_confidence *= 0.95f;  // Gradual decrease
-    } else if (meta->current_health.overall_health > 0.9f) {
+        meta->self_confidence *= 0.95F;  // Gradual decrease
+    } else if (meta->current_health.overall_health > 0.9F) {
         // Good performance increases confidence
-        meta->self_confidence = fminf(1.0f, meta->self_confidence * 1.02f);
+        meta->self_confidence = fminf(1.0F, meta->self_confidence * 1.02F);
     }
 
     // Ensure confidence stays in valid range
-    meta->self_confidence = fmaxf(0.0f, fminf(1.0f, meta->self_confidence));
+    meta->self_confidence = fmaxf(0.0F, fminf(1.0F, meta->self_confidence));
 
     if (meta->config.enable_logging && (meta->total_samples % 100 == 0)) {
         LOG_DEBUG("Metacognition: samples=%lu, health=%.2f, confidence=%.2f, uncertainty=%.2f",
@@ -336,7 +336,7 @@ bool metacognition_is_degraded(
     }
 
     // GUARD: Invalid threshold
-    if (threshold < 0.0f || threshold > 1.0f) {
+    if (threshold < 0.0F || threshold > 1.0F) {
         LOG_WARNING("Invalid degradation threshold %.2f, expected [0,1]", threshold);
         return false;
     }
@@ -399,7 +399,7 @@ float metacognition_calibrate_confidence(
     }
 
     // GUARD: Clamp initial confidence
-    initial_confidence = fmaxf(0.0f, fminf(1.0f, initial_confidence));
+    initial_confidence = fmaxf(0.0F, fminf(1.0F, initial_confidence));
 
     float learning_rate = meta->config.confidence_learning_rate;
     float new_confidence;
@@ -408,7 +408,7 @@ float metacognition_calibrate_confidence(
         // WHAT: Increase confidence on success
         // WHY: Reward prediction error (positive)
         // HOW: confidence += lr * (1 - confidence)
-        new_confidence = initial_confidence + learning_rate * (1.0f - initial_confidence);
+        new_confidence = initial_confidence + learning_rate * (1.0F - initial_confidence);
     } else {
         // WHAT: Decrease confidence on failure
         // WHY: Negative reward prediction error
@@ -418,7 +418,7 @@ float metacognition_calibrate_confidence(
 
     // WHAT: Clamp to valid range
     // WHY: Prevent overflow/underflow
-    new_confidence = fmaxf(0.0f, fminf(1.0f, new_confidence));
+    new_confidence = fmaxf(0.0F, fminf(1.0F, new_confidence));
 
     // Update internal confidence
     meta->self_confidence = new_confidence;
@@ -432,14 +432,14 @@ float metacognition_calibrate_confidence(
 
 float metacognition_get_self_confidence(const metacognition_t* meta) {
     if (!meta) {
-        return 0.0f;
+        return 0.0F;
     }
     return meta->self_confidence;
 }
 
 float metacognition_get_uncertainty(const metacognition_t* meta) {
     if (!meta) {
-        return 0.0f;
+        return 0.0F;
     }
     return meta->uncertainty;
 }
@@ -453,7 +453,7 @@ bool metacognition_has_high_uncertainty(
     }
 
     // Clamp threshold
-    threshold = fmaxf(0.0f, fminf(1.0f, threshold));
+    threshold = fmaxf(0.0F, fminf(1.0F, threshold));
 
     return meta->uncertainty > threshold;
 }
@@ -553,11 +553,11 @@ void metacognition_reset_for_testing(metacognition_t* meta) {
 
     // Reset awareness
     meta->self_confidence = METACOGNITION_DEFAULT_CONFIDENCE;
-    meta->uncertainty = 0.5f;
+    meta->uncertainty = 0.5F;
 
     // Reset detector
     if (meta->detector) {
-        meta->detector->current_deviation = 0.0f;
+        meta->detector->current_deviation = 0.0F;
         meta->detector->anomaly_count = 0;
         meta->detector->last_anomaly_time = 0;
     }
@@ -659,11 +659,11 @@ static bool baseline_window_compute_baseline(
     // WHY: Baseline = average performance
     // HOW: Sum and divide
 
-    float sum_reasoning = 0.0f;
-    float sum_memory = 0.0f;
-    float sum_decision = 0.0f;
-    float sum_learning = 0.0f;
-    float sum_attention = 0.0f;
+    float sum_reasoning = 0.0F;
+    float sum_memory = 0.0F;
+    float sum_decision = 0.0F;
+    float sum_learning = 0.0F;
+    float sum_attention = 0.0F;
 
     for (uint32_t i = 0; i < window->count; i++) {
         sum_reasoning += window->samples[i].reasoning_speed;
@@ -710,7 +710,7 @@ static void anomaly_detector_update(anomaly_detector_t* detector, float deviatio
 
     // WHAT: Track consecutive anomalies
     // WHY: Persistent degradation more serious than transient
-    if (deviation > 0.3f) {  // 30% deviation threshold
+    if (deviation > 0.3F) {  // 30% deviation threshold
         detector->anomaly_count++;
         detector->last_anomaly_time = get_current_time_us();
     } else {
@@ -724,24 +724,24 @@ static void anomaly_detector_update(anomaly_detector_t* detector, float deviatio
 
 static float compute_overall_health(const cognitive_state_t* state) {
     if (!state) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // WHAT: Weighted average of all metrics
     // WHY: Single health score for quick assessment
     // HOW: Equal weights for simplicity
 
-    float health = 0.0f;
-    health += state->reasoning_speed / 5.0f;  // Normalize assuming max ~5x baseline
+    float health = 0.0F;
+    health += state->reasoning_speed / 5.0F;  // Normalize assuming max ~5x baseline
     health += state->memory_recall_accuracy;
     health += state->decision_quality;
     health += state->learning_rate_actual;
     health += state->attention_focus;
 
-    health /= 5.0f;  // Average
+    health /= 5.0F;  // Average
 
     // Clamp to [0, 1]
-    return fmaxf(0.0f, fminf(1.0f, health));
+    return fmaxf(0.0F, fminf(1.0F, health));
 }
 
 static float compute_deviation(
@@ -749,7 +749,7 @@ static float compute_deviation(
     const performance_baseline_t* baseline
 ) {
     if (!current || !baseline) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // WHAT: Compute normalized deviation from baseline
@@ -757,20 +757,20 @@ static float compute_deviation(
     // HOW: Average relative difference
 
     float dev_reasoning = fabsf(current->reasoning_speed - baseline->reasoning_speed) /
-                          fmaxf(baseline->reasoning_speed, 0.01f);
+                          fmaxf(baseline->reasoning_speed, 0.01F);
     float dev_memory = fabsf(current->memory_recall_accuracy - baseline->memory_recall_accuracy);
     float dev_decision = fabsf(current->decision_quality - baseline->decision_quality);
     float dev_learning = fabsf(current->learning_rate_actual - baseline->learning_rate_actual);
     float dev_attention = fabsf(current->attention_focus - baseline->attention_focus);
 
-    float avg_deviation = (dev_reasoning + dev_memory + dev_decision + dev_learning + dev_attention) / 5.0f;
+    float avg_deviation = (dev_reasoning + dev_memory + dev_decision + dev_learning + dev_attention) / 5.0F;
 
     return avg_deviation;
 }
 
 static float compute_uncertainty_from_variance(const baseline_window_t* window) {
     if (!window || window->count < 2) {
-        return 0.5f;  // Moderate uncertainty if insufficient data
+        return 0.5F;  // Moderate uncertainty if insufficient data
     }
 
     // WHAT: Compute variance across recent samples
@@ -778,14 +778,14 @@ static float compute_uncertainty_from_variance(const baseline_window_t* window) 
     // HOW: Standard deviation normalized
 
     // Compute means
-    float mean_reasoning = 0.0f;
+    float mean_reasoning = 0.0F;
     for (uint32_t i = 0; i < window->count; i++) {
         mean_reasoning += window->samples[i].reasoning_speed;
     }
     mean_reasoning /= window->count;
 
     // Compute variance
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < window->count; i++) {
         float diff = window->samples[i].reasoning_speed - mean_reasoning;
         variance += diff * diff;
@@ -795,7 +795,7 @@ static float compute_uncertainty_from_variance(const baseline_window_t* window) 
     float std_dev = sqrtf(variance);
 
     // Normalize to [0, 1] (assume std_dev < 2.0 is reasonable)
-    float uncertainty = fminf(1.0f, std_dev / 2.0f);
+    float uncertainty = fminf(1.0F, std_dev / 2.0F);
 
     return uncertainty;
 }
@@ -813,7 +813,7 @@ static diagnosis_t* create_diagnosis(const metacognition_t* meta) {
 
 static void populate_diagnosis_healthy(diagnosis_t* diagnosis) {
     diagnosis->primary_issue = DIAGNOSIS_HEALTHY;
-    diagnosis->severity = 0.0f;
+    diagnosis->severity = 0.0F;
     diagnosis->has_memory_issues = false;
     diagnosis->has_attention_issues = false;
     diagnosis->has_reasoning_issues = false;
@@ -835,13 +835,13 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
 
     int issue_count = 0;
     diagnosis_type_t primary = DIAGNOSIS_UNKNOWN;
-    float max_severity = 0.0f;
+    float max_severity = 0.0F;
 
     // Check reasoning speed
-    if (health->reasoning_speed < baseline->reasoning_speed * 0.7f) {
+    if (health->reasoning_speed < baseline->reasoning_speed * 0.7F) {
         diagnosis->has_reasoning_issues = true;
         issue_count++;
-        float severity = 1.0f - (health->reasoning_speed / baseline->reasoning_speed);
+        float severity = 1.0F - (health->reasoning_speed / baseline->reasoning_speed);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_COGNITIVE_SLOWDOWN;
@@ -849,10 +849,10 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     }
 
     // Check memory
-    if (health->memory_recall_accuracy < 0.8f) {
+    if (health->memory_recall_accuracy < 0.8F) {
         diagnosis->has_memory_issues = true;
         issue_count++;
-        float severity = 1.0f - health->memory_recall_accuracy;
+        float severity = 1.0F - health->memory_recall_accuracy;
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_MEMORY_CORRUPTION;
@@ -860,9 +860,9 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     }
 
     // Check decision quality
-    if (health->decision_quality < baseline->decision_quality * 0.7f) {
+    if (health->decision_quality < baseline->decision_quality * 0.7F) {
         issue_count++;
-        float severity = 1.0f - (health->decision_quality / baseline->decision_quality);
+        float severity = 1.0F - (health->decision_quality / baseline->decision_quality);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_DECISION_QUALITY_LOW;
@@ -870,10 +870,10 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     }
 
     // Check learning
-    if (health->learning_rate_actual < baseline->learning_rate_actual * 0.7f) {
+    if (health->learning_rate_actual < baseline->learning_rate_actual * 0.7F) {
         diagnosis->has_learning_issues = true;
         issue_count++;
-        float severity = 1.0f - (health->learning_rate_actual / baseline->learning_rate_actual);
+        float severity = 1.0F - (health->learning_rate_actual / baseline->learning_rate_actual);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_LEARNING_IMPAIRED;
@@ -881,10 +881,10 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     }
 
     // Check attention
-    if (health->attention_focus < baseline->attention_focus * 0.7f) {
+    if (health->attention_focus < baseline->attention_focus * 0.7F) {
         diagnosis->has_attention_issues = true;
         issue_count++;
-        float severity = 1.0f - (health->attention_focus / baseline->attention_focus);
+        float severity = 1.0F - (health->attention_focus / baseline->attention_focus);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_ATTENTION_DEFICIT;
@@ -901,8 +901,8 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     diagnosis->severity = max_severity;
 
     // Recommendations
-    diagnosis->recommend_recovery = (max_severity > 0.5f);
-    diagnosis->recommend_help = (meta->uncertainty > 0.7f || max_severity > 0.7f);
+    diagnosis->recommend_recovery = (max_severity > 0.5F);
+    diagnosis->recommend_help = (meta->uncertainty > 0.7F || max_severity > 0.7F);
     diagnosis->recommend_rest = (issue_count >= 3);
 
     // Description

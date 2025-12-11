@@ -213,12 +213,12 @@ struct curiosity_engine_struct {
  */
 static float infant_learning_potential(const char* concept_str, float gap_size)
 {
-    return 0.9f;  // Everything is exciting and worth learning
+    return 0.9F;  // Everything is exciting and worth learning
 }
 
 static float infant_baseline_curiosity(void)
 {
-    return 0.95f;
+    return 0.95F;
 }
 
 static uint32_t infant_question_types_count(void)
@@ -254,13 +254,13 @@ static const learning_stage_strategy_t infant_strategy = {
 static float toddler_learning_potential(const char* concept_str, float gap_size)
 {
     size_t len = strlen(concept_str);
-    float simplicity_bonus = (len < 15) ? 1.0f : 0.5f;
-    return 0.8f * simplicity_bonus;
+    float simplicity_bonus = (len < 15) ? 1.0F : 0.5F;
+    return 0.8F * simplicity_bonus;
 }
 
 static float toddler_baseline_curiosity(void)
 {
-    return 0.90f;
+    return 0.90F;
 }
 
 static uint32_t toddler_question_types_count(void)
@@ -296,12 +296,12 @@ static const learning_stage_strategy_t toddler_strategy = {
  */
 static float child_learning_potential(const char* concept_str, float gap_size)
 {
-    return 0.7f + 0.3f * gap_size;  // Scales with gap/curiosity
+    return 0.7F + 0.3F * gap_size;  // Scales with gap/curiosity
 }
 
 static float child_baseline_curiosity(void)
 {
-    return 0.80f;
+    return 0.80F;
 }
 
 static uint32_t child_question_types_count(void)
@@ -330,12 +330,12 @@ static const learning_stage_strategy_t child_strategy = {
 
 static float adolescent_learning_potential(const char* concept_str, float gap_size)
 {
-    return 0.6f + 0.4f * gap_size;
+    return 0.6F + 0.4F * gap_size;
 }
 
 static float adolescent_baseline_curiosity(void)
 {
-    return 0.70f;
+    return 0.70F;
 }
 
 static uint32_t adolescent_question_types_count(void)
@@ -360,12 +360,12 @@ static const learning_stage_strategy_t adolescent_strategy = {
 
 static float adult_learning_potential(const char* concept_str, float gap_size)
 {
-    return 0.5f + 0.5f * gap_size;  // More selective
+    return 0.5F + 0.5F * gap_size;  // More selective
 }
 
 static float adult_baseline_curiosity(void)
 {
-    return 0.60f;
+    return 0.60F;
 }
 
 static uint32_t adult_question_types_count(void)
@@ -390,12 +390,12 @@ static const learning_stage_strategy_t adult_strategy = {
 
 static float expert_learning_potential(const char* concept_str, float gap_size)
 {
-    return 0.4f + 0.6f * gap_size;  // Only interested in significant gaps
+    return 0.4F + 0.6F * gap_size;  // Only interested in significant gaps
 }
 
 static float expert_baseline_curiosity(void)
 {
-    return 0.50f;
+    return 0.50F;
 }
 
 static uint32_t expert_question_types_count(void)
@@ -455,8 +455,8 @@ static void generate_what_question(const char* topic, char* question, size_t max
                                    float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "What is %s?", topic);
-    *priority_multiplier = 1.0f;
-    *difficulty = 0.3f;
+    *priority_multiplier = 1.0F;
+    *difficulty = 0.3F;
 }
 
 /**
@@ -471,8 +471,8 @@ static void generate_why_question(const char* topic, char* question, size_t max_
                                   float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Why does %s happen?", topic);
-    *priority_multiplier = 0.9f;
-    *difficulty = 0.6f;
+    *priority_multiplier = 0.9F;
+    *difficulty = 0.6F;
 }
 
 /**
@@ -487,8 +487,8 @@ static void generate_how_question(const char* topic, char* question, size_t max_
                                   float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "How does %s work?", topic);
-    *priority_multiplier = 0.8f;
-    *difficulty = 0.7f;
+    *priority_multiplier = 0.8F;
+    *difficulty = 0.7F;
 }
 
 /**
@@ -502,8 +502,8 @@ static void generate_where_question(const char* topic, char* question, size_t ma
                                     float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Where is %s?", topic);
-    *priority_multiplier = 0.6f;
-    *difficulty = 0.4f;
+    *priority_multiplier = 0.6F;
+    *difficulty = 0.4F;
 }
 
 /**
@@ -517,8 +517,8 @@ static void generate_when_question(const char* topic, char* question, size_t max
                                    float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "When did %s happen?", topic);
-    *priority_multiplier = 0.7f;
-    *difficulty = 0.5f;
+    *priority_multiplier = 0.7F;
+    *difficulty = 0.5F;
 }
 
 /**
@@ -532,8 +532,8 @@ static void generate_who_question(const char* topic, char* question, size_t max_
                                   float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Who is involved with %s?", topic);
-    *priority_multiplier = 0.7f;
-    *difficulty = 0.5f;
+    *priority_multiplier = 0.7F;
+    *difficulty = 0.5F;
 }
 
 /**
@@ -548,8 +548,8 @@ static void generate_which_question(const char* topic, char* question, size_t ma
                                     float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Which type of %s?", topic);
-    *priority_multiplier = 0.5f;
-    *difficulty = 0.6f;
+    *priority_multiplier = 0.5F;
+    *difficulty = 0.6F;
 }
 
 //=============================================================================
@@ -565,13 +565,13 @@ static void generate_which_question(const char* topic, char* question, size_t ma
  * Complexity: O(1) lookup
  */
 static const question_strategy_t question_strategies[] = {
-    {QUESTION_WHAT, generate_what_question, 1.0f, 0.3f},
-    {QUESTION_WHY, generate_why_question, 0.9f, 0.6f},
-    {QUESTION_HOW, generate_how_question, 0.8f, 0.7f},
-    {QUESTION_WHERE, generate_where_question, 0.6f, 0.4f},
-    {QUESTION_WHEN, generate_when_question, 0.7f, 0.5f},
-    {QUESTION_WHO, generate_who_question, 0.7f, 0.5f},
-    {QUESTION_WHICH, generate_which_question, 0.5f, 0.6f}};
+    {QUESTION_WHAT, generate_what_question, 1.0F, 0.3F},
+    {QUESTION_WHY, generate_why_question, 0.9F, 0.6F},
+    {QUESTION_HOW, generate_how_question, 0.8F, 0.7F},
+    {QUESTION_WHERE, generate_where_question, 0.6F, 0.4F},
+    {QUESTION_WHEN, generate_when_question, 0.7F, 0.5F},
+    {QUESTION_WHO, generate_who_question, 0.7F, 0.5F},
+    {QUESTION_WHICH, generate_which_question, 0.5F, 0.6F}};
 
 static const size_t num_question_strategies =
     sizeof(question_strategies) / sizeof(question_strategies[0]);
@@ -671,7 +671,7 @@ static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, co
     // Create new bucket
     concept_bucket_t new_bucket = {0};
     strncpy(new_bucket.concept, concept_str, sizeof(new_bucket.concept) - 1);
-    new_bucket.familiarity = 0.0f;
+    new_bucket.familiarity = 0.0F;
     new_bucket.exposure_count = 1;
     new_bucket.last_encountered = 0;
     new_bucket.related_concepts = NULL;
@@ -730,7 +730,7 @@ static void bio_broadcast_curiosity_spike(curiosity_engine_t engine,
     msg.target_id = target_id;
     msg.curiosity_intensity = intensity;
     msg.information_gain_estimate = information_gain;
-    msg.exploration_bonus = intensity * 0.5f;
+    msg.exploration_bonus = intensity * 0.5F;
 
     bio_router_broadcast(engine->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG("Broadcast curiosity spike: intensity=%.2f, info_gain=%.2f",
@@ -821,12 +821,12 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     }
 
     // Initialize gap detector state (replaces brain)
-    engine->gap_detector_state.last_novelty_score = 0.0f;
-    engine->gap_detector_state.last_gap_size = 0.0f;
+    engine->gap_detector_state.last_novelty_score = 0.0F;
+    engine->gap_detector_state.last_gap_size = 0.0F;
 
     // Initialize question prioritizer state (replaces brain)
-    engine->question_prioritizer_state.last_priority = 0.5f;
-    engine->question_prioritizer_state.last_difficulty = 0.5f;
+    engine->question_prioritizer_state.last_priority = 0.5F;
+    engine->question_prioritizer_state.last_difficulty = 0.5F;
 
     // Initialize with infant stage
     engine->stage = STAGE_INFANT;
@@ -933,12 +933,12 @@ static float calculate_curiosity_intensity(const curiosity_engine_t engine, floa
             // Dopamine range [0.3, 0.7], map to modulation [0.6, 1.4]
             // Low DA (0.3) → 0.6× curiosity (apathy, depression)
             // High DA (0.7) → 1.4× curiosity (motivated, manic)
-            float modulation = 0.6f + (dopamine - 0.3f) * 2.0f;
+            float modulation = 0.6F + (dopamine - 0.3F) * 2.0F;
             base_intensity *= modulation;
         }
     }
 
-    return fminf(base_intensity, 1.0f);  // Clamp to [0, 1]
+    return fminf(base_intensity, 1.0F);  // Clamp to [0, 1]
 }
 
 /**
@@ -956,12 +956,12 @@ static float calculate_curiosity_intensity(const curiosity_engine_t engine, floa
 float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept_str)
 {
     if (!engine || !concept_str) {
-        return 0.0f;
+        return 0.0F;
     }
 
     concept_bucket_t* bucket = find_concept_bucket(engine, concept_str);
     if (!bucket) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return bucket->familiarity;
@@ -1007,7 +1007,7 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
     strncpy(gap.topic, concept_str, sizeof(gap.topic) - 1);
 
     float familiarity = curiosity_check_familiarity(engine, concept_str);
-    gap.gap_size = 1.0f - familiarity;
+    gap.gap_size = 1.0F - familiarity;
     gap.curiosity_intensity = calculate_curiosity_intensity(engine, gap.gap_size);
 
     // Use stage strategy for learning potential
@@ -1019,20 +1019,20 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
     // INTEGRATION: Network topology analysis on high novelty
     // When curiosity detects novel pattern, trigger community re-detection
     // This allows us to see if brain is forming new functional modules
-    if (engine->network_analyzer && gap.gap_size > 0.7f) {
+    if (engine->network_analyzer && gap.gap_size > 0.7F) {
         // High novelty - analyze network topology
         if (network_analyzer_run(engine->network_analyzer)) {
             // Check if new community emerged
             if (network_analyzer_check_new_community(engine->network_analyzer)) {
                 // Novel pattern triggered functional reorganization!
                 // This is a sign of meaningful learning
-                gap.learning_potential *= 1.2f;  // Boost learning potential
+                gap.learning_potential *= 1.2F;  // Boost learning potential
             }
         }
     }
 
     // Broadcast high-curiosity events via bio-async
-    if (gap.curiosity_intensity > 0.7f) {
+    if (gap.curiosity_intensity > 0.7F) {
         bio_broadcast_curiosity_spike(engine, gap.curiosity_intensity,
                                       gap.learning_potential, 0);
     }
@@ -1106,8 +1106,8 @@ static bool generate_single_question(const knowledge_gap_t* gap, question_type_t
     memset(output, 0, sizeof(generated_question_t));
     output->type = type;
 
-    float priority_mult = 0.0f;
-    float difficulty = 0.0f;
+    float priority_mult = 0.0F;
+    float difficulty = 0.0F;
 
     strategy->generator(gap->topic, output->question, sizeof(output->question), &priority_mult,
                         &difficulty);
@@ -1190,9 +1190,9 @@ const char* curiosity_generate_followup(curiosity_engine_t engine, const char* p
  */
 static float calculate_overall_motivation(const motivation_state_t* state)
 {
-    return (state->intrinsic_curiosity * 0.4f + state->goal_relevance * 0.2f +
-            state->social_importance * 0.1f + state->survival_value * 0.2f +
-            state->aesthetic_appeal * 0.1f);
+    return (state->intrinsic_curiosity * 0.4F + state->goal_relevance * 0.2F +
+            state->social_importance * 0.1F + state->survival_value * 0.2F +
+            state->aesthetic_appeal * 0.1F);
 }
 
 /**
@@ -1204,7 +1204,7 @@ static float calculate_overall_motivation(const motivation_state_t* state)
  */
 static float calculate_aesthetic_appeal(float familiarity)
 {
-    return (1.0f - familiarity) * 0.8f;
+    return (1.0F - familiarity) * 0.8F;
 }
 
 /**
@@ -1239,13 +1239,13 @@ motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const 
         if (neuromod) {
             float dopamine = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
             // Dopamine amplifies intrinsic curiosity
-            state.intrinsic_curiosity *= (0.5f + dopamine);  // 0.8-1.2× modulation
+            state.intrinsic_curiosity *= (0.5F + dopamine);  // 0.8-1.2× modulation
         }
     }
 
-    state.goal_relevance = 0.3f;     // Simplified - would check actual goals
-    state.social_importance = 0.4f;  // Simplified - would check social context
-    state.survival_value = 0.1f;     // Most concepts have low survival value
+    state.goal_relevance = 0.3F;     // Simplified - would check actual goals
+    state.social_importance = 0.4F;  // Simplified - would check social context
+    state.survival_value = 0.1F;     // Most concepts have low survival value
 
     float familiarity = curiosity_check_familiarity(engine, concept_str);
     state.aesthetic_appeal = calculate_aesthetic_appeal(familiarity);
@@ -1267,7 +1267,7 @@ void curiosity_set_baseline(curiosity_engine_t engine, float level)
         return;
     }
 
-    engine->baseline_curiosity = fminf(fmaxf(level, 0.0f), 1.0f);
+    engine->baseline_curiosity = fminf(fmaxf(level, 0.0F), 1.0F);
     engine->current_motivation = engine->baseline_curiosity;
 }
 
@@ -1281,7 +1281,7 @@ void curiosity_set_baseline(curiosity_engine_t engine, float level)
 float curiosity_get_drive(curiosity_engine_t engine)
 {
     if (!engine) {
-        return 0.0f;
+        return 0.0F;
     }
     return engine->current_motivation;
 }
@@ -1309,7 +1309,7 @@ static bool record_question_history(curiosity_engine_t engine, const char* quest
     strncpy(q->question, question, sizeof(q->question) - 1);
     strncpy(q->answer, answer, sizeof(q->answer) - 1);
     q->answered = true;
-    q->learning_value = 0.5f;
+    q->learning_value = 0.5F;
     q->timestamp = 0;
 
     return true;
@@ -1357,9 +1357,9 @@ bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, con
                 bucket = add_concept_to_hash_table(engine, normalized);
             }
             if (bucket) {
-                bucket->familiarity += 0.4f;  // Ensure drops below 0.7 threshold
-                if (bucket->familiarity > 1.0f) {
-                    bucket->familiarity = 1.0f;
+                bucket->familiarity += 0.4F;  // Ensure drops below 0.7 threshold
+                if (bucket->familiarity > 1.0F) {
+                    bucket->familiarity = 1.0F;
                 }
             }
         }
@@ -1372,8 +1372,8 @@ bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, con
         neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->parent_brain);
         if (neuromod) {
             // Release dopamine proportional to curiosity
-            float reward = 0.3f;  // Moderate intrinsic reward for learning
-            neuromodulator_release_dopamine(neuromod, reward, 0.0f);
+            float reward = 0.3F;  // Moderate intrinsic reward for learning
+            neuromodulator_release_dopamine(neuromod, reward, 0.0F);
         }
     }
 
@@ -1408,8 +1408,8 @@ bool curiosity_learn_experience(curiosity_engine_t engine, const char* experienc
     if (engine->parent_brain) {
         neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->parent_brain);
         if (neuromod) {
-            float reward = 0.4f;  // Higher reward for direct experience
-            neuromodulator_release_dopamine(neuromod, reward, 0.0f);
+            float reward = 0.4F;  // Higher reward for direct experience
+            neuromodulator_release_dopamine(neuromod, reward, 0.0F);
         }
     }
 
@@ -1691,11 +1691,11 @@ static uint32_t count_domain_concepts(curiosity_engine_t engine, const char* dom
 float curiosity_get_domain_coverage(curiosity_engine_t engine, const char* domain)
 {
     if (!engine || !domain) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t domain_concepts = count_domain_concepts(engine, domain);
-    return fminf((float) domain_concepts / 100.0f, 1.0f);
+    return fminf((float) domain_concepts / 100.0F, 1.0F);
 }
 
 //=============================================================================
@@ -1837,7 +1837,7 @@ void curiosity_set_exploration_rate(curiosity_engine_t engine, float exploration
     }
 
     // Clamp exploration rate to [0, 1]
-    exploration_rate = fminf(fmaxf(exploration_rate, 0.0f), 1.0f);
+    exploration_rate = fminf(fmaxf(exploration_rate, 0.0F), 1.0F);
 
     // WHAT: Modulate baseline curiosity based on exploration rate
     // WHY:  Higher exploration rate → more curious
@@ -1862,7 +1862,7 @@ float curiosity_get_information_gain(curiosity_engine_t engine)
 {
     // Guard: NULL engine
     if (!engine) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // WHAT: Estimate information gain from recent learning
@@ -1880,5 +1880,5 @@ float curiosity_get_information_gain(curiosity_engine_t engine)
     float information_gain = learning_rate * engine->current_motivation;
 
     // Clamp to [0, 1]
-    return fminf(fmaxf(information_gain, 0.0f), 1.0f);
+    return fminf(fmaxf(information_gain, 0.0F), 1.0F);
 }

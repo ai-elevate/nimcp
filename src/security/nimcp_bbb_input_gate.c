@@ -256,7 +256,7 @@ static bool detect_shellcode(const void* data, size_t size)
 
     /* High ratio of suspicious bytes indicates shellcode */
     float suspicious_ratio = (float)suspicious_opcodes / size;
-    if (suspicious_ratio > 0.1f && size > 10) {
+    if (suspicious_ratio > 0.1F && size > 10) {
         return true;
     }
 

@@ -28,7 +28,8 @@ static bio_module_context_t g_multi_swarm_ctx = NULL;
 /* Value destructor for swarm identity hash table entries.
  * The value stored is a pointer (void*) to the swarm identity.
  * The hash table passes us a pointer TO this stored value. */
-static void swarm_identity_value_destructor(void* value_ptr) {
+static void swarm_identity_value_destructor(void* value_ptr, size_t value_size) {
+    (void)value_size;  /* Unused parameter */
     if (!value_ptr) return;
     /* value_ptr points to the stored void* which is the swarm identity pointer */
     void** identity_ptr = (void**)value_ptr;
@@ -138,7 +139,7 @@ static uint64_t generate_unique_id(void) {
  * @brief Calculate health percentage from active agents
  */
 static float calculate_health_percentage(uint32_t active, uint32_t total) {
-    if (total == 0) return 0.0f;
+    if (total == 0) return 0.0F;
     return (float)active / (float)total;
 }
 
@@ -146,10 +147,10 @@ static float calculate_health_percentage(uint32_t active, uint32_t total) {
  * @brief Determine health status from percentage
  */
 static nimcp_swarm_health_t determine_health_status(float percentage) {
-    if (percentage > 0.9f) return NIMCP_SWARM_HEALTH_EXCELLENT;
-    if (percentage > 0.7f) return NIMCP_SWARM_HEALTH_GOOD;
-    if (percentage > 0.5f) return NIMCP_SWARM_HEALTH_FAIR;
-    if (percentage > 0.3f) return NIMCP_SWARM_HEALTH_POOR;
+    if (percentage > 0.9F) return NIMCP_SWARM_HEALTH_EXCELLENT;
+    if (percentage > 0.7F) return NIMCP_SWARM_HEALTH_GOOD;
+    if (percentage > 0.5F) return NIMCP_SWARM_HEALTH_FAIR;
+    if (percentage > 0.3F) return NIMCP_SWARM_HEALTH_POOR;
     return NIMCP_SWARM_HEALTH_CRITICAL;
 }
 
@@ -465,10 +466,10 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
 
     /* Initialize conflict resolution configuration with defaults */
     coordinator->conflict_config.default_strategy = NIMCP_CONFLICT_NEGOTIATION;
-    coordinator->conflict_config.negotiation_timeout_ms = 30000.0f;  /* 30 seconds */
+    coordinator->conflict_config.negotiation_timeout_ms = 30000.0F;  /* 30 seconds */
     coordinator->conflict_config.max_negotiation_rounds = 10;
     coordinator->conflict_config.allow_escalation = true;
-    coordinator->conflict_config.merge_threshold = 0.8f;
+    coordinator->conflict_config.merge_threshold = 0.8F;
 
     /* Initialize conflict statistics */
     memset(&coordinator->conflict_stats, 0, sizeof(nimcp_conflict_resolution_stats_t));
@@ -569,7 +570,7 @@ nimcp_swarm_identity_t* nimcp_swarm_identity_create(
     identity->last_contact = identity->formation_time;
 
     /* Initialize health */
-    identity->health_percentage = 1.0f;
+    identity->health_percentage = 1.0F;
     identity->health = NIMCP_SWARM_HEALTH_EXCELLENT;
 
     /* Initialize territory to zero bounds */
@@ -672,7 +673,7 @@ nimcp_result_t nimcp_swarm_add_capability(
     }
 
     /* Clamp proficiency to [0, 1] */
-    proficiency = fmaxf(0.0f, fminf(1.0f, proficiency));
+    proficiency = fmaxf(0.0F, fminf(1.0F, proficiency));
 
     /* Add capability */
     nimcp_swarm_capability_t* cap =
@@ -704,7 +705,7 @@ void nimcp_swarm_update_health(
 
     LOG_DEBUG("Swarm health updated: ID=%lu, Active=%u/%u, Health=%.1f%%",
                     identity->swarm_id, active_agents, identity->agent_count,
-                    identity->health_percentage * 100.0f);
+                    identity->health_percentage * 100.0F);
 }
 
 void nimcp_swarm_identity_destroy(nimcp_swarm_identity_t* identity) {
@@ -1012,7 +1013,7 @@ uint32_t nimcp_territory_detect_conflicts(
                     conflict.swarm_count = 2;
                     conflict.detection_time = nimcp_time_get_ms();
                     conflict.is_resolved = false;
-                    conflict.severity = 0.5f;  /* Default severity for territory conflicts */
+                    conflict.severity = 0.5F;  /* Default severity for territory conflicts */
 
                     snprintf(conflict.description, sizeof(conflict.description),
                             "Territory overlap between swarms %lu and %lu",
@@ -1222,7 +1223,7 @@ uint64_t nimcp_mission_create(
     mission->operation_area = operation_area;
     mission->start_time = nimcp_time_get_ms();
     mission->deadline = deadline;
-    mission->progress = 0.0f;
+    mission->progress = 0.0F;
 
     /* Store in mission registry */
     swarm_hash_table_insert(coordinator->mission_registry,
@@ -1313,14 +1314,14 @@ nimcp_result_t nimcp_mission_update_progress(
         return NIMCP_NOT_FOUND;
     }
 
-    mission->progress = fmaxf(0.0f, fminf(1.0f, progress));
+    mission->progress = fmaxf(0.0F, fminf(1.0F, progress));
 
     if (mission->status == NIMCP_MISSION_STATUS_ASSIGNED) {
         mission->status = NIMCP_MISSION_STATUS_ACTIVE;
     }
 
     LOG_DEBUG("Mission progress updated: ID=%lu, Progress=%.1f%%",
-                    mission_id, mission->progress * 100.0f);
+                    mission_id, mission->progress * 100.0F);
 
     return NIMCP_SUCCESS;
 }
@@ -1343,7 +1344,7 @@ nimcp_result_t nimcp_mission_complete(
 
     mission->status = success ? NIMCP_MISSION_STATUS_COMPLETED :
                                NIMCP_MISSION_STATUS_FAILED;
-    mission->progress = success ? 1.0f : mission->progress;
+    mission->progress = success ? 1.0F : mission->progress;
 
     LOG_INFO("Mission completed: ID=%lu, Success=%s",
                    mission_id, success ? "YES" : "NO");
@@ -1403,7 +1404,7 @@ uint64_t nimcp_comm_bridge_create(
             bridge->bridge_id = generate_unique_id();
             bridge->swarm_a = swarm_a;
             bridge->swarm_b = swarm_b;
-            bridge->link_quality = 1.0f;
+            bridge->link_quality = 1.0F;
             bridge->is_active = true;
             bridge->last_message_time = nimcp_time_get_ms();
 
@@ -1435,7 +1436,7 @@ nimcp_result_t nimcp_comm_bridge_update_quality(
         return NIMCP_INVALID_PARAM;
     }
 
-    link_quality = fmaxf(0.0f, fminf(1.0f, link_quality));
+    link_quality = fmaxf(0.0F, fminf(1.0F, link_quality));
 
     /* Find bridge in super-swarms */
     for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
@@ -1571,40 +1572,40 @@ static float calculate_conflict_severity(
     const nimcp_swarm_conflict_t* conflict
 ) {
     if (!coordinator || !conflict || conflict->swarm_count < 2) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float severity = 0.0f;
+    float severity = 0.0F;
 
     /* Base severity on type */
     switch (conflict->type) {
         case NIMCP_CONFLICT_TYPE_RESOURCE:
-            severity = 0.6f;
+            severity = 0.6F;
             break;
         case NIMCP_CONFLICT_TYPE_TERRITORY:
-            severity = 0.7f;
+            severity = 0.7F;
             break;
         case NIMCP_CONFLICT_TYPE_GOAL:
-            severity = 0.8f;
+            severity = 0.8F;
             break;
         case NIMCP_CONFLICT_TYPE_PRIORITY:
-            severity = 0.5f;
+            severity = 0.5F;
             break;
         case NIMCP_CONFLICT_TYPE_COMMUNICATION:
-            severity = 0.4f;
+            severity = 0.4F;
             break;
         default:
-            severity = 0.5f;
+            severity = 0.5F;
             break;
     }
 
     /* Increase severity based on number of involved swarms */
     if (conflict->swarm_count > 2) {
-        severity += 0.1f * (conflict->swarm_count - 2);
+        severity += 0.1F * (conflict->swarm_count - 2);
     }
 
     /* Clamp to [0, 1] */
-    return fmaxf(0.0f, fminf(1.0f, severity));
+    return fmaxf(0.0F, fminf(1.0F, severity));
 }
 
 /**
@@ -1707,19 +1708,19 @@ static uint32_t detect_resource_conflicts(
 
             /* Check for conflict conditions */
             bool is_conflict = false;
-            float severity = 0.0f;
+            float severity = 0.0F;
             const char* conflict_reason = NULL;
 
             /* Condition 1: Same target swarm, same resource type */
             if (req_a->target_swarm == req_b->target_swarm &&
                 req_a->type == req_b->type) {
                 is_conflict = true;
-                severity = 0.7f;
+                severity = 0.7F;
                 conflict_reason = "competing for same resource type from same target";
 
                 /* Higher severity if same priority (harder to resolve) */
                 if (req_a->priority == req_b->priority) {
-                    severity = 0.85f;
+                    severity = 0.85F;
                 }
             }
 
@@ -1729,7 +1730,7 @@ static uint32_t detect_resource_conflicts(
                      req_a->type == req_b->type &&
                      req_a->target_swarm != req_b->target_swarm) {
                 is_conflict = true;
-                severity = 0.4f;  /* Lower severity - just indicates shortage */
+                severity = 0.4F;  /* Lower severity - just indicates shortage */
                 conflict_reason = "resource shortage - swarm seeking from multiple sources";
             }
 
@@ -1738,7 +1739,7 @@ static uint32_t detect_resource_conflicts(
                      req_b->requesting_swarm == req_a->target_swarm &&
                      req_a->type == req_b->type) {
                 is_conflict = true;
-                severity = 0.9f;  /* High severity - potential deadlock */
+                severity = 0.9F;  /* High severity - potential deadlock */
                 conflict_reason = "potential deadlock - mutual resource dependency";
             }
 
@@ -2063,8 +2064,8 @@ nimcp_result_t nimcp_conflict_resolve(
 
                     /* Update average resolution time */
                     float elapsed = (float)(conflict->resolution_time - conflict->detection_time);
-                    if (elapsed < 0.001f) {
-                        elapsed = 0.001f;  /* Minimum for meaningful stats */
+                    if (elapsed < 0.001F) {
+                        elapsed = 0.001F;  /* Minimum for meaningful stats */
                     }
                     if (coordinator->conflict_stats.conflicts_resolved == 1) {
                         coordinator->conflict_stats.avg_resolution_time_ms = elapsed;
@@ -2272,9 +2273,9 @@ nimcp_result_t nimcp_multi_swarm_resolve_conflict(
         coordinator->conflict_stats.conflicts_pending--;
 
         /* Update average resolution time using microsecond precision for stats */
-        float elapsed = (float)(nimcp_time_get_us() - start_time_us) / 1000.0f;
-        if (elapsed < 0.001f) {
-            elapsed = 0.001f;  /* Minimum 1 microsecond for meaningful stats */
+        float elapsed = (float)(nimcp_time_get_us() - start_time_us) / 1000.0F;
+        if (elapsed < 0.001F) {
+            elapsed = 0.001F;  /* Minimum 1 microsecond for meaningful stats */
         }
         if (coordinator->conflict_stats.conflicts_resolved == 1) {
             coordinator->conflict_stats.avg_resolution_time_ms = elapsed;
@@ -2301,10 +2302,10 @@ nimcp_result_t nimcp_multi_swarm_resolve_conflict(
         result->strategy_used = strategy;
         result->resolved = resolved;
         /* Use microsecond precision for accurate timing, convert to ms */
-        result->resolution_time_ms = (float)(nimcp_time_get_us() - start_time_us) / 1000.0f;
+        result->resolution_time_ms = (float)(nimcp_time_get_us() - start_time_us) / 1000.0F;
         /* Ensure at least minimal time is reported for fast resolutions */
-        if (result->resolution_time_ms < 0.001f && resolved) {
-            result->resolution_time_ms = 0.001f;  /* 1 microsecond minimum */
+        if (result->resolution_time_ms < 0.001F && resolved) {
+            result->resolution_time_ms = 0.001F;  /* 1 microsecond minimum */
         }
         result->negotiation_rounds = conflict->negotiation_round_count;
         snprintf(result->outcome_description, sizeof(result->outcome_description),
@@ -2572,7 +2573,7 @@ nimcp_result_t nimcp_multi_swarm_set_conflict_config(
     /* Validate configuration */
     if (config->negotiation_timeout_ms < 0 ||
         config->max_negotiation_rounds == 0 ||
-        config->merge_threshold < 0.0f || config->merge_threshold > 1.0f) {
+        config->merge_threshold < 0.0F || config->merge_threshold > 1.0F) {
         LOG_ERROR("Invalid conflict resolution configuration");
         return NIMCP_INVALID_PARAM;
     }
@@ -2938,7 +2939,7 @@ void nimcp_multi_swarm_print_status(
                 printf("    Swarm: %s (ID=%lu) - %u/%u agents (%.0f%% health)\n",
                        swarm->name, swarm->swarm_id,
                        swarm->active_agents, swarm->agent_count,
-                       swarm->health_percentage * 100.0f);
+                       swarm->health_percentage * 100.0F);
             }
         }
     }

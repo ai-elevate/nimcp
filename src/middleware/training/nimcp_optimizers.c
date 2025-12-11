@@ -227,10 +227,10 @@ static nimcp_error_t handle_gradient_computed(
 nimcp_sgd_config_t nimcp_optimizer_sgd_default(float learning_rate) {
     nimcp_sgd_config_t config = {
         .learning_rate = learning_rate,
-        .momentum = 0.0f,
+        .momentum = 0.0F,
         .nesterov = false,
-        .dampening = 0.0f,
-        .weight_decay = 0.0f
+        .dampening = 0.0F,
+        .weight_decay = 0.0F
     };
     return config;
 }
@@ -238,10 +238,10 @@ nimcp_sgd_config_t nimcp_optimizer_sgd_default(float learning_rate) {
 nimcp_adam_config_t nimcp_optimizer_adam_default(float learning_rate) {
     nimcp_adam_config_t config = {
         .learning_rate = learning_rate,
-        .beta1 = 0.9f,
-        .beta2 = 0.999f,
-        .epsilon = 1e-8f,
-        .weight_decay = 0.0f,
+        .beta1 = 0.9F,
+        .beta2 = 0.999F,
+        .epsilon = 1e-8F,
+        .weight_decay = 0.0F,
         .amsgrad = false
     };
     return config;
@@ -250,10 +250,10 @@ nimcp_adam_config_t nimcp_optimizer_adam_default(float learning_rate) {
 nimcp_rmsprop_config_t nimcp_optimizer_rmsprop_default(float learning_rate) {
     nimcp_rmsprop_config_t config = {
         .learning_rate = learning_rate,
-        .alpha = 0.99f,
-        .epsilon = 1e-8f,
-        .weight_decay = 0.0f,
-        .momentum = 0.0f,
+        .alpha = 0.99F,
+        .epsilon = 1e-8F,
+        .weight_decay = 0.0F,
+        .momentum = 0.0F,
         .centered = false
     };
     return config;
@@ -262,10 +262,10 @@ nimcp_rmsprop_config_t nimcp_optimizer_rmsprop_default(float learning_rate) {
 nimcp_adagrad_config_t nimcp_optimizer_adagrad_default(float learning_rate) {
     nimcp_adagrad_config_t config = {
         .learning_rate = learning_rate,
-        .lr_decay = 0.0f,
-        .weight_decay = 0.0f,
-        .initial_accumulator = 0.0f,
-        .epsilon = 1e-10f
+        .lr_decay = 0.0F,
+        .weight_decay = 0.0F,
+        .initial_accumulator = 0.0F,
+        .epsilon = 1e-10F
     };
     return config;
 }
@@ -275,43 +275,43 @@ nimcp_optimizer_config_t nimcp_optimizer_default_config(nimcp_optimizer_type_t t
     memset(&config, 0, sizeof(config));
     config.type = type;
     config.clip_gradients = false;
-    config.gradient_clip_value = 1.0f;
-    config.gradient_clip_norm = 0.0f;
+    config.gradient_clip_value = 1.0F;
+    config.gradient_clip_norm = 0.0F;
     config.use_memory_pool = true;
     config.cow_strategy = UNIFIED_STRATEGY_POOL_DIRECT;
 
     switch (type) {
         case NIMCP_OPTIMIZER_SGD:
-            config.params.sgd = nimcp_optimizer_sgd_default(0.01f);
+            config.params.sgd = nimcp_optimizer_sgd_default(0.01F);
             break;
         case NIMCP_OPTIMIZER_SGD_MOMENTUM:
-            config.params.sgd = nimcp_optimizer_sgd_default(0.01f);
-            config.params.sgd.momentum = 0.9f;
+            config.params.sgd = nimcp_optimizer_sgd_default(0.01F);
+            config.params.sgd.momentum = 0.9F;
             break;
         case NIMCP_OPTIMIZER_NESTEROV:
-            config.params.sgd = nimcp_optimizer_sgd_default(0.01f);
-            config.params.sgd.momentum = 0.9f;
+            config.params.sgd = nimcp_optimizer_sgd_default(0.01F);
+            config.params.sgd.momentum = 0.9F;
             config.params.sgd.nesterov = true;
             break;
         case NIMCP_OPTIMIZER_ADAM:
-            config.params.adam = nimcp_optimizer_adam_default(0.001f);
+            config.params.adam = nimcp_optimizer_adam_default(0.001F);
             break;
         case NIMCP_OPTIMIZER_ADAMW:
-            config.params.adamw.learning_rate = 0.001f;
-            config.params.adamw.beta1 = 0.9f;
-            config.params.adamw.beta2 = 0.999f;
-            config.params.adamw.epsilon = 1e-8f;
-            config.params.adamw.weight_decay = 0.01f;
+            config.params.adamw.learning_rate = 0.001F;
+            config.params.adamw.beta1 = 0.9F;
+            config.params.adamw.beta2 = 0.999F;
+            config.params.adamw.epsilon = 1e-8F;
+            config.params.adamw.weight_decay = 0.01F;
             config.params.adamw.amsgrad = false;
             break;
         case NIMCP_OPTIMIZER_NADAM:
-            config.params.adam = nimcp_optimizer_adam_default(0.001f);
+            config.params.adam = nimcp_optimizer_adam_default(0.001F);
             break;
         case NIMCP_OPTIMIZER_RMSPROP:
-            config.params.rmsprop = nimcp_optimizer_rmsprop_default(0.01f);
+            config.params.rmsprop = nimcp_optimizer_rmsprop_default(0.01F);
             break;
         case NIMCP_OPTIMIZER_ADAGRAD:
-            config.params.adagrad = nimcp_optimizer_adagrad_default(0.01f);
+            config.params.adagrad = nimcp_optimizer_adagrad_default(0.01F);
             break;
         default:
             break;
@@ -336,7 +336,7 @@ static void step_sgd(
     float weight_decay = ctx->config.params.sgd.weight_decay;
     bool nesterov = ctx->config.params.sgd.nesterov;
 
-    if (momentum != 0.0f && ctx->state.momentum.velocity == NULL) {
+    if (momentum != 0.0F && ctx->state.momentum.velocity == NULL) {
         ctx->state.momentum.velocity = alloc_buffer(ctx, count);
         ctx->state.momentum.count = count;
         if (ctx->state.momentum.velocity) {
@@ -350,15 +350,15 @@ static void step_sgd(
         float grad = gradients[i];
 
         /* L2 regularization */
-        if (weight_decay != 0.0f) {
+        if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
         }
 
-        if (momentum != 0.0f && velocity != NULL) {
+        if (momentum != 0.0F && velocity != NULL) {
             if (ctx->step_count == 0) {
                 velocity[i] = grad;
             } else {
-                velocity[i] = momentum * velocity[i] + (1.0f - dampening) * grad;
+                velocity[i] = momentum * velocity[i] + (1.0F - dampening) * grad;
             }
 
             if (nesterov) {
@@ -402,22 +402,22 @@ static void step_adam(
     }
 
     state->t++;
-    float bias_correction1 = 1.0f - powf(beta1, (float)state->t);
-    float bias_correction2 = 1.0f - powf(beta2, (float)state->t);
+    float bias_correction1 = 1.0F - powf(beta1, (float)state->t);
+    float bias_correction2 = 1.0F - powf(beta2, (float)state->t);
 
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
 
         /* L2 regularization */
-        if (weight_decay != 0.0f) {
+        if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
         }
 
         /* Update biased first moment estimate */
-        state->m[i] = beta1 * state->m[i] + (1.0f - beta1) * grad;
+        state->m[i] = beta1 * state->m[i] + (1.0F - beta1) * grad;
 
         /* Update biased second raw moment estimate */
-        state->v[i] = beta2 * state->v[i] + (1.0f - beta2) * grad * grad;
+        state->v[i] = beta2 * state->v[i] + (1.0F - beta2) * grad * grad;
 
         float m_hat = state->m[i] / bias_correction1;
         float v_hat;
@@ -463,22 +463,22 @@ static void step_adamw(
     }
 
     state->t++;
-    float bias_correction1 = 1.0f - powf(beta1, (float)state->t);
-    float bias_correction2 = 1.0f - powf(beta2, (float)state->t);
+    float bias_correction1 = 1.0F - powf(beta1, (float)state->t);
+    float bias_correction2 = 1.0F - powf(beta2, (float)state->t);
 
     for (size_t i = 0; i < count; i++) {
         /* Decoupled weight decay */
-        if (weight_decay != 0.0f) {
+        if (weight_decay != 0.0F) {
             params[i] -= lr * weight_decay * params[i];
         }
 
         float grad = gradients[i];
 
         /* Update biased first moment estimate */
-        state->m[i] = beta1 * state->m[i] + (1.0f - beta1) * grad;
+        state->m[i] = beta1 * state->m[i] + (1.0F - beta1) * grad;
 
         /* Update biased second raw moment estimate */
-        state->v[i] = beta2 * state->v[i] + (1.0f - beta2) * grad * grad;
+        state->v[i] = beta2 * state->v[i] + (1.0F - beta2) * grad * grad;
 
         float m_hat = state->m[i] / bias_correction1;
         float v_hat;
@@ -519,25 +519,25 @@ static void step_nadam(
     }
 
     state->t++;
-    float bias_correction1 = 1.0f - powf(beta1, (float)state->t);
-    float bias_correction2 = 1.0f - powf(beta2, (float)state->t);
-    float bias_correction1_next = 1.0f - powf(beta1, (float)(state->t + 1));
+    float bias_correction1 = 1.0F - powf(beta1, (float)state->t);
+    float bias_correction2 = 1.0F - powf(beta2, (float)state->t);
+    float bias_correction1_next = 1.0F - powf(beta1, (float)(state->t + 1));
 
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
 
-        if (weight_decay != 0.0f) {
+        if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
         }
 
-        state->m[i] = beta1 * state->m[i] + (1.0f - beta1) * grad;
-        state->v[i] = beta2 * state->v[i] + (1.0f - beta2) * grad * grad;
+        state->m[i] = beta1 * state->m[i] + (1.0F - beta1) * grad;
+        state->v[i] = beta2 * state->v[i] + (1.0F - beta2) * grad * grad;
 
         float m_hat = state->m[i] / bias_correction1;
         float v_hat = state->v[i] / bias_correction2;
 
         /* Nesterov momentum */
-        float m_bar = (beta1 * m_hat) + ((1.0f - beta1) * grad / bias_correction1_next);
+        float m_bar = (beta1 * m_hat) + ((1.0F - beta1) * grad / bias_correction1_next);
 
         params[i] -= lr * m_bar / (sqrtf(v_hat) + epsilon);
     }
@@ -560,7 +560,7 @@ static void step_rmsprop(
 
     if (state->square_avg == NULL) {
         state->square_avg = alloc_buffer(ctx, count);
-        if (momentum != 0.0f) {
+        if (momentum != 0.0F) {
             state->momentum_buffer = alloc_buffer(ctx, count);
         }
         if (centered) {
@@ -576,22 +576,22 @@ static void step_rmsprop(
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
 
-        if (weight_decay != 0.0f) {
+        if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
         }
 
-        state->square_avg[i] = alpha * state->square_avg[i] + (1.0f - alpha) * grad * grad;
+        state->square_avg[i] = alpha * state->square_avg[i] + (1.0F - alpha) * grad * grad;
 
         float avg;
         if (centered && state->grad_avg != NULL) {
-            state->grad_avg[i] = alpha * state->grad_avg[i] + (1.0f - alpha) * grad;
+            state->grad_avg[i] = alpha * state->grad_avg[i] + (1.0F - alpha) * grad;
             avg = state->square_avg[i] - state->grad_avg[i] * state->grad_avg[i];
         } else {
             avg = state->square_avg[i];
         }
 
         float update;
-        if (momentum != 0.0f && state->momentum_buffer != NULL) {
+        if (momentum != 0.0F && state->momentum_buffer != NULL) {
             state->momentum_buffer[i] = momentum * state->momentum_buffer[i] +
                                         grad / (sqrtf(avg) + epsilon);
             update = state->momentum_buffer[i];
@@ -630,12 +630,12 @@ static void step_adagrad(
     }
 
     state->step++;
-    float clr = base_lr / (1.0f + (float)(state->step - 1) * lr_decay);
+    float clr = base_lr / (1.0F + (float)(state->step - 1) * lr_decay);
 
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
 
-        if (weight_decay != 0.0f) {
+        if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
         }
 
@@ -689,7 +689,7 @@ nimcp_optimizer_context_t* nimcp_optimizer_create(
             ctx->current_lr = config->params.adagrad.learning_rate;
             break;
         default:
-            ctx->current_lr = 0.01f;
+            ctx->current_lr = 0.01F;
             break;
     }
 
@@ -814,7 +814,7 @@ nimcp_result_t nimcp_optimizer_step(
     float grad_norm = nimcp_optimizer_gradient_norm(gradients, count);
 
     /* Check for gradient explosion */
-    if (!isfinite(grad_norm) || grad_norm > 1e6f) {
+    if (!isfinite(grad_norm) || grad_norm > 1e6F) {
         nimcp_log(LOG_LEVEL_WARN, "[%s] Gradient explosion detected: norm=%f",
                   LOG_MODULE, grad_norm);
     }
@@ -831,10 +831,10 @@ nimcp_result_t nimcp_optimizer_step(
         if (clipped_grads) {
             memcpy(clipped_grads, gradients, count * sizeof(float));
 
-            if (ctx->config.gradient_clip_norm > 0.0f) {
+            if (ctx->config.gradient_clip_norm > 0.0F) {
                 nimcp_optimizer_clip_by_norm(clipped_grads, count, ctx->config.gradient_clip_norm);
             }
-            if (ctx->config.gradient_clip_value > 0.0f) {
+            if (ctx->config.gradient_clip_value > 0.0F) {
                 size_t clips = nimcp_optimizer_clip_by_value(
                     clipped_grads, count, ctx->config.gradient_clip_value);
                 ctx->stats.gradient_clips += clips;
@@ -925,7 +925,7 @@ nimcp_result_t nimcp_optimizer_step_group(
 
     /* Temporarily adjust learning rate for this group */
     float saved_lr = ctx->current_lr;
-    if (group->learning_rate > 0.0f) {
+    if (group->learning_rate > 0.0F) {
         ctx->current_lr = group->learning_rate;
     }
 
@@ -942,12 +942,12 @@ void nimcp_optimizer_zero_grad(nimcp_param_group_t* group) {
 }
 
 float nimcp_optimizer_get_lr(const nimcp_optimizer_context_t* ctx) {
-    if (!ctx) return 0.0f;
+    if (!ctx) return 0.0F;
     return ctx->current_lr;
 }
 
 void nimcp_optimizer_set_lr(nimcp_optimizer_context_t* ctx, float lr) {
-    if (!ctx || lr <= 0.0f) return;
+    if (!ctx || lr <= 0.0F) return;
 
     float old_lr = ctx->current_lr;
     ctx->current_lr = lr;
@@ -1082,32 +1082,32 @@ nimcp_result_t nimcp_optimizer_validate_config(const nimcp_optimizer_config_t* c
         case NIMCP_OPTIMIZER_SGD:
         case NIMCP_OPTIMIZER_SGD_MOMENTUM:
         case NIMCP_OPTIMIZER_NESTEROV:
-            if (config->params.sgd.learning_rate <= 0.0f) {
+            if (config->params.sgd.learning_rate <= 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (config->params.sgd.momentum < 0.0f || config->params.sgd.momentum > 1.0f) {
+            if (config->params.sgd.momentum < 0.0F || config->params.sgd.momentum > 1.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
         case NIMCP_OPTIMIZER_ADAM:
         case NIMCP_OPTIMIZER_NADAM:
-            if (config->params.adam.learning_rate <= 0.0f) {
+            if (config->params.adam.learning_rate <= 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (config->params.adam.beta1 < 0.0f || config->params.adam.beta1 >= 1.0f) {
+            if (config->params.adam.beta1 < 0.0F || config->params.adam.beta1 >= 1.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
-            if (config->params.adam.beta2 < 0.0f || config->params.adam.beta2 >= 1.0f) {
+            if (config->params.adam.beta2 < 0.0F || config->params.adam.beta2 >= 1.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
         case NIMCP_OPTIMIZER_RMSPROP:
-            if (config->params.rmsprop.learning_rate <= 0.0f) {
+            if (config->params.rmsprop.learning_rate <= 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
         case NIMCP_OPTIMIZER_ADAGRAD:
-            if (config->params.adagrad.learning_rate <= 0.0f) {
+            if (config->params.adagrad.learning_rate <= 0.0F) {
                 return NIMCP_ERROR_INVALID_PARAM;
             }
             break;
@@ -1128,7 +1128,7 @@ bool nimcp_optimizer_is_registered(const nimcp_optimizer_context_t* ctx) {
  * ============================================================================ */
 
 float nimcp_optimizer_gradient_norm(const float* gradients, size_t count) {
-    if (!gradients || count == 0) return 0.0f;
+    if (!gradients || count == 0) return 0.0F;
 
     /* Use tensor library for vectorized norm computation */
     uint32_t dims[] = {(uint32_t)count};
@@ -1140,7 +1140,7 @@ float nimcp_optimizer_gradient_norm(const float* gradients, size_t count) {
     }
 
     /* Fallback to scalar computation */
-    float sum_sq = 0.0f;
+    float sum_sq = 0.0F;
     for (size_t i = 0; i < count; i++) {
         sum_sq += gradients[i] * gradients[i];
     }
@@ -1152,7 +1152,7 @@ size_t nimcp_optimizer_clip_by_value(
     size_t count,
     float max_value)
 {
-    if (!gradients || count == 0 || max_value <= 0.0f) return 0;
+    if (!gradients || count == 0 || max_value <= 0.0F) return 0;
 
     /* Scalar computation for value clipping (preserves clip count) */
     size_t clips = 0;
@@ -1173,7 +1173,7 @@ float nimcp_optimizer_clip_by_norm(
     size_t count,
     float max_norm)
 {
-    if (!gradients || count == 0 || max_norm <= 0.0f) return 0.0f;
+    if (!gradients || count == 0 || max_norm <= 0.0F) return 0.0F;
 
     /* Use tensor library for vectorized operations */
     uint32_t dims[] = {(uint32_t)count};
@@ -1228,7 +1228,7 @@ nimcp_result_t nimcp_optimizer_step_tensor(
 }
 
 float nimcp_optimizer_gradient_norm_tensor(const nimcp_tensor_t* gradients) {
-    if (!gradients) return 0.0f;
+    if (!gradients) return 0.0F;
     return (float)nimcp_tensor_norm_p(gradients, 2.0);
 }
 
@@ -1236,7 +1236,7 @@ float nimcp_optimizer_clip_by_norm_tensor(
     nimcp_tensor_t* gradients,
     float max_norm)
 {
-    if (!gradients || max_norm <= 0.0f) return 0.0f;
+    if (!gradients || max_norm <= 0.0F) return 0.0F;
 
     float norm = (float)nimcp_tensor_norm_p(gradients, 2.0);
     if (norm > max_norm) {

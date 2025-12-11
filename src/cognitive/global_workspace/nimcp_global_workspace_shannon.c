@@ -223,7 +223,7 @@ shannon_workspace_config_t shannon_workspace_default_config(void) {
     /* Competition enhancement */
     config.enable_info_weighted_competition = true;
     config.info_threshold_bits = GWS_DEFAULT_INFO_THRESHOLD_BITS;
-    config.info_weight = 0.5f;  /* Equal weight to salience and info */
+    config.info_weight = 0.5F;  /* Equal weight to salience and info */
 
     /* Broadcast monitoring */
     config.enable_shannon_monitoring = true;
@@ -234,8 +234,8 @@ shannon_workspace_config_t shannon_workspace_default_config(void) {
     config.enable_adaptive_rate = true;
     config.rate_reduction_factor = GWS_BOTTLENECK_RATE_REDUCTION;
     config.rate_recovery_factor = GWS_RATE_RECOVERY_FACTOR;
-    config.min_broadcast_rate = 0.1f;
-    config.max_broadcast_rate = 1.0f;
+    config.min_broadcast_rate = 0.1F;
+    config.max_broadcast_rate = 1.0F;
 
     return config;
 }
@@ -280,7 +280,7 @@ bool global_workspace_enable_shannon(
     state->is_enabled = true;
 
     /* Initialize broadcast rate */
-    state->current_broadcast_rate = 1.0f;
+    state->current_broadcast_rate = 1.0F;
     state->creation_time_ms = get_current_time_ms();
 
     /* Initialize subscribers from workspace */
@@ -292,7 +292,7 @@ bool global_workspace_enable_shannon(
 
     /* Clear statistics */
     memset(&state->stats, 0, sizeof(shannon_workspace_stats_t));
-    state->stats.current_broadcast_rate = 1.0f;
+    state->stats.current_broadcast_rate = 1.0F;
 
     /* Register mapping */
     g_shannon_mappings[g_num_mappings].workspace = workspace;
@@ -357,28 +357,28 @@ float shannon_measure_feature_information(
      * RANGE: 0 to log₂(D) bits
      */
 
-    if (!features || dim == 0) return 0.0f;
+    if (!features || dim == 0) return 0.0F;
 
     /* Step 1: Compute sum for normalization */
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         float val = features[i];
-        if (val < 0.0f) val = -val;  /* Use absolute value */
+        if (val < 0.0F) val = -val;  /* Use absolute value */
         sum += val;
     }
 
     /* Handle zero vector */
     if (sum < SHANNON_EPSILON) {
-        return 0.0f;  /* Zero entropy for zero vector */
+        return 0.0F;  /* Zero entropy for zero vector */
     }
 
     /* Step 2 & 3: Compute entropy */
-    float entropy = 0.0f;
-    float inv_sum = 1.0f / sum;
+    float entropy = 0.0F;
+    float inv_sum = 1.0F / sum;
 
     for (uint32_t i = 0; i < dim; i++) {
         float val = features[i];
-        if (val < 0.0f) val = -val;
+        if (val < 0.0F) val = -val;
 
         float p = val * inv_sum;
 
@@ -405,14 +405,14 @@ float shannon_measure_relative_information(
      * RANGE: 0 (uniform) to log₂(D) (deterministic)
      */
 
-    if (!features || dim == 0) return 0.0f;
+    if (!features || dim == 0) return 0.0F;
 
     float max_entropy = log2f((float)dim);
     float actual_entropy = shannon_measure_feature_information(features, dim);
 
     /* Relative info = max - actual (always non-negative) */
     float relative = max_entropy - actual_entropy;
-    if (relative < 0.0f) relative = 0.0f;
+    if (relative < 0.0F) relative = 0.0F;
 
     return relative;
 }
@@ -471,10 +471,10 @@ bool global_workspace_compete_with_info(
          * strength = salience × info_weight × (info_bits / norm)
          *          + salience × (1 - info_weight) */
         float info_factor = info_bits / GWS_INFO_NORMALIZATION_BITS;
-        if (info_factor > 1.0f) info_factor = 1.0f;
+        if (info_factor > 1.0F) info_factor = 1.0F;
 
         float w = state->config.info_weight;
-        competition_strength = salience * (w * info_factor + (1.0f - w));
+        competition_strength = salience * (w * info_factor + (1.0F - w));
 
         /* Update statistics */
         state->stats.total_competitions_with_info++;
@@ -484,7 +484,7 @@ bool global_workspace_compete_with_info(
     }
 
     /* Clamp to valid range */
-    competition_strength = clamp_float(competition_strength, 0.0f, 1.0f);
+    competition_strength = clamp_float(competition_strength, 0.0F, 1.0F);
 
     /* Call standard competition */
     bool won = global_workspace_compete(workspace, module, content,
@@ -496,7 +496,7 @@ bool global_workspace_compete_with_info(
             /* Running average of winner info */
             float n = (float)state->stats.total_shannon_broadcasts;
             state->stats.avg_winner_info_bits =
-                (state->stats.avg_winner_info_bits * n + info_bits) / (n + 1.0f);
+                (state->stats.avg_winner_info_bits * n + info_bits) / (n + 1.0F);
             state->stats.total_shannon_broadcasts++;
         } else {
             /* Running average of loser info */
@@ -505,7 +505,7 @@ bool global_workspace_compete_with_info(
             if (losses > 0) {
                 float n = (float)losses;
                 state->stats.avg_loser_info_bits =
-                    (state->stats.avg_loser_info_bits * n + info_bits) / (n + 1.0f);
+                    (state->stats.avg_loser_info_bits * n + info_bits) / (n + 1.0F);
             }
         }
     }
@@ -557,10 +557,10 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
         for (uint32_t i = 0; i < metrics.num_subscribers &&
              i < GLOBAL_WORKSPACE_MAX_SUBSCRIBERS; i++) {
             metrics.information_delivered[i] = content_info_bits;
-            metrics.information_loss[i] = 0.0f;
+            metrics.information_loss[i] = 0.0F;
         }
         metrics.total_info_delivered = content_info_bits * metrics.num_subscribers;
-        metrics.delivery_efficiency = 1.0f;
+        metrics.delivery_efficiency = 1.0F;
         return metrics;
     }
 
@@ -575,7 +575,7 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
         float load = sub->current_load;
 
         /* Calculate utilization */
-        float utilization = (capacity > SHANNON_EPSILON) ? (load / capacity) : 1.0f;
+        float utilization = (capacity > SHANNON_EPSILON) ? (load / capacity) : 1.0F;
         metrics.subscriber_utilization[i] = utilization;
 
         if (utilization > state->config.bottleneck_threshold) {
@@ -587,8 +587,8 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
             metrics.num_bottlenecked++;
 
             /* Reduced delivery based on available capacity */
-            float available = 1.0f - utilization;
-            if (available < 0.0f) available = 0.0f;
+            float available = 1.0F - utilization;
+            if (available < 0.0F) available = 0.0F;
 
             float delivered = content_info_bits * available;
             float lost = content_info_bits - delivered;
@@ -608,7 +608,7 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
         } else {
             /* Full delivery */
             metrics.information_delivered[i] = content_info_bits;
-            metrics.information_loss[i] = 0.0f;
+            metrics.information_loss[i] = 0.0F;
 
             sub->total_delivered += content_info_bits;
             state->stats.subscriber_total_delivered[i] += content_info_bits;
@@ -627,7 +627,7 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
     /* Calculate efficiency */
     float total = metrics.total_info_delivered + metrics.total_info_loss;
     metrics.delivery_efficiency = (total > SHANNON_EPSILON) ?
-        (metrics.total_info_delivered / total) : 1.0f;
+        (metrics.total_info_delivered / total) : 1.0F;
 
     /* Update global statistics */
     state->stats.total_info_delivered_bits += metrics.total_info_delivered;
@@ -641,7 +641,7 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
     float total_all = state->stats.total_info_delivered_bits +
                       state->stats.total_info_lost_bits;
     state->stats.overall_delivery_efficiency = (total_all > SHANNON_EPSILON) ?
-        (state->stats.total_info_delivered_bits / total_all) : 1.0f;
+        (state->stats.total_info_delivered_bits / total_all) : 1.0F;
 
     /* Cache metrics */
     state->last_metrics = metrics;
@@ -668,7 +668,7 @@ bool global_workspace_set_subscriber_capacity(
      * WHY:  Enable bottleneck detection for this subscriber
      * HOW:  Find or create subscriber entry, set capacity */
 
-    if (!workspace || capacity_bits_per_sec < 0.0f) {
+    if (!workspace || capacity_bits_per_sec < 0.0F) {
         return false;
     }
 
@@ -711,10 +711,10 @@ float global_workspace_get_subscriber_capacity(
      * HOW:  Lookup subscriber */
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
-    if (!state) return 0.0f;
+    if (!state) return 0.0F;
 
     subscriber_shannon_state_t* sub = find_subscriber(state, subscriber);
-    return sub ? sub->capacity_bits_per_sec : 0.0f;
+    return sub ? sub->capacity_bits_per_sec : 0.0F;
 }
 
 float global_workspace_get_subscriber_load(
@@ -726,10 +726,10 @@ float global_workspace_get_subscriber_load(
      * HOW:  Lookup subscriber */
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
-    if (!state) return 0.0f;
+    if (!state) return 0.0F;
 
     subscriber_shannon_state_t* sub = find_subscriber(state, subscriber);
-    return sub ? sub->current_load : 0.0f;
+    return sub ? sub->current_load : 0.0F;
 }
 
 void global_workspace_update_subscriber_load(
@@ -782,7 +782,7 @@ float global_workspace_get_broadcast_rate(const global_workspace_t* workspace) {
      * HOW:  Return cached value */
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
-    return state ? state->current_broadcast_rate : 1.0f;
+    return state ? state->current_broadcast_rate : 1.0F;
 }
 
 void global_workspace_adapt_broadcast_rate(
@@ -866,8 +866,8 @@ void global_workspace_reset_shannon_stats(global_workspace_t* workspace) {
 
     /* Reset per-subscriber stats */
     for (uint32_t i = 0; i < state->num_subscribers; i++) {
-        state->subscribers[i].total_delivered = 0.0f;
-        state->subscribers[i].total_lost = 0.0f;
+        state->subscribers[i].total_delivered = 0.0F;
+        state->subscribers[i].total_lost = 0.0F;
         state->subscribers[i].bottleneck_count = 0;
     }
 }

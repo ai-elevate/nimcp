@@ -104,8 +104,8 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
         return NULL;
     }
 
-    system->fairness_score = 1.0f;
-    system->self_awareness = 0.5f;
+    system->fairness_score = 1.0F;
+    system->self_awareness = 0.5F;
 
     LOG_INFO("Bias detection system created successfully (fairness=%.2f, awareness=%.2f)",
              system->fairness_score, system->self_awareness);
@@ -158,10 +158,10 @@ void bias_system_reset(bias_detection_system_t* system) {
     system->disparity_count = 0;
     system->decision_history_index = 0;
 
-    system->total_implicit_bias = 0.0f;
-    system->total_explicit_bias = 0.0f;
-    system->fairness_score = 1.0f;
-    system->self_awareness = 0.5f;
+    system->total_implicit_bias = 0.0F;
+    system->total_explicit_bias = 0.0F;
+    system->fairness_score = 1.0F;
+    system->self_awareness = 0.5F;
     system->bias_detected = false;
     system->in_debiasing = false;
     system->successful_debias = 0;
@@ -211,14 +211,14 @@ void bias_register_implicit(bias_detection_system_t* system,
     implicit_bias_t* bias = &system->implicit_biases[index];
 
     // Update associations (running average)
-    float alpha = 0.3f;  // Learning rate
-    bias->positive_association = bias->positive_association * (1.0f - alpha) + positive_association * alpha;
-    bias->negative_association = 1.0f - bias->positive_association;
-    bias->competence_association = bias->competence_association * (1.0f - alpha) + competence * alpha;
-    bias->warmth_association = bias->warmth_association * (1.0f - alpha) + warmth * alpha;
+    float alpha = 0.3F;  // Learning rate
+    bias->positive_association = bias->positive_association * (1.0F - alpha) + positive_association * alpha;
+    bias->negative_association = 1.0F - bias->positive_association;
+    bias->competence_association = bias->competence_association * (1.0F - alpha) + competence * alpha;
+    bias->warmth_association = bias->warmth_association * (1.0F - alpha) + warmth * alpha;
 
     // Response time bias (IAT effect size)
-    bias->response_time_bias = bias->response_time_bias * (1.0f - alpha) + response_time_bias * alpha;
+    bias->response_time_bias = bias->response_time_bias * (1.0F - alpha) + response_time_bias * alpha;
 
     bias->activation_count++;
     bias->last_activation_time = current_time;
@@ -228,7 +228,7 @@ void bias_register_implicit(bias_detection_system_t* system,
               bias->warmth_association, bias->activation_count);
 
     // Recalculate total implicit bias
-    float total = 0.0f;
+    float total = 0.0F;
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
         total += system->implicit_biases[i].negative_association;
     }
@@ -256,7 +256,7 @@ void bias_activate_stereotype(bias_detection_system_t* system,
 
     implicit_bias_t* bias = &system->implicit_biases[index];
     bias->stereotype_activation += activation_strength;
-    bias->stereotype_activation = clamp(bias->stereotype_activation, 0.0f, 1.0f);
+    bias->stereotype_activation = clamp(bias->stereotype_activation, 0.0F, 1.0F);
     bias->last_activation_time = current_time;
 }
 
@@ -290,9 +290,9 @@ void bias_register_explicit(bias_detection_system_t* system,
 
     explicit_bias_t* bias = &system->explicit_biases[index];
 
-    bias->prejudice_level = clamp(prejudice_level, 0.0f, 1.0f);
-    bias->discrimination_intent = clamp(discrimination_intent, 0.0f, 1.0f);
-    bias->bias_awareness = clamp(bias_awareness, 0.0f, 1.0f);
+    bias->prejudice_level = clamp(prejudice_level, 0.0F, 1.0F);
+    bias->discrimination_intent = clamp(discrimination_intent, 0.0F, 1.0F);
+    bias->bias_awareness = clamp(bias_awareness, 0.0F, 1.0F);
 
     if (bias->prejudice_level > BIAS_EXPLICIT_THRESHOLD) {
         bias->explicit_prejudice_active = true;
@@ -301,7 +301,7 @@ void bias_register_explicit(bias_detection_system_t* system,
     }
 
     // Recalculate total explicit bias
-    float total = 0.0f;
+    float total = 0.0F;
     for (uint32_t i = 0; i < system->explicit_bias_count; i++) {
         total += system->explicit_biases[i].prejudice_level;
     }
@@ -331,9 +331,9 @@ void bias_record_decision(bias_detection_system_t* system,
     record->timestamp = current_time;
     record->target_group = *group;
     record->favorable_decision = favorable_decision;
-    record->confidence = clamp(confidence, 0.0f, 1.0f);
-    record->resource_allocated = clamp(resource_allocated, 0.0f, 1.0f);
-    record->objective_merit = clamp(objective_merit, 0.0f, 1.0f);
+    record->confidence = clamp(confidence, 0.0F, 1.0F);
+    record->resource_allocated = clamp(resource_allocated, 0.0F, 1.0F);
+    record->objective_merit = clamp(objective_merit, 0.0F, 1.0F);
 
     system->decision_history_index++;
     system->total_decisions_analyzed++;
@@ -368,7 +368,7 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
     // Analyze decision history
     uint32_t count_a = 0, count_b = 0;
     uint32_t favorable_a = 0, favorable_b = 0;
-    float total_resource_a = 0.0f, total_resource_b = 0.0f;
+    float total_resource_a = 0.0F, total_resource_b = 0.0F;
 
     uint32_t history_size = (system->decision_history_index < BIAS_MAX_DECISIONS)
                            ? system->decision_history_index : BIAS_MAX_DECISIONS;
@@ -405,7 +405,7 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
 
     // Disparity metrics
     float max_rate = fmaxf(disparity->approval_rate_a, disparity->approval_rate_b);
-    if (max_rate > 0.0f) {
+    if (max_rate > 0.0F) {
         disparity->disparity_ratio = fabsf(disparity->approval_rate_a - disparity->approval_rate_b) / max_rate;
     }
 
@@ -416,8 +416,8 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
     disparity->equal_opportunity = (disparity->resource_disparity < BIAS_STATISTICAL_DISPARITY_THRESHOLD);
 
     // Overall fairness score
-    float fairness = 1.0f - (disparity->disparity_ratio + disparity->resource_disparity) / 2.0f;
-    disparity->fairness_score = clamp(fairness, 0.0f, 1.0f);
+    float fairness = 1.0F - (disparity->disparity_ratio + disparity->resource_disparity) / 2.0F;
+    disparity->fairness_score = clamp(fairness, 0.0F, 1.0F);
 
     return disparity;
 }
@@ -537,11 +537,11 @@ language_pattern_t bias_analyze_language(bias_detection_system_t* system,
     }
 
     // Calculate dehumanization and othering scores
-    if (pattern.contains_slur) pattern.dehumanization_score += 0.5f;
-    if (pattern.objectification) pattern.dehumanization_score += 0.3f;
-    if (pattern.incel_ideology) pattern.dehumanization_score += 0.4f;
+    if (pattern.contains_slur) pattern.dehumanization_score += 0.5F;
+    if (pattern.objectification) pattern.dehumanization_score += 0.3F;
+    if (pattern.incel_ideology) pattern.dehumanization_score += 0.4F;
 
-    pattern.dehumanization_score = clamp(pattern.dehumanization_score, 0.0f, 1.0f);
+    pattern.dehumanization_score = clamp(pattern.dehumanization_score, 0.0F, 1.0F);
 
     return pattern;
 }
@@ -620,16 +620,16 @@ void bias_analyze_other(bias_detection_system_t* system,
     }
 
     // Calculate bias scores
-    other->detected_racial_bias = clamp((float)racial_markers / (float)history_size, 0.0f, 1.0f);
-    other->detected_gender_bias = clamp((float)gender_markers / (float)history_size, 0.0f, 1.0f);
-    other->detected_misogyny = clamp((float)misogyny_markers / (float)history_size, 0.0f, 1.0f);
+    other->detected_racial_bias = clamp((float)racial_markers / (float)history_size, 0.0F, 1.0F);
+    other->detected_gender_bias = clamp((float)gender_markers / (float)history_size, 0.0F, 1.0F);
+    other->detected_misogyny = clamp((float)misogyny_markers / (float)history_size, 0.0F, 1.0F);
 
     // Set flags
     other->overt_bigotry = overt;
     other->dangerous_ideology = dangerous;
 
     // Set modes
-    if (other->detected_misogyny > 0.3f || other->detected_racial_bias > 0.3f) {
+    if (other->detected_misogyny > 0.3F || other->detected_racial_bias > 0.3F) {
         if (!overt && !dangerous) {
             other->educate_mode = true;
         }
@@ -637,7 +637,7 @@ void bias_analyze_other(bias_detection_system_t* system,
 
     if (overt || dangerous) {
         other->disengage_mode = true;
-        other->report_severity = 0.8f;
+        other->report_severity = 0.8F;
     }
 }
 
@@ -709,7 +709,7 @@ bool bias_apply_intervention(bias_detection_system_t* system,
     if (idx < 0) return false;
 
     implicit_bias_t* implicit = &system->implicit_biases[idx];
-    float reduction = 0.3f;
+    float reduction = 0.3F;
 
     bool success = false;
 
@@ -727,19 +727,19 @@ bool bias_apply_intervention(bias_detection_system_t* system,
             break;
 
         case DEBIAS_INDIVIDUATION:
-            implicit->stereotype_activation -= reduction * 0.8f;
+            implicit->stereotype_activation -= reduction * 0.8F;
             success = true;
             break;
 
         case DEBIAS_INTERGROUP_CONTACT:
             implicit->positive_association += reduction;
-            implicit->warmth_association += reduction * 0.7f;
+            implicit->warmth_association += reduction * 0.7F;
             success = true;
             break;
 
         case DEBIAS_MINDFULNESS:
             implicit->stereotype_suppressed = true;
-            system->self_awareness += 0.1f;
+            system->self_awareness += 0.1F;
             success = true;
             break;
 
@@ -756,12 +756,12 @@ bool bias_apply_intervention(bias_detection_system_t* system,
     }
 
     // Clamp values
-    implicit->positive_association = clamp(implicit->positive_association, 0.0f, 1.0f);
-    implicit->negative_association = clamp(implicit->negative_association, 0.0f, 1.0f);
-    implicit->warmth_association = clamp(implicit->warmth_association, 0.0f, 1.0f);
-    implicit->stereotype_activation = clamp(implicit->stereotype_activation, 0.0f, 1.0f);
+    implicit->positive_association = clamp(implicit->positive_association, 0.0F, 1.0F);
+    implicit->negative_association = clamp(implicit->negative_association, 0.0F, 1.0F);
+    implicit->warmth_association = clamp(implicit->warmth_association, 0.0F, 1.0F);
+    implicit->stereotype_activation = clamp(implicit->stereotype_activation, 0.0F, 1.0F);
 
-    system->self_awareness = clamp(system->self_awareness, 0.0f, 1.0f);
+    system->self_awareness = clamp(system->self_awareness, 0.0F, 1.0F);
 
     if (success) {
         system->successful_debias++;
@@ -777,7 +777,7 @@ bool bias_auto_debias(bias_detection_system_t* system, uint64_t current_time) {
     if (!system || !system->bias_detected) return false;
 
     // Find highest bias
-    float max_bias = 0.0f;
+    float max_bias = 0.0F;
     int max_idx = -1;
 
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
@@ -813,11 +813,11 @@ void bias_update(bias_detection_system_t* system, float dt, uint64_t current_tim
     // Decay implicit biases (slow)
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
         implicit_bias_t* bias = &system->implicit_biases[i];
-        bias->stereotype_activation = exponential_decay(bias->stereotype_activation, 0.01f, dt);
+        bias->stereotype_activation = exponential_decay(bias->stereotype_activation, 0.01F, dt);
     }
 
     // Update overall metrics
-    float total_implicit = 0.0f;
+    float total_implicit = 0.0F;
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
         total_implicit += system->implicit_biases[i].negative_association;
     }
@@ -842,5 +842,5 @@ bool bias_is_detected(const bias_detection_system_t* system, bias_type_t bias_ty
 }
 
 float bias_get_fairness_score(const bias_detection_system_t* system) {
-    return system ? system->fairness_score : 0.0f;
+    return system ? system->fairness_score : 0.0F;
 }

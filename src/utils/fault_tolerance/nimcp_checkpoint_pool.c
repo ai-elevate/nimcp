@@ -93,7 +93,7 @@ NIMCP_EXPORT checkpoint_pool_config_t checkpoint_pool_default_config(void) {
         .enable_cow = true,                    // Enable CoW optimization
         .enable_compression = false,           // Disable compression for Phase 0.5
         .enable_async_write = false,           // Disable async for Phase 0.5
-        .overallocation_factor = 1.2f          // 20% overallocation
+        .overallocation_factor = 1.2F          // 20% overallocation
     };
     return config;
 }
@@ -333,7 +333,7 @@ NIMCP_EXPORT bool checkpoint_pool_get_stats(
         size_t total_bytes = stats->cow_shared_bytes + stats->cow_private_bytes;
         if (total_bytes > 0) {
             stats->memory_savings_percent =
-                (float)stats->cow_shared_bytes / (float)total_bytes * 100.0f;
+                (float)stats->cow_shared_bytes / (float)total_bytes * 100.0F;
         }
     }
 
@@ -343,25 +343,25 @@ NIMCP_EXPORT bool checkpoint_pool_get_stats(
 }
 
 NIMCP_EXPORT float checkpoint_pool_calculate_speedup(checkpoint_pool_t pool) {
-    if (!pool) return 1.0f;
+    if (!pool) return 1.0F;
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
     // Traditional checkpoint time estimate
-    float traditional_malloc_ms = 1.5f;         // malloc overhead
-    float traditional_memcpy_ms = 30.0f;        // memcpy brain state
-    float traditional_compress_ms = 60.0f;      // compression
-    float traditional_write_ms = 200.0f;        // disk write
+    float traditional_malloc_ms = 1.5F;         // malloc overhead
+    float traditional_memcpy_ms = 30.0F;        // memcpy brain state
+    float traditional_compress_ms = 60.0F;      // compression
+    float traditional_write_ms = 200.0F;        // disk write
     float traditional_total_ms = traditional_malloc_ms + traditional_memcpy_ms +
                                  traditional_compress_ms + traditional_write_ms;
 
     // Our checkpoint time (from stats)
-    float our_snapshot_ms = pool->stats.avg_snapshot_ns / 1000000.0f;
+    float our_snapshot_ms = pool->stats.avg_snapshot_ns / 1000000.0F;
     float our_write_ms = pool->stats.avg_write_ms;
     float our_total_ms = our_snapshot_ms + our_write_ms;
 
     // Avoid division by zero
-    if (our_total_ms < 0.001f) our_total_ms = 0.001f;
+    if (our_total_ms < 0.001F) our_total_ms = 0.001F;
 
     float speedup = traditional_total_ms / our_total_ms;
 

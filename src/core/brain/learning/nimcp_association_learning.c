@@ -73,7 +73,7 @@ static association_entry_t* create_association(const char* A, const char* B) {
     association_entry_t* entry = &g_associations.entries[g_associations.count++];
     strncpy(entry->antecedent, A, sizeof(entry->antecedent) - 1);
     strncpy(entry->consequent, B, sizeof(entry->consequent) - 1);
-    entry->strength = 0.0f;
+    entry->strength = 0.0F;
     memset(&entry->stats, 0, sizeof(entry->stats));
 
     return entry;
@@ -105,9 +105,9 @@ bool brain_learn_association(brain_t brain, const char* A, const char* B,
 
     // Update strength (exponential moving average)
     // Apply learning rate update for each cooccurrence to build strength faster
-    const float alpha = 0.1f; // Learning rate
+    const float alpha = 0.1F; // Learning rate
     for (uint32_t i = 0; i < cooccurrence_count; i++) {
-        entry->strength = alpha * confidence + (1.0f - alpha) * entry->strength;
+        entry->strength = alpha * confidence + (1.0F - alpha) * entry->strength;
     }
 
     LOG_DEBUG("association_learning: Learned association: %s → %s (strength: %.2f, confidence: %.2f, count: %u)",
@@ -119,7 +119,7 @@ bool brain_learn_association(brain_t brain, const char* A, const char* B,
 float compute_association_confidence(const char* A, const char* B,
                                      const association_stats_t* stats) {
     if (!stats || stats->total_count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // P(B|A) = count(A,B) / count(A)
@@ -127,8 +127,8 @@ float compute_association_confidence(const char* A, const char* B,
     float confidence = (float)stats->AB_count / (float)stats->total_count;
 
     // Clamp to [0.0, 1.0]
-    if (confidence < 0.0f) confidence = 0.0f;
-    if (confidence > 1.0f) confidence = 1.0f;
+    if (confidence < 0.0F) confidence = 0.0F;
+    if (confidence > 1.0F) confidence = 1.0F;
 
     return confidence;
 }
@@ -136,30 +136,30 @@ float compute_association_confidence(const char* A, const char* B,
 float update_association_strength(brain_t brain, const char* A, const char* B,
                                    float outcome) {
     if (!brain || !A || !B) {
-        return -1.0f;
+        return -1.0F;
     }
 
     association_entry_t* entry = find_association(A, B);
     if (!entry) {
         entry = create_association(A, B);
-        if (!entry) return -1.0f;
+        if (!entry) return -1.0F;
     }
 
     // Higher learning rate for explicit reinforcement/rehearsal than passive learning
-    const float learning_rate = 0.2f;  // Was 0.1f - increased to make rehearsal more effective
+    const float learning_rate = 0.2F;  // Was 0.1f - increased to make rehearsal more effective
 
     // Reinforcement-based update
-    if (outcome > 0.0f) {
+    if (outcome > 0.0F) {
         // Positive reinforcement: approach 1.0
-        entry->strength += learning_rate * outcome * (1.0f - entry->strength);
-    } else if (outcome < 0.0f) {
+        entry->strength += learning_rate * outcome * (1.0F - entry->strength);
+    } else if (outcome < 0.0F) {
         // Negative reinforcement: approach 0.0
         entry->strength += learning_rate * outcome * entry->strength;
     }
 
     // Clamp to [0.0, 1.0]
-    if (entry->strength < 0.0f) entry->strength = 0.0f;
-    if (entry->strength > 1.0f) entry->strength = 1.0f;
+    if (entry->strength < 0.0F) entry->strength = 0.0F;
+    if (entry->strength > 1.0F) entry->strength = 1.0F;
 
     LOG_DEBUG("association_learning: Updated association: %s → %s (strength: %.2f, outcome: %.2f)",
              A, B, entry->strength, outcome);
@@ -169,19 +169,19 @@ float update_association_strength(brain_t brain, const char* A, const char* B,
 
 float get_association_strength(brain_t brain, const char* A, const char* B) {
     if (!brain || !A || !B) {
-        return -1.0f;
+        return -1.0F;
     }
 
     association_entry_t* entry = find_association(A, B);
     if (!entry) {
-        return -1.0f;
+        return -1.0F;
     }
 
     return entry->strength;
 }
 
 uint32_t decay_all_associations(brain_t brain, float decay_factor) {
-    if (!brain || decay_factor < 0.0f || decay_factor > 1.0f) {
+    if (!brain || decay_factor < 0.0F || decay_factor > 1.0F) {
         return 0;
     }
 

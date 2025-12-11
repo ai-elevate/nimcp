@@ -373,7 +373,7 @@ static inline float exponential_decay(float current, float baseline, float dt, f
      * WHY:  Neurons maintain tonic firing rates (baseline)
      * FORMULA: c_new = c × decay + baseline × (1 - decay)
      */
-    return current * decay_factor + baseline * (1.0f - decay_factor);
+    return current * decay_factor + baseline * (1.0F - decay_factor);
 }
 
 /**
@@ -389,7 +389,7 @@ static inline float exponential_decay(float current, float baseline, float dt, f
  * @return Updated average
  */
 static inline float update_ema(float current_avg, float new_value, float alpha) {
-    return alpha * new_value + (1.0f - alpha) * current_avg;
+    return alpha * new_value + (1.0F - alpha) * current_avg;
 }
 
 //=============================================================================
@@ -430,33 +430,33 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
      *       This matches biological tonic dopamine levels (1-5 Hz firing)
      *       Phasic bursts (10-20 Hz) will add ~0.3-0.8 on top of this baseline
      */
-    system->baselines[NEUROMOD_DOPAMINE] = 0.05f;      // Tonic dopamine: 50 nM
-    system->baselines[NEUROMOD_SEROTONIN] = 0.4f;      // 5-HT tonic level
-    system->baselines[NEUROMOD_ACETYLCHOLINE] = 0.2f;  // ACh tonic level
-    system->baselines[NEUROMOD_NOREPINEPHRINE] = 0.3f; // NE tonic level
-    system->baselines[NEUROMOD_GABA] = 0.5f;           // GABA tone
-    system->baselines[NEUROMOD_GLUTAMATE] = 0.6f;      // GLU tone
+    system->baselines[NEUROMOD_DOPAMINE] = 0.05F;      // Tonic dopamine: 50 nM
+    system->baselines[NEUROMOD_SEROTONIN] = 0.4F;      // 5-HT tonic level
+    system->baselines[NEUROMOD_ACETYLCHOLINE] = 0.2F;  // ACh tonic level
+    system->baselines[NEUROMOD_NOREPINEPHRINE] = 0.3F; // NE tonic level
+    system->baselines[NEUROMOD_GABA] = 0.5F;           // GABA tone
+    system->baselines[NEUROMOD_GLUTAMATE] = 0.6F;      // GLU tone
 
     /* WHAT: Initialize default decay constants (measured clearance rates)
      * WHY:  Based on in vivo measurements from neuroscience literature
      */
-    system->decay_times[NEUROMOD_DOPAMINE] = 2.0f;       // Fast (DAT reuptake)
-    system->decay_times[NEUROMOD_SEROTONIN] = 10.0f;     // Slow (SERT reuptake)
-    system->decay_times[NEUROMOD_ACETYLCHOLINE] = 0.5f;  // Very fast (AChE hydrolysis)
-    system->decay_times[NEUROMOD_NOREPINEPHRINE] = 3.0f; // Medium (NET reuptake)
-    system->decay_times[NEUROMOD_GABA] = 0.1f;           // Synaptic (GAT)
-    system->decay_times[NEUROMOD_GLUTAMATE] = 0.1f;      // Synaptic (EAAT)
+    system->decay_times[NEUROMOD_DOPAMINE] = 2.0F;       // Fast (DAT reuptake)
+    system->decay_times[NEUROMOD_SEROTONIN] = 10.0F;     // Slow (SERT reuptake)
+    system->decay_times[NEUROMOD_ACETYLCHOLINE] = 0.5F;  // Very fast (AChE hydrolysis)
+    system->decay_times[NEUROMOD_NOREPINEPHRINE] = 3.0F; // Medium (NET reuptake)
+    system->decay_times[NEUROMOD_GABA] = 0.1F;           // Synaptic (GAT)
+    system->decay_times[NEUROMOD_GLUTAMATE] = 0.1F;      // Synaptic (EAAT)
 
     /* WHAT: Initialize default release gains (calibrated responses)
      * WHY:  Produces biologically realistic neuromodulator responses
      */
-    system->reward_dopamine_gain = 0.5f;
-    system->threat_norepinephrine_gain = 0.7f;
-    system->salience_acetylcholine_gain = 0.6f;
-    system->punishment_serotonin_gain = 0.4f;
+    system->reward_dopamine_gain = 0.5F;
+    system->threat_norepinephrine_gain = 0.7F;
+    system->salience_acetylcholine_gain = 0.6F;
+    system->punishment_serotonin_gain = 0.4F;
 
     system->enable_volume_transmission = true;
-    system->diffusion_rate = 0.1f;
+    system->diffusion_rate = 0.1F;
 
     /* WHAT: Override defaults with user config if provided
      * WHY:  Allows customization for different brain regions
@@ -543,9 +543,9 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
     // Acetylcholine: Attention, encoding, salience
     // Note: Using dopamine config as template (can be customized later)
     phasic_tonic_config_t ach_config = da_config;
-    ach_config.initial_tonic = 0.00004f;  // 40 nM
-    ach_config.tonic_target = 0.00004f;
-    ach_config.burst_decay_tau = 0.1f;    // 100ms (very fast)
+    ach_config.initial_tonic = 0.00004F;  // 40 nM
+    ach_config.tonic_target = 0.00004F;
+    ach_config.burst_decay_tau = 0.1F;    // 100ms (very fast)
     phasic_tonic_init(&system->acetylcholine_phasic_tonic, &ach_config, current_time);
 
     /* WHAT: Initialize receptor profiles for different brain regions
@@ -738,12 +738,12 @@ float neuromodulator_get_level(neuromodulator_system_t system, neuromodulator_ty
     /* WHAT: Guard clause - validate system
      * WHY:  Prevent null pointer dereference
      */
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
 
     /* WHAT: Guard clause - validate type
      * WHY:  Prevent array out of bounds access
      */
-    if (type >= NEUROMOD_COUNT) return 0.0f;
+    if (type >= NEUROMOD_COUNT) return 0.0F;
 
     /* WHAT: Return current concentration
      * WHY:  Direct access to concentration array
@@ -811,22 +811,22 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
         // Update dopamine phasic-tonic dynamics
         phasic_tonic_update(&system->dopamine_phasic_tonic, dt, current_time);
         float da_conc = phasic_tonic_get_concentration(&system->dopamine_phasic_tonic);
-        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_conc * 1000.0f, 0.0f, 1.0f);
+        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update serotonin phasic-tonic dynamics
         phasic_tonic_update(&system->serotonin_phasic_tonic, dt, current_time);
         float serotonin_conc = phasic_tonic_get_concentration(&system->serotonin_phasic_tonic);
-        system->concentrations[NEUROMOD_SEROTONIN] = clamp(serotonin_conc * 1000.0f, 0.0f, 1.0f);
+        system->concentrations[NEUROMOD_SEROTONIN] = clamp(serotonin_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update norepinephrine phasic-tonic dynamics
         phasic_tonic_update(&system->norepinephrine_phasic_tonic, dt, current_time);
         float ne_conc = phasic_tonic_get_concentration(&system->norepinephrine_phasic_tonic);
-        system->concentrations[NEUROMOD_NOREPINEPHRINE] = clamp(ne_conc * 1000.0f, 0.0f, 1.0f);
+        system->concentrations[NEUROMOD_NOREPINEPHRINE] = clamp(ne_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update acetylcholine phasic-tonic dynamics
         phasic_tonic_update(&system->acetylcholine_phasic_tonic, dt, current_time);
         float ach_conc = phasic_tonic_get_concentration(&system->acetylcholine_phasic_tonic);
-        system->concentrations[NEUROMOD_ACETYLCHOLINE] = clamp(ach_conc * 1000.0f, 0.0f, 1.0f);
+        system->concentrations[NEUROMOD_ACETYLCHOLINE] = clamp(ach_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update statistics for all systems
         for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
@@ -835,14 +835,14 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
             system->stats.moving_averages[i] = update_ema(
                 system->stats.moving_averages[i],
                 concentration,
-                0.1f
+                0.1F
             );
 
             float delta = concentration - system->stats.moving_averages[i];
             system->stats.variances[i] = update_ema(
                 system->stats.variances[i],
                 delta * delta,
-                0.1f
+                0.1F
             );
         }
 
@@ -864,14 +864,14 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
             system->stats.moving_averages[i] = update_ema(
                 system->stats.moving_averages[i],
                 new_concentration,
-                0.1f
+                0.1F
             );
 
             float delta = new_concentration - system->stats.moving_averages[i];
             system->stats.variances[i] = update_ema(
                 system->stats.variances[i],
                 delta * delta,
-                0.1f
+                0.1F
             );
         }
     }
@@ -879,7 +879,7 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
     /* WHAT: Update timestamp under lock
      * WHY:  Maintain consistency with concentration values
      */
-    system->last_update_time += (uint64_t)(dt * 1000.0f);  // Convert to ms
+    system->last_update_time += (uint64_t)(dt * 1000.0F);  // Convert to ms
 
     /* WHAT: Release write lock before atomic increment
      * WHY:  Atomic counter doesn't need lock protection
@@ -916,7 +916,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
      * @param predicted_reward Expected reward (0-1)
      * @return Reward prediction error
      */
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
 
     /* WHAT: Compute reward prediction error (read-only, no lock needed)
      * WHY:  RPE drives learning - positive for better than expected,
@@ -934,7 +934,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
     // PHASE C2.3: Vesicle-Based Release Modulation
     // ===========================================================================
 
-    float vesicle_modulation = 1.0f;  // Default: no modulation
+    float vesicle_modulation = 1.0F;  // Default: no modulation
 
     if (system->use_vesicle_packaging) {
         /* WHAT: Use vesicle dynamics to modulate neurotransmitter release
@@ -943,7 +943,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
          */
 
         // Release vesicles (quantal release)
-        bool action_potential = (fabsf(rpe) > 0.1f);  // Release if significant RPE
+        bool action_potential = (fabsf(rpe) > 0.1F);  // Release if significant RPE
         uint64_t current_time = system->last_update_time;
 
         float molecules_released = vesicle_pool_release(&system->dopamine_vesicles,
@@ -951,22 +951,22 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
                                                         current_time);
 
         // Update vesicle pools (refill, mobilize, facilitation decay)
-        vesicle_pool_update(&system->dopamine_vesicles, 0.001f);  // 1ms time step
+        vesicle_pool_update(&system->dopamine_vesicles, 0.001F);  // 1ms time step
 
         // Vesicle modulation = actual release / expected release
         // Expected: ~3 vesicles at Pr=0.3, each ~5000 molecules = 15000 molecules
         float expected_molecules = VESICLE_DEFAULT_RRP_SIZE * VESICLE_DEFAULT_RELEASE_PROBABILITY * VESICLE_DEFAULT_QUANTAL_SIZE;
-        vesicle_modulation = (expected_molecules > 0.0f) ? (molecules_released / expected_molecules) : 0.0f;
+        vesicle_modulation = (expected_molecules > 0.0F) ? (molecules_released / expected_molecules) : 0.0F;
 
         // Clamp modulation to [0, 2] (can facilitate up to 2x)
-        vesicle_modulation = clamp(vesicle_modulation, 0.0f, 2.0f);
+        vesicle_modulation = clamp(vesicle_modulation, 0.0F, 2.0F);
     }
 
     // ===========================================================================
     // PHASE C2.4: Metabolic Pathway Dynamics
     // ===========================================================================
 
-    float metabolic_concentration = 0.0f;
+    float metabolic_concentration = 0.0F;
 
     if (system->use_metabolic_pathways) {
         /* WHAT: Use metabolic dynamics for complete neurotransmitter lifecycle
@@ -980,7 +980,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
 
         // Update metabolic state (synthesis + release - degradation - reuptake)
         metabolic_concentration = metabolic_update(&system->dopamine_metabolism,
-                                                   0.001f,  // 1ms time step
+                                                   0.001F,  // 1ms time step
                                                    release_amount_um);
     }
 
@@ -988,7 +988,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
     // PHASE E1: Grief System Integration (Cognitive Pipeline)
     // ===========================================================================
 
-    float grief_dopamine_factor = 1.0f;  // Default: no grief effect
+    float grief_dopamine_factor = 1.0F;  // Default: no grief effect
 
     if (system->use_grief_integration && system->grief_system) {
         /* WHAT: Apply grief-induced dopamine depletion
@@ -1012,7 +1012,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
     // PHASE E2: Joy and Euphoria System Integration
     // ===========================================================================
 
-    float joy_dopamine_factor = 1.0f;  // Default: no joy effect
+    float joy_dopamine_factor = 1.0F;  // Default: no joy effect
 
     if (system->use_joy_integration && system->joy_system) {
         /* WHAT: Apply joy-induced dopamine enhancement
@@ -1035,8 +1035,8 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
     // PHASE E4: Social Bond System Integration
     // ===========================================================================
 
-    float social_dopamine_factor = 1.0f;  // Default: no social effect
-    float social_oxytocin_factor = 1.0f;  // Default: no social effect
+    float social_dopamine_factor = 1.0F;  // Default: no social effect
+    float social_oxytocin_factor = 1.0F;  // Default: no social effect
 
     if (system->use_social_integration && system->social_system) {
         /* WHAT: Apply social bond effects on dopamine and oxytocin
@@ -1065,7 +1065,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
          */
 
         // Normalize RPE to [-1, +1] range for encoding
-        float td_error = clamp(rpe, -1.0f, 1.0f);
+        float td_error = clamp(rpe, -1.0F, 1.0F);
 
         // Get current time (will use last_update_time, or 0 if first call)
         uint64_t current_time = system->last_update_time;
@@ -1087,7 +1087,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
 
         // Normalize to [0, 1] range for compatibility with existing code
         // Convert from µM to normalized: 1 µM (peak burst) → 1.0
-        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_concentration * 1000.0f, 0.0f, 1.0f);
+        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_concentration * 1000.0F, 0.0F, 1.0F);
 
     } else {
         /* WHAT: Legacy simple concentration model (fallback)
@@ -1097,7 +1097,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
 
         if (system->use_metabolic_pathways) {
             // Use metabolic concentration even in legacy mode
-            system->concentrations[NEUROMOD_DOPAMINE] = clamp(metabolic_concentration * 1000.0f,
+            system->concentrations[NEUROMOD_DOPAMINE] = clamp(metabolic_concentration * 1000.0F,
                                                               MIN_CONCENTRATION,
                                                               MAX_CONCENTRATION);
         } else {
@@ -1142,7 +1142,7 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
      * COMPLEXITY: O(1)
      * THREAD SAFETY: Write lock for concentration, atomic for counter
      */
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
 
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
@@ -1150,7 +1150,7 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
     nimcp_platform_rwlock_wrlock(&system->rwlock);
 
     // Phase E1: Apply grief-induced serotonin depletion
-    float grief_serotonin_factor = 1.0f;
+    float grief_serotonin_factor = 1.0F;
     if (system->use_grief_integration && system->grief_system) {
         float dopamine_factor, norepinephrine_factor;
         grief_get_neuromodulator_effects(system->grief_system,
@@ -1160,7 +1160,7 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
     }
 
     // Phase E2: Apply joy-induced serotonin enhancement
-    float joy_serotonin_factor = 1.0f;
+    float joy_serotonin_factor = 1.0F;
     if (system->use_joy_integration && system->joy_system) {
         float joy_dopamine_factor;
         joy_get_neuromodulator_effects(system->joy_system,
@@ -1199,7 +1199,7 @@ float neuromodulator_release_acetylcholine(neuromodulator_system_t system, float
      * COMPLEXITY: O(1)
      * THREAD SAFETY: Write lock for concentration, atomic for counter
      */
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
 
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
@@ -1237,13 +1237,13 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
      * COMPLEXITY: O(1)
      * THREAD SAFETY: Write lock for concentration, atomic for counter
      */
-    if (!system) return 0.0f;
+    if (!system) return 0.0F;
 
     /* WHAT: Combine threat and uncertainty (read-only, no lock needed)
      * WHY:  Both trigger arousal/vigilance response
      * WEIGHT: Threat weighted more heavily (0.7 vs 0.3)
      */
-    float arousal_signal = 0.7f * threat_level + 0.3f * uncertainty;
+    float arousal_signal = 0.7F * threat_level + 0.3F * uncertainty;
 
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
@@ -1251,7 +1251,7 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
     nimcp_platform_rwlock_wrlock(&system->rwlock);
 
     // Phase E1: Apply grief-induced norepinephrine elevation
-    float grief_norepinephrine_factor = 1.0f;
+    float grief_norepinephrine_factor = 1.0F;
     if (system->use_grief_integration && system->grief_system) {
         float serotonin_factor, dopamine_factor;
         grief_get_neuromodulator_effects(system->grief_system,
@@ -1321,17 +1321,17 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      *
      * BIOLOGICAL: Each receptor type has specific effect on plasticity
      */
-    effects->learning_rate_multiplier = 1.0f +
-        receptors->d1_density * da * 0.5f -           // D1: Enhances plasticity
-        receptors->d2_density * da * 0.3f +           // D2: Suppresses plasticity
-        receptors->nicotinic_density * ach * 0.4f +   // nACh: Attention/encoding
-        receptors->beta_density * ne * 0.3f -         // β: Arousal/consolidation
-        receptors->serotonin_density * serotonin * 0.2f; // 5-HT: Inhibits
+    effects->learning_rate_multiplier = 1.0F +
+        receptors->d1_density * da * 0.5F -           // D1: Enhances plasticity
+        receptors->d2_density * da * 0.3F +           // D2: Suppresses plasticity
+        receptors->nicotinic_density * ach * 0.4F +   // nACh: Attention/encoding
+        receptors->beta_density * ne * 0.3F -         // β: Arousal/consolidation
+        receptors->serotonin_density * serotonin * 0.2F; // 5-HT: Inhibits
 
     /* WHAT: Clamp multiplier to reasonable range [0, 2]
      * WHY:  Prevent runaway plasticity or complete suppression
      */
-    effects->learning_rate_multiplier = clamp(effects->learning_rate_multiplier, 0.0f, 2.0f);
+    effects->learning_rate_multiplier = clamp(effects->learning_rate_multiplier, 0.0F, 2.0F);
 
     /* WHAT: Compute synaptic transmission gain
      * WHY:  Attention modulates signal amplification
@@ -1343,12 +1343,12 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      *        NE × α × 0.3 (arousal amplification) -
      *        5-HT × 0.2 (behavioral inhibition)
      */
-    effects->transmission_gain = 1.0f +
-        ach * receptors->nicotinic_density * 0.5f +
-        ne * receptors->alpha_density * 0.3f -
-        serotonin * receptors->serotonin_density * 0.2f;
+    effects->transmission_gain = 1.0F +
+        ach * receptors->nicotinic_density * 0.5F +
+        ne * receptors->alpha_density * 0.3F -
+        serotonin * receptors->serotonin_density * 0.2F;
 
-    effects->transmission_gain = clamp(effects->transmission_gain, 0.1f, 2.0f);
+    effects->transmission_gain = clamp(effects->transmission_gain, 0.1F, 2.0F);
 
     /* WHAT: Compute excitability shift (threshold modulation)
      * WHY:  Arousal changes firing threshold
@@ -1361,10 +1361,10 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      * RANGE: [-0.5, +0.5] to prevent extreme shifts
      */
     effects->excitability_shift =
-        -ne * receptors->alpha_density * 0.3f +  // Negative = lower threshold
-        serotonin * receptors->serotonin_density * 0.2f;  // Positive = raise threshold
+        -ne * receptors->alpha_density * 0.3F +  // Negative = lower threshold
+        serotonin * receptors->serotonin_density * 0.2F;  // Positive = raise threshold
 
-    effects->excitability_shift = clamp(effects->excitability_shift, -0.5f, 0.5f);
+    effects->excitability_shift = clamp(effects->excitability_shift, -0.5F, 0.5F);
 
     /* WHAT: Compute attention weight
      * WHY:  Determines importance for working memory / consolidation
@@ -1373,10 +1373,10 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      * FORMULA: attention = ACh × 0.7 + NE × 0.3
      */
     effects->attention_weight =
-        ach * receptors->nicotinic_density * 0.7f +
-        ne * receptors->alpha_density * 0.3f;
+        ach * receptors->nicotinic_density * 0.7F +
+        ne * receptors->alpha_density * 0.3F;
 
-    effects->attention_weight = clamp(effects->attention_weight, 0.0f, 1.0f);
+    effects->attention_weight = clamp(effects->attention_weight, 0.0F, 1.0F);
 
     return true;
 }
@@ -1422,12 +1422,12 @@ receptor_profile_t neuromodulator_profile_cortical_excitatory(void) {
      * BIOLOGICAL: Pyramidal cells express high D1, moderate ACh, some NE
      */
     receptor_profile_t profile = {
-        .d1_density = 0.7f,          // High D1 (enhances plasticity)
-        .d2_density = 0.2f,          // Low D2
-        .serotonin_density = 0.3f,   // Moderate 5-HT
-        .nicotinic_density = 0.5f,   // Moderate nACh (attention)
-        .alpha_density = 0.4f,       // Moderate α (arousal)
-        .beta_density = 0.5f         // Moderate β (consolidation)
+        .d1_density = 0.7F,          // High D1 (enhances plasticity)
+        .d2_density = 0.2F,          // Low D2
+        .serotonin_density = 0.3F,   // Moderate 5-HT
+        .nicotinic_density = 0.5F,   // Moderate nACh (attention)
+        .alpha_density = 0.4F,       // Moderate α (arousal)
+        .beta_density = 0.5F         // Moderate β (consolidation)
     };
     return profile;
 }
@@ -1438,12 +1438,12 @@ receptor_profile_t neuromodulator_profile_cortical_inhibitory(void) {
      * BIOLOGICAL: High D2, moderate 5-HT, low ACh
      */
     receptor_profile_t profile = {
-        .d1_density = 0.2f,
-        .d2_density = 0.8f,          // High D2 (suppresses plasticity)
-        .serotonin_density = 0.6f,   // High 5-HT (inhibitory)
-        .nicotinic_density = 0.2f,   // Low nACh
-        .alpha_density = 0.3f,
-        .beta_density = 0.3f
+        .d1_density = 0.2F,
+        .d2_density = 0.8F,          // High D2 (suppresses plasticity)
+        .serotonin_density = 0.6F,   // High 5-HT (inhibitory)
+        .nicotinic_density = 0.2F,   // Low nACh
+        .alpha_density = 0.3F,
+        .beta_density = 0.3F
     };
     return profile;
 }
@@ -1454,12 +1454,12 @@ receptor_profile_t neuromodulator_profile_hippocampal(void) {
      * BIOLOGICAL: Very high nACh and mACh for memory formation
      */
     receptor_profile_t profile = {
-        .d1_density = 0.6f,
-        .d2_density = 0.2f,
-        .serotonin_density = 0.5f,
-        .nicotinic_density = 0.9f,   // Very high ACh (memory encoding)
-        .alpha_density = 0.4f,
-        .beta_density = 0.7f         // High β (consolidation)
+        .d1_density = 0.6F,
+        .d2_density = 0.2F,
+        .serotonin_density = 0.5F,
+        .nicotinic_density = 0.9F,   // Very high ACh (memory encoding)
+        .alpha_density = 0.4F,
+        .beta_density = 0.7F         // High β (consolidation)
     };
     return profile;
 }
@@ -1470,12 +1470,12 @@ receptor_profile_t neuromodulator_profile_striatal(void) {
      * BIOLOGICAL: Highest dopamine receptor density in brain
      */
     receptor_profile_t profile = {
-        .d1_density = 0.9f,          // Very high D1 (direct pathway)
-        .d2_density = 0.9f,          // Very high D2 (indirect pathway)
-        .serotonin_density = 0.4f,
-        .nicotinic_density = 0.3f,
-        .alpha_density = 0.2f,
-        .beta_density = 0.3f
+        .d1_density = 0.9F,          // Very high D1 (direct pathway)
+        .d2_density = 0.9F,          // Very high D2 (indirect pathway)
+        .serotonin_density = 0.4F,
+        .nicotinic_density = 0.3F,
+        .alpha_density = 0.2F,
+        .beta_density = 0.3F
     };
     return profile;
 }
@@ -1486,12 +1486,12 @@ receptor_profile_t neuromodulator_profile_amygdala(void) {
      * BIOLOGICAL: High NE (threat), DA (valence), 5-HT (anxiety)
      */
     receptor_profile_t profile = {
-        .d1_density = 0.7f,          // High DA (valence coding)
-        .d2_density = 0.3f,
-        .serotonin_density = 0.8f,   // High 5-HT (anxiety modulation)
-        .nicotinic_density = 0.4f,
-        .alpha_density = 0.9f,       // Very high NE (threat detection)
-        .beta_density = 0.7f
+        .d1_density = 0.7F,          // High DA (valence coding)
+        .d2_density = 0.3F,
+        .serotonin_density = 0.8F,   // High 5-HT (anxiety modulation)
+        .nicotinic_density = 0.4F,
+        .alpha_density = 0.9F,       // Very high NE (threat detection)
+        .beta_density = 0.7F
     };
     return profile;
 }
@@ -1520,12 +1520,12 @@ bool neuromodulator_release_from_ethics(neuromodulator_system_t system, float go
      * WHY:  Positive ethics should feel rewarding, negative aversive
      * HOW:  Golden rule in [-1, 1], map to dopamine (positive) or serotonin (negative)
      */
-    if (golden_rule_score > 0.0f) {
+    if (golden_rule_score > 0.0F) {
         /* WHAT: Positive ethics → dopamine (reward)
          * WHY:  Reinforces ethical behavior/information
          * PREDICTION: Ethics score is "reward", baseline (0.3) is "expected"
          */
-        neuromodulator_release_dopamine(system, golden_rule_score, 0.0f);
+        neuromodulator_release_dopamine(system, golden_rule_score, 0.0F);
     } else {
         /* WHAT: Negative ethics → serotonin (aversion/inhibition)
          * WHY:  Suppresses unethical behavior/information
@@ -1537,14 +1537,14 @@ bool neuromodulator_release_from_ethics(neuromodulator_system_t system, float go
      * WHY:  High trust → attend more, low trust → attend less
      * HOW:  Trustworthiness directly maps to salience
      */
-    float combined_salience = (trustworthiness * 0.6f + salience * 0.4f);
+    float combined_salience = (trustworthiness * 0.6F + salience * 0.4F);
     neuromodulator_release_acetylcholine(system, combined_salience);
 
     /* WHAT: Map harm to threat response (norepinephrine)
      * WHY:  Harmful content triggers vigilance/arousal
      * HOW:  Harm score is threat level, low trust is uncertainty
      */
-    float uncertainty = 1.0f - trustworthiness;
+    float uncertainty = 1.0F - trustworthiness;
     neuromodulator_release_norepinephrine(system, harm_score, uncertainty);
 
     return true;
@@ -1564,7 +1564,7 @@ float neuromodulator_get_learning_weight(neuromodulator_system_t system,
      *
      * COMPLEXITY: O(1)
      */
-    if (!system || !receptors) return 0.5f;  // Default moderate weight
+    if (!system || !receptors) return 0.5F;  // Default moderate weight
 
     float da = system->concentrations[NEUROMOD_DOPAMINE];
     float ach = system->concentrations[NEUROMOD_ACETYLCHOLINE];
@@ -1580,12 +1580,12 @@ float neuromodulator_get_learning_weight(neuromodulator_system_t system,
     float ne_effect = ne * receptors->beta_density;
 
     float weight =
-        0.3f * da_effect +                    // Reward enhances learning
-        0.3f * ach_effect +                   // Attention enhances encoding
-        0.2f * (1.0f - serotonin_effect) +    // Inhibition suppresses learning
-        0.2f * ne_effect;                     // Arousal enhances consolidation
+        0.3F * da_effect +                    // Reward enhances learning
+        0.3F * ach_effect +                   // Attention enhances encoding
+        0.2F * (1.0F - serotonin_effect) +    // Inhibition suppresses learning
+        0.2F * ne_effect;                     // Arousal enhances consolidation
 
-    return clamp(weight, 0.0f, 1.0f);
+    return clamp(weight, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -1622,9 +1622,9 @@ bool neuromodulator_get_stats(neuromodulator_system_t system, neuromodulator_sta
      */
     if (system->stats.rpe_count > 0) {
         float avg_rpe_error = system->stats.reward_prediction_error_sum / system->stats.rpe_count;
-        stats->reward_prediction_accuracy = 1.0f - clamp(avg_rpe_error, 0.0f, 1.0f);
+        stats->reward_prediction_accuracy = 1.0F - clamp(avg_rpe_error, 0.0F, 1.0F);
     } else {
-        stats->reward_prediction_accuracy = 0.5f;  // Unknown
+        stats->reward_prediction_accuracy = 0.5F;  // Unknown
     }
 
     return true;

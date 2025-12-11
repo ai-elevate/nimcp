@@ -239,7 +239,7 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     analyzer->buffer_head = 0;
     analyzer->samples_recorded = 0;
     analyzer->last_state = COGNITIVE_STATE_UNKNOWN;
-    analyzer->last_confidence = 0.0f;
+    analyzer->last_confidence = 0.0F;
 
     return analyzer;
 }
@@ -312,7 +312,7 @@ bool brain_oscillation_record_activity(brain_oscillation_analyzer_t* analyzer)
     // TODO: Integrate with actual brain structure
     // For now, record a placeholder value
     // In real implementation: compute average neuron activation
-    float activity = 0.5f;  // Placeholder
+    float activity = 0.5F;  // Placeholder
 
     return brain_oscillation_record_value(analyzer, activity);
 }
@@ -474,9 +474,9 @@ bool brain_oscillation_get_state(
 
     // Infer state from dominant band and power ratios
     float total = wave_power.total_power;
-    if (total < 1e-6f) {
+    if (total < 1e-6F) {
         *state = COGNITIVE_STATE_UNKNOWN;
-        *confidence = 0.0f;
+        *confidence = 0.0F;
         return true;
     }
 
@@ -488,28 +488,28 @@ bool brain_oscillation_get_state(
     float gamma_ratio = wave_power.gamma_power / total;
 
     // State inference heuristics
-    if (delta_ratio > 0.6f) {
+    if (delta_ratio > 0.6F) {
         *state = COGNITIVE_STATE_DEEP_SLEEP;
         *confidence = delta_ratio;
-    } else if (theta_ratio > 0.4f) {
-        if (delta_ratio > 0.2f) {
+    } else if (theta_ratio > 0.4F) {
+        if (delta_ratio > 0.2F) {
             *state = COGNITIVE_STATE_LIGHT_SLEEP;
         } else {
             *state = COGNITIVE_STATE_CONSOLIDATING;
         }
         *confidence = theta_ratio;
-    } else if (alpha_ratio > 0.4f) {
+    } else if (alpha_ratio > 0.4F) {
         *state = COGNITIVE_STATE_RELAXED;
         *confidence = alpha_ratio;
-    } else if (beta_ratio > 0.4f) {
+    } else if (beta_ratio > 0.4F) {
         *state = COGNITIVE_STATE_FOCUSED;
         *confidence = beta_ratio;
-    } else if (gamma_ratio > 0.3f) {
+    } else if (gamma_ratio > 0.3F) {
         *state = COGNITIVE_STATE_ATTENTIVE;
         *confidence = gamma_ratio;
     } else {
         *state = COGNITIVE_STATE_UNKNOWN;
-        *confidence = 0.5f;
+        *confidence = 0.5F;
     }
 
     // Cache results
@@ -552,11 +552,11 @@ bool brain_oscillation_analyze(
 
     // Compute spectral entropy (measure of frequency spread)
     float total_power = results->wave_power.total_power;
-    if (total_power > 1e-6f) {
-        results->spectral_entropy = 0.0f;
+    if (total_power > 1e-6F) {
+        results->spectral_entropy = 0.0F;
         for (uint32_t i = 0; i < analyzer->spectrum_size; i++) {
             float p = analyzer->power_spectrum[i] / total_power;
-            if (p > 1e-10f) {
+            if (p > 1e-10F) {
                 results->spectral_entropy -= p * logf(p);
             }
         }
@@ -573,30 +573,30 @@ bool brain_oscillation_analyze(
         analyzer, BRAIN_WAVE_ALPHA, BRAIN_WAVE_BETA);
 
     // Set negative PAC values to 0.0 (indicates error or insufficient data)
-    if (results->theta_gamma_coupling < 0.0f) {
-        results->theta_gamma_coupling = 0.0f;
+    if (results->theta_gamma_coupling < 0.0F) {
+        results->theta_gamma_coupling = 0.0F;
     }
-    if (results->alpha_beta_coupling < 0.0f) {
-        results->alpha_beta_coupling = 0.0f;
+    if (results->alpha_beta_coupling < 0.0F) {
+        results->alpha_beta_coupling = 0.0F;
     }
 
     // Compute network synchrony using Kuramoto order parameter
     results->synchrony = brain_oscillation_compute_synchrony(analyzer);
-    if (results->synchrony < 0.0f) {
-        results->synchrony = 0.0f;
+    if (results->synchrony < 0.0F) {
+        results->synchrony = 0.0F;
     }
 
     // Compute spectral coherence
     results->coherence = brain_oscillation_compute_coherence(analyzer);
-    if (results->coherence < 0.0f) {
-        results->coherence = 0.0f;
+    if (results->coherence < 0.0F) {
+        results->coherence = 0.0F;
     }
 
     // Compute bandwidth around dominant frequency (3dB bandwidth)
     results->bandwidth = brain_oscillation_compute_bandwidth(
         analyzer, results->peak_frequency);
-    if (results->bandwidth < 0.0f) {
-        results->bandwidth = 0.0f;
+    if (results->bandwidth < 0.0F) {
+        results->bandwidth = 0.0F;
     }
 
     return true;
@@ -683,13 +683,13 @@ static bool extract_band_filtered_signal(
     }
 
     // Get frequency range for band
-    float freq_low = 0.0f, freq_high = 0.0f;
+    float freq_low = 0.0F, freq_high = 0.0F;
     switch (band) {
-        case BRAIN_WAVE_DELTA: freq_low = 1.0f;  freq_high = 4.0f;   break;
-        case BRAIN_WAVE_THETA: freq_low = 4.0f;  freq_high = 8.0f;   break;
-        case BRAIN_WAVE_ALPHA: freq_low = 8.0f;  freq_high = 13.0f;  break;
-        case BRAIN_WAVE_BETA:  freq_low = 13.0f; freq_high = 30.0f;  break;
-        case BRAIN_WAVE_GAMMA: freq_low = 30.0f; freq_high = 80.0f;  break;
+        case BRAIN_WAVE_DELTA: freq_low = 1.0F;  freq_high = 4.0F;   break;
+        case BRAIN_WAVE_THETA: freq_low = 4.0F;  freq_high = 8.0F;   break;
+        case BRAIN_WAVE_ALPHA: freq_low = 8.0F;  freq_high = 13.0F;  break;
+        case BRAIN_WAVE_BETA:  freq_low = 13.0F; freq_high = 30.0F;  break;
+        case BRAIN_WAVE_GAMMA: freq_low = 30.0F; freq_high = 80.0F;  break;
         default: return false;
     }
 
@@ -845,8 +845,8 @@ static bool extract_instantaneous_phase(
     full_spectrum[0] = spectrum[0];  // DC component (unchanged)
     for (uint32_t k = 1; k < spectrum_size - 1; k++) {
         // Double positive frequency components
-        full_spectrum[k].real = spectrum[k].real * 2.0f;
-        full_spectrum[k].imag = spectrum[k].imag * 2.0f;
+        full_spectrum[k].real = spectrum[k].real * 2.0F;
+        full_spectrum[k].imag = spectrum[k].imag * 2.0F;
     }
     full_spectrum[size / 2] = spectrum[size / 2];  // Nyquist (unchanged)
     // Negative frequencies remain zero (from calloc)
@@ -949,8 +949,8 @@ static bool extract_amplitude_envelope(
     full_spectrum[0] = spectrum[0];  // DC component (unchanged)
     for (uint32_t k = 1; k < spectrum_size - 1; k++) {
         // Double positive frequency components
-        full_spectrum[k].real = spectrum[k].real * 2.0f;
-        full_spectrum[k].imag = spectrum[k].imag * 2.0f;
+        full_spectrum[k].real = spectrum[k].real * 2.0F;
+        full_spectrum[k].imag = spectrum[k].imag * 2.0F;
     }
     full_spectrum[size / 2] = spectrum[size / 2];  // Nyquist (unchanged)
     // Negative frequencies remain zero (from calloc)
@@ -1017,7 +1017,7 @@ static float compute_modulation_index(
 {
     // Guard: Validate inputs
     if (!phase || !amplitude || size < 10) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Number of phase bins (18 bins = 20° each)
@@ -1032,7 +1032,7 @@ static float compute_modulation_index(
     // Bin amplitude by phase
     for (uint32_t i = 0; i < size; i++) {
         // Convert phase (-π to π) to bin index (0 to NUM_BINS-1)
-        float phase_normalized = (phase[i] + M_PI) / (2.0f * M_PI);  // 0 to 1
+        float phase_normalized = (phase[i] + M_PI) / (2.0F * M_PI);  // 0 to 1
         uint32_t bin = (uint32_t)(phase_normalized * NUM_BINS);
         if (bin >= NUM_BINS) bin = NUM_BINS - 1;
 
@@ -1041,7 +1041,7 @@ static float compute_modulation_index(
     }
 
     // Compute mean amplitude per bin
-    float total_amplitude = 0.0f;
+    float total_amplitude = 0.0F;
     for (uint32_t b = 0; b < NUM_BINS; b++) {
         if (bin_count[b] > 0) {
             bin_amplitude[b] /= (float)bin_count[b];
@@ -1050,8 +1050,8 @@ static float compute_modulation_index(
     }
 
     // Normalize to probability distribution
-    if (total_amplitude < 1e-10f) {
-        return 0.0f;  // No amplitude modulation
+    if (total_amplitude < 1e-10F) {
+        return 0.0F;  // No amplitude modulation
     }
 
     float prob[NUM_BINS];
@@ -1061,10 +1061,10 @@ static float compute_modulation_index(
 
     // Compute KL divergence from uniform distribution
     // MI = KL(P||U) / log(NUM_BINS)  (normalized to 0-1)
-    float uniform_prob = 1.0f / NUM_BINS;
-    float kl_divergence = 0.0f;
+    float uniform_prob = 1.0F / NUM_BINS;
+    float kl_divergence = 0.0F;
     for (uint32_t b = 0; b < NUM_BINS; b++) {
-        if (prob[b] > 1e-10f) {
+        if (prob[b] > 1e-10F) {
             kl_divergence += prob[b] * logf(prob[b] / uniform_prob);
         }
     }
@@ -1105,12 +1105,12 @@ float brain_oscillation_compute_pac(
 {
     // Guard: Validate analyzer
     if (!analyzer) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Check buffer is full
     if (analyzer->samples_recorded < analyzer->min_samples) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Allocate workspace
@@ -1124,7 +1124,7 @@ float brain_oscillation_compute_pac(
         nimcp_free(amplitude_signal);
         nimcp_free(phase);
         nimcp_free(amplitude);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Extract bandpass filtered signals
@@ -1133,7 +1133,7 @@ float brain_oscillation_compute_pac(
         nimcp_free(amplitude_signal);
         nimcp_free(phase);
         nimcp_free(amplitude);
-        return -1.0f;
+        return -1.0F;
     }
 
     if (!extract_band_filtered_signal(analyzer, amplitude_band, amplitude_signal)) {
@@ -1141,7 +1141,7 @@ float brain_oscillation_compute_pac(
         nimcp_free(amplitude_signal);
         nimcp_free(phase);
         nimcp_free(amplitude);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Extract phase from low-frequency signal
@@ -1150,7 +1150,7 @@ float brain_oscillation_compute_pac(
         nimcp_free(amplitude_signal);
         nimcp_free(phase);
         nimcp_free(amplitude);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Extract amplitude envelope from high-frequency signal
@@ -1159,7 +1159,7 @@ float brain_oscillation_compute_pac(
         nimcp_free(amplitude_signal);
         nimcp_free(phase);
         nimcp_free(amplitude);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Compute modulation index
@@ -1203,18 +1203,18 @@ float brain_oscillation_compute_synchrony(brain_oscillation_analyzer_t* analyzer
 {
     // Guard: Validate analyzer
     if (!analyzer) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Check buffer is full
     if (analyzer->samples_recorded < analyzer->min_samples) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Extract instantaneous phase from signal using Hilbert transform
     float* phase = (float*)nimcp_calloc(analyzer->buffer_size, sizeof(float));
     if (!phase) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Use already filtered signal (activity buffer)
@@ -1223,14 +1223,14 @@ float brain_oscillation_compute_synchrony(brain_oscillation_analyzer_t* analyzer
     if (!extract_instantaneous_phase(analyzer->activity_buffer,
                                      analyzer->buffer_size, phase)) {
         nimcp_free(phase);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Compute Kuramoto order parameter: R = |⟨e^(iθ)⟩|
     // This is the magnitude of the mean of complex exponentials of phases
     // Only use the valid samples (min_samples), not the zero-padded region
-    float sum_cos = 0.0f;
-    float sum_sin = 0.0f;
+    float sum_cos = 0.0F;
+    float sum_sin = 0.0F;
 
     for (uint32_t i = 0; i < analyzer->min_samples; i++) {
         sum_cos += cosf(phase[i]);
@@ -1248,10 +1248,10 @@ float brain_oscillation_compute_synchrony(brain_oscillation_analyzer_t* analyzer
     float synchrony = sqrtf(mean_cos * mean_cos + mean_sin * mean_sin);
 
     // Clamp to valid range [0, 1] to handle numerical precision issues
-    if (synchrony < 0.0f) {
-        synchrony = 0.0f;
-    } else if (synchrony > 1.0f) {
-        synchrony = 1.0f;
+    if (synchrony < 0.0F) {
+        synchrony = 0.0F;
+    } else if (synchrony > 1.0F) {
+        synchrony = 1.0F;
     }
 
     nimcp_free(phase);
@@ -1288,23 +1288,23 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
 {
     // Guard: Validate analyzer
     if (!analyzer) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Check buffer is full
     if (analyzer->samples_recorded < analyzer->min_samples) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Compute FFT and power spectrum if not already done
     if (!fft_execute_real(analyzer->fft_plan, analyzer->activity_buffer,
                           analyzer->spectrum)) {
-        return -1.0f;
+        return -1.0F;
     }
 
     if (!fft_power_spectrum(analyzer->spectrum, analyzer->power_spectrum,
                             analyzer->spectrum_size)) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // For single-channel coherence, we use two approaches:
@@ -1313,20 +1313,20 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
 
     // APPROACH 1: Spectral concentration index (inverse of spectral entropy)
     // This measures how concentrated the power is in specific frequencies
-    float total_power = 0.0f;
+    float total_power = 0.0F;
     for (uint32_t i = 0; i < analyzer->spectrum_size; i++) {
         total_power += analyzer->power_spectrum[i];
     }
 
-    if (total_power < 1e-10f) {
-        return 0.0f;  // No coherent oscillations
+    if (total_power < 1e-10F) {
+        return 0.0F;  // No coherent oscillations
     }
 
     // Compute normalized power distribution
-    float spectral_entropy = 0.0f;
+    float spectral_entropy = 0.0F;
     for (uint32_t i = 0; i < analyzer->spectrum_size; i++) {
         float p = analyzer->power_spectrum[i] / total_power;
-        if (p > 1e-10f) {
+        if (p > 1e-10F) {
             spectral_entropy -= p * logf(p);
         }
     }
@@ -1336,7 +1336,7 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
     float normalized_entropy = spectral_entropy / max_entropy;
 
     // Spectral concentration = 1 - normalized_entropy
-    float spectral_concentration = 1.0f - normalized_entropy;
+    float spectral_concentration = 1.0F - normalized_entropy;
 
     // APPROACH 2: Magnitude-squared coherence from cross-spectrum
     // For single signal, compute coherence between first and second half
@@ -1380,7 +1380,7 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
     }
 
     // Compute magnitude-squared coherence: |Pxy|² / (Pxx * Pyy)
-    float coherence_sum = 0.0f;
+    float coherence_sum = 0.0F;
     uint32_t valid_bins = 0;
     uint32_t half_spectrum_size = half_size / 2 + 1;
 
@@ -1399,7 +1399,7 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
         float pxy_mag_sq = pxy_real * pxy_real + pxy_imag * pxy_imag;
 
         // Coherence at this frequency: |Pxy|² / (Pxx * Pyy)
-        if (pxx > 1e-10f && pyy > 1e-10f) {
+        if (pxx > 1e-10F && pyy > 1e-10F) {
             float coh = pxy_mag_sq / (pxx * pyy);
             coherence_sum += coh;
             valid_bins++;
@@ -1411,18 +1411,18 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
 
     // Average coherence across frequencies
     float temporal_coherence = valid_bins > 0 ?
-        (coherence_sum / (float)valid_bins) : 0.0f;
+        (coherence_sum / (float)valid_bins) : 0.0F;
 
     // Combine both measures: weighted average of spectral concentration
     // and temporal coherence
-    float combined_coherence = 0.5f * spectral_concentration +
-                               0.5f * temporal_coherence;
+    float combined_coherence = 0.5F * spectral_concentration +
+                               0.5F * temporal_coherence;
 
     // Clamp to valid range [0, 1]
-    if (combined_coherence < 0.0f) {
-        combined_coherence = 0.0f;
-    } else if (combined_coherence > 1.0f) {
-        combined_coherence = 1.0f;
+    if (combined_coherence < 0.0F) {
+        combined_coherence = 0.0F;
+    } else if (combined_coherence > 1.0F) {
+        combined_coherence = 1.0F;
     }
 
     return combined_coherence;
@@ -1451,13 +1451,13 @@ float brain_oscillation_compute_bandwidth(
     float peak_freq)
 {
     // Guard: Validate inputs
-    if (!analyzer || peak_freq <= 0.0f) {
-        return -1.0f;
+    if (!analyzer || peak_freq <= 0.0F) {
+        return -1.0F;
     }
 
     // Check we have spectrum
     if (!analyzer->power_spectrum || analyzer->spectrum_size == 0) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Convert peak frequency to bin
@@ -1465,17 +1465,17 @@ float brain_oscillation_compute_bandwidth(
     int32_t peak_bin = fft_frequency_to_bin(peak_freq, analyzer->buffer_size,
                                             sampling_rate);
     if (peak_bin < 0 || (uint32_t)peak_bin >= analyzer->spectrum_size) {
-        return -1.0f;
+        return -1.0F;
     }
 
     // Get peak power
     float peak_power = analyzer->power_spectrum[peak_bin];
-    if (peak_power < 1e-10f) {
-        return 0.0f;
+    if (peak_power < 1e-10F) {
+        return 0.0F;
     }
 
     // Find 3dB bandwidth (half power points)
-    float half_power = peak_power / 2.0f;
+    float half_power = peak_power / 2.0F;
 
     // Search left for lower frequency bound
     int32_t low_bin = peak_bin;

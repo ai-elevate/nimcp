@@ -174,10 +174,10 @@ nlp_cortical_adapter_t* nlp_cortical_adapter_create(nlp_node_t node, brain_t bra
     (void)adapter->speech_cortex;  // Suppress unused warning
 
     // Initialize modulation parameters to neutral
-    adapter->receive_sensitivity = 1.0f;
-    adapter->transmit_rate = 1.0f;
-    adapter->attention_level = 1.0f;
-    adapter->emotional_valence = 0.5f;  // Neutral
+    adapter->receive_sensitivity = 1.0F;
+    adapter->transmit_rate = 1.0F;
+    adapter->attention_level = 1.0F;
+    adapter->emotional_valence = 0.5F;  // Neutral
 
     // Bio-async integration - module context initialized on first use
     adapter->bio_async_enabled = false;  // Enable when bio-router available
@@ -228,17 +228,17 @@ void nlp_cortical_update_modulation(nlp_cortical_adapter_t* adapter) {
     // Dopamine → Transmit rate (speech fluency)
     // High DA = rapid, eager communication
     float da = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
-    adapter->transmit_rate = 0.6f + da * 0.8f;  // [0.6, 1.4]
+    adapter->transmit_rate = 0.6F + da * 0.8F;  // [0.6, 1.4]
 
     // Acetylcholine → Receive sensitivity (listening acuity)
     // High ACh = sharp discrimination, catches subtle differences
     float ach = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
-    adapter->receive_sensitivity = 0.6f + ach * 0.8f;  // [0.6, 1.4]
+    adapter->receive_sensitivity = 0.6F + ach * 0.8F;  // [0.6, 1.4]
 
     // Norepinephrine → Attention/alertness
     // High NE = hypervigilant, notices priority messages faster
     float ne = neuromodulator_get_level(neuromod, NEUROMOD_NOREPINEPHRINE);
-    adapter->attention_level = 0.5f + ne;  // [0.5, 1.5]
+    adapter->attention_level = 0.5F + ne;  // [0.5, 1.5]
 
     // Serotonin → Emotional valence of output
     // High 5HT = positive/warm tone; Low = cold/neutral
@@ -289,8 +289,8 @@ int nlp_cortical_hear_message(
 
     // Convert to auditory features
     float frequency = nlp_message_to_frequency(msg_type, priority);
-    float amplitude = 0.3f + (priority / 3.0f) * 0.7f;  // [0.3, 1.0]
-    float duration_ms = 50.0f + (payload_len / 100.0f) * 50.0f;  // [50, ~ms]
+    float amplitude = 0.3F + (priority / 3.0F) * 0.7F;  // [0.3, 1.0]
+    float duration_ms = 50.0F + (payload_len / 100.0F) * 50.0F;  // [50, ~ms]
 
     // Apply receive sensitivity modulation
     amplitude *= adapter->receive_sensitivity;
@@ -310,7 +310,7 @@ int nlp_cortical_hear_message(
     if (adapter->audio_cortex) {
         // Create a simple tone representing the message
         uint32_t sample_rate = 16000;
-        uint32_t num_samples = (uint32_t)(duration_ms * sample_rate / 1000.0f);
+        uint32_t num_samples = (uint32_t)(duration_ms * sample_rate / 1000.0F);
         if (num_samples > 1600) num_samples = 1600;  // Cap at 100ms
 
         float* audio_signal = (float*)nimcp_calloc(num_samples, sizeof(float));
@@ -318,16 +318,16 @@ int nlp_cortical_hear_message(
             // Generate tone with harmonics based on mode
             for (uint32_t i = 0; i < num_samples; i++) {
                 float t = (float)i / sample_rate;
-                float sample = amplitude * sinf(2.0f * M_PI * frequency * t);
+                float sample = amplitude * sinf(2.0F * M_PI * frequency * t);
 
                 // Add harmonics based on mode (timbre)
                 if (mode == NLP_MODE_STANDARD) {
                     // Rich harmonics - clear voice
-                    sample += 0.3f * amplitude * sinf(2.0f * M_PI * frequency * 2.0f * t);
-                    sample += 0.1f * amplitude * sinf(2.0f * M_PI * frequency * 3.0f * t);
+                    sample += 0.3F * amplitude * sinf(2.0F * M_PI * frequency * 2.0F * t);
+                    sample += 0.1F * amplitude * sinf(2.0F * M_PI * frequency * 3.0F * t);
                 } else if (mode == NLP_MODE_TACTICAL) {
                     // Clipped harmonics - radio voice
-                    sample = fmaxf(-0.8f, fminf(0.8f, sample * 1.5f));
+                    sample = fmaxf(-0.8F, fminf(0.8F, sample * 1.5F));
                 }
                 // Stealth mode: pure tone only (whisper-like)
 
@@ -401,10 +401,10 @@ int nlp_cortical_speak_message(
     // Modulate based on emotional valence
     // High valence (happy) → slightly faster, higher pitch encoding
     // Low valence (stressed) → slower, more deliberate
-    if (adapter->emotional_valence > 0.6f) {
-        prosody *= 1.1f;
-    } else if (adapter->emotional_valence < 0.4f) {
-        prosody *= 0.9f;
+    if (adapter->emotional_valence > 0.6F) {
+        prosody *= 1.1F;
+    } else if (adapter->emotional_valence < 0.4F) {
+        prosody *= 0.9F;
     }
 
     // Process through speech cortex if available
@@ -498,7 +498,7 @@ static float nlp_message_to_frequency(nlp_msg_type_t type, nlp_priority_t priori
     }
 
     // Modulate by priority (higher priority = higher pitch)
-    base_freq *= (1.0f + priority * 0.25f);
+    base_freq *= (1.0F + priority * 0.25F);
 
     return base_freq;
 }
@@ -535,7 +535,7 @@ static float nlp_get_prosody(nlp_priority_t priority, nlp_mode_t mode) {
             break;
 
         case NLP_PRIORITY_HIGH:
-            base_prosody *= 1.2f;
+            base_prosody *= 1.2F;
             break;
 
         case NLP_PRIORITY_CRITICAL:
@@ -562,9 +562,9 @@ static void nlp_cortical_bio_handler(void* context, const bio_message_header_t* 
 
         case BIO_MSG_ATTENTION_SHIFT:
             // Attention shifted - increase listening sensitivity
-            adapter->receive_sensitivity *= 1.2f;
-            if (adapter->receive_sensitivity > 2.0f) {
-                adapter->receive_sensitivity = 2.0f;
+            adapter->receive_sensitivity *= 1.2F;
+            if (adapter->receive_sensitivity > 2.0F) {
+                adapter->receive_sensitivity = 2.0F;
             }
             break;
 

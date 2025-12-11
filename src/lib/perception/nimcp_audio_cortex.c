@@ -144,9 +144,9 @@ static void update_phasic_tonic(phasic_tonic_state_t* state, float dt)
     if (!state) return;
 
     // Exponential decay toward tonic baseline
-    float decay_rate = 1.0f / state->burst_decay_tau;  // Convert tau to rate
+    float decay_rate = 1.0F / state->burst_decay_tau;  // Convert tau to rate
     float decay_factor = expf(-decay_rate * dt);
-    state->phasic_burst = state->phasic_burst * decay_factor + state->tonic_level * (1.0f - decay_factor);
+    state->phasic_burst = state->phasic_burst * decay_factor + state->tonic_level * (1.0F - decay_factor);
 }
 
 /**
@@ -166,7 +166,7 @@ static void trigger_phasic_burst(phasic_tonic_state_t* state, float burst_amount
     if (!state) return;
 
     state->phasic_burst += burst_amount;
-    if (state->phasic_burst > 1.0f) state->phasic_burst = 1.0f;
+    if (state->phasic_burst > 1.0F) state->phasic_burst = 1.0F;
 }
 
 /**
@@ -185,16 +185,16 @@ static void trigger_phasic_burst(phasic_tonic_state_t* state, float burst_amount
 static float get_effective_ach(const phasic_tonic_state_t* ach_state,
                                 const receptor_expression_t* receptors)
 {
-    if (!ach_state || !receptors) return 0.0f;
+    if (!ach_state || !receptors) return 0.0F;
 
     // Average of phasic and tonic
-    float ach_level = (ach_state->phasic_burst + ach_state->tonic_level) * 0.5f;
+    float ach_level = (ach_state->phasic_burst + ach_state->tonic_level) * 0.5F;
 
     // M4 receptors primarily sharpen frequency tuning
     float m4_effect = ach_level * receptors->m2_density;
 
     // M2 receptors provide presynaptic feedback
-    float m2_effect = ach_level * receptors->m2_density * 0.5f;
+    float m2_effect = ach_level * receptors->m2_density * 0.5F;
 
     return m4_effect + m2_effect;
 }
@@ -215,16 +215,16 @@ static float get_effective_ach(const phasic_tonic_state_t* ach_state,
 static float get_effective_ne(const phasic_tonic_state_t* ne_state,
                                const receptor_expression_t* receptors)
 {
-    if (!ne_state || !receptors) return 0.0f;
+    if (!ne_state || !receptors) return 0.0F;
 
     // Average of phasic and tonic
-    float ne_level = (ne_state->phasic_burst + ne_state->tonic_level) * 0.5f;
+    float ne_level = (ne_state->phasic_burst + ne_state->tonic_level) * 0.5F;
 
     // α1 receptors enhance onset detection
     float alpha1_effect = ne_level * receptors->alpha1_density;
 
     // β2 receptors modulate temporal sensitivity
-    float beta2_effect = ne_level * receptors->beta2_density * 0.7f;
+    float beta2_effect = ne_level * receptors->beta2_density * 0.7F;
 
     return alpha1_effect + beta2_effect;
 }
@@ -264,7 +264,7 @@ static void apply_cocktail_party_effect(float* mel_features, uint32_t num_filter
     // Compute center-surround contrast
     for (uint32_t i = 0; i < num_filters; i++) {
         float center = mel_features[i];
-        float surround = 0.0f;
+        float surround = 0.0F;
         int neighbor_count = 0;
 
         // Average of neighbors (1 to each side)
@@ -286,12 +286,12 @@ static void apply_cocktail_party_effect(float* mel_features, uint32_t num_filter
     // Apply sharpening scaled by ACh strength
     // ach_strength in [0, 1] → sharpening_factor in [0, 4]
     // Stronger sharpening for more pronounced variance increase
-    float sharpening_factor = ach_strength * 4.0f;
+    float sharpening_factor = ach_strength * 4.0F;
 
     for (uint32_t i = 0; i < num_filters; i++) {
         mel_features[i] += sharpening_factor * contrast[i];
         // Clamp to non-negative (log-scale can go negative)
-        if (mel_features[i] < -10.0f) mel_features[i] = -10.0f;
+        if (mel_features[i] < -10.0F) mel_features[i] = -10.0F;
     }
 
     nimcp_free(contrast);
@@ -323,7 +323,7 @@ static float modulate_onset_threshold(float base_threshold, float ne_strength)
 {
     // NE reduces threshold (increases sensitivity)
     // ne_strength in [0, 1] → reduction in [0%, 50%]
-    float threshold_multiplier = 1.0f - (ne_strength * 0.5f);
+    float threshold_multiplier = 1.0F - (ne_strength * 0.5F);
     return base_threshold * threshold_multiplier;
 }
 
@@ -339,7 +339,7 @@ static void compute_hamming_window(float* window, uint32_t size)
     if (!nimcp_validate_pointer(window, "window")) return;
 
     for (uint32_t i = 0; i < size; i++) {
-        window[i] = 0.54f - 0.46f * cosf(2.0f * M_PI * i / (size - 1));
+        window[i] = 0.54F - 0.46F * cosf(2.0F * M_PI * i / (size - 1));
     }
 }
 
@@ -348,7 +348,7 @@ static void compute_hamming_window(float* window, uint32_t size)
  */
 static float hz_to_mel(float hz)
 {
-    return 2595.0f * log10f(1.0f + hz / 700.0f);
+    return 2595.0F * log10f(1.0F + hz / 700.0F);
 }
 
 /**
@@ -356,7 +356,7 @@ static float hz_to_mel(float hz)
  */
 static float mel_to_hz(float mel)
 {
-    return 700.0f * (powf(10.0f, mel / 2595.0f) - 1.0f);
+    return 700.0F * (powf(10.0F, mel / 2595.0F) - 1.0F);
 }
 
 /**
@@ -380,8 +380,8 @@ static bool init_mel_filterbank(audio_cortex_t* cortex)
     }
 
     // Compute mel-scale boundaries
-    float mel_min = hz_to_mel(0.0f);
-    float mel_max = hz_to_mel(sample_rate / 2.0f);
+    float mel_min = hz_to_mel(0.0F);
+    float mel_max = hz_to_mel(sample_rate / 2.0F);
     float mel_step = (mel_max - mel_min) / (num_filters + 1);
 
     // Create triangular filters
@@ -391,9 +391,9 @@ static bool init_mel_filterbank(audio_cortex_t* cortex)
         float f_right = mel_to_hz(mel_min + (m + 2) * mel_step);
 
         // Convert frequencies to bin indices
-        uint32_t bin_left = (uint32_t)(f_left * num_bins / (sample_rate / 2.0f));
-        uint32_t bin_center = (uint32_t)(f_center * num_bins / (sample_rate / 2.0f));
-        uint32_t bin_right = (uint32_t)(f_right * num_bins / (sample_rate / 2.0f));
+        uint32_t bin_left = (uint32_t)(f_left * num_bins / (sample_rate / 2.0F));
+        uint32_t bin_center = (uint32_t)(f_center * num_bins / (sample_rate / 2.0F));
+        uint32_t bin_right = (uint32_t)(f_right * num_bins / (sample_rate / 2.0F));
 
         // Rising slope
         for (uint32_t k = bin_left; k < bin_center && k < num_bins; k++) {
@@ -438,16 +438,16 @@ static void fft(float* real, float* imag, uint32_t n, bool inverse)
     }
 
     // Cooley-Tukey FFT
-    float direction = inverse ? 1.0f : -1.0f;
+    float direction = inverse ? 1.0F : -1.0F;
     for (uint32_t s = 1; s <= (uint32_t)log2f((float)n); s++) {
         uint32_t m = 1 << s;
         uint32_t m2 = m / 2;
-        float w_real = cosf(direction * 2.0f * M_PI / m);
-        float w_imag = sinf(direction * 2.0f * M_PI / m);
+        float w_real = cosf(direction * 2.0F * M_PI / m);
+        float w_imag = sinf(direction * 2.0F * M_PI / m);
 
         for (uint32_t k = 0; k < n; k += m) {
-            float wr = 1.0f;
-            float wi = 0.0f;
+            float wr = 1.0F;
+            float wi = 0.0F;
 
             for (uint32_t j = 0; j < m2; j++) {
                 uint32_t t = k + j;
@@ -485,9 +485,9 @@ static void dct(const float* input, float* output, uint32_t n, uint32_t num_coef
     if (!nimcp_validate_pointer(input, "input") || !nimcp_validate_pointer(output, "output")) return;
 
     for (uint32_t k = 0; k < num_coeff; k++) {
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (uint32_t n_idx = 0; n_idx < n; n_idx++) {
-            sum += input[n_idx] * cosf(M_PI * k * (n_idx + 0.5f) / n);
+            sum += input[n_idx] * cosf(M_PI * k * (n_idx + 0.5F) / n);
         }
         output[k] = sum;
     }
@@ -530,25 +530,25 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
 
     // Initialize phasic/tonic neuromodulator states
     // ACh: Fast phasic bursts for attention (decay ~500ms)
-    cortex->ach_state.phasic_burst = 0.0f;
-    cortex->ach_state.tonic_level = 0.3f;  // Baseline attention
-    cortex->ach_state.burst_decay_tau = 0.5f;  // 500ms decay time constant
+    cortex->ach_state.phasic_burst = 0.0F;
+    cortex->ach_state.tonic_level = 0.3F;  // Baseline attention
+    cortex->ach_state.burst_decay_tau = 0.5F;  // 500ms decay time constant
     cortex->ach_state.burst_start_time_us = 0;
 
     // NE: Moderate phasic bursts for arousal (decay ~1s)
-    cortex->ne_state.phasic_burst = 0.0f;
-    cortex->ne_state.tonic_level = 0.3f;  // Baseline arousal
-    cortex->ne_state.burst_decay_tau = 1.0f;  // 1s decay time constant
+    cortex->ne_state.phasic_burst = 0.0F;
+    cortex->ne_state.tonic_level = 0.3F;  // Baseline arousal
+    cortex->ne_state.burst_decay_tau = 1.0F;  // 1s decay time constant
     cortex->ne_state.burst_start_time_us = 0;
 
     // Initialize receptor expression (auditory cortex typical values)
     // ACh receptors: Using M2 density for frequency selectivity
-    cortex->receptors.m1_density = 0.4f;
-    cortex->receptors.m2_density = 0.7f;  // Strong tuning sharpening
+    cortex->receptors.m1_density = 0.4F;
+    cortex->receptors.m2_density = 0.7F;  // Strong tuning sharpening
 
     // NE receptors: Balanced α1/β2 for onset detection
-    cortex->receptors.alpha1_density = 0.6f;  // Onset enhancement
-    cortex->receptors.beta2_density = 0.5f;   // Temporal plasticity
+    cortex->receptors.alpha1_density = 0.6F;  // Onset enhancement
+    cortex->receptors.beta2_density = 0.5F;   // Temporal plasticity
 
     // Allocate FFT buffers
     cortex->fft_real = (float*)nimcp_calloc(config->frame_size, sizeof(float));
@@ -637,16 +637,16 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
         // Create internal recurrent network
         network_config_t net_config = {
             .num_neurons = config->internal_neurons,
-            .ei_ratio = 0.8f,  // 80% excitatory (typical cortex)
-            .learning_rate = 0.001f,
-            .hebbian_rate = 0.01f,
-            .stdp_window = 20.0f,
-            .homeostatic_rate = 0.001f,
-            .target_activity = 0.1f,
-            .adaptation_rate = 0.01f,
-            .refractory_period = 2.0f,
-            .min_weight = 0.0f,
-            .max_weight = 1.0f,
+            .ei_ratio = 0.8F,  // 80% excitatory (typical cortex)
+            .learning_rate = 0.001F,
+            .hebbian_rate = 0.01F,
+            .stdp_window = 20.0F,
+            .homeostatic_rate = 0.001F,
+            .target_activity = 0.1F,
+            .adaptation_rate = 0.01F,
+            .refractory_period = 2.0F,
+            .min_weight = 0.0F,
+            .max_weight = 1.0F,
             .update_interval = 1,
             .enable_stdp = true,
             .enable_homeostasis = true,
@@ -664,7 +664,7 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
                 .hub_ratio = config->hub_ratio,
                 .min_degree = 2,
                 .max_degree = config->internal_neurons / 10,
-                .spatial_constraint = 0.7f,  // Strong tonotopic organization
+                .spatial_constraint = 0.7F,  // Strong tonotopic organization
                 .bidirectional = false
             };
 
@@ -838,7 +838,7 @@ bool audio_cortex_process(
     // WHY:  Cascades evolve over time (seconds to minutes timescale)
     // HOW:  Call update with frame duration converted to milliseconds
     if (cortex->second_messengers_enabled && cortex->second_messengers) {
-        float dt_ms = frame_duration * 1000.0f;
+        float dt_ms = frame_duration * 1000.0F;
         uint64_t timestamp_ms = (uint64_t)(time(NULL) * 1000);
         second_messenger_update(cortex->second_messengers, dt_ms, timestamp_ms);
     }
@@ -855,7 +855,7 @@ bool audio_cortex_process(
         }
 
         for (uint32_t i = 0; i < num_samples; i++) {
-            temp_mono[i] = (audio_data[i * 2] + audio_data[i * 2 + 1]) * 0.5f;
+            temp_mono[i] = (audio_data[i * 2] + audio_data[i * 2 + 1]) * 0.5F;
         }
         mono_audio = temp_mono;
     }
@@ -938,7 +938,7 @@ bool audio_cortex_compute_spectrum(
     // Apply window and prepare for FFT
     for (uint32_t i = 0; i < num_samples; i++) {
         cortex->fft_real[i] = audio_data[i] * cortex->fft_window[i];
-        cortex->fft_imag[i] = 0.0f;
+        cortex->fft_imag[i] = 0.0F;
     }
 
     // Compute FFT
@@ -954,8 +954,8 @@ bool audio_cortex_compute_spectrum(
 
     // Apply neuromodulator filter (ACh + 5-HT modulation)
     // TODO: Implement get_audio_filter() to get neuromodulator filtering
-    float audio_filter = 1.0f;  // Default: no filtering
-    if (audio_filter != 1.0f) {
+    float audio_filter = 1.0F;  // Default: no filtering
+    if (audio_filter != 1.0F) {
         for (uint32_t i = 0; i < num_bins; i++) {
             spectrum[i] *= audio_filter;
         }
@@ -984,14 +984,14 @@ bool audio_cortex_compute_mel_features(
     // Apply mel filterbank
     uint32_t num_filters = cortex->config.num_mel_filters;
     for (uint32_t m = 0; m < num_filters; m++) {
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (uint32_t k = 0; k < num_bins; k++) {
             sum += spectrum[k] * cortex->mel_filterbank[m * num_bins + k];
         }
 
         // Store linear energy (tests expect positive values)
         // Add small epsilon to avoid zero
-        mel_features[m] = sum + 1e-10f;
+        mel_features[m] = sum + 1e-10F;
 
         // === Apply Second Messenger Cascade Modulation ===
         // WHAT: Modulate frequency band gain by kinase activities
@@ -1017,8 +1017,8 @@ bool audio_cortex_compute_mel_features(
                 // - CaMKII enhances temporal precision
                 //
                 // Modulation range: [0.5, 1.5] where 1.0 = baseline
-                float cascade_gain = 1.0f + (pka * 0.3f) + (pkc * 0.4f) + (camkii * 0.2f) - 0.45f;
-                cascade_gain = fmaxf(0.5f, fminf(cascade_gain, 1.5f));
+                float cascade_gain = 1.0F + (pka * 0.3F) + (pkc * 0.4F) + (camkii * 0.2F) - 0.45F;
+                cascade_gain = fmaxf(0.5F, fminf(cascade_gain, 1.5F));
 
                 mel_features[m] *= cascade_gain;
             }
@@ -1027,7 +1027,7 @@ bool audio_cortex_compute_mel_features(
 
     // Apply cocktail party effect - ACh sharpens frequency tuning
     float ach_strength = get_effective_ach(&cortex->ach_state, &cortex->receptors);
-    if (ach_strength > 0.01f) {  // Only apply if significant ACh
+    if (ach_strength > 0.01F) {  // Only apply if significant ACh
         apply_cocktail_party_effect(mel_features, num_filters, ach_strength);
     }
 
@@ -1126,12 +1126,12 @@ bool audio_cortex_compute_attention(
 
     if (success) {
         // Normalize spectrum to attention weights
-        float max_val = 0.0f;
+        float max_val = 0.0F;
         for (uint32_t i = 0; i < cortex->config.num_freq_bins; i++) {
             if (spectrum[i] > max_val) max_val = spectrum[i];
         }
 
-        if (max_val > 0.0f) {
+        if (max_val > 0.0F) {
             for (uint32_t i = 0; i < cortex->config.num_freq_bins && i < attn_map->num_freq; i++) {
                 // Simple attention: high energy frequencies get high attention
                 attn_map->values[i] = spectrum[i] / max_val;
@@ -1242,7 +1242,7 @@ bool audio_cortex_recall_memory(
     }
 
     for (uint32_t i = 0; i < cortex->num_memories; i++) {
-        float dot_product = 0.0f;
+        float dot_product = 0.0F;
         for (uint32_t j = 0; j < cortex->config.feature_dim; j++) {
             dot_product += query_features[j] * cortex->memories[i]->features[j];
         }
@@ -1289,16 +1289,16 @@ float audio_cortex_compute_novelty(
 {
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(features, "features")) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (!cortex->config.enable_memory || cortex->num_memories == 0) {
-        return 1.0f;  // Everything is novel with no memories
+        return 1.0F;  // Everything is novel with no memories
     }
 
     // Normalize query features
     /* Use tensor library for query norm computation */
-    float query_norm = 0.0f;
+    float query_norm = 0.0F;
     {
         uint32_t dims[] = {cortex->config.feature_dim};
         nimcp_tensor_t* query_tensor = nimcp_tensor_from_data(features, dims, 1, NIMCP_DTYPE_F32, false);
@@ -1313,23 +1313,23 @@ float audio_cortex_compute_novelty(
             query_norm = sqrtf(query_norm);
         }
     }
-    if (query_norm < 1e-6f) {
-        return 1.0f;  // Zero features are maximally novel
+    if (query_norm < 1e-6F) {
+        return 1.0F;  // Zero features are maximally novel
     }
 
     // Find maximum cosine similarity to any stored memory
-    float max_similarity = 0.0f;
+    float max_similarity = 0.0F;
     for (uint32_t i = 0; i < cortex->num_memories; i++) {
         // Compute normalized dot product (cosine similarity)
-        float dot_product = 0.0f;
-        float memory_norm = 0.0f;
+        float dot_product = 0.0F;
+        float memory_norm = 0.0F;
         for (uint32_t j = 0; j < cortex->config.feature_dim; j++) {
             dot_product += features[j] * cortex->memories[i]->features[j];
             memory_norm += cortex->memories[i]->features[j] * cortex->memories[i]->features[j];
         }
         memory_norm = sqrtf(memory_norm);
 
-        if (memory_norm > 1e-6f) {
+        if (memory_norm > 1e-6F) {
             float cosine_sim = dot_product / (query_norm * memory_norm);
             if (cosine_sim > max_similarity) {
                 max_similarity = cosine_sim;
@@ -1339,10 +1339,10 @@ float audio_cortex_compute_novelty(
 
     // Novelty = 1 - max_similarity (cosine similarity ranges from -1 to 1)
     // Clamp similarity to [0, 1] range first
-    if (max_similarity < 0.0f) max_similarity = 0.0f;
-    if (max_similarity > 1.0f) max_similarity = 1.0f;
+    if (max_similarity < 0.0F) max_similarity = 0.0F;
+    if (max_similarity > 1.0F) max_similarity = 1.0F;
 
-    float novelty = 1.0f - max_similarity;
+    float novelty = 1.0F - max_similarity;
     return novelty;
 }
 
@@ -1433,7 +1433,7 @@ bool audio_cortex_detect_temporal_events(
     *offset_detected = false;
 
     // Compute current frame energy
-    float energy = 0.0f;
+    float energy = 0.0F;
     for (uint32_t i = 0; i < num_samples; i++) {
         energy += audio_data[i] * audio_data[i];
     }
@@ -1443,24 +1443,24 @@ bool audio_cortex_detect_temporal_events(
     float ne_strength = get_effective_ne(&cortex->ne_state, &cortex->receptors);
 
     // Base onset threshold (2x energy increase)
-    float base_onset_threshold = 2.0f;
+    float base_onset_threshold = 2.0F;
 
     // Modulate threshold with NE (higher NE = more sensitive)
     float onset_threshold = modulate_onset_threshold(base_onset_threshold, ne_strength);
 
     // Onset: sudden increase in energy
-    if (energy > cortex->prev_energy * onset_threshold && cortex->prev_energy > 1e-6f) {
+    if (energy > cortex->prev_energy * onset_threshold && cortex->prev_energy > 1e-6F) {
         *onset_detected = true;
 
         // Trigger NE phasic burst on onset detection (positive feedback)
-        trigger_phasic_burst(&cortex->ne_state, 0.2f);
+        trigger_phasic_burst(&cortex->ne_state, 0.2F);
     }
 
     // Offset: sudden decrease in energy
-    float base_offset_threshold = 0.5f;
-    float offset_threshold = modulate_onset_threshold(base_offset_threshold, ne_strength * 0.7f);
+    float base_offset_threshold = 0.5F;
+    float offset_threshold = modulate_onset_threshold(base_offset_threshold, ne_strength * 0.7F);
 
-    if (energy < cortex->prev_energy * offset_threshold && cortex->prev_energy > 1e-6f) {
+    if (energy < cortex->prev_energy * offset_threshold && cortex->prev_energy > 1e-6F) {
         *offset_detected = true;
     }
 
@@ -1484,12 +1484,12 @@ bool audio_cortex_compute_envelope(
     }
 
     // Simple envelope: rectify and smooth
-    float alpha = 0.1f;  // Smoothing factor
-    float smoothed = 0.0f;
+    float alpha = 0.1F;  // Smoothing factor
+    float smoothed = 0.0F;
 
     for (uint32_t i = 0; i < num_samples; i++) {
         float rectified = fabsf(audio_data[i]);
-        smoothed = alpha * rectified + (1.0f - alpha) * smoothed;
+        smoothed = alpha * rectified + (1.0F - alpha) * smoothed;
         envelope[i] = smoothed;
     }
 
@@ -1523,24 +1523,24 @@ static void update_neuromodulator_states(audio_cortex_t* cortex, float dt)
             float ach_change = global_ach - cortex->ach_state.tonic_level;
             float ne_change = global_ne - cortex->ne_state.tonic_level;
 
-            if (fabsf(ach_change) > 0.3f) {
+            if (fabsf(ach_change) > 0.3F) {
                 // Sudden change - trigger phasic burst
                 trigger_phasic_burst(&cortex->ach_state, fabsf(ach_change));
             }
-            if (fabsf(ne_change) > 0.3f) {
+            if (fabsf(ne_change) > 0.3F) {
                 trigger_phasic_burst(&cortex->ne_state, fabsf(ne_change));
             }
 
             // Slowly sync tonic to global (time constant ~5s)
-            float sync_rate = 0.2f;  // 20% per second
+            float sync_rate = 0.2F;  // 20% per second
             cortex->ach_state.tonic_level += ach_change * sync_rate * dt;
             cortex->ne_state.tonic_level += ne_change * sync_rate * dt;
 
             // Clamp to valid range
-            if (cortex->ach_state.tonic_level > 1.0f) cortex->ach_state.tonic_level = 1.0f;
-            if (cortex->ach_state.tonic_level < 0.0f) cortex->ach_state.tonic_level = 0.0f;
-            if (cortex->ne_state.tonic_level > 1.0f) cortex->ne_state.tonic_level = 1.0f;
-            if (cortex->ne_state.tonic_level < 0.0f) cortex->ne_state.tonic_level = 0.0f;
+            if (cortex->ach_state.tonic_level > 1.0F) cortex->ach_state.tonic_level = 1.0F;
+            if (cortex->ach_state.tonic_level < 0.0F) cortex->ach_state.tonic_level = 0.0F;
+            if (cortex->ne_state.tonic_level > 1.0F) cortex->ne_state.tonic_level = 1.0F;
+            if (cortex->ne_state.tonic_level < 0.0F) cortex->ne_state.tonic_level = 0.0F;
         }
     }
 
@@ -1606,7 +1606,7 @@ float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
 {
     // Guard: Validate inputs
     if (!cortex || !features || num_features == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // WHAT: Compute speech likelihood based on formant structure
@@ -1619,8 +1619,8 @@ float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
     // - Speech formants create non-uniform distribution
 
     // Compute statistics
-    float mean = 0.0f;
-    float total_energy = 0.0f;
+    float mean = 0.0F;
+    float total_energy = 0.0F;
 
     for (uint32_t i = 0; i < num_features; i++) {
         mean += features[i];
@@ -1628,19 +1628,19 @@ float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
     }
     mean /= num_features;
 
-    if (total_energy < 1e-6f) {
-        return 0.0f;  // Silence
+    if (total_energy < 1e-6F) {
+        return 0.0F;  // Silence
     }
 
     // Find peaks (speech has distinct formant peaks)
     uint32_t num_peaks = 0;
-    float peak_energy = 0.0f;
+    float peak_energy = 0.0F;
 
     for (uint32_t i = 1; i < num_features - 1; i++) {
         // Is this a local maximum?
         if (features[i] > features[i-1] && features[i] > features[i+1]) {
             // Strong peak (above mean)?
-            if (features[i] > mean * 1.5f) {
+            if (features[i] > mean * 1.5F) {
                 num_peaks++;
                 peak_energy += features[i];
             }
@@ -1648,22 +1648,22 @@ float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
     }
 
     // Speech typically has 2-4 formant peaks
-    float peak_score = 0.0f;
+    float peak_score = 0.0F;
     if (num_peaks >= 2 && num_peaks <= 6) {
-        peak_score = 1.0f;  // Ideal formant count
+        peak_score = 1.0F;  // Ideal formant count
     } else if (num_peaks == 1 || num_peaks == 7) {
-        peak_score = 0.5f;  // Borderline
+        peak_score = 0.5F;  // Borderline
     }
 
     // Energy concentration in peaks (speech has concentrated energy)
-    float concentration_score = 0.0f;
-    if (total_energy > 0.0f) {
+    float concentration_score = 0.0F;
+    if (total_energy > 0.0F) {
         concentration_score = peak_energy / total_energy;
-        concentration_score = fminf(concentration_score * 1.5f, 1.0f);
+        concentration_score = fminf(concentration_score * 1.5F, 1.0F);
     }
 
     // Compute variance (speech has moderate variance, noise is very high)
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < num_features; i++) {
         float diff = features[i] - mean;
         variance += diff * diff;
@@ -1672,22 +1672,22 @@ float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
 
     // Coefficient of variation (CV = std/mean)
     float std_dev = sqrtf(variance);
-    float cv = std_dev / (mean + 1e-6f);
+    float cv = std_dev / (mean + 1e-6F);
 
     // Speech: moderate CV (0.5 - 1.5), Noise: high CV (> 2)
-    float cv_score = 0.0f;
-    if (cv > 0.3f && cv < 2.0f) {
-        cv_score = 1.0f;
-    } else if (cv >= 2.0f && cv < 3.0f) {
-        cv_score = 0.3f;  // Noisy
+    float cv_score = 0.0F;
+    if (cv > 0.3F && cv < 2.0F) {
+        cv_score = 1.0F;
+    } else if (cv >= 2.0F && cv < 3.0F) {
+        cv_score = 0.3F;  // Noisy
     }
 
     // Combine indicators
     // Peak structure is most important for speech
-    float salience = (peak_score * 0.5f + concentration_score * 0.3f + cv_score * 0.2f);
+    float salience = (peak_score * 0.5F + concentration_score * 0.3F + cv_score * 0.2F);
 
     // Clamp to [0, 1]
-    return fminf(fmaxf(salience, 0.0f), 1.0f);
+    return fminf(fmaxf(salience, 0.0F), 1.0F);
 }
 
 /**
@@ -1793,10 +1793,10 @@ nimcp_error_t audio_cortex_broadcast_input(
 
     // Fill in audio feature data
     msg.feature_id = 0;  // Generic audio input
-    msg.frequency_hz = 1000.0f;  // Placeholder frequency
+    msg.frequency_hz = 1000.0F;  // Placeholder frequency
     msg.amplitude = salience;
-    msg.onset_time_ms = 0.0f;
-    msg.duration_ms = 20.0f;  // Typical frame duration
+    msg.onset_time_ms = 0.0F;
+    msg.duration_ms = 20.0F;  // Typical frame duration
     msg.channel = 0;  // Mono/center
 
     // Broadcast to all interested modules
@@ -1837,10 +1837,10 @@ nimcp_error_t audio_cortex_broadcast_speech_detected(
     msg.header.flags = BIO_MSG_FLAG_URGENT;  // Speech is high priority
 
     msg.feature_id = 1;  // Speech onset feature
-    msg.frequency_hz = 1650.0f;  // Center of speech band
+    msg.frequency_hz = 1650.0F;  // Center of speech band
     msg.amplitude = speech_salience;
-    msg.onset_time_ms = 0.0f;
-    msg.duration_ms = 0.0f;  // Unknown duration at onset
+    msg.onset_time_ms = 0.0F;
+    msg.duration_ms = 0.0F;  // Unknown duration at onset
     msg.channel = 0;
 
     // Send to speech cortex
@@ -1904,7 +1904,7 @@ nimcp_error_t audio_cortex_trigger_receptor(
     }
 
     // Validate occupancy range
-    if (occupancy < 0.0f || occupancy > 1.0f) {
+    if (occupancy < 0.0F || occupancy > 1.0F) {
         LOG_ERROR(AUDIO_LOG_MODULE, "Invalid receptor occupancy %.2f (must be [0, 1])",
                   occupancy);
         return NIMCP_ERROR_INVALID_PARAM;

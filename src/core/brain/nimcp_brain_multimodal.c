@@ -326,10 +326,10 @@ static bool integrate_multimodal_features(
     // If we only have direct features and multimodal is disabled
     if (!needs_multimodal && direct_dim > 0) {
         // Direct-only mode: No multimodal integration needed
-        output->visual_attention = 0.0f;
-        output->audio_attention = 0.0f;
-        output->speech_attention = 0.0f;
-        output->direct_attention = 1.0f;
+        output->visual_attention = 0.0F;
+        output->audio_attention = 0.0F;
+        output->speech_attention = 0.0F;
+        output->direct_attention = 1.0F;
 
         // If we have integrated_feature_buffer, copy direct features to it
         if (brain->integrated_feature_buffer && direct_features && direct_dim > 0) {
@@ -460,11 +460,11 @@ static bool apply_cognitive_processing(
         );
 
         output->introspection_uncertainty = uncertainty.total;
-        output->confidence = 1.0f - output->introspection_uncertainty;
+        output->confidence = 1.0F - output->introspection_uncertainty;
     } else {
         // Fallback: Compute confidence from output variance and spike counts
-        float output_variance = 0.0f;
-        float output_mean = 0.0f;
+        float output_variance = 0.0F;
+        float output_mean = 0.0F;
         for (uint32_t i = 0; i < network_output_size; i++) {
             output_mean += network_output[i];
         }
@@ -476,9 +476,9 @@ static bool apply_cognitive_processing(
         }
         output_variance /= network_output_size;
 
-        output->confidence = fminf(1.0f, (float)spikes_generated / (brain->config.num_inputs * 2.0f));
-        output->confidence *= (1.0f - fminf(1.0f, output_variance));
-        output->introspection_uncertainty = 1.0f - output->confidence;
+        output->confidence = fminf(1.0F, (float)spikes_generated / (brain->config.num_inputs * 2.0F));
+        output->confidence *= (1.0F - fminf(1.0F, output_variance));
+        output->introspection_uncertainty = 1.0F - output->confidence;
     }
 
     // Ethics: Validate output (check for NaN/inf/extreme values)
@@ -486,7 +486,7 @@ static bool apply_cognitive_processing(
         output->ethical_approved = true;
         for (uint32_t i = 0; i < network_output_size; i++) {
             if (isnan(network_output[i]) || isinf(network_output[i]) ||
-                fabsf(network_output[i]) > 1000.0f) {
+                fabsf(network_output[i]) > 1000.0F) {
                 output->ethical_approved = false;
                 break;
             }
@@ -508,32 +508,32 @@ static bool apply_cognitive_processing(
         output->novelty_score = salience.novelty;
     } else {
         // Fallback: Max output activation as salience
-        float max_activation = 0.0f;
+        float max_activation = 0.0F;
         for (uint32_t i = 0; i < network_output_size; i++) {
             if (network_output[i] > max_activation) {
                 max_activation = network_output[i];
             }
         }
-        output->salience_score = fminf(1.0f, max_activation);
+        output->salience_score = fminf(1.0F, max_activation);
     }
 
     // Curiosity: Learn from novel experiences
     if (brain->curiosity) {
         // Fallback if salience didn't compute novelty
         if (!brain->salience) {
-            float expected_spikes = brain->config.num_inputs * 0.5f;
+            float expected_spikes = brain->config.num_inputs * 0.5F;
             float spike_diff = fabsf((float)spikes_generated - expected_spikes);
-            output->novelty_score = fminf(1.0f, spike_diff / expected_spikes);
+            output->novelty_score = fminf(1.0F, spike_diff / expected_spikes);
         }
     } else {
         // Fallback novelty if no cognitive modules
         if (!brain->salience) {
-            output->novelty_score = 0.3f;
+            output->novelty_score = 0.3F;
         }
     }
 
     // Constants for logic processing
-    const float LOGIC_ETHICS_PENALTY = 0.5f;
+    const float LOGIC_ETHICS_PENALTY = 0.5F;
 
     if (brain->symbolic_logic) {
         // Validate output structure
@@ -594,14 +594,14 @@ static bool apply_cognitive_processing(
             snprintf(output->top_wm_item_description, sizeof(output->top_wm_item_description),
                     "%u items active, %.1f%% capacity",
                     output->working_memory_items,
-                    output->working_memory_utilization * 100.0f);
+                    output->working_memory_utilization * 100.0F);
         }
     }
 
     // Curiosity: Output exploration drive when novelty is high
-    if (brain->curiosity && output->novelty_score > 0.5f) {
+    if (brain->curiosity && output->novelty_score > 0.5F) {
         output->curiosity_drive = curiosity_get_drive(brain->curiosity);
-        output->exploration_triggered = (output->curiosity_drive > 0.6f);
+        output->exploration_triggered = (output->curiosity_drive > 0.6F);
 
         if (output->exploration_triggered) {
             snprintf(output->curiosity_reason, sizeof(output->curiosity_reason),
@@ -632,11 +632,11 @@ static bool consolidation_strengthen(
     if (!brain->consolidation) return true;
 
     // Compute consolidation strength
-    float importance = (novelty_score * 0.4f) + (salience_score * 0.4f) +
-                      (fabsf(emotional_valence) * 0.2f);
+    float importance = (novelty_score * 0.4F) + (salience_score * 0.4F) +
+                      (fabsf(emotional_valence) * 0.2F);
 
     // GUARD: Skip weak consolidation
-    if (importance < 0.3f) return true;
+    if (importance < 0.3F) return true;
 
     // Record in long-term memory buffer
     if (brain->longterm_memory && brain->longterm_count < brain->longterm_capacity) {
@@ -663,7 +663,7 @@ static bool consolidation_strengthen(
     }
 
     // Trigger background consolidation if needed
-    if (importance > 0.8f && brain->consolidation) {
+    if (importance > 0.8F && brain->consolidation) {
         brain_trigger_consolidation(brain->consolidation);
     }
 
@@ -687,8 +687,8 @@ static bool format_output(
     brain_multimodal_output_t* output)
 {
     // Consolidation: Strengthen important memories
-    if (brain->consolidation && (output->novelty_score > 0.7f || output->salience_score > 0.7f)) {
-        float emotional_valence = 0.0f;
+    if (brain->consolidation && (output->novelty_score > 0.7F || output->salience_score > 0.7F)) {
+        float emotional_valence = 0.0F;
         consolidation_strengthen(brain, output->novelty_score, output->salience_score, emotional_valence);
     }
 
@@ -727,30 +727,30 @@ static bool format_output(
     int remaining = sizeof(modality_str);
     bool first = true;
 
-    if (has_visual || output->visual_attention > 0.01f) {
+    if (has_visual || output->visual_attention > 0.01F) {
         int written = snprintf(pos, remaining, "%svisual=%.0f%%", first ? "" : " ",
-                              output->visual_attention * 100.0f);
+                              output->visual_attention * 100.0F);
         pos += written;
         remaining -= written;
         first = false;
     }
-    if (has_audio || output->audio_attention > 0.01f) {
+    if (has_audio || output->audio_attention > 0.01F) {
         int written = snprintf(pos, remaining, "%saudio=%.0f%%", first ? "" : " ",
-                              output->audio_attention * 100.0f);
+                              output->audio_attention * 100.0F);
         pos += written;
         remaining -= written;
         first = false;
     }
-    if (has_speech || output->speech_attention > 0.01f) {
+    if (has_speech || output->speech_attention > 0.01F) {
         int written = snprintf(pos, remaining, "%sspeech=%.0f%%", first ? "" : " ",
-                              output->speech_attention * 100.0f);
+                              output->speech_attention * 100.0F);
         pos += written;
         remaining -= written;
         first = false;
     }
-    if (output->direct_attention > 0.01f) {
+    if (output->direct_attention > 0.01F) {
         int written = snprintf(pos, remaining, "%sdirect=%.0f%%", first ? "" : " ",
-                              output->direct_attention * 100.0f);
+                              output->direct_attention * 100.0F);
         (void)written;  // Suppress unused warning
     }
 
@@ -758,9 +758,9 @@ static bool format_output(
              "%s | %u spikes | conf=%.0f%% salience=%.0f%% novelty=%.0f%%",
              modality_str,
              spikes_generated,
-             output->confidence * 100.0f,
-             output->salience_score * 100.0f,
-             output->novelty_score * 100.0f);
+             output->confidence * 100.0F,
+             output->salience_score * 100.0F,
+             output->novelty_score * 100.0F);
 
     return true;
 }
@@ -809,51 +809,51 @@ bool brain_process_multimodal(
     // Initialize multimodal output structure
     memset(output->decision_label, 0, sizeof(output->decision_label));
     memset(output->explanation, 0, sizeof(output->explanation));
-    output->confidence = 0.0f;
-    output->introspection_uncertainty = 0.0f;
-    output->salience_score = 0.0f;
+    output->confidence = 0.0F;
+    output->introspection_uncertainty = 0.0F;
+    output->salience_score = 0.0F;
     output->ethical_approved = true;
-    output->novelty_score = 0.0f;
-    output->visual_attention = 0.0f;
-    output->audio_attention = 0.0f;
-    output->speech_attention = 0.0f;
-    output->direct_attention = 0.0f;
+    output->novelty_score = 0.0F;
+    output->visual_attention = 0.0F;
+    output->audio_attention = 0.0F;
+    output->speech_attention = 0.0F;
+    output->direct_attention = 0.0F;
 
     // Initialize language output fields
     output->language_response = NULL;
     output->language_response_length = 0;
-    output->language_confidence = 0.0f;
+    output->language_confidence = 0.0F;
 
     // Initialize logical reasoning fields
     output->logical_consistency = true;
-    output->reasoning_confidence = 0.0f;
+    output->reasoning_confidence = 0.0F;
     memset(output->logical_reasoning, 0, sizeof(output->logical_reasoning));
 
     // Initialize cognitive module output fields
     output->has_workspace_broadcast = false;
     output->workspace_source_module = 0;
-    output->workspace_broadcast_strength = 0.0f;
+    output->workspace_broadcast_strength = 0.0F;
     output->workspace_num_competitors = 0;
     output->working_memory_items = 0;
-    output->working_memory_utilization = 0.0f;
+    output->working_memory_utilization = 0.0F;
     memset(output->top_wm_item_description, 0, sizeof(output->top_wm_item_description));
     output->has_mental_state_inference = false;
     memset(output->inferred_belief, 0, sizeof(output->inferred_belief));
     memset(output->inferred_intention, 0, sizeof(output->inferred_intention));
-    output->tom_confidence = 0.0f;
-    output->curiosity_drive = 0.0f;
+    output->tom_confidence = 0.0F;
+    output->curiosity_drive = 0.0F;
     output->exploration_triggered = false;
     memset(output->curiosity_reason, 0, sizeof(output->curiosity_reason));
     output->has_prediction = false;
-    output->prediction_error = 0.0f;
-    output->prediction_confidence = 0.0f;
+    output->prediction_error = 0.0F;
+    output->prediction_confidence = 0.0F;
     output->has_knowledge_retrieval = false;
     output->num_facts_retrieved = 0;
     memset(output->retrieved_concept, 0, sizeof(output->retrieved_concept));
     output->has_nlp_interpretation = false;
     memset(output->nlp_intent, 0, sizeof(output->nlp_intent));
     memset(output->nlp_sentiment, 0, sizeof(output->nlp_sentiment));
-    output->nlp_comprehension_score = 0.0f;
+    output->nlp_comprehension_score = 0.0F;
 
     // Working Memory Temporal Decay
     if (brain->working_memory) {
@@ -1046,7 +1046,7 @@ bool brain_process_multimodal(
     // =========================================================================
     // Store network output in working memory with emotional tagging
     // =========================================================================
-    if (brain->working_memory && output->salience_score > 0.1f) {
+    if (brain->working_memory && output->salience_score > 0.1F) {
         emotional_tag_t emotion = emotional_tag_from_cognitive_state(
             output->confidence,
             output->introspection_uncertainty,
@@ -1104,9 +1104,9 @@ bool brain_process_multimodal(
                                                   float* confidence, float* valence, float* arousal);
 
         char detected_emotion[32] = {0};
-        float emotion_confidence = 0.0f;
-        float emotion_valence = 0.0f;
-        float emotion_arousal = 0.0f;
+        float emotion_confidence = 0.0F;
+        float emotion_valence = 0.0F;
+        float emotion_arousal = 0.0F;
 
         bool emotion_detected = emotion_recognize_text_simple(
             input->language_text,
@@ -1121,10 +1121,10 @@ bool brain_process_multimodal(
             output->emotion_valence = emotion_valence;
             output->emotion_arousal = emotion_arousal;
             output->emotion_intensity = fabsf(emotion_valence);
-            output->emotion_is_negative = (emotion_valence < -0.3f);
+            output->emotion_is_negative = (emotion_valence < -0.3F);
 
             // Generate empathetic response if negative emotion detected
-            if (output->emotion_is_negative && emotion_confidence > 0.5f) {
+            if (output->emotion_is_negative && emotion_confidence > 0.5F) {
                 typedef struct {
                     int emotion_type;
                     int intensity;
@@ -1152,12 +1152,12 @@ bool brain_process_multimodal(
 
                 emotional_state_t state = {0};
                 state.emotion_type = 2;
-                state.intensity = (output->emotion_intensity > 0.7f) ? 3 : 2;
+                state.intensity = (output->emotion_intensity > 0.7F) ? 3 : 2;
                 state.valence = emotion_valence;
                 state.arousal = emotion_arousal;
                 strncpy(state.text_input, input->language_text, sizeof(state.text_input) - 1);
                 state.crisis_flags = 0;
-                state.crisis_confidence = 0.0f;
+                state.crisis_confidence = 0.0F;
 
                 empathetic_response_t response = {0};
                 if (empathetic_response_generate(brain->empathetic_response_engine, &state, &response)) {

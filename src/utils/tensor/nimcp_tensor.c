@@ -338,7 +338,7 @@ nimcp_tensor_t* nimcp_tensor_ones(
     if (dtype == NIMCP_DTYPE_F32) {
         float* data = (float*)t->data;
         for (size_t i = 0; i < t->shape.numel; i++) {
-            data[i] = 1.0f;
+            data[i] = 1.0F;
         }
     } else if (dtype == NIMCP_DTYPE_F64) {
         double* data = (double*)t->data;
@@ -422,7 +422,7 @@ nimcp_tensor_t* nimcp_tensor_eye(uint32_t n, nimcp_dtype_t dtype)
     if (dtype == NIMCP_DTYPE_F32) {
         float* data = (float*)t->data;
         for (uint32_t i = 0; i < n; i++) {
-            data[i * n + i] = 1.0f;
+            data[i * n + i] = 1.0F;
         }
     } else if (dtype == NIMCP_DTYPE_F64) {
         double* data = (double*)t->data;
@@ -1400,7 +1400,7 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
 
     for (uint32_t i = 0; i < M; i++) {
         for (uint32_t j = 0; j < N; j++) {
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t k = 0; k < K; k++) {
                 sum += A[i * K + k] * B[k * N + j];
             }
@@ -2136,7 +2136,7 @@ nimcp_tensor_t* nimcp_tensor_softmax(const nimcp_tensor_t* t, int dim)
             }
 
             /* Compute exp and sum */
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t j = 0; j < cols; j++) {
                 row[j] = expf(row[j] - max_val);
                 sum += row[j];
@@ -2189,8 +2189,8 @@ nimcp_tensor_t* nimcp_tensor_attention(
         float* sd = (float*)scores->data;
         float* md = (float*)mask->data;
         for (size_t i = 0; i < scores->shape.numel; i++) {
-            if (md[i] == 0.0f) {
-                sd[i] = -1e9f;
+            if (md[i] == 0.0F) {
+                sd[i] = -1e9F;
             }
         }
     }

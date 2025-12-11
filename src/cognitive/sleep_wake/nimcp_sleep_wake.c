@@ -104,9 +104,9 @@ sleep_config_t sleep_default_config(void)
 {
     sleep_config_t config = {
         // Sleep pressure
-        .adenosine_accumulation_rate = 0.0001f,
-        .sleep_pressure_threshold = 0.8f,
-        .adenosine_clearance_rate = 0.05f,
+        .adenosine_accumulation_rate = 0.0001F,
+        .sleep_pressure_threshold = 0.8F,
+        .adenosine_clearance_rate = 0.05F,
 
         // Stage durations (realistic biological durations)
         .drowsy_duration_ms = 120000,      // 2 minutes
@@ -116,18 +116,18 @@ sleep_config_t sleep_default_config(void)
 
         // Memory replay
         .replay_batch_size = 100,
-        .replay_speed_multiplier = 15.0f,
-        .replay_noise = 0.1f,
+        .replay_speed_multiplier = 15.0F,
+        .replay_noise = 0.1F,
         .prioritize_emotional = true,   // Phase 10.3: Emotional prioritization
         .prioritize_novel = true,
 
         // Synaptic homeostasis
-        .synaptic_downscaling_factor = 0.85f,
-        .synaptic_pruning_threshold = 0.01f,
+        .synaptic_downscaling_factor = 0.85F,
+        .synaptic_pruning_threshold = 0.01F,
         .enable_homeostasis = true,
 
         // REM
-        .rem_creativity_noise = 0.3f,
+        .rem_creativity_noise = 0.3F,
         .enable_rem = true,
 
         // Oscillations
@@ -157,15 +157,15 @@ sleep_system_t sleep_system_create(const sleep_config_t* config)
     /* WHAT: Initialize state */
     sleep->current_state = SLEEP_STATE_AWAKE;
     sleep->state_entered_at = nimcp_time_monotonic_ms();
-    sleep->sleep_pressure = 0.0f;
+    sleep->sleep_pressure = 0.0F;
     sleep->learning_steps_since_sleep = 0;
 
     /* WHAT: Initialize statistics */
     sleep->sleep_cycles_completed = 0;
     sleep->total_memories_replayed = 0;
     sleep->total_synapses_pruned = 0;
-    sleep->consolidation_efficiency = 0.0f;
-    sleep->energy_savings = 0.0f;
+    sleep->consolidation_efficiency = 0.0F;
+    sleep->energy_savings = 0.0F;
     sleep->total_awake_time = 0;
     sleep->total_sleep_time = 0;
 
@@ -235,8 +235,8 @@ void sleep_accumulate_pressure(sleep_system_t sleep, uint32_t learning_steps)
     sleep->sleep_pressure += increment;
 
     /* WHAT: Clamp to [0, 1] range */
-    if (sleep->sleep_pressure > 1.0f) {
-        sleep->sleep_pressure = 1.0f;
+    if (sleep->sleep_pressure > 1.0F) {
+        sleep->sleep_pressure = 1.0F;
     }
 
     sleep->learning_steps_since_sleep += learning_steps;
@@ -252,7 +252,7 @@ void sleep_accumulate_pressure(sleep_system_t sleep, uint32_t learning_steps)
 float sleep_get_pressure(const sleep_system_t sleep)
 {
     if (sleep == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return sleep->sleep_pressure;
@@ -343,7 +343,7 @@ bool sleep_wake_up(sleep_system_t sleep)
     nimcp_mutex_lock(&sleep->lock);
 
     /* WHAT: Clear sleep pressure (adenosine cleared during sleep) */
-    sleep->sleep_pressure = 0.0f;
+    sleep->sleep_pressure = 0.0F;
     sleep->learning_steps_since_sleep = 0;
 
     /* WHAT: Return to awake state */
@@ -482,7 +482,7 @@ static void sleep_stage_deep_nrem(sleep_system_t sleep)
             /* WHY:  Emotional items get consolidated first (amygdala-hippocampus) */
             for (uint32_t i = 0; i < max_replay; i++) {
                 /* Get total salience (includes emotional boost from Phase 10.3) */
-                float total_salience = 0.0f;
+                float total_salience = 0.0F;
                 working_memory_get_total_salience(wm, i, &total_salience);
 
                 /* Get emotional tag if available */
@@ -494,18 +494,18 @@ static void sleep_stage_deep_nrem(sleep_system_t sleep)
                 /* HOW:  Combine emotional intensity, arousal, and salience */
                 float consolidation_weight = total_salience;  // Base salience
 
-                if (has_emotion && emotion.intensity > 0.3f) {
+                if (has_emotion && emotion.intensity > 0.3F) {
                     /* WHAT: Boost for emotional content */
                     /* WHY:  Emotional events consolidate stronger */
                     /* HOW:  Add intensity and arousal */
-                    consolidation_weight += emotion.intensity * 0.5f;
-                    consolidation_weight += emotion.arousal * 0.3f;
+                    consolidation_weight += emotion.intensity * 0.5F;
+                    consolidation_weight += emotion.arousal * 0.3F;
 
                     /* WHAT: Extra boost for high-arousal emotions */
                     /* WHY:  Survival-critical events (fear, excitement) */
                     /* HOW:  Scale by emotional category */
-                    if (emotion.arousal > 0.7f) {
-                        consolidation_weight *= 1.5f;  // 50% boost
+                    if (emotion.arousal > 0.7F) {
+                        consolidation_weight *= 1.5F;  // 50% boost
                     }
                 }
 
@@ -540,17 +540,17 @@ static void sleep_stage_deep_nrem(sleep_system_t sleep)
 
         nimcp_mutex_lock(&sleep->lock);
         sleep->total_synapses_pruned += synapses_pruned;
-        sleep->energy_savings += 0.15f;  // 15% energy saved
+        sleep->energy_savings += 0.15F;  // 15% energy saved
         nimcp_mutex_unlock(&sleep->lock);
     }
 
     /* WHAT: Update consolidation efficiency */
     /* WHY:  Track how well memories are retained */
     /* HOW:  Higher efficiency for emotional memories */
-    float efficiency = 0.85f;  // Base 85% retention
+    float efficiency = 0.85F;  // Base 85% retention
     if (memories_replayed > 0) {
         /* Emotional consolidation improves retention slightly */
-        efficiency = 0.90f;  // 90% retention with emotional prioritization
+        efficiency = 0.90F;  // 90% retention with emotional prioritization
     }
 
     nimcp_mutex_lock(&sleep->lock);
@@ -668,7 +668,7 @@ bool sleep_get_statistics(const sleep_system_t sleep, sleep_stats_t* stats)
     stats->total_memories_replayed = sleep->total_memories_replayed;
     stats->total_synapses_pruned = sleep->total_synapses_pruned;
     stats->avg_consolidation_efficiency = sleep->consolidation_efficiency;
-    stats->energy_savings_percent = sleep->energy_savings * 100.0f;
+    stats->energy_savings_percent = sleep->energy_savings * 100.0F;
     stats->current_sleep_pressure = sleep->sleep_pressure;
 
     nimcp_mutex_unlock((nimcp_mutex_t*)&sleep->lock);
@@ -692,8 +692,8 @@ void sleep_reset_statistics(sleep_system_t sleep)
     sleep->sleep_cycles_completed = 0;
     sleep->total_memories_replayed = 0;
     sleep->total_synapses_pruned = 0;
-    sleep->consolidation_efficiency = 0.0f;
-    sleep->energy_savings = 0.0f;
+    sleep->consolidation_efficiency = 0.0F;
+    sleep->energy_savings = 0.0F;
     sleep->total_awake_time = 0;
     sleep->total_sleep_time = 0;
     /* Note: Don't reset sleep_pressure or current_state */

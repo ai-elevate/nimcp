@@ -84,11 +84,11 @@
  */
 static inline float gaussian_tuning(float distance, float sigma)
 {
-    if (sigma <= 0.0f) {
-        return 1.0f;
+    if (sigma <= 0.0F) {
+        return 1.0F;
     }
     float normalized = distance / sigma;
-    return expf(-0.5f * normalized * normalized);
+    return expf(-0.5F * normalized * normalized);
 }
 
 /**
@@ -153,18 +153,18 @@ nimcp_result_t astrocyte_type_init_context(astrocyte_type_context_t* context,
     switch (type) {
         case ASTROCYTE_TYPE_V1_SENSORY:
             // Initialize V1 sensory context with default orientation tuning
-            context->v1.preferred_orientation = 0.0f;  // Will be set by brain region
+            context->v1.preferred_orientation = 0.0F;  // Will be set by brain region
             context->v1.orientation_selectivity = V1_ORIENTATION_TUNING_SIGMA_DEG;
-            context->v1.contrast_adaptation_state = 0.0f;
-            context->v1.local_contrast = 0.5f;
+            context->v1.contrast_adaptation_state = 0.0F;
+            context->v1.local_contrast = 0.5F;
             break;
 
         case ASTROCYTE_TYPE_A1_SENSORY:
             // Initialize A1 sensory context with default frequency tuning
-            context->a1.preferred_frequency_hz = 1000.0f;  // Will be set by tonotopic map
+            context->a1.preferred_frequency_hz = 1000.0F;  // Will be set by tonotopic map
             context->a1.frequency_bandwidth_octaves = A1_FREQUENCY_TUNING_SIGMA_OCTAVES;
             context->a1.adaptation_timescale_ms = A1_ADAPTATION_TAU_MS;
-            context->a1.current_frequency_input = 0.0f;
+            context->a1.current_frequency_input = 0.0F;
             break;
 
         case ASTROCYTE_TYPE_MULTIMODAL_INTEGRATION:
@@ -177,18 +177,18 @@ nimcp_result_t astrocyte_type_init_context(astrocyte_type_context_t* context,
 
         case ASTROCYTE_TYPE_METACOGNITIVE:
             // Initialize metacognitive context
-            context->metacognitive.uncertainty_level = 0.0f;
+            context->metacognitive.uncertainty_level = 0.0F;
             context->metacognitive.confidence_threshold = METACOG_UNCERTAINTY_THRESHOLD;
-            context->metacognitive.error_signal = 0.0f;
-            context->metacognitive.conflict_detection_strength = 0.0f;
+            context->metacognitive.error_signal = 0.0F;
+            context->metacognitive.conflict_detection_strength = 0.0F;
             break;
 
         case ASTROCYTE_TYPE_EXECUTIVE_CONTROL:
             // Initialize executive control context
-            context->executive.goal_relevance = 0.0f;
-            context->executive.working_memory_load = 0.0f;
-            context->executive.distractor_suppression = 0.0f;
-            context->executive.task_priority = 0.5f;
+            context->executive.goal_relevance = 0.0F;
+            context->executive.working_memory_load = 0.0F;
+            context->executive.distractor_suppression = 0.0F;
+            context->executive.task_priority = 0.5F;
             break;
 
         case ASTROCYTE_TYPE_GENERIC:
@@ -220,34 +220,34 @@ float astrocyte_type_v1_modulate(struct astrocyte_t* astro,
      */
 
     if (!astro || !synapse || !context) {
-        return 1.0f;  // No modulation if invalid input
+        return 1.0F;  // No modulation if invalid input
     }
 
     // Base modulation from astrocyte calcium concentration
     // Higher calcium = stronger modulation
-    float calcium_factor = 1.0f;
+    float calcium_factor = 1.0F;
     if (astro->calcium_concentration > astro->calcium_baseline) {
         float calcium_excess = astro->calcium_concentration - astro->calcium_baseline;
-        calcium_factor = 1.0f + 0.5f * tanhf(calcium_excess / 2.0f);
+        calcium_factor = 1.0F + 0.5F * tanhf(calcium_excess / 2.0F);
     }
 
     // Orientation tuning modulation
     // Note: In real implementation, synapse would have orientation tag
     // For now, we use a placeholder based on synapse strength
-    float synapse_orientation = fmodf(synapse->strength * 180.0f, 180.0f);
+    float synapse_orientation = fmodf(synapse->strength * 180.0F, 180.0F);
     float orientation_distance = fabsf(synapse_orientation - context->v1.preferred_orientation);
 
     // Handle circular orientation space (180° = 0°)
-    if (orientation_distance > 90.0f) {
-        orientation_distance = 180.0f - orientation_distance;
+    if (orientation_distance > 90.0F) {
+        orientation_distance = 180.0F - orientation_distance;
     }
 
     float orientation_tuning = gaussian_tuning(orientation_distance,
                                                  context->v1.orientation_selectivity);
 
     // Contrast adaptation: reduce gain for high contrast
-    float contrast_factor = 1.0f - context->v1.contrast_adaptation_state * V1_CONTRAST_ADAPTATION_RATE;
-    contrast_factor = clamp(contrast_factor, 0.5f, 1.0f);
+    float contrast_factor = 1.0F - context->v1.contrast_adaptation_state * V1_CONTRAST_ADAPTATION_RATE;
+    contrast_factor = clamp(contrast_factor, 0.5F, 1.0F);
 
     // Combine all factors
     float modulation = calcium_factor * orientation_tuning * contrast_factor;
@@ -275,22 +275,22 @@ float astrocyte_type_a1_modulate(struct astrocyte_t* astro,
      */
 
     if (!astro || !synapse || !context) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Base modulation from astrocyte calcium
-    float calcium_factor = 1.0f;
+    float calcium_factor = 1.0F;
     if (astro->calcium_concentration > astro->calcium_baseline) {
         float calcium_excess = astro->calcium_concentration - astro->calcium_baseline;
-        calcium_factor = 1.0f + 0.4f * tanhf(calcium_excess / 2.0f);
+        calcium_factor = 1.0F + 0.4F * tanhf(calcium_excess / 2.0F);
     }
 
     // Frequency tuning in log space (octaves)
     // Note: In real implementation, synapse would have frequency tag
-    float synapse_frequency = 200.0f + synapse->strength * 5000.0f;  // Placeholder
+    float synapse_frequency = 200.0F + synapse->strength * 5000.0F;  // Placeholder
 
-    if (synapse_frequency <= 0.0f || context->a1.preferred_frequency_hz <= 0.0f) {
-        return 1.0f;
+    if (synapse_frequency <= 0.0F || context->a1.preferred_frequency_hz <= 0.0F) {
+        return 1.0F;
     }
 
     float frequency_ratio = synapse_frequency / context->a1.preferred_frequency_hz;
@@ -301,8 +301,8 @@ float astrocyte_type_a1_modulate(struct astrocyte_t* astro,
 
     // Adaptation to sustained tones
     // Higher current_frequency_input = more adaptation
-    float adaptation_factor = 1.0f - 0.4f * tanhf(context->a1.current_frequency_input / 5.0f);
-    adaptation_factor = clamp(adaptation_factor, 0.6f, 1.0f);
+    float adaptation_factor = 1.0F - 0.4F * tanhf(context->a1.current_frequency_input / 5.0F);
+    adaptation_factor = clamp(adaptation_factor, 0.6F, 1.0F);
 
     // Combine factors
     float modulation = calcium_factor * frequency_tuning * adaptation_factor;
@@ -329,18 +329,18 @@ float astrocyte_type_multimodal_modulate(struct astrocyte_t* astro,
      */
 
     if (!astro || !synapse || !context) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Base modulation from astrocyte calcium
-    float calcium_factor = 1.0f;
+    float calcium_factor = 1.0F;
     if (astro->calcium_concentration > astro->calcium_baseline) {
         float calcium_excess = astro->calcium_concentration - astro->calcium_baseline;
-        calcium_factor = 1.0f + 0.6f * tanhf(calcium_excess / 2.0f);
+        calcium_factor = 1.0F + 0.6F * tanhf(calcium_excess / 2.0F);
     }
 
     // Multimodal enhancement based on number of active modalities
-    float multimodal_enhancement = 1.0f;
+    float multimodal_enhancement = 1.0F;
 
     if (context->multimodal.num_modalities_active >= 2) {
         // Linear enhancement for 2 modalities
@@ -355,7 +355,7 @@ float astrocyte_type_multimodal_modulate(struct astrocyte_t* astro,
     // Temporal binding window enforcement
     // Enhancement only applies if within temporal window of last binding event
     // (In full implementation, this would check timestamps)
-    float temporal_factor = 1.0f;
+    float temporal_factor = 1.0F;
     if (context->multimodal.last_binding_event_us > 0) {
         // Placeholder: assume within window if last_binding_event is set
         temporal_factor = context->multimodal.cross_modal_enhancement;
@@ -364,7 +364,7 @@ float astrocyte_type_multimodal_modulate(struct astrocyte_t* astro,
     // Combine factors
     float modulation = calcium_factor * multimodal_enhancement * temporal_factor;
 
-    return clamp(modulation, 1.0f, MULTIMODAL_MAX_ENHANCEMENT);
+    return clamp(modulation, 1.0F, MULTIMODAL_MAX_ENHANCEMENT);
 }
 
 //=============================================================================
@@ -386,36 +386,36 @@ float astrocyte_type_metacognitive_modulate(struct astrocyte_t* astro,
      */
 
     if (!astro || !synapse || !context) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Base modulation from astrocyte calcium and D-serine pool
-    float calcium_factor = 1.0f;
+    float calcium_factor = 1.0F;
     if (astro->calcium_concentration > astro->calcium_baseline) {
         float calcium_excess = astro->calcium_concentration - astro->calcium_baseline;
-        calcium_factor = 1.0f + 0.3f * tanhf(calcium_excess / 2.0f);
+        calcium_factor = 1.0F + 0.3F * tanhf(calcium_excess / 2.0F);
     }
 
     // D-serine availability (required for NMDA-dependent plasticity)
-    float d_serine_factor = 0.5f + 0.5f * astro->d_serine_pool;
+    float d_serine_factor = 0.5F + 0.5F * astro->d_serine_pool;
 
     // Uncertainty-driven modulation
     // Higher uncertainty = stronger modulation (enhance plasticity for novel inputs)
-    float uncertainty_factor = 1.0f;
+    float uncertainty_factor = 1.0F;
     if (context->metacognitive.uncertainty_level > context->metacognitive.confidence_threshold) {
         float uncertainty_excess = context->metacognitive.uncertainty_level -
                                     context->metacognitive.confidence_threshold;
-        uncertainty_factor = 1.0f + 0.5f * uncertainty_excess;
+        uncertainty_factor = 1.0F + 0.5F * uncertainty_excess;
     }
 
     // Error signal amplification
-    float error_factor = 1.0f;
-    if (context->metacognitive.error_signal > 0.5f) {
+    float error_factor = 1.0F;
+    if (context->metacognitive.error_signal > 0.5F) {
         error_factor = METACOG_ERROR_AMPLIFICATION;
     }
 
     // Conflict detection enhancement
-    float conflict_factor = 1.0f + 0.3f * context->metacognitive.conflict_detection_strength;
+    float conflict_factor = 1.0F + 0.3F * context->metacognitive.conflict_detection_strength;
 
     // Combine factors
     float modulation = calcium_factor * d_serine_factor * uncertainty_factor *
@@ -443,42 +443,42 @@ float astrocyte_type_executive_modulate(struct astrocyte_t* astro,
      */
 
     if (!astro || !synapse || !context) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Base modulation from astrocyte calcium and ATP level
-    float calcium_factor = 1.0f;
+    float calcium_factor = 1.0F;
     if (astro->calcium_concentration > astro->calcium_baseline) {
         float calcium_excess = astro->calcium_concentration - astro->calcium_baseline;
-        calcium_factor = 1.0f + 0.5f * tanhf(calcium_excess / 2.0f);
+        calcium_factor = 1.0F + 0.5F * tanhf(calcium_excess / 2.0F);
     }
 
     // ATP-dependent metabolic support
     // Low ATP reduces modulation capacity
-    float atp_factor = 0.5f + 0.5f * astro->atp_level;
+    float atp_factor = 0.5F + 0.5F * astro->atp_level;
 
     // Goal relevance modulation
-    float goal_factor = 1.0f;
+    float goal_factor = 1.0F;
     if (context->executive.goal_relevance > EXEC_GOAL_RELEVANCE_THRESHOLD) {
         // Enhance goal-relevant synapses
-        goal_factor = 1.0f + (context->executive.goal_relevance - EXEC_GOAL_RELEVANCE_THRESHOLD) * 2.0f;
-    } else if (context->executive.goal_relevance < 0.3f) {
+        goal_factor = 1.0F + (context->executive.goal_relevance - EXEC_GOAL_RELEVANCE_THRESHOLD) * 2.0F;
+    } else if (context->executive.goal_relevance < 0.3F) {
         // Suppress irrelevant synapses (distractors)
         goal_factor = EXEC_DISTRACTOR_SUPPRESSION;
     }
 
     // Working memory maintenance boost
-    float wm_factor = 1.0f;
-    if (context->executive.working_memory_load > 0.5f) {
+    float wm_factor = 1.0F;
+    if (context->executive.working_memory_load > 0.5F) {
         wm_factor = EXEC_WM_MAINTENANCE_BOOST;
     }
 
     // Task priority scaling
-    float priority_factor = 0.5f + context->executive.task_priority;
+    float priority_factor = 0.5F + context->executive.task_priority;
 
     // Distractor suppression
-    float distractor_factor = 1.0f - context->executive.distractor_suppression;
-    distractor_factor = clamp(distractor_factor, 0.3f, 1.0f);
+    float distractor_factor = 1.0F - context->executive.distractor_suppression;
+    distractor_factor = clamp(distractor_factor, 0.3F, 1.0F);
 
     // Combine factors
     float modulation = calcium_factor * atp_factor * goal_factor *
@@ -502,19 +502,19 @@ float astrocyte_type_generic_modulate(struct astrocyte_t* astro,
      */
 
     if (!astro || !synapse) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Simple calcium-dependent modulation
-    float modulation = 1.0f;
+    float modulation = 1.0F;
 
     if (astro->calcium_concentration > astro->calcium_baseline) {
         float calcium_excess = astro->calcium_concentration - astro->calcium_baseline;
-        modulation = 1.0f + 0.2f * tanhf(calcium_excess / 3.0f);
+        modulation = 1.0F + 0.2F * tanhf(calcium_excess / 3.0F);
     }
 
     // Include glutamate pool depletion
-    modulation *= (0.5f + 0.5f * astro->glutamate_pool);
+    modulation *= (0.5F + 0.5F * astro->glutamate_pool);
 
     return clamp(modulation, GENERIC_MIN_MODULATION, GENERIC_MAX_MODULATION);
 }
@@ -536,7 +536,7 @@ float astrocyte_type_dispatch_modulation(struct astrocyte_t* astro,
      */
 
     if (!astro || !synapse || !context) {
-        return 1.0f;
+        return 1.0F;
     }
 
     switch (context->type) {

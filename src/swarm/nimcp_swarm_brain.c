@@ -105,7 +105,7 @@ struct nimcp_swarm_brain {
     swarm_brain_config_t config;
 
     // Core components
-    struct brain* local_brain;                    // Local constrained brain
+    brain_t local_brain;                          // Local constrained brain
     nimcp_swarm_signal_adapter_t* signal_adapter; // Radio I/O
     collective_workspace_t* workspace;            // Shared workspace
     emergence_context_t* emergence;               // Emergence tracking
@@ -208,7 +208,7 @@ static bool update_peer(swarm_brain_t* swarm, uint16_t drone_id) {
             peer = &swarm->peers[swarm->peer_count];
             peer->drone_id = drone_id;
             peer->last_seen_ms = get_time_ms();
-            peer->coherence = 0.5f;
+            peer->coherence = 0.5F;
             peer->message_count = 1;
             peer->active = true;
             swarm->peer_count++;
@@ -279,7 +279,7 @@ static collective_workspace_t* create_workspace(uint32_t size) {
 
     ws->size = size;
     ws->last_update_ms = get_time_ms();
-    ws->coherence = 0.0f;
+    ws->coherence = 0.0F;
 
     // Allocate and initialize mutex
     ws->lock = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
@@ -330,7 +330,7 @@ static void workspace_update_entry(collective_workspace_t* ws, uint32_t concept_
 
     if (entry) {
         entry->concept_id = concept_id;
-        entry->attention = fminf(entry->attention + attention, 1.0f);
+        entry->attention = fminf(entry->attention + attention, 1.0F);
         entry->contributor_count++;
         entry->last_update_ms = get_time_ms();
     }
@@ -349,13 +349,13 @@ static void workspace_decay(collective_workspace_t* ws) {
     uint64_t now = get_time_ms();
     nimcp_platform_mutex_lock(ws->lock);
 
-    float dt = (now - ws->last_update_ms) / 1000.0f; // Convert to seconds
+    float dt = (now - ws->last_update_ms) / 1000.0F; // Convert to seconds
     float decay = powf(WORKSPACE_DECAY_RATE, dt);
 
     for (uint32_t i = 0; i < ws->size; i++) {
         ws->entries[i].attention *= decay;
         if (ws->entries[i].attention < WORKSPACE_MIN_ATTENTION) {
-            ws->entries[i].attention = 0.0f;
+            ws->entries[i].attention = 0.0F;
             ws->entries[i].contributor_count = 0;
         }
     }
@@ -369,12 +369,12 @@ static void workspace_decay(collective_workspace_t* ws) {
  * @brief Calculate workspace coherence
  */
 static float workspace_calculate_coherence(collective_workspace_t* ws) {
-    if (!ws || !ws->entries) return 0.0f;
+    if (!ws || !ws->entries) return 0.0F;
 
     nimcp_platform_mutex_lock(ws->lock);
 
-    float total_attention = 0.0f;
-    float max_attention = 0.0f;
+    float total_attention = 0.0F;
+    float max_attention = 0.0F;
 
     for (uint32_t i = 0; i < ws->size; i++) {
         total_attention += ws->entries[i].attention;
@@ -384,7 +384,7 @@ static float workspace_calculate_coherence(collective_workspace_t* ws) {
     }
 
     // Coherence is ratio of max attention to total (high = focused)
-    float coherence = (total_attention > 0.0f) ? (max_attention / total_attention) : 0.0f;
+    float coherence = (total_attention > 0.0F) ? (max_attention / total_attention) : 0.0F;
     ws->coherence = coherence;
 
     nimcp_platform_mutex_unlock(ws->lock);
@@ -444,7 +444,7 @@ static void emergence_update_tier(emergence_context_t* ctx, uint32_t peer_count,
 
     // Require some coherence for highest tier only
     // Note: In test scenarios coherence may be low due to limited workspace activity
-    if (new_tier >= SWARM_TIER_4_SUPERORGANISM && coherence < 0.2f) {
+    if (new_tier >= SWARM_TIER_4_SUPERORGANISM && coherence < 0.2F) {
         new_tier = SWARM_TIER_3_SWARM;
     }
 
@@ -653,7 +653,7 @@ static void handle_perception(swarm_brain_t* swarm, uint8_t* data, uint32_t len,
     // Update workspace with perception - concept_id derived from sensor_type
     // Attention based on confidence (weighted for peer input)
     uint32_t concept_id = perception->sensor_type;
-    float attention = perception->confidence * 0.5f;  // Weight peer perceptions
+    float attention = perception->confidence * 0.5F;  // Weight peer perceptions
     workspace_update_entry(swarm->workspace, concept_id, attention);
 }
 
@@ -742,7 +742,7 @@ static void handle_neuromod_sync(swarm_brain_t* swarm, uint8_t* data, uint32_t l
     // Update workspace with emotional state - high arousal (NE) indicates salience
     // Use a concept ID for "emotional state" updates
     float arousal = state->norepinephrine;
-    float attention = arousal * 0.3f;  // Weight emotional states lower than perceptions
+    float attention = arousal * 0.3F;  // Weight emotional states lower than perceptions
     workspace_update_entry(swarm->workspace, 1000 + source_id, attention);
 }
 
@@ -753,7 +753,7 @@ static void handle_workspace_update(swarm_brain_t* swarm, uint8_t* data, uint32_
     float attention = *(float*)(data + 4);
     update_peer(swarm, source_id);
 
-    workspace_update_entry(swarm->workspace, concept_id, attention * 0.5f); // Weight by 0.5 for peer input
+    workspace_update_entry(swarm->workspace, concept_id, attention * 0.5F); // Weight by 0.5 for peer input
 }
 
 static void handle_goodbye(swarm_brain_t* swarm, uint8_t* data, uint32_t len, uint32_t source_id) {
@@ -915,7 +915,7 @@ static bool process_votes(swarm_brain_t* swarm) {
 static bool update_emergence_tier(swarm_brain_t* swarm) {
     if (!swarm || !swarm->emergence) return false;
 
-    float coherence = swarm->workspace ? swarm->workspace->coherence : 0.0f;
+    float coherence = swarm->workspace ? swarm->workspace->coherence : 0.0F;
     emergence_update_tier(swarm->emergence, swarm->peer_count, coherence);
 
     nimcp_platform_mutex_lock(swarm->stats_lock);
@@ -1323,7 +1323,7 @@ bool swarm_brain_get_stats(const swarm_brain_t* swarm, swarm_stats_t* stats) {
 
 brain_t swarm_brain_get_local_brain(swarm_brain_t* swarm) {
     if (!swarm) return NULL;
-    return (brain_t)swarm->local_brain;
+    return swarm->local_brain;
 }
 
 const char* swarm_emergence_tier_string(swarm_emergence_tier_t tier) {
@@ -1597,19 +1597,19 @@ bool swarm_brain_collective_learn(
             return false;
         }
 
-        if (exp->importance < 0.0f || exp->importance > 1.0f) {
+        if (exp->importance < 0.0F || exp->importance > 1.0F) {
             LOG_WARN("Experience %u has invalid importance: %.3f (clamping to [0,1])",
                      i, exp->importance);
         }
     }
 
     // Aggregate learning (federated averaging approach)
-    float total_importance = 0.0f;
+    float total_importance = 0.0F;
     for (uint32_t i = 0; i < experience_count; i++) {
         total_importance += experiences[i].importance;
     }
 
-    if (total_importance < 0.01f) {
+    if (total_importance < 0.01F) {
         LOG_ERROR("Total importance too low: %.6f", total_importance);
         return false;
     }

@@ -158,15 +158,15 @@ static void features_to_evidence(const float* features, float* evidence) {
 
     /* Combine special + control chars */
     evidence[NIMCP_BN_NODE_SPECIAL_CHARS] =
-        (features[NIMCP_FEATURE_SPECIAL_RATIO] + features[NIMCP_FEATURE_CONTROL_RATIO]) / 2.0f;
+        (features[NIMCP_FEATURE_SPECIAL_RATIO] + features[NIMCP_FEATURE_CONTROL_RATIO]) / 2.0F;
 
     /* Combine n-gram entropies */
     evidence[NIMCP_BN_NODE_NGRAMS] =
-        (features[NIMCP_FEATURE_BIGRAM_ENTROPY] + features[NIMCP_FEATURE_TRIGRAM_ENTROPY]) / 2.0f;
+        (features[NIMCP_FEATURE_BIGRAM_ENTROPY] + features[NIMCP_FEATURE_TRIGRAM_ENTROPY]) / 2.0F;
 
     /* Combine timing features */
     evidence[NIMCP_BN_NODE_TIMING] =
-        (features[NIMCP_FEATURE_REQUEST_RATE] + features[NIMCP_FEATURE_BURST_SCORE]) / 2.0f;
+        (features[NIMCP_FEATURE_REQUEST_RATE] + features[NIMCP_FEATURE_BURST_SCORE]) / 2.0F;
 
     /* Intermediate nodes: unobserved (NAN) */
     evidence[NIMCP_BN_NODE_CONTENT_ANOMALY] = NAN;
@@ -182,51 +182,51 @@ static uint32_t determine_triggered_features(const float* features, const float*
     uint32_t triggered = 0;
 
     /* Check each feature against its contribution to anomaly score */
-    if (features[NIMCP_FEATURE_LENGTH] > 0.8f) {
+    if (features[NIMCP_FEATURE_LENGTH] > 0.8F) {
         triggered |= NIMCP_TRIGGER_LENGTH;
     }
 
-    if (features[NIMCP_FEATURE_ENTROPY] > 0.9f || features[NIMCP_FEATURE_ENTROPY] < 0.1f) {
+    if (features[NIMCP_FEATURE_ENTROPY] > 0.9F || features[NIMCP_FEATURE_ENTROPY] < 0.1F) {
         triggered |= NIMCP_TRIGGER_ENTROPY;
     }
 
-    if (features[NIMCP_FEATURE_ALPHA_RATIO] < 0.2f) {
+    if (features[NIMCP_FEATURE_ALPHA_RATIO] < 0.2F) {
         triggered |= NIMCP_TRIGGER_ALPHA_RATIO;
     }
 
-    if (features[NIMCP_FEATURE_NUMERIC_RATIO] > 0.8f) {
+    if (features[NIMCP_FEATURE_NUMERIC_RATIO] > 0.8F) {
         triggered |= NIMCP_TRIGGER_NUMERIC_RATIO;
     }
 
-    if (features[NIMCP_FEATURE_SPECIAL_RATIO] > 0.5f) {
+    if (features[NIMCP_FEATURE_SPECIAL_RATIO] > 0.5F) {
         triggered |= NIMCP_TRIGGER_SPECIAL_RATIO;
     }
 
-    if (features[NIMCP_FEATURE_CONTROL_RATIO] > 0.3f) {
+    if (features[NIMCP_FEATURE_CONTROL_RATIO] > 0.3F) {
         triggered |= NIMCP_TRIGGER_CONTROL_RATIO;
     }
 
-    if (features[NIMCP_FEATURE_BIGRAM_ENTROPY] < 0.3f) {
+    if (features[NIMCP_FEATURE_BIGRAM_ENTROPY] < 0.3F) {
         triggered |= NIMCP_TRIGGER_BIGRAM_ENTROPY;
     }
 
-    if (features[NIMCP_FEATURE_TRIGRAM_ENTROPY] < 0.3f) {
+    if (features[NIMCP_FEATURE_TRIGRAM_ENTROPY] < 0.3F) {
         triggered |= NIMCP_TRIGGER_TRIGRAM_ENTROPY;
     }
 
-    if (features[NIMCP_FEATURE_NESTING_DEPTH] > 0.5f) {
+    if (features[NIMCP_FEATURE_NESTING_DEPTH] > 0.5F) {
         triggered |= NIMCP_TRIGGER_NESTING_DEPTH;
     }
 
-    if (features[NIMCP_FEATURE_REQUEST_RATE] > 0.7f) {
+    if (features[NIMCP_FEATURE_REQUEST_RATE] > 0.7F) {
         triggered |= NIMCP_TRIGGER_REQUEST_RATE;
     }
 
-    if (features[NIMCP_FEATURE_BURST_SCORE] > 0.6f) {
+    if (features[NIMCP_FEATURE_BURST_SCORE] > 0.6F) {
         triggered |= NIMCP_TRIGGER_BURST_SCORE;
     }
 
-    if (features[NIMCP_FEATURE_REPEAT_RATIO] > 0.4f) {
+    if (features[NIMCP_FEATURE_REPEAT_RATIO] > 0.4F) {
         triggered |= NIMCP_TRIGGER_REPEAT_RATIO;
     }
 
@@ -237,7 +237,7 @@ static uint32_t determine_triggered_features(const float* features, const float*
  * @brief Generate human-readable explanation
  */
 static void generate_explanation(uint32_t triggered, float anomaly_score, char* explanation, size_t max_len) {
-    if (anomaly_score < 0.3f) {
+    if (anomaly_score < 0.3F) {
         snprintf(explanation, max_len, "Input appears normal (score: %.2f)", anomaly_score);
         return;
     }
@@ -300,7 +300,7 @@ nimcp_anomaly_config_t nimcp_anomaly_detector_default_config(void) {
 
         .max_input_length = 10240,
         .max_ngram_size = 3,
-        .timing_window_sec = 10.0f,
+        .timing_window_sec = 10.0F,
 
         .enable_caching = false,
         .enable_fast_mode = false,
@@ -449,13 +449,13 @@ nimcp_error_t nimcp_anomaly_detect(nimcp_anomaly_detector_t detector,
 
     /* Confidence based on number of training samples */
     if (detector->stats.training_samples < 10) {
-        result->confidence = 0.3f;
+        result->confidence = 0.3F;
     } else if (detector->stats.training_samples < 100) {
-        result->confidence = 0.6f;
+        result->confidence = 0.6F;
     } else if (detector->stats.training_samples < 1000) {
-        result->confidence = 0.8f;
+        result->confidence = 0.8F;
     } else {
-        result->confidence = 0.95f;
+        result->confidence = 0.95F;
     }
 
     /* Determine triggered features */
@@ -480,16 +480,16 @@ nimcp_error_t nimcp_anomaly_detect(nimcp_anomaly_detector_t detector,
 
     /* Update performance metrics */
     uint64_t detection_time = result->timestamp_us - start_time;
-    float alpha = 0.1f;  /* EMA smoothing factor */
+    float alpha = 0.1F;  /* EMA smoothing factor */
     detector->stats.avg_detection_time_us =
-        alpha * (float)detection_time + (1.0f - alpha) * detector->stats.avg_detection_time_us;
+        alpha * (float)detection_time + (1.0F - alpha) * detector->stats.avg_detection_time_us;
 
     if ((float)detection_time > detector->stats.max_detection_time_us) {
         detector->stats.max_detection_time_us = (float)detection_time;
     }
 
     /* Online learning if enabled */
-    if (detector->config.enable_online_learning && result->anomaly_score < 0.5f) {
+    if (detector->config.enable_online_learning && result->anomaly_score < 0.5F) {
         /* Assume low-score samples are normal for training */
         float sample[NIMCP_BN_NODE_COUNT];
         memcpy(sample, evidence, sizeof(sample));
@@ -525,15 +525,15 @@ nimcp_error_t nimcp_anomaly_train(nimcp_anomaly_detector_t detector,
     /* Set labels for intermediate and output nodes */
     if (is_normal) {
         /* Normal samples have low anomaly scores */
-        evidence[NIMCP_BN_NODE_CONTENT_ANOMALY] = 0.2f;
-        evidence[NIMCP_BN_NODE_BEHAVIOR_ANOMALY] = 0.2f;
-        evidence[NIMCP_BN_NODE_OVERALL_ANOMALY] = 0.1f;
+        evidence[NIMCP_BN_NODE_CONTENT_ANOMALY] = 0.2F;
+        evidence[NIMCP_BN_NODE_BEHAVIOR_ANOMALY] = 0.2F;
+        evidence[NIMCP_BN_NODE_OVERALL_ANOMALY] = 0.1F;
         detector->stats.normal_samples++;
     } else {
         /* Anomalous samples have high anomaly scores */
-        evidence[NIMCP_BN_NODE_CONTENT_ANOMALY] = 0.8f;
-        evidence[NIMCP_BN_NODE_BEHAVIOR_ANOMALY] = 0.8f;
-        evidence[NIMCP_BN_NODE_OVERALL_ANOMALY] = 0.9f;
+        evidence[NIMCP_BN_NODE_CONTENT_ANOMALY] = 0.8F;
+        evidence[NIMCP_BN_NODE_BEHAVIOR_ANOMALY] = 0.8F;
+        evidence[NIMCP_BN_NODE_OVERALL_ANOMALY] = 0.9F;
         detector->stats.anomalous_samples++;
     }
 
@@ -566,8 +566,8 @@ nimcp_error_t nimcp_anomaly_get_stats(nimcp_anomaly_detector_t detector,
             (float)(detector->stats.anomalies_detected + detector->stats.false_negatives);
     }
 
-    if (detector->stats.precision + detector->stats.recall > 0.0f) {
-        detector->stats.f1_score = 2.0f * detector->stats.precision * detector->stats.recall /
+    if (detector->stats.precision + detector->stats.recall > 0.0F) {
+        detector->stats.f1_score = 2.0F * detector->stats.precision * detector->stats.recall /
             (detector->stats.precision + detector->stats.recall);
     }
 
@@ -620,14 +620,14 @@ nimcp_error_t nimcp_anomaly_update_thresholds(nimcp_anomaly_detector_t detector,
         detector->adaptive_timing_threshold += ADAPTIVE_THRESHOLD_RATE;
 
         /* Clamp to [0, 1] */
-        if (detector->adaptive_content_threshold > 1.0f) {
-            detector->adaptive_content_threshold = 1.0f;
+        if (detector->adaptive_content_threshold > 1.0F) {
+            detector->adaptive_content_threshold = 1.0F;
         }
-        if (detector->adaptive_behavior_threshold > 1.0f) {
-            detector->adaptive_behavior_threshold = 1.0f;
+        if (detector->adaptive_behavior_threshold > 1.0F) {
+            detector->adaptive_behavior_threshold = 1.0F;
         }
-        if (detector->adaptive_timing_threshold > 1.0f) {
-            detector->adaptive_timing_threshold = 1.0f;
+        if (detector->adaptive_timing_threshold > 1.0F) {
+            detector->adaptive_timing_threshold = 1.0F;
         }
     }
 
@@ -640,14 +640,14 @@ nimcp_error_t nimcp_anomaly_update_thresholds(nimcp_anomaly_detector_t detector,
         detector->adaptive_timing_threshold -= ADAPTIVE_THRESHOLD_RATE;
 
         /* Clamp to [0, 1] */
-        if (detector->adaptive_content_threshold < 0.0f) {
-            detector->adaptive_content_threshold = 0.0f;
+        if (detector->adaptive_content_threshold < 0.0F) {
+            detector->adaptive_content_threshold = 0.0F;
         }
-        if (detector->adaptive_behavior_threshold < 0.0f) {
-            detector->adaptive_behavior_threshold = 0.0f;
+        if (detector->adaptive_behavior_threshold < 0.0F) {
+            detector->adaptive_behavior_threshold = 0.0F;
         }
-        if (detector->adaptive_timing_threshold < 0.0f) {
-            detector->adaptive_timing_threshold = 0.0f;
+        if (detector->adaptive_timing_threshold < 0.0F) {
+            detector->adaptive_timing_threshold = 0.0F;
         }
     }
 

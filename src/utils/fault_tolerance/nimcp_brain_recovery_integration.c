@@ -67,7 +67,7 @@ static uint64_t get_timestamp_us(void) {
 }
 
 static float calculate_success_rate(uint32_t successes, uint32_t total) {
-    if (total == 0) return 0.0f;
+    if (total == 0) return 0.0F;
     return (float)successes / (float)total;
 }
 
@@ -146,7 +146,7 @@ static void update_pattern(
     );
     // Confidence combines success rate with occurrence count
     // High success rate gives base confidence, occurrences add more
-    pattern->confidence = fminf(0.99f, pattern->success_rate * 0.5f + (pattern->occurrence_count / 10.0f));
+    pattern->confidence = fminf(0.99F, pattern->success_rate * 0.5F + (pattern->occurrence_count / 10.0F));
 }
 
 //=============================================================================
@@ -187,7 +187,7 @@ brain_recovery_context_t brain_recovery_init(brain_t brain) {
     }
 
     // Configuration
-    ctx->confidence_threshold = 0.5f;
+    ctx->confidence_threshold = 0.5F;
     ctx->enable_learning = true;
 
     LOG_INFO("Brain recovery context initialized (history=%u, patterns=%u)",
@@ -201,7 +201,7 @@ void brain_recovery_shutdown(brain_recovery_context_t ctx) {
 
     LOG_INFO("Shutting down brain recovery (total_recoveries=%u, success_rate=%.2f%%)",
         ctx->total_recoveries,
-        calculate_success_rate(ctx->successful_recoveries, ctx->total_recoveries) * 100.0f);
+        calculate_success_rate(ctx->successful_recoveries, ctx->total_recoveries) * 100.0F);
 
     // Free heap-allocated pointers in history entries
     if (ctx->history) {
@@ -242,7 +242,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
     // Check for learned patterns (simulating working memory)
     recovery_pattern_t* pattern = find_pattern(ctx, decision->failure_signature);
 
-    if (pattern && pattern->confidence >= 0.1f) {
+    if (pattern && pattern->confidence >= 0.1F) {
         // Use learned strategy
         LOG_INFO("Found learned pattern: %s (success_rate=%.2f, confidence=%.2f)",
             decision->failure_signature, pattern->success_rate, pattern->confidence);
@@ -254,7 +254,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
             decision->selected_strategy->fallback = RECOVERY_ACTION_NONE;
             decision->selected_strategy->max_retries = 3;
             decision->selected_strategy->timeout_ms = 1000;
-            decision->selected_strategy->success_threshold = 0.5f;
+            decision->selected_strategy->success_threshold = 0.5F;
             decision->selected_strategy->description = "Learned strategy from past experience";
         }
 
@@ -264,7 +264,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
 
         snprintf(decision->reasoning, sizeof(decision->reasoning),
             "Using learned strategy (seen %u times, %.0f%% success rate)",
-            pattern->occurrence_count, pattern->success_rate * 100.0f);
+            pattern->occurrence_count, pattern->success_rate * 100.0F);
     } else {
         // Novel situation - use default strategy selection
         LOG_INFO("Novel failure pattern: %s - using heuristic selection", decision->failure_signature);
@@ -287,8 +287,8 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
             memcpy(decision->selected_strategy, static_strategy, sizeof(recovery_strategy_t));
         }
 
-        decision->confidence = 0.4f;  // Lower confidence for novel situations
-        decision->predicted_success_prob = 0.6f;  // Conservative estimate
+        decision->confidence = 0.4F;  // Lower confidence for novel situations
+        decision->predicted_success_prob = 0.6F;  // Conservative estimate
         decision->is_novel_situation = true;
 
         snprintf(decision->reasoning, sizeof(decision->reasoning),
@@ -362,7 +362,7 @@ void brain_recovery_learn_outcome(
         outcome->execution_time_us = result->time_us;
         outcome->was_successful = (result->status == RECOVERY_SUCCESS);
         outcome->expected_success_prob = decision->predicted_success_prob;
-        outcome->actual_success = outcome->was_successful ? 1.0f : 0.0f;
+        outcome->actual_success = outcome->was_successful ? 1.0F : 0.0F;
 
         ctx->history_write_idx = (ctx->history_write_idx + 1) % ctx->history_capacity;
         if (ctx->history_count < ctx->history_capacity) {
@@ -376,8 +376,8 @@ void brain_recovery_learn_outcome(
 
     // Update prediction accuracy
     float prediction_error = fabsf(decision->predicted_success_prob -
-                                   (result->status == RECOVERY_SUCCESS ? 1.0f : 0.0f));
-    if (prediction_error < 0.3f) {
+                                   (result->status == RECOVERY_SUCCESS ? 1.0F : 0.0F));
+    if (prediction_error < 0.3F) {
         ctx->brain_correct_predictions++;
     }
 
@@ -419,9 +419,9 @@ uint32_t brain_recovery_suggest_parameters(
         case ERROR_TYPE_INF_DETECTED:
             if (count < max_adjustments) {
                 adjustments[count].parameter_name = "learning_rate";
-                adjustments[count].current_value = 0.01f;  // Would query brain
-                adjustments[count].suggested_value = 0.005f;  // Reduce by 50%
-                adjustments[count].confidence = 0.9f;
+                adjustments[count].current_value = 0.01F;  // Would query brain
+                adjustments[count].suggested_value = 0.005F;  // Reduce by 50%
+                adjustments[count].confidence = 0.9F;
                 snprintf((char*)adjustments[count].rationale, sizeof(adjustments[count].rationale),
                     "Reduce learning rate to prevent numerical instability");
                 count++;
@@ -431,9 +431,9 @@ uint32_t brain_recovery_suggest_parameters(
         case ERROR_TYPE_OUT_OF_MEMORY:
             if (count < max_adjustments) {
                 adjustments[count].parameter_name = "batch_size";
-                adjustments[count].current_value = 64.0f;
-                adjustments[count].suggested_value = 32.0f;  // Reduce by 50%
-                adjustments[count].confidence = 0.85f;
+                adjustments[count].current_value = 64.0F;
+                adjustments[count].suggested_value = 32.0F;  // Reduce by 50%
+                adjustments[count].confidence = 0.85F;
                 snprintf((char*)adjustments[count].rationale, sizeof(adjustments[count].rationale),
                     "Reduce batch size to decrease memory usage");
                 count++;
@@ -443,9 +443,9 @@ uint32_t brain_recovery_suggest_parameters(
         case ERROR_TYPE_GRADIENT_EXPLOSION:
             if (count < max_adjustments) {
                 adjustments[count].parameter_name = "gradient_clip_value";
-                adjustments[count].current_value = 0.0f;  // Disabled
-                adjustments[count].suggested_value = 1.0f;  // Enable
-                adjustments[count].confidence = 0.95f;
+                adjustments[count].current_value = 0.0F;  // Disabled
+                adjustments[count].suggested_value = 1.0F;  // Enable
+                adjustments[count].confidence = 0.95F;
                 snprintf((char*)adjustments[count].rationale, sizeof(adjustments[count].rationale),
                     "Enable gradient clipping to prevent explosion");
                 count++;
@@ -468,7 +468,7 @@ float brain_recovery_predict_success(
     recovery_strategy_t* strategy,
     diagnostic_result_t* diagnosis
 ) {
-    if (!ctx || !strategy || !diagnosis) return -1.0f;
+    if (!ctx || !strategy || !diagnosis) return -1.0F;
 
     // Generate signature and look for pattern
     char signature[256];
@@ -483,11 +483,11 @@ float brain_recovery_predict_success(
     // No historical data - use base rate
     // Different tiers have different base success rates
     switch (strategy->tier) {
-        case RECOVERY_TIER_IMMEDIATE:   return 0.85f;
-        case RECOVERY_TIER_TACTICAL:    return 0.70f;
-        case RECOVERY_TIER_STRATEGIC:   return 0.60f;
-        case RECOVERY_TIER_PREVENTIVE:  return 0.75f;
-        default:                        return 0.50f;
+        case RECOVERY_TIER_IMMEDIATE:   return 0.85F;
+        case RECOVERY_TIER_TACTICAL:    return 0.70F;
+        case RECOVERY_TIER_STRATEGIC:   return 0.60F;
+        case RECOVERY_TIER_PREVENTIVE:  return 0.75F;
+        default:                        return 0.50F;
     }
 }
 
@@ -529,7 +529,7 @@ bool brain_recovery_get_stats(
         }
     }
 
-    float best_rate = 0.0f;
+    float best_rate = 0.0F;
     for (int i = 0; i < 4; i++) {
         float rate = calculate_success_rate(tier_successes[i], tier_counts[i]);
         if (rate > best_rate) {
@@ -687,19 +687,19 @@ void brain_recovery_report(
     fprintf(output, "  Total recoveries: %u\n", ctx->total_recoveries);
     fprintf(output, "  Successful: %u (%.1f%%)\n",
         ctx->successful_recoveries,
-        calculate_success_rate(ctx->successful_recoveries, ctx->total_recoveries) * 100.0f);
+        calculate_success_rate(ctx->successful_recoveries, ctx->total_recoveries) * 100.0F);
 
     fprintf(output, "\nBrain Decision Statistics:\n");
     fprintf(output, "  Total decisions: %u\n", ctx->brain_decisions);
     fprintf(output, "  Prediction accuracy: %.1f%%\n",
-        calculate_success_rate(ctx->brain_correct_predictions, ctx->brain_decisions) * 100.0f);
+        calculate_success_rate(ctx->brain_correct_predictions, ctx->brain_decisions) * 100.0F);
 
     fprintf(output, "\nLearned Patterns: %u\n", ctx->pattern_count);
     for (uint32_t i = 0; i < ctx->pattern_count && i < 10; i++) {
         recovery_pattern_t* p = &ctx->patterns[i];
         fprintf(output, "  [%u] %s: %.1f%% success (%u/%u), confidence=%.2f\n",
             i, p->failure_signature,
-            p->success_rate * 100.0f,
+            p->success_rate * 100.0F,
             p->success_count, p->occurrence_count,
             p->confidence);
     }

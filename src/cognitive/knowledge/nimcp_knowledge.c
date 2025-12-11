@@ -762,7 +762,7 @@ static bool strategy_learn_narrative(void* system, const void* data)
         item.domain = KNOWLEDGE_DOMAIN_ETHICS;
         strncpy(item.definition, story->moral_lessons[i], sizeof(item.definition) - 1);
         snprintf(item.context, sizeof(item.context), "From story: %s", story->title);
-        item.confidence = 0.7f;
+        item.confidence = 0.7F;
         item.reinforcement_count = 1;
 
         int32_t idx = repository_add(sys->repository, &item);
@@ -815,7 +815,7 @@ static bool strategy_learn_aesthetic(void* system, const void* data)
         item.domain = KNOWLEDGE_DOMAIN_ART;
         snprintf(item.definition, sizeof(item.definition), "Quality in %s by %s", art->work_title,
                  art->creator);
-        item.confidence = 0.6f;
+        item.confidence = 0.6F;
         item.reinforcement_count = 1;
 
         int32_t idx = repository_add(sys->repository, &item);
@@ -869,7 +869,7 @@ static bool strategy_learn_historical(void* system, const void* data)
     item.domain = KNOWLEDGE_DOMAIN_HISTORY;
     strncpy(item.definition, event->significance, sizeof(item.definition) - 1);
     snprintf(item.context, sizeof(item.context), "Year %lu", event->timestamp_year);
-    item.confidence = 0.8f;
+    item.confidence = 0.8F;
     item.reinforcement_count = 1;
 
     int32_t idx = repository_add(sys->repository, &item);
@@ -899,9 +899,9 @@ static bool strategy_learn_historical(void* system, const void* data)
 static float calculate_domain_confidence(knowledge_system_t system, knowledge_domain_t domain)
 {
     if (!system || !system->repository)
-        return 0.0f;
+        return 0.0F;
 
-    float total_confidence = 0.0f;
+    float total_confidence = 0.0F;
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < system->repository->num_items; i++) {
@@ -911,7 +911,7 @@ static float calculate_domain_confidence(knowledge_system_t system, knowledge_do
         }
     }
 
-    return (count > 0) ? (total_confidence / count) : 0.0f;
+    return (count > 0) ? (total_confidence / count) : 0.0F;
 }
 
 /**
@@ -932,7 +932,7 @@ static void update_domain_stats(knowledge_system_t system, knowledge_domain_t do
 
     domain_knowledge_t* stats = &system->domain_stats[domain];
     stats->avg_confidence = calculate_domain_confidence(system, domain);
-    stats->coverage_percentage = (float) stats->concepts_known / stats->estimated_total * 100.0f;
+    stats->coverage_percentage = (float) stats->concepts_known / stats->estimated_total * 100.0F;
 }
 
 //=============================================================================
@@ -960,8 +960,8 @@ static void initialize_domain_stats(domain_knowledge_t* stats, knowledge_domain_
     stats->domain = domain;
     stats->concepts_known = 0;
     stats->estimated_total = 1000;
-    stats->coverage_percentage = 0.0f;
-    stats->avg_confidence = 0.0f;
+    stats->coverage_percentage = 0.0F;
+    stats->avg_confidence = 0.0F;
     stats->num_gaps = 0;
 }
 
@@ -1014,7 +1014,7 @@ static void bio_broadcast_knowledge_update(knowledge_system_t system,
                         bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
     msg.query_type = 0;
-    msg.confidence = 1.0f;
+    msg.confidence = 1.0F;
     msg.matched_pattern_count = concepts_learned;
 
     bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
@@ -1282,7 +1282,7 @@ static bool process_concept(knowledge_system_t system, const char* concept_str, 
         strncpy(item.concept_name, normalized_concept, sizeof(item.concept_name) - 1);
         item.domain = domain;
         create_context_string(text, item.definition, sizeof(item.definition));
-        item.confidence = 0.3f;
+        item.confidence = 0.3F;
         item.reinforcement_count = 1;
 
         idx = repository_add(system->repository, &item);
@@ -1472,7 +1472,7 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
         }
     }
     strncpy(item.definition, definition, sizeof(item.definition) - 1);
-    item.confidence = 0.7f;
+    item.confidence = 0.7F;
     item.reinforcement_count = 1;
 
     int32_t idx = repository_add(system->repository, &item);
@@ -1549,7 +1549,7 @@ uint32_t knowledge_understand(knowledge_system_t system, const char* concept_str
              "'%s' means: %s. Context: %s. I've encountered this %u times "
              "and understand it with %.0f%% confidence.",
              concept_str, item.definition, item.context, item.reinforcement_count,
-             item.confidence * 100.0f);
+             item.confidence * 100.0F);
 
     return strlen(explanation);
 }
@@ -1740,7 +1740,7 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
                  based_on_concept, differences);
     }
 
-    new_item.confidence = base->confidence * 0.7f;
+    new_item.confidence = base->confidence * 0.7F;
     new_item.reinforcement_count = 1;
 
     return repository_add(system->repository, &new_item) >= 0;
@@ -1780,7 +1780,7 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, con
 
     // Update confidence
     item->reinforcement_count++;
-    item->confidence = fminf(item->confidence + 0.05f, CONFIDENCE_MAX);
+    item->confidence = fminf(item->confidence + 0.05F, CONFIDENCE_MAX);
 
     // Update key with new confidence (index stays the same)
     snprintf(item->confidence_key, sizeof(item->confidence_key),
@@ -1895,7 +1895,7 @@ uint32_t knowledge_read_book(knowledge_system_t system, const char* book_title,
     strncpy(reading->book_title, book_title, sizeof(reading->book_title) - 1);
     reading->current_page = 0;
     reading->total_pages = strlen(book_text) / 500;
-    reading->comprehension_score = 0.0f;
+    reading->comprehension_score = 0.0F;
 
     char excerpt[2000];
     strncpy(excerpt, book_text, sizeof(excerpt) - 1);
@@ -1995,7 +1995,7 @@ bool knowledge_assess_domain(knowledge_system_t system, knowledge_domain_t domai
     *assessment = system->domain_stats[domain];
 
     assessment->coverage_percentage =
-        (float) assessment->concepts_known / assessment->estimated_total * 100.0f;
+        (float) assessment->concepts_known / assessment->estimated_total * 100.0F;
 
     assessment->avg_confidence = calculate_domain_confidence(system, domain);
 

@@ -275,7 +275,7 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
                 stats->stage_avg_time_us[i] = (float)pipeline->stage_total_time_us[i] /
                                              pipeline->stage_execution_counts[i];
             } else {
-                stats->stage_avg_time_us[i] = 0.0f;
+                stats->stage_avg_time_us[i] = 0.0F;
             }
         }
     }
@@ -346,7 +346,7 @@ static bool encoding_stage_execute(middleware_context_t* ctx, void* data) {
     for (uint32_t i = 0; i < ctx->num_active_neurons && i < ctx->num_cached_features; i++) {
         // Add slight variation per neuron index for testing normalization
         // Real implementation would query actual neuron firing rates from brain
-        float neuron_factor = 0.8f + (0.4f * (float)i / (float)(ctx->num_active_neurons + 1));
+        float neuron_factor = 0.8F + (0.4F * (float)i / (float)(ctx->num_active_neurons + 1));
         ctx->cached_features[i] = base_rate * neuron_factor;
     }
 
@@ -381,8 +381,8 @@ static bool extraction_stage_execute(middleware_context_t* ctx, void* data) {
     // In full implementation, this would use brain's spike_feature_extractor
 
     // Compute basic statistics: mean, variance
-    float sum = 0.0f;
-    float sum_sq = 0.0f;
+    float sum = 0.0F;
+    float sum_sq = 0.0F;
 
     for (uint32_t i = 0; i < ctx->num_cached_features; i++) {
         float val = ctx->cached_features[i];
@@ -440,7 +440,7 @@ static bool detection_stage_execute(middleware_context_t* ctx, void* data) {
 
     // Simple pattern detection: features above mean (positive z-scores after normalization)
     // After normalization, features are z-scores, so threshold at 0.0 (above mean)
-    const float PATTERN_THRESHOLD = 0.0f;
+    const float PATTERN_THRESHOLD = 0.0F;
     for (uint32_t i = 0; i < ctx->num_cached_features; i++) {
         if (ctx->cached_features[i] > PATTERN_THRESHOLD) {
             ctx->detected_patterns[patterns_detected] = i;
@@ -510,8 +510,8 @@ static bool normalization_stage_execute(middleware_context_t* ctx, void* data) {
     // In full implementation: Use brain->feature_normalizer
 
     // Simple z-score normalization
-    float sum = 0.0f;
-    float sum_sq = 0.0f;
+    float sum = 0.0F;
+    float sum_sq = 0.0F;
 
     for (uint32_t i = 0; i < ctx->num_cached_features; i++) {
         sum += ctx->cached_features[i];
@@ -520,7 +520,7 @@ static bool normalization_stage_execute(middleware_context_t* ctx, void* data) {
 
     float mean = sum / ctx->num_cached_features;
     float variance = (sum_sq / ctx->num_cached_features) - (mean * mean);
-    float std_dev = sqrtf(variance + 1e-8f); // Add epsilon for numerical stability
+    float std_dev = sqrtf(variance + 1e-8F); // Add epsilon for numerical stability
 
     // Normalize in-place
     for (uint32_t i = 0; i < ctx->num_cached_features; i++) {

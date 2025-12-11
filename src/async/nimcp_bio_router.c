@@ -504,7 +504,7 @@ void bio_router_shutdown(void) {
         if (predictive_protocol_get_stats(g_router->predictive_proto, &stats) == 0) {
             LOG_INFO("Predictive protocol stats: predictions=%lu, hits=%lu, misses=%lu, hit_rate=%.1f%%, wasted=%lu",
                      stats.predictions_made, stats.cache_hits, stats.cache_misses,
-                     stats.hit_rate * 100.0f, stats.wasted_prefetches);
+                     stats.hit_rate * 100.0F, stats.wasted_prefetches);
         }
         predictive_protocol_destroy(g_router->predictive_proto);
         g_router->predictive_proto = NULL;
@@ -926,7 +926,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             g_router->stats.max_routing_latency_us = latency;
         } else {
             g_router->stats.avg_routing_latency_us =
-                (g_router->stats.avg_routing_latency_us * 0.95f) + (latency * 0.05f);
+                (g_router->stats.avg_routing_latency_us * 0.95F) + (latency * 0.05F);
             if (latency > g_router->stats.max_routing_latency_us) {
                 g_router->stats.max_routing_latency_us = latency;
             }
@@ -946,7 +946,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
 
             // Prefetch high-confidence predictions
             for (uint32_t i = 0; i < pred_count; i++) {
-                if (predictions[i].confidence >= 0.8f) {
+                if (predictions[i].confidence >= 0.8F) {
                     predictive_protocol_prefetch(g_router->predictive_proto, &predictions[i]);
                 }
             }
@@ -1334,7 +1334,7 @@ nimcp_error_t bio_router_publish_signal(bio_module_context_t ctx,
             float error = value - obs->prediction;
 
             // Update prediction with learning (simple exponential moving average)
-            obs->prediction = obs->prediction + 0.1f * error;
+            obs->prediction = obs->prediction + 0.1F * error;
 
             // Call observer callback
             obs->callback(signal_name, value, obs->user_data);
@@ -1479,7 +1479,7 @@ static bool g_wave_mutex_initialized = false;
 nimcp_glial_wave_t bio_router_initiate_wave(bio_module_context_t ctx,
                                              float intensity,
                                              const void* metadata) {
-    if (!ctx || intensity <= 0.0f) return NULL;
+    if (!ctx || intensity <= 0.0F) return NULL;
 
     // Initialize mutex on first use
     if (!g_wave_mutex_initialized) {

@@ -84,12 +84,12 @@ static inline int brain_get_neuron_region(brain_t brain, uint32_t neuron_id) {
 
     /* Heuristic: divide neurons into regions by ID ranges */
     float region_fraction = (float)neuron_id / (float)neuron_count;
-    if (region_fraction < 0.15f) return REGION_VISUAL_V1;
-    if (region_fraction < 0.30f) return REGION_AUDITORY_A1;
-    if (region_fraction < 0.45f) return REGION_MOTOR_M1;
-    if (region_fraction < 0.60f) return REGION_PREFRONTAL;
-    if (region_fraction < 0.75f) return REGION_PARIETAL;
-    if (region_fraction < 0.90f) return REGION_TEMPORAL;
+    if (region_fraction < 0.15F) return REGION_VISUAL_V1;
+    if (region_fraction < 0.30F) return REGION_AUDITORY_A1;
+    if (region_fraction < 0.45F) return REGION_MOTOR_M1;
+    if (region_fraction < 0.60F) return REGION_PREFRONTAL;
+    if (region_fraction < 0.75F) return REGION_PARIETAL;
+    if (region_fraction < 0.90F) return REGION_TEMPORAL;
     return REGION_HIPPOCAMPUS;
 }
 
@@ -97,9 +97,9 @@ static inline int brain_get_neuron_region(brain_t brain, uint32_t neuron_id) {
  * @brief Get modularity Q from community detection (fallback)
  */
 static inline float brain_get_modularity(brain_t brain) {
-    if (!brain) return 0.0f;
+    if (!brain) return 0.0F;
     /* TODO: Get actual modularity from community detection subsystem */
-    return 0.35f;  /* Default healthy modularity */
+    return 0.35F;  /* Default healthy modularity */
 }
 
 /**
@@ -109,7 +109,7 @@ static inline uint32_t brain_get_num_communities(brain_t brain) {
     if (!brain) return 0;
     uint32_t neuron_count = brain_get_neuron_count(brain);
     /* Estimate: roughly sqrt(N/10) communities for healthy networks */
-    return (uint32_t)sqrtf((float)neuron_count / 10.0f) + 1;
+    return (uint32_t)sqrtf((float)neuron_count / 10.0F) + 1;
 }
 
 /**
@@ -163,7 +163,7 @@ connectivity_health_config_t connectivity_health_default_config(void)
     connectivity_health_config_t config = {
         /* Community structure thresholds */
         .min_modularity = CONNECTIVITY_MIN_MODULARITY,
-        .max_community_imbalance = 10.0f,
+        .max_community_imbalance = 10.0F,
 
         /* Hub detection parameters */
         .hub_threshold_stddev = CONNECTIVITY_HUB_THRESHOLD,
@@ -177,13 +177,13 @@ connectivity_health_config_t connectivity_health_default_config(void)
 
         /* Information flow thresholds */
         .min_flow_efficiency = CONNECTIVITY_MIN_FLOW_EFFICIENCY,
-        .min_layer_connectivity = 0.5f,
+        .min_layer_connectivity = 0.5F,
 
         /* Weight factors (sum to 1.0) */
-        .weight_modularity = 0.25f,
-        .weight_hubs = 0.20f,
-        .weight_topology = 0.25f,
-        .weight_flow = 0.30f,
+        .weight_modularity = 0.25F,
+        .weight_hubs = 0.20F,
+        .weight_topology = 0.25F,
+        .weight_flow = 0.30F,
 
         /* Assessment control */
         .assessment_interval_ms = CONNECTIVITY_DEFAULT_ASSESSMENT_INTERVAL_MS,
@@ -204,7 +204,7 @@ connectivity_health_config_t connectivity_health_default_config(void)
 static float safe_log2f(float x)
 {
     if (x < LOG2_EPSILON) {
-        return 0.0f;
+        return 0.0F;
     }
     return log2f(x);
 }
@@ -221,11 +221,11 @@ float calculate_community_balance(
     uint32_t num_communities)
 {
     if (!community_sizes || num_communities == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (num_communities == 1) {
-        return 1.0f;  /* Single community is trivially balanced */
+        return 1.0F;  /* Single community is trivially balanced */
     }
 
     /* Calculate total neurons */
@@ -235,12 +235,12 @@ float calculate_community_balance(
     }
 
     if (total == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Calculate entropy: H = -Σ p(i) log₂ p(i) */
-    float entropy = 0.0f;
-    float inv_total = 1.0f / (float)total;
+    float entropy = 0.0F;
+    float inv_total = 1.0F / (float)total;
 
     for (uint32_t i = 0; i < num_communities; i++) {
         float p = (float)community_sizes[i] * inv_total;
@@ -252,7 +252,7 @@ float calculate_community_balance(
     /* Normalize by maximum entropy (uniform distribution) */
     float max_entropy = safe_log2f((float)num_communities);
     if (max_entropy < LOG2_EPSILON) {
-        return 1.0f;
+        return 1.0F;
     }
 
     return entropy / max_entropy;
@@ -403,7 +403,7 @@ hub_health_t introspection_assess_hub_health(
 
         /* Calculate average centrality */
         if (centrality) {
-            float sum = 0.0f;
+            float sum = 0.0F;
             for (uint32_t i = 0; i < health.num_hubs; i++) {
                 sum += health.hub_centrality[i];
             }
@@ -433,7 +433,7 @@ hub_health_t introspection_assess_hub_health(
         }
         if (regions_with_hubs > 0) {
             health.hub_distribution_entropy =
-                (float)regions_with_hubs / 16.0f;  /* Simple spread metric */
+                (float)regions_with_hubs / 16.0F;  /* Simple spread metric */
         }
     }
 
@@ -484,23 +484,23 @@ topology_health_t introspection_assess_topology_health(
     health.avg_path_length = metrics->characteristic_path;
     health.small_world_sigma = metrics->small_world_sigma;
     health.network_diameter = 0;  /* Would need separate computation */
-    health.assortativity = 0.0f;  /* Would need separate computation */
+    health.assortativity = 0.0F;  /* Would need separate computation */
 
     /* Calculate normalized scores */
     health.clustering_score = health.clustering_coefficient;  /* Already [0,1] */
 
     /* Path length score: inverse, shorter is better */
     if (health.avg_path_length > 0) {
-        health.path_length_score = 1.0f / health.avg_path_length;
-        if (health.path_length_score > 1.0f) {
-            health.path_length_score = 1.0f;
+        health.path_length_score = 1.0F / health.avg_path_length;
+        if (health.path_length_score > 1.0F) {
+            health.path_length_score = 1.0F;
         }
     }
 
     /* Combined topology score */
-    health.topology_score = 0.4f * health.clustering_score +
-                            0.3f * health.path_length_score +
-                            0.3f * (health.small_world_sigma > 1.0f ? 1.0f : health.small_world_sigma);
+    health.topology_score = 0.4F * health.clustering_score +
+                            0.3F * health.path_length_score +
+                            0.3F * (health.small_world_sigma > 1.0F ? 1.0F : health.small_world_sigma);
 
     /* Check small-world property (sigma must be strictly > threshold) */
     health.is_small_world = (health.small_world_sigma > cfg.small_world_threshold);
@@ -551,7 +551,7 @@ information_flow_health_t introspection_assess_flow_health(
 
     /* Measure layer connectivity (middleware to cognitive) */
     /* This would need specific implementation based on brain structure */
-    health.layer_connectivity = 0.8f;  /* Placeholder - would compute from brain */
+    health.layer_connectivity = 0.8F;  /* Placeholder - would compute from brain */
 
     /* Determine health status */
     health.is_healthy = (health.transfer_efficiency >= cfg.min_flow_efficiency) &&
@@ -605,8 +605,8 @@ brain_connectivity_health_t introspection_assess_connectivity_health(
     if (modularity_score < 0) modularity_score = 0;
     if (modularity_score > 1) modularity_score = 1;
 
-    float hub_score = health.hubs.is_healthy ? 1.0f : 0.5f;
-    if (health.hubs.num_hubs == 0) hub_score = 0.0f;
+    float hub_score = health.hubs.is_healthy ? 1.0F : 0.5F;
+    if (health.hubs.num_hubs == 0) hub_score = 0.0F;
 
     float topology_score = health.topology.topology_score;
 
@@ -622,7 +622,7 @@ brain_connectivity_health_t introspection_assess_connectivity_health(
     /* Count issues */
     if (!health.community.is_healthy) {
         health.num_warnings++;
-        if (health.community.modularity_q < 0.1f) {
+        if (health.community.modularity_q < 0.1F) {
             health.num_critical++;
         }
     }
@@ -637,7 +637,7 @@ brain_connectivity_health_t introspection_assess_connectivity_health(
     }
     if (!health.flow.is_healthy) {
         health.num_warnings++;
-        if (health.flow.transfer_efficiency < 0.5f) {
+        if (health.flow.transfer_efficiency < 0.5F) {
             health.num_critical++;
         }
     }
@@ -658,7 +658,7 @@ brain_connectivity_health_t introspection_assess_connectivity_health(
         } else if (!health.flow.is_healthy) {
             snprintf(health.primary_issue, sizeof(health.primary_issue),
                      "Low information flow efficiency (%.1f%%)",
-                     health.flow.transfer_efficiency * 100.0f);
+                     health.flow.transfer_efficiency * 100.0F);
         }
     }
 
@@ -687,29 +687,29 @@ float introspection_quick_connectivity_check(
     }
 
     if (!introspection) {
-        return 0.0f;
+        return 0.0F;
     }
 
     brain_t brain = introspection_get_brain(introspection);
     if (!brain) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Use cached metrics if available */
-    float score = 0.0f;
+    float score = 0.0F;
     uint32_t components = 0;
 
     /* Check cached modularity */
     if (brain->functional_modules) {
         float q = brain->functional_modules->modularity;
-        score += (q > 0) ? q : 0.0f;
+        score += (q > 0) ? q : 0.0F;
         components++;
     }
 
     /* Check cached topology */
     if (brain->topology_metrics) {
         if (brain->topology_metrics->is_valid) {
-            score += 1.0f;
+            score += 1.0F;
         }
         components++;
     }
@@ -725,7 +725,7 @@ float introspection_quick_connectivity_check(
     }
 
     if (is_healthy) {
-        *is_healthy = (score >= 0.6f);
+        *is_healthy = (score >= 0.6F);
     }
 
     return score;
@@ -875,7 +875,7 @@ const char* connectivity_health_to_string(
              "  Info Flow: %.1f%% efficiency (%s)\n"
              "  Issues: %u warnings, %u critical\n"
              "%s%s",
-             health->overall_health * 100.0f,
+             health->overall_health * 100.0F,
              health->is_healthy ? "HEALTHY" : "UNHEALTHY",
              health->community.num_communities,
              health->community.modularity_q,
@@ -886,7 +886,7 @@ const char* connectivity_health_to_string(
              health->topology.avg_path_length,
              health->topology.small_world_sigma,
              health->topology.is_healthy ? "ok" : "ISSUE",
-             health->flow.transfer_efficiency * 100.0f,
+             health->flow.transfer_efficiency * 100.0F,
              health->flow.is_healthy ? "ok" : "ISSUE",
              health->num_warnings,
              health->num_critical,

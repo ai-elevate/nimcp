@@ -172,6 +172,58 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named lint
+
+# Build rule for target.
+lint: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lint
+.PHONY : lint
+
+# fast build rule for target.
+lint/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lint.dir/build.make CMakeFiles/lint.dir/build
+.PHONY : lint/fast
+
+#=============================================================================
+# Target rules for targets named lint-fix
+
+# Build rule for target.
+lint-fix: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lint-fix
+.PHONY : lint-fix
+
+# fast build rule for target.
+lint-fix/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lint-fix.dir/build.make CMakeFiles/lint-fix.dir/build
+.PHONY : lint-fix/fast
+
+#=============================================================================
+# Target rules for targets named cppcheck
+
+# Build rule for target.
+cppcheck: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cppcheck
+.PHONY : cppcheck
+
+# fast build rule for target.
+cppcheck/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cppcheck.dir/build.make CMakeFiles/cppcheck.dir/build
+.PHONY : cppcheck/fast
+
+#=============================================================================
+# Target rules for targets named check
+
+# Build rule for target.
+check: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 check
+.PHONY : check
+
+# fast build rule for target.
+check/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/check.dir/build.make CMakeFiles/check.dir/build
+.PHONY : check/fast
+
+#=============================================================================
 # Target rules for targets named nimcp
 
 # Build rule for target.
@@ -11495,11 +11547,15 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... test"
 	@echo "... benchmark_report"
+	@echo "... check"
+	@echo "... cppcheck"
 	@echo "... doc_cortical_columns_integration"
 	@echo "... integration_portia_full"
 	@echo "... integration_portia_learning"
 	@echo "... integration_portia_sensors"
 	@echo "... integration_portia_tier"
+	@echo "... lint"
+	@echo "... lint-fix"
 	@echo "... run_all_benchmarks"
 	@echo "... run_bench_benchmark_complex_fft"
 	@echo "... run_bench_benchmark_complex_pac_detection"

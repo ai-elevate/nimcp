@@ -513,37 +513,37 @@ static bool detect_thread_contention(health_monitor_t monitor, anomaly_t* anomal
  * @brief Calculate memory health score
  */
 static float calculate_memory_score(health_monitor_t monitor) {
-    float score = 100.0f;
+    float score = 100.0F;
 
     // Penalize high memory usage
     if (monitor->memory.baseline_bytes > 0) {
         double usage_ratio = (double)monitor->memory.current_bytes / monitor->memory.baseline_bytes;
-        if (usage_ratio > 2.0) score -= 30.0f;
-        else if (usage_ratio > 1.5) score -= 15.0f;
+        if (usage_ratio > 2.0) score -= 30.0F;
+        else if (usage_ratio > 1.5) score -= 15.0F;
     }
 
     // Penalize positive growth rate (memory leak indicator)
-    if (monitor->memory.growth_rate > 1000) score -= 20.0f;
-    else if (monitor->memory.growth_rate > 100) score -= 10.0f;
+    if (monitor->memory.growth_rate > 1000) score -= 20.0F;
+    else if (monitor->memory.growth_rate > 100) score -= 10.0F;
 
     // Penalize allocation/deallocation imbalance
     int64_t balance = (int64_t)monitor->memory.allocation_count -
                       (int64_t)monitor->memory.deallocation_count;
-    if (balance > 1000) score -= 15.0f;
+    if (balance > 1000) score -= 15.0F;
 
-    return fmax(0.0f, score);
+    return fmax(0.0F, score);
 }
 
 /**
  * @brief Calculate performance health score
  */
 static float calculate_performance_score(health_monitor_t monitor) {
-    float score = 100.0f;
+    float score = 100.0F;
 
     // Check latency trends
     double trend = calculate_trend(&monitor->latency_history);
-    if (trend > 100) score -= 30.0f;  // Significant degradation
-    else if (trend > 10) score -= 15.0f;
+    if (trend > 100) score -= 30.0F;  // Significant degradation
+    else if (trend > 10) score -= 15.0F;
 
     // Check operation statistics
     for (uint32_t i = 0; i < monitor->num_operations; i++) {
@@ -551,18 +551,18 @@ static float calculate_performance_score(health_monitor_t monitor) {
         if (op->count > 10) {
             // Penalize high variance
             double cv = op->stats.std_dev / (op->stats.mean + 1.0);  // Coefficient of variation
-            if (cv > 1.0) score -= 5.0f;
+            if (cv > 1.0) score -= 5.0F;
         }
     }
 
-    return fmax(0.0f, score);
+    return fmax(0.0F, score);
 }
 
 /**
  * @brief Calculate error health score
  */
 static float calculate_error_score(health_monitor_t monitor) {
-    float score = 100.0f;
+    float score = 100.0F;
 
     // Count recent errors
     uint64_t total_errors = 0;
@@ -571,58 +571,58 @@ static float calculate_error_score(health_monitor_t monitor) {
     }
 
     // Penalize based on error count
-    if (total_errors > 100) score = 0.0f;
-    else if (total_errors > 50) score -= 50.0f;
-    else if (total_errors > 10) score -= 25.0f;
-    else if (total_errors > 0) score -= 10.0f;
+    if (total_errors > 100) score = 0.0F;
+    else if (total_errors > 50) score -= 50.0F;
+    else if (total_errors > 10) score -= 25.0F;
+    else if (total_errors > 0) score -= 10.0F;
 
-    return fmax(0.0f, score);
+    return fmax(0.0F, score);
 }
 
 /**
  * @brief Calculate throughput health score
  */
 static float calculate_throughput_score(health_monitor_t monitor) {
-    float score = 100.0f;
+    float score = 100.0F;
 
     if (monitor->throughput.avg_ops_per_sec > 0) {
         double ratio = monitor->throughput.operations_per_sec /
                       monitor->throughput.avg_ops_per_sec;
 
-        if (ratio < 0.3) score -= 50.0f;
-        else if (ratio < 0.6) score -= 25.0f;
-        else if (ratio < 0.8) score -= 10.0f;
+        if (ratio < 0.3) score -= 50.0F;
+        else if (ratio < 0.6) score -= 25.0F;
+        else if (ratio < 0.8) score -= 10.0F;
     }
 
-    return fmax(0.0f, score);
+    return fmax(0.0F, score);
 }
 
 /**
  * @brief Calculate cache health score
  */
 static float calculate_cache_score(health_monitor_t monitor) {
-    float score = 100.0f;
+    float score = 100.0F;
 
     double hit_rate = monitor->cache.hit_rate;
-    if (hit_rate < 0.3) score -= 40.0f;
-    else if (hit_rate < 0.5) score -= 25.0f;
-    else if (hit_rate < 0.7) score -= 10.0f;
+    if (hit_rate < 0.3) score -= 40.0F;
+    else if (hit_rate < 0.5) score -= 25.0F;
+    else if (hit_rate < 0.7) score -= 10.0F;
 
-    return fmax(0.0f, score);
+    return fmax(0.0F, score);
 }
 
 /**
  * @brief Calculate thread health score
  */
 static float calculate_thread_score(health_monitor_t monitor) {
-    float score = 100.0f;
+    float score = 100.0F;
 
     double contention_rate = monitor->threads.contention_rate;
-    if (contention_rate > 0.6) score -= 40.0f;
-    else if (contention_rate > 0.4) score -= 25.0f;
-    else if (contention_rate > 0.2) score -= 10.0f;
+    if (contention_rate > 0.6) score -= 40.0F;
+    else if (contention_rate > 0.4) score -= 25.0F;
+    else if (contention_rate > 0.2) score -= 10.0F;
 
-    return fmax(0.0f, score);
+    return fmax(0.0F, score);
 }
 
 /**
@@ -638,7 +638,7 @@ static float calculate_health_score(health_monitor_t monitor) {
     float thread_score = calculate_thread_score(monitor);
 
     // Weights (sum to 1.0)
-    const float weights[] = {0.25f, 0.25f, 0.20f, 0.15f, 0.10f, 0.05f};
+    const float weights[] = {0.25F, 0.25F, 0.20F, 0.15F, 0.10F, 0.05F};
 
     float overall = weights[0] * memory_score +
                    weights[1] * perf_score +
@@ -647,7 +647,7 @@ static float calculate_health_score(health_monitor_t monitor) {
                    weights[4] * cache_score +
                    weights[5] * thread_score;
 
-    return fmax(0.0f, fmin(100.0f, overall));
+    return fmax(0.0F, fmin(100.0F, overall));
 }
 
 //=============================================================================
@@ -722,13 +722,13 @@ static void* monitoring_thread_func(void* arg) {
         monitor->last_status.score = calculate_health_score(monitor);
 
         // Determine status level
-        if (monitor->last_status.score >= 90.0f) {
+        if (monitor->last_status.score >= 90.0F) {
             monitor->last_status.status = HEALTH_EXCELLENT;
-        } else if (monitor->last_status.score >= 70.0f) {
+        } else if (monitor->last_status.score >= 70.0F) {
             monitor->last_status.status = HEALTH_GOOD;
-        } else if (monitor->last_status.score >= 50.0f) {
+        } else if (monitor->last_status.score >= 50.0F) {
             monitor->last_status.status = HEALTH_FAIR;
-        } else if (monitor->last_status.score >= 30.0f) {
+        } else if (monitor->last_status.score >= 30.0F) {
             monitor->last_status.status = HEALTH_POOR;
         } else {
             monitor->last_status.status = HEALTH_CRITICAL;
@@ -803,7 +803,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
 
     // Initialize last status
     monitor->last_status.status = HEALTH_UNKNOWN;
-    monitor->last_status.score = 0.0f;
+    monitor->last_status.score = 0.0F;
 
     NIMCP_LOGGING_INFO("Health monitor created for brain '%s'", brain_id);
 
@@ -1073,13 +1073,13 @@ bool health_monitor_get_status(
         monitor->last_status.score = calculate_health_score(monitor);
 
         // Determine status level
-        if (monitor->last_status.score >= 90.0f) {
+        if (monitor->last_status.score >= 90.0F) {
             monitor->last_status.status = HEALTH_EXCELLENT;
-        } else if (monitor->last_status.score >= 70.0f) {
+        } else if (monitor->last_status.score >= 70.0F) {
             monitor->last_status.status = HEALTH_GOOD;
-        } else if (monitor->last_status.score >= 50.0f) {
+        } else if (monitor->last_status.score >= 50.0F) {
             monitor->last_status.status = HEALTH_FAIR;
-        } else if (monitor->last_status.score >= 30.0f) {
+        } else if (monitor->last_status.score >= 30.0F) {
             monitor->last_status.status = HEALTH_POOR;
         } else {
             monitor->last_status.status = HEALTH_CRITICAL;
@@ -1093,7 +1093,7 @@ bool health_monitor_get_status(
 }
 
 float health_monitor_get_score(health_monitor_t monitor) {
-    if (!monitor) return -1.0f;
+    if (!monitor) return -1.0F;
 
     nimcp_mutex_lock(&monitor->mutex);
     float score = monitor->last_status.score;
@@ -1103,7 +1103,7 @@ float health_monitor_get_score(health_monitor_t monitor) {
 }
 
 bool health_monitor_is_healthy(health_monitor_t monitor) {
-    return health_monitor_get_score(monitor) >= 70.0f;
+    return health_monitor_get_score(monitor) >= 70.0F;
 }
 
 health_status_t health_monitor_get_status_level(health_monitor_t monitor) {

@@ -33,8 +33,8 @@
 //=============================================================================
 
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
-#define CLAMP_01(x) CLAMP(x, 0.0f, 1.0f)
-#define CLAMP_VALENCE(x) CLAMP(x, -1.0f, 1.0f)
+#define CLAMP_01(x) CLAMP(x, 0.0F, 1.0F)
+#define CLAMP_VALENCE(x) CLAMP(x, -1.0F, 1.0F)
 
 //=============================================================================
 // Lifecycle Functions
@@ -69,11 +69,11 @@ emotional_tag_t emotional_tag_create(
 
 emotional_tag_t emotional_tag_neutral(void) {
     emotional_tag_t tag;
-    tag.valence = 0.0f;
-    tag.arousal = 0.0f;
+    tag.valence = 0.0F;
+    tag.arousal = 0.0F;
     tag.timestamp_ms = 0;
     tag.category = EMOTION_CAT_NEUTRAL;
-    tag.intensity = 0.0f;
+    tag.intensity = 0.0F;
     return tag;
 }
 
@@ -99,36 +99,36 @@ emotion_category_t emotional_tag_classify(const emotional_tag_t* tag) {
      */
 
     /* Low arousal region (a < 0.4) - check SADNESS first */
-    if (a < 0.4f) {
-        if (v < -0.3f) return EMOTION_CAT_SADNESS;  // Negative + low arousal
-        if (v > 0.2f && a < 0.3f) return EMOTION_CAT_CALM;  // Positive + very low arousal
-        if (v < 0.0f && a < 0.2f) return EMOTION_CAT_BOREDOM;  // Slight negative + very low
+    if (a < 0.4F) {
+        if (v < -0.3F) return EMOTION_CAT_SADNESS;  // Negative + low arousal
+        if (v > 0.2F && a < 0.3F) return EMOTION_CAT_CALM;  // Positive + very low arousal
+        if (v < 0.0F && a < 0.2F) return EMOTION_CAT_BOREDOM;  // Slight negative + very low
         return EMOTION_CAT_NEUTRAL;
     }
 
     /* High arousal + positive valence */
-    if (v > 0.5f && a > 0.5f) {
+    if (v > 0.5F && a > 0.5F) {
         return EMOTION_CAT_JOY;
     }
-    if (v > 0.3f && a > 0.7f) {
+    if (v > 0.3F && a > 0.7F) {
         return EMOTION_CAT_EXCITEMENT;
     }
 
     /* High arousal + VERY negative valence = FEAR (threat response)
      * Per Russell's model: extreme negative + high arousal */
-    if (v < -0.6f && a > 0.6f) {
+    if (v < -0.6F && a > 0.6F) {
         return EMOTION_CAT_FEAR;
     }
 
     /* High arousal + MODERATELY negative = ANGER (frustration)
      * Less extreme than fear, but still activated */
-    if (v < -0.3f && a > 0.6f) {
+    if (v < -0.3F && a > 0.6F) {
         return EMOTION_CAT_ANGER;
     }
 
     /* Moderate arousal + mildly negative = ANXIETY (worry)
      * Lower intensity negative state, catches v=-0.75,a=0.5 edge case */
-    if (v < -0.2f && a >= 0.4f) {
+    if (v < -0.2F && a >= 0.4F) {
         return EMOTION_CAT_ANXIETY;
     }
 
@@ -138,14 +138,14 @@ emotion_category_t emotional_tag_classify(const emotional_tag_t* tag) {
 float emotional_tag_intensity(const emotional_tag_t* tag) {
     /* Guard clause: Validate input */
     if (!tag) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* WHAT: Compute vector magnitude in valence-arousal space
      * WHY:  Combined measure of emotional strength
      * HOW:  Euclidean distance, normalized by sqrt(2) */
     float intensity = sqrtf(tag->valence * tag->valence +
-                           tag->arousal * tag->arousal) / sqrtf(2.0f);
+                           tag->arousal * tag->arousal) / sqrtf(2.0F);
 
     return CLAMP_01(intensity);
 }
@@ -175,7 +175,7 @@ const char* emotional_category_name(emotion_category_t category) {
 float emotional_compute_salience_boost(const emotional_tag_t* tag) {
     /* Guard clause: Validate input */
     if (!tag) {
-        return 1.0f;
+        return 1.0F;
     }
 
     /* WHAT: Compute salience multiplier from emotion
@@ -186,7 +186,7 @@ float emotional_compute_salience_boost(const emotional_tag_t* tag) {
     float valence_boost = fabsf(tag->valence) * EMOTIONAL_VALENCE_SALIENCE_FACTOR;
 
     /* Base 1.0 + emotional boost */
-    return 1.0f + arousal_boost + valence_boost;
+    return 1.0F + arousal_boost + valence_boost;
 }
 
 float emotional_apply_salience_boost(
@@ -194,7 +194,7 @@ float emotional_apply_salience_boost(
     const emotional_tag_t* tag
 ) {
     /* Guard clause: Validate input */
-    if (!tag || base_salience < 0.0f) {
+    if (!tag || base_salience < 0.0F) {
         return base_salience;
     }
 
@@ -217,30 +217,30 @@ emotional_tag_t emotional_tag_from_cognitive_state(
      * WHY:  Automatic emotion detection during processing
      * HOW:  Heuristic mappings from cognitive signals */
 
-    float valence = 0.0f;
-    float arousal = 0.0f;
+    float valence = 0.0F;
+    float arousal = 0.0F;
 
     /* WHAT: Confidence → positive valence
      * WHY:  High confidence feels good
      * Scale: conf=0.9 → (0.9-0.5)*1.5 = 0.6, conf=0.1 → -0.6 */
-    valence += (confidence - 0.5f) * 1.5f;  // Map [0,1] → [-0.75, +0.75]
+    valence += (confidence - 0.5F) * 1.5F;  // Map [0,1] → [-0.75, +0.75]
 
     /* WHAT: Novelty → positive valence + arousal
      * WHY:  Curiosity is pleasant and activating */
-    valence += novelty * 0.3f;
-    arousal += novelty * 0.5f;
+    valence += novelty * 0.3F;
+    arousal += novelty * 0.5F;
 
     /* WHAT: Uncertainty → arousal
      * WHY:  Uncertainty demands attention
      * Scale: unc=0.9 → 0.9*1.0 = 0.9 (high arousal) */
-    arousal += uncertainty * 1.0f;
+    arousal += uncertainty * 1.0F;
 
     /* WHAT: Ethical violation → strong negative valence
      * WHY:  Ethical concerns are emotionally aversive
      * Scale: Must overcome positive confidence to hit <-0.7 */
     if (!ethical_approved) {
-        valence -= 1.2f;
-        arousal += 0.4f;
+        valence -= 1.2F;
+        arousal += 0.4F;
     }
 
     return emotional_tag_create(valence, arousal, timestamp_ms);
@@ -260,13 +260,13 @@ bool emotional_tag_is_valid(const emotional_tag_t* tag) {
      * WHY:  Detect corrupted or invalid emotional states
      * HOW:  Range checks on each component */
 
-    if (tag->valence < -1.0f || tag->valence > 1.0f) {
+    if (tag->valence < -1.0F || tag->valence > 1.0F) {
         return false;
     }
-    if (tag->arousal < 0.0f || tag->arousal > 1.0f) {
+    if (tag->arousal < 0.0F || tag->arousal > 1.0F) {
         return false;
     }
-    if (tag->intensity < 0.0f || tag->intensity > 1.0f) {
+    if (tag->intensity < 0.0F || tag->intensity > 1.0F) {
         return false;
     }
 
@@ -295,7 +295,7 @@ void emotional_tag_clamp(emotional_tag_t* tag) {
 float emotional_get_valence(const emotional_tag_t* tag) {
     /* Guard clause: Validate input */
     if (!tag) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return tag->valence;
@@ -304,7 +304,7 @@ float emotional_get_valence(const emotional_tag_t* tag) {
 float emotional_get_arousal(const emotional_tag_t* tag) {
     /* Guard clause: Validate input */
     if (!tag) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return tag->arousal;

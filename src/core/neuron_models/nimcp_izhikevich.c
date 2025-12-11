@@ -127,28 +127,28 @@ typedef struct {
  */
 static const izhikevich_params_t PRESET_TABLE[] = {
     // Regular Spiking (RS) - Typical cortical pyramidal cell
-    {.a = 0.02f, .b = 0.2f, .c = -65.0f, .d = 8.0f},
+    {.a = 0.02F, .b = 0.2F, .c = -65.0F, .d = 8.0F},
 
     // Intrinsically Bursting (IB) - Bursting cortical neuron
-    {.a = 0.02f, .b = 0.2f, .c = -55.0f, .d = 4.0f},
+    {.a = 0.02F, .b = 0.2F, .c = -55.0F, .d = 4.0F},
 
     // Chattering (CH) - Fast rhythmic bursting
-    {.a = 0.02f, .b = 0.2f, .c = -50.0f, .d = 2.0f},
+    {.a = 0.02F, .b = 0.2F, .c = -50.0F, .d = 2.0F},
 
     // Fast Spiking (FS) - Cortical inhibitory interneuron
-    {.a = 0.1f, .b = 0.2f, .c = -65.0f, .d = 2.0f},
+    {.a = 0.1F, .b = 0.2F, .c = -65.0F, .d = 2.0F},
 
     // Low-Threshold Spiking (LTS) - Interneuron
-    {.a = 0.02f, .b = 0.25f, .c = -65.0f, .d = 2.0f},
+    {.a = 0.02F, .b = 0.25F, .c = -65.0F, .d = 2.0F},
 
     // Thalamo-Cortical (TC) - Thalamic relay neuron
-    {.a = 0.02f, .b = 0.25f, .c = -65.0f, .d = 0.05f},
+    {.a = 0.02F, .b = 0.25F, .c = -65.0F, .d = 0.05F},
 
     // Resonator (RZ) - Subthreshold oscillator
-    {.a = 0.1f, .b = 0.26f, .c = -65.0f, .d = 2.0f},
+    {.a = 0.1F, .b = 0.26F, .c = -65.0F, .d = 2.0F},
 
     // Custom - User-defined (same as RS by default)
-    {.a = 0.02f, .b = 0.2f, .c = -65.0f, .d = 8.0f}
+    {.a = 0.02F, .b = 0.2F, .c = -65.0F, .d = 8.0F}
 };
 
 /**
@@ -198,7 +198,7 @@ static const char* PRESET_DESCRIPTIONS[] = {
  * @return dv/dt derivative
  */
 static inline float compute_dv_dt(float v, float u, float I) {
-    return 0.04f * v * v + 5.0f * v + 140.0f - u + I;
+    return 0.04F * v * v + 5.0F * v + 140.0F - u + I;
 }
 
 /**
@@ -268,10 +268,10 @@ static void izhikevich_init(neuron_model_state_t state, const void* params) {
 
     // Initialize voltage to resting potential
     izh->v = IZHIKEVICH_RESTING_POTENTIAL;
-    izh->u = izh->v * 0.2f;  // u = b*v at rest (approximation)
+    izh->u = izh->v * 0.2F;  // u = b*v at rest (approximation)
     izh->spiked_this_step = false;
     izh->integration_method = INTEGRATION_EULER;  // Default to Euler (backward compatible)
-    izh->current_input = 0.0f;
+    izh->current_input = 0.0F;
 
     // Set parameters from input or use default (Regular Spiking)
     if (params) {
@@ -345,7 +345,7 @@ static void izhikevich_update(neuron_model_state_t state, float dt, float input_
         izh->integration_method,    // Method: INTEGRATION_EULER or INTEGRATION_RK4
         izhikevich_derivatives,     // Derivative function
         ode_state,                  // State vector [v, u]
-        0.0f,                       // Time (not used - autonomous system)
+        0.0F,                       // Time (not used - autonomous system)
         dt,                         // Timestep
         2,                          // Dimension (v and u)
         izh                         // Parameters (passed to derivative function)
@@ -406,7 +406,7 @@ static void izhikevich_post_spike(neuron_model_state_t state) {
 static float izhikevich_get_voltage(const neuron_model_state_t state) {
     // Guard: Validate state
     if (!state) {
-        return 0.0f;
+        return 0.0F;
     }
 
     const izhikevich_state_t* izh = (const izhikevich_state_t*)state->model_state;

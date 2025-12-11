@@ -68,26 +68,26 @@ typedef struct {
 } swarm_tensor_mapping_entry_t;
 
 static const swarm_tensor_mapping_entry_t s_swarm_to_tensor_map[EMOTION_TYPE_COUNT] = {
-    [EMOTION_NEUTRAL]      = { .primary = TENSOR_JOY, .secondary = (emotion_primary_t)-1, .primary_weight = 0.0f, .secondary_weight = 0.0f },
-    [EMOTION_JOY]          = { .primary = TENSOR_JOY, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_SADNESS]      = { .primary = TENSOR_SADNESS, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_ANGER]        = { .primary = TENSOR_ANGER, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_FEAR]         = { .primary = TENSOR_FEAR, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_SURPRISE]     = { .primary = TENSOR_SURPRISE, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_DISGUST]      = { .primary = TENSOR_DISGUST, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_TRUST]        = { .primary = TENSOR_TRUST, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_ANTICIPATION] = { .primary = TENSOR_ANTICIPATION, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0f, .secondary_weight = 0.0f },
-    [EMOTION_CURIOSITY]    = { .primary = TENSOR_SURPRISE, .secondary = TENSOR_ANTICIPATION, .primary_weight = 0.5f, .secondary_weight = 0.5f },
-    [EMOTION_CALM]         = { .primary = TENSOR_TRUST, .secondary = TENSOR_JOY, .primary_weight = 0.3f, .secondary_weight = 0.3f },
-    [EMOTION_EXCITEMENT]   = { .primary = TENSOR_JOY, .secondary = TENSOR_ANTICIPATION, .primary_weight = 0.7f, .secondary_weight = 0.5f },
-    [EMOTION_FRUSTRATION]  = { .primary = TENSOR_ANGER, .secondary = TENSOR_SADNESS, .primary_weight = 0.6f, .secondary_weight = 0.4f },
-    [EMOTION_HOPE]         = { .primary = TENSOR_ANTICIPATION, .secondary = TENSOR_TRUST, .primary_weight = 0.6f, .secondary_weight = 0.4f },
-    [EMOTION_DESPAIR]      = { .primary = TENSOR_FEAR, .secondary = TENSOR_SADNESS, .primary_weight = 0.5f, .secondary_weight = 0.5f },
-    [EMOTION_PRIDE]        = { .primary = TENSOR_JOY, .secondary = TENSOR_ANGER, .primary_weight = 0.6f, .secondary_weight = 0.3f },
-    [EMOTION_SHAME]        = { .primary = TENSOR_FEAR, .secondary = TENSOR_SADNESS, .primary_weight = 0.5f, .secondary_weight = 0.5f },
-    [EMOTION_GUILT]        = { .primary = TENSOR_FEAR, .secondary = TENSOR_JOY, .primary_weight = 0.4f, .secondary_weight = 0.3f },
-    [EMOTION_ENVY]         = { .primary = TENSOR_SADNESS, .secondary = TENSOR_ANGER, .primary_weight = 0.5f, .secondary_weight = 0.5f },
-    [EMOTION_GRATITUDE]    = { .primary = TENSOR_JOY, .secondary = TENSOR_TRUST, .primary_weight = 0.6f, .secondary_weight = 0.4f }
+    [EMOTION_NEUTRAL]      = { .primary = TENSOR_JOY, .secondary = (emotion_primary_t)-1, .primary_weight = 0.0F, .secondary_weight = 0.0F },
+    [EMOTION_JOY]          = { .primary = TENSOR_JOY, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_SADNESS]      = { .primary = TENSOR_SADNESS, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_ANGER]        = { .primary = TENSOR_ANGER, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_FEAR]         = { .primary = TENSOR_FEAR, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_SURPRISE]     = { .primary = TENSOR_SURPRISE, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_DISGUST]      = { .primary = TENSOR_DISGUST, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_TRUST]        = { .primary = TENSOR_TRUST, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_ANTICIPATION] = { .primary = TENSOR_ANTICIPATION, .secondary = (emotion_primary_t)-1, .primary_weight = 1.0F, .secondary_weight = 0.0F },
+    [EMOTION_CURIOSITY]    = { .primary = TENSOR_SURPRISE, .secondary = TENSOR_ANTICIPATION, .primary_weight = 0.5F, .secondary_weight = 0.5F },
+    [EMOTION_CALM]         = { .primary = TENSOR_TRUST, .secondary = TENSOR_JOY, .primary_weight = 0.3F, .secondary_weight = 0.3F },
+    [EMOTION_EXCITEMENT]   = { .primary = TENSOR_JOY, .secondary = TENSOR_ANTICIPATION, .primary_weight = 0.7F, .secondary_weight = 0.5F },
+    [EMOTION_FRUSTRATION]  = { .primary = TENSOR_ANGER, .secondary = TENSOR_SADNESS, .primary_weight = 0.6F, .secondary_weight = 0.4F },
+    [EMOTION_HOPE]         = { .primary = TENSOR_ANTICIPATION, .secondary = TENSOR_TRUST, .primary_weight = 0.6F, .secondary_weight = 0.4F },
+    [EMOTION_DESPAIR]      = { .primary = TENSOR_FEAR, .secondary = TENSOR_SADNESS, .primary_weight = 0.5F, .secondary_weight = 0.5F },
+    [EMOTION_PRIDE]        = { .primary = TENSOR_JOY, .secondary = TENSOR_ANGER, .primary_weight = 0.6F, .secondary_weight = 0.3F },
+    [EMOTION_SHAME]        = { .primary = TENSOR_FEAR, .secondary = TENSOR_SADNESS, .primary_weight = 0.5F, .secondary_weight = 0.5F },
+    [EMOTION_GUILT]        = { .primary = TENSOR_FEAR, .secondary = TENSOR_JOY, .primary_weight = 0.4F, .secondary_weight = 0.3F },
+    [EMOTION_ENVY]         = { .primary = TENSOR_SADNESS, .secondary = TENSOR_ANGER, .primary_weight = 0.5F, .secondary_weight = 0.5F },
+    [EMOTION_GRATITUDE]    = { .primary = TENSOR_JOY, .secondary = TENSOR_TRUST, .primary_weight = 0.6F, .secondary_weight = 0.4F }
 };
 
 /*=============================================================================
@@ -121,8 +121,8 @@ struct emotion_tensor_bridge {
  * Clamp value to [0, 1] range
  */
 static inline float clamp_01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
+    if (v < 0.0F) return 0.0F;
+    if (v > 1.0F) return 1.0F;
     return v;
 }
 
@@ -252,7 +252,7 @@ static nimcp_error_t handle_tensor_query(
     response.stability = tensor.stability;
     response.primary_emotion = (uint8_t)tensor.primary_emotion;
     response.secondary_emotion = (uint8_t)tensor.secondary_emotion;
-    response.contradictory = emotion_tensor_is_contradictory(bridge->tensor, 0.3f);
+    response.contradictory = emotion_tensor_is_contradictory(bridge->tensor, 0.3F);
     response.timestamp_ms = tensor.last_update_ms;
 
     /* If promise provided, complete it */
@@ -333,7 +333,7 @@ static nimcp_error_t handle_swarm_sync(
                 bridge->tensor,
                 (emotion_type_t)sync->swarm_emotion,
                 sync->swarm_intensity,
-                sync->blend_factor * 0.5f,
+                sync->blend_factor * 0.5F,
                 0
             );
             /* Then sync back to swarm */
@@ -344,7 +344,7 @@ static nimcp_error_t handle_swarm_sync(
                     bridge->contagion,
                     sync->agent_id,
                     map.swarm_emotion,
-                    map.intensity * sync->blend_factor * 0.5f
+                    map.intensity * sync->blend_factor * 0.5F
                 );
             }
             break;
@@ -503,7 +503,7 @@ nimcp_result_t emotion_tensor_to_swarm(
     mapping->compound = (emotion_compound_t)0;
 
     /* Check for compound emotion (if blend is significant) */
-    if (blend_ratio > 0.3f) {
+    if (blend_ratio > 0.3F) {
         /* Check for specific compounds based on pair */
         if ((primary == TENSOR_JOY && secondary == TENSOR_SADNESS) ||
             (primary == TENSOR_SADNESS && secondary == TENSOR_JOY)) {
@@ -535,7 +535,7 @@ nimcp_result_t emotion_tensor_from_swarm(
     if (mapping->primary_weight > 0) {
         float current = emotion_tensor_get_channel(tensor, mapping->primary);
         float target = intensity * mapping->primary_weight;
-        float blended = current * (1.0f - blend_factor) + target * blend_factor;
+        float blended = current * (1.0F - blend_factor) + target * blend_factor;
         emotion_tensor_set_channel(tensor, mapping->primary, clamp_01(blended), timestamp_ms);
     }
 
@@ -543,7 +543,7 @@ nimcp_result_t emotion_tensor_from_swarm(
     if (mapping->secondary != (emotion_primary_t)-1 && mapping->secondary_weight > 0) {
         float current = emotion_tensor_get_channel(tensor, mapping->secondary);
         float target = intensity * mapping->secondary_weight;
-        float blended = current * (1.0f - blend_factor) + target * blend_factor;
+        float blended = current * (1.0F - blend_factor) + target * blend_factor;
         emotion_tensor_set_channel(tensor, mapping->secondary, clamp_01(blended), timestamp_ms);
     }
 
@@ -602,18 +602,18 @@ nimcp_result_t emotion_tensor_from_tag(
 
     if (valence >= 0) {
         /* Positive valence */
-        if (arousal > 0.5f) {
+        if (arousal > 0.5F) {
             emotion_tensor_set_channel(tensor, TENSOR_JOY, abs_valence * arousal, timestamp_ms);
-            emotion_tensor_set_channel(tensor, TENSOR_ANTICIPATION, arousal * 0.5f, timestamp_ms);
+            emotion_tensor_set_channel(tensor, TENSOR_ANTICIPATION, arousal * 0.5F, timestamp_ms);
         } else {
             emotion_tensor_set_channel(tensor, TENSOR_TRUST, abs_valence, timestamp_ms);
-            emotion_tensor_set_channel(tensor, TENSOR_JOY, abs_valence * 0.5f, timestamp_ms);
+            emotion_tensor_set_channel(tensor, TENSOR_JOY, abs_valence * 0.5F, timestamp_ms);
         }
     } else {
         /* Negative valence */
-        if (arousal > 0.5f) {
-            emotion_tensor_set_channel(tensor, TENSOR_FEAR, abs_valence * 0.5f, timestamp_ms);
-            emotion_tensor_set_channel(tensor, TENSOR_ANGER, abs_valence * 0.5f, timestamp_ms);
+        if (arousal > 0.5F) {
+            emotion_tensor_set_channel(tensor, TENSOR_FEAR, abs_valence * 0.5F, timestamp_ms);
+            emotion_tensor_set_channel(tensor, TENSOR_ANGER, abs_valence * 0.5F, timestamp_ms);
         } else {
             emotion_tensor_set_channel(tensor, TENSOR_SADNESS, abs_valence, timestamp_ms);
         }

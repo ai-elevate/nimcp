@@ -171,24 +171,24 @@ static void apply_intonation_pattern(prosody_curve_t* prosody,
 
             case INTONATION_PATTERN_FALLING:
                 /* Linear fall */
-                prosody->f0_values[i] = baseline + range * (1.0f - t);
+                prosody->f0_values[i] = baseline + range * (1.0F - t);
                 break;
 
             case INTONATION_PATTERN_RISE_FALL:
                 /* Rise to peak at 50%, then fall */
-                if (t < 0.5f) {
-                    prosody->f0_values[i] = baseline + range * (2.0f * t);
+                if (t < 0.5F) {
+                    prosody->f0_values[i] = baseline + range * (2.0F * t);
                 } else {
-                    prosody->f0_values[i] = baseline + range * (2.0f * (1.0f - t));
+                    prosody->f0_values[i] = baseline + range * (2.0F * (1.0F - t));
                 }
                 break;
 
             case INTONATION_PATTERN_FALL_RISE:
                 /* Fall to trough at 50%, then rise */
-                if (t < 0.5f) {
-                    prosody->f0_values[i] = baseline - range * (2.0f * t);
+                if (t < 0.5F) {
+                    prosody->f0_values[i] = baseline - range * (2.0F * t);
                 } else {
-                    prosody->f0_values[i] = baseline - range * (2.0f * (1.0f - t));
+                    prosody->f0_values[i] = baseline - range * (2.0F * (1.0F - t));
                 }
                 break;
 
@@ -212,7 +212,7 @@ phonological_config_t phonological_default_config(void) {
     phonological_config_t config;
     config.max_phonemes = PHONOLOGICAL_DEFAULT_MAX_PHONEMES;
     config.max_syllables = PHONOLOGICAL_DEFAULT_MAX_SYLLABLES;
-    config.stress_weight = 0.7f;
+    config.stress_weight = 0.7F;
     config.enable_prosody = true;
     config.enable_coarticulation = true;
     config.default_f0 = PROSODY_F0_DEFAULT;
@@ -253,7 +253,7 @@ phonological_processor_t* phonological_create(const phonological_config_t* confi
 
     /* Initialize prosody */
     proc->prosody.baseline_f0 = proc->config.default_f0;
-    proc->prosody.f0_range = 50.0f;  /* Default range: 50 Hz */
+    proc->prosody.f0_range = 50.0F;  /* Default range: 50 Hz */
     proc->prosody.pattern = INTONATION_PATTERN_FLAT;
     proc->prosody.num_points = 0;
     proc->prosody_generated = false;
@@ -333,27 +333,27 @@ bool phonological_add_phoneme(phonological_processor_t* processor, uint8_t phone
     float voicing;
     switch (category) {
         case PHONEME_CATEGORY_VOWEL:
-            duration_ms = 100.0f;  /* Vowels are longer */
-            voicing = 1.0f;        /* Vowels are voiced */
+            duration_ms = 100.0F;  /* Vowels are longer */
+            voicing = 1.0F;        /* Vowels are voiced */
             break;
         case PHONEME_CATEGORY_SEMIVOWEL:
-            duration_ms = 70.0f;
-            voicing = 1.0f;
+            duration_ms = 70.0F;
+            voicing = 1.0F;
             break;
         case PHONEME_CATEGORY_CONSONANT:
-            duration_ms = 80.0f;
+            duration_ms = 80.0F;
             /* Detect voicing for common consonants */
             voicing = (phoneme == 'b' || phoneme == 'd' || phoneme == 'g' ||
                       phoneme == 'v' || phoneme == 'z' || phoneme == 'm' ||
-                      phoneme == 'n' || phoneme == 'l' || phoneme == 'r') ? 1.0f : 0.0f;
+                      phoneme == 'n' || phoneme == 'l' || phoneme == 'r') ? 1.0F : 0.0F;
             break;
         case PHONEME_CATEGORY_SILENCE:
-            duration_ms = 50.0f;
-            voicing = 0.0f;
+            duration_ms = 50.0F;
+            voicing = 0.0F;
             break;
         default:
-            duration_ms = 80.0f;
-            voicing = 0.5f;
+            duration_ms = 80.0F;
+            voicing = 0.5F;
             break;
     }
 
@@ -393,8 +393,8 @@ bool phonological_add_phoneme_detailed(phonological_processor_t* processor,
     }
 
     /* Validate inputs */
-    duration_ms = clamp(duration_ms, 10.0f, 500.0f);  /* 10-500ms */
-    voicing = clamp(voicing, 0.0f, 1.0f);
+    duration_ms = clamp(duration_ms, 10.0F, 500.0F);  /* 10-500ms */
+    voicing = clamp(voicing, 0.0F, 1.0F);
 
     /* Add phoneme */
     phoneme_t* p = &processor->phoneme_buffer[processor->phoneme_count];
@@ -504,7 +504,7 @@ bool phonological_generate_syllables(phonological_processor_t* processor) {
             if (syll->onset_count > 0) {
                 syll->type = SYLLABLE_TYPE_ONSET_ONLY;
                 /* Calculate duration for onset-only syllable */
-                syll->duration_ms = 0.0f;
+                syll->duration_ms = 0.0F;
                 for (uint32_t j = 0; j < syll->onset_count; j++) {
                     syll->duration_ms += syll->onset[j].duration_ms;
                 }
@@ -539,7 +539,7 @@ bool phonological_generate_syllables(phonological_processor_t* processor) {
         }
 
         /* Calculate duration */
-        syll->duration_ms = 0.0f;
+        syll->duration_ms = 0.0F;
         for (uint32_t j = 0; j < syll->onset_count; j++) {
             syll->duration_ms += syll->onset[j].duration_ms;
         }
@@ -583,24 +583,24 @@ bool phonological_apply_stress(phonological_processor_t* processor,
     if (syllable_idx >= processor->syllable_count) return false;
 
     /* Clamp stress level */
-    stress_level = clamp(stress_level, 0.0f, 1.0f);
+    stress_level = clamp(stress_level, 0.0F, 1.0F);
 
     syllable_t* syll = &processor->syllable_buffer[syllable_idx];
     syll->stress_level = stress_level;
 
     /* Apply stress to phonemes in nucleus */
     for (uint32_t i = 0; i < syll->nucleus_count; i++) {
-        syll->nucleus[i].is_stressed = (stress_level >= 0.5f);
+        syll->nucleus[i].is_stressed = (stress_level >= 0.5F);
 
         /* Stressed syllables are longer */
         if (stress_level > STRESS_LEVEL_NONE) {
-            float duration_multiplier = 1.0f + (stress_level * processor->config.stress_weight);
+            float duration_multiplier = 1.0F + (stress_level * processor->config.stress_weight);
             syll->nucleus[i].duration_ms *= duration_multiplier;
         }
     }
 
     /* Recalculate syllable duration */
-    syll->duration_ms = 0.0f;
+    syll->duration_ms = 0.0F;
     for (uint32_t j = 0; j < syll->onset_count; j++) {
         syll->duration_ms += syll->onset[j].duration_ms;
     }
@@ -688,17 +688,17 @@ bool phonological_plan_coarticulation(phonological_processor_t* processor) {
 
         /* Vowel-to-consonant: shorten vowel slightly */
         if (is_vowel(current->category) && is_consonant(next->category)) {
-            current->duration_ms *= 0.95f;
+            current->duration_ms *= 0.95F;
         }
 
         /* Consonant-to-vowel: lengthen vowel slightly */
         if (is_consonant(current->category) && is_vowel(next->category)) {
-            next->duration_ms *= 1.05f;
+            next->duration_ms *= 1.05F;
         }
 
         /* Voicing assimilation: adjacent consonants share voicing */
         if (is_consonant(current->category) && is_consonant(next->category)) {
-            float avg_voicing = (current->voicing + next->voicing) / 2.0f;
+            float avg_voicing = (current->voicing + next->voicing) / 2.0F;
             current->voicing = avg_voicing;
             next->voicing = avg_voicing;
         }

@@ -73,13 +73,13 @@ static float compute_cosine_similarity(
 {
     // WHAT: Guard against invalid input
     if (!features_a || !features_b || dim == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // WHAT: Compute dot product and magnitudes
-    float dot_product = 0.0f;
-    float magnitude_a = 0.0f;
-    float magnitude_b = 0.0f;
+    float dot_product = 0.0F;
+    float magnitude_a = 0.0F;
+    float magnitude_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         dot_product += features_a[i] * features_b[i];
@@ -91,16 +91,16 @@ static float compute_cosine_similarity(
     magnitude_b = sqrtf(magnitude_b);
 
     // WHAT: Avoid division by zero
-    if (magnitude_a < 1e-6f || magnitude_b < 1e-6f) {
-        return 0.0f;
+    if (magnitude_a < 1e-6F || magnitude_b < 1e-6F) {
+        return 0.0F;
     }
 
     // WHAT: Normalize dot product to get cosine
     float similarity = dot_product / (magnitude_a * magnitude_b);
 
     // WHAT: Clamp to [0, 1] range
-    if (similarity < 0.0f) similarity = 0.0f;
-    if (similarity > 1.0f) similarity = 1.0f;
+    if (similarity < 0.0F) similarity = 0.0F;
+    if (similarity > 1.0F) similarity = 1.0F;
 
     return similarity;
 }
@@ -178,8 +178,8 @@ static cortical_memory_node_t* cortical_node_create(
     node->id = generate_node_id();
     node->feature_dim = feature_dim;
     node->type = CORTICAL_MEMORY_EPISODIC;  // Starts episodic
-    node->consolidation_strength = 0.0f;    // Starts weak
-    node->hippocampal_dependency = 1.0f;    // Fully dependent on hippocampus initially
+    node->consolidation_strength = 0.0F;    // Starts weak
+    node->hippocampal_dependency = 1.0F;    // Fully dependent on hippocampus initially
     node->creation_time_ms = nimcp_platform_time_monotonic_ms();
     node->last_activation_ms = node->creation_time_ms;
     node->source_engram_id = source_engram_id;
@@ -506,7 +506,7 @@ uint32_t systems_consolidation_execute_replays(
     bool is_rem)
 {
     // WHAT: Guard against invalid input
-    if (!system || time_delta_seconds <= 0.0f) {
+    if (!system || time_delta_seconds <= 0.0F) {
         return 0;
     }
 
@@ -516,9 +516,9 @@ uint32_t systems_consolidation_execute_replays(
     if (is_sws) {
         replay_rate_hz = CONSOLIDATION_REPLAY_FREQUENCY_SWS;  // 10 Hz in SWS
     } else if (is_rem) {
-        replay_rate_hz = CONSOLIDATION_REPLAY_FREQUENCY_SWS * 0.5f;  // 5 Hz in REM
+        replay_rate_hz = CONSOLIDATION_REPLAY_FREQUENCY_SWS * 0.5F;  // 5 Hz in REM
     } else {
-        replay_rate_hz = 0.1f;  // Minimal awake replay
+        replay_rate_hz = 0.1F;  // Minimal awake replay
     }
 
     // WHAT: Calculate number of replays to execute this cycle
@@ -538,7 +538,7 @@ uint32_t systems_consolidation_execute_replays(
 
         // WHAT: Transfer engram to cortex
         // WHY: Replay drives cortical plasticity
-        float replay_strength = is_sws ? 0.8f : (is_rem ? 0.5f : 0.1f);
+        float replay_strength = is_sws ? 0.8F : (is_rem ? 0.5F : 0.1F);
         uint64_t cortical_node_id = systems_consolidation_transfer_to_cortex(
             system,
             event->engram_id,
@@ -577,7 +577,7 @@ uint64_t systems_consolidation_transfer_to_cortex(
     float replay_strength)
 {
     // WHAT: Guard against invalid input
-    if (!system || engram_id == 0 || replay_strength <= 0.0f) {
+    if (!system || engram_id == 0 || replay_strength <= 0.0F) {
         return 0;
     }
 
@@ -597,12 +597,12 @@ uint64_t systems_consolidation_transfer_to_cortex(
         // TODO: Replace with actual engram_get_neurons() call
         // For now, use deterministic features based on engram ID
         for (uint32_t i = 0; i < SEMANTIC_DIM; i++) {
-            semantic_features[i] = ((float)(engram_id % 100) / 100.0f) + (i * 0.01f);
+            semantic_features[i] = ((float)(engram_id % 100) / 100.0F) + (i * 0.01F);
         }
     } else {
         // Simplified mode for testing without engram system
         for (uint32_t i = 0; i < SEMANTIC_DIM; i++) {
-            semantic_features[i] = ((float)(engram_id % 100) / 100.0f) + (i * 0.01f);
+            semantic_features[i] = ((float)(engram_id % 100) / 100.0F) + (i * 0.01F);
         }
     }
 
@@ -618,14 +618,14 @@ uint64_t systems_consolidation_transfer_to_cortex(
     if (existing_node) {
         // WHAT: Update existing node (strengthening)
         // WHY: Repeated replay consolidates memory
-        existing_node->consolidation_strength += replay_strength * 0.1f;
-        if (existing_node->consolidation_strength > 1.0f) {
-            existing_node->consolidation_strength = 1.0f;
+        existing_node->consolidation_strength += replay_strength * 0.1F;
+        if (existing_node->consolidation_strength > 1.0F) {
+            existing_node->consolidation_strength = 1.0F;
         }
 
-        existing_node->hippocampal_dependency -= replay_strength * 0.05f;
-        if (existing_node->hippocampal_dependency < 0.0f) {
-            existing_node->hippocampal_dependency = 0.0f;
+        existing_node->hippocampal_dependency -= replay_strength * 0.05F;
+        if (existing_node->hippocampal_dependency < 0.0F) {
+            existing_node->hippocampal_dependency = 0.0F;
             existing_node->is_transferred = true;
             system->total_transfers++;
         }
@@ -654,8 +654,8 @@ uint64_t systems_consolidation_transfer_to_cortex(
 
     // WHAT: Apply initial replay strength to new node
     // WHY: First replay establishes initial consolidation
-    new_node->consolidation_strength = replay_strength * 0.1f;
-    new_node->hippocampal_dependency -= replay_strength * 0.05f;
+    new_node->consolidation_strength = replay_strength * 0.1F;
+    new_node->hippocampal_dependency -= replay_strength * 0.05F;
 
     // WHAT: Add to system
     system->cortical_nodes[system->node_count] = new_node;
@@ -672,7 +672,7 @@ uint64_t systems_consolidation_transfer_to_cortex(
         );
 
         // WHAT: Link if sufficiently similar
-        if (similarity > 0.7f) {
+        if (similarity > 0.7F) {
             cortical_node_add_neighbor(new_node, other_node, similarity);
             cortical_node_add_neighbor(other_node, new_node, similarity);
         }
@@ -687,7 +687,7 @@ void systems_consolidation_update(
     bool is_sleeping)
 {
     // WHAT: Guard against invalid input
-    if (!system || time_delta_seconds <= 0.0f) {
+    if (!system || time_delta_seconds <= 0.0F) {
         return;
     }
 
@@ -702,7 +702,7 @@ void systems_consolidation_update(
         ? CONSOLIDATION_TRANSFER_RATE_SWS
         : CONSOLIDATION_TRANSFER_RATE_AWAKE;
 
-    float time_delta_hours = time_delta_seconds / 3600.0f;
+    float time_delta_hours = time_delta_seconds / 3600.0F;
     float consolidation_increment = consolidation_rate * time_delta_hours;
     float forgetting_decrement = system->forgetting_rate * time_delta_hours;
 
@@ -713,15 +713,15 @@ void systems_consolidation_update(
         // WHAT: Increase consolidation strength
         // WHY: Gradual strengthening over time
         node->consolidation_strength += consolidation_increment;
-        if (node->consolidation_strength > 1.0f) {
-            node->consolidation_strength = 1.0f;
+        if (node->consolidation_strength > 1.0F) {
+            node->consolidation_strength = 1.0F;
         }
 
         // WHAT: Decrease hippocampal dependency
         // WHY: Cortex becomes independent over time
         node->hippocampal_dependency -= consolidation_increment;
-        if (node->hippocampal_dependency < 0.0f) {
-            node->hippocampal_dependency = 0.0f;
+        if (node->hippocampal_dependency < 0.0F) {
+            node->hippocampal_dependency = 0.0F;
             if (!node->is_transferred) {
                 node->is_transferred = true;
                 system->total_transfers++;
@@ -740,8 +740,8 @@ void systems_consolidation_update(
         uint64_t time_since_activation = nimcp_platform_time_monotonic_ms() - node->last_activation_ms;
         if (time_since_activation > 3600000) {  // >1 hour
             node->consolidation_strength -= forgetting_decrement;
-            if (node->consolidation_strength < 0.0f) {
-                node->consolidation_strength = 0.0f;
+            if (node->consolidation_strength < 0.0F) {
+                node->consolidation_strength = 0.0F;
             }
         }
     }

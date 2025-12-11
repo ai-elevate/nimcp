@@ -85,21 +85,21 @@ static inline float safe_divide(float numerator, float denominator) {
 }
 
 static inline float decay_factor(float dt, float tau) {
-    return 1.0f - expf(-dt / (tau + EPSILON));
+    return 1.0F - expf(-dt / (tau + EPSILON));
 }
 
 /**
  * @brief ReLU activation for nonlinear predictions
  */
 static inline float relu(float x) {
-    return fmaxf(0.0f, x);
+    return fmaxf(0.0F, x);
 }
 
 /**
  * @brief Sigmoid activation
  */
 static inline float sigmoid(float x) {
-    return 1.0f / (1.0f + expf(-clamp_f(x, -20.0f, 20.0f)));
+    return 1.0F / (1.0F + expf(-clamp_f(x, -20.0F, 20.0F)));
 }
 
 //=============================================================================
@@ -114,13 +114,13 @@ pc_layer_params_t pc_layer_params_default(uint32_t num_units) {
         .num_units = num_units,
         .pred_type = PC_PREDICT_LINEAR,
         .error_type = PC_ERROR_PRECISION_WEIGHTED,
-        .learning_rate_mu = 0.1f,           /* Learning rate for representations */
-        .learning_rate_precision = 0.01f,   /* Slower precision learning */
-        .learning_rate_weights = 0.001f,    /* Slowest weight learning */
-        .prediction_tau = 10.0f,            /* ms */
-        .error_tau = 5.0f,                  /* ms */
-        .min_precision = 0.01f,
-        .max_precision = 100.0f
+        .learning_rate_mu = 0.1F,           /* Learning rate for representations */
+        .learning_rate_precision = 0.01F,   /* Slower precision learning */
+        .learning_rate_weights = 0.001F,    /* Slowest weight learning */
+        .prediction_tau = 10.0F,            /* ms */
+        .error_tau = 5.0F,                  /* ms */
+        .min_precision = 0.01F,
+        .max_precision = 100.0F
     };
     return params;
 }
@@ -135,11 +135,11 @@ pc_hierarchy_config_t pc_hierarchy_config_default(uint32_t num_levels,
         .units_per_level = NULL,  /* Will be copied */
         .pred_type = PC_PREDICT_LINEAR,
         .error_type = PC_ERROR_PRECISION_WEIGHTED,
-        .learning_rate = 0.1f,
-        .precision_learning_rate = 0.01f,
+        .learning_rate = 0.1F,
+        .precision_learning_rate = 0.01F,
         .learn_precisions = true,
         .use_lateral_connections = false,
-        .dt = 1.0f
+        .dt = 1.0F
     };
 
     /* Note: units_per_level must be allocated by caller */
@@ -156,7 +156,7 @@ pc_hierarchy_config_t pc_hierarchy_config_sensory(uint32_t input_dim,
     pc_hierarchy_config_t config = pc_hierarchy_config_default(num_levels, NULL);
     config.pred_type = PC_PREDICT_NONLINEAR;  /* Nonlinear for sensory */
     config.error_type = PC_ERROR_PRECISION_WEIGHTED;
-    config.learning_rate = 0.05f;  /* Lower rate for stability */
+    config.learning_rate = 0.05F;  /* Lower rate for stability */
     (void)input_dim;  /* Used when creating hierarchy */
     return config;
 }
@@ -169,7 +169,7 @@ pc_hierarchy_config_t pc_hierarchy_config_motor(uint32_t output_dim,
     pc_hierarchy_config_t config = pc_hierarchy_config_default(num_levels, NULL);
     config.pred_type = PC_PREDICT_LINEAR;  /* Linear for motor */
     config.error_type = PC_ERROR_STANDARD;  /* Standard errors for motor */
-    config.learning_rate = 0.2f;  /* Faster adaptation for motor */
+    config.learning_rate = 0.2F;  /* Faster adaptation for motor */
     (void)output_dim;
     return config;
 }
@@ -210,11 +210,11 @@ pc_layer_state_t* pc_layer_state_create(const pc_layer_params_t* params) {
     /* Initialize precisions to 1.0 (unit variance) */
     for (uint32_t i = 0; i < params->num_units; i++) {
         state->precision[i] = DEFAULT_PRECISION;
-        state->precision_log[i] = 0.0f;  /* log(1) = 0 */
-        state->error_variance[i] = 1.0f;
+        state->precision_log[i] = 0.0F;  /* log(1) = 0 */
+        state->error_variance[i] = 1.0F;
     }
 
-    state->free_energy = 0.0f;
+    state->free_energy = 0.0F;
 
     return state;
 }
@@ -273,7 +273,7 @@ void pc_layer_compute_error(pc_layer_state_t* state,
         /* Update error variance (exponential moving average) */
         float error_sq = raw_error * raw_error;
         state->error_variance[i] = VARIANCE_SMOOTHING * state->error_variance[i] +
-                                   (1.0f - VARIANCE_SMOOTHING) * error_sq;
+                                   (1.0F - VARIANCE_SMOOTHING) * error_sq;
     }
 }
 
@@ -289,7 +289,7 @@ void pc_layer_update_representations(pc_layer_state_t* state,
      */
 
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     float decay = decay_factor(dt, params->prediction_tau);
 
@@ -313,14 +313,14 @@ void pc_layer_update_precisions(pc_layer_state_t* state,
      */
 
     if (!state || !params) return;
-    if (dt <= 0.0f) return;
+    if (dt <= 0.0F) return;
 
     float decay = decay_factor(dt, params->error_tau);
 
     for (uint32_t i = 0; i < state->num_units; i++) {
         /* Update log precision for numerical stability */
         float expected_precision_error = state->precision[i] * state->error_variance[i];
-        float delta_log = params->learning_rate_precision * (1.0f - expected_precision_error) * decay;
+        float delta_log = params->learning_rate_precision * (1.0F - expected_precision_error) * decay;
 
         state->precision_log[i] += delta_log;
 
@@ -345,9 +345,9 @@ float pc_layer_compute_free_energy(const pc_layer_state_t* state) {
      * COMPLEXITY: O(n)
      */
 
-    if (!state) return 0.0f;
+    if (!state) return 0.0F;
 
-    float free_energy = 0.0f;
+    float free_energy = 0.0F;
 
     for (uint32_t i = 0; i < state->num_units; i++) {
         /* Precision-weighted squared error */
@@ -359,7 +359,7 @@ float pc_layer_compute_free_energy(const pc_layer_state_t* state) {
         free_energy += weighted_error + complexity;
     }
 
-    return free_energy * 0.5f;  /* Factor of 0.5 from Gaussian */
+    return free_energy * 0.5F;  /* Factor of 0.5 from Gaussian */
 }
 
 //=============================================================================
@@ -390,10 +390,10 @@ pc_prediction_weights_t* pc_prediction_weights_create(uint32_t num_lower,
     }
 
     /* Initialize with small random-like values (deterministic for reproducibility) */
-    float scale = 1.0f / sqrtf((float)num_higher);
+    float scale = 1.0F / sqrtf((float)num_higher);
     for (uint32_t i = 0; i < num_lower * num_higher; i++) {
         /* Simple pseudo-random initialization */
-        float pseudo = ((float)((i * 1103515245 + 12345) % 1000) / 1000.0f) - 0.5f;
+        float pseudo = ((float)((i * 1103515245 + 12345) % 1000) / 1000.0F) - 0.5F;
         weights->weights[i] = pseudo * scale;
     }
 
@@ -446,7 +446,7 @@ void pc_generate_prediction(const pc_prediction_weights_t* weights,
 
             case PC_PREDICT_SPARSE:
                 /* Soft thresholding for sparsity */
-                prediction[i] = (fabsf(sum) > 0.1f) ? sum : 0.0f;
+                prediction[i] = (fabsf(sum) > 0.1F) ? sum : 0.0F;
                 break;
 
             case PC_PREDICT_IDENTITY:
@@ -469,7 +469,7 @@ void pc_update_prediction_weights(pc_prediction_weights_t* weights,
      */
 
     if (!weights || !lower_error || !higher_mu) return;
-    if (learning_rate <= 0.0f) return;
+    if (learning_rate <= 0.0F) return;
 
     /* Update weights: W -= lr × error × mu^T */
     for (uint32_t i = 0; i < weights->num_lower; i++) {
@@ -667,9 +667,9 @@ void pc_hierarchy_inference_step(pc_hierarchy_t hierarchy,
 
     hierarchy->stats.total_updates++;
 
-    float total_free_energy = 0.0f;
-    float total_error = 0.0f;
-    float total_precision = 0.0f;
+    float total_free_energy = 0.0F;
+    float total_error = 0.0F;
+    float total_precision = 0.0F;
     uint32_t total_units = 0;
 
     /* Step 1: Generate top-down predictions */
@@ -707,8 +707,8 @@ void pc_hierarchy_inference_step(pc_hierarchy_t hierarchy,
         total_free_energy += layer_fe;
 
         /* Compute mean error */
-        float layer_error = 0.0f;
-        float layer_precision = 0.0f;
+        float layer_error = 0.0F;
+        float layer_precision = 0.0F;
         for (uint32_t i = 0; i < state->num_units; i++) {
             layer_error += fabsf(state->error[i]);
             layer_precision += state->precision[i];
@@ -742,12 +742,12 @@ void pc_hierarchy_inference_step(pc_hierarchy_t hierarchy,
     hierarchy->history_index = (hierarchy->history_index + 1) % CONVERGENCE_SAMPLES;
 
     /* Compute convergence rate */
-    if (prev_fe > 0.0f) {
+    if (prev_fe > 0.0F) {
         hierarchy->stats.convergence_rate = (prev_fe - total_free_energy) / prev_fe;
     }
 
     /* Check convergence */
-    hierarchy->stats.is_converged = (fabsf(hierarchy->stats.convergence_rate) < 0.001f);
+    hierarchy->stats.is_converged = (fabsf(hierarchy->stats.convergence_rate) < 0.001F);
 }
 
 uint32_t pc_hierarchy_inference_converge(pc_hierarchy_t hierarchy,
@@ -760,7 +760,7 @@ uint32_t pc_hierarchy_inference_converge(pc_hierarchy_t hierarchy,
 
     if (!hierarchy) return 0;
 
-    float prev_fe = 1e10f;
+    float prev_fe = 1e10F;
 
     for (uint32_t iter = 0; iter < max_iterations; iter++) {
         pc_hierarchy_inference_step(hierarchy, hierarchy->config.dt, learn);
@@ -810,7 +810,7 @@ bool pc_hierarchy_get_errors(pc_hierarchy_t hierarchy,
 }
 
 float pc_hierarchy_get_free_energy(pc_hierarchy_t hierarchy) {
-    if (!hierarchy) return 0.0f;
+    if (!hierarchy) return 0.0F;
     return hierarchy->stats.total_free_energy;
 }
 
@@ -834,10 +834,10 @@ void pc_hierarchy_reset(pc_hierarchy_t hierarchy) {
 
             for (uint32_t i = 0; i < state->num_units; i++) {
                 state->precision[i] = DEFAULT_PRECISION;
-                state->precision_log[i] = 0.0f;
-                state->error_variance[i] = 1.0f;
+                state->precision_log[i] = 0.0F;
+                state->error_variance[i] = 1.0F;
             }
-            state->free_energy = 0.0f;
+            state->free_energy = 0.0F;
         }
     }
 
@@ -880,10 +880,10 @@ float pc_kl_divergence_gaussian(const float* mu_q,
      */
 
     if (!mu_q || !precision_q || !mu_p || !precision_p || dim == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float kl = 0.0f;
+    float kl = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
         float log_ratio = logf(precision_q[i] / (precision_p[i] + EPSILON));
@@ -891,10 +891,10 @@ float pc_kl_divergence_gaussian(const float* mu_q,
         float mean_diff = mu_p[i] - mu_q[i];
         float mean_term = precision_p[i] * mean_diff * mean_diff;
 
-        kl += log_ratio + precision_ratio + mean_term - 1.0f;
+        kl += log_ratio + precision_ratio + mean_term - 1.0F;
     }
 
-    return 0.5f * kl;
+    return 0.5F * kl;
 }
 
 void pc_softmax_precision(const float* precisions,
@@ -918,7 +918,7 @@ void pc_softmax_precision(const float* precisions,
     }
 
     /* Compute exp and sum */
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         output[i] = expf((precisions[i] - max_val) / temperature);
         sum += output[i];

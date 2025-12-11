@@ -63,15 +63,15 @@
  */
 eligibility_config_t eligibility_default_config(void) {
     eligibility_config_t config = {
-        .decay_lambda = 0.95f,        // 95% decay per timestep (~20 step memory)
-        .learning_rate = 0.001f,      // Modest learning rate
+        .decay_lambda = 0.95F,        // 95% decay per timestep (~20 step memory)
+        .learning_rate = 0.001F,      // Modest learning rate
         .use_neuromodulation = true,  // Dopamine gating enabled
-        .trace_threshold = 0.01f,     // Ignore traces < 1%
+        .trace_threshold = 0.01F,     // Ignore traces < 1%
 
         // Option 2.2: Burst-triggered consolidation (disabled by default)
         .burst_triggered_mode = false, // Standard mode (consolidate anytime)
-        .burst_lr_multiplier = 3.0f,   // 3x learning rate during bursts
-        .min_burst_concentration = 0.3f // 30% dopamine = burst threshold
+        .burst_lr_multiplier = 3.0F,   // 3x learning rate during bursts
+        .min_burst_concentration = 0.3F // 30% dopamine = burst threshold
     };
     return config;
 }
@@ -95,7 +95,7 @@ void eligibility_trace_init(eligibility_trace_t* trace, uint64_t current_time) {
     // WHAT: Initialize trace to zero
     // WHY: No eligibility at start
     // HOW: Direct assignment
-    trace->trace = 0.0f;
+    trace->trace = 0.0F;
     trace->last_update = current_time;
 }
 
@@ -160,8 +160,8 @@ void eligibility_trace_update(
     // WHAT: Prevent trace from exceeding 1.0
     // WHY: Traces represent eligibility probability
     // HOW: fminf() with 1.0 upper bound
-    if (trace->trace > 1.0f) {
-        trace->trace = 1.0f;
+    if (trace->trace > 1.0F) {
+        trace->trace = 1.0F;
     }
 
     // STEP 5: Update timestamp
@@ -209,8 +209,8 @@ void eligibility_trace_decay(
     // WHAT: Set very small traces to zero
     // WHY: Avoid denormal floating-point performance issues
     // HOW: Threshold at 0.0001 (0.01%)
-    if (trace->trace < 0.0001f) {
-        trace->trace = 0.0f;
+    if (trace->trace < 0.0001F) {
+        trace->trace = 0.0F;
     }
 }
 
@@ -256,7 +256,7 @@ float eligibility_apply_reward(
 ) {
     // Guard: NULL synapse, trace, or config
     if (!synapse || !trace || !config) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // OPTIMIZATION: Skip negligible traces
@@ -264,7 +264,7 @@ float eligibility_apply_reward(
     // WHY: Avoid wasting computation on tiny weight changes
     // HOW: Compare absolute value to config.trace_threshold
     if (fabsf(trace->trace) < config->trace_threshold) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // STEP 1: Compute base weight change
@@ -328,7 +328,7 @@ float eligibility_update_and_learn(
 ) {
     // Guard: NULL checks
     if (!synapse || !trace || !config) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // STEP 1: Decay trace to current time
@@ -416,12 +416,12 @@ float eligibility_consolidate_on_burst(
 ) {
     // Guard: NULL checks
     if (!synapse || !trace || !config) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // OPTIMIZATION: Skip negligible traces
     if (trace->trace < config->trace_threshold) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // MODE CHECK: Are we in burst-triggered mode?
@@ -433,7 +433,7 @@ float eligibility_consolidate_on_burst(
 
         if (!phasic_tonic || !eligibility_is_in_burst(phasic_tonic, config)) {
             // NOT in burst - traces remain as "tags", no consolidation
-            return 0.0f;
+            return 0.0F;
         }
 
         // IN BURST - consolidate with amplified learning rate
@@ -462,7 +462,7 @@ float eligibility_consolidate_on_burst(
         // HOW: Same as eligibility_apply_reward()
 
         float dopamine_concentration = phasic_tonic ?
-            phasic_tonic->total_concentration : 1.0f;  // Default to 1.0 if no phasic-tonic
+            phasic_tonic->total_concentration : 1.0F;  // Default to 1.0 if no phasic-tonic
 
         float delta_w = config->learning_rate * trace->trace * reward;
 
@@ -531,7 +531,7 @@ int eligibility_consolidate_batch(
 
         // Count synapses with significant weight changes
         // Use same threshold as config->trace_threshold for consistency
-        if (fabsf(delta_w) > 0.0f) {  // Any non-zero weight change
+        if (fabsf(delta_w) > 0.0F) {  // Any non-zero weight change
             num_consolidated++;
         }
     }
@@ -554,7 +554,7 @@ int eligibility_consolidate_batch(
  * @return Trace value [0, 1], or 0.0 if trace is NULL
  */
 float eligibility_get_trace(const eligibility_trace_t* trace) {
-    return trace ? trace->trace : 0.0f;
+    return trace ? trace->trace : 0.0F;
 }
 
 /**

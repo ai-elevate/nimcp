@@ -36,7 +36,7 @@ typedef struct {
 
 static void CommunityStructure_dealloc(CommunityStructureObject* self) {
     if (self->structure) {
-        community_structure_free(self->structure);
+        topology_community_structure_free(self->structure);
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -310,7 +310,7 @@ static PyObject* py_brain_detect_communities(PyObject* self, PyObject* args) {
     // Wrap in Python object
     CommunityStructureObject* result = PyObject_New(CommunityStructureObject, &CommunityStructureType);
     if (!result) {
-        community_structure_free(structure);
+        topology_community_structure_free(structure);
         return PyErr_NoMemory();
     }
 
@@ -393,7 +393,7 @@ static PyObject* py_brain_get_neuron_community(PyObject* self, PyObject* args) {
 // brain_detect_hubs(brain, threshold) -> HubStructure
 static PyObject* py_brain_detect_hubs(PyObject* self, PyObject* args, PyObject* kwargs) {
     PyObject* brain_obj;
-    float threshold = 0.8f;
+    float threshold = 0.8F;
 
     static char* kwlist[] = {"brain", "threshold", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|f", kwlist, &brain_obj, &threshold)) {
@@ -439,7 +439,7 @@ static PyObject* py_brain_detect_hubs(PyObject* self, PyObject* args, PyObject* 
 // brain_validate_topology(brain, min_modularity) -> TopologyValidation
 static PyObject* py_brain_validate_topology(PyObject* self, PyObject* args, PyObject* kwargs) {
     PyObject* brain_obj;
-    float min_modularity = 0.25f;
+    float min_modularity = 0.25F;
 
     static char* kwlist[] = {"brain", "min_modularity", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|f", kwlist, &brain_obj, &min_modularity)) {

@@ -67,25 +67,25 @@ bool synapse_init_embedding(synapse_t *synapse, uint16_t dim) {
     synapse->embedding_dim = dim;
 
     // Initialize with random values (Xavier/Glorot initialization)
-    float scale = sqrtf(2.0f / dim);
+    float scale = sqrtf(2.0F / dim);
     for (uint16_t i = 0; i < dim; i++) {
-        synapse->semantic_embedding[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * scale;
+        synapse->semantic_embedding[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
     }
 
     // Normalize to unit length
-    float norm = 0.0f;
+    float norm = 0.0F;
     for (uint16_t i = 0; i < dim; i++) {
         norm += synapse->semantic_embedding[i] * synapse->semantic_embedding[i];
     }
     norm = sqrtf(norm);
 
-    if (norm > 1e-6f) {
+    if (norm > 1e-6F) {
         for (uint16_t i = 0; i < dim; i++) {
             synapse->semantic_embedding[i] /= norm;
         }
     }
 
-    synapse->semantic_relevance = 0.5f;  // Neutral initial relevance
+    synapse->semantic_relevance = 0.5F;  // Neutral initial relevance
 
     return true;
 }
@@ -96,22 +96,22 @@ bool synapse_init_embedding(synapse_t *synapse, uint16_t dim) {
 
 float synapse_semantic_similarity(const synapse_t *syn1, const synapse_t *syn2) {
     if (!syn1 || !syn2) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check both have embeddings
     if (!syn1->semantic_embedding || !syn2->semantic_embedding) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check dimensions match
     if (syn1->embedding_dim != syn2->embedding_dim) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute cosine similarity: dot(a,b) / (||a|| * ||b||)
     // Since embeddings are normalized, this simplifies to just dot(a,b)
-    float dot_product = 0.0f;
+    float dot_product = 0.0F;
     for (uint16_t i = 0; i < syn1->embedding_dim; i++) {
         dot_product += syn1->semantic_embedding[i] * syn2->semantic_embedding[i];
     }
@@ -140,13 +140,13 @@ bool synapse_update_embedding(synapse_t *synapse, const float *target_embedding,
     }
 
     // Renormalize to unit length
-    float norm = 0.0f;
+    float norm = 0.0F;
     for (uint16_t i = 0; i < synapse->embedding_dim; i++) {
         norm += synapse->semantic_embedding[i] * synapse->semantic_embedding[i];
     }
     norm = sqrtf(norm);
 
-    if (norm > 1e-6f) {
+    if (norm > 1e-6F) {
         for (uint16_t i = 0; i < synapse->embedding_dim; i++) {
             synapse->semantic_embedding[i] /= norm;
         }
@@ -161,22 +161,22 @@ bool synapse_update_embedding(synapse_t *synapse, const float *target_embedding,
 
 float synapse_compute_relevance(synapse_t *synapse, const float *context_embedding, uint16_t context_dim) {
     if (!synapse || !context_embedding) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check synapse has embedding
     if (!synapse->semantic_embedding || synapse->embedding_dim == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Check dimensions match
     if (synapse->embedding_dim != context_dim) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute cosine similarity with context
-    float dot_product = 0.0f;
-    float context_norm = 0.0f;
+    float dot_product = 0.0F;
+    float context_norm = 0.0F;
 
     for (uint16_t i = 0; i < context_dim; i++) {
         dot_product += synapse->semantic_embedding[i] * context_embedding[i];
@@ -185,15 +185,15 @@ float synapse_compute_relevance(synapse_t *synapse, const float *context_embeddi
 
     context_norm = sqrtf(context_norm);
 
-    if (context_norm < 1e-6f) {
-        return 0.0f;
+    if (context_norm < 1e-6F) {
+        return 0.0F;
     }
 
     // Cosine similarity (synapse embedding already normalized)
     float similarity = dot_product / context_norm;
 
     // Map from [-1, 1] to [0, 1]
-    float relevance = (similarity + 1.0f) / 2.0f;
+    float relevance = (similarity + 1.0F) / 2.0F;
 
     // Cache relevance in synapse for fast access
     synapse->semantic_relevance = relevance;
@@ -216,5 +216,5 @@ void synapse_destroy_embedding(synapse_t *synapse) {
     }
 
     synapse->embedding_dim = 0;
-    synapse->semantic_relevance = 0.0f;
+    synapse->semantic_relevance = 0.0F;
 }

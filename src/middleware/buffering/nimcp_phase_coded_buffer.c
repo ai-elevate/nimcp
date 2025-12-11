@@ -51,8 +51,8 @@ struct phase_coded_buffer {
  * @brief Wrap phase to [-π, π]
  */
 static float wrap_phase(float phase) {
-    while (phase > M_PI) phase -= 2.0f * M_PI;
-    while (phase < -M_PI) phase += 2.0f * M_PI;
+    while (phase > M_PI) phase -= 2.0F * M_PI;
+    while (phase < -M_PI) phase += 2.0F * M_PI;
     return phase;
 }
 
@@ -76,8 +76,8 @@ phase_buffer_config_t phase_buffer_default_config(void) {
     phase_buffer_config_t config;
     config.capacity = PHASE_BUFFER_DEFAULT_CAPACITY;
     config.auto_phase_increment = true;
-    config.phase_increment = (2.0f * M_PI) / 8.0f;  // 8 items per cycle
-    config.theta_frequency_hz = 8.0f;               // 8 Hz theta
+    config.phase_increment = (2.0F * M_PI) / 8.0F;  // 8 items per cycle
+    config.theta_frequency_hz = 8.0F;               // 8 Hz theta
     config.enable_coherence_sort = false;
     return config;
 }
@@ -102,7 +102,7 @@ phase_coded_buffer_t* phase_buffer_create(const phase_buffer_config_t* config) {
     }
 
     buffer->count = 0;
-    buffer->current_phase = 0.0f;
+    buffer->current_phase = 0.0F;
     buffer->sequence_number = 0;
     buffer->last_store_time_ms = 0.0;
     buffer->total_stores = 0;
@@ -134,8 +134,8 @@ bool phase_buffer_store(phase_coded_buffer_t* buffer,
                                           buffer->config.phase_increment);
     } else {
         // Use theta-based phase from timestamp
-        float theta_period_ms = 1000.0f / buffer->config.theta_frequency_hz;
-        phase = fmodf((float)timestamp_ms, theta_period_ms) / theta_period_ms * 2.0f * M_PI;
+        float theta_period_ms = 1000.0F / buffer->config.theta_frequency_hz;
+        phase = fmodf((float)timestamp_ms, theta_period_ms) / theta_period_ms * 2.0F * M_PI;
         phase = wrap_phase(phase);
     }
 
@@ -202,7 +202,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
     result->indices = NULL;
     result->coherences = NULL;
     result->count = 0;
-    result->mean_coherence = 0.0f;
+    result->mean_coherence = 0.0F;
 
     if (buffer->count == 0) return true;
 
@@ -212,7 +212,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
     if (!pattern_phasors) return false;
 
     for (uint32_t i = 0; i < pattern_count; i++) {
-        pattern_phasors[i] = phasor_from_polar(1.0f, pattern_phases[i]);
+        pattern_phasors[i] = phasor_from_polar(1.0F, pattern_phases[i]);
     }
 
     // Compute pattern mean phase
@@ -231,7 +231,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
 
     // Find matching items
     uint32_t match_count = 0;
-    float sum_coherence = 0.0f;
+    float sum_coherence = 0.0F;
 
     for (uint32_t i = 0; i < buffer->count; i++) {
         // Create phasor for this item
@@ -242,7 +242,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
         float phase_diff = fabsf(wrap_phase(buffer->items[i].phase - pattern_mean_phase));
 
         // Simple coherence: inverse of phase difference
-        float coherence = 1.0f - (phase_diff / M_PI);
+        float coherence = 1.0F - (phase_diff / M_PI);
 
         if (coherence >= min_coherence) {
             temp_indices[match_count] = i;
@@ -279,12 +279,12 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
 }
 
 float phase_buffer_coherence(const phase_coded_buffer_t* buffer) {
-    if (!buffer || buffer->count == 0) return 0.0f;
+    if (!buffer || buffer->count == 0) return 0.0F;
 
     // Convert items to phasors
     neural_phasor_t* phasors = (neural_phasor_t*)nimcp_malloc(
         buffer->count * sizeof(neural_phasor_t));
-    if (!phasors) return 0.0f;
+    if (!phasors) return 0.0F;
 
     for (uint32_t i = 0; i < buffer->count; i++) {
         phasors[i] = phasor_from_polar(buffer->items[i].amplitude,
@@ -299,12 +299,12 @@ float phase_buffer_coherence(const phase_coded_buffer_t* buffer) {
 }
 
 float phase_buffer_mean_phase(const phase_coded_buffer_t* buffer) {
-    if (!buffer || buffer->count == 0) return 0.0f;
+    if (!buffer || buffer->count == 0) return 0.0F;
 
     // Convert items to phasors
     neural_phasor_t* phasors = (neural_phasor_t*)nimcp_malloc(
         buffer->count * sizeof(neural_phasor_t));
-    if (!phasors) return 0.0f;
+    if (!phasors) return 0.0F;
 
     for (uint32_t i = 0; i < buffer->count; i++) {
         phasors[i] = phasor_from_polar(buffer->items[i].amplitude,
@@ -322,7 +322,7 @@ void phase_buffer_clear(phase_coded_buffer_t* buffer) {
     if (!buffer) return;
 
     buffer->count = 0;
-    buffer->current_phase = 0.0f;
+    buffer->current_phase = 0.0F;
     buffer->sequence_number = 0;
 }
 
@@ -349,5 +349,5 @@ void phase_pattern_match_free(phase_pattern_match_t* result) {
     result->indices = NULL;
     result->coherences = NULL;
     result->count = 0;
-    result->mean_coherence = 0.0f;
+    result->mean_coherence = 0.0F;
 }

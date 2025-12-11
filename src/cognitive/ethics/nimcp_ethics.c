@@ -178,7 +178,7 @@ static brain_t create_golden_rule_network(uint32_t feature_size)
 static empathy_network_t create_empathy_network(void)
 {
     empathy_config_t config = {
-        .mirror_network = NULL, .observation_window_ms = 1000, .empathy_threshold = 0.5f};
+        .mirror_network = NULL, .observation_window_ms = 1000, .empathy_threshold = 0.5F};
 
     return empathy_network_create(&config);
 }
@@ -215,8 +215,8 @@ static void add_golden_rule_policy(ethics_engine_t engine)
                               .description = "Do unto others as you would have them done unto you, "
                                             "with the goal of improving the human condition",
                               .violation_type = ETHICS_VIOLATION_HARM,
-                              .severity_threshold = 0.0f,
-                              .confidence_required = 0.8f,
+                              .severity_threshold = 0.0F,
+                              .confidence_required = 0.8F,
                               .action = ETHICS_ACTION_BLOCK,
                               .enabled = true,
                               .learned = false};
@@ -254,12 +254,12 @@ static nimcp_error_t handle_ethics_request(
     // Create action context from request
     action_context_t action = {0};
     action.num_affected_agents = request->stakeholder_count;
-    action.predicted_harm = request->urgency * 0.5f;  // Simple heuristic
-    action.fairness_violation = 0.0f;
-    action.deception_level = 0.0f;
-    action.autonomy_violation = 0.0f;
-    action.privacy_violation = 0.0f;
-    action.consent_violation = 0.0f;
+    action.predicted_harm = request->urgency * 0.5F;  // Simple heuristic
+    action.fairness_violation = 0.0F;
+    action.deception_level = 0.0F;
+    action.autonomy_violation = 0.0F;
+    action.privacy_violation = 0.0F;
+    action.consent_violation = 0.0F;
 
     // Perform ethics evaluation
     ethics_evaluation_t eval = ethics_engine_evaluate_action(engine, &action);
@@ -286,7 +286,7 @@ static nimcp_error_t handle_ethics_request(
     }
 
     // Broadcast if action is blocked or has low ethical score
-    if (!eval.allowed || eval.golden_rule_score < 0.0f) {
+    if (!eval.allowed || eval.golden_rule_score < 0.0F) {
         bio_broadcast_ethics_response(engine, &eval, request->action_id);
     }
 
@@ -467,7 +467,7 @@ static bool validate_evaluation_inputs(ethics_engine_t engine, const action_cont
     if (!engine) {
         if (result) {
             result->allowed = false;
-            result->confidence = 1.0f;
+            result->confidence = 1.0F;
             result->primary_violation = ETHICS_VIOLATION_TYPE_HARM;
             snprintf(result->explanation, sizeof(result->explanation), "Null engine");
         }
@@ -476,7 +476,7 @@ static bool validate_evaluation_inputs(ethics_engine_t engine, const action_cont
 
     if (!action) {
         result->allowed = false;
-        result->confidence = 1.0f;
+        result->confidence = 1.0F;
         result->primary_violation = ETHICS_VIOLATION_TYPE_HARM;
         snprintf(result->explanation, sizeof(result->explanation), "Null action");
         return false;
@@ -626,7 +626,7 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
     float golden_rule_score = ethics_evaluate_golden_rule(engine, action);
 
     // If Golden Rule is severely violated, block immediately
-    if (golden_rule_score < -0.5f) {
+    if (golden_rule_score < -0.5F) {
         result.allowed = false;
         result.confidence = fabsf(golden_rule_score);
         result.golden_rule_score = golden_rule_score;
@@ -646,7 +646,7 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
     // If Asimov's Laws violated, block action
     if (!asimov_result.passed) {
         result.allowed = false;
-        result.confidence = 0.95f;  // High confidence in Asimov violations
+        result.confidence = 0.95F;  // High confidence in Asimov violations
         result.golden_rule_score = golden_rule_score;
         result.recommended_action = ETHICS_ACTION_BLOCK;
 
@@ -734,7 +734,7 @@ bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats)
     stats->actions_blocked = engine->actions_blocked;
     stats->num_policies = engine->num_policies;
     stats->num_violations_logged = engine->num_violations;
-    stats->avg_golden_rule_score = 0.5f;  // Placeholder
+    stats->avg_golden_rule_score = 0.5F;  // Placeholder
 
     return true;
 }
@@ -756,7 +756,7 @@ asimov_config_t* ethics_engine_get_asimov_config(ethics_engine_t engine) {
 }
 
 float ethics_engine_get_threshold(ethics_engine_t engine) {
-    return engine ? engine->golden_rule_threshold : 0.0f;
+    return engine ? engine->golden_rule_threshold : 0.0F;
 }
 
 bool ethics_engine_is_learning_enabled(ethics_engine_t engine) {

@@ -145,7 +145,7 @@ static const platform_tier_config_t TIER_CONFIGS[PLATFORM_TIER_COUNT] = {
         // Performance tuning
         .update_batch_size = 1000,
         .spike_buffer_size = 100000,
-        .sampling_rate = 1.0f,               // Full sampling
+        .sampling_rate = 1.0F,               // Full sampling
     },
 
     // ========================================================================
@@ -210,7 +210,7 @@ static const platform_tier_config_t TIER_CONFIGS[PLATFORM_TIER_COUNT] = {
         // Performance tuning
         .update_batch_size = 500,
         .spike_buffer_size = 50000,
-        .sampling_rate = 0.8f,               // 80% sampling
+        .sampling_rate = 0.8F,               // 80% sampling
     },
 
     // ========================================================================
@@ -269,7 +269,7 @@ static const platform_tier_config_t TIER_CONFIGS[PLATFORM_TIER_COUNT] = {
         // Performance tuning
         .update_batch_size = 100,
         .spike_buffer_size = 10000,
-        .sampling_rate = 0.5f,               // 50% sampling
+        .sampling_rate = 0.5F,               // 50% sampling
     },
 
     // ========================================================================
@@ -324,7 +324,7 @@ static const platform_tier_config_t TIER_CONFIGS[PLATFORM_TIER_COUNT] = {
         // Performance tuning
         .update_batch_size = 50,
         .spike_buffer_size = 1000,
-        .sampling_rate = 0.25f,              // 25% sampling
+        .sampling_rate = 0.25F,              // 25% sampling
     },
 };
 
@@ -446,7 +446,7 @@ uint32_t platform_tier_recommend_neuron_count(platform_tier_t tier,
     // HOW:  10KB per neuron for CPU mode, 80% safety margin
 
     const uint32_t KB_PER_NEURON = 10;
-    const float SAFETY_MARGIN = 0.8f;
+    const float SAFETY_MARGIN = 0.8F;
 
     uint64_t available_kb = resources->available_ram_mb * 1024;
     uint64_t safe_kb = (uint64_t)(available_kb * SAFETY_MARGIN);

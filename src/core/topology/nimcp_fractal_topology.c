@@ -103,22 +103,22 @@ const char* topology_get_last_error(void) {
  */
 scale_free_config_t topology_default_scale_free_config(void) {
     return (scale_free_config_t){
-        .power_law_gamma = -2.1f,      // Typical cortical value
-        .hub_ratio = 0.15f,            // 15% hubs matches cortical data
+        .power_law_gamma = -2.1F,      // Typical cortical value
+        .hub_ratio = 0.15F,            // 15% hubs matches cortical data
         .min_degree = 3,               // Minimum for connectivity
         .max_degree = 100,             // Reasonable default (can be auto-computed)
-        .spatial_constraint = 0.5f,    // Moderate distance dependence
+        .spatial_constraint = 0.5F,    // Moderate distance dependence
         .bidirectional = false         // Directed by default
     };
 }
 
 fractal_config_t topology_default_fractal_config(void) {
     return (fractal_config_t){
-        .fractal_dimension = 2.5f,     // Cortical measured value
+        .fractal_dimension = 2.5F,     // Cortical measured value
         .hierarchy_levels = 4,         // Matches cortical hierarchy
-        .branching_factor = 3.0f,      // Average 3 branches per level
-        .scale_factor = 0.7f,          // 70% size reduction per level
-        .clustering_coeff = 0.4f       // Target local clustering
+        .branching_factor = 3.0F,      // Average 3 branches per level
+        .scale_factor = 0.7F,          // 70% size reduction per level
+        .clustering_coeff = 0.4F       // Target local clustering
     };
 }
 
@@ -151,13 +151,13 @@ bool topology_validate_config(const topology_config_t* config) {
         const scale_free_config_t* sf = &config->params.scale_free;
 
         // Guard: Invalid power law exponent
-        if (sf->power_law_gamma >= 0.0f || sf->power_law_gamma < -5.0f) {
+        if (sf->power_law_gamma >= 0.0F || sf->power_law_gamma < -5.0F) {
             set_error("Power law gamma must be between -5.0 and 0.0");
             return false;
         }
 
         // Guard: Invalid hub ratio
-        if (sf->hub_ratio < 0.0f || sf->hub_ratio > 0.5f) {
+        if (sf->hub_ratio < 0.0F || sf->hub_ratio > 0.5F) {
             set_error("Hub ratio must be between 0.0 and 0.5");
             return false;
         }
@@ -169,7 +169,7 @@ bool topology_validate_config(const topology_config_t* config) {
         }
 
         // Guard: Invalid spatial constraint
-        if (sf->spatial_constraint < 0.0f || sf->spatial_constraint > 1.0f) {
+        if (sf->spatial_constraint < 0.0F || sf->spatial_constraint > 1.0F) {
             set_error("Spatial constraint must be between 0.0 and 1.0");
             return false;
         }
@@ -177,7 +177,7 @@ bool topology_validate_config(const topology_config_t* config) {
         const fractal_config_t* frac = &config->params.fractal;
 
         // Guard: Invalid fractal dimension
-        if (frac->fractal_dimension < 1.0f || frac->fractal_dimension > 3.0f) {
+        if (frac->fractal_dimension < 1.0F || frac->fractal_dimension > 3.0F) {
             set_error("Fractal dimension must be between 1.0 and 3.0");
             return false;
         }
@@ -189,13 +189,13 @@ bool topology_validate_config(const topology_config_t* config) {
         }
 
         // Guard: Invalid branching factor
-        if (frac->branching_factor < 1.5f || frac->branching_factor > 10.0f) {
+        if (frac->branching_factor < 1.5F || frac->branching_factor > 10.0F) {
             set_error("Branching factor must be between 1.5 and 10.0");
             return false;
         }
 
         // Guard: Invalid scale factor
-        if (frac->scale_factor <= 0.0f || frac->scale_factor >= 1.0f) {
+        if (frac->scale_factor <= 0.0F || frac->scale_factor >= 1.0F) {
             set_error("Scale factor must be between 0.0 and 1.0");
             return false;
         }
@@ -219,13 +219,13 @@ bool topology_validate_config(const topology_config_t* config) {
  */
 static uint32_t sample_power_law(float gamma, uint32_t k_min, uint32_t k_max) {
     // Guard: Invalid parameters
-    if (gamma >= 0.0f || k_min < 1 || k_max < k_min) {
+    if (gamma >= 0.0F || k_min < 1 || k_max < k_min) {
         return k_min;
     }
 
     float u = (float)rand() / (float)RAND_MAX;
-    float exponent = -1.0f / (gamma + 1.0f);
-    float k_float = (float)k_min * powf(1.0f - u, exponent);
+    float exponent = -1.0F / (gamma + 1.0F);
+    float k_float = (float)k_min * powf(1.0F - u, exponent);
 
     uint32_t k = (uint32_t)k_float;
 
@@ -412,7 +412,7 @@ bool topology_generate_scale_free(
             // WHY: Scale-free networks are typically undirected
             // HOW: Call neural_network_add_connection for both directions
             // FIX (Phase 5): Was TODO, now implemented
-            float initial_weight = 0.5f;  // Start with moderate weight
+            float initial_weight = 0.5F;  // Start with moderate weight
             neural_network_add_connection(network, i, j, initial_weight);
             neural_network_add_connection(network, j, i, initial_weight);
 
@@ -441,7 +441,7 @@ bool topology_generate_scale_free(
             // WHY: Scale-free networks typically have undirected edges
             // HOW: Call neural_network_add_connection for both directions
             // FIX (Phase 5): Was TODO, now implemented
-            float weight = 0.5f;  // Moderate initial weight
+            float weight = 0.5F;  // Moderate initial weight
             neural_network_add_connection(network, n, target, weight);
             neural_network_add_connection(network, target, n, weight);
 
@@ -536,7 +536,7 @@ bool topology_generate_fractal(
 
     // Distribute neurons across levels (more at bottom)
     uint32_t remaining = num_neurons;
-    float total_weight = 0.0f;
+    float total_weight = 0.0F;
     for (uint32_t l = 0; l < levels; l++) {
         total_weight += powf(config->branching_factor, (float)l);
     }
@@ -581,7 +581,7 @@ bool topology_generate_fractal(
                     // Connection probability based on clustering coefficient
                     float prob = ((float)rand() / (float)RAND_MAX);
                     if (prob < config->clustering_coeff) {
-                        float weight = 0.5f;
+                        float weight = 0.5F;
                         neural_network_add_connection(network, i, j, weight);
                         neural_network_add_connection(network, j, i, weight);
                         total_synapses++;
@@ -613,7 +613,7 @@ bool topology_generate_fractal(
             uint32_t dst = next_level_start + (rand() % neurons_per_level[level + 1]);
 
             if (src < num_neurons && dst < num_neurons) {
-                float weight = 0.5f;
+                float weight = 0.5F;
                 neural_network_add_connection(network, src, dst, weight);
                 neural_network_add_connection(network, dst, src, weight);
                 total_synapses++;
@@ -701,7 +701,7 @@ bool topology_generate(
 static float compute_local_clustering(neural_network_t network, uint32_t neuron_id) {
     neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
     if (!neuron || neuron->num_synapses < 2) {
-        return 0.0f;  // Need at least 2 neighbors for triangles
+        return 0.0F;  // Need at least 2 neighbors for triangles
     }
 
     uint32_t degree = neuron->num_synapses;
@@ -728,7 +728,7 @@ static float compute_local_clustering(neural_network_t network, uint32_t neuron_
 
     // Clustering coefficient = 2T / k(k-1)
     uint32_t possible_triangles = degree * (degree - 1) / 2;
-    return possible_triangles > 0 ? (float)triangles / (float)possible_triangles : 0.0f;
+    return possible_triangles > 0 ? (float)triangles / (float)possible_triangles : 0.0F;
 }
 
 /**
@@ -741,9 +741,9 @@ static float compute_local_clustering(neural_network_t network, uint32_t neuron_
  */
 static float compute_clustering_coefficient(neural_network_t network) {
     uint32_t num_neurons = neural_network_get_num_neurons(network);
-    if (num_neurons == 0) return 0.0f;
+    if (num_neurons == 0) return 0.0F;
 
-    float sum_clustering = 0.0f;
+    float sum_clustering = 0.0F;
     uint32_t valid_neurons = 0;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -755,7 +755,7 @@ static float compute_clustering_coefficient(neural_network_t network) {
         }
     }
 
-    return valid_neurons > 0 ? sum_clustering / (float)valid_neurons : 0.0f;
+    return valid_neurons > 0 ? sum_clustering / (float)valid_neurons : 0.0F;
 }
 
 /**
@@ -817,10 +817,10 @@ static uint32_t bfs_shortest_paths(neural_network_t network, uint32_t source, ui
  */
 static float compute_characteristic_path(neural_network_t network) {
     uint32_t num_neurons = neural_network_get_num_neurons(network);
-    if (num_neurons == 0) return 0.0f;
+    if (num_neurons == 0) return 0.0F;
 
     uint32_t* distances = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
-    if (!distances) return 0.0f;
+    if (!distances) return 0.0F;
 
     uint64_t total_distance = 0;
     uint32_t total_pairs = 0;
@@ -840,7 +840,7 @@ static float compute_characteristic_path(neural_network_t network) {
 
     nimcp_free(distances);
 
-    return total_pairs > 0 ? (float)total_distance / (float)total_pairs : 0.0f;
+    return total_pairs > 0 ? (float)total_distance / (float)total_pairs : 0.0F;
 }
 
 /**
@@ -852,11 +852,11 @@ static float compute_characteristic_path(neural_network_t network) {
  */
 static float compute_power_law_fit(neural_network_t network) {
     uint32_t num_neurons = neural_network_get_num_neurons(network);
-    if (num_neurons == 0) return 0.0f;
+    if (num_neurons == 0) return 0.0F;
 
     // Collect degree distribution
     uint32_t* degrees = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
-    if (!degrees) return 0.0f;
+    if (!degrees) return 0.0F;
 
     uint32_t max_degree = 0;
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -867,14 +867,14 @@ static float compute_power_law_fit(neural_network_t network) {
 
     if (max_degree == 0) {
         nimcp_free(degrees);
-        return 0.0f;
+        return 0.0F;
     }
 
     // Compute degree histogram
     uint32_t* hist = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
     if (!hist) {
         nimcp_free(degrees);
-        return 0.0f;
+        return 0.0F;
     }
 
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -883,10 +883,10 @@ static float compute_power_law_fit(neural_network_t network) {
 
     // Linear regression on log-log plot
     // log(P(k)) = γ * log(k) + c
-    float sum_log_k = 0.0f;
-    float sum_log_p = 0.0f;
-    float sum_log_k_sq = 0.0f;
-    float sum_log_k_log_p = 0.0f;
+    float sum_log_k = 0.0F;
+    float sum_log_p = 0.0F;
+    float sum_log_k_sq = 0.0F;
+    float sum_log_k_log_p = 0.0F;
     uint32_t n_points = 0;
 
     for (uint32_t k = 1; k <= max_degree; k++) {
@@ -905,14 +905,14 @@ static float compute_power_law_fit(neural_network_t network) {
     nimcp_free(hist);
     nimcp_free(degrees);
 
-    if (n_points < 2) return 0.0f;
+    if (n_points < 2) return 0.0F;
 
     // Compute R² (coefficient of determination)
     float mean_log_k = sum_log_k / (float)n_points;
     float mean_log_p = sum_log_p / (float)n_points;
 
-    float ss_tot = 0.0f;
-    float ss_res = 0.0f;
+    float ss_tot = 0.0F;
+    float ss_res = 0.0F;
 
     // Slope of best-fit line
     float gamma = (sum_log_k_log_p - (float)n_points * mean_log_k * mean_log_p) /
@@ -922,7 +922,7 @@ static float compute_power_law_fit(neural_network_t network) {
 
     // Recompute for R² calculation (need to iterate again)
     uint32_t* hist2 = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
-    if (!hist2) return 0.0f;
+    if (!hist2) return 0.0F;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
@@ -943,8 +943,8 @@ static float compute_power_law_fit(neural_network_t network) {
 
     nimcp_free(hist2);
 
-    float r_squared = ss_tot > 0.0f ? 1.0f - (ss_res / ss_tot) : 0.0f;
-    return fmaxf(0.0f, fminf(1.0f, r_squared));  // Clamp to [0, 1]
+    float r_squared = ss_tot > 0.0F ? 1.0F - (ss_res / ss_tot) : 0.0F;
+    return fmaxf(0.0F, fminf(1.0F, r_squared));  // Clamp to [0, 1]
 }
 
 /**
@@ -958,7 +958,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
         *num_hubs = 0;
-        *hub_connectivity = 0.0f;
+        *hub_connectivity = 0.0F;
         return;
     }
 
@@ -966,12 +966,12 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
     uint32_t* degrees = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (!degrees) {
         *num_hubs = 0;
-        *hub_connectivity = 0.0f;
+        *hub_connectivity = 0.0F;
         return;
     }
 
-    float sum_degree = 0.0f;
-    float sum_degree_sq = 0.0f;
+    float sum_degree = 0.0F;
+    float sum_degree_sq = 0.0F;
     uint32_t total_synapses = 0;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -984,10 +984,10 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
 
     float avg_degree = sum_degree / (float)num_neurons;
     float variance = (sum_degree_sq / (float)num_neurons) - (avg_degree * avg_degree);
-    float std_degree = sqrtf(fmaxf(0.0f, variance));
+    float std_degree = sqrtf(fmaxf(0.0F, variance));
 
     // Hub threshold: mean + 2*std, or 90th percentile, whichever is lower
-    float hub_threshold = avg_degree + 2.0f * std_degree;
+    float hub_threshold = avg_degree + 2.0F * std_degree;
 
     // Also compute 90th percentile as fallback
     // Sort degrees to find 90th percentile
@@ -1006,7 +1006,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
             }
         }
 
-        uint32_t percentile_90_idx = (uint32_t)(0.9f * (float)num_neurons);
+        uint32_t percentile_90_idx = (uint32_t)(0.9F * (float)num_neurons);
         float percentile_90 = (float)sorted_degrees[percentile_90_idx];
         nimcp_free(sorted_degrees);
 
@@ -1020,7 +1020,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
     bool* is_hub = (bool*)nimcp_calloc(num_neurons, sizeof(bool));
     if (!is_hub) {
         *num_hubs = 0;
-        *hub_connectivity = 0.0f;
+        *hub_connectivity = 0.0F;
         nimcp_free(degrees);
         return;
     }
@@ -1037,7 +1037,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
     // Use simplified betweenness: count paths that include a hub
     uint32_t* distances = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (!distances) {
-        *hub_connectivity = 0.0f;
+        *hub_connectivity = 0.0F;
         nimcp_free(degrees);
         nimcp_free(is_hub);
         return;
@@ -1067,7 +1067,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
         }
     }
 
-    *hub_connectivity = total_paths > 0 ? (float)paths_through_hubs / (float)total_paths : 0.0f;
+    *hub_connectivity = total_paths > 0 ? (float)paths_through_hubs / (float)total_paths : 0.0F;
 
     nimcp_free(distances);
     nimcp_free(degrees);
@@ -1085,10 +1085,10 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
  * Uses approximation: Crand ≈ p (connection probability), Lrand ≈ ln(N)/ln(K)
  */
 static float compute_small_world_sigma(neural_network_t network, float clustering, float path_length) {
-    if (path_length == 0.0f) return 0.0f;
+    if (path_length == 0.0F) return 0.0F;
 
     uint32_t num_neurons = neural_network_get_num_neurons(network);
-    if (num_neurons == 0) return 0.0f;
+    if (num_neurons == 0) return 0.0F;
 
     // Estimate connection probability
     uint32_t total_synapses = 0;
@@ -1098,28 +1098,28 @@ static float compute_small_world_sigma(neural_network_t network, float clusterin
     }
 
     uint32_t max_possible_synapses = num_neurons * (num_neurons - 1);
-    float p = max_possible_synapses > 0 ? (float)total_synapses / (float)max_possible_synapses : 0.0f;
+    float p = max_possible_synapses > 0 ? (float)total_synapses / (float)max_possible_synapses : 0.0F;
 
     // For very sparse or very low clustering graphs, assume random-like behavior
-    if (p < 0.001f || clustering < 0.01f) {
+    if (p < 0.001F || clustering < 0.01F) {
         // Very sparse or low clustering - assume random-like behavior
-        return 1.0f;
+        return 1.0F;
     }
 
     // Estimates for random network with same density
     float C_rand = p;  // Expected clustering for random network
     float avg_degree = (float)total_synapses / (float)num_neurons;
-    float L_rand = avg_degree > 1.0f ? logf((float)num_neurons) / logf(avg_degree) : path_length;
+    float L_rand = avg_degree > 1.0F ? logf((float)num_neurons) / logf(avg_degree) : path_length;
 
-    if (L_rand == 0.0f || C_rand == 0.0f) return 1.0f;  // Default to random baseline
+    if (L_rand == 0.0F || C_rand == 0.0F) return 1.0F;  // Default to random baseline
 
     // Small-world coefficient
     float sigma = (clustering / C_rand) / (path_length / L_rand);
 
     // Sanity check: for very low clustering random graphs, sigma should be near 1.0
-    if (clustering < C_rand * 2.0f) {
+    if (clustering < C_rand * 2.0F) {
         // Similar to random network
-        return 1.0f;
+        return 1.0F;
     }
 
     return sigma;
@@ -1145,8 +1145,8 @@ bool topology_compute_stats(
 
     // Count synapses and compute degree statistics
     uint32_t total_synapses = 0;
-    float sum_degree = 0.0f;
-    float sum_degree_sq = 0.0f;
+    float sum_degree = 0.0F;
+    float sum_degree_sq = 0.0F;
 
     for (uint32_t i = 0; i < stats->num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
@@ -1159,13 +1159,13 @@ bool topology_compute_stats(
     }
 
     stats->num_synapses = total_synapses;
-    stats->avg_degree = stats->num_neurons > 0 ? sum_degree / (float)stats->num_neurons : 0.0f;
+    stats->avg_degree = stats->num_neurons > 0 ? sum_degree / (float)stats->num_neurons : 0.0F;
 
     // Compute degree standard deviation
     if (stats->num_neurons > 0) {
         float variance = (sum_degree_sq / (float)stats->num_neurons) -
                         (stats->avg_degree * stats->avg_degree);
-        stats->degree_std = sqrtf(fmaxf(0.0f, variance));
+        stats->degree_std = sqrtf(fmaxf(0.0F, variance));
     }
 
     // Compute clustering coefficient
@@ -1215,7 +1215,7 @@ bool topology_is_small_world(
 
     // Small-world criterion: sigma > 1
     // (High clustering relative to random, low path length relative to random)
-    return stats.small_world_sigma > 1.0f;
+    return stats.small_world_sigma > 1.0F;
 }
 
 bool topology_fit_power_law(
@@ -1271,7 +1271,7 @@ bool topology_fit_power_law(
 
     if (max_degree == 0) {
         nimcp_free(degrees);
-        if (gamma) *gamma = 0.0f;
+        if (gamma) *gamma = 0.0F;
         return true;  // Empty network, gamma is undefined
     }
 
@@ -1309,7 +1309,7 @@ bool topology_fit_power_law(
     nimcp_free(histogram);
 
     if (n_points < 2) {
-        if (gamma) *gamma = 0.0f;
+        if (gamma) *gamma = 0.0F;
         return true;
     }
 
@@ -1341,7 +1341,7 @@ bool topology_identify_hubs(
     }
 
     // Guard: Invalid percentile
-    if (percentile < 0.0f || percentile > 1.0f) {
+    if (percentile < 0.0F || percentile > 1.0F) {
         set_error("Percentile must be between 0.0 and 1.0");
         return false;
     }
@@ -1364,7 +1364,7 @@ bool topology_identify_hubs(
 
     // Add vertices (neurons) to graph
     for (uint32_t i = 0; i < n_neurons; i++) {
-        nimcp_graph_add_vertex(graph, i, 0.0f, 0.0f, 0.0f, 0);
+        nimcp_graph_add_vertex(graph, i, 0.0F, 0.0F, 0.0F, 0);
     }
 
     // Add edges (synapses) to graph
@@ -1461,7 +1461,7 @@ bool topology_compute_betweenness(
 
     // Add vertices (neurons) to graph
     for (uint32_t i = 0; i < n_neurons; i++) {
-        nimcp_graph_add_vertex(graph, i, 0.0f, 0.0f, 0.0f, 0);
+        nimcp_graph_add_vertex(graph, i, 0.0F, 0.0F, 0.0F, 0);
     }
 
     // Add edges (synapses) to graph

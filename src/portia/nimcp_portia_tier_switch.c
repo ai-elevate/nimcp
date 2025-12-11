@@ -128,12 +128,12 @@ static bool validate_config(const tier_switch_config_t* config) {
     }
 
     // Validate threshold ranges
-    if (config->memory_high_threshold < 0.0f || config->memory_high_threshold > 100.0f) {
+    if (config->memory_high_threshold < 0.0F || config->memory_high_threshold > 100.0F) {
         LOG_ERROR("[%s] Invalid memory_high_threshold: %.2f", PORTIA_MODULE_NAME, config->memory_high_threshold);
         return false;
     }
 
-    if (config->memory_low_threshold < 0.0f || config->memory_low_threshold > 100.0f) {
+    if (config->memory_low_threshold < 0.0F || config->memory_low_threshold > 100.0F) {
         LOG_ERROR("[%s] Invalid memory_low_threshold: %.2f", PORTIA_MODULE_NAME, config->memory_low_threshold);
         return false;
     }
@@ -180,18 +180,18 @@ static bool query_system_metrics(portia_tier_switch_t switcher) {
     if (resources.total_ram_mb > 0) {
         uint64_t used_ram = resources.total_ram_mb - resources.available_ram_mb;
         switcher->state.current_memory_usage_pct =
-            (float)used_ram / (float)resources.total_ram_mb * 100.0f;
+            (float)used_ram / (float)resources.total_ram_mb * 100.0F;
     }
 
     // Note: CPU temperature and battery require platform-specific APIs
     // For now, we'll use placeholder values (0.0 = not available)
-    switcher->state.current_cpu_temp_c = 0.0f;  // TODO: Implement thermal monitoring
-    switcher->state.current_battery_pct = 100.0f;  // TODO: Implement battery monitoring
+    switcher->state.current_cpu_temp_c = 0.0F;  // TODO: Implement thermal monitoring
+    switcher->state.current_battery_pct = 100.0F;  // TODO: Implement battery monitoring
 
     // CPU load (simple approximation based on thread count vs cores)
     if (resources.num_cpu_cores > 0) {
         // This is a placeholder - real implementation would query /proc/stat or similar
-        switcher->state.current_cpu_load_pct = 0.0f;  // TODO: Implement CPU load monitoring
+        switcher->state.current_cpu_load_pct = 0.0F;  // TODO: Implement CPU load monitoring
     }
 
     nimcp_platform_mutex_unlock(&switcher->state_mutex);
@@ -358,21 +358,21 @@ tier_switch_config_t portia_tier_switch_default_config(void) {
     memset(&config, 0, sizeof(tier_switch_config_t));
 
     // Memory thresholds
-    config.memory_high_threshold = 85.0f;
-    config.memory_low_threshold = 60.0f;
-    config.memory_critical_threshold = 95.0f;
+    config.memory_high_threshold = 85.0F;
+    config.memory_low_threshold = 60.0F;
+    config.memory_critical_threshold = 95.0F;
 
     // Thermal thresholds
-    config.thermal_threshold_c = 80.0f;
-    config.thermal_safe_c = 65.0f;
+    config.thermal_threshold_c = 80.0F;
+    config.thermal_safe_c = 65.0F;
 
     // Battery thresholds
-    config.battery_threshold_pct = 20.0f;
-    config.battery_safe_pct = 50.0f;
+    config.battery_threshold_pct = 20.0F;
+    config.battery_safe_pct = 50.0F;
 
     // Load thresholds
-    config.load_threshold = 90.0f;
-    config.load_safe = 50.0f;
+    config.load_threshold = 90.0F;
+    config.load_safe = 50.0F;
 
     // Timing
     config.hysteresis_ms = 30000;  // 30 seconds
@@ -593,7 +593,7 @@ bool portia_tier_switch_evaluate(
                      switcher->config.memory_high_threshold);
         }
         // Thermal throttling
-        else if (switcher->state.current_cpu_temp_c > 0.0f &&
+        else if (switcher->state.current_cpu_temp_c > 0.0F &&
                  switcher->state.current_cpu_temp_c > switcher->config.thermal_threshold_c) {
             *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_THERMAL_THROTTLE);
             *trigger = TIER_SWITCH_TRIGGER_THERMAL_THROTTLE;
@@ -604,7 +604,7 @@ bool portia_tier_switch_evaluate(
                      switcher->config.thermal_threshold_c);
         }
         // Battery low
-        else if (switcher->state.current_battery_pct < 100.0f &&
+        else if (switcher->state.current_battery_pct < 100.0F &&
                  switcher->state.current_battery_pct < switcher->config.battery_threshold_pct) {
             *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_BATTERY_LOW);
             *trigger = TIER_SWITCH_TRIGGER_BATTERY_LOW;
@@ -615,7 +615,7 @@ bool portia_tier_switch_evaluate(
                      switcher->config.battery_threshold_pct);
         }
         // Load spike
-        else if (switcher->state.current_cpu_load_pct > 0.0f &&
+        else if (switcher->state.current_cpu_load_pct > 0.0F &&
                  switcher->state.current_cpu_load_pct > switcher->config.load_threshold) {
             *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_LOAD_SPIKE);
             *trigger = TIER_SWITCH_TRIGGER_LOAD_SPIKE;
@@ -630,11 +630,11 @@ bool portia_tier_switch_evaluate(
     // Check upgrade conditions (lower priority, only if no downgrade needed)
     if (!should_switch && switcher->config.allow_upgrade && current < PLATFORM_TIER_FULL) {
         bool memory_ok = switcher->state.current_memory_usage_pct < switcher->config.memory_low_threshold;
-        bool thermal_ok = switcher->state.current_cpu_temp_c == 0.0f ||
+        bool thermal_ok = switcher->state.current_cpu_temp_c == 0.0F ||
                           switcher->state.current_cpu_temp_c < switcher->config.thermal_safe_c;
-        bool battery_ok = switcher->state.current_battery_pct == 100.0f ||
+        bool battery_ok = switcher->state.current_battery_pct == 100.0F ||
                           switcher->state.current_battery_pct > switcher->config.battery_safe_pct;
-        bool load_ok = switcher->state.current_cpu_load_pct == 0.0f ||
+        bool load_ok = switcher->state.current_cpu_load_pct == 0.0F ||
                        switcher->state.current_cpu_load_pct < switcher->config.load_safe;
 
         if (memory_ok && thermal_ok && battery_ok && load_ok) {
@@ -861,11 +861,11 @@ bool portia_tier_switch_can_upgrade(
 
     // Check resources
     bool memory_ok = switcher->state.current_memory_usage_pct < switcher->config.memory_low_threshold;
-    bool thermal_ok = switcher->state.current_cpu_temp_c == 0.0f ||
+    bool thermal_ok = switcher->state.current_cpu_temp_c == 0.0F ||
                       switcher->state.current_cpu_temp_c < switcher->config.thermal_safe_c;
-    bool battery_ok = switcher->state.current_battery_pct == 100.0f ||
+    bool battery_ok = switcher->state.current_battery_pct == 100.0F ||
                       switcher->state.current_battery_pct > switcher->config.battery_safe_pct;
-    bool load_ok = switcher->state.current_cpu_load_pct == 0.0f ||
+    bool load_ok = switcher->state.current_cpu_load_pct == 0.0F ||
                    switcher->state.current_cpu_load_pct < switcher->config.load_safe;
 
     bool can_upgrade = memory_ok && thermal_ok && battery_ok && load_ok;
@@ -928,19 +928,19 @@ bool portia_tier_switch_can_downgrade(
         *trigger = TIER_SWITCH_TRIGGER_MEMORY_PRESSURE;
         should_downgrade = true;
     }
-    else if (switcher->state.current_cpu_temp_c > 0.0f &&
+    else if (switcher->state.current_cpu_temp_c > 0.0F &&
              switcher->state.current_cpu_temp_c > switcher->config.thermal_threshold_c) {
         *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_THERMAL_THROTTLE);
         *trigger = TIER_SWITCH_TRIGGER_THERMAL_THROTTLE;
         should_downgrade = true;
     }
-    else if (switcher->state.current_battery_pct < 100.0f &&
+    else if (switcher->state.current_battery_pct < 100.0F &&
              switcher->state.current_battery_pct < switcher->config.battery_threshold_pct) {
         *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_BATTERY_LOW);
         *trigger = TIER_SWITCH_TRIGGER_BATTERY_LOW;
         should_downgrade = true;
     }
-    else if (switcher->state.current_cpu_load_pct > 0.0f &&
+    else if (switcher->state.current_cpu_load_pct > 0.0F &&
              switcher->state.current_cpu_load_pct > switcher->config.load_threshold) {
         *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_LOAD_SPIKE);
         *trigger = TIER_SWITCH_TRIGGER_LOAD_SPIKE;

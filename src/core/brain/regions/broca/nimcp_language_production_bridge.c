@@ -175,7 +175,7 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
      */
 
     uint32_t count = 0;
-    float activation_sum = 0.0f;
+    float activation_sum = 0.0F;
 
     /* Compute semantic magnitude for activation */
     for (uint32_t i = 0; i < dim && i < 256; i++) {
@@ -184,17 +184,17 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
     float magnitude = sqrtf(activation_sum);
 
     /* Scale activations */
-    float base_activation = magnitude > 0.0f ? magnitude / sqrtf((float)dim) : 0.5f;
+    float base_activation = magnitude > 0.0F ? magnitude / sqrtf((float)dim) : 0.5F;
 
     /* Apply priming boost if available */
-    float prime_boost = 1.0f;
+    float prime_boost = 1.0F;
     if (bridge->priming_vector && bridge->priming_dim > 0) {
-        float dot = 0.0f;
+        float dot = 0.0F;
         uint32_t min_dim = (dim < bridge->priming_dim) ? dim : bridge->priming_dim;
         for (uint32_t i = 0; i < min_dim; i++) {
             dot += semantic_vector[i] * bridge->priming_vector[i];
         }
-        prime_boost = 1.0f + (bridge->priming_strength * fmaxf(0.0f, dot));
+        prime_boost = 1.0F + (bridge->priming_strength * fmaxf(0.0F, dot));
     }
 
     /* Generate tokens based on semantic features */
@@ -206,53 +206,53 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
      */
 
     /* Check for subject entity (high activation in entity features) */
-    float entity_activation = 0.0f;
+    float entity_activation = 0.0F;
     for (uint32_t i = 0; i < 32 && i < dim; i++) {
         entity_activation += fabsf(semantic_vector[i]);
     }
-    entity_activation /= 32.0f;
+    entity_activation /= 32.0F;
 
-    if (entity_activation > 0.1f && count < max_tokens) {
+    if (entity_activation > 0.1F && count < max_tokens) {
         tokens[count].token_id = lpb_hash_string("entity") % 10000;
         strncpy(tokens[count].token_str, "it", sizeof(tokens[count].token_str) - 1);
         tokens[count].token_str[sizeof(tokens[count].token_str) - 1] = '\0';
         tokens[count].pos = 0; /* Noun/pronoun */
         tokens[count].activation = entity_activation * base_activation * prime_boost;
-        tokens[count].frequency = 0.9f; /* High frequency pronoun */
+        tokens[count].frequency = 0.9F; /* High frequency pronoun */
         count++;
     }
 
     /* Check for action (high activation in action features) */
-    float action_activation = 0.0f;
+    float action_activation = 0.0F;
     for (uint32_t i = 32; i < 64 && i < dim; i++) {
         action_activation += fabsf(semantic_vector[i]);
     }
-    action_activation /= 32.0f;
+    action_activation /= 32.0F;
 
-    if (action_activation > 0.1f && count < max_tokens) {
+    if (action_activation > 0.1F && count < max_tokens) {
         tokens[count].token_id = lpb_hash_string("action") % 10000;
         strncpy(tokens[count].token_str, "does", sizeof(tokens[count].token_str) - 1);
         tokens[count].token_str[sizeof(tokens[count].token_str) - 1] = '\0';
         tokens[count].pos = 1; /* Verb */
         tokens[count].activation = action_activation * base_activation * prime_boost;
-        tokens[count].frequency = 0.85f;
+        tokens[count].frequency = 0.85F;
         count++;
     }
 
     /* Check for property (adjective/adverb features) */
-    float property_activation = 0.0f;
+    float property_activation = 0.0F;
     for (uint32_t i = 64; i < 96 && i < dim; i++) {
         property_activation += fabsf(semantic_vector[i]);
     }
-    property_activation /= 32.0f;
+    property_activation /= 32.0F;
 
-    if (property_activation > 0.15f && count < max_tokens) {
+    if (property_activation > 0.15F && count < max_tokens) {
         tokens[count].token_id = lpb_hash_string("property") % 10000;
         strncpy(tokens[count].token_str, "good", sizeof(tokens[count].token_str) - 1);
         tokens[count].token_str[sizeof(tokens[count].token_str) - 1] = '\0';
         tokens[count].pos = 2; /* Adjective */
         tokens[count].activation = property_activation * base_activation * prime_boost;
-        tokens[count].frequency = 0.8f;
+        tokens[count].frequency = 0.8F;
         count++;
     }
 
@@ -284,10 +284,10 @@ lpb_config_t lpb_default_config(void) {
             .gesture_pe_type = NIMCP_POS_ROTARY,
             .motor_seq_max_length = 256,
             .motor_seq_embedding_dim = 128,
-            .motor_seq_pe_base = 10000.0f,
+            .motor_seq_pe_base = 10000.0F,
             .gesture_max_length = 512,
             .gesture_embedding_dim = 256,
-            .gesture_rope_base = 10000.0f,
+            .gesture_rope_base = 10000.0F,
             .enable_motor_pe_cache = true,
             .enable_gesture_pe_cache = true
         }
@@ -407,7 +407,7 @@ bool lpb_reset(language_production_bridge_t* bridge) {
         bridge->priming_vector = NULL;
     }
     bridge->priming_dim = 0;
-    bridge->priming_strength = 0.0f;
+    bridge->priming_strength = 0.0F;
 
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(lpb_stats_t));
@@ -547,9 +547,9 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
     lpb_emit_event(bridge, LPB_STATUS_ARTICULATION, NULL);
 
     /* Query second messenger state for neuromodulation effects */
-    float pka_activity = 0.0f;
-    float production_delay_modulation = 1.0f;
-    float fluency_modulation = 0.0f;
+    float pka_activity = 0.0F;
+    float production_delay_modulation = 1.0F;
+    float fluency_modulation = 0.0F;
 
     if (bridge->second_messengers && bridge->config.enable_second_messengers) {
         second_messenger_state_t sm_state;
@@ -560,11 +560,11 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
             /* PKA activity modulates production speed (dopamine effect) */
             /* Higher PKA (high dopamine) = faster production (reduced delay) */
             /* Lower PKA (low dopamine) = slower production (increased delay) */
-            production_delay_modulation = 1.0f - (0.3f * pka_activity);
+            production_delay_modulation = 1.0F - (0.3F * pka_activity);
 
             /* PKA activity modulates fluency */
             /* Higher PKA = more fluent speech */
-            fluency_modulation = 0.2f * pka_activity;
+            fluency_modulation = 0.2F * pka_activity;
 
             LOG_MODULE_DEBUG(LOG_MODULE, "Second messenger modulation: PKA=%.3f, delay_mod=%.3f, fluency_mod=%.3f",
                            (double)pka_activity, (double)production_delay_modulation, (double)fluency_modulation);
@@ -618,12 +618,12 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
         result->estimated_duration_ms = modulated_duration;
 
         /* Compute fluency score from syntax/agreement validation + PKA modulation */
-        float base_fluency = (broca_result.syntax_valid ? 0.5f : 0.0f) +
-                             (broca_result.agreement_valid ? 0.5f : 0.0f);
-        result->fluency_score = fminf(1.0f, base_fluency + fluency_modulation);
+        float base_fluency = (broca_result.syntax_valid ? 0.5F : 0.0F) +
+                             (broca_result.agreement_valid ? 0.5F : 0.0F);
+        result->fluency_score = fminf(1.0F, base_fluency + fluency_modulation);
 
         if (!result->self_monitoring_passed) {
-            result->semantic_match = 0.5f; /* Default if monitoring disabled */
+            result->semantic_match = 0.5F; /* Default if monitoring disabled */
         }
     }
 
@@ -711,9 +711,9 @@ bool lpb_produce_from_tokens(language_production_bridge_t* bridge,
         result->motor_command_count = broca_result.command_count;
         result->estimated_duration_ms = broca_result.total_duration_ms;
         /* Compute fluency score from syntax/agreement validation */
-        result->fluency_score = (broca_result.syntax_valid ? 0.5f : 0.0f) +
-                                (broca_result.agreement_valid ? 0.5f : 0.0f);
-        result->semantic_match = 1.0f; /* Direct tokens = exact match */
+        result->fluency_score = (broca_result.syntax_valid ? 0.5F : 0.0F) +
+                                (broca_result.agreement_valid ? 0.5F : 0.0F);
+        result->semantic_match = 1.0F; /* Direct tokens = exact match */
         result->self_monitoring_passed = true;
     }
 
@@ -820,13 +820,13 @@ bool lpb_prime_lexical_access(language_production_bridge_t* bridge,
     }
 
     /* Copy and normalize */
-    float norm = 0.0f;
+    float norm = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         norm += context_vector[i] * context_vector[i];
     }
     norm = sqrtf(norm);
 
-    if (norm > 0.0f) {
+    if (norm > 0.0F) {
         for (uint32_t i = 0; i < dim; i++) {
             bridge->priming_vector[i] = context_vector[i] / norm;
         }
@@ -834,7 +834,7 @@ bool lpb_prime_lexical_access(language_production_bridge_t* bridge,
         memcpy(bridge->priming_vector, context_vector, dim * sizeof(float));
     }
 
-    bridge->priming_strength = fmaxf(0.0f, fminf(1.0f, prime_strength));
+    bridge->priming_strength = fmaxf(0.0F, fminf(1.0F, prime_strength));
 
     return true;
 }
@@ -854,7 +854,7 @@ bool lpb_check_production(language_production_bridge_t* bridge, float* match_sco
     if (!bridge) return false;
 
     if (!bridge->config.enable_self_monitoring) {
-        if (match_score) *match_score = 1.0f;
+        if (match_score) *match_score = 1.0F;
         return true;
     }
 
@@ -866,13 +866,13 @@ bool lpb_check_production(language_production_bridge_t* bridge, float* match_sco
      */
 
     if (!bridge->current_intent.semantic_vector || bridge->token_count == 0) {
-        if (match_score) *match_score = 0.0f;
+        if (match_score) *match_score = 0.0F;
         return false;
     }
 
     /* Simplified check: compute expected semantic match from token activations */
-    float total_activation = 0.0f;
-    float max_activation = 0.0f;
+    float total_activation = 0.0F;
+    float max_activation = 0.0F;
     for (uint32_t i = 0; i < bridge->token_count; i++) {
         total_activation += bridge->token_buffer[i].activation;
         if (bridge->token_buffer[i].activation > max_activation) {
@@ -882,10 +882,10 @@ bool lpb_check_production(language_production_bridge_t* bridge, float* match_sco
 
     /* Average activation as proxy for semantic match */
     float avg_activation = (bridge->token_count > 0) ?
-                           total_activation / bridge->token_count : 0.0f;
+                           total_activation / bridge->token_count : 0.0F;
 
     /* Scale to [0,1] range */
-    float score = fminf(1.0f, avg_activation * 2.0f);
+    float score = fminf(1.0F, avg_activation * 2.0F);
 
     if (match_score) {
         *match_score = score;
@@ -1035,7 +1035,7 @@ bool language_production_set_pe_config(
                     .thread_safe = false
                 },
                 .frequency_base = pe_config->motor_seq_pe_base,
-                .frequency_scale = 1.0f
+                .frequency_scale = 1.0F
             }
         };
 
@@ -1070,10 +1070,10 @@ bool language_production_set_pe_config(
                     .thread_safe = false
                 },
                 .rope_base = pe_config->gesture_rope_base,
-                .rope_scaling = 1.0f,
+                .rope_scaling = 1.0F,
                 .rope_dim = 0,  /* Apply to all dimensions */
                 .use_ntk_scaling = false,
-                .ntk_factor = 1.0f
+                .ntk_factor = 1.0F
             }
         };
 
@@ -1290,7 +1290,7 @@ bool lpb_trigger_receptor(language_production_bridge_t* bridge,
         return false;
     }
 
-    if (occupancy < 0.0f || occupancy > 1.0f) {
+    if (occupancy < 0.0F || occupancy > 1.0F) {
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid receptor occupancy: %.3f (must be [0,1])", (double)occupancy);
         return false;
     }
@@ -1349,7 +1349,7 @@ bool lpb_trigger_receptor(language_production_bridge_t* bridge,
     }
 
     /* Update cascade dynamics */
-    second_messenger_update(bridge->second_messengers, 1.0f, timestamp_ms);
+    second_messenger_update(bridge->second_messengers, 1.0F, timestamp_ms);
 
     return true;
 }
@@ -1382,9 +1382,9 @@ bool lpb_get_second_messenger_state(const language_production_bridge_t* bridge,
     }
 
     /* Initialize outputs to zero */
-    *pka_activity = 0.0f;
-    *pkc_activity = 0.0f;
-    *camkii_activity = 0.0f;
+    *pka_activity = 0.0F;
+    *pkc_activity = 0.0F;
+    *camkii_activity = 0.0F;
 
     if (!bridge->second_messengers || !bridge->config.enable_second_messengers) {
         /* Return baseline values if second messengers disabled */

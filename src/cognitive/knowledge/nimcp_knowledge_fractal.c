@@ -92,13 +92,13 @@ uint32_t knowledge_fractal_find_anchor_neuron(const fractal_cognitive_cache_t *c
 float knowledge_fractal_learning_boost(const fractal_cognitive_cache_t *cache,
                                        uint32_t neuron_index) {
     if (!cache || !cache->valid) {
-        return 1.0f;
+        return 1.0F;
     }
 
     float centrality = fractal_get_centrality(cache, neuron_index);
 
     // Hub neurons get up to 2x learning boost
-    return 1.0f + centrality;
+    return 1.0F + centrality;
 }
 
 /**
@@ -154,7 +154,7 @@ float knowledge_fractal_semantic_distance(const fractal_cognitive_cache_t *cache
     }
 
     if (neuron1 == neuron2) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Simplified distance: index difference + level difference
@@ -164,7 +164,7 @@ float knowledge_fractal_semantic_distance(const fractal_cognitive_cache_t *cache
     float level_dist = fabsf(level1 - level2);
 
     // Combine: 70% graph distance + 30% level distance
-    return 0.7f * index_dist + 0.3f * level_dist * cache->stats.num_neurons;
+    return 0.7F * index_dist + 0.3F * level_dist * cache->stats.num_neurons;
 }
 
 //=============================================================================

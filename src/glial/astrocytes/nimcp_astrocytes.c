@@ -137,7 +137,7 @@ static nimcp_error_t handle_metabolic_demand_message(
 
     // Calculate supply based on current ATP level and demand urgency
     // High urgency demands get priority allocation
-    float supply_factor = 1.0f; // This would be calculated based on astrocyte ATP level
+    float supply_factor = 1.0F; // This would be calculated based on astrocyte ATP level
     float glucose_supply = demand->glucose_demand * supply_factor;
     float oxygen_supply = demand->oxygen_demand * supply_factor;
 
@@ -145,7 +145,7 @@ static nimcp_error_t handle_metabolic_demand_message(
     bio_router_publish_signal(g_astrocyte_bio_ctx, "astrocyte.metabolic_supply", supply_factor);
 
     // If urgency is high, also publish via NOREPINEPHRINE (alert channel)
-    if (demand->urgency > 0.7f) {
+    if (demand->urgency > 0.7F) {
         LOG_MODULE_WARN("ASTROCYTE", "High urgency metabolic demand (%.2f) - escalating priority", demand->urgency);
         bio_router_publish_signal(g_astrocyte_bio_ctx, "astrocyte.metabolic_alert", demand->urgency);
     }
@@ -174,7 +174,7 @@ static nimcp_error_t handle_glial_sync_message(
 
     // Publish sync acknowledgment - this helps coordinate timing across glial cells
     nimcp_error_t result = bio_router_publish_signal(g_astrocyte_bio_ctx,
-        "astrocyte.sync_ack", 1.0f);
+        "astrocyte.sync_ack", 1.0F);
 
     // Respond to sync request if response promise is provided
     if (response_promise) {
@@ -322,7 +322,7 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float
         }
     }
 
-    if (coverage_radius < 0.0f) {
+    if (coverage_radius < 0.0F) {
         LOG_MODULE_ERROR("ASTROCYTE", "Invalid coverage radius: %.2f", coverage_radius);
         return NULL;
     }
@@ -342,13 +342,13 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float
     // Calcium dynamics - initialize to resting baseline
     astro->calcium_concentration = ASTROCYTE_BASELINE_CALCIUM_UM;
     astro->calcium_baseline = ASTROCYTE_BASELINE_CALCIUM_UM;
-    astro->ip3_concentration = 0.0f;
+    astro->ip3_concentration = 0.0F;
     astro->last_calcium_spike = 0;
 
     // Neurotransmitter pools - initialize to full
-    astro->glutamate_pool = 1.0f;
-    astro->d_serine_pool = 1.0f;
-    astro->atp_level = 1.0f;
+    astro->glutamate_pool = 1.0F;
+    astro->d_serine_pool = 1.0F;
+    astro->atp_level = 1.0F;
 
     // Spatial location
     astro->position[0] = x;
@@ -367,8 +367,8 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float
     astro->coupling_strengths = NULL;
 
     // Homeostatic regulation
-    astro->target_activity_level = 0.3f; // Default target
-    astro->scaling_factor = 1.0f;
+    astro->target_activity_level = 0.3F; // Default target
+    astro->scaling_factor = 1.0F;
 
     // Thread safety
     nimcp_spinlock_init(&astro->lock);
@@ -411,7 +411,7 @@ void astrocyte_destroy(astrocyte_t* astro)
 
 void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimulus)
 {
-    if (!astro || dt < 0.0f) {
+    if (!astro || dt < 0.0F) {
         return;
     }
 
@@ -429,29 +429,29 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
     nimcp_spinlock_lock(&astro->lock);
 
     // Model parameters - TUNED for faster decay to baseline
-    const float v1 = 6.0f;   // IP3R channel coefficient
-    const float v2 = 0.11f;  // Leak coefficient
-    const float v3 = 8.0f;   // Pump coefficient - DOUBLED from 4.0 for even faster decay
-    const float k1 = 0.3f;   // Ca²⁺ activation constant (µM)
-    const float k2 = 0.1f;   // Ca²⁺ pump half-max (µM)
-    const float k3 = 0.5f;   // IP3 half-max (µM)
+    const float v1 = 6.0F;   // IP3R channel coefficient
+    const float v2 = 0.11F;  // Leak coefficient
+    const float v3 = 8.0F;   // Pump coefficient - DOUBLED from 4.0 for even faster decay
+    const float k1 = 0.3F;   // Ca²⁺ activation constant (µM)
+    const float k2 = 0.1F;   // Ca²⁺ pump half-max (µM)
+    const float k3 = 0.5F;   // IP3 half-max (µM)
 
     // ER calcium store (assumed constant for simplified model)
-    const float ca_er = 10.0f; // µM
+    const float ca_er = 10.0F; // µM
 
     // Additional decay term to ensure return to baseline
-    const float baseline_decay_rate = 5.0f; // Direct exponential decay to baseline - INCREASED
+    const float baseline_decay_rate = 5.0F; // Direct exponential decay to baseline - INCREASED
 
     // Current state
     float ca = astro->calcium_concentration;
     float ip3 = astro->ip3_concentration;
 
     // IP3 dynamics: production from stimulus, degradation
-    const float ip3_degradation_rate = 1.0f; // /s (from biological constants)
-    float ip3_production = external_stimulus * dt * 0.5f; // Stimulus produces IP3
+    const float ip3_degradation_rate = 1.0F; // /s (from biological constants)
+    float ip3_production = external_stimulus * dt * 0.5F; // Stimulus produces IP3
     float ip3_degradation = ip3_degradation_rate * ip3 * dt;
     ip3 += ip3_production - ip3_degradation;
-    ip3 = fmaxf(0.0f, fminf(5.0f, ip3)); // Clamp IP3
+    ip3 = fmaxf(0.0F, fminf(5.0F, ip3)); // Clamp IP3
 
     // J_channel: IP3-receptor mediated Ca²⁺ release from ER
     // J_channel = v1 * (IP3³/(IP3³ + k3³)) * (Ca³/(Ca³ + k1³)) * (Ca_ER - Ca)
@@ -485,17 +485,17 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
     ca += d_ca * dt;
 
     // Add stimulus contribution (direct calcium injection)
-    ca += external_stimulus * dt * 0.1f;
+    ca += external_stimulus * dt * 0.1F;
 
     // Clamp to physiological range
-    ca = fmaxf(0.0f, fminf(10.0f, ca));
+    ca = fmaxf(0.0F, fminf(10.0F, ca));
 
     // Update astrocyte state
     astro->calcium_concentration = ca;
     astro->ip3_concentration = ip3;
 
     // Detect calcium spike (3x baseline)
-    if (ca > astro->calcium_baseline * 3.0f) {
+    if (ca > astro->calcium_baseline * 3.0F) {
         astro->last_calcium_spike = nimcp_time_monotonic_us();
     }
 
@@ -550,7 +550,7 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro,
             // Update neighbor calcium (with their lock)
             nimcp_spinlock_lock(&neighbor->lock);
             neighbor->calcium_concentration += flux;
-            neighbor->calcium_concentration = fmaxf(0.0f, fminf(50.0f, neighbor->calcium_concentration));
+            neighbor->calcium_concentration = fmaxf(0.0F, fminf(50.0F, neighbor->calcium_concentration));
             nimcp_spinlock_unlock(&neighbor->lock);
         }
     }
@@ -565,21 +565,21 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro,
 float astrocyte_compute_glutamate_release(astrocyte_t* astro, uint32_t synapse_idx)
 {
     if (!astro || synapse_idx >= astro->num_covered_synapses) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Calcium-dependent glutamate release with pool depletion
-    float ca_threshold = astro->calcium_baseline * 2.0f;
+    float ca_threshold = astro->calcium_baseline * 2.0F;
     if (astro->calcium_concentration > ca_threshold) {
         float excess = astro->calcium_concentration - ca_threshold;
-        float release_fraction = fminf(1.0f, excess / 5.0f);
+        float release_fraction = fminf(1.0F, excess / 5.0F);
 
         // Release glutamate from pool (depletes pool)
         // Higher release rate for biological accuracy
-        float release_rate = 0.15f; // 15% of available pool × release_fraction
+        float release_rate = 0.15F; // 15% of available pool × release_fraction
         float release_amount = release_fraction * astro->glutamate_pool * release_rate;
         astro->glutamate_pool -= release_amount;
-        astro->glutamate_pool = fmaxf(0.0f, astro->glutamate_pool); // Clamp to [0, 1]
+        astro->glutamate_pool = fmaxf(0.0F, astro->glutamate_pool); // Clamp to [0, 1]
 
         // Publish glutamate release via predictive signal
         if (g_astrocyte_bio_initialized && g_astrocyte_bio_ctx) {
@@ -590,13 +590,13 @@ float astrocyte_compute_glutamate_release(astrocyte_t* astro, uint32_t synapse_i
         return release_amount;
     }
 
-    return 0.0f;
+    return 0.0F;
 }
 
 float astrocyte_compute_d_serine_release(astrocyte_t* astro, uint32_t synapse_idx)
 {
     if (!astro || synapse_idx >= astro->num_covered_synapses) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Hill equation for D-serine release
@@ -610,10 +610,10 @@ float astrocyte_compute_d_serine_release(astrocyte_t* astro, uint32_t synapse_id
 
     nimcp_spinlock_lock(&astro->lock);
 
-    const float n = 4.0f;           // Hill coefficient
-    const float K = 1.5f;           // Half-max calcium (µM)
-    const float depletion_rate = 0.1f;  // Pool depletion per release
-    const float refill_rate = 0.01f;    // Pool refill rate (1/s)
+    const float n = 4.0F;           // Hill coefficient
+    const float K = 1.5F;           // Half-max calcium (µM)
+    const float depletion_rate = 0.1F;  // Pool depletion per release
+    const float refill_rate = 0.01F;    // Pool refill rate (1/s)
 
     float ca = astro->calcium_concentration;
     float pool = astro->d_serine_pool;
@@ -628,14 +628,14 @@ float astrocyte_compute_d_serine_release(astrocyte_t* astro, uint32_t synapse_id
 
     // Pool depletion (assume dt ~ 0.001s for small depletion)
     // Note: dt should be passed in for proper dynamics, but using small constant here
-    float dt = 0.001f; // 1ms timestep assumption
+    float dt = 0.001F; // 1ms timestep assumption
     pool -= release * dt * depletion_rate;
 
     // Pool refill (slow recovery toward 1.0)
-    pool += dt * refill_rate * (1.0f - pool);
+    pool += dt * refill_rate * (1.0F - pool);
 
     // Clamp pool to [0, 1]
-    pool = fmaxf(0.0f, fminf(1.0f, pool));
+    pool = fmaxf(0.0F, fminf(1.0F, pool));
 
     // Update pool state
     astro->d_serine_pool = pool;
@@ -673,10 +673,10 @@ void astrocyte_modulate_synapse_strength(astrocyte_t* astro,
     float d_serine = astrocyte_compute_d_serine_release(astro, synapse_idx);
 
     // Glutamate: multiplicative enhancement of AMPA transmission
-    float glutamate_factor = 1.0f + 0.5f * glutamate;
+    float glutamate_factor = 1.0F + 0.5F * glutamate;
 
     // D-serine: threshold gating for NMDA (binary-like, but smooth threshold)
-    float d_serine_factor = (d_serine > 0.1f) ? 1.2f : 1.0f;
+    float d_serine_factor = (d_serine > 0.1F) ? 1.2F : 1.0F;
 
     // Combined modulation
     float modulation = glutamate_factor * d_serine_factor;
@@ -723,7 +723,7 @@ nimcp_result_t astrocyte_assign_synapse(astrocyte_t* astro, uint32_t synapse_id)
 float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t network)
 {
     if (!astro) {
-        return 1.0f;
+        return 1.0F;
     }
 
     // Homeostatic synaptic scaling with integrated calcium activity
@@ -746,28 +746,28 @@ float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t ne
 
     nimcp_spinlock_lock(&astro->lock);
 
-    const float Kp = 0.1f;  // Proportional gain
-    const float Ki = 0.01f; // Integral gain
+    const float Kp = 0.1F;  // Proportional gain
+    const float Ki = 0.01F; // Integral gain
 
     // Estimate average calcium activity
     // In full implementation, would use sliding window buffer
     // Here, simplified to current calcium normalized by expected max
-    float avg_calcium_normalized = astro->calcium_concentration / 5.0f;
+    float avg_calcium_normalized = astro->calcium_concentration / 5.0F;
 
     // Error signal
     float error = astro->target_activity_level - avg_calcium_normalized;
 
     // Integral error (accumulated in scaling_factor over time as simple integrator)
     // Note: This is a simplification. Full implementation would track integral separately
-    static float integral_error = 0.0f;
-    integral_error += error * 0.001f; // Accumulate (assuming 1ms timestep)
-    integral_error = fmaxf(-1.0f, fminf(1.0f, integral_error)); // Anti-windup
+    static float integral_error = 0.0F;
+    integral_error += error * 0.001F; // Accumulate (assuming 1ms timestep)
+    integral_error = fmaxf(-1.0F, fminf(1.0F, integral_error)); // Anti-windup
 
     // PID controller
-    float scaling = 1.0f + Kp * error + Ki * integral_error;
+    float scaling = 1.0F + Kp * error + Ki * integral_error;
 
     // Clamp to stability range [0.3, 3.0]
-    scaling = fmaxf(0.3f, fminf(3.0f, scaling));
+    scaling = fmaxf(0.3F, fminf(3.0F, scaling));
 
     // Update internal state
     astro->scaling_factor = scaling;
@@ -784,7 +784,7 @@ float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t ne
 float astrocyte_compute_bcm_threshold_shift(astrocyte_t* astro, float default_threshold)
 {
     if (!astro) {
-        return 0.0f;
+        return 0.0F;
     }
 
     // Sigmoidal BCM threshold modulation
@@ -807,8 +807,8 @@ float astrocyte_compute_bcm_threshold_shift(astrocyte_t* astro, float default_th
 
     nimcp_spinlock_lock(&astro->lock);
 
-    const float max_shift = 0.3f;      // Maximum shift magnitude
-    const float sensitivity = 2.0f;    // Sensitivity parameter
+    const float max_shift = 0.3F;      // Maximum shift magnitude
+    const float sensitivity = 2.0F;    // Sensitivity parameter
 
     float calcium_deviation = astro->calcium_concentration - astro->calcium_baseline;
     float normalized_deviation = calcium_deviation / sensitivity;
@@ -827,7 +827,7 @@ float astrocyte_compute_bcm_threshold_shift(astrocyte_t* astro, float default_th
 
 void astrocyte_update_atp_level(astrocyte_t* astro, float neural_activity, float dt)
 {
-    if (!astro || dt < 0.0f) {
+    if (!astro || dt < 0.0F) {
         return;
     }
 
@@ -853,17 +853,17 @@ void astrocyte_update_atp_level(astrocyte_t* astro, float neural_activity, float
     nimcp_spinlock_lock(&astro->lock);
 
     // Lactate availability (simplified to constant for now)
-    float lactate_availability = 1.0f;
+    float lactate_availability = 1.0F;
 
     // Glycolysis production
-    float production = 0.5f + 0.3f * lactate_availability;
+    float production = 0.5F + 0.3F * lactate_availability;
 
     // Activity-dependent consumption
-    float neural_consumption = 0.1f * neural_activity;
+    float neural_consumption = 0.1F * neural_activity;
 
     // Calcium pumping consumption (quadratic in calcium excess)
     float calcium_excess = astro->calcium_concentration - astro->calcium_baseline;
-    float calcium_pumping = 0.05f * calcium_excess * calcium_excess;
+    float calcium_pumping = 0.05F * calcium_excess * calcium_excess;
 
     // Total consumption
     float consumption = neural_consumption + calcium_pumping;
@@ -873,7 +873,7 @@ void astrocyte_update_atp_level(astrocyte_t* astro, float neural_activity, float
     astro->atp_level += d_atp;
 
     // Clamp to [0.0, 1.0]
-    astro->atp_level = fmaxf(0.0f, fminf(1.0f, astro->atp_level));
+    astro->atp_level = fmaxf(0.0F, fminf(1.0F, astro->atp_level));
 
     nimcp_spinlock_unlock(&astro->lock);
 
@@ -907,7 +907,7 @@ astrocyte_network_t* astrocyte_network_create(uint32_t capacity)
 
     // Global parameters
     network->calcium_threshold_um = ASTROCYTE_CALCIUM_WAVE_THRESHOLD_UM;
-    network->coupling_decay_rate = 0.01f; // Biologically realistic coupling (target: 10-30 µm/s wave speed)
+    network->coupling_decay_rate = 0.01F; // Biologically realistic coupling (target: 10-30 µm/s wave speed)
     network->coupling_radius_um = ASTROCYTE_COUPLING_RADIUS_UM;
 
     // Spatial index (NULL for now)
@@ -1109,7 +1109,7 @@ nimcp_result_t astrocyte_network_establish_coupling(astrocyte_network_t* network
                 // Coupling strength decreases with distance
                 // Use max(0.1, ...) to ensure minimum coupling even at boundary
                 float normalized_dist = distance / network->coupling_radius_um;
-                float strength = fmaxf(0.1f, 1.0f - normalized_dist);
+                float strength = fmaxf(0.1F, 1.0F - normalized_dist);
 
                 // Scale by distance² to compensate for Laplacian normalization
                 // The graph Laplacian divides by distance², so we multiply here
@@ -1141,7 +1141,7 @@ nimcp_result_t astrocyte_network_assign_synapses(astrocyte_network_t* network,
 
 void astrocyte_network_step(astrocyte_network_t* network, float dt)
 {
-    if (!network || dt <= 0.0f) {
+    if (!network || dt <= 0.0F) {
         return;
     }
 
@@ -1152,13 +1152,13 @@ void astrocyte_network_step(astrocyte_network_t* network, float dt)
         astrocyte_t* astro = network->astrocytes[i];
 
         // Update calcium
-        astrocyte_update_calcium(astro, dt, 0.0f);
+        astrocyte_update_calcium(astro, dt, 0.0F);
 
         // Propagate waves
         astrocyte_propagate_calcium_wave(astro, network, dt);
 
         // Update ATP
-        astrocyte_update_atp_level(astro, 1.0f, dt);
+        astrocyte_update_atp_level(astro, 1.0F, dt);
     }
 }
 
@@ -1172,15 +1172,15 @@ void astrocyte_network_get_stats(astrocyte_network_t* network,
                                  float* avg_glutamate)
 {
     if (!network) {
-        if (avg_calcium) *avg_calcium = 0.0f;
-        if (max_calcium) *max_calcium = 0.0f;
-        if (avg_glutamate) *avg_glutamate = 0.0f;
+        if (avg_calcium) *avg_calcium = 0.0F;
+        if (max_calcium) *max_calcium = 0.0F;
+        if (avg_glutamate) *avg_glutamate = 0.0F;
         return;
     }
 
-    float sum_ca = 0.0f;
-    float sum_glu = 0.0f;
-    float max_ca = 0.0f;
+    float sum_ca = 0.0F;
+    float sum_glu = 0.0F;
+    float max_ca = 0.0F;
 
     for (uint32_t i = 0; i < network->num_astrocytes; i++) {
         astrocyte_t* astro = network->astrocytes[i];

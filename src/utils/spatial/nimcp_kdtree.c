@@ -377,7 +377,7 @@ uint32_t kdtree_range_search(const kdtree_t* tree, const kdtree_point_t query,
     }
 
     // Validate radius (must be non-negative)
-    if (radius < 0.0f) {
+    if (radius < 0.0F) {
         return 0;
     }
 

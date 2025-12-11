@@ -33,7 +33,7 @@ homeostatic_normalizer_t* homeostatic_normalizer_create(
     float target_activity,
     float time_constant
 ) {
-    if (num_channels == 0 || time_constant <= 0.0f) return NULL;
+    if (num_channels == 0 || time_constant <= 0.0F) return NULL;
 
     homeostatic_normalizer_t* norm = nimcp_calloc(1, sizeof(homeostatic_normalizer_t));
     if (!norm) return NULL;
@@ -49,9 +49,9 @@ homeostatic_normalizer_t* homeostatic_normalizer_create(
     }
 
     for (size_t i = 0; i < num_channels; i++) {
-        norm->channels[i].current_activity = 0.0f;
-        norm->channels[i].scaling_factor = 1.0f;
-        norm->channels[i].accumulated_error = 0.0f;
+        norm->channels[i].current_activity = 0.0F;
+        norm->channels[i].scaling_factor = 1.0F;
+        norm->channels[i].accumulated_error = 0.0F;
     }
 
     return norm;
@@ -69,24 +69,24 @@ bool homeostatic_normalizer_update(
     float activity,
     float dt
 ) {
-    if (!normalizer || channel >= normalizer->num_channels || dt <= 0.0f) return false;
+    if (!normalizer || channel >= normalizer->num_channels || dt <= 0.0F) return false;
 
     homeostatic_channel_t* ch = &normalizer->channels[channel];
 
     // Update activity with exponential smoothing
     float alpha = dt / normalizer->time_constant;
-    ch->current_activity = (1.0f - alpha) * ch->current_activity + alpha * activity;
+    ch->current_activity = (1.0F - alpha) * ch->current_activity + alpha * activity;
 
     // Calculate error
     float error = normalizer->target_activity - ch->current_activity;
     ch->accumulated_error += error * dt;
 
     // Update scaling factor (homeostatic plasticity)
-    ch->scaling_factor = 1.0f + 0.1f * ch->accumulated_error;
+    ch->scaling_factor = 1.0F + 0.1F * ch->accumulated_error;
 
     // Clamp scaling factor
-    if (ch->scaling_factor < 0.1f) ch->scaling_factor = 0.1f;
-    if (ch->scaling_factor > 10.0f) ch->scaling_factor = 10.0f;
+    if (ch->scaling_factor < 0.1F) ch->scaling_factor = 0.1F;
+    if (ch->scaling_factor > 10.0F) ch->scaling_factor = 10.0F;
 
     return true;
 }
@@ -95,7 +95,7 @@ float homeostatic_normalizer_get_scaling(
     const homeostatic_normalizer_t* normalizer,
     size_t channel
 ) {
-    if (!normalizer || channel >= normalizer->num_channels) return 1.0f;
+    if (!normalizer || channel >= normalizer->num_channels) return 1.0F;
     return normalizer->channels[channel].scaling_factor;
 }
 
@@ -115,9 +115,9 @@ bool homeostatic_normalizer_reset_channel(
     if (!normalizer || channel >= normalizer->num_channels) return false;
 
     homeostatic_channel_t* ch = &normalizer->channels[channel];
-    ch->current_activity = 0.0f;
-    ch->scaling_factor = 1.0f;
-    ch->accumulated_error = 0.0f;
+    ch->current_activity = 0.0F;
+    ch->scaling_factor = 1.0F;
+    ch->accumulated_error = 0.0F;
 
     return true;
 }

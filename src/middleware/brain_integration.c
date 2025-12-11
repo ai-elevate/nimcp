@@ -80,7 +80,7 @@ brain_temporal_buffer_t* brain_create_temporal_buffer(
         fast_size, medium_size, slow_size, num_channels
     );
     buffer->accumulator = temporal_accumulator_create(
-        num_channels, 0.1f, INTEGRATION_LEAKY
+        num_channels, 0.1F, INTEGRATION_LEAKY
     );
 
     // Check allocation
@@ -124,7 +124,7 @@ bool brain_buffer_activity(
         integration_buffer_add(buffer->multiscale, ch, activity[ch], timestamp);
 
         // Update accumulator
-        temporal_accumulator_update(buffer->accumulator, ch, activity[ch], 0.01f);
+        temporal_accumulator_update(buffer->accumulator, ch, activity[ch], 0.01F);
     }
 
     return true;
@@ -204,7 +204,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
     // Create normalizers based on type
     switch (type) {
         case NORMALIZE_ZSCORE:
-            normalizer->zscore = zscore_normalizer_create(num_features, 0, 3.0f);
+            normalizer->zscore = zscore_normalizer_create(num_features, 0, 3.0F);
             if (!normalizer->zscore) {
                 nimcp_free(normalizer);
                 return NULL;
@@ -212,7 +212,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
             break;
 
         case NORMALIZE_MINMAX:
-            normalizer->minmax = minmax_normalizer_create(num_features, 0.0f, 1.0f, false);
+            normalizer->minmax = minmax_normalizer_create(num_features, 0.0F, 1.0F, false);
             if (!normalizer->minmax) {
                 nimcp_free(normalizer);
                 return NULL;
@@ -220,7 +220,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
             break;
 
         case NORMALIZE_ADAPTIVE:
-            normalizer->adaptive = adaptive_normalizer_create(num_features, 0.01f, 0.001f);
+            normalizer->adaptive = adaptive_normalizer_create(num_features, 0.01F, 0.001F);
             if (!normalizer->adaptive) {
                 nimcp_free(normalizer);
                 return NULL;
@@ -228,7 +228,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
             break;
 
         case NORMALIZE_HOMEOSTATIC:
-            normalizer->homeo = homeostatic_normalizer_create(num_features, 0.5f, 10.0f);
+            normalizer->homeo = homeostatic_normalizer_create(num_features, 0.5F, 10.0F);
             if (!normalizer->homeo) {
                 nimcp_free(normalizer);
                 return NULL;
@@ -298,7 +298,7 @@ bool brain_normalize_features(
         case NORMALIZE_HOMEOSTATIC:
             for (size_t i = 0; i < num_features; i++) {
                 homeostatic_normalizer_update(
-                    normalizer->homeo, i, features[i], 0.1f
+                    normalizer->homeo, i, features[i], 0.1F
                 );
                 features[i] = homeostatic_normalizer_apply(
                     normalizer->homeo, i, features[i]
@@ -394,9 +394,9 @@ brain_spike_feature_extractor_t brain_create_spike_feature_extractor(
 
     // Configure feature extractor for brain use
     feature_extractor_config_t config = {
-        .window_ms = 100.0f,
-        .synchrony_window_ms = 5.0f,
-        .burst_isi_threshold_ms = 10.0f,
+        .window_ms = 100.0F,
+        .synchrony_window_ms = 5.0F,
+        .burst_isi_threshold_ms = 10.0F,
         .min_burst_spikes = 3,
         .entropy_bins = 20,
         .compute_oscillations = compute_oscillations,
@@ -450,9 +450,9 @@ brain_population_analyzer_t brain_create_population_analyzer(void) {
     // Configure for brain use with sensible defaults
     population_coding_config_t config = {
         .n_pca_components = 3,
-        .correlation_window_ms = 5.0f,
-        .synchrony_threshold = 0.5f,
-        .sparsity_target = 0.1f,
+        .correlation_window_ms = 5.0F,
+        .synchrony_threshold = 0.5F,
+        .sparsity_target = 0.1F,
         .enable_pca = true,
         .enable_synchrony = true
     };

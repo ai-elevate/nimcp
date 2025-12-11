@@ -351,14 +351,14 @@ uint32_t system_resources_recommend_size(const system_resources_t* resources,
                                           uint32_t current_neurons, bool use_gpu)
 {
     if (!resources) {
-        return (uint32_t)(current_neurons * 1.5f);  // Default 1.5× growth
+        return (uint32_t)(current_neurons * 1.5F);  // Default 1.5× growth
     }
 
     // Compute max safe size
     uint32_t max_neurons = system_resources_estimate_max_neurons(resources, use_gpu);
 
     // Desired growth: 1.5×
-    uint32_t desired_size = (uint32_t)(current_neurons * 1.5f);
+    uint32_t desired_size = (uint32_t)(current_neurons * 1.5F);
 
     // Cap at max safe size
     if (desired_size > max_neurons) {
@@ -366,7 +366,7 @@ uint32_t system_resources_recommend_size(const system_resources_t* resources,
     }
 
     // Ensure we actually grow (at least +10%)
-    uint32_t min_growth = (uint32_t)(current_neurons * 1.1f);
+    uint32_t min_growth = (uint32_t)(current_neurons * 1.1F);
     if (desired_size < min_growth && min_growth <= max_neurons) {
         desired_size = min_growth;
     }

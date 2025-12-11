@@ -128,7 +128,7 @@ spike_train_t* spike_train_create(uint32_t capacity)
     train->count = 0;
     train->head = 0;
     train->last_spike = 0;
-    train->firing_rate = 0.0f;
+    train->firing_rate = 0.0F;
     train->window_start = 0;
 
     // Initialize bio-async integration
@@ -296,12 +296,12 @@ float spike_train_compute_rate(spike_train_t* train, uint64_t time_window)
 {
     // Guard: Validate inputs
     if (!train || time_window == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (train->count == 0) {
-        train->firing_rate = 0.0f;
-        return 0.0f;
+        train->firing_rate = 0.0F;
+        return 0.0F;
     }
 
     /**
@@ -326,7 +326,7 @@ float spike_train_compute_rate(spike_train_t* train, uint64_t time_window)
     }
 
     // Convert to Hz (spikes per second)
-    float time_window_sec = time_window / 1000000.0f;
+    float time_window_sec = time_window / 1000000.0F;
     train->firing_rate = spike_count / time_window_sec;
 
     return train->firing_rate;
@@ -344,7 +344,7 @@ void spike_train_clear(spike_train_t* train)
     train->count = 0;
     train->head = 0;
     train->last_spike = 0;
-    train->firing_rate = 0.0f;
+    train->firing_rate = 0.0F;
 }
 
 //=============================================================================

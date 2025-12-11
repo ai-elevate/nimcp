@@ -164,14 +164,14 @@ bool brain_backward_chain(
     result->proven = success;
     result->proof_steps = proof_trace;
     result->num_steps = num_steps;
-    result->confidence = success ? 0.95f : 0.0f;
+    result->confidence = success ? 0.95F : 0.0F;
     result->inference_time_ms = end_time - start_time;
     result->depth_reached = num_steps;
 
     if (success) {
         // Store proof in working memory if enabled
         if (brain->working_memory && brain->config.enable_working_memory && num_steps > 0) {
-            float proof_encoding[4] = {DEFAULT_PROOF_SALIENCE, 0.0f, (float)num_steps, 0.0f};
+            float proof_encoding[4] = {DEFAULT_PROOF_SALIENCE, 0.0F, (float)num_steps, 0.0F};
             working_memory_add(brain->working_memory, proof_encoding, 4,
                                    DEFAULT_PROOF_SALIENCE);
             NIMCP_LOGGING_DEBUG("Stored proof trace in working memory (steps=%d)", num_steps);
@@ -322,7 +322,7 @@ bool brain_get_backward_chain_stats(
     }
 
     if (avg_depth) {
-        *avg_depth = 0.0f; // Not tracked separately
+        *avg_depth = 0.0F; // Not tracked separately
     }
 
     return true;

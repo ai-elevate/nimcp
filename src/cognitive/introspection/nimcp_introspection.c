@@ -197,7 +197,7 @@ static float compute_cosine_similarity(const float* a, const float* b, uint32_t 
 introspection_config_t introspection_default_config(void)
 {
     introspection_config_t config = {.default_strategy = STATE_STRATEGY_BALANCED,
-                                     .activity_threshold = 0.3f,
+                                     .activity_threshold = 0.3F,
                                      .history_size = 100,
                                      .enable_pattern_tracking = true,
                                      .enable_uncertainty_estimation = true,
@@ -500,15 +500,15 @@ neuron_activity_t brain_get_neuron_activity(introspection_context_t context, uin
     /* WHY: Neurons use biological potentials (-65 to +30 mV), but
      * introspection API should present normalized activations */
     /* HOW: Map [-65, +30] mV to [0, 1] */
-    const float REST_POTENTIAL = -65.0f;
-    const float PEAK_POTENTIAL = 30.0f;
+    const float REST_POTENTIAL = -65.0F;
+    const float PEAK_POTENTIAL = 30.0F;
     activity.activation = (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
 
     /* WHAT: Clamp to valid range */
-    if (activity.activation < 0.0f)
-        activity.activation = 0.0f;
-    if (activity.activation > 1.0f)
-        activity.activation = 1.0f;
+    if (activity.activation < 0.0F)
+        activity.activation = 0.0F;
+    if (activity.activation > 1.0F)
+        activity.activation = 1.0F;
 
     /* WHAT: Get connection count and total weight */
     adaptive_network_get_connection_count(network, neuron_id, &activity.num_connections);
@@ -516,7 +516,7 @@ neuron_activity_t brain_get_neuron_activity(introspection_context_t context, uin
 
     /* WHAT: Compute derived properties */
     /* TODO: Get gradient from actual backprop when available */
-    activity.gradient = 0.0f;                             /* Not tracked yet */
+    activity.gradient = 0.0F;                             /* Not tracked yet */
     activity.decision_contribution = activity.activation; /* Approximate */
     activity.is_active = activity.activation >= context->config.activity_threshold;
 
@@ -556,19 +556,19 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
     const char* strategy_name;
     switch (strategy) {
         case STATE_STRATEGY_FAST:
-            sampling_rate = 0.1f; /* 10% sampling */
+            sampling_rate = 0.1F; /* 10% sampling */
             strategy_name = "fast";
             break;
         case STATE_STRATEGY_BALANCED:
-            sampling_rate = 0.3f; /* 30% sampling */
+            sampling_rate = 0.3F; /* 30% sampling */
             strategy_name = "balanced";
             break;
         case STATE_STRATEGY_DETAILED:
-            sampling_rate = 1.0f; /* 100% sampling */
+            sampling_rate = 1.0F; /* 100% sampling */
             strategy_name = "detailed";
             break;
         default:
-            sampling_rate = 0.3f;
+            sampling_rate = 0.3F;
             strategy_name = "balanced";
     }
 
@@ -596,13 +596,13 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
     /* WHAT: Sample neuron activations from real network */
     /* HOW: For fast/balanced, sample evenly spaced neurons */
     /*      For detailed, get all neurons */
-    uint32_t stride = (uint32_t) (1.0f / sampling_rate);
+    uint32_t stride = (uint32_t) (1.0F / sampling_rate);
     if (stride == 0)
         stride = 1;
 
     /* WHAT: Biological potential normalization constants */
-    const float REST_POTENTIAL = -65.0f;
-    const float PEAK_POTENTIAL = 30.0f;
+    const float REST_POTENTIAL = -65.0F;
+    const float PEAK_POTENTIAL = 30.0F;
 
     for (uint32_t i = 0; i < sampled_neurons; i++) {
         uint32_t neuron_id = i * stride;
@@ -616,12 +616,12 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
             /* WHAT: Normalize biological potential to 0-1 range */
             state.state_vector[i] =
                 (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
-            if (state.state_vector[i] < 0.0f)
-                state.state_vector[i] = 0.0f;
-            if (state.state_vector[i] > 1.0f)
-                state.state_vector[i] = 1.0f;
+            if (state.state_vector[i] < 0.0F)
+                state.state_vector[i] = 0.0F;
+            if (state.state_vector[i] > 1.0F)
+                state.state_vector[i] = 1.0F;
         } else {
-            state.state_vector[i] = 0.0f; /* Default if unavailable */
+            state.state_vector[i] = 0.0F; /* Default if unavailable */
         }
     }
 
@@ -639,7 +639,7 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
     snprintf(interp_buffer, sizeof(interp_buffer),
              "State extracted using %s strategy (%.0f%% sampling), "
              "%.2f bits entropy, compression ratio %.2fx",
-             strategy_name, sampling_rate * 100.0f, state.information_content,
+             strategy_name, sampling_rate * 100.0F, state.information_content,
              state.compression_ratio);
     state.interpretation = nimcp_strdup(interp_buffer);
 
@@ -672,12 +672,12 @@ void brain_state_free(brain_state_t* state)
 float brain_state_similarity(const brain_state_t* state1, const brain_state_t* state2)
 {
     if (state1 == NULL || state2 == NULL) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* WHAT: States must have same dimension */
     if (state1->dimension != state2->dimension) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float similarity = compute_cosine_similarity(state1->state_vector, state2->state_vector, state1->dimension);
@@ -685,10 +685,10 @@ float brain_state_similarity(const brain_state_t* state1, const brain_state_t* s
     /* WHAT: Clamp to [0,1] to handle floating-point rounding errors */
     /* WHY: Cosine similarity can exceed 1.0 slightly due to FP arithmetic */
     /* HOW: Use fminf/fmaxf to clamp the value */
-    if (similarity > 1.0f) {
-        similarity = 1.0f;
-    } else if (similarity < 0.0f) {
-        similarity = 0.0f;
+    if (similarity > 1.0F) {
+        similarity = 1.0F;
+    } else if (similarity < 0.0F) {
+        similarity = 0.0F;
     }
 
     return similarity;
@@ -754,17 +754,17 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
     /* WHY: Variance in predictions indicates uncertainty */
     /* TODO: In real implementation, this would use actual ensemble */
     /* For now, simulate with random variations */
-    float mean_prediction = 0.0f;
+    float mean_prediction = 0.0F;
     for (uint32_t i = 0; i < ensemble_size; i++) {
         /* Simulate ensemble predictions with some variance */
-        uncertainty.ensemble_predictions[i] = 0.5f + ((float) rand() / RAND_MAX - 0.5f) * 0.3f;
+        uncertainty.ensemble_predictions[i] = 0.5F + ((float) rand() / RAND_MAX - 0.5F) * 0.3F;
         mean_prediction += uncertainty.ensemble_predictions[i];
     }
     mean_prediction /= ensemble_size;
 
     /* WHAT: Compute epistemic uncertainty (variance of predictions) */
     /* WHY: High variance means models disagree = model doesn't know */
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < ensemble_size; i++) {
         float diff = uncertainty.ensemble_predictions[i] - mean_prediction;
         variance += diff * diff;
@@ -776,11 +776,11 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
     /* WHY: High entropy means prediction is uncertain = data is noisy */
     /* For binary classification: H = -p*log(p) - (1-p)*log(1-p) */
     float p = mean_prediction;
-    if (p < 1e-6f)
-        p = 1e-6f;
-    if (p > 1.0f - 1e-6f)
-        p = 1.0f - 1e-6f;
-    uncertainty.aleatoric = -(p * log2f(p) + (1.0f - p) * log2f(1.0f - p));
+    if (p < 1e-6F)
+        p = 1e-6F;
+    if (p > 1.0F - 1e-6F)
+        p = 1.0F - 1e-6F;
+    uncertainty.aleatoric = -(p * log2f(p) + (1.0F - p) * log2f(1.0F - p));
 
     /* =========================================================================
      * PHASE 10.3: Emotional working memory modulation of uncertainty
@@ -795,15 +795,15 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
         /* WHAT: Scan working memory for high-intensity emotional items */
         /* WHY:  Recent emotional experiences modulate current uncertainty perception */
 
-        float max_arousal = 0.0f;
-        float avg_valence = 0.0f;
+        float max_arousal = 0.0F;
+        float avg_valence = 0.0F;
         uint32_t emotional_count = 0;
         uint32_t wm_size = working_memory_get_size(wm);
 
         /* WHAT: Aggregate emotional context from working memory items */
         for (uint32_t i = 0; i < wm_size && i < 7; i++) {  // Miller's 7±2: check up to 7 items
             emotional_tag_t emotion;
-            if (working_memory_get_emotion(wm, i, &emotion) && emotion.intensity > 0.3f) {
+            if (working_memory_get_emotion(wm, i, &emotion) && emotion.intensity > 0.3F) {
                 /* WHAT: Track highest arousal and average valence */
                 if (emotion.arousal > max_arousal) {
                     max_arousal = emotion.arousal;
@@ -819,8 +819,8 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
             /* WHAT: High arousal increases both epistemic and aleatoric uncertainty */
             /* WHY:  Arousal impairs metacognitive accuracy (Bolte et al., 2003) */
             /* HOW:  Multiply uncertainty by (1.0 + arousal * 0.5) */
-            if (max_arousal > 0.5f) {
-                float arousal_boost = 1.0f + (max_arousal - 0.5f) * 0.5f;  // Up to 1.25x at max arousal
+            if (max_arousal > 0.5F) {
+                float arousal_boost = 1.0F + (max_arousal - 0.5F) * 0.5F;  // Up to 1.25x at max arousal
                 uncertainty.epistemic *= arousal_boost;
                 uncertainty.aleatoric *= arousal_boost;
             }
@@ -828,15 +828,15 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
             /* WHAT: Negative valence biases toward epistemic uncertainty (doubt) */
             /* WHY:  Negative emotions increase self-doubt and model uncertainty */
             /* HOW:  Boost epistemic uncertainty for negative valence */
-            if (avg_valence < -0.3f) {
-                uncertainty.epistemic *= (1.0f + fabsf(avg_valence) * 0.3f);  // Up to 1.3x
+            if (avg_valence < -0.3F) {
+                uncertainty.epistemic *= (1.0F + fabsf(avg_valence) * 0.3F);  // Up to 1.3x
             }
 
             /* WHAT: Positive high-arousal increases aleatoric uncertainty */
             /* WHY:  Excitement/joy can lead to overconfidence and noise */
             /* HOW:  Boost aleatoric for positive + high arousal combination */
-            if (avg_valence > 0.3f && max_arousal > 0.6f) {
-                uncertainty.aleatoric *= 1.2f;  // 20% increase
+            if (avg_valence > 0.3F && max_arousal > 0.6F) {
+                uncertainty.aleatoric *= 1.2F;  // 20% increase
             }
         }
     }
@@ -844,10 +844,10 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
     /* WHAT: Combine uncertainties (now emotionally modulated) */
     /* WHY: Total uncertainty is sum of epistemic and aleatoric */
     uncertainty.total = uncertainty.epistemic + uncertainty.aleatoric;
-    if (uncertainty.total > 1.0f)
-        uncertainty.total = 1.0f;
+    if (uncertainty.total > 1.0F)
+        uncertainty.total = 1.0F;
 
-    uncertainty.confidence = 1.0f - uncertainty.total;
+    uncertainty.confidence = 1.0F - uncertainty.total;
 
     return uncertainty;
 }
@@ -946,7 +946,7 @@ static void pattern_registry_update(pattern_registry_t* registry, const char* na
         entry->current_activity = activity;
         entry->activity_sum = activity;
         entry->activation_count = 1;
-        entry->pattern_strength = 0.5f; /* Initial strength */
+        entry->pattern_strength = 0.5F; /* Initial strength */
         entry->first_learned = nimcp_time_monotonic_ms();
         entry->last_activated = entry->first_learned;
 
@@ -1229,10 +1229,10 @@ static network_topology_t build_topology(brain_t brain)
     /* Calculate derived metrics */
     topology.avg_connections_per_neuron = (float)avg_connections;
     float max_possible = (float)topology.total_neurons * (float)topology.total_neurons;
-    topology.connection_sparsity = 1.0f - ((float)topology.total_connections / max_possible);
+    topology.connection_sparsity = 1.0F - ((float)topology.total_connections / max_possible);
 
     /* Small-world network has clustering ~0.3-0.5 (Watts & Strogatz, 1998) */
-    topology.clustering_coefficient = 0.35f;
+    topology.clustering_coefficient = 0.35F;
 
     /* Get layer info from brain config */
     uint32_t num_inputs = brain->config.num_inputs;
@@ -1458,24 +1458,24 @@ void introspection_reset_stats(introspection_context_t context)
 static float compute_entropy(const float* values, uint32_t count)
 {
     if (values == NULL || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* WHAT: Normalize values to probabilities */
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         sum += fabsf(values[i]);
     }
 
-    if (sum < 1e-10f) {
-        return 0.0f;
+    if (sum < 1e-10F) {
+        return 0.0F;
     }
 
     /* WHAT: Compute entropy */
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         float p = fabsf(values[i]) / sum;
-        if (p > 1e-10f) {
+        if (p > 1e-10F) {
             entropy -= p * log2f(p);
         }
     }

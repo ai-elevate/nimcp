@@ -249,7 +249,7 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
     // INITIALIZE: Statistics
     // =========================================================================
 
-    meta->total_adaptation_gain = 0.0f;
+    meta->total_adaptation_gain = 0.0F;
     meta->total_adaptation_steps = 0;
     meta->num_adaptations = 0;
 
@@ -496,7 +496,7 @@ bool meta_maml_outer_loop(meta_learner_t meta, brain_t brain,
     // - Return success to indicate readiness for meta-learning
 
     uint32_t successful_adaptations = 0;
-    float total_task_loss = 0.0f;
+    float total_task_loss = 0.0F;
 
     // Process each task and update statistics
     for (uint32_t i = 0; i < num_tasks; i++) {
@@ -586,8 +586,8 @@ bool meta_evaluate_adaptation(meta_learner_t meta, brain_t brain, brain_t adapte
     stats->initial_loss = initial_loss;
     stats->final_loss = final_loss;
     stats->steps_to_converge = meta->config.inner_steps;  // Simplified
-    stats->adaptation_gain = (initial_loss > 0.0f) ?
-                            (initial_loss - final_loss) / initial_loss : 0.0f;
+    stats->adaptation_gain = (initial_loss > 0.0F) ?
+                            (initial_loss - final_loss) / initial_loss : 0.0F;
 
     // =========================================================================
     // UPDATE: Meta-learner statistics
@@ -598,7 +598,7 @@ bool meta_evaluate_adaptation(meta_learner_t meta, brain_t brain, brain_t adapte
     meta->num_adaptations++;
 
     NIMCP_LOGGING_DEBUG("Adaptation: initial_loss=%.4f, final_loss=%.4f, gain=%.2f%%",
-                       initial_loss, final_loss, stats->adaptation_gain * 100.0f);
+                       initial_loss, final_loss, stats->adaptation_gain * 100.0F);
 
     return true;
 }
@@ -635,15 +635,15 @@ float meta_compute_task_similarity(meta_learner_t meta,
     // =========================================================================
 
     if (!meta || !task_a || !task_b) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (!task_a->class_prototypes || !task_b->class_prototypes) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (task_a->input_dim != task_b->input_dim) {
-        return 0.0f;  // Incompatible tasks
+        return 0.0F;  // Incompatible tasks
     }
 
     // =========================================================================
@@ -653,7 +653,7 @@ float meta_compute_task_similarity(meta_learner_t meta,
     uint32_t min_classes = (task_a->num_classes < task_b->num_classes) ?
                           task_a->num_classes : task_b->num_classes;
 
-    float total_similarity = 0.0f;
+    float total_similarity = 0.0F;
     uint32_t num_pairs = 0;
 
     for (uint32_t i = 0; i < min_classes; i++) {
@@ -665,7 +665,7 @@ float meta_compute_task_similarity(meta_learner_t meta,
         num_pairs++;
     }
 
-    return (num_pairs > 0) ? (total_similarity / num_pairs) : 0.0f;
+    return (num_pairs > 0) ? (total_similarity / num_pairs) : 0.0F;
 }
 
 /**
@@ -706,7 +706,7 @@ bool meta_transfer_knowledge(meta_learner_t meta,
     // CHECK: Task similarity threshold
     // =========================================================================
 
-    if (similarity >= 0.0f && similarity < meta->config.similarity_threshold) {
+    if (similarity >= 0.0F && similarity < meta->config.similarity_threshold) {
         NIMCP_LOGGING_DEBUG("Transfer skipped: similarity %.2f < threshold %.2f",
                            similarity, meta->config.similarity_threshold);
         return false;
@@ -836,7 +836,7 @@ meta_task_t* meta_task_create(const char* name, uint32_t num_classes, uint32_t i
         return NULL;
     }
 
-    task->average_loss = 0.0f;
+    task->average_loss = 0.0F;
     task->samples_seen = 0;
 
     return task;
@@ -923,12 +923,12 @@ bool meta_get_statistics(meta_learner_t meta,
 
     if (avg_adaptation_gain) {
         *avg_adaptation_gain = (meta->num_adaptations > 0) ?
-                              (meta->total_adaptation_gain / meta->num_adaptations) : 0.0f;
+                              (meta->total_adaptation_gain / meta->num_adaptations) : 0.0F;
     }
 
     if (avg_steps_to_converge) {
         *avg_steps_to_converge = (meta->num_adaptations > 0) ?
-                                ((float)meta->total_adaptation_steps / meta->num_adaptations) : 0.0f;
+                                ((float)meta->total_adaptation_steps / meta->num_adaptations) : 0.0F;
     }
 
     return true;
@@ -958,7 +958,7 @@ void meta_print_state(meta_learner_t meta)
 
     if (meta->num_adaptations > 0) {
         printf("Avg adaptation gain: %.2f%%\n",
-               (meta->total_adaptation_gain / meta->num_adaptations) * 100.0f);
+               (meta->total_adaptation_gain / meta->num_adaptations) * 100.0F);
         printf("Avg steps to converge: %.1f\n",
                (float)meta->total_adaptation_steps / meta->num_adaptations);
     }
@@ -1011,7 +1011,7 @@ static float compute_loss(brain_t brain, const float** inputs,
     }
 
     // Compute cross-entropy loss
-    float total_loss = 0.0f;
+    float total_loss = 0.0F;
     for (uint32_t i = 0; i < num_samples; i++) {
         // NOTE: Could track accuracy here by finding argmax(output_vector)
         // but we only need loss for MAML gradient computation
@@ -1022,11 +1022,11 @@ static float compute_loss(brain_t brain, const float** inputs,
         if (true_label < decisions[i].output_size) {
             float p_correct = decisions[i].output_vector[true_label];
             // Clip to avoid log(0)
-            p_correct = (p_correct < 1e-7f) ? 1e-7f : p_correct;
+            p_correct = (p_correct < 1e-7F) ? 1e-7F : p_correct;
             total_loss += -logf(p_correct);
         } else {
             // Invalid label
-            total_loss += 100.0f;  // Large penalty
+            total_loss += 100.0F;  // Large penalty
         }
 
         // Free decision output vector
@@ -1101,7 +1101,7 @@ static bool apply_gradient_step(brain_t brain, const float** inputs,
         snprintf(examples[i].label, sizeof(examples[i].label), "%u", labels[i]);
 
         // Set confidence to 1.0 for supervised learning
-        examples[i].confidence = 1.0f;
+        examples[i].confidence = 1.0F;
     }
 
     // Apply one gradient step using brain_learn_batch

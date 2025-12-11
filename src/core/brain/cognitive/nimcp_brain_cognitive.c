@@ -49,6 +49,9 @@
 
 #define LOG_MODULE "BRAIN_COGNITIVE"
 
+// External error function declaration
+extern void set_error(const char* format, ...);
+
 //=============================================================================
 // COGNITIVE SUBSYSTEM INITIALIZATION IMPLEMENTATIONS
 //=============================================================================
@@ -79,7 +82,7 @@ bool init_working_memory_subsystem(brain_t brain)
     if (brain->config.working_memory_capacity > 0) {
         wm_config.capacity = brain->config.working_memory_capacity;
     }
-    if (brain->config.working_memory_decay_tau_ms > 0.0f) {
+    if (brain->config.working_memory_decay_tau_ms > 0.0F) {
         wm_config.decay_tau_ms = brain->config.working_memory_decay_tau_ms;
     }
 
@@ -262,10 +265,10 @@ bool init_mirror_neurons(brain_t brain)
     if (brain->config.mirror_max_agents > 0) {
         mirror_config.max_agents = brain->config.mirror_max_agents;
     }
-    if (brain->config.mirror_learning_rate > 0.0f) {
+    if (brain->config.mirror_learning_rate > 0.0F) {
         mirror_config.learning_rate = brain->config.mirror_learning_rate;
     }
-    if (brain->config.mirror_match_threshold > 0.0f) {
+    if (brain->config.mirror_match_threshold > 0.0F) {
         mirror_config.match_threshold = brain->config.mirror_match_threshold;
     }
 
@@ -327,7 +330,7 @@ bool init_curiosity_subsystem(brain_t brain)
 
     // Set baseline curiosity to moderate-high (like a curious adult learner)
     // Infants: 0.95, Children: 0.85, Adults: 0.6-0.7
-    curiosity_set_baseline(brain->curiosity, 0.7f);
+    curiosity_set_baseline(brain->curiosity, 0.7F);
 
     return true;
 }
@@ -384,7 +387,7 @@ bool init_introspection_subsystem(brain_t brain)
 
     // Customize configuration for NIMCP
     config.default_strategy = STATE_STRATEGY_BALANCED;  // Balance speed vs accuracy
-    config.activity_threshold = 0.3f;                   // Neurons above 0.3 = "active"
+    config.activity_threshold = 0.3F;                   // Neurons above 0.3 = "active"
     config.history_size = 100;                          // Track last 100 states
     config.enable_pattern_tracking = true;              // Track learned patterns
     config.enable_uncertainty_estimation = true;        // Enable uncertainty
@@ -427,12 +430,12 @@ bool init_ethics_engine_subsystem(brain_t brain)
         .num_policies = 0,
         .callback = NULL,                    // No custom callback
         .callback_context = NULL,
-        .default_severity = 0.5f,            // Moderate default severity
+        .default_severity = 0.5F,            // Moderate default severity
         .enable_learning = true,             // Enable learning from outcomes
         .action_feature_size = 20,           // Feature vector size for actions
         .max_agents = 10,                    // Maximum number of agents to consider
-        .golden_rule_threshold = 0.0f,       // Always evaluate (no threshold)
-        .empathy_weight = 0.7f               // High weight for empathy signals
+        .golden_rule_threshold = 0.0F,       // Always evaluate (no threshold)
+        .empathy_weight = 0.7F               // High weight for empathy signals
     };
 
     // Create ethics engine with empathy network integration
@@ -471,7 +474,7 @@ bool init_empathy_network_subsystem(brain_t brain)
     empathy_config_t config = {
         .mirror_network = brain->mirror_neurons,  // Link to mirror neurons if available
         .observation_window_ms = 1000,            // 1 second observation window
-        .empathy_threshold = 0.5f                 // Minimum activation for empathy response
+        .empathy_threshold = 0.5F                 // Minimum activation for empathy response
     };
 
     // Create empathy network
@@ -611,7 +614,7 @@ bool init_global_workspace_subsystem(brain_t brain)
     if (brain->config.workspace_capacity_dim > 0) {
         gw_config.capacity_dim = brain->config.workspace_capacity_dim;
     }
-    if (brain->config.workspace_ignition_threshold > 0.0f) {
+    if (brain->config.workspace_ignition_threshold > 0.0F) {
         gw_config.ignition_threshold = brain->config.workspace_ignition_threshold;
     }
     if (brain->config.workspace_refractory_ms > 0) {

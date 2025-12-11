@@ -23,6 +23,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -78,7 +80,7 @@ static void bio_broadcast_memory_stored(struct autobiographical_memory_system* s
  */
 static uint64_t get_current_time_ms(void)
 {
-    return nimcp_platform_time_monotonic_ms();
+    return nimcp_time_monotonic_ms();
 }
 
 /**
@@ -283,7 +285,7 @@ static void bio_broadcast_memory_stored(struct autobiographical_memory_system* s
     msg.stimulus_id = (uint32_t)memory_id;
     msg.salience_score = salience;
     msg.attention_priority = salience;
-    msg.requires_immediate_attention = (salience > 0.7f);
+    msg.requires_immediate_attention = (salience > 0.7F);
     bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast memory stored: id=%lu, salience=%.2f", (unsigned long)memory_id, salience);
 }
@@ -352,8 +354,8 @@ uint64_t autobio_store(autobiographical_memory_t system,
     // Initialize retrieval stats
     slot->times_recalled = 0;
     slot->last_recalled_ms = 0;
-    if (slot->memory_strength == 0.0f) {
-        slot->memory_strength = 1.0f;  // New memories start vivid
+    if (slot->memory_strength == 0.0F) {
+        slot->memory_strength = 1.0F;  // New memories start vivid
     }
 
     // Update system stats
@@ -374,11 +376,11 @@ uint64_t autobio_store(autobiographical_memory_t system,
     }
 
     // Update average stats (running average)
-    float alpha = 1.0f / (float)system->count;
+    float alpha = 1.0F / (float)system->count;
     system->stats.avg_importance =
-        (1.0f - alpha) * system->stats.avg_importance + alpha * memory->importance;
+        (1.0F - alpha) * system->stats.avg_importance + alpha * memory->importance;
     system->stats.avg_emotional_intensity =
-        (1.0f - alpha) * system->stats.avg_emotional_intensity + alpha * memory->emotional_intensity;
+        (1.0F - alpha) * system->stats.avg_emotional_intensity + alpha * memory->emotional_intensity;
 
     uint64_t assigned_id = slot->memory_id;
 
@@ -557,7 +559,7 @@ bool autobio_update_importance(autobiographical_memory_t system,
                               float new_importance)
 {
     // Guard: NULL checks and bounds
-    if (!system || memory_id == 0 || new_importance < 0.0f || new_importance > 1.0f) {
+    if (!system || memory_id == 0 || new_importance < 0.0F || new_importance > 1.0F) {
         return false;
     }
 
@@ -623,20 +625,20 @@ uint32_t autobio_consolidate(autobiographical_memory_t system)
 
         // Calculate time since last recall
         uint64_t time_since_recall = current_time - mem->last_recalled_ms;
-        float days_since_recall = time_since_recall / (1000.0f * 60.0f * 60.0f * 24.0f);
+        float days_since_recall = time_since_recall / (1000.0F * 60.0F * 60.0F * 24.0F);
 
         // Strengthen if recalled recently and often
-        if (mem->times_recalled > 3 && days_since_recall < 7.0f) {
-            mem->memory_strength = fminf(1.0f, mem->memory_strength * 1.1f);
+        if (mem->times_recalled > 3 && days_since_recall < 7.0F) {
+            mem->memory_strength = fminf(1.0F, mem->memory_strength * 1.1F);
         }
 
         // Decay if not recalled
-        if (days_since_recall > 30.0f) {
-            mem->memory_strength *= 0.9f;
+        if (days_since_recall > 30.0F) {
+            mem->memory_strength *= 0.9F;
         }
 
         // Prune if very weak and unimportant
-        if (mem->memory_strength < 0.2f && mem->importance < AUTOBIO_IMPORTANCE_THRESHOLD) {
+        if (mem->memory_strength < 0.2F && mem->importance < AUTOBIO_IMPORTANCE_THRESHOLD) {
             // Mark for pruning (set memory_id to 0)
             mem->memory_id = 0;
             pruned++;

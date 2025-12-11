@@ -293,7 +293,7 @@ static bool run_anomaly_check(nimcp_continuous_monitor_t* monitor)
     // Basic anomaly detection: check if coverage has degraded
     float coverage = nimcp_coverage_get_percentage(monitor->coverage);
 
-    if (coverage < 100.0f) {
+    if (coverage < 100.0F) {
         char msg[128];
         snprintf(msg, sizeof(msg),
                  "Coverage degraded to %.1f%% - security gaps detected",

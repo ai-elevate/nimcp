@@ -25,6 +25,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/platform/nimcp_platform_rwlock.h"
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdatomic.h>
 #include <time.h>
@@ -133,19 +134,19 @@ tpb_config_t tpb_config_default(void)
     /* RPE defaults */
     config.rpe_mode = TPB_RPE_EXPONENTIAL_AVG;
     config.rpe_window_size = TPB_DEFAULT_RPE_WINDOW;
-    config.rpe_smoothing_alpha = 0.1f;
-    config.rpe_to_da_gain = 0.5f;
+    config.rpe_smoothing_alpha = 0.1F;
+    config.rpe_to_da_gain = 0.5F;
 
     /* LR modulation defaults */
     config.lr_modulation.mode = TPB_NEUROMOD_BALANCED;
-    config.lr_modulation.da_weight = 0.4f;
-    config.lr_modulation.ach_weight = 0.3f;
-    config.lr_modulation.ht5_weight = 0.2f;
-    config.lr_modulation.ne_weight = 0.1f;
-    config.lr_modulation.min_lr_multiplier = 0.1f;
-    config.lr_modulation.max_lr_multiplier = 5.0f;
+    config.lr_modulation.da_weight = 0.4F;
+    config.lr_modulation.ach_weight = 0.3F;
+    config.lr_modulation.ht5_weight = 0.2F;
+    config.lr_modulation.ne_weight = 0.1F;
+    config.lr_modulation.min_lr_multiplier = 0.1F;
+    config.lr_modulation.max_lr_multiplier = 5.0F;
     config.lr_modulation.use_sigmoid_scaling = true;
-    config.lr_modulation.sigmoid_steepness = 2.0f;
+    config.lr_modulation.sigmoid_steepness = 2.0F;
 
     /* Thread pool */
     config.thread_pool_size = TPB_DEFAULT_THREAD_POOL_SIZE;
@@ -173,27 +174,27 @@ tpb_config_t tpb_config_preset(const char* preset_name)
     if (strcmp(preset_name, "reinforcement") == 0) {
         /* Strong dopamine modulation for RL */
         config.rpe_mode = TPB_RPE_TEMPORAL_DIFF;
-        config.rpe_to_da_gain = 0.8f;
+        config.rpe_to_da_gain = 0.8F;
         config.lr_modulation.mode = TPB_NEUROMOD_DA_PRIMARY;
-        config.lr_modulation.da_weight = 0.7f;
-        config.lr_modulation.max_lr_multiplier = 10.0f;
+        config.lr_modulation.da_weight = 0.7F;
+        config.lr_modulation.max_lr_multiplier = 10.0F;
     }
     else if (strcmp(preset_name, "supervised") == 0) {
         /* Balanced modulation for supervised learning */
         config.rpe_mode = TPB_RPE_EXPONENTIAL_AVG;
-        config.rpe_to_da_gain = 0.3f;
+        config.rpe_to_da_gain = 0.3F;
         config.lr_modulation.mode = TPB_NEUROMOD_BALANCED;
     }
     else if (strcmp(preset_name, "unsupervised") == 0) {
         /* ACh-dominant for attention-based learning */
         config.rpe_mode = TPB_RPE_ADAPTIVE;
         config.lr_modulation.mode = TPB_NEUROMOD_ACH_PRIMARY;
-        config.lr_modulation.ach_weight = 0.6f;
+        config.lr_modulation.ach_weight = 0.6F;
     }
     else if (strcmp(preset_name, "biological") == 0) {
         /* Maximum biological realism */
         config.rpe_mode = TPB_RPE_ADAPTIVE;
-        config.rpe_to_da_gain = 0.6f;
+        config.rpe_to_da_gain = 0.6F;
         config.lr_modulation.mode = TPB_NEUROMOD_BALANCED;
         config.lr_modulation.use_sigmoid_scaling = true;
         config.thread_pool_size = 8;
@@ -217,14 +218,14 @@ tpb_region_config_t tpb_region_cortical_default(void)
     region.secondary_rule = TPB_RULE_HOMEOSTATIC;
     region.enable_three_factor = true;
 
-    region.da_sensitivity = 0.8f;
-    region.ach_sensitivity = 1.2f;  /* High ACh sensitivity for attention */
-    region.ht5_sensitivity = 0.5f;
-    region.ne_sensitivity = 0.7f;
+    region.da_sensitivity = 0.8F;
+    region.ach_sensitivity = 1.2F;  /* High ACh sensitivity for attention */
+    region.ht5_sensitivity = 0.5F;
+    region.ne_sensitivity = 0.7F;
 
-    region.base_learning_rate = 0.01f;
-    region.lr_modulation_strength = 0.5f;
-    region.plasticity_window_ms = 50.0f;
+    region.base_learning_rate = 0.01F;
+    region.lr_modulation_strength = 0.5F;
+    region.plasticity_window_ms = 50.0F;
 
     return region;
 }
@@ -240,14 +241,14 @@ tpb_region_config_t tpb_region_striatal_default(void)
     region.secondary_rule = TPB_RULE_ELIGIBILITY;
     region.enable_three_factor = true;
 
-    region.da_sensitivity = 1.5f;  /* High DA for reward learning */
-    region.ach_sensitivity = 0.6f;
-    region.ht5_sensitivity = 0.8f;
-    region.ne_sensitivity = 0.4f;
+    region.da_sensitivity = 1.5F;  /* High DA for reward learning */
+    region.ach_sensitivity = 0.6F;
+    region.ht5_sensitivity = 0.8F;
+    region.ne_sensitivity = 0.4F;
 
-    region.base_learning_rate = 0.02f;
-    region.lr_modulation_strength = 0.8f;  /* Strong modulation */
-    region.plasticity_window_ms = 100.0f;  /* Longer window for RL */
+    region.base_learning_rate = 0.02F;
+    region.lr_modulation_strength = 0.8F;  /* Strong modulation */
+    region.plasticity_window_ms = 100.0F;  /* Longer window for RL */
 
     return region;
 }
@@ -263,14 +264,14 @@ tpb_region_config_t tpb_region_hippocampal_default(void)
     region.secondary_rule = TPB_RULE_STDP;
     region.enable_three_factor = true;
 
-    region.da_sensitivity = 0.6f;
-    region.ach_sensitivity = 1.4f;  /* Critical for memory encoding */
-    region.ht5_sensitivity = 0.7f;
-    region.ne_sensitivity = 1.0f;
+    region.da_sensitivity = 0.6F;
+    region.ach_sensitivity = 1.4F;  /* Critical for memory encoding */
+    region.ht5_sensitivity = 0.7F;
+    region.ne_sensitivity = 1.0F;
 
-    region.base_learning_rate = 0.005f;
-    region.lr_modulation_strength = 0.6f;
-    region.plasticity_window_ms = 40.0f;
+    region.base_learning_rate = 0.005F;
+    region.lr_modulation_strength = 0.6F;
+    region.plasticity_window_ms = 40.0F;
 
     return region;
 }
@@ -286,14 +287,14 @@ tpb_region_config_t tpb_region_cerebellar_default(void)
     region.secondary_rule = TPB_RULE_ANTI_HEBBIAN;
     region.enable_three_factor = false;  /* Supervised, not reward-based */
 
-    region.da_sensitivity = 0.3f;
-    region.ach_sensitivity = 0.5f;
-    region.ht5_sensitivity = 0.4f;
-    region.ne_sensitivity = 0.6f;
+    region.da_sensitivity = 0.3F;
+    region.ach_sensitivity = 0.5F;
+    region.ht5_sensitivity = 0.4F;
+    region.ne_sensitivity = 0.6F;
 
-    region.base_learning_rate = 0.001f;  /* Slow, precise learning */
-    region.lr_modulation_strength = 0.3f;
-    region.plasticity_window_ms = 200.0f;
+    region.base_learning_rate = 0.001F;  /* Slow, precise learning */
+    region.lr_modulation_strength = 0.3F;
+    region.plasticity_window_ms = 200.0F;
 
     return region;
 }
@@ -309,14 +310,14 @@ tpb_region_config_t tpb_region_amygdala_default(void)
     region.secondary_rule = TPB_RULE_ELIGIBILITY;
     region.enable_three_factor = true;
 
-    region.da_sensitivity = 1.0f;
-    region.ach_sensitivity = 0.8f;
-    region.ht5_sensitivity = 1.2f;  /* Fear/anxiety modulation */
-    region.ne_sensitivity = 1.5f;   /* High NE for threat response */
+    region.da_sensitivity = 1.0F;
+    region.ach_sensitivity = 0.8F;
+    region.ht5_sensitivity = 1.2F;  /* Fear/anxiety modulation */
+    region.ne_sensitivity = 1.5F;   /* High NE for threat response */
 
-    region.base_learning_rate = 0.05f;  /* Fast fear learning */
-    region.lr_modulation_strength = 0.7f;
-    region.plasticity_window_ms = 30.0f;
+    region.base_learning_rate = 0.05F;  /* Fast fear learning */
+    region.lr_modulation_strength = 0.7F;
+    region.plasticity_window_ms = 30.0F;
 
     return region;
 }
@@ -332,14 +333,14 @@ tpb_region_config_t tpb_region_prefrontal_default(void)
     region.secondary_rule = TPB_RULE_HOMEOSTATIC;
     region.enable_three_factor = true;
 
-    region.da_sensitivity = 1.2f;  /* D1/D2 working memory modulation */
-    region.ach_sensitivity = 1.0f;
-    region.ht5_sensitivity = 0.9f;
-    region.ne_sensitivity = 1.1f;
+    region.da_sensitivity = 1.2F;  /* D1/D2 working memory modulation */
+    region.ach_sensitivity = 1.0F;
+    region.ht5_sensitivity = 0.9F;
+    region.ne_sensitivity = 1.1F;
 
-    region.base_learning_rate = 0.008f;
-    region.lr_modulation_strength = 0.5f;
-    region.plasticity_window_ms = 60.0f;
+    region.base_learning_rate = 0.008F;
+    region.lr_modulation_strength = 0.5F;
+    region.plasticity_window_ms = 60.0F;
 
     return region;
 }
@@ -367,8 +368,8 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
     /* Initialize RPE state */
     ctx->rpe_state.mode = ctx->config.rpe_mode;
     ctx->rpe_state.rpe_alpha = ctx->config.rpe_smoothing_alpha;
-    ctx->rpe_state.baseline_loss = 0.0f;
-    ctx->rpe_state.baseline_variance = 1.0f;
+    ctx->rpe_state.baseline_loss = 0.0F;
+    ctx->rpe_state.baseline_variance = 1.0F;
 
     /* Initialize mutexes */
     if (nimcp_mutex_init(&ctx->rpe_mutex, NULL) != NIMCP_SUCCESS) {
@@ -408,14 +409,14 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
     } else {
         neuromodulator_config_t neuromod_config;
         memset(&neuromod_config, 0, sizeof(neuromod_config));
-        neuromod_config.baseline_dopamine = 0.5f;
-        neuromod_config.baseline_serotonin = 0.5f;
-        neuromod_config.baseline_acetylcholine = 0.5f;
-        neuromod_config.baseline_norepinephrine = 0.5f;
-        neuromod_config.dopamine_decay = 2.0f;
-        neuromod_config.serotonin_decay = 10.0f;
-        neuromod_config.acetylcholine_decay = 0.5f;
-        neuromod_config.norepinephrine_decay = 3.0f;
+        neuromod_config.baseline_dopamine = 0.5F;
+        neuromod_config.baseline_serotonin = 0.5F;
+        neuromod_config.baseline_acetylcholine = 0.5F;
+        neuromod_config.baseline_norepinephrine = 0.5F;
+        neuromod_config.dopamine_decay = 2.0F;
+        neuromod_config.serotonin_decay = 10.0F;
+        neuromod_config.acetylcholine_decay = 0.5F;
+        neuromod_config.norepinephrine_decay = 3.0F;
         neuromod_config.reward_dopamine_gain = ctx->config.rpe_to_da_gain;
 
         ctx->neuromod_system = neuromodulator_system_create(&neuromod_config);
@@ -532,7 +533,7 @@ nimcp_result_t tpb_report_loss(tpb_context_t* ctx, float loss, float* rpe_out)
 
     nimcp_mutex_lock(&ctx->rpe_mutex);
 
-    float rpe = 0.0f;
+    float rpe = 0.0F;
 
     /* Compute RPE based on mode */
     switch (ctx->rpe_state.mode) {
@@ -559,7 +560,7 @@ nimcp_result_t tpb_report_loss(tpb_context_t* ctx, float loss, float* rpe_out)
 
     /* Smooth RPE */
     ctx->rpe_state.smoothed_rpe = ctx->rpe_state.rpe_alpha * rpe +
-                                  (1.0f - ctx->rpe_state.rpe_alpha) * ctx->rpe_state.smoothed_rpe;
+                                  (1.0F - ctx->rpe_state.rpe_alpha) * ctx->rpe_state.smoothed_rpe;
     ctx->rpe_state.last_rpe = rpe;
 
     nimcp_mutex_unlock(&ctx->rpe_mutex);
@@ -582,7 +583,7 @@ nimcp_result_t tpb_report_loss(tpb_context_t* ctx, float loss, float* rpe_out)
     }
     /* Update running average */
     float n = (float)ctx->stats.rpe_computations;
-    ctx->stats.avg_rpe = ctx->stats.avg_rpe * ((n - 1.0f) / n) + rpe / n;
+    ctx->stats.avg_rpe = ctx->stats.avg_rpe * ((n - 1.0F) / n) + rpe / n;
     nimcp_mutex_unlock(&ctx->stats_mutex);
 
     /* Callback */
@@ -604,8 +605,8 @@ nimcp_result_t tpb_inject_reward(tpb_context_t* ctx, float da_delta)
     }
 
     /* Clamp delta */
-    if (da_delta > 1.0f) da_delta = 1.0f;
-    if (da_delta < -1.0f) da_delta = -1.0f;
+    if (da_delta > 1.0F) da_delta = 1.0F;
+    if (da_delta < -1.0F) da_delta = -1.0F;
 
     /* Direct neuromodulator update */
     tpb_update_neuromod_from_rpe(ctx, da_delta);
@@ -643,7 +644,7 @@ static float tpb_compute_rpe_temporal_diff(tpb_context_t* ctx, float current_los
      */
     if (ctx->rpe_state.history_count == 0) {
         /* First call - no previous loss to compare, RPE = 0 */
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Get previous loss from history */
@@ -667,7 +668,7 @@ static float tpb_compute_rpe_exp_avg(tpb_context_t* ctx, float current_loss)
     /* EMA baseline: RPE = (baseline - current_loss) / baseline_variance */
     if (ctx->rpe_state.history_count == 0) {
         ctx->rpe_state.baseline_loss = current_loss;
-        return 0.0f;
+        return 0.0F;
     }
 
     float alpha = ctx->rpe_state.rpe_alpha;
@@ -677,12 +678,12 @@ static float tpb_compute_rpe_exp_avg(tpb_context_t* ctx, float current_loss)
     float rpe = prediction_error / (ctx->rpe_state.baseline_variance + TPB_EPSILON);
 
     /* Update baseline */
-    ctx->rpe_state.baseline_loss = alpha * current_loss + (1.0f - alpha) * ctx->rpe_state.baseline_loss;
+    ctx->rpe_state.baseline_loss = alpha * current_loss + (1.0F - alpha) * ctx->rpe_state.baseline_loss;
 
     /* Update variance estimate */
     float error_sq = prediction_error * prediction_error;
     ctx->rpe_state.baseline_variance = alpha * error_sq +
-                                       (1.0f - alpha) * ctx->rpe_state.baseline_variance;
+                                       (1.0F - alpha) * ctx->rpe_state.baseline_variance;
 
     return rpe * ctx->config.rpe_to_da_gain;
 }
@@ -694,13 +695,13 @@ static float tpb_compute_rpe_sliding_window(tpb_context_t* ctx, float current_lo
         /* Not enough history, use simple comparison */
         if (ctx->rpe_state.history_count == 0) {
             ctx->rpe_state.baseline_loss = current_loss;
-            return 0.0f;
+            return 0.0F;
         }
         return (ctx->rpe_state.baseline_loss - current_loss) * ctx->config.rpe_to_da_gain;
     }
 
     /* Compute window average */
-    float sum = 0.0f;
+    float sum = 0.0F;
     uint32_t window = ctx->config.rpe_window_size;
     uint32_t start_idx = (ctx->rpe_state.history_index + TPB_LOSS_HISTORY_SIZE - window) % TPB_LOSS_HISTORY_SIZE;
 
@@ -723,8 +724,8 @@ static float tpb_compute_rpe_adaptive(tpb_context_t* ctx, float current_loss)
     /* Adaptive baseline with variance tracking for normalization */
     if (ctx->rpe_state.history_count == 0) {
         ctx->rpe_state.baseline_loss = current_loss;
-        ctx->rpe_state.baseline_variance = 1.0f;
-        return 0.0f;
+        ctx->rpe_state.baseline_variance = 1.0F;
+        return 0.0F;
     }
 
     float alpha = ctx->rpe_state.rpe_alpha;
@@ -737,16 +738,16 @@ static float tpb_compute_rpe_adaptive(tpb_context_t* ctx, float current_loss)
     float rpe = prediction_error / std_dev;
 
     /* Clip extreme RPE values */
-    if (rpe > 3.0f) rpe = 3.0f;
-    if (rpe < -3.0f) rpe = -3.0f;
+    if (rpe > 3.0F) rpe = 3.0F;
+    if (rpe < -3.0F) rpe = -3.0F;
 
     /* Update baseline (EMA) */
-    ctx->rpe_state.baseline_loss = alpha * current_loss + (1.0f - alpha) * ctx->rpe_state.baseline_loss;
+    ctx->rpe_state.baseline_loss = alpha * current_loss + (1.0F - alpha) * ctx->rpe_state.baseline_loss;
 
     /* Update variance (EMA of squared error) */
     float error_sq = prediction_error * prediction_error;
     ctx->rpe_state.baseline_variance = alpha * error_sq +
-                                       (1.0f - alpha) * ctx->rpe_state.baseline_variance;
+                                       (1.0F - alpha) * ctx->rpe_state.baseline_variance;
 
     return rpe * ctx->config.rpe_to_da_gain;
 }
@@ -769,13 +770,13 @@ static void tpb_update_neuromod_from_rpe(tpb_context_t* ctx, float rpe)
 
     /* Update dopamine */
     float new_da = pool.dopamine + da_delta;
-    if (new_da > 1.0f) new_da = 1.0f;
-    if (new_da < 0.0f) new_da = 0.0f;
+    if (new_da > 1.0F) new_da = 1.0F;
+    if (new_da < 0.0F) new_da = 0.0F;
 
     /* Also update norepinephrine for arousal on large RPE */
-    float ne_delta = fabsf(rpe) * 0.2f;  /* Arousal from any prediction error */
+    float ne_delta = fabsf(rpe) * 0.2F;  /* Arousal from any prediction error */
     float new_ne = pool.norepinephrine + ne_delta;
-    if (new_ne > 1.0f) new_ne = 1.0f;
+    if (new_ne > 1.0F) new_ne = 1.0F;
 
     /* Apply updates */
     neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_DOPAMINE, new_da);
@@ -831,7 +832,7 @@ nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
     /* Find region for this neuron */
     uint32_t region_id = tpb_find_region_for_neuron(ctx, neuron_id);
 
-    float weight_delta = 0.0f;
+    float weight_delta = 0.0F;
 
     if (region_id < ctx->num_regions) {
         tpb_region_config_t* region = &ctx->regions[region_id];
@@ -849,7 +850,7 @@ nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
                 break;
             case TPB_RULE_BCM:
                 weight_delta = tpb_apply_bcm_rule(ctx, region_id, pre_activity,
-                                                   post_activity, 0.5f);
+                                                   post_activity, 0.5F);
                 break;
             case TPB_RULE_HEBBIAN:
                 /* Simple Hebbian: delta_w = lr * pre * post */
@@ -865,7 +866,7 @@ nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
                  * spike_time_delta is used as error signal */
                 {
                     float eligibility = pre_activity * post_activity;
-                    float error_signal = spike_time_delta * 0.1f;  /* Scale error */
+                    float error_signal = spike_time_delta * 0.1F;  /* Scale error */
                     weight_delta = modulated_lr * eligibility * error_signal;
                 }
                 break;
@@ -873,12 +874,12 @@ nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
                 /* Homeostatic plasticity: maintain target firing rate
                  * delta_w = lr * (target_rate - post_activity) * pre_activity */
                 {
-                    float target_rate = 0.5f;  /* Default target */
+                    float target_rate = 0.5F;  /* Default target */
                     weight_delta = modulated_lr * (target_rate - post_activity) * pre_activity;
                 }
                 break;
             default:
-                weight_delta = 0.0f;
+                weight_delta = 0.0F;
                 break;
         }
 
@@ -891,7 +892,7 @@ nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
         ctx->stats.region_updates[region_id]++;
         float n = (float)ctx->stats.region_updates[region_id];
         ctx->stats.region_avg_delta[region_id] =
-            ctx->stats.region_avg_delta[region_id] * ((n - 1.0f) / n) + fabsf(weight_delta) / n;
+            ctx->stats.region_avg_delta[region_id] * ((n - 1.0F) / n) + fabsf(weight_delta) / n;
         nimcp_mutex_unlock(&ctx->stats_mutex);
     }
 
@@ -959,7 +960,7 @@ nimcp_result_t tpb_apply_plasticity_batch(tpb_context_t* ctx, uint32_t num_synap
     } else {
         /* Sequential execution */
         for (uint32_t i = 0; i < num_synapses; i++) {
-            float delta = 0.0f;
+            float delta = 0.0F;
             tpb_route_weight_update(ctx, post_neuron_ids[i], pre_activities[i],
                                     post_activities[i], spike_deltas[i], &delta);
             weights[i] += delta;
@@ -981,7 +982,7 @@ static void tpb_batch_worker(void* arg)
     if (!work) return;
 
     for (uint32_t i = work->start_idx; i < work->end_idx; i++) {
-        float delta = 0.0f;
+        float delta = 0.0F;
         if (tpb_route_weight_update(work->ctx, work->post_neuron_ids[i],
                                      work->pre_activities[i], work->post_activities[i],
                                      work->spike_deltas[i], &delta) == NIMCP_SUCCESS) {
@@ -1015,10 +1016,10 @@ static float tpb_apply_stdp_rule(tpb_context_t* ctx, uint32_t region_id,
     /* STDP parameters */
     float tau_plus = region->plasticity_window_ms;
     float tau_minus = region->plasticity_window_ms;
-    float a_plus = 0.005f;
-    float a_minus = 0.00525f;
+    float a_plus = 0.005F;
+    float a_minus = 0.00525F;
 
-    float weight_change = 0.0f;
+    float weight_change = 0.0F;
 
     if (delta_t > 0) {
         /* Pre-before-post: LTP */
@@ -1042,10 +1043,10 @@ static float tpb_apply_stdp_rule(tpb_context_t* ctx, uint32_t region_id,
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
         /* DA modulation: high DA amplifies, low DA suppresses */
-        float da_factor = 0.5f + pool.dopamine * region->da_sensitivity;
+        float da_factor = 0.5F + pool.dopamine * region->da_sensitivity;
 
         /* ACh modulation: attention focus */
-        float ach_factor = 0.8f + pool.acetylcholine * region->ach_sensitivity * 0.4f;
+        float ach_factor = 0.8F + pool.acetylcholine * region->ach_sensitivity * 0.4F;
 
         weight_change *= da_factor * ach_factor;
     }
@@ -1066,7 +1067,7 @@ static float tpb_apply_bcm_rule(tpb_context_t* ctx, uint32_t region_id,
         neuromodulator_pool_t pool;
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
-        float da_factor = 0.5f + pool.dopamine * region->da_sensitivity;
+        float da_factor = 0.5F + pool.dopamine * region->da_sensitivity;
         weight_change *= da_factor;
     }
 
@@ -1096,12 +1097,12 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
     neuromodulator_pool_t pool;
     neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
-    float lr_multiplier = 1.0f;
+    float lr_multiplier = 1.0F;
     tpb_lr_modulation_config_t* mod_cfg = &ctx->config.lr_modulation;
 
     /* Get region-specific sensitivities */
-    float da_sens = 1.0f, ach_sens = 1.0f, ht5_sens = 1.0f, ne_sens = 1.0f;
-    float region_strength = 1.0f;
+    float da_sens = 1.0F, ach_sens = 1.0F, ht5_sens = 1.0F, ne_sens = 1.0F;
+    float region_strength = 1.0F;
     if (region_id < ctx->num_regions) {
         da_sens = ctx->regions[region_id].da_sensitivity;
         ach_sens = ctx->regions[region_id].ach_sensitivity;
@@ -1112,20 +1113,20 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
 
     switch (mod_cfg->mode) {
         case TPB_NEUROMOD_DA_PRIMARY:
-            lr_multiplier = 0.5f + pool.dopamine * da_sens;
+            lr_multiplier = 0.5F + pool.dopamine * da_sens;
             break;
 
         case TPB_NEUROMOD_ACH_PRIMARY:
-            lr_multiplier = 0.5f + pool.acetylcholine * ach_sens;
+            lr_multiplier = 0.5F + pool.acetylcholine * ach_sens;
             break;
 
         case TPB_NEUROMOD_5HT_PRIMARY:
             /* 5-HT modulates patience - inverse relationship with LR */
-            lr_multiplier = 1.5f - pool.serotonin * ht5_sens;
+            lr_multiplier = 1.5F - pool.serotonin * ht5_sens;
             break;
 
         case TPB_NEUROMOD_NE_PRIMARY:
-            lr_multiplier = 0.5f + pool.norepinephrine * ne_sens;
+            lr_multiplier = 0.5F + pool.norepinephrine * ne_sens;
             break;
 
         case TPB_NEUROMOD_BALANCED:
@@ -1133,21 +1134,21 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
             /* Use region sensitivities with normalized weights */
             lr_multiplier = mod_cfg->da_weight * pool.dopamine * da_sens +
                            mod_cfg->ach_weight * pool.acetylcholine * ach_sens +
-                           mod_cfg->ht5_weight * (1.0f - pool.serotonin) * ht5_sens +
+                           mod_cfg->ht5_weight * (1.0F - pool.serotonin) * ht5_sens +
                            mod_cfg->ne_weight * pool.norepinephrine * ne_sens;
             /* Center around 1.0 by adding baseline */
-            lr_multiplier = 0.5f + lr_multiplier;
+            lr_multiplier = 0.5F + lr_multiplier;
             break;
     }
 
     /* Apply region-specific modulation strength to scale deviation from 1.0 */
-    lr_multiplier = 1.0f + (lr_multiplier - 1.0f) * region_strength;
+    lr_multiplier = 1.0F + (lr_multiplier - 1.0F) * region_strength;
 
     /* Apply sigmoid scaling if enabled */
     if (mod_cfg->use_sigmoid_scaling) {
-        float x = (lr_multiplier - 1.0f) * mod_cfg->sigmoid_steepness;
-        lr_multiplier = 1.0f + (mod_cfg->max_lr_multiplier - mod_cfg->min_lr_multiplier) *
-                        (1.0f / (1.0f + expf(-x)) - 0.5f);
+        float x = (lr_multiplier - 1.0F) * mod_cfg->sigmoid_steepness;
+        lr_multiplier = 1.0F + (mod_cfg->max_lr_multiplier - mod_cfg->min_lr_multiplier) *
+                        (1.0F / (1.0F + expf(-x)) - 0.5F);
     }
 
     /* Clamp to bounds */
@@ -1163,7 +1164,7 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
     /* Track statistics */
     nimcp_mutex_lock(&ctx->stats_mutex);
     float n = (float)(ctx->stats.total_plasticity_updates + 1);
-    ctx->stats.avg_lr_multiplier = ctx->stats.avg_lr_multiplier * ((n - 1.0f) / n) + lr_multiplier / n;
+    ctx->stats.avg_lr_multiplier = ctx->stats.avg_lr_multiplier * ((n - 1.0F) / n) + lr_multiplier / n;
     nimcp_mutex_unlock(&ctx->stats_mutex);
 
     return NIMCP_SUCCESS;
@@ -1177,10 +1178,10 @@ nimcp_result_t tpb_get_neuromod_levels(tpb_context_t* ctx, float* da_out,
     }
 
     if (!ctx->neuromod_system) {
-        if (da_out) *da_out = 0.5f;
-        if (ach_out) *ach_out = 0.5f;
-        if (ht5_out) *ht5_out = 0.5f;
-        if (ne_out) *ne_out = 0.5f;
+        if (da_out) *da_out = 0.5F;
+        if (ach_out) *ach_out = 0.5F;
+        if (ht5_out) *ht5_out = 0.5F;
+        if (ne_out) *ne_out = 0.5F;
         return NIMCP_SUCCESS;
     }
 
@@ -1202,21 +1203,21 @@ nimcp_result_t tpb_set_neuromod_levels(tpb_context_t* ctx, float da, float ach,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (da >= 0.0f) {
+    if (da >= 0.0F) {
         neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_DOPAMINE,
-                                        da > 1.0f ? 1.0f : da);
+                                        da > 1.0F ? 1.0F : da);
     }
-    if (ach >= 0.0f) {
+    if (ach >= 0.0F) {
         neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_ACETYLCHOLINE,
-                                        ach > 1.0f ? 1.0f : ach);
+                                        ach > 1.0F ? 1.0F : ach);
     }
-    if (ht5 >= 0.0f) {
+    if (ht5 >= 0.0F) {
         neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_SEROTONIN,
-                                        ht5 > 1.0f ? 1.0f : ht5);
+                                        ht5 > 1.0F ? 1.0F : ht5);
     }
-    if (ne >= 0.0f) {
+    if (ne >= 0.0F) {
         neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_NOREPINEPHRINE,
-                                        ne > 1.0f ? 1.0f : ne);
+                                        ne > 1.0F ? 1.0F : ne);
     }
 
     return NIMCP_SUCCESS;
@@ -1242,7 +1243,7 @@ nimcp_result_t tpb_create_stdp_synapse(tpb_context_t* ctx, uint32_t region_id,
         synapse_out->tau_plus = region->plasticity_window_ms;
         synapse_out->tau_minus = region->plasticity_window_ms;
         synapse_out->enable_da_modulation = region->enable_three_factor;
-        synapse_out->da_modulation_gain = region->da_sensitivity * 100.0f;
+        synapse_out->da_modulation_gain = region->da_sensitivity * 100.0F;
     }
 
     return NIMCP_SUCCESS;
@@ -1256,13 +1257,13 @@ nimcp_result_t tpb_create_bcm_synapse(tpb_context_t* ctx, uint32_t region_id,
     }
 
     memset(synapse_out, 0, sizeof(bcm_synapse_t));
-    synapse_out->weight = 0.5f;
-    synapse_out->threshold = 0.5f;
+    synapse_out->weight = 0.5F;
+    synapse_out->threshold = 0.5F;
 
     if (region_id < ctx->num_regions) {
         tpb_region_config_t* region = &ctx->regions[region_id];
         /* BCM parameters based on region config */
-        synapse_out->weight = region->base_learning_rate * 10.0f;  /* Scale appropriately */
+        synapse_out->weight = region->base_learning_rate * 10.0F;  /* Scale appropriately */
     }
 
     return NIMCP_SUCCESS;
@@ -1276,7 +1277,7 @@ nimcp_result_t tpb_update_stdp(tpb_context_t* ctx, stdp_synapse_t* synapse,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    float delta = 0.0f;
+    float delta = 0.0F;
 
     if (pre_spike) {
         delta += stdp_pre_spike_modulated(synapse, current_time_ms, ctx->neuromod_system);
@@ -1304,29 +1305,29 @@ nimcp_result_t tpb_update_bcm(tpb_context_t* ctx, bcm_synapse_t* synapse,
     float weight_change = post_activity * (post_activity - synapse->threshold) * pre_activity;
 
     /* Update sliding threshold: theta_dot = (post^2 - theta) / tau */
-    float tau_theta = 100.0f;  /* ms */
-    float theta_change = (post_activity * post_activity - synapse->threshold) / tau_theta * dt * 1000.0f;
+    float tau_theta = 100.0F;  /* ms */
+    float theta_change = (post_activity * post_activity - synapse->threshold) / tau_theta * dt * 1000.0F;
     synapse->threshold += theta_change;
 
     /* Clamp threshold */
-    if (synapse->threshold < 0.01f) synapse->threshold = 0.01f;
-    if (synapse->threshold > 0.99f) synapse->threshold = 0.99f;
+    if (synapse->threshold < 0.01F) synapse->threshold = 0.01F;
+    if (synapse->threshold > 0.99F) synapse->threshold = 0.99F;
 
     /* Apply neuromodulation */
     if (ctx->neuromod_system) {
         neuromodulator_pool_t pool;
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
-        float da_factor = 0.5f + pool.dopamine;
+        float da_factor = 0.5F + pool.dopamine;
         weight_change *= da_factor;
     }
 
     /* Apply to synapse */
-    synapse->weight += weight_change * 0.01f;  /* Scale by learning rate */
-    if (synapse->weight < 0.0f) synapse->weight = 0.0f;
-    if (synapse->weight > 1.0f) synapse->weight = 1.0f;
+    synapse->weight += weight_change * 0.01F;  /* Scale by learning rate */
+    if (synapse->weight < 0.0F) synapse->weight = 0.0F;
+    if (synapse->weight > 1.0F) synapse->weight = 1.0F;
 
     if (weight_delta_out) {
-        *weight_delta_out = weight_change * 0.01f;
+        *weight_delta_out = weight_change * 0.01F;
     }
 
     return NIMCP_SUCCESS;
@@ -1613,11 +1614,11 @@ static tcb_action_t tpb_on_loss_computed(const tcb_event_t* event)
     nimcp_mutex_unlock(&ctx->callback_mutex);
 
     /* Report loss to compute RPE and update neuromodulators */
-    float rpe = 0.0f;
+    float rpe = 0.0F;
     tpb_report_loss(ctx, event->metrics.loss, &rpe);
 
     /* Positive RPE = good learning, continue */
-    if (rpe > 0.0f) {
+    if (rpe > 0.0F) {
         return TCB_ACTION_CONTINUE;
     }
 
@@ -1642,21 +1643,21 @@ static tcb_action_t tpb_on_weights_updated(const tcb_event_t* event)
     nimcp_mutex_unlock(&ctx->callback_mutex);
 
     /* Modulate neuromodulators based on gradient norm */
-    if (ctx->neuromod_system && event->metrics.gradient_norm > 0.0f) {
+    if (ctx->neuromod_system && event->metrics.gradient_norm > 0.0F) {
         neuromodulator_pool_t pool;
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
         /* Large gradient → boost NE (arousal) */
-        if (event->metrics.gradient_norm > 10.0f) {
-            float new_ne = pool.norepinephrine + 0.1f;
-            if (new_ne > 1.0f) new_ne = 1.0f;
+        if (event->metrics.gradient_norm > 10.0F) {
+            float new_ne = pool.norepinephrine + 0.1F;
+            if (new_ne > 1.0F) new_ne = 1.0F;
             neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_NOREPINEPHRINE, new_ne);
         }
 
         /* Small gradient → boost ACh (exploration) */
-        if (event->metrics.gradient_norm < 0.01f) {
-            float new_ach = pool.acetylcholine + 0.1f;
-            if (new_ach > 1.0f) new_ach = 1.0f;
+        if (event->metrics.gradient_norm < 0.01F) {
+            float new_ach = pool.acetylcholine + 0.1F;
+            if (new_ach > 1.0F) new_ach = 1.0F;
             neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_ACETYLCHOLINE, new_ach);
         }
     }
@@ -1709,7 +1710,7 @@ static tcb_action_t tpb_on_divergence(const tcb_event_t* event)
     }
 
     /* Very high loss → rollback or reduce LR */
-    if (event->metrics.loss > 100.0f) {
+    if (event->metrics.loss > 100.0F) {
         LOG_WARNING("[%s] High loss detected (%.2f), requesting LR reduction",
                    TPB_LOG_MODULE, event->metrics.loss);
         return TCB_ACTION_REDUCE_LR;
@@ -1734,34 +1735,34 @@ nimcp_result_t tpb_handle_callback_action(tpb_context_t* ctx, tcb_action_t actio
 
         case TCB_ACTION_REDUCE_LR:
             /* Reduce DA, increase 5-HT */
-            da = da * 0.8f;
-            ht5 = ht5 + 0.1f;
-            if (ht5 > 1.0f) ht5 = 1.0f;
-            tpb_set_neuromod_levels(ctx, da, -1.0f, ht5, -1.0f);
+            da = da * 0.8F;
+            ht5 = ht5 + 0.1F;
+            if (ht5 > 1.0F) ht5 = 1.0F;
+            tpb_set_neuromod_levels(ctx, da, -1.0F, ht5, -1.0F);
             LOG_DEBUG("[%s] Reduced LR via neuromodulation (DA=%.2f, 5-HT=%.2f)",
                      TPB_LOG_MODULE, da, ht5);
             break;
 
         case TCB_ACTION_INCREASE_LR:
             /* Increase DA */
-            da = da + 0.1f;
-            if (da > 1.0f) da = 1.0f;
-            tpb_set_neuromod_levels(ctx, da, -1.0f, -1.0f, -1.0f);
+            da = da + 0.1F;
+            if (da > 1.0F) da = 1.0F;
+            tpb_set_neuromod_levels(ctx, da, -1.0F, -1.0F, -1.0F);
             LOG_DEBUG("[%s] Increased LR via neuromodulation (DA=%.2f)", TPB_LOG_MODULE, da);
             break;
 
         case TCB_ACTION_SKIP_STEP:
             /* Dampen all neuromodulators */
-            da = da * 0.9f;
-            ach = ach * 0.9f;
-            tpb_set_neuromod_levels(ctx, da, ach, -1.0f, -1.0f);
+            da = da * 0.9F;
+            ach = ach * 0.9F;
+            tpb_set_neuromod_levels(ctx, da, ach, -1.0F, -1.0F);
             LOG_DEBUG("[%s] Dampened neuromodulators for skip step", TPB_LOG_MODULE);
             break;
 
         case TCB_ACTION_ROLLBACK:
         case TCB_ACTION_STOP_TRAINING:
             /* Reset neuromodulators to baseline */
-            tpb_set_neuromod_levels(ctx, 0.5f, 0.5f, 0.5f, 0.5f);
+            tpb_set_neuromod_levels(ctx, 0.5F, 0.5F, 0.5F, 0.5F);
             LOG_INFO("[%s] Reset neuromodulators due to action %d", TPB_LOG_MODULE, action);
             break;
 
@@ -1784,8 +1785,8 @@ nimcp_result_t tpb_set_callback_modulation(tpb_context_t* ctx, tcb_event_type_t 
     }
 
     /* Clamp modulation to valid range */
-    if (modulation < 0.0f) modulation = 0.0f;
-    if (modulation > 3.0f) modulation = 3.0f;
+    if (modulation < 0.0F) modulation = 0.0F;
+    if (modulation > 3.0F) modulation = 3.0F;
 
     LOG_DEBUG("[%s] Set callback modulation for event %d: %.2f", TPB_LOG_MODULE, event, modulation);
 

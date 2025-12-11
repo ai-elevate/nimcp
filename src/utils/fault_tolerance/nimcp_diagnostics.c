@@ -293,7 +293,7 @@ diagnostic_result_t* diagnostics_analyze_stack_trace(void** trace, int depth) {
     // Initialize result
     result->error_type = ERROR_TYPE_UNKNOWN;
     result->severity = SEVERITY_ERROR;
-    result->confidence = 0.5f;
+    result->confidence = 0.5F;
     result->timestamp = time(NULL);
     result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
     strncpy(result->diagnostic_version, DIAGNOSTIC_VERSION,
@@ -367,7 +367,7 @@ diagnostic_result_t* diagnostics_analyze_crash(int signal, crash_context_t* cras
     // Initialize result
     result->error_type = signal_to_error_type(signal);
     result->severity = error_type_to_severity(result->error_type);
-    result->confidence = 0.9f;  // High confidence for signal-based crashes
+    result->confidence = 0.9F;  // High confidence for signal-based crashes
     result->signal_number = signal;
     result->timestamp = time(NULL);
     result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
@@ -460,7 +460,7 @@ diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
     // Initialize result
     result->error_type = ERROR_TYPE_NONE;
     result->severity = SEVERITY_INFO;
-    result->confidence = 0.8f;
+    result->confidence = 0.8F;
     result->timestamp = time(NULL);
     result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
     strncpy(result->diagnostic_version, DIAGNOSTIC_VERSION,
@@ -482,7 +482,7 @@ diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
         if (leaked_blocks > 100) {
             result->error_type = ERROR_TYPE_MEMORY_LEAK;
             result->severity = SEVERITY_WARNING;
-            result->confidence = 0.7f;
+            result->confidence = 0.7F;
 
             snprintf(result->root_cause, sizeof(result->root_cause),
                      "Detected %u leaked memory blocks (~%zu bytes)",
@@ -494,7 +494,7 @@ diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
     if (!brain) {
         result->error_type = ERROR_TYPE_NULL_POINTER;
         result->severity = SEVERITY_ERROR;
-        result->confidence = 1.0f;
+        result->confidence = 1.0F;
 
         snprintf(result->root_cause, sizeof(result->root_cause),
                  "Brain pointer is NULL");
@@ -528,7 +528,7 @@ diagnostic_result_t* diagnostics_analyze_numerical_stability(brain_t brain) {
     // Initialize result
     result->error_type = ERROR_TYPE_NONE;
     result->severity = SEVERITY_INFO;
-    result->confidence = 0.9f;
+    result->confidence = 0.9F;
     result->timestamp = time(NULL);
     result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
     strncpy(result->diagnostic_version, DIAGNOSTIC_VERSION,
@@ -646,8 +646,8 @@ bool diagnostics_detect_infinite_loop(void* instruction_pointer, uint32_t thresh
 }
 
 error_type_t diagnostics_detect_resource_exhaustion(float threshold_percent) {
-    if (threshold_percent < 0.0f || threshold_percent > 100.0f) {
-        threshold_percent = 90.0f;
+    if (threshold_percent < 0.0F || threshold_percent > 100.0F) {
+        threshold_percent = 90.0F;
     }
 
     // Check memory usage
@@ -703,51 +703,51 @@ void diagnostics_suggest_recovery(diagnostic_result_t* result) {
     switch (result->error_type) {
         case ERROR_TYPE_NULL_POINTER:
         case ERROR_TYPE_SEGFAULT:
-            add_recovery_action(result, RECOVERY_RELOAD_CHECKPOINT, 0.8f,
+            add_recovery_action(result, RECOVERY_RELOAD_CHECKPOINT, 0.8F,
                               "Reload from last known good checkpoint", 100, false);
-            add_recovery_action(result, RECOVERY_RESET_COMPONENT, 0.6f,
+            add_recovery_action(result, RECOVERY_RESET_COMPONENT, 0.6F,
                               "Reset affected component to initial state", 50, false);
             break;
 
         case ERROR_TYPE_NAN_DETECTED:
         case ERROR_TYPE_INF_DETECTED:
         case ERROR_TYPE_GRADIENT_EXPLOSION:
-            add_recovery_action(result, RECOVERY_REDUCE_PRECISION, 0.9f,
+            add_recovery_action(result, RECOVERY_REDUCE_PRECISION, 0.9F,
                               "Switch to lower precision arithmetic", 10, false);
-            add_recovery_action(result, RECOVERY_RELOAD_CHECKPOINT, 0.7f,
+            add_recovery_action(result, RECOVERY_RELOAD_CHECKPOINT, 0.7F,
                               "Reload from checkpoint before instability", 100, false);
             break;
 
         case ERROR_TYPE_OUT_OF_MEMORY:
-            add_recovery_action(result, RECOVERY_CLEAR_CACHE, 0.9f,
+            add_recovery_action(result, RECOVERY_CLEAR_CACHE, 0.9F,
                               "Clear internal caches to free memory", 50, false);
-            add_recovery_action(result, RECOVERY_REDUCE_BATCH_SIZE, 0.8f,
+            add_recovery_action(result, RECOVERY_REDUCE_BATCH_SIZE, 0.8F,
                               "Reduce processing batch size", 10, false);
-            add_recovery_action(result, RECOVERY_GRACEFUL_SHUTDOWN, 0.5f,
+            add_recovery_action(result, RECOVERY_GRACEFUL_SHUTDOWN, 0.5F,
                               "Graceful shutdown to prevent data loss", 1000, true);
             break;
 
         case ERROR_TYPE_INFINITE_LOOP:
-            add_recovery_action(result, RECOVERY_RESET_COMPONENT, 0.9f,
+            add_recovery_action(result, RECOVERY_RESET_COMPONENT, 0.9F,
                               "Reset stuck component", 100, false);
-            add_recovery_action(result, RECOVERY_RESTART_PROCESS, 0.7f,
+            add_recovery_action(result, RECOVERY_RESTART_PROCESS, 0.7F,
                               "Restart process with watchdog", 2000, true);
             break;
 
         case ERROR_TYPE_BUFFER_OVERFLOW:
         case ERROR_TYPE_HEAP_CORRUPTION:
-            add_recovery_action(result, RECOVERY_IMMEDIATE_SHUTDOWN, 0.9f,
+            add_recovery_action(result, RECOVERY_IMMEDIATE_SHUTDOWN, 0.9F,
                               "Immediate shutdown to prevent further corruption", 0, true);
             break;
 
         case ERROR_TYPE_MEMORY_LEAK:
         case ERROR_TYPE_RESOURCE_LEAK:
-            add_recovery_action(result, RECOVERY_RESTART_PROCESS, 0.8f,
+            add_recovery_action(result, RECOVERY_RESTART_PROCESS, 0.8F,
                               "Restart process to reclaim leaked resources", 2000, true);
             break;
 
         default:
-            add_recovery_action(result, RECOVERY_RETRY, 0.5f,
+            add_recovery_action(result, RECOVERY_RETRY, 0.5F,
                               "Retry the operation", 10, false);
             break;
     }
@@ -760,7 +760,7 @@ bool diagnostics_auto_recover(diagnostic_result_t* result, brain_t brain) {
 
     // Only attempt auto-recovery if top action has high confidence
     const recovery_action_recommendation_t* action = &result->recovery_actions[0];
-    if (action->confidence < 0.8f || action->requires_user_intervention) {
+    if (action->confidence < 0.8F || action->requires_user_intervention) {
         return false;
     }
 

@@ -44,6 +44,7 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "utils/logging/nimcp_logging.h"
@@ -644,7 +645,7 @@ NIMCP_EXPORT bool buffer_pool_get_stats(
     stats->fast_allocations = pool->total_acquires - pool->cow_triggers;
     stats->slow_allocations = pool->cow_triggers;
     stats->avg_alloc_time_us = pool->total_acquires > 0 ?
-        (float)pool->total_alloc_time_ns / (float)pool->total_acquires / 1000.0f : 0.0f;
+        (float)pool->total_alloc_time_ns / (float)pool->total_acquires / 1000.0F : 0.0F;
 
     nimcp_platform_mutex_unlock(&pool->mutex);
 

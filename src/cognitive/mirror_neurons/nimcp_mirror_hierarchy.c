@@ -16,6 +16,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"
@@ -99,7 +100,7 @@ static void softmax_goals(mirror_hierarchy_t hierarchy) {
     if (!hierarchy || hierarchy->num_goals == 0) return;
 
     // Find max for numerical stability
-    float max_act = -1e10f;
+    float max_act = -1e10F;
     for (uint32_t i = 0; i < hierarchy->num_goals; i++) {
         if (hierarchy->goals[i].activation > max_act) {
             max_act = hierarchy->goals[i].activation;
@@ -107,13 +108,13 @@ static void softmax_goals(mirror_hierarchy_t hierarchy) {
     }
 
     // Compute exp sum
-    float exp_sum = 0.0f;
+    float exp_sum = 0.0F;
     for (uint32_t i = 0; i < hierarchy->num_goals; i++) {
         exp_sum += expf(hierarchy->goals[i].activation - max_act);
     }
 
     // Normalize
-    if (exp_sum > 0.0f) {
+    if (exp_sum > 0.0F) {
         for (uint32_t i = 0; i < hierarchy->num_goals; i++) {
             hierarchy->goals[i].activation =
                 expf(hierarchy->goals[i].activation - max_act) / exp_sum;
@@ -138,16 +139,16 @@ mirror_hierarchy_config_t mirror_hierarchy_get_default_config(void) {
         .goal_inference_threshold = NIMCP_HIERARCHY_GOAL_THRESHOLD,
 
         // Learning
-        .binding_learning_rate = 0.05f,
-        .binding_decay_rate = 0.001f,
-        .min_binding_strength = 0.01f,
+        .binding_learning_rate = 0.05F,
+        .binding_decay_rate = 0.001F,
+        .min_binding_strength = 0.01F,
 
         // Top-down modulation
-        .goal_top_down_gain = 1.0f,
+        .goal_top_down_gain = 1.0F,
         .enable_goal_competition = true,
 
         // Bottom-up inference
-        .motor_to_goal_gain = 0.5f,
+        .motor_to_goal_gain = 0.5F,
         .enable_predictive_coding = true
     };
     return config;
@@ -232,16 +233,16 @@ uint32_t mirror_hierarchy_create_goal(mirror_hierarchy_t hierarchy,
         goal->name[sizeof(goal->name) - 1] = '\0';
     }
 
-    goal->activation = 0.0f;
-    goal->peak_activation = 0.0f;
-    goal->target_activation = 0.0f;
-    goal->top_down_bias = 0.0f;
+    goal->activation = 0.0F;
+    goal->peak_activation = 0.0F;
+    goal->target_activation = 0.0F;
+    goal->top_down_bias = 0.0F;
     goal->is_selected = false;
     goal->num_bindings = 0;
     goal->num_context_features = 0;
     goal->inference_count = 0;
     goal->selection_count = 0;
-    goal->total_active_time = 0.0f;
+    goal->total_active_time = 0.0F;
 
     return goal_id;
 }
@@ -266,12 +267,12 @@ void mirror_hierarchy_activate_goal(mirror_hierarchy_t hierarchy,
     activation *= hierarchy->config.goal_top_down_gain;
 
     // Set target (will be smoothed in step())
-    goal->target_activation = clamp_f(activation, 0.0f, 1.0f);
+    goal->target_activation = clamp_f(activation, 0.0F, 1.0F);
 
     // Partial immediate update
-    float instant_factor = 0.3f;
+    float instant_factor = 0.3F;
     goal->activation += (goal->target_activation - goal->activation) * instant_factor;
-    goal->activation = clamp_f(goal->activation, 0.0f, 1.0f);
+    goal->activation = clamp_f(goal->activation, 0.0F, 1.0F);
 
     if (goal->activation > goal->peak_activation) {
         goal->peak_activation = goal->activation;
@@ -296,8 +297,8 @@ void mirror_hierarchy_select_goal(mirror_hierarchy_t hierarchy, int32_t goal_id)
         goal->selection_count++;
 
         // Boost activation
-        goal->activation = fmaxf(goal->activation, 0.5f);
-        goal->top_down_bias = 0.3f;
+        goal->activation = fmaxf(goal->activation, 0.5F);
+        goal->top_down_bias = 0.3F;
     }
 }
 
@@ -330,15 +331,15 @@ uint32_t mirror_hierarchy_create_motor(mirror_hierarchy_t hierarchy,
         motor->name[sizeof(motor->name) - 1] = '\0';
     }
 
-    motor->activation = 0.0f;
-    motor->peak_activation = 0.0f;
+    motor->activation = 0.0F;
+    motor->peak_activation = 0.0F;
     motor->num_parameters = 0;
     motor->primary_goal = UINT32_MAX;
-    motor->goal_evidence = 0.0f;
-    motor->predicted_activation = 0.0f;
-    motor->prediction_error = 0.0f;
+    motor->goal_evidence = 0.0F;
+    motor->predicted_activation = 0.0F;
+    motor->prediction_error = 0.0F;
     motor->execution_count = 0;
-    motor->total_active_time = 0.0f;
+    motor->total_active_time = 0.0F;
 
     return motor_id;
 }
@@ -359,7 +360,7 @@ void mirror_hierarchy_activate_motor(mirror_hierarchy_t hierarchy,
 
     motor_representation_t* motor = &hierarchy->motors[motor_id];
 
-    motor->activation = clamp_f(activation, 0.0f, 1.0f);
+    motor->activation = clamp_f(activation, 0.0F, 1.0F);
 
     if (motor->activation > motor->peak_activation) {
         motor->peak_activation = motor->activation;
@@ -383,7 +384,7 @@ void mirror_hierarchy_activate_motor(mirror_hierarchy_t hierarchy,
                 float boost = motor->activation * binding->binding_strength *
                              hierarchy->config.motor_to_goal_gain;
                 goal->activation += boost;
-                goal->activation = clamp_f(goal->activation, 0.0f, 1.0f);
+                goal->activation = clamp_f(goal->activation, 0.0F, 1.0F);
             }
         }
     }
@@ -422,7 +423,7 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
     goal_motor_binding_t* existing = find_binding(goal, motor_id);
     if (existing) {
         // Update existing binding
-        existing->binding_strength = clamp_f(strength, 0.0f, 1.0f);
+        existing->binding_strength = clamp_f(strength, 0.0F, 1.0F);
         existing->binding_type = type;
         return true;
     }
@@ -434,10 +435,10 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
 
     goal_motor_binding_t* binding = &goal->bindings[goal->num_bindings++];
     binding->motor_id = motor_id;
-    binding->binding_strength = clamp_f(strength, 0.0f, 1.0f);
+    binding->binding_strength = clamp_f(strength, 0.0F, 1.0F);
     binding->binding_type = type;
-    binding->usage_count = 0.0f;
-    binding->last_used_time = 0.0f;
+    binding->usage_count = 0.0F;
+    binding->last_used_time = 0.0F;
 
     hierarchy->bindings_created++;
 
@@ -456,8 +457,8 @@ void mirror_hierarchy_strengthen_binding(mirror_hierarchy_t hierarchy,
     if (binding) {
         float old_strength = binding->binding_strength;
         binding->binding_strength += delta * hierarchy->config.binding_learning_rate;
-        binding->binding_strength = clamp_f(binding->binding_strength, 0.0f, 1.0f);
-        binding->usage_count += 1.0f;
+        binding->binding_strength = clamp_f(binding->binding_strength, 0.0F, 1.0F);
+        binding->usage_count += 1.0F;
 
         if (binding->binding_strength > old_strength) {
             hierarchy->bindings_strengthened++;
@@ -470,12 +471,12 @@ void mirror_hierarchy_strengthen_binding(mirror_hierarchy_t hierarchy,
 float mirror_hierarchy_get_binding(mirror_hierarchy_t hierarchy,
                                     uint32_t goal_id,
                                     uint32_t motor_id) {
-    if (!hierarchy || goal_id >= hierarchy->num_goals) return -1.0f;
+    if (!hierarchy || goal_id >= hierarchy->num_goals) return -1.0F;
 
     goal_representation_t* goal = &hierarchy->goals[goal_id];
     goal_motor_binding_t* binding = find_binding(goal, motor_id);
 
-    return binding ? binding->binding_strength : -1.0f;
+    return binding ? binding->binding_strength : -1.0F;
 }
 
 //=============================================================================
@@ -494,7 +495,7 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
 
     // Compute likelihood for each goal given this motor
     float* likelihoods = (float*)alloca(hierarchy->num_goals * sizeof(float));
-    float total_likelihood = 0.0f;
+    float total_likelihood = 0.0F;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
         goal_representation_t* goal = &hierarchy->goals[g];
@@ -504,12 +505,12 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
             likelihoods[g] = binding->binding_strength;
             total_likelihood += likelihoods[g];
         } else {
-            likelihoods[g] = 0.0f;
+            likelihoods[g] = 0.0F;
         }
     }
 
     // Normalize to probabilities
-    if (total_likelihood > 0.0f) {
+    if (total_likelihood > 0.0F) {
         for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
             likelihoods[g] /= total_likelihood;
         }
@@ -563,7 +564,7 @@ uint32_t mirror_hierarchy_predict_motor(mirror_hierarchy_t hierarchy,
     uint32_t count = 0;
 
     // Normalize binding strengths to probabilities
-    float total_strength = 0.0f;
+    float total_strength = 0.0F;
     for (uint32_t i = 0; i < goal->num_bindings; i++) {
         total_strength += goal->bindings[i].binding_strength;
     }
@@ -571,8 +572,8 @@ uint32_t mirror_hierarchy_predict_motor(mirror_hierarchy_t hierarchy,
     // Output bindings sorted by strength
     for (uint32_t b = 0; b < goal->num_bindings && count < max_motors; b++) {
         goal_motor_binding_t* binding = &goal->bindings[b];
-        float prob = (total_strength > 0.0f) ?
-                     binding->binding_strength / total_strength : 0.0f;
+        float prob = (total_strength > 0.0F) ?
+                     binding->binding_strength / total_strength : 0.0F;
 
         // Find insertion point (sorted descending)
         uint32_t insert_pos = count;
@@ -615,7 +616,7 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
     }
 
     uint32_t best_goal = UINT32_MAX;
-    float best_score = -1.0f;
+    float best_score = -1.0F;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
         goal_representation_t* goal = &hierarchy->goals[g];
@@ -628,7 +629,7 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
         // Add context similarity bonus if context provided
         if (context_features && num_features > 0 && goal->num_context_features > 0) {
             // Compute dot product similarity
-            float similarity = 0.0f;
+            float similarity = 0.0F;
             uint32_t min_features = (num_features < goal->num_context_features) ?
                                    num_features : goal->num_context_features;
 
@@ -639,7 +640,7 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
             // Normalize and add to score
             if (min_features > 0) {
                 similarity /= min_features;
-                score *= (1.0f + similarity);
+                score *= (1.0F + similarity);
             }
         }
 
@@ -679,13 +680,13 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 
         // Add top-down bias if selected
         if (goal->is_selected) {
-            goal->activation += goal->top_down_bias * (dt_ms / 1000.0f);
+            goal->activation += goal->top_down_bias * (dt_ms / 1000.0F);
         }
 
-        goal->activation = clamp_f(goal->activation, 0.0f, 1.0f);
+        goal->activation = clamp_f(goal->activation, 0.0F, 1.0F);
 
         // Decay top-down bias
-        goal->top_down_bias *= 0.99f;
+        goal->top_down_bias *= 0.99F;
 
         // Track active time
         if (goal->activation > GOAL_ACTIVE_THRESHOLD) {
@@ -693,12 +694,12 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
         }
 
         // Decay peak
-        goal->peak_activation *= 0.999f;
+        goal->peak_activation *= 0.999F;
 
         // Decay unused bindings
         for (uint32_t b = 0; b < goal->num_bindings; b++) {
             goal_motor_binding_t* binding = &goal->bindings[b];
-            binding->binding_strength -= cfg->binding_decay_rate * (dt_ms / 1000.0f);
+            binding->binding_strength -= cfg->binding_decay_rate * (dt_ms / 1000.0F);
 
             if (binding->binding_strength < cfg->min_binding_strength) {
                 // Remove weak binding by shifting
@@ -723,7 +724,7 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 
         // Decay activation
         motor->activation *= motor_decay;
-        motor->activation = clamp_f(motor->activation, 0.0f, 1.0f);
+        motor->activation = clamp_f(motor->activation, 0.0F, 1.0F);
 
         // Decay prediction
         motor->predicted_activation *= motor_decay;
@@ -734,10 +735,10 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
         }
 
         // Decay peak
-        motor->peak_activation *= 0.999f;
+        motor->peak_activation *= 0.999F;
 
         // Update primary goal association
-        float max_evidence = 0.0f;
+        float max_evidence = 0.0F;
         for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
             goal_representation_t* goal = &hierarchy->goals[g];
             goal_motor_binding_t* binding = find_binding(goal, m);
@@ -777,8 +778,8 @@ bool mirror_hierarchy_get_stats(mirror_hierarchy_t hierarchy, mirror_hierarchy_s
     stats->num_motors = hierarchy->num_motors;
 
     // Count bindings and compute activation stats
-    float sum_goal_act = 0.0f;
-    float sum_motor_act = 0.0f;
+    float sum_goal_act = 0.0F;
+    float sum_motor_act = 0.0F;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
         goal_representation_t* goal = &hierarchy->goals[g];
@@ -831,7 +832,7 @@ void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
 
     hierarchy->goal_inferences = 0;
     hierarchy->motor_predictions = 0;
-    hierarchy->sum_prediction_error = 0.0f;
+    hierarchy->sum_prediction_error = 0.0F;
     hierarchy->prediction_count = 0;
     hierarchy->bindings_strengthened = 0;
     hierarchy->bindings_weakened = 0;
@@ -842,18 +843,18 @@ void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
         goal_representation_t* goal = &hierarchy->goals[g];
         goal->inference_count = 0;
         goal->selection_count = 0;
-        goal->total_active_time = 0.0f;
-        goal->peak_activation = 0.0f;
+        goal->total_active_time = 0.0F;
+        goal->peak_activation = 0.0F;
 
         for (uint32_t b = 0; b < goal->num_bindings; b++) {
-            goal->bindings[b].usage_count = 0.0f;
+            goal->bindings[b].usage_count = 0.0F;
         }
     }
 
     for (uint32_t m = 0; m < hierarchy->num_motors; m++) {
         motor_representation_t* motor = &hierarchy->motors[m];
         motor->execution_count = 0;
-        motor->total_active_time = 0.0f;
-        motor->peak_activation = 0.0f;
+        motor->total_active_time = 0.0F;
+        motor->peak_activation = 0.0F;
     }
 }

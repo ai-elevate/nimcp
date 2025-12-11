@@ -43,8 +43,8 @@
 //=============================================================================
 
 #define PORTIA_ATTENTION_MAGIC 0x504F5254  // 'PORT'
-#define MIN_SALIENCE 0.0f
-#define MAX_SALIENCE 1.0f
+#define MIN_SALIENCE 0.0F
+#define MAX_SALIENCE 1.0F
 #define MIN_ALLOCATION 0.0f
 #define MAX_ALLOCATION 1.0f
 #define EPSILON 1e-6f
@@ -176,13 +176,13 @@ static int compare_resources(const void* a, const void* b) {
 
 portia_attention_config_t portia_attention_default_config(void) {
     portia_attention_config_t config = {
-        .reallocation_threshold = 0.05f,   // 5% change triggers reallocation
-        .decay_rate_per_second = 0.1f,     // 10% decay per second
+        .reallocation_threshold = 0.05F,   // 5% change triggers reallocation
+        .decay_rate_per_second = 0.1F,     // 10% decay per second
         .update_interval_ms = 100,          // Update every 100ms
         .enable_preemption = true,
-        .preemption_threshold = 0.3f,       // 30% salience difference
-        .hysteresis_factor = 0.2f,          // 20% hysteresis band
-        .smoothing_alpha = 0.3f             // 30% new value, 70% old
+        .preemption_threshold = 0.3F,       // 30% salience difference
+        .hysteresis_factor = 0.2F,          // 20% hysteresis band
+        .smoothing_alpha = 0.3F             // 30% new value, 70% old
     };
     return config;
 }
@@ -201,7 +201,7 @@ portia_attention_state_t portia_attention_init(
         return NULL;
     }
 
-    if (total_budget <= 0.0f || total_budget > 1.0f) {
+    if (total_budget <= 0.0F || total_budget > 1.0F) {
         LOG_ERROR("Invalid total budget: %.3f (must be in (0,1])", total_budget);
         return NULL;
     }
@@ -232,13 +232,13 @@ portia_attention_state_t portia_attention_init(
 
     // Validate configuration
     state->config.reallocation_threshold = clamp_f(
-        state->config.reallocation_threshold, 0.0f, 1.0f);
+        state->config.reallocation_threshold, 0.0F, 1.0F);
     state->config.decay_rate_per_second = clamp_f(
-        state->config.decay_rate_per_second, 0.0f, 1.0f);
+        state->config.decay_rate_per_second, 0.0F, 1.0F);
     state->config.hysteresis_factor = clamp_f(
-        state->config.hysteresis_factor, 0.0f, 1.0f);
+        state->config.hysteresis_factor, 0.0F, 1.0F);
     state->config.smoothing_alpha = clamp_f(
-        state->config.smoothing_alpha, 0.0f, 1.0f);
+        state->config.smoothing_alpha, 0.0F, 1.0F);
 
     LOG_DEBUG("Config: threshold=%.3f, decay=%.3f/s, interval=%ums",
               state->config.reallocation_threshold,
@@ -257,11 +257,11 @@ portia_attention_state_t portia_attention_init(
     float initial_allocation = total_budget / (float)resource_count;
     for (uint32_t i = 0; i < resource_count; i++) {
         state->resources[i].target = (attention_target_t)i;
-        state->resources[i].salience = 0.5f;  // Neutral salience
+        state->resources[i].salience = 0.5F;  // Neutral salience
         state->resources[i].current_allocation = initial_allocation;
         state->resources[i].requested_allocation = initial_allocation;
-        state->resources[i].min_allocation = 0.0f;
-        state->resources[i].max_allocation = 1.0f;
+        state->resources[i].min_allocation = 0.0F;
+        state->resources[i].max_allocation = 1.0F;
         state->resources[i].priority = 1;
         state->resources[i].last_update_ms = 0;
     }
@@ -285,7 +285,7 @@ portia_attention_state_t portia_attention_init(
     // Initialize statistics
     memset(&state->stats, 0, sizeof(state->stats));
     state->stats.total_allocated = total_budget;
-    state->stats.avg_salience = 0.5f;
+    state->stats.avg_salience = 0.5F;
 
     // Bio-async setup
     state->bio_module_id = BIO_MODULE_ATTENTION;
@@ -362,7 +362,7 @@ int portia_attention_update_salience(
     state->stats.salience_updates++;
 
     // Recalculate average salience
-    float total_salience = 0.0f;
+    float total_salience = 0.0F;
     for (uint32_t i = 0; i < state->resource_count; i++) {
         total_salience += state->resources[i].salience;
     }
@@ -397,7 +397,7 @@ int portia_attention_decay(
         return 0;
     }
 
-    float elapsed_sec = (float)elapsed_ms / 1000.0f;
+    float elapsed_sec = (float)elapsed_ms / 1000.0F;
     float decay_factor = expf(-state->attention_decay_rate * elapsed_sec);
 
     LOG_DEBUG("Applying salience decay: elapsed=%.3fs, factor=%.3f",
@@ -430,12 +430,12 @@ float portia_attention_get_salience(
     attention_target_t target) {
 
     if (!validate_state(state)) {
-        return -1.0f;
+        return -1.0F;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock(&state->mutex);
@@ -491,7 +491,7 @@ int portia_attention_reallocate(
 
     if (max_priority == 0) max_priority = 1;
 
-    float total_score = 0.0f;
+    float total_score = 0.0F;
     for (uint32_t i = 0; i < state->resource_count; i++) {
         sort_entries[i].index = i;
         sort_entries[i].resource = &state->resources[i];
@@ -574,7 +574,7 @@ int portia_attention_reallocate(
         }
 
         // Apply exponential smoothing for gradual transitions
-        float smoothed = alpha * new_alloc + (1.0f - alpha) * old_alloc;
+        float smoothed = alpha * new_alloc + (1.0F - alpha) * old_alloc;
 
         res->current_allocation = smoothed;
         any_changed = true;
@@ -594,7 +594,7 @@ int portia_attention_reallocate(
         state->last_reallocation_ms = current_time;
 
         // Calculate total allocated
-        float total = 0.0f;
+        float total = 0.0F;
         for (uint32_t i = 0; i < state->resource_count; i++) {
             total += state->resources[i].current_allocation;
         }
@@ -693,12 +693,12 @@ float portia_attention_get_allocation(
     attention_target_t target) {
 
     if (!validate_state(state)) {
-        return -1.0f;
+        return -1.0F;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock(&state->mutex);

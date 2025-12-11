@@ -820,7 +820,7 @@ bool event_queue_get_stats(event_queue_t queue, event_queue_stats_t* stats) {
     if (queue->total_dequeued > 0) {
         stats->avg_wait_time_us = (float)queue->total_wait_time_us / queue->total_dequeued;
     } else {
-        stats->avg_wait_time_us = 0.0f;
+        stats->avg_wait_time_us = 0.0F;
     }
 
     nimcp_platform_mutex_unlock(&queue->mutex);

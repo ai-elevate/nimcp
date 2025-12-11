@@ -213,7 +213,7 @@ static void release_to_pool(layer_pool_t* pool, void* block)
  */
 static float calculate_utilization(const layer_pool_t* pool)
 {
-    if (!pool || pool->capacity == 0) return 0.0f;
+    if (!pool || pool->capacity == 0) return 0.0F;
     return (float)(pool->capacity - pool->free_count) / (float)pool->capacity;
 }
 
@@ -807,17 +807,17 @@ bool layer_pools_rebalance(layer_pools_t pools)
  */
 static float calculate_jains_fairness(const float* utils, size_t n)
 {
-    if (n == 0) return 1.0f;
+    if (n == 0) return 1.0F;
 
-    float sum = 0.0f;
-    float sum_sq = 0.0f;
+    float sum = 0.0F;
+    float sum_sq = 0.0F;
 
     for (size_t i = 0; i < n; i++) {
         sum += utils[i];
         sum_sq += utils[i] * utils[i];
     }
 
-    if (sum_sq < 1e-9f) return 1.0f;
+    if (sum_sq < 1e-9F) return 1.0F;
     return (sum * sum) / ((float)n * sum_sq);
 }
 
@@ -873,7 +873,7 @@ bool layer_pools_get_metrics(layer_pools_t pools, layer_pools_metrics_t* metrics
         calculate_utilization(&pools->workspace_pool),
         calculate_utilization(&pools->event_pool),
         calculate_utilization(&pools->signal_pool),
-        0.5f  /* brain layer placeholder */
+        0.5F  /* brain layer placeholder */
     };
     metrics->fairness.jains_fairness_index = calculate_jains_fairness(utils, 4);
 
@@ -951,14 +951,14 @@ bool layer_pools_get_fairness_metrics(
         calculate_utilization(&pools->workspace_pool),
         calculate_utilization(&pools->event_pool),
         calculate_utilization(&pools->signal_pool),
-        0.5f
+        0.5F
     };
 
     fairness->jains_fairness_index = calculate_jains_fairness(utils, 4);
 
     /* Find min/max utilization */
-    fairness->max_layer_utilization = 0.0f;
-    fairness->min_layer_utilization = 1.0f;
+    fairness->max_layer_utilization = 0.0F;
+    fairness->min_layer_utilization = 1.0F;
     fairness->most_active_layer = 0;
     fairness->least_active_layer = 0;
 
@@ -974,13 +974,13 @@ bool layer_pools_get_fairness_metrics(
     }
 
     /* Calculate variance */
-    float mean = (utils[0] + utils[1] + utils[2] + utils[3]) / 4.0f;
-    float variance = 0.0f;
+    float mean = (utils[0] + utils[1] + utils[2] + utils[3]) / 4.0F;
+    float variance = 0.0F;
     for (int i = 0; i < 4; i++) {
         float diff = utils[i] - mean;
         variance += diff * diff;
     }
-    fairness->allocation_variance = variance / 4.0f;
+    fairness->allocation_variance = variance / 4.0F;
 
     nimcp_platform_mutex_unlock(&pools->mutex);
 
@@ -994,12 +994,12 @@ bool layer_pools_get_cross_entropy_metrics(
     if (!pools || !ce) return false;
 
     /* Simplified cross-entropy calculation */
-    ce->expected_entropy = 2.0f;  /* log2(4) for 4 layers */
-    ce->observed_entropy = 1.8f;  /* Placeholder */
-    ce->cross_entropy = 2.1f;
+    ce->expected_entropy = 2.0F;  /* log2(4) for 4 layers */
+    ce->observed_entropy = 1.8F;  /* Placeholder */
+    ce->cross_entropy = 2.1F;
     ce->kl_divergence = ce->cross_entropy - ce->expected_entropy;
-    ce->efficiency = 1.0f - (ce->kl_divergence / ce->expected_entropy);
-    if (ce->efficiency < 0.0f) ce->efficiency = 0.0f;
+    ce->efficiency = 1.0F - (ce->kl_divergence / ce->expected_entropy);
+    if (ce->efficiency < 0.0F) ce->efficiency = 0.0F;
 
     return true;
 }
@@ -1058,7 +1058,7 @@ bool layer_pools_is_performant(layer_pools_t pools)
      */
 
     /* Performant if max utilization < 90% */
-    return max_util < 0.9f;
+    return max_util < 0.9F;
 }
 
 bool layer_pools_get_recommended_config(
@@ -1074,13 +1074,13 @@ bool layer_pools_get_recommended_config(
 
     /* Adjust based on utilization */
     float workspace_util = calculate_utilization(&pools->workspace_pool);
-    if (workspace_util > 0.8f) {
-        recommended->workspace_pool_capacity = (size_t)(pools->config.workspace_pool_capacity * 1.5f);
+    if (workspace_util > 0.8F) {
+        recommended->workspace_pool_capacity = (size_t)(pools->config.workspace_pool_capacity * 1.5F);
     }
 
     float event_util = calculate_utilization(&pools->event_pool);
-    if (event_util > 0.8f) {
-        recommended->event_pool_capacity = (size_t)(pools->config.event_pool_capacity * 1.5f);
+    if (event_util > 0.8F) {
+        recommended->event_pool_capacity = (size_t)(pools->config.event_pool_capacity * 1.5F);
     }
 
     nimcp_platform_mutex_unlock(&pools->mutex);

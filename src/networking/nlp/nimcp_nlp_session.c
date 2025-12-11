@@ -334,7 +334,7 @@ int nlp_session_init(nlp_peer_t* peer) {
     // Initialize health
     peer->healthy = true;
     peer->missed_heartbeats = 0;
-    peer->packet_loss_rate = 0.0f;
+    peer->packet_loss_rate = 0.0F;
 
     NIMCP_LOG_DEBUG("nlp_session_init: Initialized session for peer 0x%08X",
                     peer->peer_id);
@@ -1002,8 +1002,8 @@ int nlp_peer_update_stats(nlp_peer_t* peer, uint64_t bytes_sent, uint64_t bytes_
         uint64_t expected = peer->messages_sent;
         uint64_t received = peer->messages_received;
         float loss = (expected > received) ?
-                    (float)(expected - received) / (float)expected : 0.0f;
-        peer->packet_loss_rate = 0.9f * peer->packet_loss_rate + 0.1f * loss;
+                    (float)(expected - received) / (float)expected : 0.0F;
+        peer->packet_loss_rate = 0.9F * peer->packet_loss_rate + 0.1F * loss;
     }
 
     return NIMCP_SUCCESS;

@@ -216,8 +216,8 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
     float cortical_height_f = config->cortical_range[3] - config->cortical_range[2];
 
     /* Default to 100x100 grid if not specified by type */
-    map->cortical_width = (uint32_t)(cortical_width_f + 0.5f);
-    map->cortical_height = (uint32_t)(cortical_height_f + 0.5f);
+    map->cortical_width = (uint32_t)(cortical_width_f + 0.5F);
+    map->cortical_height = (uint32_t)(cortical_height_f + 0.5F);
 
     if (map->cortical_width == 0) map->cortical_width = 100;
     if (map->cortical_height == 0) map->cortical_height = 100;
@@ -306,15 +306,15 @@ topographic_map_t* topographic_map_create_retinotopic(
     config.cortical_dims = 2;
 
     /* Input range: eccentricity [0, max_ecc], angle [0, 2π] */
-    config.input_range[0] = 0.0f;
-    config.input_range[1] = params->foveal_radius * 10.0f; /* 10x foveal radius */
-    config.input_range[2] = 0.0f;
+    config.input_range[0] = 0.0F;
+    config.input_range[1] = params->foveal_radius * 10.0F; /* 10x foveal radius */
+    config.input_range[2] = 0.0F;
     config.input_range[3] = params->angle_coverage;
 
     /* Cortical range */
-    config.cortical_range[0] = 0.0f;
+    config.cortical_range[0] = 0.0F;
     config.cortical_range[1] = (float)cortical_width;
-    config.cortical_range[2] = 0.0f;
+    config.cortical_range[2] = 0.0F;
     config.cortical_range[3] = (float)cortical_height;
 
     config.magnification_factor = params->cortical_magnification;
@@ -351,12 +351,12 @@ topographic_map_t* topographic_map_create_tonotopic(
     config.input_range[1] = params->max_frequency;
 
     /* Cortical range: linear strip */
-    config.cortical_range[0] = 0.0f;
+    config.cortical_range[0] = 0.0F;
     config.cortical_range[1] = (float)num_frequency_bands;
-    config.cortical_range[2] = 0.0f;
-    config.cortical_range[3] = 1.0f;
+    config.cortical_range[2] = 0.0F;
+    config.cortical_range[3] = 1.0F;
 
-    config.magnification_factor = 1.0f;
+    config.magnification_factor = 1.0F;
     memcpy(&config.tonotopic, params, sizeof(tonotopic_params_t));
 
     return topographic_map_create(&config);
@@ -393,18 +393,18 @@ topographic_map_t* topographic_map_create_somatotopic(uint32_t num_body_regions)
     }
 
     config.somatotopic.num_regions = num_body_regions;
-    config.somatotopic.total_cortical_extent = 100.0f; /* Default 100mm */
+    config.somatotopic.total_cortical_extent = 100.0F; /* Default 100mm */
     config.somatotopic.is_bilateral = false;
 
     /* Default input/cortical ranges (will be updated as regions are added) */
-    config.input_range[0] = 0.0f;
-    config.input_range[1] = 1.0f;
-    config.cortical_range[0] = 0.0f;
-    config.cortical_range[1] = 100.0f;
-    config.cortical_range[2] = 0.0f;
-    config.cortical_range[3] = 10.0f;
+    config.input_range[0] = 0.0F;
+    config.input_range[1] = 1.0F;
+    config.cortical_range[0] = 0.0F;
+    config.cortical_range[1] = 100.0F;
+    config.cortical_range[2] = 0.0F;
+    config.cortical_range[3] = 10.0F;
 
-    config.magnification_factor = 1.0f;
+    config.magnification_factor = 1.0F;
 
     return topographic_map_create(&config);
 }
@@ -461,7 +461,7 @@ void topographic_map_input_to_cortex(
                     out[1] = map->transform_offset_y +
                         (in[1] - map->config.input_range[2]) * map->transform_scale_y;
                 } else {
-                    out[1] = 0.0f;
+                    out[1] = 0.0F;
                 }
                 break;
         }
@@ -598,10 +598,10 @@ void topographic_map_get_receptive_field(
         /* Convert to cortical coordinates */
         float cortical[2];
         cortical[0] = map->config.cortical_range[0] +
-            ((float)x + 0.5f) / map->cortical_width *
+            ((float)x + 0.5F) / map->cortical_width *
             (map->config.cortical_range[1] - map->config.cortical_range[0]);
         cortical[1] = map->config.cortical_range[2] +
-            ((float)y + 0.5f) / map->cortical_height *
+            ((float)y + 0.5F) / map->cortical_height *
             (map->config.cortical_range[3] - map->config.cortical_range[2]);
 
         /* Inverse transform (unlock/relock handled by function) */
@@ -619,7 +619,7 @@ void topographic_map_get_receptive_field(
             if (rf_center && map->column_rf_centers) {
                 float mag = topographic_map_get_magnification(map, rf_center);
                 *rf_size = (mag > TOPOGRAPHIC_EPSILON) ?
-                    (1.0f / mag) : TOPOGRAPHIC_DEFAULT_RF_SIZE;
+                    (1.0F / mag) : TOPOGRAPHIC_DEFAULT_RF_SIZE;
             } else {
                 *rf_size = TOPOGRAPHIC_DEFAULT_RF_SIZE;
             }
@@ -641,12 +641,12 @@ float topographic_map_get_magnification(
     /* Guard: Validate inputs */
     if (!map || !input_coords) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid magnification query");
-        return 0.0f;
+        return 0.0F;
     }
 
     nimcp_platform_mutex_lock(map->mutex);
 
-    float mag = 0.0f;
+    float mag = 0.0F;
 
     /* Dispatch to type-specific function */
     switch (map->config.type) {
@@ -704,10 +704,10 @@ void topographic_map_project_activity(
             /* Convert to cortical coordinates */
             float cortical[2];
             cortical[0] = map->config.cortical_range[0] +
-                ((float)cx + 0.5f) / cortical_width *
+                ((float)cx + 0.5F) / cortical_width *
                 (map->config.cortical_range[1] - map->config.cortical_range[0]);
             cortical[1] = map->config.cortical_range[2] +
-                ((float)cy + 0.5f) / cortical_height *
+                ((float)cy + 0.5F) / cortical_height *
                 (map->config.cortical_range[3] - map->config.cortical_range[2]);
 
             /* Get corresponding input position */
@@ -721,7 +721,7 @@ void topographic_map_project_activity(
                 (map->config.input_range[1] - map->config.input_range[0]);
             float input_y_norm = (map->config.input_dims > 1) ?
                 (input_pos[1] - map->config.input_range[2]) /
-                (map->config.input_range[3] - map->config.input_range[2]) : 0.0f;
+                (map->config.input_range[3] - map->config.input_range[2]) : 0.0F;
 
             float input_x = input_x_norm * input_width;
             float input_y = input_y_norm * input_height;
@@ -885,8 +885,8 @@ void topographic_map_get_stats(
 
     stats->num_columns = map->total_columns;
     stats->min_magnification = FLT_MAX;
-    stats->max_magnification = 0.0f;
-    stats->mean_magnification = 0.0f;
+    stats->max_magnification = 0.0F;
+    stats->mean_magnification = 0.0F;
 
     /* Sample magnification across grid */
     uint32_t sample_count = 0;
@@ -912,7 +912,7 @@ void topographic_map_get_stats(
     float width = map->config.cortical_range[1] - map->config.cortical_range[0];
     float height = map->config.cortical_range[3] - map->config.cortical_range[2];
     stats->total_cortical_area = width * height;
-    stats->coverage_ratio = 1.0f; /* Assume full coverage */
+    stats->coverage_ratio = 1.0F; /* Assume full coverage */
 
     nimcp_platform_mutex_unlock(map->mutex);
 }
@@ -940,8 +940,8 @@ bool topographic_map_add_body_region(
 
     /* Find first empty slot */
     for (uint32_t i = 0; i < map->config.somatotopic.num_regions; i++) {
-        if (map->config.somatotopic.regions[i].input_start == 0.0f &&
-            map->config.somatotopic.regions[i].input_end == 0.0f) {
+        if (map->config.somatotopic.regions[i].input_start == 0.0F &&
+            map->config.somatotopic.regions[i].input_end == 0.0F) {
             memcpy(&map->config.somatotopic.regions[i], region,
                 sizeof(somatotopic_region_t));
             nimcp_platform_mutex_unlock(map->mutex);
@@ -986,15 +986,15 @@ bool topographic_map_validate_config(const topographic_map_config_t* config)
     /* Type-specific validation */
     switch (config->type) {
         case TOPOGRAPHIC_RETINOTOPIC:
-            if (config->retinotopic.foveal_radius <= 0.0f ||
-                config->retinotopic.cortical_magnification <= 0.0f ||
-                config->retinotopic.log_polar_a < 0.0f) {
+            if (config->retinotopic.foveal_radius <= 0.0F ||
+                config->retinotopic.cortical_magnification <= 0.0F ||
+                config->retinotopic.log_polar_a < 0.0F) {
                 return false;
             }
             break;
 
         case TOPOGRAPHIC_TONOTOPIC:
-            if (config->tonotopic.min_frequency <= 0.0f ||
+            if (config->tonotopic.min_frequency <= 0.0F ||
                 config->tonotopic.max_frequency <= config->tonotopic.min_frequency) {
                 return false;
             }
@@ -1073,10 +1073,10 @@ static bool topographic_initialize_cache(topographic_map_t* map)
         /* Convert to cortical coordinates */
         float cortical[2];
         cortical[0] = map->config.cortical_range[0] +
-            ((float)x + 0.5f) / map->cortical_width *
+            ((float)x + 0.5F) / map->cortical_width *
             (map->config.cortical_range[1] - map->config.cortical_range[0]);
         cortical[1] = map->config.cortical_range[2] +
-            ((float)y + 0.5f) / map->cortical_height *
+            ((float)y + 0.5F) / map->cortical_height *
             (map->config.cortical_range[3] - map->config.cortical_range[2]);
 
         /* Get RF center via inverse mapping */
@@ -1121,7 +1121,7 @@ static bool topographic_initialize_cache(topographic_map_t* map)
 
         map->column_magnifications[i] = mag;
         map->column_rf_sizes[i] = (mag > TOPOGRAPHIC_EPSILON) ?
-            (1.0f / mag) : TOPOGRAPHIC_DEFAULT_RF_SIZE;
+            (1.0F / mag) : TOPOGRAPHIC_DEFAULT_RF_SIZE;
     }
 
     map->cache_valid = true;
@@ -1171,7 +1171,7 @@ static void retinotopic_input_to_cortex(
 
     /* Input: (eccentricity, angle) */
     float eccentricity = input[0];
-    float angle = (map->config.input_dims > 1) ? input[1] : 0.0f;
+    float angle = (map->config.input_dims > 1) ? input[1] : 0.0F;
 
     /* Log-polar transform */
     float log_ecc = logf(eccentricity + params->log_polar_a);
@@ -1242,7 +1242,7 @@ static float retinotopic_get_magnification(
 
     /* Cortical magnification formula: M = M₀ / (1 + E/E₂) */
     float mag = params->cortical_magnification /
-        (1.0f + eccentricity / params->eccentricity_half);
+        (1.0F + eccentricity / params->eccentricity_half);
 
     return clampf(mag, TOPOGRAPHIC_MIN_MAGNIFICATION, TOPOGRAPHIC_MAX_MAGNIFICATION);
 }
@@ -1302,7 +1302,7 @@ static void tonotopic_cortex_to_input(
     if (params->is_logarithmic) {
         /* Inverse logarithmic */
         float log_range = log2f(params->max_frequency / params->min_frequency);
-        float frequency = params->min_frequency * powf(2.0f, norm_x * log_range);
+        float frequency = params->min_frequency * powf(2.0F, norm_x * log_range);
 
         input[0] = clampf(frequency, params->min_frequency, params->max_frequency);
     } else {

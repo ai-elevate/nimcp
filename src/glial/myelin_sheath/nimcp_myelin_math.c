@@ -66,15 +66,15 @@
  */
 float nimcp_myelin_fast_exp(float x) {
     // For large |x|, fall back to standard exp
-    if (x < -4.0f) return 0.0f;
-    if (x > 4.0f) return expf(x);
+    if (x < -4.0F) return 0.0F;
+    if (x > 4.0F) return expf(x);
 
     // Padé approximation (6,6)
     float x2 = x * x;
     float x3 = x2 * x;
 
-    float num = 1.0f + x * 0.5f + x2 * (1.0f / 12.0f);
-    float den = 1.0f - x * 0.5f + x2 * (1.0f / 12.0f);
+    float num = 1.0F + x * 0.5F + x2 * (1.0F / 12.0F);
+    float den = 1.0F - x * 0.5F + x2 * (1.0F / 12.0F);
 
     if (den < NIMCP_MYELIN_MATH_EPSILON) {
         return expf(x);
@@ -93,12 +93,12 @@ float nimcp_myelin_fast_exp(float x) {
 static inline float fast_inv_sqrt(float x) {
     union { float f; uint32_t i; } conv = {.f = x};
     conv.i = 0x5f3759df - (conv.i >> 1);
-    conv.f *= 1.5f - (x * 0.5f * conv.f * conv.f);
+    conv.f *= 1.5F - (x * 0.5F * conv.f * conv.f);
     return conv.f;
 }
 
 float nimcp_myelin_fast_sqrt(float x) {
-    if (x <= 0.0f) return 0.0f;
+    if (x <= 0.0F) return 0.0F;
     return x * fast_inv_sqrt(x);
 }
 
@@ -110,13 +110,13 @@ float nimcp_myelin_fast_sqrt(float x) {
  * HOW:  exp(exp * log(base))
  */
 float nimcp_myelin_fast_pow(float base, float exp) {
-    if (base <= 0.0f) return 0.0f;
-    if (exp == 0.0f) return 1.0f;
-    if (exp == 1.0f) return base;
-    if (exp == 2.0f) return base * base;
+    if (base <= 0.0F) return 0.0F;
+    if (exp == 0.0F) return 1.0F;
+    if (exp == 1.0F) return base;
+    if (exp == 2.0F) return base * base;
 
     // For small integer exponents, use multiplication
-    if (exp == 0.5f) return nimcp_myelin_fast_sqrt(base);
+    if (exp == 0.5F) return nimcp_myelin_fast_sqrt(base);
 
     // General case using log/exp
     return expf(exp * logf(base));
@@ -133,9 +133,9 @@ nimcp_myelination_kinetics_t nimcp_myelin_kinetics_default(void) {
         .hill_n = NIMCP_MYELIN_HILL_N,
         .k_demyelin = NIMCP_MYELIN_K_DEMYELIN,
         .k_demyelin_half = NIMCP_MYELIN_K_DEMYELIN_HALF,
-        .saturation_lamellae = 100.0f,
-        .min_activity = 0.05f,
-        .history_weight = 0.9f
+        .saturation_lamellae = 100.0F,
+        .min_activity = 0.05F,
+        .history_weight = 0.9F
     };
     return kinetics;
 }
@@ -146,8 +146,8 @@ nimcp_conduction_block_params_t nimcp_myelin_block_params_default(void) {
         .sigma = NIMCP_BLOCK_SIGMA,
         .t_ref = NIMCP_BLOCK_T_REF,
         .t_sensitivity = NIMCP_BLOCK_T_SENSITIVITY,
-        .frequency_factor = 0.001f,
-        .refractory_ms = 1.0f
+        .frequency_factor = 0.001F,
+        .refractory_ms = 1.0F
     };
     return params;
 }
@@ -166,8 +166,8 @@ nimcp_myelin_biophysics_t* nimcp_myelin_biophysics_create(bool use_stochastic,
     bio->block_params = nimcp_myelin_block_params_default();
 
     // Initialize state
-    bio->activity_ema = 0.0f;
-    bio->temperature_c = 37.0f;  // Normal body temperature
+    bio->activity_ema = 0.0F;
+    bio->temperature_c = 37.0F;  // Normal body temperature
     bio->last_update_us = 0;
 
     // Initialize RNG
@@ -191,7 +191,7 @@ void nimcp_myelin_biophysics_destroy(nimcp_myelin_biophysics_t* bio) {
 void nimcp_myelin_biophysics_reset(nimcp_myelin_biophysics_t* bio) {
     if (!bio) return;
 
-    bio->activity_ema = 0.0f;
+    bio->activity_ema = 0.0F;
     bio->last_update_us = 0;
 
     nimcp_myelin_rng_reset(&bio->rng);
@@ -218,7 +218,7 @@ void nimcp_myelin_biophysics_reset(nimcp_myelin_biophysics_t* bio) {
  * have relatively thinner myelin sheaths.
  */
 float nimcp_myelin_optimal_g_ratio(float axon_diameter_um) {
-    if (axon_diameter_um <= 0.0f) {
+    if (axon_diameter_um <= 0.0F) {
         return NIMCP_G_RATIO_MAX;
     }
 
@@ -245,9 +245,9 @@ float nimcp_myelin_g_ratio_efficiency(float g_ratio, float axon_diameter_um) {
     float g_opt = nimcp_myelin_optimal_g_ratio(axon_diameter_um);
 
     float deviation = g_ratio - g_opt;
-    float efficiency = 1.0f - G_EFFICIENCY_K * deviation * deviation;
+    float efficiency = 1.0F - G_EFFICIENCY_K * deviation * deviation;
 
-    return nimcp_myelin_clamp(efficiency, 0.5f, 1.0f);
+    return nimcp_myelin_clamp(efficiency, 0.5F, 1.0F);
 }
 
 /**
@@ -264,22 +264,22 @@ float nimcp_myelin_g_ratio_efficiency(float g_ratio, float axon_diameter_um) {
 uint32_t nimcp_myelin_lamellae_for_g_ratio(float axon_diameter_um,
                                             float target_g_ratio,
                                             float lamella_thickness_nm) {
-    if (axon_diameter_um <= 0.0f || target_g_ratio <= 0.0f ||
-        target_g_ratio >= 1.0f || lamella_thickness_nm <= 0.0f) {
+    if (axon_diameter_um <= 0.0F || target_g_ratio <= 0.0F ||
+        target_g_ratio >= 1.0F || lamella_thickness_nm <= 0.0F) {
         return 0;
     }
 
     // Convert units: diameter in μm, thickness in nm
     float d_um = axon_diameter_um;
-    float t_um = lamella_thickness_nm / 1000.0f;  // nm to μm
+    float t_um = lamella_thickness_nm / 1000.0F;  // nm to μm
 
     // Calculate required lamellae
-    float numerator = d_um * (1.0f - target_g_ratio);
-    float denominator = 2.0f * target_g_ratio * t_um;
+    float numerator = d_um * (1.0F - target_g_ratio);
+    float denominator = 2.0F * target_g_ratio * t_um;
 
     float n = numerator / denominator;
 
-    return (uint32_t)(n + 0.5f);  // Round to nearest
+    return (uint32_t)(n + 0.5F);  // Round to nearest
 }
 
 //=============================================================================
@@ -308,14 +308,14 @@ uint32_t nimcp_myelin_lamellae_for_g_ratio(float axon_diameter_um,
 void nimcp_myelin_compute_cable_params(float axon_diameter_um,
                                         uint32_t num_lamellae,
                                         nimcp_cable_params_t* params) {
-    if (!params || axon_diameter_um <= 0.0f) {
+    if (!params || axon_diameter_um <= 0.0F) {
         if (params) memset(params, 0, sizeof(nimcp_cable_params_t));
         return;
     }
 
     // Convert diameter to cm for calculations
-    float d_cm = axon_diameter_um * 1e-4f;
-    float r_cm = d_cm / 2.0f;
+    float d_cm = axon_diameter_um * 1e-4F;
+    float r_cm = d_cm / 2.0F;
 
     // Membrane resistance increases with myelination (Ω·cm²)
     params->r_m = NIMCP_CABLE_R_M_BASE +
@@ -331,14 +331,14 @@ void nimcp_myelin_compute_cable_params(float axon_diameter_um,
 
     // Space constant: λ = sqrt(r_m × d / (4 × r_a)) [cm]
     // Then convert to μm
-    float lambda_cm = nimcp_myelin_fast_sqrt(params->r_m * d_cm / (4.0f * params->r_a));
-    params->lambda_um = lambda_cm * 1e4f;  // cm to μm
+    float lambda_cm = nimcp_myelin_fast_sqrt(params->r_m * d_cm / (4.0F * params->r_a));
+    params->lambda_um = lambda_cm * 1e4F;  // cm to μm
 
     // Time constant: τ = r_m × c_m [Ω·cm² × μF/cm² = ms]
-    params->tau_ms = params->r_m * params->c_m * 1e-3f;
+    params->tau_ms = params->r_m * params->c_m * 1e-3F;
 
     // Signal attenuation per space constant
-    params->attenuation_factor = 1.0f / NIMCP_MYELIN_MATH_E;  // e^(-1) ≈ 0.368
+    params->attenuation_factor = 1.0F / NIMCP_MYELIN_MATH_E;  // e^(-1) ≈ 0.368
 }
 
 float nimcp_myelin_space_constant(float axon_diameter_um, uint32_t num_lamellae) {
@@ -353,11 +353,11 @@ float nimcp_myelin_time_constant(uint32_t num_lamellae) {
     float c_m = NIMCP_CABLE_C_M_BASE *
                 nimcp_myelin_fast_pow(NIMCP_CABLE_C_M_REDUCTION, (float)num_lamellae);
 
-    return r_m * c_m * 1e-3f;  // Convert to ms
+    return r_m * c_m * 1e-3F;  // Convert to ms
 }
 
 float nimcp_myelin_attenuation(float length_um, float lambda_um) {
-    if (lambda_um <= 0.0f) return 0.0f;
+    if (lambda_um <= 0.0F) return 0.0F;
 
     float x = -length_um / lambda_um;
     return nimcp_myelin_fast_exp(x);
@@ -395,15 +395,15 @@ float nimcp_myelin_saltatory_velocity(float axon_diameter_um,
                                        float integrity,
                                        nimcp_saltatory_result_t* result) {
     // Input validation
-    if (axon_diameter_um <= 0.0f || internode_length_um <= 0.0f ||
+    if (axon_diameter_um <= 0.0F || internode_length_um <= 0.0F ||
         num_lamellae == 0) {
         if (result) memset(result, 0, sizeof(nimcp_saltatory_result_t));
-        return 0.0f;
+        return 0.0F;
     }
 
     // Clamp inputs to valid ranges
-    compaction_score = nimcp_myelin_clamp(compaction_score, 0.0f, 1.0f);
-    integrity = nimcp_myelin_clamp(integrity, 0.0f, 1.0f);
+    compaction_score = nimcp_myelin_clamp(compaction_score, 0.0F, 1.0F);
+    integrity = nimcp_myelin_clamp(integrity, 0.0F, 1.0F);
     g_ratio = nimcp_myelin_clamp(g_ratio, NIMCP_G_RATIO_MIN, NIMCP_G_RATIO_MAX);
 
     // Calculate space constant
@@ -421,13 +421,13 @@ float nimcp_myelin_saltatory_velocity(float axon_diameter_um,
     float total_delay_ms = tau_node_ms + tau_internode_ms;
 
     // Base velocity: L / delay [μm/ms = m/s]
-    float velocity_base = internode_length_um / (total_delay_ms * 1000.0f);
+    float velocity_base = internode_length_um / (total_delay_ms * 1000.0F);
 
     // Apply efficiency factors
     float g_efficiency = nimcp_myelin_g_ratio_efficiency(g_ratio, axon_diameter_um);
 
     // Compaction improves conduction (0.5 at worst, 1.0 at best)
-    float compaction_factor = 0.5f + 0.5f * compaction_score;
+    float compaction_factor = 0.5F + 0.5F * compaction_score;
 
     // Integrity scales linearly
     float integrity_factor = integrity;
@@ -450,17 +450,17 @@ float nimcp_myelin_saltatory_velocity(float axon_diameter_um,
         result->integrity_factor = integrity_factor;
         result->lambda_um = lambda_um;
         result->is_blocked = false;
-        result->block_probability = 0.0f;
+        result->block_probability = 0.0F;
     }
 
     return velocity_final;
 }
 
 float nimcp_myelin_propagation_delay(float length_um, float velocity_ms) {
-    if (velocity_ms <= 0.0f) return INFINITY;
+    if (velocity_ms <= 0.0F) return INFINITY;
 
     // length_um / (velocity_ms × 1000) = length_um / (μm/ms) = ms
-    return length_um / (velocity_ms * 1000.0f);
+    return length_um / (velocity_ms * 1000.0F);
 }
 
 float nimcp_myelin_compute_velocity_full(nimcp_myelin_biophysics_t* bio,
@@ -491,7 +491,7 @@ float nimcp_myelin_compute_velocity_full(nimcp_myelin_biophysics_t* bio,
         bio->conduction.is_blocked = nimcp_myelin_is_blocked(integrity, bio->temperature_c,
                                                               &bio->block_params, &bio->rng);
     } else {
-        bio->conduction.is_blocked = (block_prob > 0.5f);
+        bio->conduction.is_blocked = (block_prob > 0.5F);
     }
 
     // Update cable params cache
@@ -504,7 +504,7 @@ float nimcp_myelin_compute_velocity_full(nimcp_myelin_biophysics_t* bio,
         velocity = nimcp_myelin_vary_velocity(&bio->rng, velocity);
     }
 
-    return bio->conduction.is_blocked ? 0.0f : velocity;
+    return bio->conduction.is_blocked ? 0.0F : velocity;
 }
 
 //=============================================================================
@@ -541,7 +541,7 @@ float nimcp_myelin_compute_myelination_rate(float activity,
     }
 
     // Clamp activity to valid range
-    activity = nimcp_myelin_clamp(activity, 0.0f, 1.0f);
+    activity = nimcp_myelin_clamp(activity, 0.0F, 1.0F);
 
     // Below minimum threshold, only demyelination occurs
     if (activity < kinetics->min_activity) {
@@ -554,8 +554,8 @@ float nimcp_myelin_compute_myelination_rate(float activity,
     float hill_myelin = A_n / (K_n + A_n + NIMCP_MYELIN_MATH_EPSILON);
 
     // Saturation term (slows myelination as lamellae approach max)
-    float saturation = 1.0f - (current_lamellae / kinetics->saturation_lamellae);
-    saturation = nimcp_myelin_clamp(saturation, 0.0f, 1.0f);
+    float saturation = 1.0F - (current_lamellae / kinetics->saturation_lamellae);
+    saturation = nimcp_myelin_clamp(saturation, 0.0F, 1.0F);
 
     // Myelination rate
     float rate_myelin = kinetics->k_max * hill_myelin * saturation;
@@ -578,7 +578,7 @@ float nimcp_myelin_update_lamellae(float current_lamellae,
     float new_lamellae = current_lamellae + rate * dt;
 
     // Can't go below zero
-    return (new_lamellae > 0.0f) ? new_lamellae : 0.0f;
+    return (new_lamellae > 0.0F) ? new_lamellae : 0.0F;
 }
 
 void nimcp_myelin_update_activity_ema(nimcp_myelin_biophysics_t* bio,
@@ -588,8 +588,8 @@ void nimcp_myelin_update_activity_ema(nimcp_myelin_biophysics_t* bio,
 
     // EMA: ema_new = α × activity + (1 - α) × ema_old
     // Where α = 1 - exp(-dt / τ)
-    float alpha = 1.0f - nimcp_myelin_fast_exp(-dt * ACTIVITY_EMA_DECAY);
-    bio->activity_ema = alpha * activity + (1.0f - alpha) * bio->activity_ema;
+    float alpha = 1.0F - nimcp_myelin_fast_exp(-dt * ACTIVITY_EMA_DECAY);
+    bio->activity_ema = alpha * activity + (1.0F - alpha) * bio->activity_ema;
 }
 
 /**
@@ -611,19 +611,19 @@ float nimcp_myelin_activity_threshold(const nimcp_myelination_kinetics_t* kineti
 
     // Newton-Raphson iteration (usually converges in 3-5 iterations)
     for (int i = 0; i < 10; i++) {
-        float rate = nimcp_myelin_compute_myelination_rate(A, 0.0f, kinetics);
+        float rate = nimcp_myelin_compute_myelination_rate(A, 0.0F, kinetics);
 
         // Numerical derivative
-        float dA = 0.001f;
-        float rate_plus = nimcp_myelin_compute_myelination_rate(A + dA, 0.0f, kinetics);
+        float dA = 0.001F;
+        float rate_plus = nimcp_myelin_compute_myelination_rate(A + dA, 0.0F, kinetics);
         float derivative = (rate_plus - rate) / dA;
 
         if (fabsf(derivative) < NIMCP_MYELIN_MATH_EPSILON) break;
 
         float A_new = A - rate / derivative;
 
-        if (fabsf(A_new - A) < 1e-6f) break;
-        A = nimcp_myelin_clamp(A_new, 0.0f, 1.0f);
+        if (fabsf(A_new - A) < 1e-6F) break;
+        A = nimcp_myelin_clamp(A_new, 0.0F, 1.0F);
     }
 
     return A;
@@ -660,22 +660,22 @@ float nimcp_myelin_block_probability(float integrity,
     }
 
     // Clamp integrity
-    integrity = nimcp_myelin_clamp(integrity, 0.0f, 1.0f);
+    integrity = nimcp_myelin_clamp(integrity, 0.0F, 1.0F);
 
     // Sigmoid probability
     float exponent = (integrity - params->i_critical) / (params->sigma + NIMCP_MYELIN_MATH_EPSILON);
-    float p_base = 1.0f / (1.0f + nimcp_myelin_fast_exp(exponent));
+    float p_base = 1.0F / (1.0F + nimcp_myelin_fast_exp(exponent));
 
     // Temperature modulation (Uhthoff's phenomenon)
     float temp_excess = temperature_c - params->t_ref;
-    float t_factor = 1.0f;
-    if (temp_excess > 0.0f) {
-        t_factor = 1.0f + params->t_sensitivity * temp_excess;
+    float t_factor = 1.0F;
+    if (temp_excess > 0.0F) {
+        t_factor = 1.0F + params->t_sensitivity * temp_excess;
     }
 
     float p_block = p_base * t_factor;
 
-    return nimcp_myelin_clamp(p_block, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(p_block, 0.0F, 1.0F);
 }
 
 bool nimcp_myelin_is_blocked(float integrity,
@@ -685,7 +685,7 @@ bool nimcp_myelin_is_blocked(float integrity,
     float p_block = nimcp_myelin_block_probability(integrity, temperature_c, params);
 
     if (!rng) {
-        return p_block > 0.5f;
+        return p_block > 0.5F;
     }
 
     float r = nimcp_myelin_rng_uniform(rng);
@@ -713,28 +713,28 @@ float nimcp_myelin_frequency_threshold(float frequency_hz,
     }
 
     // Frequency increases effective block probability
-    float freq_factor = 1.0f + params->frequency_factor * frequency_hz;
+    float freq_factor = 1.0F + params->frequency_factor * frequency_hz;
 
     // Temperature factor
     float temp_excess = temperature_c - params->t_ref;
-    float t_factor = 1.0f;
-    if (temp_excess > 0.0f) {
-        t_factor = 1.0f + params->t_sensitivity * temp_excess;
+    float t_factor = 1.0F;
+    if (temp_excess > 0.0F) {
+        t_factor = 1.0F + params->t_sensitivity * temp_excess;
     }
 
     // Target 1% block probability
-    float p_target = 0.01f / (freq_factor * t_factor);
-    p_target = nimcp_myelin_clamp(p_target, 0.001f, 0.5f);
+    float p_target = 0.01F / (freq_factor * t_factor);
+    p_target = nimcp_myelin_clamp(p_target, 0.001F, 0.5F);
 
     // Invert sigmoid to find required integrity
     // P = 1 / (1 + exp((I - I_crit) / σ))
     // exp((I - I_crit) / σ) = (1 - P) / P
     // I = I_crit + σ × ln((1 - P) / P)
 
-    float odds = (1.0f - p_target) / p_target;
+    float odds = (1.0F - p_target) / p_target;
     float I_min = params->i_critical + params->sigma * logf(odds);
 
-    return nimcp_myelin_clamp(I_min, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(I_min, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -756,7 +756,7 @@ float nimcp_myelin_frequency_threshold(float frequency_hz,
  *   have proportionally longer internodes.
  */
 float nimcp_myelin_optimal_internode(float axon_diameter_um) {
-    if (axon_diameter_um <= 0.0f) return NIMCP_INTERNODE_MIN_UM;
+    if (axon_diameter_um <= 0.0F) return NIMCP_INTERNODE_MIN_UM;
 
     float L_opt = NIMCP_INTERNODE_ALPHA *
                   nimcp_myelin_fast_pow(axon_diameter_um, NIMCP_INTERNODE_BETA);
@@ -780,14 +780,14 @@ float nimcp_myelin_internode_efficiency(float current_length_um,
     float deviation = (current_length_um - L_opt) / L_opt;
     float sigma_sq = INTERNODE_EFFICIENCY_SIGMA * INTERNODE_EFFICIENCY_SIGMA;
 
-    float efficiency = nimcp_myelin_fast_exp(-(deviation * deviation) / (2.0f * sigma_sq));
+    float efficiency = nimcp_myelin_fast_exp(-(deviation * deviation) / (2.0F * sigma_sq));
 
-    return nimcp_myelin_clamp(efficiency, 0.5f, 1.0f);
+    return nimcp_myelin_clamp(efficiency, 0.5F, 1.0F);
 }
 
 uint32_t nimcp_myelin_optimal_node_count(float axon_length_um,
                                           float axon_diameter_um) {
-    if (axon_length_um <= 0.0f) return 0;
+    if (axon_length_um <= 0.0F) return 0;
 
     float L_opt = nimcp_myelin_optimal_internode(axon_diameter_um);
 
@@ -795,7 +795,7 @@ uint32_t nimcp_myelin_optimal_node_count(float axon_length_um,
     // Number of nodes = number of internodes + 1 (for terminal nodes)
     float n_internodes = axon_length_um / L_opt;
 
-    return (uint32_t)(n_internodes + 1.5f);  // Round up
+    return (uint32_t)(n_internodes + 1.5F);  // Round up
 }
 
 //=============================================================================
@@ -828,18 +828,18 @@ void nimcp_myelin_compute_metabolic_efficiency(float axon_length_um,
                                                 float mean_compaction,
                                                 float mean_integrity,
                                                 nimcp_metabolic_efficiency_t* result) {
-    if (!result || axon_length_um <= 0.0f || axon_diameter_um <= 0.0f) {
+    if (!result || axon_length_um <= 0.0F || axon_diameter_um <= 0.0F) {
         if (result) memset(result, 0, sizeof(nimcp_metabolic_efficiency_t));
         return;
     }
 
     // Clamp inputs
-    mean_compaction = nimcp_myelin_clamp(mean_compaction, 0.0f, 1.0f);
-    mean_integrity = nimcp_myelin_clamp(mean_integrity, 0.0f, 1.0f);
+    mean_compaction = nimcp_myelin_clamp(mean_compaction, 0.0F, 1.0F);
+    mean_integrity = nimcp_myelin_clamp(mean_integrity, 0.0F, 1.0F);
 
     // Convert to meters for SI units
-    float L_m = axon_length_um * 1e-6f;
-    float d_m = axon_diameter_um * 1e-6f;
+    float L_m = axon_length_um * 1e-6F;
+    float d_m = axon_diameter_um * 1e-6F;
 
     // Total membrane area (cylinder)
     float A_total = NIMCP_MYELIN_MATH_PI * d_m * L_m;
@@ -848,19 +848,19 @@ void nimcp_myelin_compute_metabolic_efficiency(float axon_length_um,
     float E_unmyelin = NIMCP_METAB_C_M * NIMCP_METAB_V_AP * NIMCP_METAB_V_AP * A_total;
 
     // Node area (only nodes are active in myelinated axon)
-    float node_length_m = NIMCP_SALTATORY_NODE_LENGTH_UM * 1e-6f;
+    float node_length_m = NIMCP_SALTATORY_NODE_LENGTH_UM * 1e-6F;
     float A_nodes = NIMCP_MYELIN_MATH_PI * d_m * node_length_m * (float)num_nodes;
 
     // Myelinated energy (with paranode leak and efficiency factors)
-    float paranode_factor = 1.0f + (1.0f - mean_compaction) * (1.0f - NIMCP_METAB_PARANODE_LEAK);
-    float integrity_factor = 1.0f + (1.0f - mean_integrity) * 0.5f;  // Damaged myelin leaks
+    float paranode_factor = 1.0F + (1.0F - mean_compaction) * (1.0F - NIMCP_METAB_PARANODE_LEAK);
+    float integrity_factor = 1.0F + (1.0F - mean_integrity) * 0.5F;  // Damaged myelin leaks
 
     float E_myelin = NIMCP_METAB_C_M * NIMCP_METAB_V_AP * NIMCP_METAB_V_AP *
                      A_nodes * paranode_factor * integrity_factor;
 
     // Results in picojoules (pJ = 10^-12 J)
-    result->energy_per_ap_pj = E_myelin * 1e12f;
-    result->energy_unmyelin_pj = E_unmyelin * 1e12f;
+    result->energy_per_ap_pj = E_myelin * 1e12F;
+    result->energy_unmyelin_pj = E_unmyelin * 1e12F;
 
     // Efficiency ratio
     result->efficiency_ratio = E_unmyelin / (E_myelin + NIMCP_MYELIN_MATH_EPSILON);
@@ -870,20 +870,20 @@ void nimcp_myelin_compute_metabolic_efficiency(float axon_length_um,
     result->atp_per_meter = result->atp_per_ap / L_m;
 
     // Power at 100 Hz firing rate (μW)
-    result->power_uw = E_myelin * 100.0f * 1e6f;
+    result->power_uw = E_myelin * 100.0F * 1e6F;
 }
 
 float nimcp_myelin_atp_per_ap(const nimcp_metabolic_efficiency_t* efficiency) {
-    if (!efficiency) return 0.0f;
+    if (!efficiency) return 0.0F;
     return efficiency->atp_per_ap;
 }
 
 float nimcp_myelin_power_consumption(const nimcp_metabolic_efficiency_t* efficiency,
                                       float firing_rate_hz) {
-    if (!efficiency || firing_rate_hz <= 0.0f) return 0.0f;
+    if (!efficiency || firing_rate_hz <= 0.0F) return 0.0F;
 
     // E (pJ) × rate (Hz) = power (pW) → convert to μW
-    return efficiency->energy_per_ap_pj * firing_rate_hz * 1e-6f;
+    return efficiency->energy_per_ap_pj * firing_rate_hz * 1e-6F;
 }
 
 //=============================================================================
@@ -919,7 +919,7 @@ void nimcp_myelin_rng_reset(nimcp_myelin_rng_t* rng) {
  *   Uses high-quality multiplier from L'Ecuyer (1999)
  */
 float nimcp_myelin_rng_uniform(nimcp_myelin_rng_t* rng) {
-    if (!rng) return 0.5f;
+    if (!rng) return 0.5F;
 
     // LCG iteration
     rng->state = rng->state * RNG_MULTIPLIER + RNG_INCREMENT;
@@ -928,7 +928,7 @@ float nimcp_myelin_rng_uniform(nimcp_myelin_rng_t* rng) {
     // Convert to [0, 1)
     // Use upper 32 bits for better randomness
     uint32_t upper = (uint32_t)(rng->state >> 32);
-    return (float)upper / 4294967296.0f;  // 2^32
+    return (float)upper / 4294967296.0F;  // 2^32
 }
 
 /**
@@ -942,7 +942,7 @@ float nimcp_myelin_rng_uniform(nimcp_myelin_rng_t* rng) {
  *   Returns Z0 scaled by mean and stddev.
  */
 float nimcp_myelin_rng_normal(nimcp_myelin_rng_t* rng, float mean, float stddev) {
-    if (!rng || stddev <= 0.0f) return mean;
+    if (!rng || stddev <= 0.0F) return mean;
 
     float u1 = nimcp_myelin_rng_uniform(rng);
     float u2 = nimcp_myelin_rng_uniform(rng);
@@ -953,8 +953,8 @@ float nimcp_myelin_rng_normal(nimcp_myelin_rng_t* rng, float mean, float stddev)
     }
 
     // Box-Muller transform
-    float z0 = nimcp_myelin_fast_sqrt(-2.0f * logf(u1)) *
-               cosf(2.0f * NIMCP_MYELIN_MATH_PI * u2);
+    float z0 = nimcp_myelin_fast_sqrt(-2.0F * logf(u1)) *
+               cosf(2.0F * NIMCP_MYELIN_MATH_PI * u2);
 
     return mean + stddev * z0;
 }
@@ -972,13 +972,13 @@ float nimcp_myelin_rng_normal(nimcp_myelin_rng_t* rng, float mean, float stddev)
  *   X = exp(Normal(μ, σ))
  */
 float nimcp_myelin_rng_lognormal(nimcp_myelin_rng_t* rng, float mean, float cv) {
-    if (!rng || mean <= 0.0f || cv <= 0.0f) return mean;
+    if (!rng || mean <= 0.0F || cv <= 0.0F) return mean;
 
     // Calculate log-normal parameters
     float cv_sq = cv * cv;
-    float sigma_sq = logf(1.0f + cv_sq);
+    float sigma_sq = logf(1.0F + cv_sq);
     float sigma = nimcp_myelin_fast_sqrt(sigma_sq);
-    float mu = logf(mean) - sigma_sq / 2.0f;
+    float mu = logf(mean) - sigma_sq / 2.0F;
 
     // Generate normal and exponentiate
     float z = nimcp_myelin_rng_normal(rng, mu, sigma);
@@ -993,7 +993,7 @@ uint32_t nimcp_myelin_vary_lamellae(nimcp_myelin_rng_t* rng, uint32_t target_lam
                                                NIMCP_STOCH_CV_LAMELLAE);
 
     // Round to nearest integer, ensure at least 1
-    uint32_t result = (uint32_t)(varied + 0.5f);
+    uint32_t result = (uint32_t)(varied + 0.5F);
     return (result > 0) ? result : 1;
 }
 
@@ -1007,7 +1007,7 @@ float nimcp_myelin_vary_g_ratio(nimcp_myelin_rng_t* rng, float target_g_ratio) {
 }
 
 float nimcp_myelin_vary_internode(nimcp_myelin_rng_t* rng, float target_length_um) {
-    if (!rng || target_length_um <= 0.0f) return target_length_um;
+    if (!rng || target_length_um <= 0.0F) return target_length_um;
 
     float varied = nimcp_myelin_rng_lognormal(rng, target_length_um,
                                                NIMCP_STOCH_CV_INTERNODE);
@@ -1016,7 +1016,7 @@ float nimcp_myelin_vary_internode(nimcp_myelin_rng_t* rng, float target_length_u
 }
 
 float nimcp_myelin_vary_velocity(nimcp_myelin_rng_t* rng, float target_velocity) {
-    if (!rng || target_velocity <= 0.0f) return target_velocity;
+    if (!rng || target_velocity <= 0.0F) return target_velocity;
 
     float stddev = target_velocity * NIMCP_STOCH_CV_VELOCITY;
     float varied = nimcp_myelin_rng_normal(rng, target_velocity, stddev);

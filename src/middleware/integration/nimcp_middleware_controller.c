@@ -101,30 +101,30 @@ static inline uint64_t get_time_us(void)
 static float calculate_command_information(middleware_command_type_t type)
 {
     /* Base information for command type selection */
-    const float type_info = 3.17f;  /* log2(9 types) ≈ 3.17 bits */
+    const float type_info = 3.17F;  /* log2(9 types) ≈ 3.17 bits */
 
     /* Additional info based on payload complexity */
-    float payload_info = 0.0f;
+    float payload_info = 0.0F;
     switch (type) {
         case COMMAND_CONFIGURE_ATTENTION:
-            payload_info = 4.0f;  /* region + priority + selectivity + top_k */
+            payload_info = 4.0F;  /* region + priority + selectivity + top_k */
             break;
         case COMMAND_ADJUST_ROUTING:
-            payload_info = 3.0f;  /* source + dest + weight */
+            payload_info = 3.0F;  /* source + dest + weight */
             break;
         case COMMAND_SUBSCRIBE_PATTERN:
         case COMMAND_UNSUBSCRIBE_PATTERN:
-            payload_info = 2.0f;  /* pattern_id + threshold */
+            payload_info = 2.0F;  /* pattern_id + threshold */
             break;
         case COMMAND_REDUCE_ACTIVITY:
         case COMMAND_INCREASE_ACTIVITY:
-            payload_info = 1.0f;  /* region only */
+            payload_info = 1.0F;  /* region only */
             break;
         case COMMAND_RESET_BUFFERS:
-            payload_info = 1.0f;  /* region only */
+            payload_info = 1.0F;  /* region only */
             break;
         default:
-            payload_info = 2.0f;
+            payload_info = 2.0F;
             break;
     }
 
@@ -236,17 +236,17 @@ middleware_controller_config_t middleware_controller_default_config(void)
     memset(&config, 0, sizeof(config));
 
     /* Attention defaults */
-    config.default_attention_threshold = 0.5f;
-    config.attention_decay_rate = 0.99f;
+    config.default_attention_threshold = 0.5F;
+    config.attention_decay_rate = 0.99F;
     config.enable_adaptive_attention = true;
 
     /* Routing defaults */
-    config.default_routing_weight = 0.5f;
+    config.default_routing_weight = 0.5F;
     config.enable_route_learning = true;
-    config.route_learning_rate = 0.1f;
+    config.route_learning_rate = 0.1F;
 
     /* Pattern matching */
-    config.default_pattern_threshold = 0.7f;
+    config.default_pattern_threshold = 0.7F;
     config.max_subscriptions = MIDDLEWARE_CTRL_MAX_SUBSCRIPTIONS;
     config.enable_pattern_notifications = true;
 
@@ -256,8 +256,8 @@ middleware_controller_config_t middleware_controller_default_config(void)
     config.enable_shannon_tracking = true;
 
     /* Safety limits */
-    config.max_activity_scale = 2.0f;
-    config.min_activity_scale = 0.1f;
+    config.max_activity_scale = 2.0F;
+    config.min_activity_scale = 0.1F;
 
     return config;
 }
@@ -313,8 +313,8 @@ middleware_controller_t* middleware_controller_create_custom(
     /* Initialize regional settings to defaults */
     for (int i = 0; i <= TARGET_CUSTOM; i++) {
         ctrl->attention_thresholds[i] = config->default_attention_threshold;
-        ctrl->attention_priorities[i] = 0.5f;
-        ctrl->activity_scales[i] = 1.0f;
+        ctrl->attention_priorities[i] = 0.5F;
+        ctrl->activity_scales[i] = 1.0F;
     }
 
     /* Initialize metrics */
@@ -391,7 +391,7 @@ bool middleware_controller_set_attention_threshold(
 
     uint64_t start_us = get_time_us();
     float original_threshold = threshold;
-    threshold = clampf(threshold, 0.0f, 1.0f);
+    threshold = clampf(threshold, 0.0F, 1.0F);
     if (threshold != original_threshold) {
         LOG_DEBUG("Attention threshold clamped from %.3f to %.3f for region %d",
                   original_threshold, threshold, region);
@@ -430,7 +430,7 @@ bool middleware_controller_set_attention_priority(
     if (!is_valid_region(region)) return false;
 
     uint64_t start_us = get_time_us();
-    priority = clampf(priority, 0.0f, 1.0f);
+    priority = clampf(priority, 0.0F, 1.0F);
 
     nimcp_mutex_lock(&controller->mutex);
 
@@ -460,7 +460,7 @@ bool middleware_controller_set_attention_selectivity(
     if (!is_valid_region(region)) return false;
 
     uint64_t start_us = get_time_us();
-    selectivity = clampf(selectivity, 0.0f, 1.0f);
+    selectivity = clampf(selectivity, 0.0F, 1.0F);
 
     /* Apply to attention gate if available */
     if (controller->attention_gate != NULL) {
@@ -489,7 +489,7 @@ bool middleware_controller_reset_attention(
         for (int i = 0; i <= TARGET_CUSTOM; i++) {
             controller->attention_thresholds[i] =
                 controller->config.default_attention_threshold;
-            controller->attention_priorities[i] = 0.5f;
+            controller->attention_priorities[i] = 0.5F;
         }
 
         if (controller->attention_gate != NULL) {
@@ -498,7 +498,7 @@ bool middleware_controller_reset_attention(
     } else {
         controller->attention_thresholds[region] =
             controller->config.default_attention_threshold;
-        controller->attention_priorities[region] = 0.5f;
+        controller->attention_priorities[region] = 0.5F;
     }
 
     nimcp_mutex_unlock(&controller->mutex);
@@ -522,7 +522,7 @@ bool middleware_controller_set_routing_priority(
     if (!is_valid_region(source) || !is_valid_region(destination)) return false;
 
     uint64_t start_us = get_time_us();
-    weight = clampf(weight, 0.0f, 1.0f);
+    weight = clampf(weight, 0.0F, 1.0F);
 
     /* Apply to routing table if available */
     if (controller->routing_table != NULL) {
@@ -559,7 +559,7 @@ bool middleware_controller_block_route(
     command_target_region_t destination)
 {
     return middleware_controller_set_routing_priority(
-        controller, source, destination, 0.0f);
+        controller, source, destination, 0.0F);
 }
 
 bool middleware_controller_unblock_route(
@@ -593,7 +593,7 @@ bool middleware_controller_subscribe_pattern(
     if (subscription_id == NULL) return false;
 
     uint64_t start_us = get_time_us();
-    confidence_threshold = clampf(confidence_threshold, 0.0f, 1.0f);
+    confidence_threshold = clampf(confidence_threshold, 0.0F, 1.0F);
 
     nimcp_mutex_lock(&controller->mutex);
 
@@ -679,7 +679,7 @@ bool middleware_controller_set_pattern_threshold(
     if (controller == NULL) return false;
 
     uint64_t start_us = get_time_us();
-    threshold = clampf(threshold, 0.0f, 1.0f);
+    threshold = clampf(threshold, 0.0F, 1.0F);
 
     controller->config.default_pattern_threshold = threshold;
 
@@ -735,7 +735,7 @@ bool middleware_controller_set_activity_scale(
 
     nimcp_mutex_unlock(&controller->mutex);
 
-    middleware_command_type_t cmd_type = (scale < 1.0f) ?
+    middleware_command_type_t cmd_type = (scale < 1.0F) ?
         COMMAND_REDUCE_ACTIVITY : COMMAND_INCREASE_ACTIVITY;
     record_command(controller, cmd_type, start_us, true);
     return true;
@@ -753,7 +753,7 @@ bool middleware_controller_reduce_activity(
     nimcp_mutex_unlock(&controller->mutex);
 
     return middleware_controller_set_activity_scale(
-        controller, region, current * 0.5f);
+        controller, region, current * 0.5F);
 }
 
 bool middleware_controller_boost_activity(
@@ -768,7 +768,7 @@ bool middleware_controller_boost_activity(
     nimcp_mutex_unlock(&controller->mutex);
 
     return middleware_controller_set_activity_scale(
-        controller, region, current * 1.5f);
+        controller, region, current * 1.5F);
 }
 
 //=============================================================================
@@ -919,14 +919,14 @@ bool middleware_controller_get_metrics(
 float middleware_controller_get_efficiency(
     const middleware_controller_t* controller)
 {
-    if (controller == NULL) return 0.0f;
+    if (controller == NULL) return 0.0F;
     return controller->metrics.command_efficiency;
 }
 
 float middleware_controller_get_avg_latency(
     const middleware_controller_t* controller)
 {
-    if (controller == NULL) return 0.0f;
+    if (controller == NULL) return 0.0F;
     return controller->metrics.avg_latency_us;
 }
 
@@ -979,8 +979,8 @@ void middleware_controller_set_activity_limits(
 {
     if (controller == NULL) return;
 
-    controller->config.min_activity_scale = clampf(min_scale, 0.01f, 1.0f);
-    controller->config.max_activity_scale = clampf(max_scale, 1.0f, 10.0f);
+    controller->config.min_activity_scale = clampf(min_scale, 0.01F, 1.0F);
+    controller->config.max_activity_scale = clampf(max_scale, 1.0F, 10.0F);
 }
 
 //=============================================================================

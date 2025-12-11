@@ -571,8 +571,8 @@ static void evict_episode_at_index(episodic_memory_t* memory, uint32_t idx)
  */
 static inline float clamp_emotion(float emotion)
 {
-    if (emotion < -1.0f) return -1.0f;
-    if (emotion > 1.0f) return 1.0f;
+    if (emotion < -1.0F) return -1.0F;
+    if (emotion > 1.0F) return 1.0F;
     return emotion;
 }
 
@@ -664,11 +664,11 @@ static float calculate_similarity(
     const error_signature_t* sig1,
     const error_signature_t* sig2)
 {
-    float similarity = 0.0f;
+    float similarity = 0.0F;
 
     // Exact type match: +0.5
     if (sig1->error_type == sig2->error_type) {
-        similarity += 0.5f;
+        similarity += 0.5F;
     }
 
     // Code proximity: up to +0.5
@@ -677,8 +677,8 @@ static float calculate_similarity(
         sig1->error_code - sig2->error_code :
         sig2->error_code - sig1->error_code;
 
-    float code_sim = 1.0f / (1.0f + (float)code_diff / 100.0f);
-    similarity += 0.5f * code_sim;
+    float code_sim = 1.0F / (1.0F + (float)code_diff / 100.0F);
+    similarity += 0.5F * code_sim;
 
     return similarity;
 }
@@ -919,13 +919,13 @@ consolidation_result_t episodic_memory_consolidate(
                     float success_rate =
                         (float)strategy_success[s] / strategy_counts[s];
 
-                    if (success_rate >= 0.7f) {
+                    if (success_rate >= 0.7F) {
                         // Reliable pattern found
                         patterns_found++;
 
                         LOG_INFO("Pattern: error_type=%d -> strategy=%d "
                                 "(success=%.1f%%, N=%u)",
-                                err_type, s, success_rate * 100.0f,
+                                err_type, s, success_rate * 100.0F,
                                 strategy_counts[s]);
                     }
                 }
@@ -935,7 +935,7 @@ consolidation_result_t episodic_memory_consolidate(
 
     result.success = patterns_found > 0;
     result.patterns_extracted = patterns_found;
-    result.confidence = patterns_found > 0 ? 0.8f : 0.0f;
+    result.confidence = patterns_found > 0 ? 0.8F : 0.0F;
 
     memory->stats.consolidation_runs++;
     memory->stats.patterns_extracted += patterns_found;

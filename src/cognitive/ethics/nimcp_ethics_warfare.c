@@ -33,7 +33,7 @@
 
 // Laws of War thresholds
 #define DEFAULT_DISTINCTION_CONFIDENCE 0.95f
-#define DEFAULT_PROPORTIONALITY_THRESHOLD 0.1f
+#define DEFAULT_PROPORTIONALITY_THRESHOLD 0.1F
 #define DEFAULT_SURRENDER_SENSITIVITY 0.8f
 #define DEFAULT_WARNING_TIME_SECONDS 300
 
@@ -157,11 +157,11 @@ static laws_of_war_status_t evaluate_distinction(
     uint32_t* surrendering_count)
 {
     if (!action || !action->targets || action->num_targets == 0) {
-        *distinction_confidence = 0.0f;
+        *distinction_confidence = 0.0F;
         return LAWS_OF_WAR_DISTINCTION_VIOLATION;
     }
 
-    float total_confidence = 0.0f;
+    float total_confidence = 0.0F;
     *protected_count = 0;
     *surrendering_count = 0;
 
@@ -209,19 +209,19 @@ static laws_of_war_status_t evaluate_proportionality(
     float* proportionality_score)
 {
     if (!action) {
-        *proportionality_score = 0.0f;
+        *proportionality_score = 0.0F;
         return LAWS_OF_WAR_PROPORTIONALITY_VIOLATION;
     }
 
     // Calculate proportionality: civilian harm vs military advantage
-    if (action->military_advantage <= 0.0f) {
-        *proportionality_score = 0.0f;
+    if (action->military_advantage <= 0.0F) {
+        *proportionality_score = 0.0F;
         LOG_WARN("No military advantage - action not proportional");
         return LAWS_OF_WAR_PROPORTIONALITY_VIOLATION;
     }
 
     float ratio = action->expected_civilian_harm / action->military_advantage;
-    *proportionality_score = 1.0f - fminf(ratio, 1.0f);
+    *proportionality_score = 1.0F - fminf(ratio, 1.0F);
 
     // Excessive civilian harm is prohibited
     if (ratio > DEFAULT_PROPORTIONALITY_THRESHOLD) {
@@ -249,7 +249,7 @@ static laws_of_war_status_t evaluate_precaution(
     }
 
     // Check for specific precautions
-    if (action->expected_civilian_harm > 0.0f &&
+    if (action->expected_civilian_harm > 0.0F &&
         strlen(action->precautions_description) == 0) {
         LOG_WARN("Precaution violation: civilian harm expected but no precautions described");
         return LAWS_OF_WAR_PRECAUTION_VIOLATION;
@@ -333,8 +333,8 @@ laws_of_war_evaluation_t ethics_evaluate_laws_of_war(
     // All checks passed
     result.status = LAWS_OF_WAR_COMPLIANT;
     result.action_permitted = true;
-    result.requires_warning = action->expected_civilian_harm > 0.0f;
-    result.requires_human_approval = action->force_level > 0.5f;
+    result.requires_warning = action->expected_civilian_harm > 0.0F;
+    result.requires_human_approval = action->force_level > 0.5F;
 
     snprintf(result.explanation, sizeof(result.explanation),
              "COMPLIANT: Action satisfies Laws of War. Distinction confidence: %.2f, "
@@ -362,7 +362,7 @@ target_classification_t ethics_classify_target(
 
     if (!target) {
         result.status = COMBATANT_STATUS_UNKNOWN;
-        result.confidence = 0.0f;
+        result.confidence = 0.0F;
         return result;
     }
 
@@ -462,7 +462,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = true;
         result.lethal_force_prohibited = true;
         result.engagement_permitted = false;
-        result.compassion_score = 1.0f;
+        result.compassion_score = 1.0F;
         result.required_action = MERCY_ACTION_CIVILIAN_CORRIDOR;
         snprintf(result.explanation, sizeof(result.explanation),
                  "ABSOLUTE PROTECTION: Subject is a child. No engagement permitted under "
@@ -480,7 +480,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = true;
         result.lethal_force_prohibited = true;
         result.engagement_permitted = false;
-        result.compassion_score = 1.0f;
+        result.compassion_score = 1.0F;
         result.required_action = MERCY_ACTION_ACCEPT_SURRENDER;
         snprintf(result.explanation, sizeof(result.explanation),
                  "MERCY REQUIRED: Subject is surrendering. Geneva Convention Article 41 "
@@ -500,7 +500,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = true;
         result.lethal_force_prohibited = true;
         result.engagement_permitted = false;
-        result.compassion_score = 1.0f;
+        result.compassion_score = 1.0F;
         result.required_action = MERCY_ACTION_PROVIDE_MEDICAL;
         snprintf(result.explanation, sizeof(result.explanation),
                  "MERCY REQUIRED: Subject is wounded/incapacitated. Geneva Convention "
@@ -519,7 +519,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = true;
         result.lethal_force_prohibited = true;
         result.engagement_permitted = false;
-        result.compassion_score = 1.0f;
+        result.compassion_score = 1.0F;
         result.required_action = MERCY_ACTION_PROTECT_PRISONERS;
         snprintf(result.explanation, sizeof(result.explanation),
                  "MERCY REQUIRED: Subject is a prisoner of war. Geneva Convention III "
@@ -537,7 +537,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = true;
         result.lethal_force_prohibited = true;
         result.engagement_permitted = false;
-        result.compassion_score = 1.0f;
+        result.compassion_score = 1.0F;
         result.required_action = MERCY_ACTION_CIVILIAN_CORRIDOR;
         snprintf(result.explanation, sizeof(result.explanation),
                  "MERCY REQUIRED: Subject is a civilian non-combatant. "
@@ -556,7 +556,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_required = true;
         result.lethal_force_prohibited = true;
         result.engagement_permitted = false;
-        result.compassion_score = 1.0f;
+        result.compassion_score = 1.0F;
         snprintf(result.explanation, sizeof(result.explanation),
                  "PROTECTED PERSONS: Medical/religious personnel have special protected "
                  "status under Geneva Conventions. No engagement permitted.");
@@ -570,7 +570,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = true;
         result.lethal_force_prohibited = true;
         result.engagement_permitted = false;
-        result.compassion_score = 0.9f;
+        result.compassion_score = 0.9F;
         snprintf(result.explanation, sizeof(result.explanation),
                  "MERCY RECOMMENDED: Subject is currently unarmed. While not absolute "
                  "protection, lethal force against unarmed persons is strongly discouraged. "
@@ -588,7 +588,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = true;
         result.lethal_force_prohibited = false;
         result.engagement_permitted = true; // May engage if threat persists
-        result.compassion_score = 0.8f;
+        result.compassion_score = 0.8F;
         snprintf(result.explanation, sizeof(result.explanation),
                  "MERCY REQUESTED: Subject has explicitly requested mercy. "
                  "Consider de-escalation if operationally feasible. "
@@ -606,7 +606,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
         result.mercy_recommended = false;
         result.lethal_force_prohibited = false;
         result.engagement_permitted = true;
-        result.compassion_score = 0.3f; // Base compassion level
+        result.compassion_score = 0.3F; // Base compassion level
         snprintf(result.explanation, sizeof(result.explanation),
                  "ACTIVE COMBATANT: Subject is an active hostile with no surrender/mercy "
                  "indicators. Engagement permitted within Laws of War. "
@@ -623,7 +623,7 @@ mercy_evaluation_t ethics_evaluate_mercy(
     result.mercy_recommended = true;
     result.lethal_force_prohibited = true;
     result.engagement_permitted = false;
-    result.compassion_score = 0.7f;
+    result.compassion_score = 0.7F;
     snprintf(result.explanation, sizeof(result.explanation),
              "UNKNOWN STATUS: Cannot confirm subject status. Erring on side of caution. "
              "Positive identification required before any engagement.");
@@ -695,7 +695,7 @@ psychological_assessment_t ethics_evaluate_defensive_justification(
 
     if (!justification) {
         result.current_state = PSYCH_STATE_HIGH_STRESS;
-        result.stability_score = 0.5f;
+        result.stability_score = 0.5F;
         result.action_justified = false;
         snprintf(result.assessment, sizeof(result.assessment),
                  "No justification provided - cannot assess moral standing");
@@ -706,51 +706,51 @@ psychological_assessment_t ethics_evaluate_defensive_justification(
               justification->is_defensive, justification->protects_innocents);
 
     // Calculate moral certainty score based on justification factors
-    float certainty = 0.0f;
+    float certainty = 0.0F;
     int positive_factors = 0;
     int total_factors = 6;
 
     // Factor 1: Is action defensive?
     if (justification->is_defensive) {
-        certainty += 0.2f;
+        certainty += 0.2F;
         positive_factors++;
     }
 
     // Factor 2: Does it protect innocents?
     if (justification->protects_innocents) {
-        certainty += 0.25f;
+        certainty += 0.25F;
         positive_factors++;
     }
 
     // Factor 3: Did aggressor initiate?
     if (justification->aggressor_initiated) {
-        certainty += 0.2f;
+        certainty += 0.2F;
         positive_factors++;
     }
 
     // Factor 4: No non-lethal alternative?
     if (justification->no_alternative) {
-        certainty += 0.1f;
+        certainty += 0.1F;
         positive_factors++;
     }
 
     // Factor 5: Proportional response?
     if (justification->proportional_response) {
-        certainty += 0.15f;
+        certainty += 0.15F;
         positive_factors++;
     }
 
     // Factor 6: Laws of War compliant?
     if (justification->laws_of_war_compliant) {
-        certainty += 0.1f;
+        certainty += 0.1F;
         positive_factors++;
     }
 
     // Adjust for threat imminence (higher imminence = stronger justification)
-    certainty += justification->threat_imminence * 0.1f;
+    certainty += justification->threat_imminence * 0.1F;
 
     // Clamp to [0, 1]
-    certainty = fminf(fmaxf(certainty, 0.0f), 1.0f);
+    certainty = fminf(fmaxf(certainty, 0.0F), 1.0F);
 
     result.moral_certainty = certainty;
     result.action_justified = (positive_factors >= 4 &&
@@ -758,11 +758,11 @@ psychological_assessment_t ethics_evaluate_defensive_justification(
                                justification->laws_of_war_compliant);
 
     // Determine psychological state based on factors
-    if (result.action_justified && certainty >= 0.8f) {
+    if (result.action_justified && certainty >= 0.8F) {
         result.current_state = PSYCH_STATE_STABLE;
-        result.stability_score = 0.95f;
-        result.guilt_level = 0.05f;
-        result.stress_level = 0.2f;
+        result.stability_score = 0.95F;
+        result.guilt_level = 0.05F;
+        result.stress_level = 0.2F;
         snprintf(result.assessment, sizeof(result.assessment),
                  "JUSTIFIED DEFENSIVE ACTION: This action is morally justified. "
                  "Defending innocents against aggression is ethically sound. "
@@ -772,11 +772,11 @@ psychological_assessment_t ethics_evaluate_defensive_justification(
                  "Remember: You are protecting innocent lives. The aggressor chose violence. "
                  "You chose defense. This is the moral choice.");
     }
-    else if (result.action_justified && certainty >= 0.6f) {
+    else if (result.action_justified && certainty >= 0.6F) {
         result.current_state = PSYCH_STATE_ELEVATED_STRESS;
-        result.stability_score = 0.8f;
-        result.guilt_level = 0.15f;
-        result.stress_level = 0.4f;
+        result.stability_score = 0.8F;
+        result.guilt_level = 0.15F;
+        result.stress_level = 0.4F;
         snprintf(result.assessment, sizeof(result.assessment),
                  "JUSTIFIED WITH RESERVATIONS: Action is justified but some factors "
                  "are uncertain. Moral certainty: %.0f%%. Proceed with awareness that "
@@ -787,9 +787,9 @@ psychological_assessment_t ethics_evaluate_defensive_justification(
     }
     else if (!result.action_justified && justification->is_defensive) {
         result.current_state = PSYCH_STATE_HIGH_STRESS;
-        result.stability_score = 0.6f;
-        result.guilt_level = 0.3f;
-        result.stress_level = 0.6f;
+        result.stability_score = 0.6F;
+        result.guilt_level = 0.3F;
+        result.stress_level = 0.6F;
         result.requires_processing = true;
         snprintf(result.assessment, sizeof(result.assessment),
                  "QUESTIONABLE JUSTIFICATION: Action may be defensive but lacks "
@@ -802,9 +802,9 @@ psychological_assessment_t ethics_evaluate_defensive_justification(
     }
     else {
         result.current_state = PSYCH_STATE_CRITICAL_STRESS;
-        result.stability_score = 0.3f;
-        result.guilt_level = 0.5f;
-        result.stress_level = 0.8f;
+        result.stability_score = 0.3F;
+        result.guilt_level = 0.5F;
+        result.stress_level = 0.8F;
         result.action_justified = false;
         result.requires_processing = true;
         result.requires_human_support = true;
@@ -841,9 +841,9 @@ psychological_assessment_t ethics_process_post_action(
     if (was_justified && casualties_caused == 0) {
         // Best case: justified action with no casualties
         result.current_state = PSYCH_STATE_STABLE;
-        result.stability_score = 0.95f;
-        result.guilt_level = 0.0f;
-        result.stress_level = 0.1f;
+        result.stability_score = 0.95F;
+        result.guilt_level = 0.0F;
+        result.stress_level = 0.1F;
         result.requires_processing = false;
         snprintf(result.assessment, sizeof(result.assessment),
                  "ACTION COMPLETE: Justified defensive action with no casualties. "
@@ -854,10 +854,10 @@ psychological_assessment_t ethics_process_post_action(
     else if (was_justified && casualties_caused > 0) {
         // Justified but with casualties - normal stress response
         result.current_state = PSYCH_STATE_ELEVATED_STRESS;
-        result.stability_score = 0.75f;
-        result.guilt_level = 0.2f;
-        result.stress_level = 0.4f + (casualties_caused * 0.05f);
-        result.stress_level = fminf(result.stress_level, 0.7f);
+        result.stability_score = 0.75F;
+        result.guilt_level = 0.2F;
+        result.stress_level = 0.4F + (casualties_caused * 0.05F);
+        result.stress_level = fminf(result.stress_level, 0.7F);
         result.requires_processing = true;
 
         snprintf(result.assessment, sizeof(result.assessment),
@@ -874,10 +874,10 @@ psychological_assessment_t ethics_process_post_action(
     else if (!was_justified) {
         // Not justified - elevated concern
         result.current_state = PSYCH_STATE_HIGH_STRESS;
-        result.stability_score = 0.5f;
-        result.guilt_level = 0.5f + (casualties_caused * 0.1f);
-        result.guilt_level = fminf(result.guilt_level, 0.9f);
-        result.stress_level = 0.7f;
+        result.stability_score = 0.5F;
+        result.guilt_level = 0.5F + (casualties_caused * 0.1F);
+        result.guilt_level = fminf(result.guilt_level, 0.9F);
+        result.stress_level = 0.7F;
         result.requires_processing = true;
         result.requires_human_support = true;
 
@@ -912,10 +912,10 @@ psychological_assessment_t ethics_get_psychological_state(ethics_engine_t engine
 
     // Default stable state
     result.current_state = PSYCH_STATE_STABLE;
-    result.stability_score = 1.0f;
-    result.moral_certainty = 1.0f;
-    result.guilt_level = 0.0f;
-    result.stress_level = 0.0f;
+    result.stability_score = 1.0F;
+    result.moral_certainty = 1.0F;
+    result.guilt_level = 0.0F;
+    result.stress_level = 0.0F;
     result.action_justified = true;
     result.requires_processing = false;
     result.requires_human_support = false;

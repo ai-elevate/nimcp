@@ -97,9 +97,9 @@ static bool add_entry(attention_gate_t* gate, uint32_t source_id, uint32_t targe
     entry->target_id = target_id;
 
     entry->target.target_id = target_id;
-    entry->target.topdown_weight = 0.0f;
-    entry->target.bottomup_salience = 0.0f;
-    entry->target.combined_weight = 0.0f;
+    entry->target.topdown_weight = 0.0F;
+    entry->target.bottomup_salience = 0.0F;
+    entry->target.combined_weight = 0.0F;
     entry->target.in_spotlight = false;
     entry->target.last_update_ms = 0;
 
@@ -121,8 +121,8 @@ static void update_combined_weight(attention_gate_t* gate, attention_entry_t* en
             break;
         case ATTENTION_MODE_MIXED:
             entry->target.combined_weight = topdown + bottomup;
-            if (entry->target.combined_weight > 1.0f) {
-                entry->target.combined_weight = 1.0f;
+            if (entry->target.combined_weight > 1.0F) {
+                entry->target.combined_weight = 1.0F;
             }
             break;
     }
@@ -165,9 +165,9 @@ attention_gate_config_t attention_gate_default_config(void) {
     config.spotlight_size = ATTENTION_SPOTLIGHT_SIZE;
     config.enable_winner_take_all = false;
     config.enable_shift_detection = true;
-    config.topdown_weight = 0.7f;
-    config.bottomup_weight = 0.3f;
-    config.inhibition_strength = 0.5f;
+    config.topdown_weight = 0.7F;
+    config.bottomup_weight = 0.3F;
+    config.inhibition_strength = 0.5F;
     return config;
 }
 
@@ -251,7 +251,7 @@ bool attention_gate_set_weight(attention_gate_t* gate,
                                 uint32_t source_id,
                                 uint32_t target_id,
                                 float weight) {
-    if (!gate || weight < 0.0f || weight > 1.0f) {
+    if (!gate || weight < 0.0F || weight > 1.0F) {
         return false;
     }
 
@@ -294,7 +294,7 @@ bool attention_gate_get_weight(const attention_gate_t* gate,
     const attention_entry_t* entry = find_entry(gate, source_id, target_id);
 
     if (!entry) {
-        *weight = 0.0f;
+        *weight = 0.0F;
         return true;  // Return true with 0.0 weight - this is a valid state
     }
 
@@ -305,7 +305,7 @@ bool attention_gate_get_weight(const attention_gate_t* gate,
 bool attention_gate_update_salience(attention_gate_t* gate,
                                      uint32_t target_id,
                                      float salience) {
-    if (!gate || salience < 0.0f || salience > 1.0f) {
+    if (!gate || salience < 0.0F || salience > 1.0F) {
         return false;
     }
 
@@ -344,7 +344,7 @@ bool attention_gate_apply_wta(attention_gate_t* gate, uint32_t* winner_id) {
     }
 
     // Find maximum weight
-    float max_weight = 0.0f;
+    float max_weight = 0.0F;
     uint32_t winner_idx = 0;
 
     for (uint32_t i = 0; i < gate->num_entries; i++) {
@@ -357,11 +357,11 @@ bool attention_gate_apply_wta(attention_gate_t* gate, uint32_t* winner_id) {
     // Set winner to 1.0, suppress all others
     for (uint32_t i = 0; i < gate->num_entries; i++) {
         if (i == winner_idx) {
-            gate->entries[i].target.combined_weight = 1.0f;
+            gate->entries[i].target.combined_weight = 1.0F;
         } else {
             // Apply lateral inhibition
             float inhibited = gate->entries[i].target.combined_weight *
-                            (1.0f - gate->config.inhibition_strength);
+                            (1.0F - gate->config.inhibition_strength);
             gate->entries[i].target.combined_weight = inhibited;
         }
     }
@@ -374,7 +374,7 @@ bool attention_gate_apply_wta(attention_gate_t* gate, uint32_t* winner_id) {
     gate->current_winner = gate->entries[winner_idx].target_id;
 
     if (old_winner != gate->current_winner) {
-        record_shift(gate, old_winner, gate->current_winner, 1.0f);
+        record_shift(gate, old_winner, gate->current_winner, 1.0F);
     }
 
     return true;
@@ -465,9 +465,9 @@ void attention_gate_reset(attention_gate_t* gate) {
     if (!gate) return;
 
     for (uint32_t i = 0; i < gate->num_entries; i++) {
-        gate->entries[i].target.topdown_weight = 0.0f;
-        gate->entries[i].target.bottomup_salience = 0.0f;
-        gate->entries[i].target.combined_weight = 0.0f;
+        gate->entries[i].target.topdown_weight = 0.0F;
+        gate->entries[i].target.bottomup_salience = 0.0F;
+        gate->entries[i].target.combined_weight = 0.0F;
         gate->entries[i].target.in_spotlight = false;
     }
 

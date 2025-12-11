@@ -250,7 +250,7 @@ failure_predictor_t* failure_predictor_create_custom(
         return NULL;
     }
 
-    if (config->prediction_threshold < 0.0f || config->prediction_threshold > 1.0f) {
+    if (config->prediction_threshold < 0.0F || config->prediction_threshold > 1.0F) {
         LOG_ERROR("Invalid prediction_threshold: %.2f (must be [0,1])",
                   config->prediction_threshold);
         return NULL;
@@ -381,12 +381,12 @@ bool failure_predictor_update_indicator(
         return false;
     }
 
-    if (current_value < 0.0f) {
+    if (current_value < 0.0F) {
         // Some metrics should not be negative (gradient norm, memory)
         if (metric == METRIC_TYPE_MEMORY || metric == METRIC_TYPE_GRADIENT) {
             LOG_WARNING("Negative value %.2f for metric %d (sanitizing to 0)",
                         current_value, metric);
-            current_value = 0.0f;
+            current_value = 0.0F;
         }
     }
 
@@ -432,7 +432,7 @@ bool failure_predictor_update_indicator(
             // WHY:  Track how fast metric is changing
             // HOW:  delta_value / delta_time
             float value_delta = current_value - indicator->previous_value;
-            float time_delta_sec = time_delta_ms / 1000.0f;
+            float time_delta_sec = time_delta_ms / 1000.0F;
             float rate = value_delta / time_delta_sec;
 
             // WHAT: Calculate acceleration (second derivative)
@@ -453,10 +453,10 @@ bool failure_predictor_update_indicator(
         }
     } else {
         // First update - no derivatives yet
-        indicator->current.rate_of_change = 0.0f;
-        indicator->current.acceleration = 0.0f;
+        indicator->current.rate_of_change = 0.0F;
+        indicator->current.acceleration = 0.0F;
         indicator->previous_value = current_value;
-        indicator->previous_rate = 0.0f;
+        indicator->previous_rate = 0.0F;
         indicator->initialized = true;
     }
 
@@ -504,7 +504,7 @@ bool failure_predictor_update_from_health_metrics(
         predictor,
         METRIC_TYPE_MEMORY,
         (float)metrics->memory_usage,
-        (float)metrics->peak_memory * 0.9f  // 90% of peak as threshold
+        (float)metrics->peak_memory * 0.9F  // 90% of peak as threshold
     );
 
     // Gradient norm
@@ -520,7 +520,7 @@ bool failure_predictor_update_from_health_metrics(
         predictor,
         METRIC_TYPE_LOSS,
         metrics->loss_value,
-        100.0f  // High loss threshold
+        100.0F  // High loss threshold
     );
 
     // Throughput
@@ -528,7 +528,7 @@ bool failure_predictor_update_from_health_metrics(
         predictor,
         METRIC_TYPE_THROUGHPUT,
         metrics->throughput,
-        metrics->throughput * 0.5f  // 50% degradation threshold
+        metrics->throughput * 0.5F  // 50% degradation threshold
     );
 
     // Error rate
@@ -536,7 +536,7 @@ bool failure_predictor_update_from_health_metrics(
         predictor,
         METRIC_TYPE_ERROR,
         metrics->error_rate,
-        0.1f  // 10% error rate threshold
+        0.1F  // 10% error rate threshold
     );
 
     return true;
@@ -637,7 +637,7 @@ bool failure_predictor_detect_memory_leak(
     // HOW:  Growth rate > threshold AND acceleration > 0
 
     // Convert rate from bytes/sec to MB/sec
-    float rate_mb_per_sec = indicator->current.rate_of_change / (1024.0f * 1024.0f);
+    float rate_mb_per_sec = indicator->current.rate_of_change / (1024.0F * 1024.0F);
 
     bool is_leaking = (rate_mb_per_sec > MEMORY_LEAK_RATE_THRESHOLD_MB_PER_SEC) &&
                       (indicator->current.acceleration > MEMORY_LEAK_MIN_ACCELERATION);
@@ -725,20 +725,20 @@ uint64_t failure_predictor_estimate_time_to_oom(
     float current_bytes = indicator->current.current_value;
     float rate_bytes_per_sec = indicator->current.rate_of_change;
 
-    if (rate_bytes_per_sec <= 0.0f) {
+    if (rate_bytes_per_sec <= 0.0F) {
         unlock(predictor);
         return 0;  // Not growing
     }
 
     float remaining_bytes = (float)MAX_MEMORY_BYTES - current_bytes;
 
-    if (remaining_bytes <= 0.0f) {
+    if (remaining_bytes <= 0.0F) {
         unlock(predictor);
         return 1;  // Already at max (1 ms)
     }
 
     float time_to_oom_sec = remaining_bytes / rate_bytes_per_sec;
-    uint64_t time_to_oom_ms = (uint64_t)(time_to_oom_sec * 1000.0f);
+    uint64_t time_to_oom_ms = (uint64_t)(time_to_oom_sec * 1000.0F);
 
     // Cap at reasonable maximum (1 hour)
     if (time_to_oom_ms > 3600000) {
@@ -780,20 +780,20 @@ uint64_t failure_predictor_estimate_time_to_explosion(
     float current_norm = indicator->current.current_value;
     float rate_per_sec = indicator->current.rate_of_change;
 
-    if (rate_per_sec <= 0.0f) {
+    if (rate_per_sec <= 0.0F) {
         unlock(predictor);
         return 0;
     }
 
     float remaining = MAX_GRADIENT_NORM - current_norm;
 
-    if (remaining <= 0.0f) {
+    if (remaining <= 0.0F) {
         unlock(predictor);
         return 1;  // Already exploded
     }
 
     float time_sec = remaining / rate_per_sec;
-    uint64_t time_ms = (uint64_t)(time_sec * 1000.0f);
+    uint64_t time_ms = (uint64_t)(time_sec * 1000.0F);
 
     // Cap at 1 minute
     if (time_ms > 60000) {
@@ -841,14 +841,14 @@ failure_prediction_t* failure_predictor_predict(
 
         if (leak_detected && time_to_oom > 0) {
             // Calculate probability based on time urgency
-            float probability = 0.5f;  // Base probability
+            float probability = 0.5F;  // Base probability
 
             if (time_to_oom < 5000) {
-                probability = 0.95f;  // Very urgent
+                probability = 0.95F;  // Very urgent
             } else if (time_to_oom < 30000) {
-                probability = 0.85f;  // Urgent
+                probability = 0.85F;  // Urgent
             } else if (time_to_oom < 120000) {
-                probability = 0.75f;  // Moderate
+                probability = 0.75F;  // Moderate
             }
 
             if (probability >= predictor->config.prediction_threshold) {
@@ -857,9 +857,9 @@ failure_prediction_t* failure_predictor_predict(
                     pred->type = FAILURE_TYPE_OOM;
                     pred->probability = probability;
                     pred->estimated_time_ms = time_to_oom;
-                    pred->confidence = (probability > 0.9f) ? CONFIDENCE_VERY_HIGH :
-                                       (probability > 0.75f) ? CONFIDENCE_HIGH :
-                                       (probability > 0.5f) ? CONFIDENCE_MEDIUM : CONFIDENCE_LOW;
+                    pred->confidence = (probability > 0.9F) ? CONFIDENCE_VERY_HIGH :
+                                       (probability > 0.75F) ? CONFIDENCE_HIGH :
+                                       (probability > 0.5F) ? CONFIDENCE_MEDIUM : CONFIDENCE_LOW;
                     pred->reasoning = "Memory growing rapidly, OOM imminent";
                     predictor->prediction_count++;
                 }
@@ -883,14 +883,14 @@ failure_prediction_t* failure_predictor_predict(
         lock_write(predictor);
 
         if (explosion_detected && time_to_explosion > 0) {
-            float probability = 0.5f;
+            float probability = 0.5F;
 
             if (time_to_explosion < 1000) {
-                probability = 0.95f;  // Very urgent
+                probability = 0.95F;  // Very urgent
             } else if (time_to_explosion < 10000) {
-                probability = 0.85f;
+                probability = 0.85F;
             } else {
-                probability = 0.75f;
+                probability = 0.75F;
             }
 
             if (probability >= predictor->config.prediction_threshold) {
@@ -899,8 +899,8 @@ failure_prediction_t* failure_predictor_predict(
                     pred->type = FAILURE_TYPE_GRADIENT_EXPLOSION;
                     pred->probability = probability;
                     pred->estimated_time_ms = time_to_explosion;
-                    pred->confidence = (probability > 0.9f) ? CONFIDENCE_VERY_HIGH :
-                                       (probability > 0.75f) ? CONFIDENCE_HIGH : CONFIDENCE_MEDIUM;
+                    pred->confidence = (probability > 0.9F) ? CONFIDENCE_VERY_HIGH :
+                                       (probability > 0.75F) ? CONFIDENCE_HIGH : CONFIDENCE_MEDIUM;
                     pred->reasoning = "Gradient norm growing exponentially";
                     predictor->prediction_count++;
                 }

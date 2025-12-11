@@ -96,8 +96,8 @@ static void init_stats(routing_stats_t* stats) {
     stats->signals_routed = 0;
     stats->signals_dropped = 0;
     stats->signals_bypassed = 0;
-    stats->avg_latency_ms = 0.0f;
-    stats->throughput_hz = 0.0f;
+    stats->avg_latency_ms = 0.0F;
+    stats->throughput_hz = 0.0F;
     stats->queue_depth = 0;
 }
 
@@ -165,7 +165,7 @@ static float get_attention_threshold(thalamic_router_t* router, uint32_t dest_id
 
     // Modulation: PKA [0,1] -> threshold reduction [1.0, 0.1]
     // High PKA = low threshold = more attention
-    float modulation = 1.0f - (0.9f * pka_activity);
+    float modulation = 1.0F - (0.9F * pka_activity);
 
     return base_threshold * modulation;
 }
@@ -206,7 +206,7 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
             float attention = attention_weight;
 
             if (router->config.enable_attention_gating && router->attention_gate) {
-                float gate_weight = 1.0f;
+                float gate_weight = 1.0F;
                 attention_gate_get_weight(router->attention_gate, source_id,
                                         dest_id, &gate_weight);
                 attention *= gate_weight;
@@ -274,7 +274,7 @@ thalamic_router_config_t thalamic_router_default_config(void) {
     config.enable_attention_gating = true;
     config.enable_priority_routing = true;
     config.enable_statistics = true;
-    config.min_attention_threshold = 0.01f;
+    config.min_attention_threshold = 0.01F;
     config.enable_learning = true;
     config.enable_second_messengers = true;  /* Enable by default - biological fidelity */
     config.num_neurons = 0;
@@ -428,7 +428,7 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
                     routing_table_add_route(router->routing_table,
                                           signal->source_id,
                                           signal->dest_ids[i],
-                                          1.0f);  // Strengthen route
+                                          1.0F);  // Strengthen route
                 }
             }
         }
@@ -445,7 +445,7 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
             routing_table_add_route(router->routing_table,
                                   signal->source_id,
                                   signal->dest_ids[i],
-                                  0.5f);
+                                  0.5F);
         }
     }
 
@@ -488,9 +488,9 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
 
             // Update latency statistics
             double latency = current_time - qs->enqueue_time_ms;
-            float alpha = 0.1f;
+            float alpha = 0.1F;
             router->stats.avg_latency_ms =
-                (1.0f - alpha) * router->stats.avg_latency_ms + alpha * (float)latency;
+                (1.0F - alpha) * router->stats.avg_latency_ms + alpha * (float)latency;
         }
 
         // Release wrapper (decrements refcount, frees if last reference)
@@ -614,7 +614,7 @@ routed_signal_t* thalamic_router_create_signal(uint32_t source_id,
     signal->source_id = source_id;
     signal->num_dests = num_dests;
     signal->signal_size = signal_size;
-    signal->attention_weight = 1.0f;
+    signal->attention_weight = 1.0F;
     signal->priority = priority;
     signal->timestamp_ms = get_current_time_ms();
     signal->bypass_queue = false;
@@ -650,9 +650,9 @@ bool thalamic_router_trigger_receptor(thalamic_router_t* router,
         return false;
     }
 
-    if (occupancy < 0.0f || occupancy > 1.0f) {
+    if (occupancy < 0.0F || occupancy > 1.0F) {
         LOG_WARN(LOG_MODULE, "Invalid occupancy %.3f, clamping to [0,1]", occupancy);
-        occupancy = (occupancy < 0.0f) ? 0.0f : 1.0f;
+        occupancy = (occupancy < 0.0F) ? 0.0F : 1.0F;
     }
 
     // Determine G-protein coupling and activate cascade

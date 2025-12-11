@@ -220,7 +220,7 @@ void neuron_model_post_spike(neuron_model_state_t state) {
 float neuron_model_get_voltage(const neuron_model_state_t state) {
     // Guard: Validate state and vtable
     if (!state || !state->vtable || !state->vtable->get_voltage) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return state->vtable->get_voltage(state);

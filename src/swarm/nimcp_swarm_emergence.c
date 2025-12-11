@@ -295,7 +295,7 @@ swarm_emergence_ctx_t* swarm_emergence_create(void)
 
     // Initialize statistics
     ctx->stats.min_drones_seen = UINT32_MAX;
-    ctx->stats.min_coherence_seen = 1.0f;
+    ctx->stats.min_coherence_seen = 1.0F;
 
     // Initialize mutex
     if (nimcp_mutex_init(&ctx->mutex, NULL) != NIMCP_SUCCESS) {
@@ -344,7 +344,7 @@ int swarm_emergence_set_coherence_threshold(
         return -1;
     }
 
-    if (threshold < 0.0f || threshold > 1.0f) {
+    if (threshold < 0.0F || threshold > 1.0F) {
         LOG_ERROR("Invalid coherence threshold: %f (must be 0.0-1.0)", threshold);
         return -1;
     }
@@ -621,7 +621,7 @@ float swarm_emergence_get_coherence(
 )
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return ctx->collective_coherence;
@@ -723,7 +723,7 @@ void swarm_emergence_reset_stats(swarm_emergence_ctx_t* ctx)
     // Reset all statistics
     memset(&ctx->stats, 0, sizeof(swarm_emergence_stats_t));
     ctx->stats.min_drones_seen = UINT32_MAX;
-    ctx->stats.min_coherence_seen = 1.0f;
+    ctx->stats.min_coherence_seen = 1.0F;
 
     nimcp_mutex_unlock(&ctx->mutex);
 
@@ -748,7 +748,7 @@ bool swarm_emergence_validate_state(const swarm_state_t* state)
     }
 
     // Check coherence range
-    if (state->collective_coherence < 0.0f || state->collective_coherence > 1.0f) {
+    if (state->collective_coherence < 0.0F || state->collective_coherence > 1.0F) {
         LOG_ERROR("Invalid coherence value: %f (must be 0.0-1.0)",
                   state->collective_coherence);
         return false;

@@ -89,7 +89,7 @@ brain_t nimcp_brain_factory_allocate_brain(void)
     brain->network_hubs = NULL;
     brain->topology_metrics = NULL;
     brain->auto_detect_communities = false;
-    brain->community_detection_interval = 0.0f;  // Manual only by default
+    brain->community_detection_interval = 0.0F;  // Manual only by default
 
     return brain;
 }

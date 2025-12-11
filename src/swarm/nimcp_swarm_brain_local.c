@@ -135,10 +135,10 @@ static float calculate_divergence(
     uint32_t num_weights
 ) {
     if (!local_weights || !consensus_weights || num_weights == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum_sq_diff = 0.0f;
+    float sum_sq_diff = 0.0F;
     float sum_sq_consensus = EPSILON;
 
     for (uint32_t i = 0; i < num_weights; i++) {
@@ -452,7 +452,7 @@ int swarm_brain_create_for_agent(
     entry->brain_data.num_weights = 0;  /* Will be set on first sync */
     entry->brain_data.local_weights = NULL;
     entry->brain_data.last_sync_ms = nimcp_time_get_us() / 1000;
-    entry->brain_data.divergence_score = 0.0f;
+    entry->brain_data.divergence_score = 0.0F;
     entry->brain_data.active = true;
 
     /* Insert into hash table */
@@ -691,8 +691,8 @@ int swarm_brain_local_sync_weights(
     /* Blend local weights with consensus (simple averaging) */
     for (uint32_t i = 0; i < entry->brain_data.num_weights; i++) {
         entry->brain_data.local_weights[i] =
-            0.7f * entry->brain_data.local_weights[i] +
-            0.3f * mgr->consensus_weights[i];
+            0.7F * entry->brain_data.local_weights[i] +
+            0.3F * mgr->consensus_weights[i];
     }
 
     /* Calculate new divergence */
@@ -709,7 +709,7 @@ int swarm_brain_local_sync_weights(
 
     /* Send bio-async notification if divergence changed significantly */
     if (mgr->bio_async_enabled && mgr->bio_ctx &&
-        fabsf(old_divergence - entry->brain_data.divergence_score) > 0.1f) {
+        fabsf(old_divergence - entry->brain_data.divergence_score) > 0.1F) {
         bio_message_header_t msg = {
             .type = BIO_MSG_BRAIN_SYNCED,
             .flags = BIO_MSG_FLAG_BROADCAST,
@@ -796,13 +796,13 @@ float swarm_brain_get_divergence(
     uint32_t agent_id
 ) {
     if (!mgr) {
-        return -1.0f;
+        return -1.0F;
     }
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
     agent_brain_entry_t* entry = find_agent_entry(mgr, agent_id);
-    float divergence = entry ? entry->brain_data.divergence_score : -1.0f;
+    float divergence = entry ? entry->brain_data.divergence_score : -1.0F;
 
     nimcp_platform_mutex_unlock(&mgr->mutex);
     return divergence;
@@ -882,8 +882,8 @@ int swarm_brain_local_get_stats(
     nimcp_platform_mutex_lock(&mgr->mutex);
 
     /* Calculate statistics */
-    float sum_divergence = 0.0f;
-    float max_divergence = 0.0f;
+    float sum_divergence = 0.0F;
+    float max_divergence = 0.0F;
     uint32_t divergent_count = 0;
 
     for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
@@ -905,7 +905,7 @@ int swarm_brain_local_get_stats(
 
     /* Fill statistics */
     mgr->stats.avg_divergence =
-        mgr->active_agents > 0 ? sum_divergence / mgr->active_agents : 0.0f;
+        mgr->active_agents > 0 ? sum_divergence / mgr->active_agents : 0.0F;
     mgr->stats.max_divergence = max_divergence;
     mgr->stats.divergent_agents = divergent_count;
     mgr->stats.uptime_ms = (nimcp_time_get_us() / 1000) - mgr->creation_time_ms;

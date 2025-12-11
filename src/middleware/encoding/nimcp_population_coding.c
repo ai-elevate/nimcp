@@ -60,7 +60,7 @@ struct population_coding_encoder_struct {
  */
 static float calculate_magnitude(const vector3d_t* v) {
     if (!v) {
-        return 0.0f;
+        return 0.0F;
     }
     return sqrtf(v->x * v->x + v->y * v->y + v->z * v->z);
 }
@@ -78,10 +78,10 @@ static float calculate_covariance(
     float mean_y
 ) {
     if (!x || !y || n == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < n; i++) {
         sum += (x[i] - mean_x) * (y[i] - mean_y);
     }
@@ -95,7 +95,7 @@ static float calculate_covariance(
  */
 static float calculate_mean(const float* x, uint32_t n) {
     if (!x || n == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Use tensor library for vectorized sum */
@@ -112,7 +112,7 @@ static float calculate_mean(const float* x, uint32_t n) {
     }
 
     /* Fallback to scalar computation */
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < n; i++) {
         sum += x[i];
     }
@@ -130,14 +130,14 @@ static float compute_zero_lag_correlation(
     float window_ms
 ) {
     if (!train1 || !train2) {
-        return 0.0f;
+        return 0.0F;
     }
     if (train1->num_spikes == 0 || train2->num_spikes == 0) {
-        return 0.0f;
+        return 0.0F;
     }
     // BUGFIX: Validate spike_times arrays are not NULL before accessing
     if (!train1->spike_times || !train2->spike_times) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t coincidences = 0;
@@ -199,15 +199,15 @@ static bool compute_principal_component(
     }
 
     const uint32_t max_iterations = 100;
-    const float convergence_threshold = 1e-6f;
+    const float convergence_threshold = 1e-6F;
 
     // Initialize component with random values
     for (uint32_t i = 0; i < num_features; i++) {
-        component_out[i] = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+        component_out[i] = ((float)rand() / (float)RAND_MAX) * 2.0F - 1.0F;
     }
 
     // Normalize using tensor library
-    float norm = 0.0f;
+    float norm = 0.0F;
     {
         uint32_t dims[] = {num_features};
         nimcp_tensor_t* t = nimcp_tensor_from_data(component_out, dims, 1, NIMCP_DTYPE_F32, false);
@@ -245,7 +245,7 @@ static bool compute_principal_component(
         memset(temp, 0, num_features * sizeof(float));
 
         for (uint32_t s = 0; s < num_samples; s++) {
-            float dot = 0.0f;
+            float dot = 0.0F;
             for (uint32_t f = 0; f < num_features; f++) {
                 dot += data_centered[s * num_features + f] * component_out[f];
             }
@@ -263,7 +263,7 @@ static bool compute_principal_component(
                 nimcp_tensor_destroy(t);
             } else {
                 /* Fallback to scalar */
-                norm = 0.0f;
+                norm = 0.0F;
                 for (uint32_t i = 0; i < num_features; i++) {
                     norm += temp[i] * temp[i];
                 }
@@ -275,15 +275,15 @@ static bool compute_principal_component(
         // HOW: Set component to zero and eigenvalue to zero, then succeed
         if (norm < FLT_EPSILON) {
             for (uint32_t i = 0; i < num_features; i++) {
-                component_out[i] = 0.0f;
+                component_out[i] = 0.0F;
             }
-            *eigenvalue_out = 0.0f;
+            *eigenvalue_out = 0.0F;
             nimcp_free(temp);
             return true;
         }
 
         // Check convergence
-        float change = 0.0f;
+        float change = 0.0F;
         for (uint32_t i = 0; i < num_features; i++) {
             float new_val = temp[i] / norm;
             change += fabsf(new_val - component_out[i]);
@@ -387,8 +387,8 @@ void population_coding_destroy(population_coding_encoder_t encoder) {
 population_coding_config_t population_coding_default_config(void) {
     population_coding_config_t config = {
         .n_pca_components = POPULATION_DEFAULT_PCA_COMPONENTS,
-        .correlation_window_ms = 2.0f,  // 2ms window for spike synchrony detection
-        .synchrony_threshold = 0.5f,
+        .correlation_window_ms = 2.0F,  // 2ms window for spike synchrony detection
+        .synchrony_threshold = 0.5F,
         .sparsity_target = POPULATION_SPARSITY_THRESHOLD,
         .enable_pca = true,
         .enable_synchrony = true,
@@ -396,8 +396,8 @@ population_coding_config_t population_coding_default_config(void) {
         /* Positional Encoding defaults */
         .enable_positional_encoding = false,  // Disabled by default
         .pe_embedding_dim = 64,               // Standard embedding dimension
-        .pe_frequency_base = 10000.0f,        // Standard transformer base
-        .position_weight = 0.3f               // 30% position weighting
+        .pe_frequency_base = 10000.0F,        // Standard transformer base
+        .position_weight = 0.3F               // 30% position weighting
     };
     return config;
 }
@@ -424,15 +424,15 @@ bool population_coding_encode_vector_sum(
     nimcp_mutex_lock(&encoder->mutex);
 
     // Initialize output vector
-    vector_out->x = 0.0f;
-    vector_out->y = 0.0f;
-    vector_out->z = 0.0f;
+    vector_out->x = 0.0F;
+    vector_out->y = 0.0F;
+    vector_out->z = 0.0F;
 
     // Weighted sum of preferred directions
-    float total_weight = 0.0f;
+    float total_weight = 0.0F;
     for (uint32_t i = 0; i < num_neurons; i++) {
         float weight = rates[i];
-        if (weight > 0.0f) {
+        if (weight > 0.0F) {
             vector_out->x += weight * tuning_curves[i].preferred_direction.x;
             vector_out->y += weight * tuning_curves[i].preferred_direction.y;
             vector_out->z += weight * tuning_curves[i].preferred_direction.z;
@@ -444,7 +444,7 @@ bool population_coding_encode_vector_sum(
     vector_out->magnitude = calculate_magnitude(vector_out);
 
     // Normalize by total weight for average direction
-    if (total_weight > 0.0f) {
+    if (total_weight > 0.0F) {
         vector_out->x /= total_weight;
         vector_out->y /= total_weight;
         vector_out->z /= total_weight;
@@ -483,16 +483,16 @@ bool population_coding_decode_vector_sum(
         float v_mag = calculate_magnitude(vector);
         float p_mag = calculate_magnitude(&tuning_curves[i].preferred_direction);
 
-        float cos_angle = 0.0f;
-        if (v_mag > 0.0f && p_mag > 0.0f) {
+        float cos_angle = 0.0F;
+        if (v_mag > 0.0F && p_mag > 0.0F) {
             cos_angle = dot / (v_mag * p_mag);
             // Clamp to [-1, 1]
-            if (cos_angle > 1.0f) cos_angle = 1.0f;
-            if (cos_angle < -1.0f) cos_angle = -1.0f;
+            if (cos_angle > 1.0F) cos_angle = 1.0F;
+            if (cos_angle < -1.0F) cos_angle = -1.0F;
         }
 
         // Rate = max_rate * max(0, cos(angle))
-        rates_out[i] = tuning_curves[i].max_rate * fmaxf(0.0f, cos_angle);
+        rates_out[i] = tuning_curves[i].max_rate * fmaxf(0.0F, cos_angle);
     }
 
     nimcp_mutex_unlock(&encoder->mutex);
@@ -521,14 +521,14 @@ bool population_coding_encode_center_of_mass(
     nimcp_mutex_lock(&encoder->mutex);
 
     // Initialize center
-    center_out->x = 0.0f;
-    center_out->y = 0.0f;
-    center_out->z = 0.0f;
+    center_out->x = 0.0F;
+    center_out->y = 0.0F;
+    center_out->z = 0.0F;
 
     // Weighted sum of positions
-    float total_rate = 0.0f;
+    float total_rate = 0.0F;
     for (uint32_t i = 0; i < num_neurons; i++) {
-        if (rates[i] > 0.0f) {
+        if (rates[i] > 0.0F) {
             center_out->x += rates[i] * positions[i].x;
             center_out->y += rates[i] * positions[i].y;
             center_out->z += rates[i] * positions[i].z;
@@ -538,7 +538,7 @@ bool population_coding_encode_center_of_mass(
 
     // WHY: Fail if no active neurons (all rates zero)
     // HOW: Check total_rate and return false for degenerate case
-    if (total_rate <= 0.0f) {
+    if (total_rate <= 0.0F) {
         nimcp_mutex_unlock(&encoder->mutex);
         return false;
     }
@@ -584,7 +584,7 @@ bool population_coding_encode_pca(
 
     // Calculate mean for each neuron
     for (uint32_t n = 0; n < num_neurons; n++) {
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (uint32_t s = 0; s < num_samples; s++) {
             sum += activity_matrix[s * num_neurons + n];
         }
@@ -632,7 +632,7 @@ bool population_coding_encode_pca(
 
         // Deflate: remove this component from residual
         for (uint32_t s = 0; s < num_samples; s++) {
-            float proj = 0.0f;
+            float proj = 0.0F;
             for (uint32_t n = 0; n < num_neurons; n++) {
                 proj += residual[s * num_neurons + n] * component[n];
             }
@@ -680,7 +680,7 @@ bool population_coding_project_pca(
 
     // Project onto each component
     for (uint32_t k = 0; k < pca_result->n_components; k++) {
-        float proj = 0.0f;
+        float proj = 0.0F;
         const float* component = &pca_result->components[k * num_neurons];
 
         for (uint32_t n = 0; n < num_neurons; n++) {
@@ -730,10 +730,10 @@ bool population_coding_compute_synchrony(
     }
 
     // Initialize result
-    result_out->synchrony_index = 0.0f;
-    result_out->mean_correlation = 0.0f;
-    result_out->peak_lag_ms = 0.0f;
-    result_out->coherence = 0.0f;
+    result_out->synchrony_index = 0.0F;
+    result_out->mean_correlation = 0.0F;
+    result_out->peak_lag_ms = 0.0F;
+    result_out->coherence = 0.0F;
 
     // Sample pairs for large populations (avoid O(n^2) explosion)
     const uint32_t max_pairs = 1000;
@@ -741,7 +741,7 @@ bool population_coding_compute_synchrony(
     bool sample_pairs = num_pairs > max_pairs;
     uint32_t pairs_to_compute = sample_pairs ? max_pairs : num_pairs;
 
-    float sum_correlation = 0.0f;
+    float sum_correlation = 0.0F;
     uint32_t valid_pairs = 0;
 
     if (sample_pairs) {
@@ -809,7 +809,7 @@ bool population_coding_correlation_matrix(
     for (uint32_t i = 0; i < num_neurons; i++) {
         for (uint32_t j = 0; j < num_neurons; j++) {
             if (i == j) {
-                correlation_matrix_out[i * num_neurons + j] = 1.0f;
+                correlation_matrix_out[i * num_neurons + j] = 1.0F;
             } else {
                 float corr = compute_zero_lag_correlation(
                     spike_trains[i],
@@ -885,7 +885,7 @@ float population_coding_sparse_overlap(
 ) {
     // Guard clauses
     if (!code1 || !code2 || num_neurons == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     uint32_t shared = 0;
@@ -901,7 +901,7 @@ float population_coding_sparse_overlap(
     // Jaccard similarity: |A ∩ B| / |A ∪ B|
     uint32_t union_size = active1 + active2 - shared;
     if (union_size == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return (float)shared / (float)union_size;
@@ -996,7 +996,7 @@ vector3d_t population_coding_vector3d_make(float x, float y, float z) {
 
 float population_coding_vector3d_dot(const vector3d_t* v1, const vector3d_t* v2) {
     if (!v1 || !v2) {
-        return 0.0f;
+        return 0.0F;
     }
     return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
 }
@@ -1014,7 +1014,7 @@ bool population_coding_vector3d_normalize(vector3d_t* v) {
     v->x /= mag;
     v->y /= mag;
     v->z /= mag;
-    v->magnitude = 1.0f;
+    v->magnitude = 1.0F;
 
     return true;
 }
@@ -1046,10 +1046,10 @@ bool population_coding_set_pe_config(
     if (embedding_dim == 0 || embedding_dim > NIMCP_POS_MAX_DIM) {
         return false;
     }
-    if (frequency_base <= 0.0f) {
+    if (frequency_base <= 0.0F) {
         return false;
     }
-    if (position_weight < 0.0f || position_weight > 1.0f) {
+    if (position_weight < 0.0F || position_weight > 1.0F) {
         return false;
     }
 
@@ -1079,7 +1079,7 @@ bool population_coding_set_pe_config(
                 .thread_safe = false       // Parent encoder handles thread safety
             },
             .frequency_base = frequency_base,
-            .frequency_scale = 1.0f
+            .frequency_scale = 1.0F
         }
     };
 
@@ -1194,7 +1194,7 @@ bool population_coding_position_aware_decode(
     // HOW:  weighted_rate[i] = rate[i] * (1-w + w*dot(PE(i), query_PE))
     for (uint32_t i = 0; i < num_neurons; i++) {
         // Calculate dot product between neuron position and query position
-        float dot_product = 0.0f;
+        float dot_product = 0.0F;
         const float* neuron_pe = &position_encodings[i * pe_dim];
 
         for (uint32_t d = 0; d < pe_dim; d++) {
@@ -1204,27 +1204,27 @@ bool population_coding_position_aware_decode(
         // Normalize dot product to [0, 1] range
         // WHY: PE vectors are not normalized, so normalize similarity score
         // HOW: Use sigmoid-like scaling: similarity = (dot + pe_dim) / (2*pe_dim)
-        float similarity = (dot_product + (float)pe_dim) / (2.0f * (float)pe_dim);
+        float similarity = (dot_product + (float)pe_dim) / (2.0F * (float)pe_dim);
 
         // Clamp similarity to [0, 1]
-        if (similarity < 0.0f) similarity = 0.0f;
-        if (similarity > 1.0f) similarity = 1.0f;
+        if (similarity < 0.0F) similarity = 0.0F;
+        if (similarity > 1.0F) similarity = 1.0F;
 
         // Apply position weighting: blend base rate with position-weighted rate
-        weighted_rates[i] = rates[i] * (1.0f - position_weight + position_weight * similarity);
+        weighted_rates[i] = rates[i] * (1.0F - position_weight + position_weight * similarity);
     }
 
     // WHAT: Encode vector sum using weighted rates
     // WHY:  Standard population vector encoding with position modulation
     // HOW:  Weighted sum of preferred directions by position-weighted rates
-    vector_out->x = 0.0f;
-    vector_out->y = 0.0f;
-    vector_out->z = 0.0f;
-    float total_weight = 0.0f;
+    vector_out->x = 0.0F;
+    vector_out->y = 0.0F;
+    vector_out->z = 0.0F;
+    float total_weight = 0.0F;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         float weight = weighted_rates[i];
-        if (weight > 0.0f) {
+        if (weight > 0.0F) {
             vector_out->x += weight * tuning_curves[i].preferred_direction.x;
             vector_out->y += weight * tuning_curves[i].preferred_direction.y;
             vector_out->z += weight * tuning_curves[i].preferred_direction.z;
@@ -1236,7 +1236,7 @@ bool population_coding_position_aware_decode(
     vector_out->magnitude = calculate_magnitude(vector_out);
 
     // Normalize by total weight for average direction
-    if (total_weight > 0.0f) {
+    if (total_weight > 0.0F) {
         vector_out->x /= total_weight;
         vector_out->y /= total_weight;
         vector_out->z /= total_weight;

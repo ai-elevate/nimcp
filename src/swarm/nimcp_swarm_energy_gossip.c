@@ -52,7 +52,7 @@ static void update_energy_state(NimcpEnergyGossip* gossip) {
 
     NimcpEnergyState old_state = gossip->current_state;
 
-    if (gossip->stats.harvest_rate > 0.0f &&
+    if (gossip->stats.harvest_rate > 0.0F &&
         gossip->stats.harvest_rate > gossip->stats.consumption_rate) {
         gossip->current_state = NIMCP_ENERGY_CHARGING;
     } else {
@@ -148,7 +148,7 @@ static NimcpRelayNode* find_relay_node(NimcpEnergyGossip* gossip, uint32_t node_
  * @brief Calculate relay score (higher is better)
  */
 static float calculate_relay_score(const NimcpRelayNode* relay) {
-    if (!relay || !relay->is_available) return 0.0f;
+    if (!relay || !relay->is_available) return 0.0F;
 
     /* Scoring factors:
      * - Energy level (40% weight)
@@ -156,15 +156,15 @@ static float calculate_relay_score(const NimcpRelayNode* relay) {
      * - Inverse distance (20% weight)
      * - Message count balance (10% weight)
      */
-    float energy_score = relay->energy_level / 100.0f;
+    float energy_score = relay->energy_level / 100.0F;
     float reliability_score = relay->reliability_score;
-    float distance_score = (relay->distance > 0.0f) ? (1.0f / (1.0f + relay->distance)) : 1.0f;
-    float load_score = (relay->message_count > 0) ? (1.0f / (1.0f + relay->message_count / 100.0f)) : 1.0f;
+    float distance_score = (relay->distance > 0.0F) ? (1.0F / (1.0F + relay->distance)) : 1.0F;
+    float load_score = (relay->message_count > 0) ? (1.0F / (1.0F + relay->message_count / 100.0F)) : 1.0F;
 
-    return 0.4f * energy_score +
-           0.3f * reliability_score +
-           0.2f * distance_score +
-           0.1f * load_score;
+    return 0.4F * energy_score +
+           0.3F * reliability_score +
+           0.2F * distance_score +
+           0.1F * load_score;
 }
 
 /**
@@ -176,7 +176,7 @@ static NimcpHarvestOpportunity* find_harvest_opportunity(
 ) {
     if (!gossip || !gossip->opportunities || !position) return NULL;
 
-    const float tolerance = 1.0f; /* 1 unit tolerance */
+    const float tolerance = 1.0F; /* 1 unit tolerance */
 
     for (uint32_t i = 0; i < gossip->opportunity_count; i++) {
         float dist = calculate_distance(gossip->opportunities[i].position, position);
@@ -205,16 +205,16 @@ void nimcp_energy_gossip_default_config(NimcpEnergyGossipConfig* config) {
     config->intervals.interval_charging_ms = 2000;   /* 2 seconds */
 
     /* Forwarding probabilities */
-    config->forwarding_probs.prob_critical = 0.05f;  /* 5% when critical */
-    config->forwarding_probs.prob_low = 0.25f;       /* 25% when low */
-    config->forwarding_probs.prob_normal = 0.75f;    /* 75% normal */
-    config->forwarding_probs.prob_high = 0.95f;      /* 95% when high */
-    config->forwarding_probs.prob_full = 1.0f;       /* 100% when full */
-    config->forwarding_probs.prob_charging = 0.50f;  /* 50% while charging */
+    config->forwarding_probs.prob_critical = 0.05F;  /* 5% when critical */
+    config->forwarding_probs.prob_low = 0.25F;       /* 25% when low */
+    config->forwarding_probs.prob_normal = 0.75F;    /* 75% normal */
+    config->forwarding_probs.prob_high = 0.95F;      /* 95% when high */
+    config->forwarding_probs.prob_full = 1.0F;       /* 100% when full */
+    config->forwarding_probs.prob_charging = 0.50F;  /* 50% while charging */
 
     /* Relay configuration */
     config->max_relay_candidates = 10;
-    config->min_relay_energy = 30.0f;  /* 30% minimum */
+    config->min_relay_energy = 30.0F;  /* 30% minimum */
 
     /* Sleep configuration */
     config->sleep_check_interval_ms = 1000;  /* Check every second */
@@ -226,7 +226,7 @@ void nimcp_energy_gossip_default_config(NimcpEnergyGossipConfig* config) {
     /* Gossip parameters */
     config->gossip_fanout = 3;  /* Gossip to 3 nodes */
     config->max_message_cache = 100;
-    config->convergence_threshold = 0.95f;
+    config->convergence_threshold = 0.95F;
 }
 
 NimcpEnergyGossip* nimcp_energy_gossip_create(
@@ -251,15 +251,15 @@ NimcpEnergyGossip* nimcp_energy_gossip_create(
 
     /* Initialize energy state */
     gossip->current_state = NIMCP_ENERGY_NORMAL;
-    gossip->stats.current_level = 100.0f;
-    gossip->stats.consumption_rate = 1.0f;  /* Default rate */
-    gossip->stats.harvest_rate = 0.0f;
+    gossip->stats.current_level = 100.0F;
+    gossip->stats.consumption_rate = 1.0F;  /* Default rate */
+    gossip->stats.harvest_rate = 0.0F;
     gossip->stats.last_update = time(NULL);
 
     /* Initialize emergency reserve */
-    gossip->reserve.reserve_percentage = 15.0f;
+    gossip->reserve.reserve_percentage = 15.0F;
     gossip->reserve.auto_return_enabled = true;
-    gossip->reserve.emergency_threshold = 10.0f;
+    gossip->reserve.emergency_threshold = 10.0F;
 
     /* Allocate message cache */
     gossip->message_cache_capacity = gossip->config.max_message_cache;
@@ -372,7 +372,7 @@ nimcp_result_t nimcp_energy_gossip_update_energy(
     float energy_level
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (energy_level < 0.0f || energy_level > 100.0f) {
+    if (energy_level < 0.0F || energy_level > 100.0F) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -384,15 +384,15 @@ nimcp_result_t nimcp_energy_gossip_update_energy(
     /* Update consumption tracking */
     time_t now = time(NULL);
     float time_delta = (float)difftime(now, gossip->stats.last_update);
-    if (time_delta > 0.0f) {
+    if (time_delta > 0.0F) {
         float energy_delta = old_level - energy_level;
-        if (energy_delta > 0.0f) {
+        if (energy_delta > 0.0F) {
             gossip->stats.total_consumed += (uint64_t)(energy_delta * 1000);
             /* Update consumption rate (exponential moving average) */
             float current_rate = energy_delta / time_delta;
             gossip->stats.consumption_rate =
-                0.8f * gossip->stats.consumption_rate + 0.2f * current_rate;
-        } else if (energy_delta < 0.0f) {
+                0.8F * gossip->stats.consumption_rate + 0.2F * current_rate;
+        } else if (energy_delta < 0.0F) {
             /* Harvesting energy */
             gossip->stats.total_harvested += (uint64_t)(-energy_delta * 1000);
         }
@@ -403,7 +403,7 @@ nimcp_result_t nimcp_energy_gossip_update_energy(
     if (gossip->stats.consumption_rate > gossip->stats.harvest_rate) {
         float net_consumption = gossip->stats.consumption_rate - gossip->stats.harvest_rate;
         gossip->stats.predicted_lifetime =
-            (net_consumption > 0.0f) ? (energy_level / net_consumption) : INFINITY;
+            (net_consumption > 0.0F) ? (energy_level / net_consumption) : INFINITY;
     } else {
         gossip->stats.predicted_lifetime = INFINITY;
     }
@@ -433,7 +433,7 @@ nimcp_result_t nimcp_energy_gossip_set_consumption_rate(
     float rate
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (rate < 0.0f) return NIMCP_INVALID_PARAM;
+    if (rate < 0.0F) return NIMCP_INVALID_PARAM;
 
     nimcp_platform_mutex_lock(gossip->mutex);
     gossip->stats.consumption_rate = rate;
@@ -447,7 +447,7 @@ nimcp_result_t nimcp_energy_gossip_set_harvest_rate(
     float rate
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (rate < 0.0f) return NIMCP_INVALID_PARAM;
+    if (rate < 0.0F) return NIMCP_INVALID_PARAM;
 
     nimcp_platform_mutex_lock(gossip->mutex);
     gossip->stats.harvest_rate = rate;
@@ -461,7 +461,7 @@ nimcp_result_t nimcp_energy_gossip_set_harvest_rate(
 }
 
 float nimcp_energy_gossip_predict_lifetime(const NimcpEnergyGossip* gossip) {
-    if (!gossip) return 0.0f;
+    if (!gossip) return 0.0F;
     return gossip->stats.predicted_lifetime;
 }
 
@@ -486,7 +486,7 @@ nimcp_result_t nimcp_energy_gossip_configure_reserve(
     float return_energy_cost
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (reserve_percentage < 0.0f || reserve_percentage > 50.0f) {
+    if (reserve_percentage < 0.0F || reserve_percentage > 50.0F) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -667,7 +667,7 @@ nimcp_result_t nimcp_energy_gossip_forward(
 }
 
 float nimcp_energy_gossip_get_forward_probability(const NimcpEnergyGossip* gossip) {
-    if (!gossip) return 0.0f;
+    if (!gossip) return 0.0F;
 
     switch (gossip->current_state) {
         case NIMCP_ENERGY_CRITICAL:
@@ -683,7 +683,7 @@ float nimcp_energy_gossip_get_forward_probability(const NimcpEnergyGossip* gossi
         case NIMCP_ENERGY_CHARGING:
             return gossip->config.forwarding_probs.prob_charging;
         default:
-            return 0.5f;
+            return 0.5F;
     }
 }
 
@@ -748,7 +748,7 @@ nimcp_result_t nimcp_energy_gossip_register_relay(
     relay->node_id = node_id;
     relay->energy_state = nimcp_energy_level_to_state(energy_level, false);
     relay->energy_level = energy_level;
-    relay->reliability_score = 1.0f;  /* Initial score */
+    relay->reliability_score = 1.0F;  /* Initial score */
     relay->distance = distance;
     relay->message_count = 0;
     relay->last_seen = time(NULL);
@@ -813,7 +813,7 @@ nimcp_result_t nimcp_energy_gossip_select_relays(
     /* Select top N relays by score */
     for (uint32_t n = 0; n < max_relays && n < gossip->relay_node_count; n++) {
         /* Find highest scoring relay */
-        float max_score = -1.0f;
+        float max_score = -1.0F;
         uint32_t max_idx = 0;
 
         for (uint32_t i = 0; i < gossip->relay_node_count; i++) {
@@ -823,10 +823,10 @@ nimcp_result_t nimcp_energy_gossip_select_relays(
             }
         }
 
-        if (max_score > 0.0f) {
+        if (max_score > 0.0F) {
             selected[*selected_count] = gossip->relay_nodes[max_idx].node_id;
             (*selected_count)++;
-            scores[max_idx] = -1.0f;  /* Mark as selected */
+            scores[max_idx] = -1.0F;  /* Mark as selected */
         } else {
             break;  /* No more available relays */
         }
@@ -891,7 +891,7 @@ nimcp_result_t nimcp_energy_gossip_schedule_sleep(
 
     /* Estimate energy saved */
     float active_consumption = gossip->stats.consumption_rate;
-    float sleep_consumption = active_consumption * 0.1f;  /* 10% consumption while sleeping */
+    float sleep_consumption = active_consumption * 0.1F;  /* 10% consumption while sleeping */
     schedule->energy_saved = (active_consumption - sleep_consumption) * duration_seconds;
 
     nimcp_platform_mutex_unlock(gossip->mutex);
@@ -1058,7 +1058,7 @@ nimcp_result_t nimcp_energy_gossip_select_harvest(
     nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Find best opportunity (highest score with low congestion) */
-    float best_score = -1.0f;
+    float best_score = -1.0F;
     NimcpHarvestOpportunity* best = NULL;
 
     for (uint32_t i = 0; i < gossip->opportunity_count; i++) {
@@ -1066,7 +1066,7 @@ nimcp_result_t nimcp_energy_gossip_select_harvest(
         if (!opp->available) continue;
 
         /* Calculate combined score */
-        float congestion_penalty = 1.0f / (1.0f + opp->congestion_level * 0.5f);
+        float congestion_penalty = 1.0F / (1.0F + opp->congestion_level * 0.5F);
         float score = opp->quality_score * opp->harvest_rate * congestion_penalty;
 
         if (score > best_score) {
@@ -1143,7 +1143,7 @@ nimcp_result_t nimcp_energy_gossip_stop_harvest(NimcpEnergyGossip* gossip) {
     nimcp_platform_mutex_lock(gossip->mutex);
 
     gossip->current_harvest = NULL;
-    gossip->stats.harvest_rate = 0.0f;
+    gossip->stats.harvest_rate = 0.0F;
     update_energy_state(gossip);
 
     nimcp_platform_mutex_unlock(gossip->mutex);

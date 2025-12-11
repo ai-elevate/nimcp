@@ -502,7 +502,7 @@ int gossip_apply_decay(gossip_beliefs_t* gb, uint64_t current_time_ms)
     nimcp_platform_mutex_lock(gb->mutex);
 
     uint64_t time_delta = current_time_ms - gb->last_decay_ms;
-    float decay_factor = expf(-gb->config.belief_decay_rate * time_delta / 1000.0f);
+    float decay_factor = expf(-gb->config.belief_decay_rate * time_delta / 1000.0F);
 
     /* TODO: Iterate through all agents and apply decay */
 
@@ -571,12 +571,12 @@ float gossip_calculate_entropy(gossip_beliefs_t* gb)
      */
 
     if (!gb) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* TODO: Implement entropy calculation */
 
-    return 0.0f;
+    return 0.0F;
 }
 
 /* ============================================================================
@@ -815,11 +815,11 @@ float belief_similarity(const belief_t* belief1, const belief_t* belief2)
      */
 
     if (!belief1 || !belief2) {
-        return 0.0f;
+        return 0.0F;
     }
 
     if (belief1->vector_size != belief2->vector_size) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return vector_cosine_similarity(belief1->belief_vector,
@@ -833,9 +833,9 @@ float belief_similarity(const belief_t* belief1, const belief_t* belief2)
 
 static float vector_cosine_similarity(const float* v1, const float* v2, uint32_t size)
 {
-    float dot_product = 0.0f;
-    float norm1 = 0.0f;
-    float norm2 = 0.0f;
+    float dot_product = 0.0F;
+    float norm1 = 0.0F;
+    float norm2 = 0.0F;
 
     for (uint32_t i = 0; i < size; i++) {
         dot_product += v1[i] * v2[i];
@@ -846,8 +846,8 @@ static float vector_cosine_similarity(const float* v1, const float* v2, uint32_t
     norm1 = sqrtf(norm1);
     norm2 = sqrtf(norm2);
 
-    if (norm1 < 1e-8f || norm2 < 1e-8f) {
-        return 0.0f;
+    if (norm1 < 1e-8F || norm2 < 1e-8F) {
+        return 0.0F;
     }
 
     return dot_product / (norm1 * norm2);
@@ -882,7 +882,7 @@ static agent_info_t* get_or_create_agent(gossip_beliefs_t* gb, uint32_t agent_id
     }
 
     agent->agent_id = agent_id;
-    agent->credibility = 0.5f; /* Default credibility */
+    agent->credibility = 0.5F; /* Default credibility */
     agent->belief_count = 0;
 
     /* Create beliefs hash table for this agent */

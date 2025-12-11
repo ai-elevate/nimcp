@@ -139,7 +139,7 @@ static bool init_embeddings(nlp_network_t network) {
     }
 
     // Xavier initialization: uniform(-sqrt(6/(vocab+dim)), +sqrt(6/(vocab+dim)))
-    float range = sqrtf(6.0f / (vocab_size + embedding_dim));
+    float range = sqrtf(6.0F / (vocab_size + embedding_dim));
     float init_scale = config_get_float("nlp.embedding_init_scale", 1.0);
     range *= init_scale;
 
@@ -147,7 +147,7 @@ static bool init_embeddings(nlp_network_t network) {
 
     for (uint32_t i = 0; i < vocab_size * embedding_dim; i++) {
         float r = (float)rand() / RAND_MAX;  // [0,1]
-        network->embeddings[i] = 2.0f * range * r - range;  // [-range, +range]
+        network->embeddings[i] = 2.0F * range * r - range;  // [-range, +range]
     }
 
     LOG_INFO(LOG_MODULE, "Successfully initialized %u embeddings", vocab_size);
@@ -237,12 +237,12 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
         default_config.input_size = config->embedding_dim;
         default_config.output_size = config->embedding_dim;
         default_config.num_layers = 2;
-        default_config.ei_ratio = 0.8f;
-        default_config.learning_rate = config_get_float("nlp.learning_rate", 0.01f);
-        default_config.stdp_window = config_get_float("nlp.stdp_window", 20.0f);
-        default_config.refractory_period = config_get_float("nlp.refractory_period", 2.0f);
-        default_config.min_weight = 0.0f;
-        default_config.max_weight = 1.0f;
+        default_config.ei_ratio = 0.8F;
+        default_config.learning_rate = config_get_float("nlp.learning_rate", 0.01F);
+        default_config.stdp_window = config_get_float("nlp.stdp_window", 20.0F);
+        default_config.refractory_period = config_get_float("nlp.refractory_period", 2.0F);
+        default_config.min_weight = 0.0F;
+        default_config.max_weight = 1.0F;
 
         network->network = neural_network_create(&default_config);
         if (!network->network) {
@@ -647,7 +647,7 @@ float nlp_network_release_dopamine(
     // Guard: Validate inputs
     if (!network || !network->neuromodulators) {
         LOG_ERROR(LOG_MODULE, "release_dopamine: Invalid network or no neuromodulators");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Release dopamine and return prediction error
@@ -669,7 +669,7 @@ float nlp_network_release_acetylcholine(
     // Guard: Validate inputs
     if (!network || !network->neuromodulators) {
         LOG_ERROR(LOG_MODULE, "release_acetylcholine: Invalid network or no neuromodulators");
-        return 0.0f;
+        return 0.0F;
     }
 
     // Release acetylcholine
@@ -725,7 +725,7 @@ float nlp_network_train(
     // Guard: Validate inputs
     if (!network || !token_ids || !target) {
         LOG_ERROR(LOG_MODULE, "train: NULL parameter");
-        return -1.0f;
+        return -1.0F;
     }
 
     LOG_INFO(LOG_MODULE, "Training: sequence_length=%u, lr=%f", sequence_length, learning_rate);
@@ -734,7 +734,7 @@ float nlp_network_train(
     float* output = (float*)nimcp_malloc(sequence_length * output_dim * sizeof(float));
     if (!output) {
         LOG_ERROR(LOG_MODULE, "train: Failed to allocate output buffer");
-        return -1.0f;
+        return -1.0F;
     }
 
     bool forward_success = nlp_network_forward(
@@ -748,11 +748,11 @@ float nlp_network_train(
     if (!forward_success) {
         LOG_ERROR(LOG_MODULE, "train: Forward pass failed");
         nimcp_free(output);
-        return -1.0f;
+        return -1.0F;
     }
 
     // Step 2: Compute loss (mean squared error)
-    float loss = 0.0f;
+    float loss = 0.0F;
     uint32_t total_elements = sequence_length * output_dim;
     for (uint32_t i = 0; i < total_elements; i++) {
         float error = output[i] - target[i];
@@ -766,7 +766,7 @@ float nlp_network_train(
     LOG_DEBUG(LOG_MODULE, "Reward signal: %f", reward);
 
     // Step 4: Release dopamine based on reward
-    nlp_network_release_dopamine(network, reward, 0.0f);
+    nlp_network_release_dopamine(network, reward, 0.0F);
 
     // Step 5: Apply reward-modulated STDP to neural network
     uint64_t current_time = 0;  // TODO: Get from platform timer when available
@@ -779,8 +779,8 @@ float nlp_network_train(
     LOG_DEBUG(LOG_MODULE, "Applied reward-modulated STDP");
 
     // Step 6: Update embeddings using reward-modulated Hebbian learning
-    float embedding_lr = learning_rate * config_get_float("nlp.embedding_lr_scale", 0.1f);
-    float regularization = config_get_float("nlp.embedding_regularization", 0.0001f);
+    float embedding_lr = learning_rate * config_get_float("nlp.embedding_lr_scale", 0.1F);
+    float regularization = config_get_float("nlp.embedding_regularization", 0.0001F);
 
     for (uint32_t seq_idx = 0; seq_idx < sequence_length; seq_idx++) {
         uint32_t token_id = token_ids[seq_idx];
@@ -793,7 +793,7 @@ float nlp_network_train(
             float hebbian_update = reward * embedding[dim] * embedding_lr;
 
             // Exploration component: small random perturbation when reward is low
-            float exploration = (1.0f - reward) * ((float)rand() / RAND_MAX - 0.5f) * 0.01f;
+            float exploration = (1.0F - reward) * ((float)rand() / RAND_MAX - 0.5F) * 0.01F;
 
             // L2 regularization to prevent unbounded growth
             float reg_term = regularization * embedding[dim];

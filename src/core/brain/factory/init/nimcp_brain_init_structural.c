@@ -173,21 +173,21 @@ bool nimcp_brain_factory_init_axon_subsystem(brain_t brain)
 
         // Determine axon type based on neuron type
         axon_type_t axon_type = AXON_TYPE_UNMYELINATED;  // Default
-        float myelination = 0.0f;
+        float myelination = 0.0F;
 
         // Excitatory neurons tend to have larger, myelinated axons
         if (neuron->type == NEURON_EXCITATORY) {
             axon_type = AXON_TYPE_MYELINATED;
-            myelination = 0.6f + (float)(rand() % 40) / 100.0f;  // 0.6-1.0
+            myelination = 0.6F + (float)(rand() % 40) / 100.0F;  // 0.6-1.0
         } else {
             // Inhibitory interneurons often have unmyelinated or lightly myelinated axons
             axon_type = AXON_TYPE_UNMYELINATED;
-            myelination = (float)(rand() % 30) / 100.0f;  // 0.0-0.3
+            myelination = (float)(rand() % 30) / 100.0F;  // 0.0-0.3
         }
 
         // Calculate axon properties
-        float length = 100.0f + (float)(rand() % 400);  // 100-500 μm
-        float diameter = 0.5f + (float)(rand() % 20) / 10.0f;  // 0.5-2.5 μm
+        float length = 100.0F + (float)(rand() % 400);  // 100-500 μm
+        float diameter = 0.5F + (float)(rand() % 20) / 10.0F;  // 0.5-2.5 μm
 
         // Create axon using the axon_create API
         // Parameters: id, type, source_neuron_id, target_synapse_id, length, diameter
@@ -313,13 +313,13 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
                 .id = dend_net->num_dendrites,  // Sequential ID
                 .type = dtype,
                 .target_neuron_id = neuron->id,
-                .total_length = 150.0f + (float)(rand() % 200),  // 150-350 μm
-                .mean_diameter = 1.0f + (float)(rand() % 20) / 10.0f,  // 1.0-3.0 μm
-                .start_pos = {0.0f, 0.0f, 0.0f},
-                .integration_window_ms = 15.0f + (float)(rand() % 20),  // 15-35 ms
-                .structural_plasticity = 0.01f,
-                .ltp_threshold = 0.7f + (float)(rand() % 20) / 100.0f,  // 0.7-0.9
-                .ltd_threshold = 0.2f + (float)(rand() % 20) / 100.0f   // 0.2-0.4
+                .total_length = 150.0F + (float)(rand() % 200),  // 150-350 μm
+                .mean_diameter = 1.0F + (float)(rand() % 20) / 10.0F,  // 1.0-3.0 μm
+                .start_pos = {0.0F, 0.0F, 0.0F},
+                .integration_window_ms = 15.0F + (float)(rand() % 20),  // 15-35 ms
+                .structural_plasticity = 0.01F,
+                .ltp_threshold = 0.7F + (float)(rand() % 20) / 100.0F,  // 0.7-0.9
+                .ltd_threshold = 0.2F + (float)(rand() % 20) / 100.0F   // 0.2-0.4
             };
 
             // Create dendrite
@@ -334,15 +334,15 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
                 num_segments, sizeof(segment_config_t));
 
             if (seg_configs) {
-                float path_dist = 0.0f;
+                float path_dist = 0.0F;
                 for (uint32_t s = 0; s < num_segments; s++) {
                     seg_configs[s].type = (s == 0) ? DENDRITE_SEGMENT_PROXIMAL :
                                           (s == num_segments - 1) ? DENDRITE_SEGMENT_TERMINAL :
                                           DENDRITE_SEGMENT_SHAFT;
                     seg_configs[s].parent_segment = (s == 0) ? UINT32_MAX : (s - 1);
-                    seg_configs[s].length = 30.0f + (float)(rand() % 40);  // 30-70 μm
+                    seg_configs[s].length = 30.0F + (float)(rand() % 40);  // 30-70 μm
                     seg_configs[s].diameter = dend_config.mean_diameter *
-                                             (1.0f - 0.1f * s);  // Taper
+                                             (1.0F - 0.1F * s);  // Taper
                     seg_configs[s].path_distance = path_dist;
                     path_dist += seg_configs[s].length;
                     seg_configs[s].has_active_properties = (dtype == DENDRITE_TYPE_APICAL);
@@ -504,12 +504,12 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
     if (brain->config.enable_visual_topographic && brain->config.enable_visual_cortex) {
         // Create retinotopic map for V1 (log-polar mapping)
         retinotopic_params_t visual_params = {
-            .foveal_radius = 2.0f,            // 2 degrees foveal region
-            .cortical_magnification = 20.0f,  // 20 mm/degree at fovea
-            .log_polar_a = 0.5f,              // Log-polar offset
-            .aspect_ratio = 1.0f,             // Circular
-            .eccentricity_half = 1.5f,        // E₂ for magnification falloff
-            .angle_coverage = 2.0f * 3.14159f // Full visual field
+            .foveal_radius = 2.0F,            // 2 degrees foveal region
+            .cortical_magnification = 20.0F,  // 20 mm/degree at fovea
+            .log_polar_a = 0.5F,              // Log-polar offset
+            .aspect_ratio = 1.0F,             // Circular
+            .eccentricity_half = 1.5F,        // E₂ for magnification falloff
+            .angle_coverage = 2.0F * 3.14159F // Full visual field
         };
         // Default cortical dimensions: 64x64 columns
         uint32_t cortical_width = 64;
@@ -527,11 +527,11 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
     if (brain->config.enable_auditory_topographic && brain->config.enable_audio_cortex) {
         // Create tonotopic map for A1 (logarithmic frequency mapping)
         tonotopic_params_t auditory_params = {
-            .min_frequency = 20.0f,            // 20 Hz
-            .max_frequency = 20000.0f,         // 20 kHz
-            .octave_span = 1.0f,               // 1 octave per unit distance
+            .min_frequency = 20.0F,            // 20 Hz
+            .max_frequency = 20000.0F,         // 20 kHz
+            .octave_span = 1.0F,               // 1 octave per unit distance
             .is_logarithmic = true,            // Log frequency scale
-            .q_factor = 10.0f                  // Constant Q bandwidth
+            .q_factor = 10.0F                  // Constant Q bandwidth
         };
         // Default: 128 frequency bands (about 10 bands per octave over ~10 octaves)
         uint32_t num_frequency_bands = 128;
@@ -561,8 +561,8 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
     if (brain->config.enable_orientation_columns && brain->config.enable_visual_cortex) {
         uint32_t num_orient_cols = brain->config.num_orientation_columns > 0 ?
             brain->config.num_orientation_columns : 16;  // Default: 16 orientations (0-180° in 11.25° steps)
-        float spatial_frequency = 2.0f;  // Default: 2 cycles/degree
-        float tuning_width = 30.0f;      // Default: 30° half-width at half-height
+        float spatial_frequency = 2.0F;  // Default: 2 cycles/degree
+        float tuning_width = 30.0F;      // Default: 30° half-width at half-height
 
         // Create orientation hypercolumns (one per visual hypercolumn)
         uint32_t num_orient_hc = num_hypercolumns;  // Match hypercolumn count
@@ -596,9 +596,9 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
             for (uint32_t i = 0; i < num_feat_hc; i++) {
                 // Create 2D feature space (orientation × spatial frequency)
                 feature_dimension_t dims[2];
-                dims[0] = feature_dimension_create(FEATURE_ORIENTATION, 0.0f, 180.0f, 16);
+                dims[0] = feature_dimension_create(FEATURE_ORIENTATION, 0.0F, 180.0F, 16);
                 feature_dimension_set_circular(&dims[0], true);
-                dims[1] = feature_dimension_create(FEATURE_SPATIAL_FREQ, 0.5f, 8.0f, 8);
+                dims[1] = feature_dimension_create(FEATURE_SPATIAL_FREQ, 0.5F, 8.0F, 8);
 
                 brain->feature_hypercolumns[i] = feature_hypercolumn_create(dims, 2);
                 if (!brain->feature_hypercolumns[i]) {

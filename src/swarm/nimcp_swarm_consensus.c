@@ -185,7 +185,7 @@ swarm_consensus_config_t swarm_consensus_default_config(uint16_t drone_id)
     config.drone_id = drone_id;
     config.max_active_votes = SWARM_MAX_ACTIVE_VOTES;
     config.max_votes_per_proposal = SWARM_MAX_VOTES_PER_PROPOSAL;
-    config.min_confidence = 0.3f;
+    config.min_confidence = 0.3F;
     config.enable_byzantine_ft = true;
     config.enable_logging = true;
     config.user_data = NULL;
@@ -326,12 +326,12 @@ nimcp_error_t swarm_consensus_propose(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (threshold <= 0.0f) {
+    if (threshold <= 0.0F) {
         threshold = SWARM_DEFAULT_THRESHOLD;
     }
 
-    if (threshold > 1.0f) {
-        threshold = 1.0f;
+    if (threshold > 1.0F) {
+        threshold = 1.0F;
     }
 
     nimcp_mutex_lock(&ctx->mutex);
@@ -418,11 +418,11 @@ nimcp_error_t swarm_consensus_vote(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (confidence < 0.0f) {
-        confidence = 0.0f;
+    if (confidence < 0.0F) {
+        confidence = 0.0F;
     }
-    if (confidence > 1.0f) {
-        confidence = 1.0f;
+    if (confidence > 1.0F) {
+        confidence = 1.0F;
     }
 
     /* Create vote response */
@@ -854,8 +854,8 @@ static nimcp_error_t evaluate_vote_result(
     uint32_t agree_count = 0;
     uint32_t disagree_count = 0;
     uint32_t abstain_count = 0;
-    float weighted_agree = 0.0f;
-    float weighted_total = 0.0f;
+    float weighted_agree = 0.0F;
+    float weighted_total = 0.0F;
 
     for (uint32_t i = 0; i < vote->vote_count; i++) {
         const swarm_vote_response_t* v = &vote->votes[i];
@@ -882,10 +882,10 @@ static nimcp_error_t evaluate_vote_result(
     vote->result.abstain_count = abstain_count;
 
     /* Calculate weighted agreement */
-    if (weighted_total > 0.0f) {
+    if (weighted_total > 0.0F) {
         vote->result.weighted_agreement = weighted_agree / weighted_total;
     } else {
-        vote->result.weighted_agreement = 0.0f;
+        vote->result.weighted_agreement = 0.0F;
     }
 
     /* Check quorum */
@@ -963,12 +963,12 @@ static bool is_byzantine_fault(
     }
 
     /* Check if confidence is suspiciously extreme */
-    if (new_vote->confidence > 0.99f || new_vote->confidence < 0.01f) {
+    if (new_vote->confidence > 0.99F || new_vote->confidence < 0.01F) {
         /* Count other extreme confidences */
         uint32_t extreme_count = 0;
         for (uint32_t i = 0; i < vote->vote_count; i++) {
             float conf = vote->votes[i].confidence;
-            if (conf > 0.99f || conf < 0.01f) {
+            if (conf > 0.99F || conf < 0.01F) {
                 extreme_count++;
             }
         }
@@ -981,11 +981,11 @@ static bool is_byzantine_fault(
     }
 
     /* Check for pattern anomalies - all agree with high confidence is suspicious */
-    if (new_vote->choice == VOTE_CHOICE_AGREE && new_vote->confidence > 0.95f) {
+    if (new_vote->choice == VOTE_CHOICE_AGREE && new_vote->confidence > 0.95F) {
         uint32_t high_conf_agree = 0;
         for (uint32_t i = 0; i < vote->vote_count; i++) {
             if (vote->votes[i].choice == VOTE_CHOICE_AGREE &&
-                vote->votes[i].confidence > 0.95f) {
+                vote->votes[i].confidence > 0.95F) {
                 high_conf_agree++;
             }
         }

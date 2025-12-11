@@ -87,9 +87,9 @@ static void normalize_band_powers(const float* band_powers, float* delta, float*
 
 feature_extractor_config_t feature_extractor_default_config(void) {
     feature_extractor_config_t config = {0};
-    config.window_ms = 100.0f;
-    config.synchrony_window_ms = 5.0f;
-    config.burst_isi_threshold_ms = 10.0f;
+    config.window_ms = 100.0F;
+    config.synchrony_window_ms = 5.0F;
+    config.burst_isi_threshold_ms = 10.0F;
     config.min_burst_spikes = 3;
     config.entropy_bins = 20;
     config.compute_oscillations = true;
@@ -221,14 +221,14 @@ bool feature_extractor_compute_mean_firing_rate(
         return false;
     }
 
-    float window_duration_s = (float)(spike_data->end_time - spike_data->start_time) / 1000.0f;
-    if (window_duration_s <= 0.0f) {
-        *rate_out = 0.0f;
+    float window_duration_s = (float)(spike_data->end_time - spike_data->start_time) / 1000.0F;
+    if (window_duration_s <= 0.0F) {
+        *rate_out = 0.0F;
         return true;
     }
 
-    float total_rate = 0.0f;
-    float rate_sum_sq = 0.0f;
+    float total_rate = 0.0F;
+    float rate_sum_sq = 0.0F;
 
     for (uint32_t i = 0; i < spike_data->num_neurons; i++) {
         float neuron_rate = (float)spike_data->spike_counts[i] / window_duration_s;
@@ -250,7 +250,7 @@ bool feature_extractor_compute_population_cv(
         return false;
     }
 
-    float cv_sum = 0.0f;
+    float cv_sum = 0.0F;
     uint32_t valid_neurons = 0;
 
     for (uint32_t i = 0; i < spike_data->num_neurons; i++) {
@@ -292,7 +292,7 @@ bool feature_extractor_compute_fano_factor(
         return false;
     }
 
-    float mean_count = 0.0f;
+    float mean_count = 0.0F;
     for (uint32_t i = 0; i < spike_data->num_neurons; i++) {
         mean_count += (float)spike_data->spike_counts[i];
     }
@@ -300,11 +300,11 @@ bool feature_extractor_compute_fano_factor(
 
     // WHY: Fail if no spikes (all counts zero)
     // HOW: Return false for degenerate case
-    if (mean_count < 0.001f) {
+    if (mean_count < 0.001F) {
         return false;
     }
 
-    float variance = 0.0f;
+    float variance = 0.0F;
     for (uint32_t i = 0; i < spike_data->num_neurons; i++) {
         float diff = (float)spike_data->spike_counts[i] - mean_count;
         variance += diff * diff;
@@ -358,7 +358,7 @@ bool feature_extractor_compute_burst_index(
     }
 
     if (total_spikes == 0) {
-        *burst_index_out = 0.0f;
+        *burst_index_out = 0.0F;
         return true;
     }
 
@@ -376,7 +376,7 @@ bool feature_extractor_compute_synchrony_index(
     }
 
     if (spike_data->num_neurons < 2) {
-        *synchrony_out = 0.0f;
+        *synchrony_out = 0.0F;
         return true;
     }
 
@@ -395,18 +395,18 @@ bool feature_extractor_compute_synchrony_index(
     }
 
     if (total_spikes == 0) {
-        *synchrony_out = 0.0f;
+        *synchrony_out = 0.0F;
         return true;
     }
 
     float max_possible = (float)(spike_data->num_neurons - 1);
-    if (max_possible < 1.0f) {
-        *synchrony_out = 0.0f;
+    if (max_possible < 1.0F) {
+        *synchrony_out = 0.0F;
         return true;
     }
 
     float avg_coincidences = (float)total_coincidences / (float)total_spikes;
-    *synchrony_out = fminf(avg_coincidences / max_possible, 1.0f);
+    *synchrony_out = fminf(avg_coincidences / max_possible, 1.0F);
 
     return true;
 }
@@ -425,7 +425,7 @@ bool feature_extractor_compute_oscillation_power(
         return false;
     }
 
-    *delta_power = *theta_power = *alpha_power = *beta_power = *gamma_power = 0.0f;
+    *delta_power = *theta_power = *alpha_power = *beta_power = *gamma_power = 0.0F;
 
     if (spike_data->num_neurons == 0) {
         return true;
@@ -442,9 +442,9 @@ bool feature_extractor_compute_oscillation_power(
     }
 
     float window_duration_ms = (float)(spike_data->end_time - spike_data->start_time);
-    uint32_t num_bins = (uint32_t)(window_duration_ms / 10.0f);
+    uint32_t num_bins = (uint32_t)(window_duration_ms / 10.0F);
 
-    if (window_duration_ms < 100.0f || num_bins < 10 || num_bins > 1000) {
+    if (window_duration_ms < 100.0F || num_bins < 10 || num_bins > 1000) {
         return true;
     }
 
@@ -500,7 +500,7 @@ bool feature_extractor_compute_spike_entropy(
 
     // WHY: Compute Shannon entropy directly from spike count distribution
     // HOW: -Σ p_i * log2(p_i) where p_i = count_i / total
-    float entropy = 0.0f;
+    float entropy = 0.0F;
     for (uint32_t i = 0; i < spike_data->num_neurons; i++) {
         if (spike_data->spike_counts[i] > 0) {
             float prob = (float)spike_data->spike_counts[i] / (float)total_spikes;
@@ -615,7 +615,7 @@ static bool ensure_buffer_capacity(feature_extractor_t extractor, uint32_t neuro
 
 static float compute_mean(const float* data, uint32_t count) {
     if (!data || count == 0) {
-        return 0.0f;
+        return 0.0F;
     }
 
     /* Use tensor library for vectorized sum */
@@ -632,7 +632,7 @@ static float compute_mean(const float* data, uint32_t count) {
     }
 
     /* Fallback to scalar computation */
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         sum += data[i];
     }
@@ -641,10 +641,10 @@ static float compute_mean(const float* data, uint32_t count) {
 
 static float compute_std(const float* data, uint32_t count, float mean) {
     if (!data || count < 2) {
-        return 0.0f;
+        return 0.0F;
     }
 
-    float sum_sq_diff = 0.0f;
+    float sum_sq_diff = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         float diff = data[i] - mean;
         sum_sq_diff += diff * diff;
@@ -654,12 +654,12 @@ static float compute_std(const float* data, uint32_t count, float mean) {
 
 static float compute_cv(const float* isi_values, uint32_t count) {
     if (!isi_values || count < 2) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float mean = compute_mean(isi_values, count);
-    if (mean < 0.001f) {
-        return 0.0f;
+    if (mean < 0.001F) {
+        return 0.0F;
     }
 
     float std = compute_std(isi_values, count, mean);
@@ -707,8 +707,8 @@ static bool extract_basic_features(
 
     // WHY: Compute CV and mean ISI in single pass (optimization)
     // HOW: Extract ISIs once and compute both metrics together
-    float cv_sum = 0.0f;
-    float total_isi_sum = 0.0f;
+    float cv_sum = 0.0F;
+    float total_isi_sum = 0.0F;
     uint32_t total_isi_count = 0;
     uint32_t valid_neurons = 0;
 
@@ -732,8 +732,8 @@ static bool extract_basic_features(
         }
     }
 
-    features->isi_cv = (valid_neurons > 0) ? (cv_sum / (float)valid_neurons) : 0.0f;
-    features->mean_isi = (total_isi_count > 0) ? (total_isi_sum / (float)total_isi_count) : 0.0f;
+    features->isi_cv = (valid_neurons > 0) ? (cv_sum / (float)valid_neurons) : 0.0F;
+    features->mean_isi = (total_isi_count > 0) ? (total_isi_sum / (float)total_isi_count) : 0.0F;
 
     if (valid_neurons == 0) {
         success = false;
@@ -741,15 +741,15 @@ static bool extract_basic_features(
 
     // WHY: Compute population rate standard deviation
     // HOW: Collect per-neuron rates and compute std
-    float duration_sec = (float)(spike_data->end_time - spike_data->start_time) / 1000.0f;
-    if (duration_sec > 0.0f) {
+    float duration_sec = (float)(spike_data->end_time - spike_data->start_time) / 1000.0F;
+    if (duration_sec > 0.0F) {
         for (uint32_t i = 0; i < spike_data->num_neurons; i++) {
             extractor->isi_buffer[i] = ((float)spike_data->spike_counts[i] / duration_sec);
         }
         float mean_rate = features->mean_firing_rate;
         features->population_rate_std = compute_std(extractor->isi_buffer, spike_data->num_neurons, mean_rate);
     } else {
-        features->population_rate_std = 0.0f;
+        features->population_rate_std = 0.0F;
     }
 
     return success;
@@ -837,13 +837,13 @@ static bool build_rate_signal(
             uint32_t bin = (uint32_t)(relative_time / 10);
 
             if (bin < num_bins) {
-                rate_signal[bin] += 1.0f;
+                rate_signal[bin] += 1.0F;
             }
         }
     }
 
     for (uint32_t i = 0; i < num_bins; i++) {
-        rate_signal[i] *= 100.0f;
+        rate_signal[i] *= 100.0F;
     }
 
     float mean_rate = compute_mean(rate_signal, num_bins);
@@ -862,14 +862,14 @@ static void compute_band_power_autocorr(
     float* power
 ) {
     if (!rate_signal || !power || num_bins == 0) {
-        if (power) *power = 0.0f;
+        if (power) *power = 0.0F;
         return;
     }
 
-    float min_period_bins = 100.0f / max_freq;
-    float max_period_bins = 100.0f / min_freq;
+    float min_period_bins = 100.0F / max_freq;
+    float max_period_bins = 100.0F / min_freq;
 
-    float total_power = 0.0f;
+    float total_power = 0.0F;
     uint32_t valid_windows = 0;
 
     for (uint32_t period_idx = (uint32_t)min_period_bins;
@@ -882,7 +882,7 @@ static void compute_band_power_autocorr(
         }
 
         for (uint32_t start = 0; start + period_idx < num_bins; start++) {
-            float autocorr = 0.0f;
+            float autocorr = 0.0F;
             // Fix buffer overflow: ensure start + i + period_idx < num_bins
             uint32_t max_offset = (num_bins > start + period_idx) ?
                                   (num_bins - start - period_idx) : 0;
@@ -897,7 +897,7 @@ static void compute_band_power_autocorr(
         }
     }
 
-    *power = (valid_windows > 0) ? (total_power / (float)valid_windows) : 0.0f;
+    *power = (valid_windows > 0) ? (total_power / (float)valid_windows) : 0.0F;
 }
 
 static void normalize_band_powers(
@@ -914,7 +914,7 @@ static void normalize_band_powers(
 
     float total = band_powers[0] + band_powers[1] + band_powers[2] + band_powers[3] + band_powers[4];
 
-    if (total > 0.0f) {
+    if (total > 0.0F) {
         *delta = band_powers[0] / total;
         *theta = band_powers[1] / total;
         *alpha = band_powers[2] / total;

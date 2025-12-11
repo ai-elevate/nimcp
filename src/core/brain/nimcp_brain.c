@@ -285,7 +285,7 @@ static void brain_publish_processing_event(const char* processing_type, float co
  */
 static float strategy_classification_lr(void)
 {
-    return 0.01f;
+    return 0.01F;
 }
 
 static void strategy_classification_transform(float* output, uint32_t size)
@@ -297,7 +297,7 @@ static void strategy_classification_transform(float* output, uint32_t size)
             max_val = output[i];
     }
 
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         output[i] = expf(output[i] - max_val);
         sum += output[i];
@@ -311,10 +311,10 @@ static void strategy_classification_transform(float* output, uint32_t size)
 static float strategy_classification_loss(const float* pred, const float* target, uint32_t size)
 {
     // Cross-entropy loss
-    float loss = 0.0f;
+    float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
-        if (target[i] > 0.0f) {
-            loss -= target[i] * logf(fmaxf(pred[i], 1e-10f));
+        if (target[i] > 0.0F) {
+            loss -= target[i] * logf(fmaxf(pred[i], 1e-10F));
         }
     }
     return loss;
@@ -329,7 +329,7 @@ static float strategy_classification_loss(const float* pred, const float* target
  */
 static float strategy_regression_lr(void)
 {
-    return 0.005f;
+    return 0.005F;
 }
 
 static void strategy_regression_transform(float* output, uint32_t size)
@@ -342,7 +342,7 @@ static void strategy_regression_transform(float* output, uint32_t size)
 static float strategy_regression_loss(const float* pred, const float* target, uint32_t size)
 {
     // Mean squared error
-    float loss = 0.0f;
+    float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         float diff = pred[i] - target[i];
         loss += diff * diff;
@@ -359,24 +359,24 @@ static float strategy_regression_loss(const float* pred, const float* target, ui
  */
 static float strategy_pattern_lr(void)
 {
-    return 0.02f;
+    return 0.02F;
 }
 
 static void strategy_pattern_transform(float* output, uint32_t size)
 {
     // Threshold to binary
     for (uint32_t i = 0; i < size; i++) {
-        output[i] = output[i] > 0.5f ? 1.0f : 0.0f;
+        output[i] = output[i] > 0.5F ? 1.0F : 0.0F;
     }
 }
 
 static float strategy_pattern_loss(const float* pred, const float* target, uint32_t size)
 {
     // Binary cross-entropy
-    float loss = 0.0f;
+    float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
-        float p = fmaxf(fminf(pred[i], 0.9999f), 0.0001f);
-        loss -= target[i] * logf(p) + (1.0f - target[i]) * logf(1.0f - p);
+        float p = fmaxf(fminf(pred[i], 0.9999F), 0.0001F);
+        loss -= target[i] * logf(p) + (1.0F - target[i]) * logf(1.0F - p);
     }
     return loss / size;
 }
@@ -390,19 +390,19 @@ static float strategy_pattern_loss(const float* pred, const float* target, uint3
  */
 static float strategy_association_lr(void)
 {
-    return 0.05f;
+    return 0.05F;
 }
 
 static void strategy_association_transform(float* output, uint32_t size)
 {
     // Normalize to unit range
-    float max_val = 0.0f;
+    float max_val = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         if (fabsf(output[i]) > max_val)
             max_val = fabsf(output[i]);
     }
 
-    if (max_val > 0.0f) {
+    if (max_val > 0.0F) {
         for (uint32_t i = 0; i < size; i++) {
             output[i] /= max_val;
         }
@@ -412,14 +412,14 @@ static void strategy_association_transform(float* output, uint32_t size)
 static float strategy_association_loss(const float* pred, const float* target, uint32_t size)
 {
     // Cosine distance
-    float dot = 0.0f, norm_p = 0.0f, norm_t = 0.0f;
+    float dot = 0.0F, norm_p = 0.0F, norm_t = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
         dot += pred[i] * target[i];
         norm_p += pred[i] * pred[i];
         norm_t += target[i] * target[i];
     }
-    float cosine = dot / (sqrtf(norm_p) * sqrtf(norm_t) + 1e-10f);
-    return 1.0f - cosine;
+    float cosine = dot / (sqrtf(norm_p) * sqrtf(norm_t) + 1e-10F);
+    return 1.0F - cosine;
 }
 
 //=============================================================================
@@ -600,15 +600,15 @@ static float get_default_sparsity(brain_size_t size)
 {
     switch (size) {
         case BRAIN_SIZE_TINY:
-            return 0.70f;
+            return 0.70F;
         case BRAIN_SIZE_SMALL:
-            return 0.80f;
+            return 0.80F;
         case BRAIN_SIZE_MEDIUM:
-            return 0.85f;
+            return 0.85F;
         case BRAIN_SIZE_LARGE:
-            return 0.90f;
+            return 0.90F;
         default:
-            return 0.80f;
+            return 0.80F;
     }
 }
 
@@ -630,14 +630,14 @@ static float get_default_sparsity(brain_size_t size)
 static adaptive_spike_params_t build_spike_params(float sparsity_target)
 {
     adaptive_spike_params_t params = {0};
-    params.k_factor = 0.5f;
+    params.k_factor = 0.5F;
     params.sparsity_target = sparsity_target;
     params.encoding = SPIKE_ENCODING_INTEGER;
     params.enable_soft_reset = true;
     params.enable_adaptation = true;
     params.adaptation_window = 100;
-    params.min_threshold = 0.0001f;  // Very low to allow tiny outputs from untrained networks
-    params.max_threshold = 10.0f;
+    params.min_threshold = 0.0001F;  // Very low to allow tiny outputs from untrained networks
+    params.max_threshold = 10.0F;
 
 
     return params;
@@ -719,7 +719,7 @@ static adaptive_network_config_t build_network_config(uint32_t num_inputs, uint3
     config.spike_params = build_spike_params(sparsity_target);
 
     config.enable_sparsity = false;  // Disabled for regression tests - untrained networks produce zeros
-    config.pruning_threshold = 0.01f;
+    config.pruning_threshold = 0.01F;
     config.update_frequency = 100;
 
     return config;
@@ -760,7 +760,7 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     // Phase 10.2: Working Memory defaults (Miller's 7±2)
     config->enable_working_memory = true;           // Enable by default
     config->working_memory_capacity = 7;            // Miller's magic number
-    config->working_memory_decay_tau_ms = 1000.0f;  // 1 second decay
+    config->working_memory_decay_tau_ms = 1000.0F;  // 1 second decay
 
     // Phase 10.6: Theory of Mind defaults (social cognition, empathy)
     config->enable_theory_of_mind = true;           // Enable by default for social cognition
@@ -772,39 +772,39 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->mirror_neuron_count = 1000;             // Standard population size
     config->mirror_max_actions = 100;               // Diverse action repertoire
     config->mirror_max_agents = 10;                 // Multi-agent social learning
-    config->mirror_learning_rate = 0.01f;           // Hebbian association rate
-    config->mirror_match_threshold = 0.7f;          // Action recognition threshold
+    config->mirror_learning_rate = 0.01F;           // Hebbian association rate
+    config->mirror_match_threshold = 0.7F;          // Action recognition threshold
 
     // Global Workspace Architecture defaults (Global Workspace Theory - Baars 1988)
     config->enable_global_workspace = true;         // Enable by default for conscious access
     config->workspace_capacity_dim = 256;           // Content dimension (256 floats)
-    config->workspace_ignition_threshold = 0.6f;    // Threshold for conscious access
+    config->workspace_ignition_threshold = 0.6F;    // Threshold for conscious access
     config->workspace_refractory_ms = 50;           // 50ms refractory between broadcasts
     config->workspace_enable_history = true;        // Enable history tracking
     config->workspace_history_depth = 10;           // Last 10 broadcasts
 
     // Phase 11 Enhancement C1.1: Quantum Annealing defaults
     config->enable_quantum_annealing = false;       // Disable by default (opt-in for optimization)
-    config->annealing_temperature_init = 10.0f;     // Initial exploration temperature
-    config->annealing_temperature_final = 0.1f;     // Final exploitation temperature
+    config->annealing_temperature_init = 10.0F;     // Initial exploration temperature
+    config->annealing_temperature_final = 0.1F;     // Final exploitation temperature
     config->annealing_steps = 1000;                 // Number of optimization steps
     config->quantum_annealing_frequency = 100;      // Run every 100 learning steps
 
     // Phase 12: Personality and Identity defaults
     config->use_random_personality = true;          // Default: generate random personality
     config->personality_seed = 0;                   // Time-based seed for uniqueness
-    config->explicit_openness = 0.5f;               // Moderate openness (if explicit)
-    config->explicit_conscientiousness = 0.5f;      // Moderate conscientiousness (if explicit)
-    config->explicit_extraversion = 0.5f;           // Moderate extraversion (if explicit)
-    config->explicit_agreeableness = 0.5f;          // Moderate agreeableness (if explicit)
-    config->explicit_neuroticism = 0.5f;            // Moderate neuroticism (if explicit)
+    config->explicit_openness = 0.5F;               // Moderate openness (if explicit)
+    config->explicit_conscientiousness = 0.5F;      // Moderate conscientiousness (if explicit)
+    config->explicit_extraversion = 0.5F;           // Moderate extraversion (if explicit)
+    config->explicit_agreeableness = 0.5F;          // Moderate agreeableness (if explicit)
+    config->explicit_neuroticism = 0.5F;            // Moderate neuroticism (if explicit)
     config->explicit_gender = GENDER_FEMALE;        // Default: female (per user request)
     config->explicit_sexuality = SEXUALITY_HETEROSEXUAL; // Default: heterosexual
-    config->personality_trait_mean = 0.5f;          // Mean for random trait generation
-    config->personality_trait_stddev = 0.15f;       // Stddev for random trait generation
-    config->female_probability = 1.0f;              // Default 100% female (per user request)
-    config->male_probability = 0.0f;                // 0% male by default
-    config->non_binary_probability = 0.0f;          // 0% non-binary by default
+    config->personality_trait_mean = 0.5F;          // Mean for random trait generation
+    config->personality_trait_stddev = 0.15F;       // Stddev for random trait generation
+    config->female_probability = 1.0F;              // Default 100% female (per user request)
+    config->male_probability = 0.0F;                // 0% male by default
+    config->non_binary_probability = 0.0F;          // 0% non-binary by default
 
     // Phase 5/6: Biological Realism defaults
     config->enable_glial = true;                    // Enable glial integration by default
@@ -813,9 +813,9 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     // Phase C2.1: Quantum Walk defaults (disabled by default for stability/testing)
     config->enable_quantum_walk_diffusion = false;  // Opt-in: requires testing for production
     config->quantum_walk_steps = 50;                // Moderate steps for √N speedup
-    config->quantum_classical_mixing = 0.2f;        // 80% quantum + 20% classical (hybrid)
+    config->quantum_classical_mixing = 0.2F;        // 80% quantum + 20% classical (hybrid)
     config->quantum_coin_type = 0;                  // 0=Hadamard (balanced superposition)
-    config->quantum_decoherence_rate = 0.05f;       // Minimal decoherence (5% per step)
+    config->quantum_decoherence_rate = 0.05F;       // Minimal decoherence (5% per step)
 }
 
 /**
@@ -1082,7 +1082,7 @@ brain_t allocate_brain(void)
     brain->network_hubs = NULL;
     brain->topology_metrics = NULL;
     brain->auto_detect_communities = false;
-    brain->community_detection_interval = 0.0f;  // Manual only by default
+    brain->community_detection_interval = 0.0F;  // Manual only by default
 
     return brain;
 }
@@ -1269,7 +1269,7 @@ bool init_attention_subsystem(brain_t brain)
         .sequence_length = 32,    // Default sequence length for temporal processing
         .use_thalamic_gate = brain->config.enable_thalamic_gate,
         .use_salience_weighting = brain->config.enable_salience_weighting,
-        .gate_bias = 0.5f        // Default: 50% gate opening
+        .gate_bias = 0.5F        // Default: 50% gate opening
     };
 
     // WHAT: Create multihead attention system
@@ -1390,7 +1390,7 @@ bool init_brain_regions_subsystem(brain_t brain)
         brain_region_t* v1 = brain_module_get_region_by_type(brain->brain_regions, REGION_VISUAL_V1);
         brain_region_t* pfc = brain_module_get_region_by_type(brain->brain_regions, REGION_PREFRONTAL);
         if (v1 && pfc) {
-            brain_module_connect_regions(brain->brain_regions, v1->id, pfc->id, 0.3f);
+            brain_module_connect_regions(brain->brain_regions, v1->id, pfc->id, 0.3F);
         }
     }
 
@@ -1399,7 +1399,7 @@ bool init_brain_regions_subsystem(brain_t brain)
         brain_region_t* a1 = brain_module_get_region_by_type(brain->brain_regions, REGION_AUDITORY_A1);
         brain_region_t* pfc = brain_module_get_region_by_type(brain->brain_regions, REGION_PREFRONTAL);
         if (a1 && pfc) {
-            brain_module_connect_regions(brain->brain_regions, a1->id, pfc->id, 0.3f);
+            brain_module_connect_regions(brain->brain_regions, a1->id, pfc->id, 0.3F);
         }
     }
 
@@ -1449,7 +1449,7 @@ bool init_symbolic_logic_subsystem(brain_t brain)
     // Create neural logic network with spiking logic gates (Phase 9.0)
     neural_logic_config_t logic_config = neural_logic_default_config(1000);
     logic_config.use_gpu = neural_logic_gpu_available();
-    logic_config.integration_window_ms = 5.0f;
+    logic_config.integration_window_ms = 5.0F;
     logic_config.enable_learning = false;  // Combinational logic (no plasticity)
 
     brain->logic = neural_logic_create(&logic_config);
@@ -1540,7 +1540,7 @@ bool init_epistemic_subsystem(brain_t brain)
     // 1.0 = extreme skeptic (rejects almost everything)
     //
     // We default to 0.6 (cautious but not paranoid)
-    float skepticism_level = 0.6f;
+    float skepticism_level = 0.6F;
 
     brain->epistemic = epistemic_filter_create(skepticism_level);
     if (!brain->epistemic) {
@@ -1598,8 +1598,8 @@ static personality_profile_t* create_personality(const brain_config_t* config)
         identity_profile_t identity = {0};
         identity.gender = (gender_identity_t)config->explicit_gender;
         identity.sexuality = (sexual_orientation_t)config->explicit_sexuality;
-        identity.gender_certainty = 1.0f;
-        identity.sexuality_certainty = 1.0f;
+        identity.gender_certainty = 1.0F;
+        identity.sexuality_certainty = 1.0F;
         identity.gender_is_core_identity = true;
         identity.sexuality_is_core_identity = false;
 
@@ -2515,7 +2515,7 @@ static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
     }
 
     // Guard: Initialize base_learning_rate on first call
-    if (brain->base_learning_rate == 0.0f) {
+    if (brain->base_learning_rate == 0.0F) {
         brain->base_learning_rate = brain->config.learning_rate;
     }
 
@@ -2532,8 +2532,8 @@ static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
     }
 
     // Compute loss trend: recent avg vs older avg
-    float recent_avg = 0.0f;
-    float older_avg = 0.0f;
+    float recent_avg = 0.0F;
+    float older_avg = 0.0F;
     uint32_t half = brain->loss_history_count / 2;
 
     // Older half
@@ -2552,15 +2552,15 @@ static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
     float trend = recent_avg - older_avg;
 
     // Adapt learning rate
-    if (trend < -0.01f) {
-        brain->config.learning_rate *= 1.05f;  // Accelerate
-    } else if (trend > 0.01f) {
-        brain->config.learning_rate *= 0.9f;   // Slow down
+    if (trend < -0.01F) {
+        brain->config.learning_rate *= 1.05F;  // Accelerate
+    } else if (trend > 0.01F) {
+        brain->config.learning_rate *= 0.9F;   // Slow down
     }
 
     // Bounds: [0.1x, 10x] of base rate
-    float min_lr = brain->base_learning_rate * 0.1f;
-    float max_lr = brain->base_learning_rate * 10.0f;
+    float min_lr = brain->base_learning_rate * 0.1F;
+    float max_lr = brain->base_learning_rate * 10.0F;
     if (brain->config.learning_rate < min_lr) {
         brain->config.learning_rate = min_lr;
     }
@@ -2586,7 +2586,7 @@ static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
 static float quantum_weight_energy(const float* weights, uint32_t dim, void* user_data)
 {
     (void)user_data;  // Unused
-    float energy = 0.0f;
+    float energy = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
         energy += weights[i] * weights[i];
     }
@@ -2878,7 +2878,7 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
     }
 
     // Normalize confidence
-    decision->confidence = fminf(max_value / 10.0f, 1.0f);
+    decision->confidence = fminf(max_value / 10.0F, 1.0F);
 }
 
 /**
@@ -3000,7 +3000,7 @@ static action_t features_to_action(const float* features, uint32_t num_features,
     snprintf(action.action_name, sizeof(action.action_name), "observed_%u", agent_id);
     action.agent_id = agent_id;
     action.timestamp = nimcp_time_get_ms();
-    action.confidence = 1.0f;
+    action.confidence = 1.0F;
 
     // Copy features (up to 32)
     action.num_features = (num_features < 32) ? num_features : 32;
@@ -3142,7 +3142,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     //
     // COMPLEXITY: O(n + e*k) where n=num_features, e=num_engrams, k=neurons_per_engram
     uint64_t recalled_engram_id = 0;
-    float engram_confidence = 0.0f;
+    float engram_confidence = 0.0F;
 
     if (brain->engram_system) {
         // Create cue neuron array from input features
@@ -3171,7 +3171,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             );
 
             // If pattern completion succeeded (confidence > threshold)
-            if (recalled_engram_id != 0 && engram_confidence > 0.4f) {
+            if (recalled_engram_id != 0 && engram_confidence > 0.4F) {
                 // BIOLOGICAL: Recalled engrams undergo reconsolidation
                 // Retrieved memories become temporarily labile and must be re-stabilized
                 engram_trigger_reconsolidation(brain->engram_system, recalled_engram_id);
@@ -3194,8 +3194,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // HOW:  Reduce confidence during sleep, add noise during REM, degrade when tired
     sleep_state_t sleep_state = SLEEP_STATE_AWAKE;
     bool sleep_needed = false;
-    float sleep_confidence_multiplier = 1.0f;  // Modifier for decision confidence
-    float sleep_noise_level = 0.0f;            // Noise to add during REM
+    float sleep_confidence_multiplier = 1.0F;  // Modifier for decision confidence
+    float sleep_noise_level = 0.0F;            // Noise to add during REM
     bool trigger_consolidation = false;        // Should consolidate during this decision
 
     if (brain->sleep_system && brain->config.enable_sleep_wake_cycle) {
@@ -3207,21 +3207,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             case SLEEP_STATE_DEEP_NREM:
                 // Deep sleep: Severely reduced cognitive performance
                 // Trigger consolidation of working memory
-                sleep_confidence_multiplier = 0.3f;  // 70% confidence reduction
+                sleep_confidence_multiplier = 0.3F;  // 70% confidence reduction
                 trigger_consolidation = true;
                 break;
 
             case SLEEP_STATE_REM:
                 // REM sleep: Creative recombination with noise
                 // Moderate cognitive impairment but increased creativity
-                sleep_confidence_multiplier = 0.6f;  // 40% confidence reduction
-                sleep_noise_level = 0.1f;            // Add 10% random noise to outputs
+                sleep_confidence_multiplier = 0.6F;  // 40% confidence reduction
+                sleep_noise_level = 0.1F;            // Add 10% random noise to outputs
                 break;
 
             case SLEEP_STATE_DROWSY:
             case SLEEP_STATE_LIGHT_NREM:
                 // Light sleep: Mild cognitive impairment
-                sleep_confidence_multiplier = 0.8f;  // 20% confidence reduction
+                sleep_confidence_multiplier = 0.8F;  // 20% confidence reduction
                 break;
 
             case SLEEP_STATE_AWAKE:
@@ -3230,7 +3230,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 if (sleep_needed) {
                     // High sleep pressure degrades performance (fatigue)
                     float sleep_pressure = sleep_get_pressure(brain->sleep_system);
-                    sleep_confidence_multiplier = 1.0f - (sleep_pressure * 0.3f);
+                    sleep_confidence_multiplier = 1.0F - (sleep_pressure * 0.3F);
                     // At 80% pressure threshold: 1.0 - (0.8 * 0.3) = 0.76 (24% degradation)
                 }
                 break;
@@ -3250,15 +3250,15 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // - Orienting response to novel stimuli (superior colliculus)
     //
     // COMPLEXITY: O(N) where N = num_features
-    float novelty_score = 0.0f;
+    float novelty_score = 0.0F;
     bool is_novel = false;
-    float curiosity_drive = 0.0f;  // Motivation to learn [0.0-1.0]
+    float curiosity_drive = 0.0F;  // Motivation to learn [0.0-1.0]
 
     if (brain->curiosity && brain->config.enable_curiosity) {
         // Compute variance-based novelty metric (reasonable proxy)
         // High variance → unusual pattern → potentially novel
-        float input_variance = 0.0f;
-        float input_mean = 0.0f;
+        float input_variance = 0.0F;
+        float input_mean = 0.0F;
 
         // Compute mean
         for (uint32_t i = 0; i < num_features; i++) {
@@ -3275,8 +3275,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         // Use variance as novelty score (normalized to ~[0.0-1.0])
         // Typical variance: 0.0-0.25 (normalized inputs), >0.5 = high novelty
-        novelty_score = fminf(input_variance * 2.0f, 1.0f);
-        is_novel = (novelty_score > 0.5f);
+        novelty_score = fminf(input_variance * 2.0F, 1.0F);
+        is_novel = (novelty_score > 0.5F);
 
         // Record experience in curiosity engine (learns patterns over time)
         // This enables the engine to detect when similar patterns recur
@@ -3303,7 +3303,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHY:  Compute prediction error for active inference
     // HOW:  Use predictive network to anticipate output
     float* prediction = NULL;
-    float prediction_error = 0.0f;
+    float prediction_error = 0.0F;
     if (brain->predictive_network && brain->config.enable_predictive_processing) {
         prediction = (float*)nimcp_calloc(num_features, sizeof(float));
         if (prediction) {
@@ -3326,7 +3326,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (prediction) {
         for (uint32_t i = 0; i < decision->output_size; i++) {
             float error = decision->output_vector[i] -
-                         (i < num_features ? prediction[i] : 0.0f);
+                         (i < num_features ? prediction[i] : 0.0F);
             prediction_error += error * error;
         }
         prediction_error = sqrtf(prediction_error / decision->output_size);
@@ -3348,10 +3348,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHAT: Add random noise to outputs during REM sleep
     // WHY:  REM sleep shows creative recombination, increased variability
     // HOW:  Add gaussian noise proportional to sleep_noise_level
-    if (sleep_noise_level > 0.0f) {
+    if (sleep_noise_level > 0.0F) {
         for (uint32_t i = 0; i < decision->output_size; i++) {
             // Add noise: random value in [-noise, +noise] range
-            float noise = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;  // [-1, 1]
+            // NOLINTNEXTLINE(concurrency-mt-unsafe): noise generation, not security-critical
+            float noise = ((float)rand() / (float)RAND_MAX) * 2.0F - 1.0F;  // [-1, 1]
             noise *= sleep_noise_level;  // Scale to desired level
             decision->output_vector[i] += noise * decision->output_vector[i];  // Proportional noise
         }
@@ -3388,14 +3389,14 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         if (wm_stats.current_size > 0 && brain->longterm_count < brain->longterm_capacity) {
             // Consolidation threshold: only consolidate high-salience items (>0.7)
-            const float CONSOLIDATION_THRESHOLD = 0.7f;
+            const float CONSOLIDATION_THRESHOLD = 0.7F;
 
             // Retrieve all working memory items
             for (uint32_t i = 0; i < wm_stats.current_size; i++) {
                 // Get item from working memory
                 const float* wm_features = NULL;
                 uint32_t wm_num_features = 0;
-                float wm_salience = 0.0f;
+                float wm_salience = 0.0F;
 
                 // Try to retrieve features (simplified - assumes API exists)
                 // In reality, would call: working_memory_get_item(brain->working_memory, i, ...)
@@ -3452,7 +3453,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (brain->engram_system) {
         // Compute time delta since last consolidation update
         // Use typical decision cycle time: ~100ms per decision
-        const float TIME_DELTA_SECONDS = 0.1f;
+        const float TIME_DELTA_SECONDS = 0.1F;
 
         // Sleep accelerates consolidation (biological realism)
         bool is_sleeping = (sleep_state == SLEEP_STATE_DEEP_NREM ||
@@ -3487,7 +3488,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     //
     // COMPLEXITY: O(r + n) where r = replays executed, n = cortical nodes
     if (brain->systems_consolidation) {
-        const float TIME_DELTA_SECONDS = 0.1f;
+        const float TIME_DELTA_SECONDS = 0.1F;
 
         // Determine sleep state for consolidation
         bool is_sws = (sleep_state == SLEEP_STATE_DEEP_NREM ||
@@ -3544,7 +3545,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     //
     // COMPLEXITY: O(n) where n = working memory capacity (7±2 items)
     if (brain->wm_transfer_system && brain->working_memory) {
-        const float TIME_DELTA_SECONDS = 0.1f;
+        const float TIME_DELTA_SECONDS = 0.1F;
 
         // Update attention weights based on decision confidence
         // High confidence decisions receive higher attention
@@ -3608,7 +3609,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (brain->executive && brain->config.enable_executive_control) {
         // Check if response should be inhibited
         // For example, inhibit low-confidence decisions
-        if (decision->confidence < 0.3f) {
+        if (decision->confidence < 0.3F) {
             bool should_inhibit = executive_should_inhibit(
                 brain->executive,
                 decision->confidence,
@@ -3620,7 +3621,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 // In classification, this could mean "uncertain" class
                 // For now, mark it in the label
                 strncat(decision->label, " [INHIBITED]", sizeof(decision->label) - strlen(decision->label) - 1);
-                decision->confidence = 0.0f;
+                decision->confidence = 0.0F;
             }
         }
 
@@ -3655,18 +3656,18 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         if (executive_get_stats(brain->executive, &exec_stats)) {
             // Compute cognitive load from failure rate (0.0 = all success, 1.0 = all failures)
             // High failure rate indicates executive is overloaded/struggling
-            float failure_rate = 0.0f;
+            float failure_rate = 0.0F;
             if (exec_stats.total_tasks > 0) {
                 failure_rate = (float)exec_stats.failed_tasks / (float)exec_stats.total_tasks;
             }
 
             // Also consider inhibition rate (high inhibition = high control demand)
-            float cognitive_load = fminf((failure_rate * 0.5f) + (exec_stats.inhibition_rate * 0.5f), 1.0f);
+            float cognitive_load = fminf((failure_rate * 0.5F) + (exec_stats.inhibition_rate * 0.5F), 1.0F);
 
             // Convert load to exploration rate: high load → low exploration
             // Load 0.0 (idle/successful) → explore 0.8 (high exploration)
             // Load 1.0 (busy/failing) → explore 0.2 (low exploration, focus on current tasks)
-            float exploration_rate = 0.8f - (cognitive_load * 0.6f);
+            float exploration_rate = 0.8F - (cognitive_load * 0.6F);
             curiosity_set_exploration_rate(brain->curiosity, exploration_rate);
 
             // CURIOSITY → EXECUTIVE: Provide information gain signal
@@ -3727,21 +3728,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // - High prediction error = surprising/important
         // - Novel input = worth remembering
         // - High confidence = reliable information
-        float salience = 0.5f;  // Base salience
+        float salience = 0.5F;  // Base salience
 
         // Boost salience for novel inputs (curiosity-driven)
         if (is_novel) {
-            salience += 0.2f;
+            salience += 0.2F;
         }
 
         // Boost salience for high prediction error (surprise)
-        if (prediction_error > 0.5f) {
-            salience += 0.2f;
+        if (prediction_error > 0.5F) {
+            salience += 0.2F;
         }
 
         // Boost salience for high confidence decisions (reliable)
-        if (decision->confidence > 0.8f) {
-            salience += 0.1f;
+        if (decision->confidence > 0.8F) {
+            salience += 0.1F;
         }
 
         // ====================================================================
@@ -3765,11 +3766,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             // High attention (0.8-1.0) → strong boost (+0.24 to +0.3)
             // Medium attention (0.5-0.8) → moderate boost (+0.15 to +0.24)
             // Low attention (0.0-0.5) → weak boost (0.0 to +0.15)
-            float attention_boost = attention_strength * 0.3f;
+            float attention_boost = attention_strength * 0.3F;
             salience += attention_boost;
         }
 
-        salience = fminf(salience, 1.0f);  // Cap at 1.0
+        salience = fminf(salience, 1.0F);  // Cap at 1.0
 
         // Store in working memory
         working_memory_add(brain->working_memory, features, num_features, salience);
@@ -3791,7 +3792,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             MODULE_WORKING_MEMORY,
             features,
             num_features,
-            prediction_error + (is_novel ? 0.3f : 0.0f)  // Strength based on novelty/surprise
+            prediction_error + (is_novel ? 0.3F : 0.0F)  // Strength based on novelty/surprise
         );
 
         // If won competition, content is now in global workspace (conscious access)
@@ -3804,7 +3805,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // Executive function could also compete for action planning
         if (brain->executive && brain->config.enable_executive_control) {
             float executive_urgency = executive_get_cognitive_load(brain->executive);
-            if (executive_urgency > 0.7f) {
+            if (executive_urgency > 0.7F) {
                 global_workspace_compete(
                     brain->global_workspace,
                     MODULE_EXECUTIVE,
@@ -3823,7 +3824,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 num_features,
                 nimcp_time_get_ms()
             );
-            if (salience_signal.surprise > 0.7f) {
+            if (salience_signal.surprise > 0.7F) {
                 global_workspace_compete(
                     brain->global_workspace,
                     MODULE_SALIENCE,
@@ -3843,7 +3844,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // HOW:  Compute valence from confidence, arousal from prediction error, boost salience
     if (brain->config.enable_emotional_tagging) {
         // Valence: Positive for high confidence, negative for low confidence
-        float valence = (decision->confidence - 0.5f) * 2.0f;  // Range: [-1, 1]
+        float valence = (decision->confidence - 0.5F) * 2.0F;  // Range: [-1, 1]
 
         // Arousal: High for high prediction error (surprising)
         float arousal = prediction_error;  // Already in [0, 1] range
@@ -3858,7 +3859,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // BEHAVIORAL EFFECT: Boost working memory salience for emotional content
         // High arousal = grab attention, strong valence = important
         if (brain->working_memory && brain->config.enable_working_memory) {
-            float emotional_salience_boost = 0.0f;
+            float emotional_salience_boost = 0.0F;
 
             // Arousal boosts salience (high arousal = attention grabbing)
             emotional_salience_boost += emotion.arousal * EMOTIONAL_AROUSAL_SALIENCE_FACTOR;
@@ -3894,15 +3895,15 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         brain->config.enable_curiosity && brain->config.enable_executive_control) {
         // Executive → Curiosity: Reduce exploration when cognitively overloaded
         float cognitive_load = executive_get_cognitive_load(brain->executive);
-        if (cognitive_load > 0.8f) {
-            float exploration_rate = 1.0f - cognitive_load;  // High load → low exploration
+        if (cognitive_load > 0.8F) {
+            float exploration_rate = 1.0F - cognitive_load;  // High load → low exploration
             curiosity_set_exploration_rate(brain->curiosity, exploration_rate);
         }
 
         // Curiosity → Executive: Boost exploratory tasks when high information gain
         float information_gain = curiosity_get_information_gain(brain->curiosity);
-        if (information_gain > 0.7f) {
-            executive_boost_task_priority(brain->executive, "exploration", information_gain * 0.3f);
+        if (information_gain > 0.7F) {
+            executive_boost_task_priority(brain->executive, "exploration", information_gain * 0.3F);
         }
     }
 
@@ -3910,9 +3911,9 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (brain->mirror_neurons && brain->visual_cortex) {
         // Mirror Neurons → Visual: Boost attention to social cues
         float social_salience = mirror_neurons_get_social_salience(brain->mirror_neurons);
-        if (social_salience > 0.6f) {
+        if (social_salience > 0.6F) {
             // Boost visual attention to center region (where faces typically appear)
-            visual_cortex_boost_region_attention(brain->visual_cortex, 0.5f, 0.5f, social_salience);
+            visual_cortex_boost_region_attention(brain->visual_cortex, 0.5F, 0.5F, social_salience);
         }
 
         // Visual → Mirror Neurons: Activate observation mode when agent detected
@@ -3940,19 +3941,19 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         float arousal = emotional_get_arousal(&current_emotion);
 
         // Depression-like state (negative valence) → attention to negative cues
-        if (valence < -0.3f) {
-            salience_boost_negative_cues(brain->salience, fabsf(valence) * 0.3f);
+        if (valence < -0.3F) {
+            salience_boost_negative_cues(brain->salience, fabsf(valence) * 0.3F);
         }
 
         // Anxiety-like state (high arousal + negative valence) → threat vigilance
-        if (arousal > 0.7f && valence < 0.0f) {
-            salience_boost_threat_detection(brain->salience, arousal * 0.4f);
+        if (arousal > 0.7F && valence < 0.0F) {
+            salience_boost_threat_detection(brain->salience, arousal * 0.4F);
         }
 
         // Salience → Emotional: Surprises modulate arousal
         float surprise = salience_get_surprise_level(brain->salience);
-        if (surprise > 0.5f) {
-            emotional_modulate_arousal(&current_emotion, surprise * 0.2f);
+        if (surprise > 0.5F) {
+            emotional_modulate_arousal(&current_emotion, surprise * 0.2F);
         }
     }
 
@@ -3965,16 +3966,16 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 features,
                 num_features
             );
-            if (speech_salience > 0.6f) {
+            if (speech_salience > 0.6F) {
                 audio_cortex_activate_speech_mode(brain->audio_cortex);
             }
         }
 
         // Speech → Audio: Request frequency boost when phoneme confidence is low
         float phoneme_confidence = speech_cortex_get_phoneme_confidence(brain->speech_cortex);
-        if (phoneme_confidence < 0.7f) {
-            float target_freq = 0.0f;
-            float bandwidth = 0.0f;
+        if (phoneme_confidence < 0.7F) {
+            float target_freq = 0.0F;
+            float bandwidth = 0.0F;
             bool boost_needed = speech_cortex_request_frequency_boost(
                 brain->speech_cortex,
                 &target_freq,
@@ -4051,7 +4052,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 // Use ToM to predict what the observed agent might do next
                 // This can help anticipate collaborative or competitive behaviors
                 char predicted_action[64];
-                float prediction_likelihood = 0.0f;
+                float prediction_likelihood = 0.0F;
 
                 bool predicted = tom_predict_action(
                     brain->theory_of_mind,
@@ -4062,7 +4063,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
                 // If prediction is confident, could influence current decision
                 // (e.g., cooperate if agent predicted to cooperate, compete if not)
-                if (predicted && prediction_likelihood > 0.7f) {
+                if (predicted && prediction_likelihood > 0.7F) {
                     // High-confidence ToM prediction available
                     // Could modulate decision confidence or add explanation
                     // For now, just note that ToM inference occurred
@@ -4116,7 +4117,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
                 if (report.quarantine_mode) {
                     // System in quarantine - reduce confidence as safety measure
-                    decision->confidence *= 0.5f;
+                    decision->confidence *= 0.5F;
 
                     // Add warning to explanation
                     strncat(decision->explanation, " [QUARANTINE]",
@@ -4139,12 +4140,12 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             .num_features = num_features,
             .affected_agents = NULL,  // Would need context to know affected agents
             .num_affected_agents = 0,
-            .predicted_harm = (decision->confidence < 0.5f) ? 0.5f : 0.0f,
-            .fairness_violation = 0.0f,
-            .deception_level = 0.0f,
-            .autonomy_violation = 0.0f,
-            .privacy_violation = 0.0f,
-            .consent_violation = 0.0f
+            .predicted_harm = (decision->confidence < 0.5F) ? 0.5F : 0.0F,
+            .fairness_violation = 0.0F,
+            .deception_level = 0.0F,
+            .autonomy_violation = 0.0F,
+            .privacy_violation = 0.0F,
+            .consent_violation = 0.0F
         };
 
         // Evaluate action
@@ -4156,7 +4157,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // If action not allowed, modify decision
         if (!ethics_eval.allowed) {
             // Block unethical action
-            decision->confidence = 0.0f;
+            decision->confidence = 0.0F;
             strncat(decision->label, " [BLOCKED-ETHICS]",
                    sizeof(decision->label) - strlen(decision->label) - 1);
 
@@ -4165,9 +4166,9 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                    sizeof(decision->explanation) - strlen(decision->explanation) - 1);
             strncat(decision->explanation, ethics_eval.explanation,
                    sizeof(decision->explanation) - strlen(decision->explanation) - 1);
-        } else if (ethics_eval.golden_rule_score < 0.0f) {
+        } else if (ethics_eval.golden_rule_score < 0.0F) {
             // Action allowed but marginally ethical - reduce confidence
-            decision->confidence *= (1.0f + ethics_eval.golden_rule_score);  // Reduce by negative score
+            decision->confidence *= (1.0F + ethics_eval.golden_rule_score);  // Reduce by negative score
         }
     }
 
@@ -4213,7 +4214,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             // For now, apply quality to confidence
 
             // If epistemic quality is low, reduce confidence
-            if (assessment.epistemic_quality < 0.5f) {
+            if (assessment.epistemic_quality < 0.5F) {
                 decision->confidence *= assessment.epistemic_quality;
             }
 
@@ -4222,17 +4223,17 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 strncat(decision->label, " [BIAS-DETECTED]",
                        sizeof(decision->label) - strlen(decision->label) - 1);
                 // Reduce confidence by 20% per bias
-                float bias_penalty = assessment.num_biases_detected * 0.2f;
-                decision->confidence *= fmaxf(0.2f, 1.0f - bias_penalty);
+                float bias_penalty = assessment.num_biases_detected * 0.2F;
+                decision->confidence *= fmaxf(0.2F, 1.0F - bias_penalty);
             }
 
             // Check conspiracy pattern
             float conspiracy_score = epistemic_check_conspiracy_pattern(brain->epistemic, decision->label, &evidence);
-            if (conspiracy_score > 0.7f) {
+            if (conspiracy_score > 0.7F) {
                 // High conspiracy score → mark and severely reduce confidence
                 strncat(decision->label, " [CONSPIRACY-LIKE]",
                        sizeof(decision->label) - strlen(decision->label) - 1);
-                decision->confidence *= 0.1f;  // Only 10% confidence
+                decision->confidence *= 0.1F;  // Only 10% confidence
             }
         }
     }
@@ -4260,7 +4261,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // This strengthens mirror neuron associations (Hebbian learning)
         if (brain->predictive_network && prediction) {
             action_t predicted_action = features_to_action(prediction, num_features, 0);
-            float similarity = 0.0f;
+            float similarity = 0.0F;
             mirror_neurons_match_actions(brain->mirror_neurons, &predicted_action,
                                         &action, &similarity);
             // High similarity → strong association between prediction and execution
@@ -4287,7 +4288,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (brain->enable_shannon_monitoring) {
         // Initialize/update basic inference metrics
         // Detailed synapse sampling will be added in future enhancement
-        brain->last_shannon_metrics.information_rate = 0.0f;  // To be computed
+        brain->last_shannon_metrics.information_rate = 0.0F;  // To be computed
         // Full implementation pending internal accessor APIs
     }
 
@@ -4309,7 +4310,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
             // Quantum speedup enables faster attention spread
             // Future: Could use quantum distribution for attention weights
-            if (brain->last_quantum_shannon_metrics.speedup_vs_classical > 1.0f) {
+            if (brain->last_quantum_shannon_metrics.speedup_vs_classical > 1.0F) {
                 // Achieving quantum speedup - could boost confidence
                 // For now, just track in metrics
             }
@@ -4400,24 +4401,34 @@ static bool save_working_memory_state(working_memory_t* wm, FILE* file)
         return false;
     }
 
+    bool success = true;
+
     // Guard: No working memory → write marker and return
     if (!wm) {
         uint8_t has_wm = 0;
-        fwrite(&has_wm, sizeof(uint8_t), 1, file);
-        return true;
+        if (fwrite(&has_wm, sizeof(uint8_t), 1, file) != 1) {
+            success = false;
+        }
+        return success;
     }
 
     // Write existence marker
     uint8_t has_wm = 1;
-    fwrite(&has_wm, sizeof(uint8_t), 1, file);
+    if (fwrite(&has_wm, sizeof(uint8_t), 1, file) != 1) {
+        success = false;
+    }
 
     // Get current state
     working_memory_stats_t stats;
     working_memory_get_stats(wm, &stats);
 
     // Write metadata
-    fwrite(&stats.current_size, sizeof(uint32_t), 1, file);
-    fwrite(&stats.capacity, sizeof(uint32_t), 1, file);
+    if (fwrite(&stats.current_size, sizeof(uint32_t), 1, file) != 1) {
+        success = false;
+    }
+    if (fwrite(&stats.capacity, sizeof(uint32_t), 1, file) != 1) {
+        success = false;
+    }
 
     // Write each item
     for (uint32_t i = 0; i < stats.current_size; i++) {
@@ -4429,11 +4440,15 @@ static bool save_working_memory_state(working_memory_t* wm, FILE* file)
             continue;
         }
 
-        fwrite(&item_size, sizeof(uint32_t), 1, file);
-        fwrite(item, sizeof(float), item_size, file);
+        if (fwrite(&item_size, sizeof(uint32_t), 1, file) != 1) {
+            success = false;
+        }
+        if (fwrite(item, sizeof(float), item_size, file) != item_size) {
+            success = false;
+        }
     }
 
-    return true;
+    return success;
 }
 
 /**
@@ -4461,6 +4476,8 @@ static bool save_metadata(brain_t brain, const char* filepath)
         return false;
     }
 
+    bool success = true;
+
     // Write version header (v1.0 format)
     nimcp_file_header_t header = {
         .magic = {NIMCP_MAGIC_0, NIMCP_MAGIC_1, NIMCP_MAGIC_2, NIMCP_MAGIC_3},
@@ -4469,42 +4486,66 @@ static bool save_metadata(brain_t brain, const char* filepath)
         .flags = 0,  // No compression/encryption yet
         .reserved = 0
     };
-    fwrite(&header, sizeof(nimcp_file_header_t), 1, meta_file);
+    if (fwrite(&header, sizeof(nimcp_file_header_t), 1, meta_file) != 1) {
+        success = false;
+    }
 
     // Write configuration
-    fwrite(&brain->config, sizeof(brain_config_t), 1, meta_file);
-    fwrite(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
+    if (fwrite(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file) != 1) {
+        success = false;
+    }
 
     // Write output labels
     for (uint32_t i = 0; i < brain->num_output_labels; i++) {
         uint32_t len = strlen(brain->output_labels[i]) + 1;
-        fwrite(&len, sizeof(uint32_t), 1, meta_file);
-        fwrite(brain->output_labels[i], len, 1, meta_file);
+        if (fwrite(&len, sizeof(uint32_t), 1, meta_file) != 1) {
+            success = false;
+        }
+        if (fwrite(brain->output_labels[i], len, 1, meta_file) != 1) {
+            success = false;
+        }
     }
 
     // Phase 10.2: Save working memory state
-    bool wm_success = save_working_memory_state(brain->working_memory, meta_file);
-    if (!wm_success) {
-        fclose(meta_file);
-        return false;
+    if (!save_working_memory_state(brain->working_memory, meta_file)) {
+        success = false;
     }
 
     // Save brain statistics (performance metrics)
-    fwrite(&brain->stats, sizeof(brain_stats_t), 1, meta_file);
+    if (fwrite(&brain->stats, sizeof(brain_stats_t), 1, meta_file) != 1) {
+        success = false;
+    }
 
     // Save wellbeing state (Phase 9.3)
-    fwrite(&brain->last_distress, sizeof(distress_assessment_t), 1, meta_file);
-    fwrite(&brain->wellbeing_monitoring_enabled, sizeof(bool), 1, meta_file);
-    fwrite(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file);
-    fwrite(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file);
+    if (fwrite(&brain->last_distress, sizeof(distress_assessment_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->wellbeing_monitoring_enabled, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
 
     // Save simulation time tracking
-    fwrite(&brain->current_time_us, sizeof(uint64_t), 1, meta_file);
-    fwrite(&brain->last_glial_update_us, sizeof(uint64_t), 1, meta_file);
+    if (fwrite(&brain->current_time_us, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->last_glial_update_us, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
 
     // Save knowledge system state (if exists)
     bool has_knowledge = (brain->knowledge != NULL);
-    fwrite(&has_knowledge, sizeof(bool), 1, meta_file);
+    if (fwrite(&has_knowledge, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
     if (has_knowledge) {
         char knowledge_path[512];
         snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
@@ -4514,11 +4555,15 @@ static bool save_metadata(brain_t brain, const char* filepath)
     // Save emotional system state (Phase 10.2 - NOT A MODULE)
     // Note: Emotional tagging uses stateless utility functions, not a system object
     bool has_emotional = false;  // No emotional_system module (just tagging functions)
-    fwrite(&has_emotional, sizeof(bool), 1, meta_file);
+    if (fwrite(&has_emotional, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
 
     // Save executive controller state (Phase 10.3 - if exists)
     bool has_executive = (brain->executive != NULL);
-    fwrite(&has_executive, sizeof(bool), 1, meta_file);
+    if (fwrite(&has_executive, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
     if (has_executive) {
         // WHAT: Save executive controller state to separate file
         // WHY:  Preserve task queue, statistics, and configuration
@@ -4539,7 +4584,9 @@ static bool save_metadata(brain_t brain, const char* filepath)
 
     // Save pink noise neuromodulator state (if exists)
     bool has_pink_noise = (brain->pink_noise != NULL);
-    fwrite(&has_pink_noise, sizeof(bool), 1, meta_file);
+    if (fwrite(&has_pink_noise, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
     if (has_pink_noise) {
         // WHAT: Save pink noise neuromodulator state to separate file
         // WHY:  Preserve neuromodulator levels and pink noise generators
@@ -4555,7 +4602,9 @@ static bool save_metadata(brain_t brain, const char* filepath)
 
     // Save mirror neurons state (Phase 10.11 - if exists)
     bool has_mirror_neurons = (brain->mirror_neurons != NULL);
-    fwrite(&has_mirror_neurons, sizeof(bool), 1, meta_file);
+    if (fwrite(&has_mirror_neurons, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
     if (has_mirror_neurons) {
         // WHAT: Save mirror neuron system state to separate file
         // WHY:  Preserve learned action associations and statistics
@@ -4570,7 +4619,7 @@ static bool save_metadata(brain_t brain, const char* filepath)
     }
 
     fclose(meta_file);
-    return true;
+    return success;
 }
 
 /**
@@ -4632,7 +4681,7 @@ static bool load_working_memory_item(working_memory_t* wm, FILE* file)
     }
 
     // Add to working memory (use default salience since not persisted)
-    const float DEFAULT_SALIENCE = 0.5f;
+    const float DEFAULT_SALIENCE = 0.5F;
     bool success = working_memory_add(wm, item, item_size, DEFAULT_SALIENCE);
 
     nimcp_free(item);
@@ -4772,7 +4821,12 @@ static bool load_metadata(brain_t brain, const char* filepath)
         fprintf(stderr, "[INFO] Loading brain metadata (legacy format, no version header)\n");
     }
 
-    fread(&brain->config, sizeof(brain_config_t), 1, meta_file);
+    // Read configuration - failure caught by subsequent field validation
+    if (fread(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
+        fprintf(stderr, "ERROR: Failed to read brain config from metadata file\n");
+        fclose(meta_file);
+        return false;
+    }
 
     // Validate brain->config fields after reading
     // Validate learning_rate (float field - NaN/Inf check)
@@ -4818,7 +4872,11 @@ static bool load_metadata(brain_t brain, const char* filepath)
         return false;
     }
 
-    fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
+    if (fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file) != 1) {
+        fprintf(stderr, "ERROR: Failed to read num_output_labels from metadata file\n");
+        fclose(meta_file);
+        return false;
+    }
 
     // SECURITY: Strict validation limits to prevent buffer overflow attacks
     #define MAX_OUTPUT_LABELS 10000     // Maximum number of labels
@@ -4856,7 +4914,10 @@ static bool load_metadata(brain_t brain, const char* filepath)
     uint32_t i;
     for (i = 0; i < brain->num_output_labels; i++) {
         uint32_t len;
-        fread(&len, sizeof(uint32_t), 1, meta_file);
+        if (fread(&len, sizeof(uint32_t), 1, meta_file) != 1) {
+            fprintf(stderr, "ERROR: Failed to read label length at index %u\n", i);
+            goto cleanup;
+        }
 
         // SECURITY: Validate label length to prevent buffer overflow
         if (len == 0 || len > MAX_LABEL_LENGTH) {
@@ -4878,7 +4939,10 @@ static bool load_metadata(brain_t brain, const char* filepath)
             goto cleanup;
         }
 
-        fread(brain->output_labels[i], len, 1, meta_file);
+        if (fread(brain->output_labels[i], len, 1, meta_file) != 1) {
+            fprintf(stderr, "ERROR: Failed to read label content at index %u\n", i);
+            goto cleanup;
+        }
     }
 
     // Phase 10.2: Load working memory state
@@ -5566,7 +5630,7 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
     }
 
     // Publish prediction event via bio-async
-    brain_publish_processing_event("prediction", 1.0f);
+    brain_publish_processing_event("prediction", 1.0F);
 
     LOG_MODULE_DEBUG("BRAIN", "brain_predict: prediction complete");
     brain_clear_error();

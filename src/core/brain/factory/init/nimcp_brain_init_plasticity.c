@@ -137,10 +137,10 @@ bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain)
 
     // Create homeostatic config from brain config
     homeostatic_config_t config = homeostatic_config_default();
-    if (brain->config.homeostatic_target_rate_hz > 0.0f) {
+    if (brain->config.homeostatic_target_rate_hz > 0.0F) {
         config.scaling_params.target_rate = brain->config.homeostatic_target_rate_hz;
     }
-    if (brain->config.homeostatic_tau_ms > 0.0f) {
+    if (brain->config.homeostatic_tau_ms > 0.0F) {
         config.scaling_params.scaling_time_constant = brain->config.homeostatic_tau_ms;
     }
 
@@ -277,7 +277,7 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
     pc_hierarchy_config_t config = pc_hierarchy_config_default(num_levels, units);
     config.units_per_level = units;  // Must set explicitly
 
-    if (brain->config.predictive_learning_rate > 0.0f) {
+    if (brain->config.predictive_learning_rate > 0.0F) {
         config.learning_rate = brain->config.predictive_learning_rate;
     }
 
@@ -414,7 +414,7 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
     nimcp_brain_training_config_t training_config = nimcp_brain_training_default_config();
 
     // Override with brain config values
-    if (brain->config.training_default_lr > 0.0f) {
+    if (brain->config.training_default_lr > 0.0F) {
         training_config.default_learning_rate = brain->config.training_default_lr;
     } else {
         training_config.default_learning_rate = brain->config.learning_rate;
@@ -466,11 +466,11 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
             .params.step = {
                 .initial_lr = training_config.default_learning_rate,
                 .step_size = 100,     // Decay every 100 epochs
-                .gamma = 0.9f,        // 10% decay
-                .min_lr = 1e-6f
+                .gamma = 0.9F,        // 10% decay
+                .min_lr = 1e-6F
             },
             .verbose = false,
-            .lr_epsilon = 1e-8f
+            .lr_epsilon = 1e-8F
         };
         uint32_t sched_id = 0;
         nimcp_result_t sres = nimcp_brain_training_create_scheduler(brain->training_ctx, &sched_config, &sched_id);
@@ -511,7 +511,7 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
         tpb_config.neuromod_system = brain->neuromodulator_system;
 
         // Configure RPE parameters from training config
-        tpb_config.rpe_to_da_gain = 0.5f;  // Moderate DA sensitivity to loss changes
+        tpb_config.rpe_to_da_gain = 0.5F;  // Moderate DA sensitivity to loss changes
 
         // Enable CoW for weight snapshots
         tpb_config.enable_cow = true;
@@ -533,7 +533,7 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
                     brain->training_ctx, brain->plasticity_bridge);
                 if (conn_result == NIMCP_SUCCESS) {
                     // Enable biological modulation by default (50% blend)
-                    nimcp_brain_training_set_biological_modulation(brain->training_ctx, 0.5f);
+                    nimcp_brain_training_set_biological_modulation(brain->training_ctx, 0.5F);
                     LOG_INFO("Training-Plasticity Bridge connected to training context");
                 } else {
                     LOG_WARNING("Failed to connect plasticity bridge to training context");
@@ -559,20 +559,20 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
         edp_config.mode = EDP_MODE_IMMEDIATE;
 
         // Configure spike timing parameters (STDP window)
-        edp_config.stdp_window_ms = 40.0f;  // ±40ms STDP window (biological)
-        edp_config.ltp_rate = brain->config.learning_rate * 0.5f;  // Scale from brain LR
-        edp_config.ltd_rate = brain->config.learning_rate * 0.6f;  // Slightly stronger LTD
-        edp_config.spike_threshold = 0.1f;
+        edp_config.stdp_window_ms = 40.0F;  // ±40ms STDP window (biological)
+        edp_config.ltp_rate = brain->config.learning_rate * 0.5F;  // Scale from brain LR
+        edp_config.ltd_rate = brain->config.learning_rate * 0.6F;  // Slightly stronger LTD
+        edp_config.spike_threshold = 0.1F;
 
         // Configure eligibility traces for three-factor learning
         edp_config.enable_eligibility = true;
-        edp_config.eligibility_tau_ms = 1000.0f;  // 1 second decay
-        edp_config.eligibility_threshold = 0.01f;
+        edp_config.eligibility_tau_ms = 1000.0F;  // 1 second decay
+        edp_config.eligibility_threshold = 0.01F;
 
         // Configure learning signal gains
-        edp_config.error_gain = 1.0f;
-        edp_config.reward_gain = 0.5f;   // Reward modulation strength
-        edp_config.novelty_gain = 0.3f;  // Novelty modulation strength
+        edp_config.error_gain = 1.0F;
+        edp_config.reward_gain = 0.5F;   // Reward modulation strength
+        edp_config.novelty_gain = 0.3F;  // Novelty modulation strength
 
         // Security integration
         edp_config.enable_security = (brain->security_integration != NULL);

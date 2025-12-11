@@ -81,10 +81,10 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
     }
 
     // Check all weights are non-negative
-    if (config->severity_weight < 0.0f ||
-        config->recency_weight < 0.0f ||
-        config->frequency_weight < 0.0f ||
-        config->impact_weight < 0.0f) {
+    if (config->severity_weight < 0.0F ||
+        config->recency_weight < 0.0F ||
+        config->frequency_weight < 0.0F ||
+        config->impact_weight < 0.0F) {
         nimcp_log(LOG_LEVEL_ERROR, "Attention weights cannot be negative");
         return false;
     }
@@ -93,14 +93,14 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
     float sum = config->severity_weight + config->recency_weight +
                 config->frequency_weight + config->impact_weight;
 
-    if (fabsf(sum - 1.0f) > 0.01f) {
+    if (fabsf(sum - 1.0F) > 0.01F) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Attention weights must sum to 1.0 (got %.3f)", sum);
         return false;
     }
 
     // Check learning rate in valid range
-    if (config->learning_rate < 0.0f || config->learning_rate > 1.0f) {
+    if (config->learning_rate < 0.0F || config->learning_rate > 1.0F) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Learning rate must be in [0.0, 1.0] (got %.3f)",
                   config->learning_rate);
@@ -128,14 +128,14 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
  */
 static float normalize_value(float value, float min, float max) {
     if (max <= min) {
-        return 0.0f;
+        return 0.0F;
     }
 
     float normalized = (value - min) / (max - min);
 
     // Clamp to [0, 1]
-    if (normalized < 0.0f) normalized = 0.0f;
-    if (normalized > 1.0f) normalized = 1.0f;
+    if (normalized < 0.0F) normalized = 0.0F;
+    if (normalized > 1.0F) normalized = 1.0F;
 
     return normalized;
 }
@@ -149,11 +149,11 @@ static float normalize_value(float value, float min, float max) {
  */
 static float compute_recency_factor(uint64_t time_delta_ms) {
     // Convert to seconds
-    float time_delta_s = time_delta_ms / 1000.0f;
+    float time_delta_s = time_delta_ms / 1000.0F;
 
     // Use inverse decay: 1 / (1 + t)
     // This gives 1.0 for immediate (t=0), 0.5 for t=1s, etc.
-    float recency = 1.0f / (1.0f + time_delta_s);
+    float recency = 1.0F / (1.0F + time_delta_s);
 
     return recency;
 }
@@ -216,7 +216,7 @@ fault_attention_config_t fault_attention_default_config(void) {
     config.learning_rate = FAULT_ATTENTION_DEFAULT_LEARNING_RATE;
 
     config.max_tracked_faults = FAULT_ATTENTION_MAX_FAULTS;
-    config.min_attention_threshold = 0.0f;
+    config.min_attention_threshold = 0.0F;
 
     return config;
 }
@@ -398,7 +398,7 @@ bool fault_attention_compute_weights(
     // =========================================================================
 
     // Track min/max for normalization
-    float max_severity = 0.0f;
+    float max_severity = 0.0F;
     uint32_t max_occurrence = 0;
     uint32_t max_users = 0;
     uint64_t min_time_delta = UINT64_MAX;
@@ -447,11 +447,11 @@ bool fault_attention_compute_weights(
 
         // Frequency factor (normalized occurrence count)
         float frequency_factor = (max_occurrence > 0) ?
-            normalize_value(fault->occurrence_count, 0, max_occurrence) : 0.0f;
+            normalize_value(fault->occurrence_count, 0, max_occurrence) : 0.0F;
 
         // Impact factor (normalized users affected)
         float impact_factor = (max_users > 0) ?
-            normalize_value(fault->users_affected, 0, max_users) : 0.0f;
+            normalize_value(fault->users_affected, 0, max_users) : 0.0F;
 
         // Store contributions for adaptive learning
         attention->last_severity_contribution[i] =
@@ -475,14 +475,14 @@ bool fault_attention_compute_weights(
     // NORMALIZATION: Normalize weights to [0, 1]
     // =========================================================================
 
-    float max_weight = 0.0f;
+    float max_weight = 0.0F;
     for (uint32_t i = 0; i < fault_count; i++) {
         if (attention->weights[i] > max_weight) {
             max_weight = attention->weights[i];
         }
     }
 
-    if (max_weight > 0.0f) {
+    if (max_weight > 0.0F) {
         for (uint32_t i = 0; i < fault_count; i++) {
             attention->weights[i] /= max_weight;
         }
@@ -514,14 +514,14 @@ bool fault_attention_compute_weights(
 
     uint64_t elapsed_ns = (end_time.tv_sec - start_time.tv_sec) * 1000000000ULL +
                          (end_time.tv_nsec - start_time.tv_nsec);
-    float elapsed_us = elapsed_ns / 1000.0f;
+    float elapsed_us = elapsed_ns / 1000.0F;
 
     // Update average computation time (exponential moving average)
     if (attention->stats.total_computations == 1) {
         attention->stats.avg_computation_time_us = elapsed_us;
     } else {
         attention->stats.avg_computation_time_us =
-            0.9f * attention->stats.avg_computation_time_us + 0.1f * elapsed_us;
+            0.9F * attention->stats.avg_computation_time_us + 0.1F * elapsed_us;
     }
 
     attention->last_computation_time = end_time;
@@ -713,7 +713,7 @@ bool fault_attention_update_weights(
         // Decrease other weights proportionally
         for (int i = 0; i < 4; i++) {
             if (i != dominant) {
-                *weights[i] -= learning_rate / 3.0f;
+                *weights[i] -= learning_rate / 3.0F;
             }
         }
     } else {
@@ -726,7 +726,7 @@ bool fault_attention_update_weights(
         // Increase other weights proportionally
         for (int i = 0; i < 4; i++) {
             if (i != dominant) {
-                *weights[i] += learning_rate / 3.0f;
+                *weights[i] += learning_rate / 3.0F;
             }
         }
     }
@@ -737,8 +737,8 @@ bool fault_attention_update_weights(
 
     // Clamp to non-negative
     for (int i = 0; i < 4; i++) {
-        if (*weights[i] < 0.01f) {
-            *weights[i] = 0.01f; // Minimum weight
+        if (*weights[i] < 0.01F) {
+            *weights[i] = 0.01F; // Minimum weight
         }
     }
 
@@ -748,7 +748,7 @@ bool fault_attention_update_weights(
                 attention->config.frequency_weight +
                 attention->config.impact_weight;
 
-    if (sum > 0.0f) {
+    if (sum > 0.0F) {
         attention->config.severity_weight /= sum;
         attention->config.recency_weight /= sum;
         attention->config.frequency_weight /= sum;

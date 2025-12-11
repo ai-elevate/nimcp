@@ -192,7 +192,7 @@ bool brain_add_fact(
         return false;
     }
 
-    if (salience < 0.0f || salience > 1.0f) {
+    if (salience < 0.0F || salience > 1.0F) {
         set_error("Salience must be in range [0,1], got %.2f", salience);
         NIMCP_LOGGING_ERROR("brain_add_fact: invalid salience %.2f", salience);
         return false;
@@ -241,7 +241,7 @@ bool brain_add_fact(
     // Integrate with working memory if enabled
     if (brain->working_memory && brain->config.enable_working_memory) {
         // Create a simple float representation for working memory
-        float fact_encoding[4] = {salience, 1.0f, 0.0f, 0.0f};
+        float fact_encoding[4] = {salience, 1.0F, 0.0F, 0.0F};
         working_memory_add(brain->working_memory, fact_encoding, 4, salience);
         NIMCP_LOGGING_DEBUG("Fact added to working memory: %s (salience=%.2f)",
                            fact_str, salience);
@@ -288,7 +288,7 @@ bool brain_add_rule(
         return false;
     }
 
-    if (priority < 0.0f || priority > 1.0f) {
+    if (priority < 0.0F || priority > 1.0F) {
         set_error("Priority must be in range [0,1], got %.2f", priority);
         NIMCP_LOGGING_ERROR("brain_add_rule: invalid priority %.2f", priority);
         return false;

@@ -53,24 +53,24 @@
 //=============================================================================
 
 /** Activity EMA decay factor per second */
-static const float ACTIVITY_DECAY_PER_SEC = 0.9f;
+static const float ACTIVITY_DECAY_PER_SEC = 0.9F;
 
 /** Coactivation time window (microseconds) */
 static const uint64_t COACTIVATION_WINDOW_US = 100000;  /* 100ms */
 
 /** Spine weight change rate per second */
-static const float SPINE_WEIGHT_DELTA_PER_SEC = 0.1f;
+static const float SPINE_WEIGHT_DELTA_PER_SEC = 0.1F;
 
 /** Spine state transition thresholds */
-static const float SPINE_THIN_TO_STUBBY_THRESHOLD = 0.4f;
-static const float SPINE_STUBBY_TO_MUSHROOM_THRESHOLD = 0.7f;
-static const float SPINE_PRUNE_ACTIVITY_THRESHOLD = 0.05f;
+static const float SPINE_THIN_TO_STUBBY_THRESHOLD = 0.4F;
+static const float SPINE_STUBBY_TO_MUSHROOM_THRESHOLD = 0.7F;
+static const float SPINE_PRUNE_ACTIVITY_THRESHOLD = 0.05F;
 
 /** Microglia surveillance decay rate */
-static const float SURVEILLANCE_DECAY_PER_SEC = 0.95f;
+static const float SURVEILLANCE_DECAY_PER_SEC = 0.95F;
 
 /** Astrocyte modulation update rate */
-static const float ASTROCYTE_MOD_RATE = 0.1f;
+static const float ASTROCYTE_MOD_RATE = 0.1F;
 
 //=============================================================================
 // Helper Functions
@@ -114,10 +114,10 @@ static inline int find_first_set_bit64(uint64_t word)
 static float calculate_myelin_speedup(float myelination_level)
 {
     /* Guard: Clamp to valid range */
-    float level = clamp_f(myelination_level, 0.0f, 1.0f);
+    float level = clamp_f(myelination_level, 0.0F, 1.0F);
 
     /* Linear speedup: 1x at 0, NIMCP_MIRROR_MYELIN_SPEEDUP_MAX at 1.0 */
-    return 1.0f + (NIMCP_MIRROR_MYELIN_SPEEDUP_MAX - 1.0f) * level;
+    return 1.0F + (NIMCP_MIRROR_MYELIN_SPEEDUP_MAX - 1.0F) * level;
 }
 
 /**
@@ -384,12 +384,12 @@ void mirror_substrate_backing_init(mirror_substrate_backing_t* backing,
     memset(backing, 0, sizeof(mirror_substrate_backing_t));
 
     /* Set biological defaults */
-    backing->myelination_level = 0.0f;  /* Start unmyelinated */
+    backing->myelination_level = 0.0F;  /* Start unmyelinated */
     backing->conduction_velocity_ms = NIMCP_MIRROR_BASE_DELAY_MS;
 
-    backing->astrocyte_modulation = 1.0f;  /* Neutral modulation */
-    backing->lactate_received = 0.0f;
-    backing->surveillance_score = 0.5f;  /* Neutral surveillance */
+    backing->astrocyte_modulation = 1.0F;  /* Neutral modulation */
+    backing->lactate_received = 0.0F;
+    backing->surveillance_score = 0.5F;  /* Neutral surveillance */
     backing->marked_for_pruning = false;
 
     /* Set delays based on config */
@@ -622,7 +622,7 @@ nimcp_result_t mirror_substrate_bind_myelin_sheath(
         backing->conduction_velocity_ms = myelin_sheath_get_velocity_ratio(sheath);
     } else {
         backing->myelin_sheath_id = 0;
-        backing->myelination_level = 0.0f;
+        backing->myelination_level = 0.0F;
         backing->conduction_velocity_ms = NIMCP_MYELIN_BASE_VELOCITY_MS;
     }
 
@@ -631,7 +631,7 @@ nimcp_result_t mirror_substrate_bind_myelin_sheath(
 
 float mirror_substrate_update_myelination(mirror_substrate_backing_t* backing)
 {
-    if (!backing) return 0.0f;
+    if (!backing) return 0.0F;
 
     if (backing->myelin_sheath) {
         myelin_sheath_t* sheath = (myelin_sheath_t*)backing->myelin_sheath;
@@ -653,8 +653,8 @@ void mirror_substrate_apply_activity_to_myelin(
     myelin_sheath_t* sheath = (myelin_sheath_t*)backing->myelin_sheath;
 
     /* High activity promotes myelination */
-    if (activity_level > 0.5f) {
-        myelin_sheath_myelinate(sheath, activity_level * 0.1f, dt_seconds);
+    if (activity_level > 0.5F) {
+        myelin_sheath_myelinate(sheath, activity_level * 0.1F, dt_seconds);
     }
 
     /* Update cached values */
@@ -704,7 +704,7 @@ int32_t mirror_substrate_add_spine(
     backing->spines[idx] = spine_ptr;
     backing->spine_ids[idx] = spine ? spine->id : 0;
     backing->spine_states[idx] = MIRROR_SPINE_STATE_THIN;  /* Start as learning spine */
-    backing->spine_weights[idx] = clamp_f(initial_weight, 0.0f, 1.0f);
+    backing->spine_weights[idx] = clamp_f(initial_weight, 0.0F, 1.0F);
 
     backing->num_spines++;
 
@@ -728,7 +728,7 @@ void mirror_substrate_update_spine_plasticity(
         if (backing->spine_states[i] == MIRROR_SPINE_STATE_PRUNED) continue;
 
         float weight = backing->spine_weights[i];
-        float delta = 0.0f;
+        float delta = 0.0F;
 
         /* Hebbian-like plasticity: coactivation strengthens */
         if (observation_active && execution_active) {
@@ -736,14 +736,14 @@ void mirror_substrate_update_spine_plasticity(
             delta = SPINE_WEIGHT_DELTA_PER_SEC * dt_seconds * mod_factor;
         } else if (!observation_active && !execution_active) {
             /* Weak LTD: slow decay when inactive */
-            delta = -SPINE_WEIGHT_DELTA_PER_SEC * 0.1f * dt_seconds;
+            delta = -SPINE_WEIGHT_DELTA_PER_SEC * 0.1F * dt_seconds;
         } else {
             /* Single pathway active: slight weakening */
-            delta = -SPINE_WEIGHT_DELTA_PER_SEC * 0.05f * dt_seconds;
+            delta = -SPINE_WEIGHT_DELTA_PER_SEC * 0.05F * dt_seconds;
         }
 
         /* Update weight */
-        weight = clamp_f(weight + delta, 0.0f, 1.0f);
+        weight = clamp_f(weight + delta, 0.0F, 1.0F);
         backing->spine_weights[i] = weight;
 
         /* Update spine state based on weight */
@@ -766,9 +766,9 @@ void mirror_substrate_update_spine_plasticity(
 
 float mirror_substrate_get_total_spine_weight(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return 0.0f;
+    if (!backing) return 0.0F;
 
-    float total = 0.0f;
+    float total = 0.0F;
     for (uint32_t i = 0; i < backing->num_spines; i++) {
         if (backing->spine_states[i] != MIRROR_SPINE_STATE_PRUNED) {
             total += backing->spine_weights[i];
@@ -790,7 +790,7 @@ nimcp_result_t mirror_substrate_bind_astrocyte(
 
     backing->astrocyte = astrocyte;
     backing->astrocyte_id = astrocyte ? 1 : 0;  /* Simplified ID */
-    backing->astrocyte_modulation = 1.0f;  /* Neutral to start */
+    backing->astrocyte_modulation = 1.0F;  /* Neutral to start */
 
     return NIMCP_SUCCESS;
 }
@@ -803,7 +803,7 @@ nimcp_result_t mirror_substrate_bind_oligodendrocyte(
 
     backing->oligodendrocyte = oligo;
     backing->oligodendrocyte_id = oligo ? 1 : 0;
-    backing->lactate_received = 0.0f;
+    backing->lactate_received = 0.0F;
 
     return NIMCP_SUCCESS;
 }
@@ -816,7 +816,7 @@ nimcp_result_t mirror_substrate_bind_microglia(
 
     backing->microglia = microglia;
     backing->microglia_id = microglia ? 1 : 0;
-    backing->surveillance_score = 0.5f;  /* Neutral surveillance */
+    backing->surveillance_score = 0.5F;  /* Neutral surveillance */
     backing->marked_for_pruning = false;
 
     return NIMCP_SUCCESS;
@@ -824,7 +824,7 @@ nimcp_result_t mirror_substrate_bind_microglia(
 
 float mirror_substrate_get_astrocyte_modulation(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return 1.0f;
+    if (!backing) return 1.0F;
     return backing->astrocyte_modulation;
 }
 
@@ -851,12 +851,12 @@ void mirror_substrate_update_glial(
     /* Update oligodendrocyte lactate support */
     if (backing->oligodendrocyte_id > 0) {
         /* Lactate provision proportional to activity */
-        float lactate_rate = 0.1f * activity_level;
+        float lactate_rate = 0.1F * activity_level;
         backing->lactate_received += lactate_rate * dt_seconds;
 
         /* Decay over time */
-        backing->lactate_received *= powf(0.99f, dt_seconds);
-        backing->lactate_received = clamp_f(backing->lactate_received, 0.0f, 1.0f);
+        backing->lactate_received *= powf(0.99F, dt_seconds);
+        backing->lactate_received = clamp_f(backing->lactate_received, 0.0F, 1.0F);
     }
 
     /* Update microglia surveillance */
@@ -864,8 +864,8 @@ void mirror_substrate_update_glial(
         /* Activity keeps surveillance score up */
         backing->surveillance_score = backing->surveillance_score *
             powf(SURVEILLANCE_DECAY_PER_SEC, dt_seconds);
-        backing->surveillance_score += activity_level * dt_seconds * 0.1f;
-        backing->surveillance_score = clamp_f(backing->surveillance_score, 0.0f, 1.0f);
+        backing->surveillance_score += activity_level * dt_seconds * 0.1F;
+        backing->surveillance_score = clamp_f(backing->surveillance_score, 0.0F, 1.0F);
 
         /* Mark for pruning if surveillance score drops too low */
         backing->marked_for_pruning = (backing->surveillance_score <
@@ -891,7 +891,7 @@ void mirror_substrate_step(
     if (!backing) return;
 
     /* Calculate combined activity level */
-    float activity = (backing->observation_activity_ema + backing->execution_activity_ema) * 0.5f;
+    float activity = (backing->observation_activity_ema + backing->execution_activity_ema) * 0.5F;
 
     /* Decay activity EMAs */
     float decay = powf(ACTIVITY_DECAY_PER_SEC, dt_seconds);
@@ -904,8 +904,8 @@ void mirror_substrate_step(
     }
 
     /* Update spine plasticity */
-    bool obs_active = backing->observation_activity_ema > 0.1f;
-    bool exec_active = backing->execution_activity_ema > 0.1f;
+    bool obs_active = backing->observation_activity_ema > 0.1F;
+    bool exec_active = backing->execution_activity_ema > 0.1F;
     mirror_substrate_update_spine_plasticity(backing, obs_active, exec_active, dt_seconds);
 
     /* Update glial cells */
@@ -914,7 +914,7 @@ void mirror_substrate_step(
     /* Update coactivation score */
     if (is_coactivated(backing->last_observation_time, backing->last_execution_time)) {
         backing->coactivation_score = clamp_f(
-            backing->coactivation_score + 0.1f * dt_seconds, 0.0f, 1.0f);
+            backing->coactivation_score + 0.1F * dt_seconds, 0.0F, 1.0F);
         backing->last_coactivation_time = current_time;
     } else {
         backing->coactivation_score *= decay;
@@ -930,7 +930,7 @@ void mirror_substrate_record_observation(
 
     /* Update EMA */
     backing->observation_activity_ema = clamp_f(
-        backing->observation_activity_ema + strength, 0.0f, 1.0f);
+        backing->observation_activity_ema + strength, 0.0F, 1.0F);
 
     backing->last_observation_time = timestamp;
 }
@@ -944,7 +944,7 @@ void mirror_substrate_record_execution(
 
     /* Update EMA */
     backing->execution_activity_ema = clamp_f(
-        backing->execution_activity_ema + strength, 0.0f, 1.0f);
+        backing->execution_activity_ema + strength, 0.0F, 1.0F);
 
     backing->last_execution_time = timestamp;
 }
@@ -970,7 +970,7 @@ nimcp_result_t mirror_substrate_get_stats(
     stats->avg_recognition_delay_ms = NIMCP_MIRROR_BASE_DELAY_MS;
     stats->min_recognition_delay_ms = NIMCP_MIRROR_BASE_DELAY_MS / NIMCP_MIRROR_MYELIN_SPEEDUP_MAX;
     stats->max_recognition_delay_ms = NIMCP_MIRROR_BASE_DELAY_MS;
-    stats->avg_astrocyte_modulation = 1.0f;
+    stats->avg_astrocyte_modulation = 1.0F;
 
     return NIMCP_SUCCESS;
 }
@@ -999,7 +999,7 @@ mirror_substrate_config_t mirror_substrate_get_default_config(void)
         /* Plasticity parameters */
         .spine_ltp_threshold = NIMCP_MIRROR_SPINE_LTP_THRESHOLD,
         .spine_ltd_threshold = NIMCP_MIRROR_SPINE_LTD_THRESHOLD,
-        .spine_maturation_rate = 0.01f,
+        .spine_maturation_rate = 0.01F,
         .pruning_activity_threshold = NIMCP_MIRROR_MICROGLIA_PRUNE_THRESHOLD,
 
         /* Brain region assignment */

@@ -107,26 +107,26 @@ second_messenger_config_t second_messenger_default_config(void) {
     second_messenger_config_t config = {
         /* Kinetics */
         .dt_ms = SM_DEFAULT_DT_MS,
-        .camp_synthesis_rate = 10.0f,
-        .camp_degradation_rate = 0.5f,
-        .ip3_synthesis_rate = 20.0f,
-        .ip3_degradation_rate = 0.1f,
-        .ca_release_rate = 100.0f,
-        .ca_reuptake_rate = 10.0f,
+        .camp_synthesis_rate = 10.0F,
+        .camp_degradation_rate = 0.5F,
+        .ip3_synthesis_rate = 20.0F,
+        .ip3_degradation_rate = 0.1F,
+        .ca_release_rate = 100.0F,
+        .ca_reuptake_rate = 10.0F,
 
         /* Thresholds */
-        .pka_activation_threshold = 1.0f,   /* cAMP in micromolar */
-        .pkc_activation_threshold = 0.3f,   /* DAG + Ca2+ combined */
-        .camkii_activation_threshold = 0.5f,/* Ca2+/CaM level */
-        .creb_phosphorylation_threshold = 0.4f, /* kinase activity */
+        .pka_activation_threshold = 1.0F,   /* cAMP in micromolar */
+        .pkc_activation_threshold = 0.3F,   /* DAG + Ca2+ combined */
+        .camkii_activation_threshold = 0.5F,/* Ca2+/CaM level */
+        .creb_phosphorylation_threshold = 0.4F, /* kinase activity */
 
         /* Gene expression */
-        .ieg_induction_threshold = 0.6f,
-        .protein_synthesis_delay_ms = 30000.0f, /* 30 seconds */
+        .ieg_induction_threshold = 0.6F,
+        .protein_synthesis_delay_ms = 30000.0F, /* 30 seconds */
 
         /* Bio-async */
         .enable_bio_async = true,
-        .broadcast_threshold = 0.1f,
+        .broadcast_threshold = 0.1F,
 
         /* Security */
         .enable_security = true
@@ -141,14 +141,14 @@ nimcp_result_t second_messenger_validate_config(const second_messenger_config_t*
     if (!config) {
         return NIMCP_ERROR_NULL_POINTER;
     }
-    if (config->dt_ms <= 0.0f || config->dt_ms > 100.0f) {
+    if (config->dt_ms <= 0.0F || config->dt_ms > 100.0F) {
         LOG_MODULE_WARN(LOG_MODULE, "Invalid dt_ms: %.2f", config->dt_ms);
         return NIMCP_ERROR_INVALID_PARAM;
     }
-    if (config->camp_synthesis_rate < 0.0f || config->camp_degradation_rate < 0.0f) {
+    if (config->camp_synthesis_rate < 0.0F || config->camp_degradation_rate < 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
-    if (config->pka_activation_threshold <= 0.0f) {
+    if (config->pka_activation_threshold <= 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
     return NIMCP_SUCCESS;
@@ -352,7 +352,7 @@ nimcp_result_t second_messenger_broadcast_state(
         /* Broadcast aggregate state */
         msg.neuron_id = 0;
         msg.pka_activity = system->stats.avg_pka_activity;
-        msg.pkc_activity = 0.0f;
+        msg.pkc_activity = 0.0F;
         msg.camkii_activity = system->stats.avg_camkii_activity;
         msg.creb_phosphorylation = system->stats.avg_creb_phosphorylation;
     } else if (neuron_id < system->max_neurons && system->neuron_active[neuron_id]) {
@@ -426,7 +426,7 @@ static nimcp_result_t bio_message_handler(
             }
             /* Norepinephrine -> beta-AR (Gs) */
             else if (nm_msg->neuromodulator == BIO_CHANNEL_NOREPINEPHRINE) {
-                second_messenger_activate_gs(system, nm_msg->source_region, occupancy * 0.5f, now_ms);
+                second_messenger_activate_gs(system, nm_msg->source_region, occupancy * 0.5F, now_ms);
             }
             break;
         }
@@ -461,7 +461,7 @@ nimcp_result_t second_messenger_activate_receptor(
     if (event->neuron_id >= system->max_neurons) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
-    if (event->occupancy < 0.0f || event->occupancy > 1.0f) {
+    if (event->occupancy < 0.0F || event->occupancy > 1.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -513,9 +513,9 @@ nimcp_result_t second_messenger_activate_gs(
     second_messenger_state_t* state = &system->states[neuron_id];
 
     /* Gs activation increases adenylyl cyclase activity */
-    float ac_increase = occupancy * 0.2f; /* Scale factor */
+    float ac_increase = occupancy * 0.2F; /* Scale factor */
     state->camp.adenylyl_cyclase_activity = clamp_f(
-        state->camp.adenylyl_cyclase_activity + ac_increase, 0.0f, 1.0f
+        state->camp.adenylyl_cyclase_activity + ac_increase, 0.0F, 1.0F
     );
 
     state->camp.last_update_ms = timestamp_ms;
@@ -561,9 +561,9 @@ nimcp_result_t second_messenger_activate_gi(
     second_messenger_state_t* state = &system->states[neuron_id];
 
     /* Gi activation decreases adenylyl cyclase activity */
-    float ac_decrease = occupancy * 0.15f;
+    float ac_decrease = occupancy * 0.15F;
     state->camp.adenylyl_cyclase_activity = clamp_f(
-        state->camp.adenylyl_cyclase_activity - ac_decrease, 0.0f, 1.0f
+        state->camp.adenylyl_cyclase_activity - ac_decrease, 0.0F, 1.0F
     );
 
     state->camp.last_update_ms = timestamp_ms;
@@ -609,9 +609,9 @@ nimcp_result_t second_messenger_activate_gq(
     second_messenger_state_t* state = &system->states[neuron_id];
 
     /* Gq activation increases phospholipase C activity */
-    float plc_increase = occupancy * 0.25f;
+    float plc_increase = occupancy * 0.25F;
     state->ip3_dag.phospholipase_c_activity = clamp_f(
-        state->ip3_dag.phospholipase_c_activity + plc_increase, 0.0f, 1.0f
+        state->ip3_dag.phospholipase_c_activity + plc_increase, 0.0F, 1.0F
     );
 
     state->ip3_dag.last_update_ms = timestamp_ms;
@@ -643,7 +643,7 @@ nimcp_result_t second_messenger_update(
     if (!system) {
         return NIMCP_ERROR_NULL_POINTER;
     }
-    if (dt_ms <= 0.0f) {
+    if (dt_ms <= 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -652,9 +652,9 @@ nimcp_result_t second_messenger_update(
     }
 
     /* Update aggregate statistics */
-    float total_pka = 0.0f;
-    float total_camkii = 0.0f;
-    float total_creb = 0.0f;
+    float total_pka = 0.0F;
+    float total_camkii = 0.0F;
+    float total_creb = 0.0F;
     uint32_t active_count = 0;
 
     /* Update all active cascades */
@@ -686,7 +686,7 @@ nimcp_result_t second_messenger_update(
         }
 
         /* Check for plasticity tag */
-        if (state->gene_expr.ieg_levels[IEG_ARC] > 0.5f) {
+        if (state->gene_expr.ieg_levels[IEG_ARC] > 0.5F) {
             system->stats.plasticity_tags_set++;
         }
     }
@@ -763,7 +763,7 @@ nimcp_result_t second_messenger_inject_calcium(
     if (neuron_id >= system->max_neurons) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
-    if (ca_nm < 0.0f) {
+    if (ca_nm < 0.0F) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -840,16 +840,16 @@ nimcp_result_t second_messenger_get_effects(
 
     if (!system->neuron_active[neuron_id]) {
         /* Return baseline values */
-        effects->ltp_threshold_modulation = 1.0f;
-        effects->ltd_threshold_modulation = 1.0f;
-        effects->stdp_window_modulation = 1.0f;
-        effects->eligibility_trace_decay = 1.0f;
-        effects->spike_threshold_modulation = 1.0f;
-        effects->input_resistance_modulation = 1.0f;
-        effects->afterhyperpolarization = 1.0f;
-        effects->release_probability_mod = 1.0f;
-        effects->postsynaptic_gain_mod = 1.0f;
-        effects->nmda_modulation = 1.0f;
+        effects->ltp_threshold_modulation = 1.0F;
+        effects->ltd_threshold_modulation = 1.0F;
+        effects->stdp_window_modulation = 1.0F;
+        effects->eligibility_trace_decay = 1.0F;
+        effects->spike_threshold_modulation = 1.0F;
+        effects->input_resistance_modulation = 1.0F;
+        effects->afterhyperpolarization = 1.0F;
+        effects->release_probability_mod = 1.0F;
+        effects->postsynaptic_gain_mod = 1.0F;
+        effects->nmda_modulation = 1.0F;
         return NIMCP_SUCCESS;
     }
 
@@ -857,35 +857,35 @@ nimcp_result_t second_messenger_get_effects(
 
     /* PKA: lowers LTP threshold, enhances L-type Ca channels */
     float pka = state->camp.pka_activity;
-    effects->ltp_threshold_modulation = 1.0f - 0.3f * pka;  /* 0.7-1.0 */
-    effects->nmda_modulation = 1.0f + 0.2f * pka;           /* 1.0-1.2 */
+    effects->ltp_threshold_modulation = 1.0F - 0.3F * pka;  /* 0.7-1.0 */
+    effects->nmda_modulation = 1.0F + 0.2F * pka;           /* 1.0-1.2 */
 
     /* PKC: affects release probability and postsynaptic gain */
     float pkc = state->ip3_dag.pkc_activity;
-    effects->release_probability_mod = 1.0f + 0.3f * pkc;   /* 1.0-1.3 */
-    effects->postsynaptic_gain_mod = 1.0f + 0.2f * pkc;     /* 1.0-1.2 */
+    effects->release_probability_mod = 1.0F + 0.3F * pkc;   /* 1.0-1.3 */
+    effects->postsynaptic_gain_mod = 1.0F + 0.2F * pkc;     /* 1.0-1.2 */
 
     /* CaMKII: critical for LTP, affects AMPAR trafficking */
     float camkii = state->calcium.camkii_activity;
-    effects->ltp_threshold_modulation -= 0.2f * camkii;     /* Further reduction */
-    effects->stdp_window_modulation = 1.0f + 0.5f * camkii; /* Wider window */
+    effects->ltp_threshold_modulation -= 0.2F * camkii;     /* Further reduction */
+    effects->stdp_window_modulation = 1.0F + 0.5F * camkii; /* Wider window */
 
     /* Clamp LTP threshold modulation */
-    effects->ltp_threshold_modulation = clamp_f(effects->ltp_threshold_modulation, 0.5f, 1.0f);
+    effects->ltp_threshold_modulation = clamp_f(effects->ltp_threshold_modulation, 0.5F, 1.0F);
 
     /* LTD threshold: opposite direction from LTP */
-    effects->ltd_threshold_modulation = 1.0f + 0.2f * (pka + camkii);
+    effects->ltd_threshold_modulation = 1.0F + 0.2F * (pka + camkii);
 
     /* Eligibility trace decay: PKA slows decay */
-    effects->eligibility_trace_decay = 1.0f - 0.3f * pka;
+    effects->eligibility_trace_decay = 1.0F - 0.3F * pka;
 
     /* Excitability modulation */
-    effects->spike_threshold_modulation = 1.0f - 0.1f * pka + 0.05f * pkc;
-    effects->input_resistance_modulation = 1.0f + 0.1f * pkc;
-    effects->afterhyperpolarization = 1.0f - 0.2f * pka;
+    effects->spike_threshold_modulation = 1.0F - 0.1F * pka + 0.05F * pkc;
+    effects->input_resistance_modulation = 1.0F + 0.1F * pkc;
+    effects->afterhyperpolarization = 1.0F - 0.2F * pka;
 
     /* Plasticity tag based on Arc expression */
-    effects->plasticity_tag_set = state->gene_expr.ieg_levels[IEG_ARC] > 0.5f;
+    effects->plasticity_tag_set = state->gene_expr.ieg_levels[IEG_ARC] > 0.5F;
     effects->bdnf_availability = state->gene_expr.ieg_levels[IEG_BDNF];
 
     return NIMCP_SUCCESS;
@@ -900,10 +900,10 @@ float second_messenger_get_kinase_activity(
     kinase_type_t kinase
 ) {
     if (!system || neuron_id >= system->max_neurons) {
-        return -1.0f;
+        return -1.0F;
     }
     if (!system->neuron_active[neuron_id]) {
-        return 0.0f;
+        return 0.0F;
     }
 
     const second_messenger_state_t* state = &system->states[neuron_id];
@@ -917,9 +917,9 @@ float second_messenger_get_kinase_activity(
             return state->calcium.camkii_activity;
         case KINASE_MAPK:
             /* MAPK activity derived from combined inputs */
-            return (state->camp.pka_activity + state->ip3_dag.pkc_activity) * 0.5f;
+            return (state->camp.pka_activity + state->ip3_dag.pkc_activity) * 0.5F;
         default:
-            return -1.0f;
+            return -1.0F;
     }
 }
 
@@ -932,13 +932,13 @@ float second_messenger_get_ieg_level(
     ieg_type_t ieg
 ) {
     if (!system || neuron_id >= system->max_neurons) {
-        return -1.0f;
+        return -1.0F;
     }
     if (ieg >= IEG_COUNT) {
-        return -1.0f;
+        return -1.0F;
     }
     if (!system->neuron_active[neuron_id]) {
-        return 0.0f;
+        return 0.0F;
     }
 
     return system->states[neuron_id].gene_expr.ieg_levels[ieg];
@@ -960,7 +960,7 @@ bool second_messenger_is_tagged(
 
     /* Plasticity tag set when Arc and BDNF are sufficiently expressed */
     const gene_expression_t* ge = &system->states[neuron_id].gene_expr;
-    return (ge->ieg_levels[IEG_ARC] > 0.5f) && (ge->creb_phosphorylation > 0.4f);
+    return (ge->ieg_levels[IEG_ARC] > 0.5F) && (ge->creb_phosphorylation > 0.4F);
 }
 
 /*=============================================================================
@@ -996,10 +996,10 @@ float second_messenger_get_plasticity_modulation(
     uint32_t neuron_id
 ) {
     if (!system || neuron_id >= system->max_neurons) {
-        return 1.0f;
+        return 1.0F;
     }
     if (!system->neuron_active[neuron_id]) {
-        return 1.0f;
+        return 1.0F;
     }
 
     return system->states[neuron_id].plasticity_modulation;
@@ -1013,10 +1013,10 @@ float second_messenger_get_excitability_modulation(
     uint32_t neuron_id
 ) {
     if (!system || neuron_id >= system->max_neurons) {
-        return 1.0f;
+        return 1.0F;
     }
     if (!system->neuron_active[neuron_id]) {
-        return 1.0f;
+        return 1.0F;
     }
 
     return system->states[neuron_id].excitability_modulation;
@@ -1182,43 +1182,43 @@ static void init_state_baseline(second_messenger_state_t* state, uint32_t neuron
     memset(state, 0, sizeof(second_messenger_state_t));
 
     /* cAMP pathway baseline */
-    state->camp.adenylyl_cyclase_activity = 0.1f;
+    state->camp.adenylyl_cyclase_activity = 0.1F;
     state->camp.camp_concentration = SM_CAMP_BASELINE_UM;
-    state->camp.pde_activity = 0.5f;
-    state->camp.pka_activity = 0.0f;
-    state->camp.pka_catalytic_free = 0.0f;
+    state->camp.pde_activity = 0.5F;
+    state->camp.pka_activity = 0.0F;
+    state->camp.pka_catalytic_free = 0.0F;
     state->camp.last_update_ms = timestamp_ms;
 
     /* IP3/DAG pathway baseline */
-    state->ip3_dag.phospholipase_c_activity = 0.05f;
+    state->ip3_dag.phospholipase_c_activity = 0.05F;
     state->ip3_dag.ip3_concentration = SM_IP3_BASELINE_UM;
     state->ip3_dag.dag_concentration = SM_DAG_BASELINE;
-    state->ip3_dag.ip3_receptor_open_prob = 0.0f;
-    state->ip3_dag.pkc_activity = 0.0f;
+    state->ip3_dag.ip3_receptor_open_prob = 0.0F;
+    state->ip3_dag.pkc_activity = 0.0F;
     state->ip3_dag.last_update_ms = timestamp_ms;
 
     /* Calcium signaling baseline */
     state->calcium.ca_cytoplasmic = SM_CA_BASELINE_NM;
-    state->calcium.ca_er_store = 0.8f;  /* ER mostly full */
-    state->calcium.calmodulin_activation = 0.0f;
-    state->calcium.camkii_activity = 0.0f;
-    state->calcium.camkii_autophosphorylation = 0.0f;
-    state->calcium.serca_activity = 0.5f;
+    state->calcium.ca_er_store = 0.8F;  /* ER mostly full */
+    state->calcium.calmodulin_activation = 0.0F;
+    state->calcium.camkii_activity = 0.0F;
+    state->calcium.camkii_autophosphorylation = 0.0F;
+    state->calcium.serca_activity = 0.5F;
     state->calcium.last_update_ms = timestamp_ms;
 
     /* Gene expression baseline */
-    state->gene_expr.creb_phosphorylation = 0.0f;
-    state->gene_expr.creb_activity = 0.0f;
-    state->gene_expr.protein_synthesis_rate = 1.0f;
+    state->gene_expr.creb_phosphorylation = 0.0F;
+    state->gene_expr.creb_activity = 0.0F;
+    state->gene_expr.protein_synthesis_rate = 1.0F;
     state->gene_expr.last_expression_ms = timestamp_ms;
     for (int i = 0; i < IEG_COUNT; i++) {
-        state->gene_expr.ieg_levels[i] = 0.0f;
+        state->gene_expr.ieg_levels[i] = 0.0F;
     }
 
     /* Integration state */
-    state->total_kinase_activity = 0.0f;
-    state->plasticity_modulation = 1.0f;
-    state->excitability_modulation = 1.0f;
+    state->total_kinase_activity = 0.0F;
+    state->plasticity_modulation = 1.0F;
+    state->excitability_modulation = 1.0F;
 
     /* Metadata */
     state->neuron_id = neuron_id;
@@ -1233,13 +1233,13 @@ static void update_camp_pathway(second_messenger_state_t* state, float dt_ms) {
     camp_pathway_t* camp = &state->camp;
 
     /* cAMP synthesis: AC activity -> cAMP production */
-    float camp_synthesis = camp->adenylyl_cyclase_activity * 10.0f;  /* micromolar/s */
+    float camp_synthesis = camp->adenylyl_cyclase_activity * 10.0F;  /* micromolar/s */
 
     /* cAMP degradation: PDE activity -> cAMP breakdown */
-    float camp_degradation = camp->pde_activity * camp->camp_concentration * 0.5f;
+    float camp_degradation = camp->pde_activity * camp->camp_concentration * 0.5F;
 
     /* Update cAMP concentration (Euler integration) */
-    float dcAMP = (camp_synthesis - camp_degradation) * (dt_ms / 1000.0f);
+    float dcAMP = (camp_synthesis - camp_degradation) * (dt_ms / 1000.0F);
     camp->camp_concentration = clamp_f(
         camp->camp_concentration + dcAMP,
         SM_CAMP_BASELINE_UM,
@@ -1247,16 +1247,16 @@ static void update_camp_pathway(second_messenger_state_t* state, float dt_ms) {
     );
 
     /* PKA activation (Hill function) */
-    float camp_norm = camp->camp_concentration / 1.0f;  /* K_d = 1 micromolar */
-    camp->pka_activity = hill_function(camp_norm, 1.0f, SM_HILL_PKA);
+    float camp_norm = camp->camp_concentration / 1.0F;  /* K_d = 1 micromolar */
+    camp->pka_activity = hill_function(camp_norm, 1.0F, SM_HILL_PKA);
 
     /* Free catalytic subunits */
-    camp->pka_catalytic_free = camp->pka_activity * 0.8f;
+    camp->pka_catalytic_free = camp->pka_activity * 0.8F;
 
     /* AC decay back to baseline */
-    float ac_decay = (camp->adenylyl_cyclase_activity - 0.1f) * dt_ms / SM_TAU_CAMP_SYNTHESIS;
+    float ac_decay = (camp->adenylyl_cyclase_activity - 0.1F) * dt_ms / SM_TAU_CAMP_SYNTHESIS;
     camp->adenylyl_cyclase_activity = clamp_f(
-        camp->adenylyl_cyclase_activity - ac_decay, 0.0f, 1.0f
+        camp->adenylyl_cyclase_activity - ac_decay, 0.0F, 1.0F
     );
 }
 
@@ -1267,13 +1267,13 @@ static void update_ip3_dag_pathway(second_messenger_state_t* state, float dt_ms)
     ip3_dag_pathway_t* ip3dag = &state->ip3_dag;
 
     /* IP3 synthesis from PLC activity */
-    float ip3_synthesis = ip3dag->phospholipase_c_activity * 20.0f;  /* micromolar/s */
+    float ip3_synthesis = ip3dag->phospholipase_c_activity * 20.0F;  /* micromolar/s */
 
     /* IP3 degradation */
-    float ip3_degradation = ip3dag->ip3_concentration * 0.1f;
+    float ip3_degradation = ip3dag->ip3_concentration * 0.1F;
 
     /* Update IP3 concentration */
-    float dIP3 = (ip3_synthesis - ip3_degradation) * (dt_ms / 1000.0f);
+    float dIP3 = (ip3_synthesis - ip3_degradation) * (dt_ms / 1000.0F);
     ip3dag->ip3_concentration = clamp_f(
         ip3dag->ip3_concentration + dIP3,
         SM_IP3_BASELINE_UM,
@@ -1281,10 +1281,10 @@ static void update_ip3_dag_pathway(second_messenger_state_t* state, float dt_ms)
     );
 
     /* DAG synthesis (parallels IP3) */
-    float dag_synthesis = ip3dag->phospholipase_c_activity * 0.5f;
-    float dag_degradation = ip3dag->dag_concentration * 0.1f;
+    float dag_synthesis = ip3dag->phospholipase_c_activity * 0.5F;
+    float dag_degradation = ip3dag->dag_concentration * 0.1F;
 
-    float dDAG = (dag_synthesis - dag_degradation) * (dt_ms / 1000.0f);
+    float dDAG = (dag_synthesis - dag_degradation) * (dt_ms / 1000.0F);
     ip3dag->dag_concentration = clamp_f(
         ip3dag->dag_concentration + dDAG,
         SM_DAG_BASELINE,
@@ -1292,18 +1292,18 @@ static void update_ip3_dag_pathway(second_messenger_state_t* state, float dt_ms)
     );
 
     /* IP3 receptor open probability */
-    float ip3_norm = ip3dag->ip3_concentration / 0.5f;  /* K_d = 0.5 micromolar */
-    ip3dag->ip3_receptor_open_prob = hill_function(ip3_norm, 1.0f, 2.0f);
+    float ip3_norm = ip3dag->ip3_concentration / 0.5F;  /* K_d = 0.5 micromolar */
+    ip3dag->ip3_receptor_open_prob = hill_function(ip3_norm, 1.0F, 2.0F);
 
     /* PKC activation (requires DAG + Ca2+) */
-    float ca_norm = state->calcium.ca_cytoplasmic / 200.0f;  /* Ca2+ contribution */
-    float pkc_input = ip3dag->dag_concentration * 0.7f + ca_norm * 0.3f;
-    ip3dag->pkc_activity = hill_function(pkc_input, 0.3f, SM_HILL_PKC);
+    float ca_norm = state->calcium.ca_cytoplasmic / 200.0F;  /* Ca2+ contribution */
+    float pkc_input = ip3dag->dag_concentration * 0.7F + ca_norm * 0.3F;
+    ip3dag->pkc_activity = hill_function(pkc_input, 0.3F, SM_HILL_PKC);
 
     /* PLC decay back to baseline */
-    float plc_decay = (ip3dag->phospholipase_c_activity - 0.05f) * dt_ms / SM_TAU_IP3_SYNTHESIS;
+    float plc_decay = (ip3dag->phospholipase_c_activity - 0.05F) * dt_ms / SM_TAU_IP3_SYNTHESIS;
     ip3dag->phospholipase_c_activity = clamp_f(
-        ip3dag->phospholipase_c_activity - plc_decay, 0.0f, 1.0f
+        ip3dag->phospholipase_c_activity - plc_decay, 0.0F, 1.0F
     );
 }
 
@@ -1316,13 +1316,13 @@ static void update_calcium_signaling(second_messenger_state_t* state, float dt_m
     (void)config;  /* Use config for future customization */
 
     /* Ca2+ release from ER via IP3 receptors */
-    float ca_release = state->ip3_dag.ip3_receptor_open_prob * ca->ca_er_store * 100.0f;
+    float ca_release = state->ip3_dag.ip3_receptor_open_prob * ca->ca_er_store * 100.0F;
 
     /* SERCA reuptake */
-    float ca_reuptake = ca->serca_activity * (ca->ca_cytoplasmic - SM_CA_BASELINE_NM) * 0.1f;
+    float ca_reuptake = ca->serca_activity * (ca->ca_cytoplasmic - SM_CA_BASELINE_NM) * 0.1F;
 
     /* Update cytoplasmic calcium */
-    float dCa = (ca_release - ca_reuptake) * (dt_ms / 1000.0f);
+    float dCa = (ca_release - ca_reuptake) * (dt_ms / 1000.0F);
     ca->ca_cytoplasmic = clamp_f(
         ca->ca_cytoplasmic + dCa,
         SM_CA_BASELINE_NM,
@@ -1330,38 +1330,38 @@ static void update_calcium_signaling(second_messenger_state_t* state, float dt_m
     );
 
     /* Update ER store (inverse of release) */
-    float dER = (-ca_release * 0.01f + ca_reuptake * 0.01f) * (dt_ms / 1000.0f);
-    ca->ca_er_store = clamp_f(ca->ca_er_store + dER, 0.0f, 1.0f);
+    float dER = (-ca_release * 0.01F + ca_reuptake * 0.01F) * (dt_ms / 1000.0F);
+    ca->ca_er_store = clamp_f(ca->ca_er_store + dER, 0.0F, 1.0F);
 
     /* Calmodulin activation */
     float ca_norm = (ca->ca_cytoplasmic - SM_CA_BASELINE_NM) /
                     (SM_CA_MAX_NM - SM_CA_BASELINE_NM);
-    ca_norm = clamp_f(ca_norm, 0.0f, 1.0f);
-    float cam_target = hill_function(ca_norm, 0.3f, 4.0f);  /* Cooperative binding */
+    ca_norm = clamp_f(ca_norm, 0.0F, 1.0F);
+    float cam_target = hill_function(ca_norm, 0.3F, 4.0F);  /* Cooperative binding */
 
     float dCaM = (cam_target - ca->calmodulin_activation) * dt_ms / SM_TAU_CALMODULIN;
-    ca->calmodulin_activation = clamp_f(ca->calmodulin_activation + dCaM, 0.0f, 1.0f);
+    ca->calmodulin_activation = clamp_f(ca->calmodulin_activation + dCaM, 0.0F, 1.0F);
 
     /* CaMKII activation */
-    float camkii_target = hill_function(ca->calmodulin_activation, 0.5f, SM_HILL_CAMKII);
+    float camkii_target = hill_function(ca->calmodulin_activation, 0.5F, SM_HILL_CAMKII);
 
     /* CaMKII autophosphorylation provides positive feedback */
-    float autop_contribution = ca->camkii_autophosphorylation * 0.3f;
-    camkii_target = clamp_f(camkii_target + autop_contribution, 0.0f, 1.0f);
+    float autop_contribution = ca->camkii_autophosphorylation * 0.3F;
+    camkii_target = clamp_f(camkii_target + autop_contribution, 0.0F, 1.0F);
 
     float dCaMKII = (camkii_target - ca->camkii_activity) * dt_ms / SM_TAU_CAMKII;
-    ca->camkii_activity = clamp_f(ca->camkii_activity + dCaMKII, 0.0f, 1.0f);
+    ca->camkii_activity = clamp_f(ca->camkii_activity + dCaMKII, 0.0F, 1.0F);
 
     /* Autophosphorylation (bistable switch) */
-    if (ca->camkii_activity > 0.6f) {
-        float autop_rate = 0.01f * (ca->camkii_activity - 0.6f);
+    if (ca->camkii_activity > 0.6F) {
+        float autop_rate = 0.01F * (ca->camkii_activity - 0.6F);
         ca->camkii_autophosphorylation = clamp_f(
-            ca->camkii_autophosphorylation + autop_rate * (dt_ms / 1000.0f),
-            0.0f, 1.0f
+            ca->camkii_autophosphorylation + autop_rate * (dt_ms / 1000.0F),
+            0.0F, 1.0F
         );
     } else {
         /* Slow decay of autophosphorylation */
-        ca->camkii_autophosphorylation *= expf(-dt_ms / 60000.0f);  /* 1 minute decay */
+        ca->camkii_autophosphorylation *= expf(-dt_ms / 60000.0F);  /* 1 minute decay */
     }
 }
 
@@ -1373,18 +1373,18 @@ static void update_gene_expression(second_messenger_state_t* state, float dt_ms,
     gene_expression_t* ge = &state->gene_expr;
 
     /* Combined kinase input to CREB */
-    float kinase_input = state->camp.pka_activity * 0.5f +
-                         state->calcium.camkii_activity * 0.3f +
-                         state->ip3_dag.pkc_activity * 0.2f;
+    float kinase_input = state->camp.pka_activity * 0.5F +
+                         state->calcium.camkii_activity * 0.3F +
+                         state->ip3_dag.pkc_activity * 0.2F;
 
     /* CREB phosphorylation (slow dynamics) */
-    float creb_target = hill_function(kinase_input, config->creb_phosphorylation_threshold, 2.0f);
+    float creb_target = hill_function(kinase_input, config->creb_phosphorylation_threshold, 2.0F);
     float dCREB = (creb_target - ge->creb_phosphorylation) * dt_ms / SM_TAU_CREB_PHOS;
-    ge->creb_phosphorylation = clamp_f(ge->creb_phosphorylation + dCREB, 0.0f, 1.0f);
+    ge->creb_phosphorylation = clamp_f(ge->creb_phosphorylation + dCREB, 0.0F, 1.0F);
 
     /* CREB transcriptional activity (slightly delayed from phosphorylation) */
-    float creb_delay = 0.01f;  /* Small delay factor */
-    ge->creb_activity = ge->creb_phosphorylation * (1.0f - expf(-dt_ms * creb_delay));
+    float creb_delay = 0.01F;  /* Small delay factor */
+    ge->creb_activity = ge->creb_phosphorylation * (1.0F - expf(-dt_ms * creb_delay));
 
     /* IEG induction (very slow dynamics - minutes scale) */
     if (ge->creb_phosphorylation > config->ieg_induction_threshold) {
@@ -1393,38 +1393,38 @@ static void update_gene_expression(second_messenger_state_t* state, float dt_ms,
 
         /* c-Fos: fastest IEG */
         ge->ieg_levels[IEG_CFOS] = clamp_f(
-            ge->ieg_levels[IEG_CFOS] + induction_rate * 1.2f, 0.0f, 1.0f
+            ge->ieg_levels[IEG_CFOS] + induction_rate * 1.2F, 0.0F, 1.0F
         );
 
         /* Arc: slower, critical for plasticity */
         ge->ieg_levels[IEG_ARC] = clamp_f(
-            ge->ieg_levels[IEG_ARC] + induction_rate * 0.8f, 0.0f, 1.0f
+            ge->ieg_levels[IEG_ARC] + induction_rate * 0.8F, 0.0F, 1.0F
         );
 
         /* BDNF: slowest, but most important for late-LTP */
         ge->ieg_levels[IEG_BDNF] = clamp_f(
-            ge->ieg_levels[IEG_BDNF] + induction_rate * 0.5f, 0.0f, 1.0f
+            ge->ieg_levels[IEG_BDNF] + induction_rate * 0.5F, 0.0F, 1.0F
         );
 
         /* Egr-1: memory consolidation */
         ge->ieg_levels[IEG_EGR1] = clamp_f(
-            ge->ieg_levels[IEG_EGR1] + induction_rate * 0.7f, 0.0f, 1.0f
+            ge->ieg_levels[IEG_EGR1] + induction_rate * 0.7F, 0.0F, 1.0F
         );
 
         /* Homer1a: mGluR modulation */
         ge->ieg_levels[IEG_HOMER1A] = clamp_f(
-            ge->ieg_levels[IEG_HOMER1A] + induction_rate * 0.6f, 0.0f, 1.0f
+            ge->ieg_levels[IEG_HOMER1A] + induction_rate * 0.6F, 0.0F, 1.0F
         );
     }
 
     /* IEG decay (mRNA half-life ~30-60 minutes) */
-    float ieg_decay_rate = dt_ms / 1800000.0f;  /* 30 minute half-life */
+    float ieg_decay_rate = dt_ms / 1800000.0F;  /* 30 minute half-life */
     for (int i = 0; i < IEG_COUNT; i++) {
-        ge->ieg_levels[i] *= (1.0f - ieg_decay_rate);
+        ge->ieg_levels[i] *= (1.0F - ieg_decay_rate);
     }
 
     /* Protein synthesis rate affected by activity */
-    ge->protein_synthesis_rate = 1.0f + 0.5f * ge->creb_phosphorylation;
+    ge->protein_synthesis_rate = 1.0F + 0.5F * ge->creb_phosphorylation;
 }
 
 /**
@@ -1433,29 +1433,29 @@ static void update_gene_expression(second_messenger_state_t* state, float dt_ms,
 static void update_integration_state(second_messenger_state_t* state) {
     /* Total kinase activity */
     state->total_kinase_activity =
-        state->camp.pka_activity * 0.35f +
-        state->ip3_dag.pkc_activity * 0.30f +
-        state->calcium.camkii_activity * 0.35f;
+        state->camp.pka_activity * 0.35F +
+        state->ip3_dag.pkc_activity * 0.30F +
+        state->calcium.camkii_activity * 0.35F;
 
     /* Plasticity modulation: higher kinase activity = lower threshold for plasticity */
     /* Range: 0.5 (very enhanced) to 1.5 (suppressed) */
-    state->plasticity_modulation = 1.0f - 0.5f * state->total_kinase_activity +
-                                   0.2f * state->gene_expr.ieg_levels[IEG_ARC];
-    state->plasticity_modulation = clamp_f(state->plasticity_modulation, 0.5f, 1.5f);
+    state->plasticity_modulation = 1.0F - 0.5F * state->total_kinase_activity +
+                                   0.2F * state->gene_expr.ieg_levels[IEG_ARC];
+    state->plasticity_modulation = clamp_f(state->plasticity_modulation, 0.5F, 1.5F);
 
     /* Excitability modulation: PKA increases, PKC can decrease */
-    state->excitability_modulation = 1.0f +
-                                     0.1f * state->camp.pka_activity -
-                                     0.05f * state->ip3_dag.pkc_activity;
-    state->excitability_modulation = clamp_f(state->excitability_modulation, 0.8f, 1.2f);
+    state->excitability_modulation = 1.0F +
+                                     0.1F * state->camp.pka_activity -
+                                     0.05F * state->ip3_dag.pkc_activity;
+    state->excitability_modulation = clamp_f(state->excitability_modulation, 0.8F, 1.2F);
 }
 
 /**
  * @brief Hill function for sigmoidal kinetics
  */
 static float hill_function(float x, float k, float n) {
-    if (x <= 0.0f) {
-        return 0.0f;
+    if (x <= 0.0F) {
+        return 0.0F;
     }
     float xn = powf(x, n);
     float kn = powf(k, n);

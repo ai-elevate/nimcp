@@ -64,9 +64,9 @@ myelin_network_config_t myelin_network_default_config(void)
         .max_sheaths = NIMCP_MYELIN_SHEATH_POOL_SIZE,
         .max_segments_per_sheath = 32,
         .target_g_ratio = NIMCP_MYELIN_G_RATIO_OPTIMAL,
-        .myelination_threshold = 0.5f,
+        .myelination_threshold = 0.5F,
         .damage_threshold = NIMCP_MYELIN_INTEGRITY_DAMAGED,
-        .repair_rate_multiplier = 1.0f,
+        .repair_rate_multiplier = 1.0F,
         .enable_paranodes = true,
         .enable_metabolic_coupling = true,
         .enable_activity_dependence = true,
@@ -316,29 +316,29 @@ myelin_sheath_t* myelin_sheath_create(uint32_t id, uint32_t axon_id,
     }
 
     // Initialize aggregate properties
-    sheath->total_length_um = 0.0f;
+    sheath->total_length_um = 0.0F;
     sheath->mean_g_ratio = NIMCP_MYELIN_G_RATIO_OPTIMAL;
-    sheath->mean_lamellae = 0.0f;
-    sheath->coverage_fraction = 0.0f;
+    sheath->mean_lamellae = 0.0F;
+    sheath->coverage_fraction = 0.0F;
 
     // Health defaults
     sheath->overall_health = MYELIN_HEALTH_INTACT;
-    sheath->mean_integrity = 1.0f;
-    sheath->min_integrity = 1.0f;
+    sheath->mean_integrity = 1.0F;
+    sheath->min_integrity = 1.0F;
     sheath->damaged_segment_count = 0;
 
     // Conduction defaults
     sheath->effective_velocity_ms = NIMCP_MYELIN_BASE_VELOCITY_MS;
-    sheath->total_delay_ms = 0.0f;
-    sheath->velocity_ratio = 1.0f;
+    sheath->total_delay_ms = 0.0F;
+    sheath->velocity_ratio = 1.0F;
 
     // Metabolic defaults
-    sheath->total_atp_consumption = 0.0f;
-    sheath->mean_trophic_support = 1.0f;
+    sheath->total_atp_consumption = 0.0F;
+    sheath->mean_trophic_support = 1.0F;
 
     // Dynamics
-    sheath->myelination_rate = 0.0f;
-    sheath->demyelination_rate = 0.0f;
+    sheath->myelination_rate = 0.0F;
+    sheath->demyelination_rate = 0.0F;
     sheath->repair_rate = NIMCP_MYELIN_REPAIR_RATE_BASE;
 
     // State tracking
@@ -383,7 +383,7 @@ myelin_sheath_t* myelin_sheath_create_for_axon(uint32_t id, uint32_t axon_id,
 
     // Pre-create segments with optimal spacing
     float segment_length = axon_length / (float)num_segments;
-    float position = 0.0f;
+    float position = 0.0F;
 
     for (uint32_t i = 0; i < num_segments; i++) {
         myelin_segment_t* segment = myelin_sheath_add_segment(
@@ -444,32 +444,32 @@ myelin_segment_t* myelin_sheath_add_segment(myelin_sheath_t* sheath,
     // Position
     segment->start_position_um = start_position_um;
     segment->length_um = length_um;
-    segment->position[0] = start_position_um + length_um / 2.0f;
-    segment->position[1] = 0.0f;
-    segment->position[2] = 0.0f;
+    segment->position[0] = start_position_um + length_um / 2.0F;
+    segment->position[1] = 0.0F;
+    segment->position[2] = 0.0F;
 
     // Structural properties - start with minimal myelination
     segment->num_lamellae = NIMCP_MYELIN_MIN_LAMELLAE;
     segment->inner_diameter_um = axon_diameter;
     segment->thickness_um = myelin_compute_thickness(segment->num_lamellae);
-    segment->outer_diameter_um = axon_diameter + 2.0f * segment->thickness_um;
+    segment->outer_diameter_um = axon_diameter + 2.0F * segment->thickness_um;
     segment->g_ratio = myelin_compute_g_ratio(axon_diameter, segment->num_lamellae);
 
     // Compaction - starts as partial
     segment->compaction = MYELIN_COMPACT_PARTIAL;
-    segment->compaction_score = 0.5f;
-    segment->mdl_formation = 0.5f;
-    segment->ipl_formation = 0.5f;
+    segment->compaction_score = 0.5F;
+    segment->mdl_formation = 0.5F;
+    segment->ipl_formation = 0.5F;
 
     // Paranodes - forming
     segment->proximal_paranode = PARANODE_FORMING;
     segment->distal_paranode = PARANODE_FORMING;
-    segment->paranode_integrity = 0.5f;
+    segment->paranode_integrity = 0.5F;
 
     // Health - starts intact
     segment->health = MYELIN_HEALTH_INTACT;
-    segment->integrity = 1.0f;
-    segment->damage_accumulated = 0.0f;
+    segment->integrity = 1.0F;
+    segment->damage_accumulated = 0.0F;
     segment->damage_onset_time = 0;
 
     // Conduction
@@ -477,9 +477,9 @@ myelin_segment_t* myelin_sheath_add_segment(myelin_sheath_t* sheath,
     segment->propagation_delay_ms = myelin_segment_compute_delay(segment);
 
     // Metabolic
-    segment->atp_level = 1.0f;
-    segment->lactate_received = 0.0f;
-    segment->trophic_support = 1.0f;
+    segment->atp_level = 1.0F;
+    segment->lactate_received = 0.0F;
+    segment->trophic_support = 1.0F;
 
     // Timestamps
     segment->creation_time = myelin_get_time_us();
@@ -574,7 +574,7 @@ nimcp_result_t myelin_segment_set_lamellae(myelin_segment_t* segment,
 
     segment->num_lamellae = num_lamellae;
     segment->thickness_um = myelin_compute_thickness(num_lamellae);
-    segment->outer_diameter_um = segment->inner_diameter_um + 2.0f * segment->thickness_um;
+    segment->outer_diameter_um = segment->inner_diameter_um + 2.0F * segment->thickness_um;
     segment->g_ratio = myelin_compute_g_ratio(segment->inner_diameter_um, num_lamellae);
 
     // Update conduction velocity
@@ -593,18 +593,18 @@ nimcp_result_t myelin_segment_set_compaction(myelin_segment_t* segment,
     if (!segment) return NIMCP_ERROR_NULL_POINTER;
 
     segment->compaction = compaction;
-    segment->compaction_score = MYELIN_CLAMP(score, 0.0f, 1.0f);
+    segment->compaction_score = MYELIN_CLAMP(score, 0.0F, 1.0F);
 
     // Update MDL/IPL based on compaction
     if (compaction == MYELIN_COMPACT_FULL) {
-        segment->mdl_formation = 1.0f;
-        segment->ipl_formation = 1.0f;
+        segment->mdl_formation = 1.0F;
+        segment->ipl_formation = 1.0F;
     } else if (compaction == MYELIN_COMPACT_PARTIAL) {
-        segment->mdl_formation = score * 0.8f;
-        segment->ipl_formation = score * 0.7f;
+        segment->mdl_formation = score * 0.8F;
+        segment->ipl_formation = score * 0.7F;
     } else {
-        segment->mdl_formation = 0.0f;
-        segment->ipl_formation = 0.0f;
+        segment->mdl_formation = 0.0F;
+        segment->ipl_formation = 0.0F;
     }
 
     segment->last_update_time = myelin_get_time_us();
@@ -622,9 +622,9 @@ uint32_t myelin_compute_optimal_lamellae(float axon_diameter, float target_g_rat
                                    NIMCP_MYELIN_G_RATIO_MIN,
                                    NIMCP_MYELIN_G_RATIO_MAX);
 
-    float lamella_thickness_um = NIMCP_MYELIN_LAMELLA_THICKNESS_NM / 1000.0f;
-    float thickness = axon_diameter * (1.0f - target_g_ratio) / (2.0f * target_g_ratio);
-    uint32_t num_lamellae = (uint32_t)(thickness / lamella_thickness_um + 0.5f);
+    float lamella_thickness_um = NIMCP_MYELIN_LAMELLA_THICKNESS_NM / 1000.0F;
+    float thickness = axon_diameter * (1.0F - target_g_ratio) / (2.0F * target_g_ratio);
+    uint32_t num_lamellae = (uint32_t)(thickness / lamella_thickness_um + 0.5F);
 
     return (uint32_t)MYELIN_CLAMP(num_lamellae,
                                    NIMCP_MYELIN_MIN_LAMELLAE,
@@ -633,17 +633,17 @@ uint32_t myelin_compute_optimal_lamellae(float axon_diameter, float target_g_rat
 
 float myelin_compute_g_ratio(float inner_diameter, uint32_t num_lamellae)
 {
-    float lamella_thickness_um = NIMCP_MYELIN_LAMELLA_THICKNESS_NM / 1000.0f;
+    float lamella_thickness_um = NIMCP_MYELIN_LAMELLA_THICKNESS_NM / 1000.0F;
     float thickness = (float)num_lamellae * lamella_thickness_um;
-    float outer_diameter = inner_diameter + 2.0f * thickness;
+    float outer_diameter = inner_diameter + 2.0F * thickness;
 
-    if (outer_diameter < MYELIN_EPSILON) return 1.0f;
+    if (outer_diameter < MYELIN_EPSILON) return 1.0F;
     return inner_diameter / outer_diameter;
 }
 
 float myelin_compute_thickness(uint32_t num_lamellae)
 {
-    float lamella_thickness_um = NIMCP_MYELIN_LAMELLA_THICKNESS_NM / 1000.0f;
+    float lamella_thickness_um = NIMCP_MYELIN_LAMELLA_THICKNESS_NM / 1000.0F;
     return (float)num_lamellae * lamella_thickness_um;
 }
 
@@ -669,12 +669,12 @@ float myelin_segment_compute_velocity(const myelin_segment_t* segment)
     // G-ratio efficiency factor (peaks at optimal g-ratio)
     float g_optimal = NIMCP_MYELIN_G_RATIO_OPTIMAL;
     float g_deviation = fabsf(g_ratio - g_optimal);
-    float g_efficiency = 1.0f - (g_deviation / NIMCP_MYELIN_G_RATIO_TOLERANCE);
-    g_efficiency = MYELIN_CLAMP(g_efficiency, 0.5f, 1.0f);
+    float g_efficiency = 1.0F - (g_deviation / NIMCP_MYELIN_G_RATIO_TOLERANCE);
+    g_efficiency = MYELIN_CLAMP(g_efficiency, 0.5F, 1.0F);
 
     // Myelination factor based on lamellae
     float myelin_fraction = (float)lamellae / (float)NIMCP_MYELIN_OPTIMAL_LAMELLAE;
-    myelin_fraction = MYELIN_CLAMP(myelin_fraction, 0.0f, 1.0f);
+    myelin_fraction = MYELIN_CLAMP(myelin_fraction, 0.0F, 1.0F);
 
     // Compaction factor
     float compaction_factor = segment->compaction_score;
@@ -695,7 +695,7 @@ float myelin_segment_compute_velocity(const myelin_segment_t* segment)
 
 float myelin_segment_compute_delay(const myelin_segment_t* segment)
 {
-    if (!segment) return 0.0f;
+    if (!segment) return 0.0F;
 
     float velocity = segment->local_velocity_ms;
     if (velocity < MYELIN_EPSILON) {
@@ -704,7 +704,7 @@ float myelin_segment_compute_delay(const myelin_segment_t* segment)
 
     // Convert: length (um) / velocity (m/s) = delay (ms)
     // length_um * 1e-6 (m) / velocity_ms * 1e3 (ms)
-    float delay_ms = (segment->length_um * 1e-6f) / velocity * 1e3f;
+    float delay_ms = (segment->length_um * 1e-6F) / velocity * 1e3F;
 
     return delay_ms;
 }
@@ -715,9 +715,9 @@ void myelin_sheath_update_conduction(myelin_sheath_t* sheath)
 
     nimcp_spinlock_lock(&sheath->lock);
 
-    float total_delay = 0.0f;
-    float total_g_ratio = 0.0f;
-    float total_lamellae = 0.0f;
+    float total_delay = 0.0F;
+    float total_g_ratio = 0.0F;
+    float total_lamellae = 0.0F;
 
     for (uint32_t i = 0; i < sheath->num_segments; i++) {
         myelin_segment_t* seg = sheath->segments[i];
@@ -730,7 +730,7 @@ void myelin_sheath_update_conduction(myelin_sheath_t* sheath)
 
             // Add node of Ranvier delay (small fixed delay)
             if (i < sheath->num_segments - 1) {
-                total_delay += 0.01f;  // ~10us per node
+                total_delay += 0.01F;  // ~10us per node
             }
 
             total_g_ratio += seg->g_ratio;
@@ -745,8 +745,8 @@ void myelin_sheath_update_conduction(myelin_sheath_t* sheath)
     // Effective velocity from total length and delay
     if (total_delay > MYELIN_EPSILON) {
         // velocity (m/s) = length (um) * 1e-6 / delay (ms) * 1e3
-        sheath->effective_velocity_ms = (sheath->total_length_um * 1e-6f) /
-                                        (total_delay * 1e-3f);
+        sheath->effective_velocity_ms = (sheath->total_length_um * 1e-6F) /
+                                        (total_delay * 1e-3F);
     } else {
         sheath->effective_velocity_ms = NIMCP_MYELIN_MAX_VELOCITY_MS;
     }
@@ -761,7 +761,7 @@ void myelin_sheath_update_conduction(myelin_sheath_t* sheath)
 
 float myelin_sheath_get_velocity_ratio(const myelin_sheath_t* sheath)
 {
-    if (!sheath) return 1.0f;
+    if (!sheath) return 1.0F;
     return sheath->velocity_ratio;
 }
 
@@ -777,7 +777,7 @@ nimcp_result_t myelin_segment_apply_damage(myelin_segment_t* segment,
 
     segment->damage_accumulated += damage_amount;
     segment->integrity -= damage_amount;
-    segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0f, 1.0f);
+    segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0F, 1.0F);
 
     if (segment->damage_onset_time == 0 && damage_amount > 0) {
         segment->damage_onset_time = current_time;
@@ -795,10 +795,10 @@ nimcp_result_t myelin_segment_repair(myelin_segment_t* segment,
     if (!segment) return NIMCP_ERROR_NULL_POINTER;
 
     segment->integrity += repair_amount;
-    segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0f, 1.0f);
+    segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0F, 1.0F);
 
     if (segment->integrity > NIMCP_MYELIN_INTEGRITY_HEALTHY) {
-        segment->damage_accumulated = 0.0f;
+        segment->damage_accumulated = 0.0F;
         segment->damage_onset_time = 0;
     }
 
@@ -831,7 +831,7 @@ void myelin_segment_update_health(myelin_segment_t* segment, uint64_t current_ti
         }
     } else if (integrity >= NIMCP_MYELIN_INTEGRITY_CRITICAL) {
         new_state = MYELIN_HEALTH_DAMAGED;
-    } else if (integrity > 0.0f) {
+    } else if (integrity > 0.0F) {
         new_state = MYELIN_HEALTH_DEMYELINATING;
     } else {
         new_state = MYELIN_HEALTH_DEMYELINATED;
@@ -847,8 +847,8 @@ void myelin_sheath_update_health(myelin_sheath_t* sheath)
 
     nimcp_spinlock_lock(&sheath->lock);
 
-    float total_integrity = 0.0f;
-    float min_integrity = 1.0f;
+    float total_integrity = 0.0F;
+    float min_integrity = 1.0F;
     uint32_t damaged_count = 0;
 
     for (uint32_t i = 0; i < sheath->num_segments; i++) {
@@ -875,7 +875,7 @@ void myelin_sheath_update_health(myelin_sheath_t* sheath)
         sheath->overall_health = MYELIN_HEALTH_STRESSED;
     } else if (sheath->mean_integrity >= NIMCP_MYELIN_INTEGRITY_CRITICAL) {
         sheath->overall_health = MYELIN_HEALTH_DAMAGED;
-    } else if (sheath->mean_integrity > 0.0f) {
+    } else if (sheath->mean_integrity > 0.0F) {
         sheath->overall_health = MYELIN_HEALTH_DEMYELINATING;
     } else {
         sheath->overall_health = MYELIN_HEALTH_DEMYELINATED;
@@ -912,13 +912,13 @@ nimcp_result_t myelin_segment_set_paranodes(myelin_segment_t* segment,
 
     // Update integrity based on paranode states
     if (proximal == PARANODE_MATURE && distal == PARANODE_MATURE) {
-        segment->paranode_integrity = 1.0f;
+        segment->paranode_integrity = 1.0F;
     } else if (proximal == PARANODE_DISRUPTED || distal == PARANODE_DISRUPTED) {
-        segment->paranode_integrity = 0.3f;
+        segment->paranode_integrity = 0.3F;
     } else if (proximal == PARANODE_FORMING || distal == PARANODE_FORMING) {
-        segment->paranode_integrity = 0.6f;
+        segment->paranode_integrity = 0.6F;
     } else {
-        segment->paranode_integrity = 0.0f;
+        segment->paranode_integrity = 0.0F;
     }
 
     segment->last_update_time = myelin_get_time_us();
@@ -929,7 +929,7 @@ void myelin_segment_update_paranode_integrity(myelin_segment_t* segment,
                                                float integrity)
 {
     if (!segment) return;
-    segment->paranode_integrity = MYELIN_CLAMP(integrity, 0.0f, 1.0f);
+    segment->paranode_integrity = MYELIN_CLAMP(integrity, 0.0F, 1.0F);
     segment->last_update_time = myelin_get_time_us();
 }
 
@@ -938,7 +938,7 @@ bool myelin_segment_paranodes_functional(const myelin_segment_t* segment)
     if (!segment) return false;
     return (segment->proximal_paranode == PARANODE_MATURE &&
             segment->distal_paranode == PARANODE_MATURE &&
-            segment->paranode_integrity > 0.5f);
+            segment->paranode_integrity > 0.5F);
 }
 
 //=============================================================================
@@ -947,32 +947,32 @@ bool myelin_segment_paranodes_functional(const myelin_segment_t* segment)
 
 void myelin_segment_update_metabolism(myelin_segment_t* segment, float dt)
 {
-    if (!segment || dt <= 0.0f) return;
+    if (!segment || dt <= 0.0F) return;
 
     // ATP consumption for myelin maintenance
     float atp_cost = NIMCP_MYELIN_ATP_MAINTENANCE * dt;
     segment->atp_level -= atp_cost;
 
     // Lactate can be converted to ATP
-    if (segment->lactate_received > 0.0f) {
+    if (segment->lactate_received > 0.0F) {
         float atp_from_lactate = segment->lactate_received * NIMCP_MYELIN_LACTATE_TRANSFER_RATE;
         segment->atp_level += atp_from_lactate;
-        segment->lactate_received *= 0.9f;  // Decay
+        segment->lactate_received *= 0.9F;  // Decay
     }
 
     // Clamp ATP
-    segment->atp_level = MYELIN_CLAMP(segment->atp_level, 0.0f, 1.0f);
+    segment->atp_level = MYELIN_CLAMP(segment->atp_level, 0.0F, 1.0F);
 
     // Low ATP causes damage
-    if (segment->atp_level < 0.2f) {
-        segment->integrity -= 0.001f * dt;
-        segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0f, 1.0f);
+    if (segment->atp_level < 0.2F) {
+        segment->integrity -= 0.001F * dt;
+        segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0F, 1.0F);
     }
 
     // Trophic support affects health
     if (segment->trophic_support < NIMCP_MYELIN_TROPHIC_THRESHOLD) {
-        segment->integrity -= 0.0005f * dt;
-        segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0f, 1.0f);
+        segment->integrity -= 0.0005F * dt;
+        segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0F, 1.0F);
     }
 
     segment->last_update_time = myelin_get_time_us();
@@ -987,13 +987,13 @@ void myelin_segment_receive_lactate(myelin_segment_t* segment, float lactate_amo
 void myelin_segment_set_trophic_support(myelin_segment_t* segment, float trophic_level)
 {
     if (!segment) return;
-    segment->trophic_support = MYELIN_CLAMP(trophic_level, 0.0f, 1.0f);
+    segment->trophic_support = MYELIN_CLAMP(trophic_level, 0.0F, 1.0F);
 }
 
 bool myelin_segment_metabolically_healthy(const myelin_segment_t* segment)
 {
     if (!segment) return false;
-    return (segment->atp_level > 0.3f &&
+    return (segment->atp_level > 0.3F &&
             segment->trophic_support > NIMCP_MYELIN_TROPHIC_THRESHOLD);
 }
 
@@ -1003,36 +1003,36 @@ bool myelin_segment_metabolically_healthy(const myelin_segment_t* segment)
 
 void myelin_segment_step(myelin_segment_t* segment, float dt, uint64_t current_time)
 {
-    if (!segment || dt <= 0.0f) return;
+    if (!segment || dt <= 0.0F) return;
 
     // Update metabolism
     myelin_segment_update_metabolism(segment, dt);
 
     // Natural damage decay (slight degradation over time if not maintained)
     segment->integrity -= NIMCP_MYELIN_DAMAGE_DECAY_RATE * dt;
-    segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0f, 1.0f);
+    segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0F, 1.0F);
 
     // Compaction maturation
     if (segment->compaction == MYELIN_COMPACT_PARTIAL) {
-        segment->compaction_score += 0.01f * dt;
-        if (segment->compaction_score >= 1.0f) {
+        segment->compaction_score += 0.01F * dt;
+        if (segment->compaction_score >= 1.0F) {
             segment->compaction = MYELIN_COMPACT_FULL;
-            segment->compaction_score = 1.0f;
-            segment->mdl_formation = 1.0f;
-            segment->ipl_formation = 1.0f;
+            segment->compaction_score = 1.0F;
+            segment->mdl_formation = 1.0F;
+            segment->ipl_formation = 1.0F;
         }
     }
 
     // Paranode maturation
     if (segment->proximal_paranode == PARANODE_FORMING) {
-        segment->paranode_integrity += 0.02f * dt;
-        if (segment->paranode_integrity >= 0.9f) {
+        segment->paranode_integrity += 0.02F * dt;
+        if (segment->paranode_integrity >= 0.9F) {
             segment->proximal_paranode = PARANODE_MATURE;
         }
     }
     if (segment->distal_paranode == PARANODE_FORMING) {
-        segment->paranode_integrity += 0.02f * dt;
-        if (segment->paranode_integrity >= 0.9f) {
+        segment->paranode_integrity += 0.02F * dt;
+        if (segment->paranode_integrity >= 0.9F) {
             segment->distal_paranode = PARANODE_MATURE;
         }
     }
@@ -1049,7 +1049,7 @@ void myelin_segment_step(myelin_segment_t* segment, float dt, uint64_t current_t
 
 void myelin_sheath_step(myelin_sheath_t* sheath, float dt, uint64_t current_time)
 {
-    if (!sheath || dt <= 0.0f) return;
+    if (!sheath || dt <= 0.0F) return;
 
     nimcp_spinlock_lock(&sheath->lock);
 
@@ -1067,7 +1067,7 @@ void myelin_sheath_step(myelin_sheath_t* sheath, float dt, uint64_t current_time
     myelin_sheath_update_health(sheath);
 
     // Check for maturation
-    if (!sheath->is_mature && sheath->mean_integrity > 0.9f &&
+    if (!sheath->is_mature && sheath->mean_integrity > 0.9F &&
         sheath->overall_health == MYELIN_HEALTH_INTACT) {
         sheath->is_mature = true;
         sheath->maturation_time = current_time;
@@ -1078,7 +1078,7 @@ void myelin_sheath_step(myelin_sheath_t* sheath, float dt, uint64_t current_time
 
 void myelin_sheath_myelinate(myelin_sheath_t* sheath, float rate, float dt)
 {
-    if (!sheath || rate <= 0.0f || dt <= 0.0f) return;
+    if (!sheath || rate <= 0.0F || dt <= 0.0F) return;
 
     nimcp_spinlock_lock(&sheath->lock);
 
@@ -1088,7 +1088,7 @@ void myelin_sheath_myelinate(myelin_sheath_t* sheath, float rate, float dt)
     for (uint32_t i = 0; i < sheath->num_segments; i++) {
         myelin_segment_t* seg = sheath->segments[i];
         if (seg && seg->num_lamellae < NIMCP_MYELIN_OPTIMAL_LAMELLAE) {
-            uint32_t new_lamellae = seg->num_lamellae + (uint32_t)(lamellae_to_add + 0.5f);
+            uint32_t new_lamellae = seg->num_lamellae + (uint32_t)(lamellae_to_add + 0.5F);
             myelin_segment_set_lamellae(seg, new_lamellae);
         }
     }
@@ -1100,7 +1100,7 @@ void myelin_sheath_myelinate(myelin_sheath_t* sheath, float rate, float dt)
 
 void myelin_sheath_demyelinate(myelin_sheath_t* sheath, float rate, float dt)
 {
-    if (!sheath || rate <= 0.0f || dt <= 0.0f) return;
+    if (!sheath || rate <= 0.0F || dt <= 0.0F) return;
 
     nimcp_spinlock_lock(&sheath->lock);
 
@@ -1110,7 +1110,7 @@ void myelin_sheath_demyelinate(myelin_sheath_t* sheath, float rate, float dt)
     for (uint32_t i = 0; i < sheath->num_segments; i++) {
         myelin_segment_t* seg = sheath->segments[i];
         if (seg && seg->num_lamellae > NIMCP_MYELIN_MIN_LAMELLAE) {
-            int32_t new_lamellae = (int32_t)seg->num_lamellae - (int32_t)(lamellae_to_remove + 0.5f);
+            int32_t new_lamellae = (int32_t)seg->num_lamellae - (int32_t)(lamellae_to_remove + 0.5F);
             if (new_lamellae < (int32_t)NIMCP_MYELIN_MIN_LAMELLAE) {
                 new_lamellae = (int32_t)NIMCP_MYELIN_MIN_LAMELLAE;
             }
@@ -1308,7 +1308,7 @@ myelin_sheath_network_t* myelin_network_create(const myelin_network_config_t* co
 
     // Statistics defaults
     network->total_segments = 0;
-    network->mean_network_integrity = 1.0f;
+    network->mean_network_integrity = 1.0F;
     network->mean_network_g_ratio = NIMCP_MYELIN_G_RATIO_OPTIMAL;
     network->demyelinating_count = 0;
     network->remyelinating_count = 0;
@@ -1465,7 +1465,7 @@ uint32_t myelin_network_find_by_oligo(myelin_sheath_network_t* network,
 void myelin_network_step(myelin_sheath_network_t* network,
                           float dt, uint64_t current_time)
 {
-    if (!network || dt <= 0.0f) return;
+    if (!network || dt <= 0.0F) return;
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1473,8 +1473,8 @@ void myelin_network_step(myelin_sheath_network_t* network,
     network->demyelinating_count = 0;
     network->remyelinating_count = 0;
 
-    float total_integrity = 0.0f;
-    float total_g_ratio = 0.0f;
+    float total_integrity = 0.0F;
+    float total_g_ratio = 0.0F;
     uint64_t total_segments = 0;
 
     // Step all sheaths
@@ -1523,8 +1523,8 @@ void myelin_network_get_stats(const myelin_sheath_network_t* network,
     stats->remyelinating_sheaths = network->remyelinating_count;
 
     // Count healthy/damaged
-    float total_length = 0.0f;
-    float total_velocity_ratio = 0.0f;
+    float total_length = 0.0F;
+    float total_velocity_ratio = 0.0F;
 
     for (uint32_t i = 0; i < network->num_sheaths; i++) {
         myelin_sheath_t* sheath = network->sheaths[i];
@@ -1603,16 +1603,16 @@ myelin_sheath_t* myelin_network_create_sheath_for_axon(
 float myelin_network_get_myelination_factor(myelin_sheath_network_t* network,
                                              uint32_t axon_id)
 {
-    if (!network) return 0.0f;
+    if (!network) return 0.0F;
 
     myelin_sheath_t* sheath = myelin_network_find_by_axon(network, axon_id);
-    if (!sheath) return 0.0f;
+    if (!sheath) return 0.0F;
 
     // Weighted factor based on coverage, integrity, and lamellae
     float coverage = sheath->coverage_fraction;
     float integrity = sheath->mean_integrity;
     float lamellae_fraction = sheath->mean_lamellae / (float)NIMCP_MYELIN_OPTIMAL_LAMELLAE;
-    lamellae_fraction = MYELIN_CLAMP(lamellae_fraction, 0.0f, 1.0f);
+    lamellae_fraction = MYELIN_CLAMP(lamellae_fraction, 0.0F, 1.0F);
 
     return coverage * integrity * lamellae_fraction;
 }
@@ -1631,10 +1631,10 @@ float myelin_network_get_velocity(myelin_sheath_network_t* network,
 float myelin_network_get_delay(myelin_sheath_network_t* network,
                                 uint32_t axon_id)
 {
-    if (!network) return 0.0f;
+    if (!network) return 0.0F;
 
     myelin_sheath_t* sheath = myelin_network_find_by_axon(network, axon_id);
-    if (!sheath) return 0.0f;
+    if (!sheath) return 0.0F;
 
     return sheath->total_delay_ms;
 }
@@ -1652,7 +1652,7 @@ void myelin_network_apply_activity(myelin_sheath_network_t* network,
     // Activity-dependent myelination
     if (activity_level > network->config.myelination_threshold) {
         // Increase myelination based on activity
-        float rate = activity_level * 0.1f;  // Lamellae per second per Hz
+        float rate = activity_level * 0.1F;  // Lamellae per second per Hz
         myelin_sheath_myelinate(sheath, rate, dt);
     }
 }
@@ -1735,14 +1735,14 @@ bool myelin_segment_check_block(myelin_segment_t* segment, float temperature_c)
         segment->integrity, temperature_c, &params);
 
     segment->block_probability = block_prob;
-    segment->is_conducting = (block_prob < 0.5f);
+    segment->is_conducting = (block_prob < 0.5F);
 
     return !segment->is_conducting;
 }
 
 float myelin_segment_get_block_probability(myelin_segment_t* segment, float temperature_c)
 {
-    if (!segment) return 1.0f;
+    if (!segment) return 1.0F;
 
     nimcp_conduction_block_params_t params = nimcp_myelin_block_params_default();
 
@@ -1756,7 +1756,7 @@ float myelin_segment_apply_activity_plasticity(myelin_segment_t* segment,
                                                 float activity,
                                                 float dt)
 {
-    if (!segment || dt <= 0.0f) return 0.0f;
+    if (!segment || dt <= 0.0F) return 0.0F;
 
     nimcp_myelination_kinetics_t kinetics = nimcp_myelin_kinetics_default();
 
@@ -1769,8 +1769,8 @@ float myelin_segment_apply_activity_plasticity(myelin_segment_t* segment,
     // Apply change
     float delta = new_lamellae - current_lamellae;
 
-    if (fabsf(delta) >= 0.5f) {
-        uint32_t updated_lamellae = (uint32_t)(new_lamellae + 0.5f);
+    if (fabsf(delta) >= 0.5F) {
+        uint32_t updated_lamellae = (uint32_t)(new_lamellae + 0.5F);
         updated_lamellae = (updated_lamellae < NIMCP_MYELIN_MIN_LAMELLAE) ?
                            NIMCP_MYELIN_MIN_LAMELLAE : updated_lamellae;
         updated_lamellae = (updated_lamellae > NIMCP_MYELIN_MAX_LAMELLAE) ?
@@ -1795,8 +1795,8 @@ nimcp_result_t myelin_sheath_init_biophysics(myelin_sheath_t* sheath,
     }
 
     // Initialize temperature to normal body temperature
-    sheath->current_temperature_c = 37.0f;
-    sheath->activity_ema = 0.0f;
+    sheath->current_temperature_c = 37.0F;
+    sheath->activity_ema = 0.0F;
 
     // Update all segments with enhanced calculations
     myelin_sheath_update_biophysics(sheath);
@@ -1808,7 +1808,7 @@ void myelin_sheath_set_temperature(myelin_sheath_t* sheath, float temperature_c)
 {
     if (!sheath) return;
 
-    sheath->current_temperature_c = MYELIN_CLAMP(temperature_c, 20.0f, 45.0f);
+    sheath->current_temperature_c = MYELIN_CLAMP(temperature_c, 20.0F, 45.0F);
 
     if (sheath->biophysics) {
         sheath->biophysics->temperature_c = sheath->current_temperature_c;
@@ -1820,8 +1820,8 @@ void myelin_sheath_compute_metabolic_efficiency(myelin_sheath_t* sheath)
     if (!sheath || sheath->num_segments == 0) return;
 
     // Calculate mean compaction and integrity
-    float mean_compaction = 0.0f;
-    float mean_integrity = 0.0f;
+    float mean_compaction = 0.0F;
+    float mean_integrity = 0.0F;
 
     for (uint32_t i = 0; i < sheath->num_segments; i++) {
         if (sheath->segments[i]) {
@@ -1835,7 +1835,7 @@ void myelin_sheath_compute_metabolic_efficiency(myelin_sheath_t* sheath)
     // Compute metabolic efficiency
     nimcp_myelin_compute_metabolic_efficiency(
         sheath->total_length_um,
-        sheath->segments[0] ? sheath->segments[0]->inner_diameter_um : 1.0f,
+        sheath->segments[0] ? sheath->segments[0]->inner_diameter_um : 1.0F,
         sheath->num_segments,
         mean_compaction,
         mean_integrity,
@@ -1845,13 +1845,13 @@ void myelin_sheath_compute_metabolic_efficiency(myelin_sheath_t* sheath)
 
 float myelin_sheath_get_atp_per_ap(const myelin_sheath_t* sheath)
 {
-    if (!sheath) return 0.0f;
+    if (!sheath) return 0.0F;
     return sheath->metabolic_efficiency.atp_per_ap;
 }
 
 float myelin_sheath_get_efficiency_ratio(const myelin_sheath_t* sheath)
 {
-    if (!sheath) return 1.0f;
+    if (!sheath) return 1.0F;
     return sheath->metabolic_efficiency.efficiency_ratio;
 }
 
@@ -1920,7 +1920,7 @@ void myelin_sheath_apply_variability(myelin_sheath_t* sheath)
 float myelin_sheath_get_frequency_threshold(const myelin_sheath_t* sheath,
                                              float frequency_hz)
 {
-    if (!sheath) return 1.0f;
+    if (!sheath) return 1.0F;
 
     nimcp_conduction_block_params_t params = nimcp_myelin_block_params_default();
 

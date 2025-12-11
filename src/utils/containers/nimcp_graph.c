@@ -434,7 +434,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
     }
 
     // Insert source vertex into heap
-    nimcp_heap_element_t start_elem = {from, 0.0f};
+    nimcp_heap_element_t start_elem = {from, 0.0F};
     nimcp_min_heap_insert(heap, &start_elem);
 
     // Dijkstra's algorithm with min-heap

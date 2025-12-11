@@ -78,7 +78,7 @@ static NimcpGraph* brain_build_topology_graph(brain_t brain) {
 
     // Add vertices (neurons)
     for (uint32_t i = 0; i < num_neurons; i++) {
-        uint32_t vertex_idx = nimcp_graph_add_vertex(graph, i, 0.0f, 0.0f, 0.0f, 0);
+        uint32_t vertex_idx = nimcp_graph_add_vertex(graph, i, 0.0F, 0.0F, 0.0F, 0);
         if (vertex_idx == NIMCP_INVALID_VERTEX) {
             NIMCP_LOGGING_WARN("Failed to add vertex %u to graph", i);
         }
@@ -90,7 +90,7 @@ static NimcpGraph* brain_build_topology_graph(brain_t brain) {
         for (uint32_t j = 0; j < num_neurons; j++) {
             // Check if synapse exists from i to j
             float weight = adaptive_network_get_synapse_weight(net, i, j);
-            if (weight != 0.0f) {
+            if (weight != 0.0F) {
                 // Add edge with absolute weight (direction doesn't matter for community detection)
                 nimcp_weight_t edge_weight = fabsf(weight);
                 if (!nimcp_graph_add_edge(graph, i, j, edge_weight)) {
@@ -309,7 +309,7 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
         return false;
     }
 
-    topology_validation_t validation = community_validate_topology(base_network, 0.0f);
+    topology_validation_t validation = community_validate_topology(base_network, 0.0F);
 
     // 3. Store results (replace old if exists)
     if (brain->topology_metrics) {
@@ -332,15 +332,15 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
     NIMCP_LOGGING_INFO("  Hubs: %u", brain->topology_metrics->num_hubs);
 
     // Interpret results
-    if (brain->topology_metrics->modularity > 0.5f) {
+    if (brain->topology_metrics->modularity > 0.5F) {
         NIMCP_LOGGING_INFO("  → Excellent community structure");
-    } else if (brain->topology_metrics->modularity > 0.3f) {
+    } else if (brain->topology_metrics->modularity > 0.3F) {
         NIMCP_LOGGING_INFO("  → Good community structure");
     } else {
         NIMCP_LOGGING_WARN("  → Weak community structure (Q < 0.3)");
     }
 
-    if (brain->topology_metrics->small_world_sigma > 1.0f) {
+    if (brain->topology_metrics->small_world_sigma > 1.0F) {
         NIMCP_LOGGING_INFO("  → Small-world network (efficient)");
     } else {
         NIMCP_LOGGING_WARN("  → Not small-world (σ < 1.0)");
@@ -380,7 +380,7 @@ NIMCP_EXPORT bool brain_validate_topology(brain_t brain) {
         return false;
     }
 
-    topology_validation_t validation = community_validate_topology(base_network, 0.25f);
+    topology_validation_t validation = community_validate_topology(base_network, 0.25F);
     bool is_valid = validation.is_valid;
 
     if (!is_valid) {
@@ -455,7 +455,7 @@ NIMCP_EXPORT void* brain_get_network_analyzer(brain_t brain) {
 
         // Configure analyzer for real-time analysis during inference
         network_analyzer_set_auto_analyze(analyzer, true, 10);  // Auto-run every 10 iterations
-        network_analyzer_set_hub_threshold(analyzer, 0.7f);      // Detect high-centrality hubs
+        network_analyzer_set_hub_threshold(analyzer, 0.7F);      // Detect high-centrality hubs
 
         // Cache analyzer in brain structure
         b->network_analyzer = (void*)analyzer;

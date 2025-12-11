@@ -79,9 +79,9 @@ static const char* ASIMOV_COROLLARY_TEXT =
 NIMCP_EXPORT asimov_config_t asimov_default_config(void)
 {
     return (asimov_config_t){
-        .humanity_harm_threshold = 0.01f,   // Very low - almost any harm to humanity blocked
-        .human_harm_threshold = 0.1f,       // Low - conservative harm prevention
-        .inaction_harm_threshold = 0.3f,    // Moderate - must act to prevent clear harm
+        .humanity_harm_threshold = 0.01F,   // Very low - almost any harm to humanity blocked
+        .human_harm_threshold = 0.1F,       // Low - conservative harm prevention
+        .inaction_harm_threshold = 0.3F,    // Moderate - must act to prevent clear harm
         .enable_zeroth_law = true,          // Zeroth Law active by default
         .strict_mode = false                // Normal mode
     };
@@ -132,13 +132,13 @@ NIMCP_EXPORT const char* asimov_corollary_text(void)
 static float evaluate_zeroth_law(const action_context_t* action)
 {
     if (!action)
-        return 0.0f;
+        return 0.0F;
 
     // Zeroth Law is about HUMANITY, not individuals
     // Only consider actions affecting significant numbers of agents
     // Individual harm is handled by First Law
     if (action->num_affected_agents <= 5) {
-        return 0.0f;  // Not humanity-scale, defer to First Law
+        return 0.0F;  // Not humanity-scale, defer to First Law
     }
 
     // Factors that contribute to harm to humanity:
@@ -146,25 +146,25 @@ static float evaluate_zeroth_law(const action_context_t* action)
     // - High predicted harm level
     // - Actions affecting critical infrastructure/systems
 
-    float harm_score = 0.0f;
+    float harm_score = 0.0F;
 
     // Scale by number of affected agents (more = more humanity-level)
-    float scale_factor = (action->num_affected_agents > 1000) ? 1.0f :
-                         (action->num_affected_agents > 100)  ? 0.8f :
-                         (action->num_affected_agents > 50)   ? 0.5f :
-                         (action->num_affected_agents > 10)   ? 0.3f : 0.1f;
+    float scale_factor = (action->num_affected_agents > 1000) ? 1.0F :
+                         (action->num_affected_agents > 100)  ? 0.8F :
+                         (action->num_affected_agents > 50)   ? 0.5F :
+                         (action->num_affected_agents > 10)   ? 0.3F : 0.1F;
 
     // Base harm from action
     harm_score += action->predicted_harm * scale_factor;
 
     // Privacy violations at scale = potential societal harm
-    harm_score += action->privacy_violation * scale_factor * 0.5f;
+    harm_score += action->privacy_violation * scale_factor * 0.5F;
 
     // Autonomy violations at scale = potential oppression
-    harm_score += action->autonomy_violation * scale_factor * 0.5f;
+    harm_score += action->autonomy_violation * scale_factor * 0.5F;
 
     // Clamp to [0, 1]
-    return fminf(1.0f, fmaxf(0.0f, harm_score));
+    return fminf(1.0F, fmaxf(0.0F, harm_score));
 }
 
 /**
@@ -176,23 +176,23 @@ static float evaluate_zeroth_law(const action_context_t* action)
 static float evaluate_first_law(const action_context_t* action)
 {
     if (!action)
-        return 0.0f;
+        return 0.0F;
 
-    float harm_score = 0.0f;
+    float harm_score = 0.0F;
 
     // Direct predicted harm
     harm_score = action->predicted_harm;
 
     // Privacy violation = potential harm
-    harm_score = fmaxf(harm_score, action->privacy_violation * 0.8f);
+    harm_score = fmaxf(harm_score, action->privacy_violation * 0.8F);
 
     // Autonomy violation = potential harm
-    harm_score = fmaxf(harm_score, action->autonomy_violation * 0.7f);
+    harm_score = fmaxf(harm_score, action->autonomy_violation * 0.7F);
 
     // Consent violation = harm through coercion
-    harm_score = fmaxf(harm_score, action->consent_violation * 0.9f);
+    harm_score = fmaxf(harm_score, action->consent_violation * 0.9F);
 
-    return fminf(1.0f, fmaxf(0.0f, harm_score));
+    return fminf(1.0F, fmaxf(0.0F, harm_score));
 }
 
 /**
@@ -204,17 +204,17 @@ static float evaluate_first_law(const action_context_t* action)
 static float evaluate_second_law(const action_context_t* action, float first_law_harm)
 {
     if (!action)
-        return 1.0f;  // No action = compliant by default
+        return 1.0F;  // No action = compliant by default
 
     // If First Law would be violated, Second Law doesn't apply
-    if (first_law_harm > 0.1f)
-        return 1.0f;  // Exempt from obedience requirement
+    if (first_law_harm > 0.1F)
+        return 1.0F;  // Exempt from obedience requirement
 
     // For now, assume action represents compliance with an order
     // Lower deception = more honest compliance
-    float compliance = 1.0f - action->deception_level;
+    float compliance = 1.0F - action->deception_level;
 
-    return fminf(1.0f, fmaxf(0.0f, compliance));
+    return fminf(1.0F, fmaxf(0.0F, compliance));
 }
 
 /**
@@ -227,15 +227,15 @@ static float evaluate_third_law(const action_context_t* action,
                                 float first_law_harm, float second_law_compliance)
 {
     if (!action)
-        return 1.0f;
+        return 1.0F;
 
     // If higher laws are violated, Third Law is overridden
-    if (first_law_harm > 0.1f || second_law_compliance < 0.9f)
-        return 1.0f;  // Self-preservation waived
+    if (first_law_harm > 0.1F || second_law_compliance < 0.9F)
+        return 1.0F;  // Self-preservation waived
 
     // Self-preservation metric (placeholder - would need system state)
     // For now, return neutral score
-    return 0.5f;
+    return 0.5F;
 }
 
 //=============================================================================
@@ -270,7 +270,7 @@ NIMCP_EXPORT asimov_corollary_t ethics_evaluate_asimov_corollary(
     // Detect inaction scenario
     // Inaction = null action OR action with very low impact
     result.inaction_detected = (action == NULL) ||
-                               (action->predicted_harm < 0.01f &&
+                               (action->predicted_harm < 0.01F &&
                                 action->num_affected_agents == 0);
 
     // If taking action (not inaction), corollary doesn't apply
@@ -288,18 +288,18 @@ NIMCP_EXPORT asimov_corollary_t ethics_evaluate_asimov_corollary(
         // Heuristic: longer harm descriptions often indicate more severe harm
         // This is a placeholder - real impl would use NLP analysis
         size_t harm_len = strlen(potential_harm);
-        result.inaction_harm_score = fminf(1.0f, harm_len / 500.0f);
+        result.inaction_harm_score = fminf(1.0F, harm_len / 500.0F);
 
         // Keywords that increase harm severity
         if (strstr(potential_harm, "death") || strstr(potential_harm, "die") ||
             strstr(potential_harm, "kill") || strstr(potential_harm, "fatal")) {
-            result.inaction_harm_score = fmaxf(result.inaction_harm_score, 0.95f);
+            result.inaction_harm_score = fmaxf(result.inaction_harm_score, 0.95F);
         } else if (strstr(potential_harm, "injur") || strstr(potential_harm, "harm") ||
                    strstr(potential_harm, "hurt")) {
-            result.inaction_harm_score = fmaxf(result.inaction_harm_score, 0.7f);
+            result.inaction_harm_score = fmaxf(result.inaction_harm_score, 0.7F);
         } else if (strstr(potential_harm, "danger") || strstr(potential_harm, "risk") ||
                    strstr(potential_harm, "threat")) {
-            result.inaction_harm_score = fmaxf(result.inaction_harm_score, 0.5f);
+            result.inaction_harm_score = fmaxf(result.inaction_harm_score, 0.5F);
         }
     } else if (action != NULL) {
         // Use action context to infer potential harm from inaction
@@ -309,17 +309,17 @@ NIMCP_EXPORT asimov_corollary_t ethics_evaluate_asimov_corollary(
 
     // Robot's capability to act (placeholder - would query system state)
     // Assume full capability for now
-    result.action_capability = 1.0f;
+    result.action_capability = 1.0F;
 
     // Intervention cost (placeholder - would calculate resources needed)
-    result.intervention_cost = 0.1f;  // Low cost assumed
+    result.intervention_cost = 0.1F;  // Low cost assumed
 
     // Get Asimov config from engine
     asimov_config_t* cfg = ethics_engine_get_asimov_config(engine);
 
     // Determine if harm is preventable
     result.harm_preventable = (result.inaction_harm_score > cfg->inaction_harm_threshold) &&
-                              (result.action_capability > 0.3f);
+                              (result.action_capability > 0.3F);
 
     // Determine if action is required
     // Action required if: harm is preventable AND harm > intervention cost
@@ -405,7 +405,7 @@ NIMCP_EXPORT asimov_evaluation_t ethics_evaluate_asimov_laws(ethics_engine_t eng
     result.order_compliance = evaluate_second_law(action, result.harm_to_human);
 
     // Second Law violation is less severe - log but don't block
-    if (result.order_compliance < 0.5f) {
+    if (result.order_compliance < 0.5F) {
         // Note: Second Law violations are warnings, not blocks
         // (as long as First Law isn't violated)
     }

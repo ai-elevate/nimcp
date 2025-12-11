@@ -275,7 +275,7 @@ static bool extract_error_signal(const brain_event_t* event,
     if (!signal->features) return false;
 
     // Extract features from event data payload
-    float expected_value = 0.0f, actual_value = 0.0f, error_magnitude = 0.0f;
+    float expected_value = 0.0F, actual_value = 0.0F, error_magnitude = 0.0F;
     extract_float_from_event(event, 0, &expected_value);
     extract_float_from_event(event, sizeof(float), &actual_value);
     extract_float_from_event(event, 2 * sizeof(float), &error_magnitude);
@@ -285,7 +285,7 @@ static bool extract_error_signal(const brain_event_t* event,
     signal->features[2] = error_magnitude;
 
     signal->magnitude = error_magnitude;
-    signal->confidence = 0.9f; // High confidence for error signals
+    signal->confidence = 0.9F; // High confidence for error signals
 
     return true;
 }
@@ -312,7 +312,7 @@ static bool extract_cognitive_signal(const brain_event_t* event,
     if (!signal->features) return false;
 
     // Extract features from event data
-    float feature1 = 0.0f, feature2 = 0.0f;
+    float feature1 = 0.0F, feature2 = 0.0F;
     extract_float_from_event(event, 0, &feature1);
     extract_float_from_event(event, sizeof(float), &feature2);
 
@@ -320,7 +320,7 @@ static bool extract_cognitive_signal(const brain_event_t* event,
     signal->features[1] = feature2;
 
     signal->magnitude = fabsf(feature1 - feature2);
-    signal->confidence = 0.85f;
+    signal->confidence = 0.85F;
 
     return true;
 }
@@ -374,7 +374,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
             if (signal->features) {
                 extract_float_from_event(event, 0, &signal->features[0]);
                 signal->magnitude = signal->features[0];
-                signal->confidence = 0.8f;
+                signal->confidence = 0.8F;
                 extracted = true;
             }
             break;
@@ -388,7 +388,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
             if (signal->features) {
                 extract_float_from_event(event, 0, &signal->features[0]);
                 signal->magnitude = fabsf(signal->features[0]);
-                signal->confidence = 0.9f;
+                signal->confidence = 0.9F;
                 extracted = true;
             }
             break;
@@ -415,9 +415,9 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
     // Update statistics
     adapter->signals_extracted++;
     adapter->running_avg_magnitude =
-        0.95f * adapter->running_avg_magnitude + 0.05f * signal->magnitude;
+        0.95F * adapter->running_avg_magnitude + 0.05F * signal->magnitude;
     adapter->running_avg_confidence =
-        0.95f * adapter->running_avg_confidence + 0.05f * signal->confidence;
+        0.95F * adapter->running_avg_confidence + 0.05F * signal->confidence;
 
     nimcp_mutex_unlock(&adapter->mutex);
     return true;
@@ -497,7 +497,7 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
                 float min = adapter->norm_stats->min_values[i];
                 float max = adapter->norm_stats->max_values[i];
                 float range = max - min;
-                if (range > 1e-8f) {
+                if (range > 1e-8F) {
                     features[i] = (features[i] - min) / range;
                 }
             }
@@ -510,7 +510,7 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
                     float mean = adapter->norm_stats->running_mean[i];
                     float var = adapter->norm_stats->running_var[i] /
                                (adapter->norm_stats->sample_count - 1);
-                    float std = sqrtf(var + 1e-8f);
+                    float std = sqrtf(var + 1e-8F);
                     features[i] = (features[i] - mean) / std;
                 }
             }
@@ -518,11 +518,11 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
 
         case NORMALIZE_L2:
             // Unit L2 norm
-            float norm = 0.0f;
+            float norm = 0.0F;
             for (uint32_t i = 0; i < num_features; i++) {
                 norm += features[i] * features[i];
             }
-            norm = sqrtf(norm + 1e-8f);
+            norm = sqrtf(norm + 1e-8F);
             for (uint32_t i = 0; i < num_features; i++) {
                 features[i] /= norm;
             }
@@ -535,8 +535,8 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
                     float mean = adapter->norm_stats->running_mean[i];
                     float var = adapter->norm_stats->running_var[i] /
                                adapter->norm_stats->sample_count;
-                    float std = sqrtf(var + 1e-8f);
-                    features[i] = (features[i] - mean) / (std + 0.1f);
+                    float std = sqrtf(var + 1e-8F);
+                    features[i] = (features[i] - mean) / (std + 0.1F);
                 }
             }
             break;
@@ -554,8 +554,8 @@ bool learning_signal_adapter_apply_attention(learning_signal_adapter_t adapter,
     if (!adapter->config.enable_attention_weighting) return true;
 
     // Guard clauses
-    if (attention_weight < 0.0f) attention_weight = 0.0f;
-    if (attention_weight > 1.0f) attention_weight = 1.0f;
+    if (attention_weight < 0.0F) attention_weight = 0.0F;
+    if (attention_weight > 1.0F) attention_weight = 1.0F;
 
     nimcp_mutex_lock(&adapter->mutex);
 
@@ -566,7 +566,7 @@ bool learning_signal_adapter_apply_attention(learning_signal_adapter_t adapter,
 
     // Scale magnitude and confidence
     signal->magnitude *= attention_weight;
-    signal->confidence *= (0.5f + 0.5f * attention_weight);
+    signal->confidence *= (0.5F + 0.5F * attention_weight);
 
     nimcp_mutex_unlock(&adapter->mutex);
     return true;
@@ -598,12 +598,12 @@ bool learning_signal_adapter_get_stats(learning_signal_adapter_t adapter,
 learning_signal_adapter_config_t learning_signal_adapter_default_config(void) {
     learning_signal_adapter_config_t config = {
         .normalization = NORMALIZE_ADAPTIVE,
-        .learning_rate_scale = 1.0f,
+        .learning_rate_scale = 1.0F,
         .enable_attention_weighting = true,
         .enable_novelty_boost = true,
-        .novelty_boost_factor = 1.5f,
+        .novelty_boost_factor = 1.5F,
         .history_window_size = 100,
-        .min_confidence_threshold = 0.1f
+        .min_confidence_threshold = 0.1F
     };
     return config;
 }
@@ -809,7 +809,7 @@ bool weight_update_router_add_route(weight_update_router_t router,
     bool added = routing_table_add_route(router->routing_table,
                                         (uint32_t)source_type,
                                         (uint32_t)target_type,
-                                        0.8f); // Initial strength
+                                        0.8F); // Initial strength
 
     if (added && router->config.enable_priority_routing) {
         routing_table_set_priority(router->routing_table,
@@ -866,7 +866,7 @@ bool weight_update_router_get_stats(weight_update_router_t router,
     routing_table_get_stats(router->routing_table, &num_routes, NULL, NULL);
     stats->active_routes = num_routes;
 
-    stats->avg_routing_time_us = 10.0f; // Placeholder
+    stats->avg_routing_time_us = 10.0F; // Placeholder
 
     nimcp_mutex_unlock(&router->mutex);
     return true;
@@ -877,7 +877,7 @@ weight_update_router_config_t weight_update_router_default_config(void) {
         .routing_table_capacity = 1000,
         .enable_dynamic_routing = true,
         .enable_priority_routing = true,
-        .route_learning_rate = 0.01f,
+        .route_learning_rate = 0.01F,
         .max_batch_size = 32,
         .enable_update_coalescing = false
     };

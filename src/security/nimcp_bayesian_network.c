@@ -123,8 +123,8 @@ static uint32_t discretize(float value) {
     }
 
     /* Clamp to [0, 1] */
-    if (value < 0.0f) value = 0.0f;
-    if (value > 1.0f) value = 1.0f;
+    if (value < 0.0F) value = 0.0F;
+    if (value > 1.0F) value = 1.0F;
 
     uint32_t state = (uint32_t)(value * (MAX_STATES - 1));
     if (state >= MAX_STATES) state = MAX_STATES - 1;
@@ -169,7 +169,7 @@ static size_t get_cpt_index(const bn_node_t* node, const uint32_t* parent_states
  * @brief Initialize uniform CPT
  */
 static void init_uniform_cpt(float* cpt, size_t cpt_size) {
-    float uniform_prob = 1.0f / (float)MAX_STATES;
+    float uniform_prob = 1.0F / (float)MAX_STATES;
     for (size_t i = 0; i < cpt_size; i++) {
         cpt[i] = uniform_prob;
     }
@@ -179,7 +179,7 @@ static void init_uniform_cpt(float* cpt, size_t cpt_size) {
  * @brief Normalize CPT row to sum to 1.0
  */
 static void normalize_cpt_row(float* row, size_t row_size) {
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (size_t i = 0; i < row_size; i++) {
         sum += row[i];
     }
@@ -455,14 +455,14 @@ nimcp_error_t nimcp_bn_infer(nimcp_bayesian_network_t bn, const float* evidence,
             /* No evidence: use CPT to compute marginal */
             if (node->num_parents == 0) {
                 /* Root node: use prior */
-                float sum = 0.0f;
-                float weighted_sum = 0.0f;
+                float sum = 0.0F;
+                float weighted_sum = 0.0F;
                 for (uint32_t s = 0; s < MAX_STATES; s++) {
                     float prob = node->cpt[s];
                     sum += prob;
                     weighted_sum += prob * undiscretize(s);
                 }
-                posteriors[node_id] = (sum > EPSILON) ? (weighted_sum / sum) : 0.5f;
+                posteriors[node_id] = (sum > EPSILON) ? (weighted_sum / sum) : 0.5F;
             } else {
                 /* Non-root: marginalize over parent states */
                 uint32_t parent_states[MAX_PARENTS];
@@ -475,15 +475,15 @@ nimcp_error_t nimcp_bn_infer(nimcp_bayesian_network_t bn, const float* evidence,
                 }
 
                 /* Compute expectation over child states */
-                float sum = 0.0f;
-                float weighted_sum = 0.0f;
+                float sum = 0.0F;
+                float weighted_sum = 0.0F;
                 for (uint32_t s = 0; s < MAX_STATES; s++) {
                     size_t idx = get_cpt_index(node, parent_states, s);
                     float prob = node->cpt[idx];
                     sum += prob;
                     weighted_sum += prob * undiscretize(s);
                 }
-                posteriors[node_id] = (sum > EPSILON) ? (weighted_sum / sum) : 0.5f;
+                posteriors[node_id] = (sum > EPSILON) ? (weighted_sum / sum) : 0.5F;
             }
         }
     }
@@ -520,7 +520,7 @@ nimcp_error_t nimcp_bn_learn(nimcp_bayesian_network_t bn, const float* sample) {
 
         if (node->num_parents == 0) {
             /* Root node: update prior */
-            node->count_table[child_state] += 1.0f;
+            node->count_table[child_state] += 1.0F;
         } else {
             /* Get parent states */
             uint32_t parent_states[MAX_PARENTS];
@@ -535,7 +535,7 @@ nimcp_error_t nimcp_bn_learn(nimcp_bayesian_network_t bn, const float* sample) {
 
             if (all_observed) {
                 size_t idx = get_cpt_index(node, parent_states, child_state);
-                node->count_table[idx] += 1.0f;
+                node->count_table[idx] += 1.0F;
             }
         }
 
@@ -543,14 +543,14 @@ nimcp_error_t nimcp_bn_learn(nimcp_bayesian_network_t bn, const float* sample) {
     }
 
     /* Update CPTs using incremental MLE with Laplace smoothing */
-    const float alpha = 1.0f;  /* Laplace smoothing parameter */
+    const float alpha = 1.0F;  /* Laplace smoothing parameter */
 
     for (uint32_t i = 0; i < bn->num_nodes; i++) {
         bn_node_t* node = &bn->nodes[i];
 
         size_t num_rows = node->cpt_size / MAX_STATES;
         for (size_t row = 0; row < num_rows; row++) {
-            float row_sum = 0.0f;
+            float row_sum = 0.0F;
             for (uint32_t s = 0; s < MAX_STATES; s++) {
                 row_sum += node->count_table[row * MAX_STATES + s] + alpha;
             }
@@ -584,7 +584,7 @@ nimcp_error_t nimcp_bn_log_likelihood(nimcp_bayesian_network_t bn, const float* 
     }
 
     /* Compute log P(sample) = Σ log P(node | parents) */
-    float ll = 0.0f;
+    float ll = 0.0F;
 
     for (uint32_t i = 0; i < bn->num_nodes; i++) {
         bn_node_t* node = &bn->nodes[i];

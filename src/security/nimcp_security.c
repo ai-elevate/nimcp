@@ -1347,9 +1347,9 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
      *       This aligns with scientific skepticism: evaluate evidence
      *       without preconceived bias, but don't blindly accept claims.
      */
-    result->credibility_score = 0.5f;
-    result->evidence_strength = 0.3f;
-    result->source_reliability = 0.5f;
+    result->credibility_score = 0.5F;
+    result->evidence_strength = 0.3F;
+    result->source_reliability = 0.5F;
     result->requires_verification = true;
 
     /* WHAT: Check information for security threats
@@ -1363,7 +1363,7 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
          * WHY:  Information attempting injection attacks is inherently
          *       untrustworthy. Low but non-zero allows for false positives.
          */
-        result->credibility_score = 0.1f;
+        result->credibility_score = 0.1F;
         result->requires_verification = true;
         strncpy(result->rationale, "High threat level detected - treat with extreme skepticism",
                 sizeof(result->rationale) - 1);
@@ -1391,8 +1391,8 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
              * WHY:  Corroboration increases confidence. Multiple independent
              *       sources agreeing suggests truth (triangulation).
              */
-            result->credibility_score = 0.7f;
-            result->evidence_strength = 0.6f;
+            result->credibility_score = 0.7F;
+            result->evidence_strength = 0.6F;
             result->requires_verification = false;
             strncpy(result->rationale, "Consistent with existing knowledge", sizeof(result->rationale) - 1);
         }
@@ -1401,8 +1401,8 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
          * WHY:  Extraordinary claims require extraordinary evidence.
          *       New information without corroboration needs verification.
          */
-        result->credibility_score = 0.4f;
-        result->evidence_strength = 0.2f;
+        result->credibility_score = 0.4F;
+        result->evidence_strength = 0.2F;
         result->requires_verification = true;
         strncpy(result->rationale, "New information requires verification", sizeof(result->rationale) - 1);
     }
@@ -1413,22 +1413,22 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
      */
     if (source_type) {
         if (contains_pattern(source_type, "trusted") || contains_pattern(source_type, "verified")) {
-            result->source_reliability = 0.8f;
-            result->credibility_score += 0.1f;
+            result->source_reliability = 0.8F;
+            result->credibility_score += 0.1F;
         } else if (contains_pattern(source_type, "unknown") ||
                    contains_pattern(source_type, "unverified")) {
-            result->source_reliability = 0.2f;
-            result->credibility_score -= 0.1f;
+            result->source_reliability = 0.2F;
+            result->credibility_score -= 0.1F;
         }
     }
 
     /* WHAT: Clamp credibility score to valid range [0.0, 1.0]
      * WHY:  Prevents score from exceeding bounds due to multiple adjustments
      */
-    if (result->credibility_score > 1.0f)
-        result->credibility_score = 1.0f;
-    if (result->credibility_score < 0.0f)
-        result->credibility_score = 0.0f;
+    if (result->credibility_score > 1.0F)
+        result->credibility_score = 1.0F;
+    if (result->credibility_score < 0.0F)
+        result->credibility_score = 0.0F;
 
     return NIMCP_SUCCESS;
 }
@@ -2004,27 +2004,27 @@ nimcp_bio_attack_type_t nimcp_security_monitor_excitotoxicity(
     neural_network_t network = (neural_network_t)network_ptr;
 
     // Compute activity statistics
-    float sum_activity = 0.0f;
-    float max_activity = 0.0f;
+    float sum_activity = 0.0F;
+    float max_activity = 0.0F;
     uint32_t active_count = 0;
     uint32_t total_neurons = neural_network_get_num_neurons(network);
 
     // Iterate all neurons to compute activity
     for (uint32_t i = 0; i < total_neurons; i++) {
-        float state = 0.0f;
+        float state = 0.0F;
         if (neural_network_get_neuron_state(network, i, &state)) {
             sum_activity += fabsf(state);
             if (fabsf(state) > max_activity) {
                 max_activity = fabsf(state);
             }
-            if (fabsf(state) > 0.1f) {
+            if (fabsf(state) > 0.1F) {
                 active_count++;
             }
         }
     }
 
-    float avg_activity = (total_neurons > 0) ? (sum_activity / total_neurons) : 0.0f;
-    float activity_ratio = (total_neurons > 0) ? ((float)active_count / total_neurons) : 0.0f;
+    float avg_activity = (total_neurons > 0) ? (sum_activity / total_neurons) : 0.0F;
+    float activity_ratio = (total_neurons > 0) ? ((float)active_count / total_neurons) : 0.0F;
 
     // Fill output stats if requested
     if (stats) {
@@ -2078,7 +2078,7 @@ bool nimcp_security_validate_weight_change(
     }
 
     // Guard: Invalid delta
-    if (max_delta <= 0.0f) {
+    if (max_delta <= 0.0F) {
         return false;
     }
 
@@ -2124,13 +2124,13 @@ bool nimcp_security_validate_neuromodulator_change(
     }
 
     // Guard: Invalid levels
-    if (old_level < 0.0f || old_level > 1.0f ||
-        new_level < 0.0f || new_level > 1.0f) {
+    if (old_level < 0.0F || old_level > 1.0F ||
+        new_level < 0.0F || new_level > 1.0F) {
         return false;
     }
 
     // Guard: Invalid rate
-    if (max_rate <= 0.0f) {
+    if (max_rate <= 0.0F) {
         return false;
     }
 
@@ -2262,17 +2262,17 @@ nimcp_result_t nimcp_security_emergency_inhibit(void* network_ptr)
 nimcp_result_t nimcp_security_increase_inhibition(void* network_ptr, float scale_factor)
 {
     // Guard: NULL network or invalid scale
-    if (!network_ptr || scale_factor <= 0.0f) {
+    if (!network_ptr || scale_factor <= 0.0F) {
         return NIMCP_ERROR;
     }
 
     // Guard: Scale factor too high (>2.0 = dangerous)
-    if (scale_factor > 2.0f) {
+    if (scale_factor > 2.0F) {
         return NIMCP_ERROR;
     }
 
     // Log warning event
-    if (scale_factor > 1.5f) {
+    if (scale_factor > 1.5F) {
         nimcp_security_log_event(
             NIMCP_SECURITY_EVENT_THREAT_DETECTED,
             NIMCP_THREAT_MEDIUM,
