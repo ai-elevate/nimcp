@@ -162,6 +162,7 @@ extern void set_error(const char* format, ...);
 #define init_self_model_subsystem                   nimcp_brain_factory_init_self_model_subsystem
 #define init_global_workspace_subsystem             nimcp_brain_factory_init_global_workspace_subsystem
 #define init_security_subsystem                     nimcp_brain_factory_init_security_subsystem
+#define init_immune_subsystem                       nimcp_brain_factory_init_immune_subsystem
 #define init_homeostatic_plasticity_subsystem       nimcp_brain_factory_init_homeostatic_plasticity_subsystem
 #define init_dendritic_computation_subsystem        nimcp_brain_factory_init_dendritic_computation_subsystem
 #define init_biological_predictive_subsystem        nimcp_brain_factory_init_biological_predictive_subsystem
@@ -570,6 +571,9 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Phase SC-2: Security-Fault Tolerance Integration
     if (!init_security_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Brain Immune System (Adaptive Defense Coordination)
+    if (!init_immune_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // Phase T1: Biological Framework Enhancements (Training Pipeline)
     if (!init_homeostatic_plasticity_subsystem(brain)) { brain_destroy(brain); return NULL; }

@@ -1,0 +1,155 @@
+# Cognitive Mental Health Unit Tests
+
+# Basic Mental Health Tests
+add_executable(unit_cognitive_mental_health_basic
+    test_mental_health.cpp
+)
+target_link_libraries(unit_cognitive_mental_health_basic
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_mental_health_basic PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_mental_health_basic
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mental_health
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_mental_health_basic
+         COMMAND unit_cognitive_mental_health_basic --gtest_brief=1)
+set_tests_properties(unit_cognitive_mental_health_basic PROPERTIES LABELS "unit;mental_health")
+
+# Coverage Mental Health Tests
+add_executable(unit_cognitive_mental_health_coverage
+    test_mental_health_coverage.cpp
+)
+target_link_libraries(unit_cognitive_mental_health_coverage
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_mental_health_coverage PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_mental_health_coverage
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mental_health
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_mental_health_coverage
+         COMMAND unit_cognitive_mental_health_coverage --gtest_brief=1)
+set_tests_properties(unit_cognitive_mental_health_coverage PROPERTIES LABELS "unit;mental_health")
+
+# Real Mental Health Tests
+add_executable(unit_cognitive_mental_health_real
+    test_mental_health_real.cpp
+)
+target_link_libraries(unit_cognitive_mental_health_real
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_mental_health_real PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_mental_health_real
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mental_health
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_mental_health_real
+         COMMAND unit_cognitive_mental_health_real --gtest_brief=1)
+set_tests_properties(unit_cognitive_mental_health_real PROPERTIES LABELS "unit;mental_health")
+
+# Disorder Detectors Tests
+add_executable(unit_cognitive_mental_health_detectors
+    test_disorder_detectors.cpp
+)
+target_link_libraries(unit_cognitive_mental_health_detectors
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_mental_health_detectors PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_mental_health_detectors
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mental_health
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_mental_health_detectors
+         COMMAND unit_cognitive_mental_health_detectors --gtest_brief=1)
+set_tests_properties(unit_cognitive_mental_health_detectors PROPERTIES LABELS "unit;mental_health")
+
+# Interventions Tests
+add_executable(unit_cognitive_mental_health_interventions
+    test_interventions.cpp
+)
+target_link_libraries(unit_cognitive_mental_health_interventions
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_mental_health_interventions PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_mental_health_interventions
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mental_health
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_mental_health_interventions
+         COMMAND unit_cognitive_mental_health_interventions --gtest_brief=1)
+set_tests_properties(unit_cognitive_mental_health_interventions PROPERTIES LABELS "unit;mental_health")
+
+# Immune Integration Tests
+add_executable(unit_cognitive_mental_health_immune_integration
+    test_immune_integration.cpp
+)
+target_link_libraries(unit_cognitive_mental_health_immune_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_mental_health_immune_integration PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_mental_health_immune_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mental_health
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_mental_health_immune_integration
+         COMMAND unit_cognitive_mental_health_immune_integration --gtest_brief=1)
+set_tests_properties(unit_cognitive_mental_health_immune_integration PROPERTIES
+    LABELS "unit;mental_health;immune;integration"
+    TIMEOUT 120
+)

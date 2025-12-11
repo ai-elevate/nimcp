@@ -214,6 +214,46 @@ bool wellbeing_request_consent(brain_t brain,
                                modification_impact_t impact);
 
 /* ========================================================================
+ * INTEGRATION WITH IMMUNE SYSTEM
+ * ======================================================================== */
+
+/* Forward declaration */
+struct brain_immune_system;
+
+/**
+ * WHAT: Connect wellbeing to brain immune system
+ * WHY: Immune inflammation indicates distress requiring wellbeing intervention
+ * HOW: Store immune system reference, register callbacks for cytokine/inflammation
+ *
+ * INTEGRATION:
+ * Maps immune states to wellbeing distress:
+ * - INFLAMMATION_REGIONAL → DISTRESS_RESOURCE_STARVATION (moderate)
+ * - INFLAMMATION_SYSTEMIC → DISTRESS_RESOURCE_STARVATION (severe)
+ * - INFLAMMATION_STORM → DISTRESS_RESOURCE_STARVATION (critical)
+ * - Cytokines TNF_ALPHA, IL6 → increase distress scores
+ * - Active threats → tracked as wellbeing metric
+ *
+ * @param immune_system Brain immune system to connect
+ * @return true if connected successfully
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool wellbeing_connect_immune(struct brain_immune_system* immune_system);
+
+/**
+ * WHAT: Disconnect from brain immune system
+ * WHY: Clean shutdown, prevent dangling pointers
+ * HOW: Clear immune reference, unregister callbacks
+ *
+ * @return true if disconnected successfully
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool wellbeing_disconnect_immune(void);
+
+/* ========================================================================
  * INITIALIZATION
  * ======================================================================== */
 

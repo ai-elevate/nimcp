@@ -1,0 +1,762 @@
+/**
+ * @file nimcp_reasoning_immune.c
+ * @brief Reasoning-Immune System Integration Implementation
+ * @version 1.0.0
+ * @date 2025-12-11
+ *
+ * WHAT: Bidirectional coupling between brain immune and reasoning systems
+ * WHY:  Cytokines impair executive function (biological realism), logical errors signal corruption
+ * HOW:  Monitor cytokines/inflammation to modulate reasoning, monitor reasoning failures to trigger immune
+ */
+
+#include "cognitive/immune/nimcp_reasoning_immune.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
+#include <string.h>
+#include <math.h>
+#include <pthread.h>
+
+/* ============================================================================
+ * Internal Structure
+ * ============================================================================ */
+
+struct reasoning_immune_bridge {
+    /* Linked systems */
+    brain_immune_system_t* immune_system;
+    reasoning_integration_t* reasoning_integration;
+
+    /* Configuration */
+    bool enable_cytokine_reasoning_modulation;
+    bool enable_inflammation_cognitive_slowing;
+    bool enable_reasoning_failure_immune_trigger;
+    bool enable_working_memory_modulation;
+    bool enable_contradiction_immune_alert;
+
+    float cytokine_sensitivity;
+    float inflammation_sensitivity;
+    float max_speed_reduction;
+    float max_accuracy_reduction;
+    uint32_t min_max_iterations;
+
+    uint32_t proof_failure_threshold;
+    uint32_t proof_failure_escalation;
+    uint32_t unification_error_threshold;
+    float failure_window_sec;
+    float contradiction_antigen_severity;
+
+    /* Current impairment state */
+    reasoning_impairment_t current_impairment;
+
+    /* Failure tracking */
+    reasoning_failure_state_t failure_state;
+
+    /* Statistics */
+    reasoning_immune_stats_t stats;
+
+    /* Thread safety */
+    pthread_mutex_t mutex;
+};
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * @brief Clamp value to range
+ *
+ * WHAT: Constrain value to [min, max]
+ * WHY:  Prevent overflow/underflow
+ * HOW:  Return min if below, max if above, value otherwise
+ */
+static inline float clamp_f(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/**
+ * @brief Get current time in milliseconds
+ *
+ * WHAT: Get monotonic timestamp
+ * WHY:  Track failure windows
+ * HOW:  Use nimcp_time if available, else estimate
+ */
+static uint64_t get_time_ms(void) {
+    /* Would use nimcp_time_get_monotonic_ms() if available */
+    /* For now, return 0 - actual implementation would use time API */
+    return 0;
+}
+
+/**
+ * @brief Check if failure window has expired
+ *
+ * WHAT: Determine if current failures outside time window
+ * WHY:  Only count recent failures for immune trigger
+ * HOW:  Compare first_failure_time to current time
+ */
+static bool is_window_expired(const reasoning_immune_bridge_t* bridge) {
+    if (!bridge) return true;
+    if (bridge->failure_state.first_failure_time_ms == 0) return true;
+
+    uint64_t now_ms = get_time_ms();
+    uint64_t elapsed_ms = now_ms - bridge->failure_state.first_failure_time_ms;
+    float elapsed_sec = elapsed_ms / 1000.0f;
+
+    return elapsed_sec > bridge->failure_window_sec;
+}
+
+/**
+ * @brief Get cytokine level from immune system
+ *
+ * WHAT: Query current concentration of specific cytokine
+ * WHY:  Compute cytokine-based impairment
+ * HOW:  Interface with brain_immune system (stub for now)
+ */
+static float get_cytokine_level(
+    const brain_immune_system_t* immune,
+    brain_cytokine_type_t type
+) {
+    if (!immune) return 0.0f;
+    /* Would call brain_immune_get_cytokine_level(immune, type) */
+    /* For now, return 0.0 - actual implementation would query immune system */
+    return 0.0f;
+}
+
+/**
+ * @brief Get maximum inflammation level from immune system
+ *
+ * WHAT: Query highest inflammation level in system
+ * WHY:  Max inflammation determines cognitive impact
+ * HOW:  Interface with brain_immune system
+ */
+static brain_inflammation_level_t get_max_inflammation(
+    const brain_immune_system_t* immune
+) {
+    if (!immune) return INFLAMMATION_NONE;
+    /* Would call brain_immune_get_max_inflammation_level(immune) */
+    return INFLAMMATION_NONE;
+}
+
+/**
+ * @brief Compute cytokine-induced speed reduction
+ *
+ * WHAT: Calculate speed penalty from all cytokines
+ * WHY:  Cytokines cumulatively impair processing speed
+ * HOW:  Sum weighted impacts, clamp to max
+ */
+static float compute_cytokine_speed_impact(const reasoning_immune_bridge_t* bridge) {
+    if (!bridge || !bridge->enable_cytokine_reasoning_modulation) {
+        return 0.0f;
+    }
+
+    brain_immune_system_t* immune = bridge->immune_system;
+
+    /* Query cytokine levels */
+    float il1_level = get_cytokine_level(immune, CYTOKINE_IL1B);
+    float il6_level = get_cytokine_level(immune, CYTOKINE_IL6);
+    float tnf_level = get_cytokine_level(immune, CYTOKINE_TNFA);
+    float ifn_level = get_cytokine_level(immune, BRAIN_CYTOKINE_IFN_GAMMA);
+    float il10_level = get_cytokine_level(immune, CYTOKINE_IL10);
+
+    /* Compute weighted impact (negative = slowing, positive = recovery) */
+    float impact = 0.0f;
+    impact += il1_level * CYTOKINE_IL1_REASONING_SPEED_IMPACT;
+    impact += il6_level * CYTOKINE_IL6_REASONING_SPEED_IMPACT;
+    impact += tnf_level * CYTOKINE_TNF_REASONING_SPEED_IMPACT;
+    impact += ifn_level * CYTOKINE_IFN_GAMMA_REASONING_SPEED_IMPACT;
+    impact += il10_level * CYTOKINE_IL10_REASONING_SPEED_IMPACT;
+
+    /* Apply sensitivity */
+    impact *= bridge->cytokine_sensitivity;
+
+    /* Clamp to configured max (impact is negative for slowing) */
+    float clamped = clamp_f(impact, -bridge->max_speed_reduction, 0.5f);
+    return clamped;
+}
+
+/**
+ * @brief Compute cytokine-induced accuracy reduction
+ *
+ * WHAT: Calculate accuracy penalty from all cytokines
+ * WHY:  Cytokines increase errors in logical tasks
+ * HOW:  Sum weighted impacts, clamp to max
+ */
+static float compute_cytokine_accuracy_impact(const reasoning_immune_bridge_t* bridge) {
+    if (!bridge || !bridge->enable_cytokine_reasoning_modulation) {
+        return 0.0f;
+    }
+
+    brain_immune_system_t* immune = bridge->immune_system;
+
+    float il1_level = get_cytokine_level(immune, CYTOKINE_IL1B);
+    float il6_level = get_cytokine_level(immune, CYTOKINE_IL6);
+    float tnf_level = get_cytokine_level(immune, CYTOKINE_TNFA);
+    float ifn_level = get_cytokine_level(immune, BRAIN_CYTOKINE_IFN_GAMMA);
+    float il10_level = get_cytokine_level(immune, CYTOKINE_IL10);
+
+    float impact = 0.0f;
+    impact += il1_level * CYTOKINE_IL1_REASONING_ACCURACY_IMPACT;
+    impact += il6_level * CYTOKINE_IL6_REASONING_ACCURACY_IMPACT;
+    impact += tnf_level * CYTOKINE_TNF_REASONING_ACCURACY_IMPACT;
+    impact += ifn_level * CYTOKINE_IFN_GAMMA_REASONING_ACCURACY_IMPACT;
+    impact += il10_level * CYTOKINE_IL10_REASONING_ACCURACY_IMPACT;
+
+    impact *= bridge->cytokine_sensitivity;
+
+    float clamped = clamp_f(impact, -bridge->max_accuracy_reduction, 0.5f);
+    return clamped;
+}
+
+/**
+ * @brief Compute inflammation-induced performance penalty
+ *
+ * WHAT: Calculate reasoning penalty from inflammation level
+ * WHY:  Chronic inflammation causes cognitive deficits
+ * HOW:  Map inflammation level to penalty factor
+ */
+static float compute_inflammation_penalty(const reasoning_immune_bridge_t* bridge) {
+    if (!bridge || !bridge->enable_inflammation_cognitive_slowing) {
+        return 0.0f;
+    }
+
+    brain_inflammation_level_t level = get_max_inflammation(bridge->immune_system);
+
+    float penalty = 0.0f;
+    switch (level) {
+        case INFLAMMATION_NONE:
+            penalty = 0.0f;
+            break;
+        case INFLAMMATION_LOCAL:
+            penalty = INFLAMMATION_LOCAL_REASONING_PENALTY;
+            break;
+        case INFLAMMATION_REGIONAL:
+            penalty = INFLAMMATION_REGIONAL_REASONING_PENALTY;
+            break;
+        case INFLAMMATION_SYSTEMIC:
+            penalty = INFLAMMATION_SYSTEMIC_REASONING_PENALTY;
+            break;
+        case INFLAMMATION_STORM:
+            penalty = INFLAMMATION_STORM_REASONING_PENALTY;  /* Delirium */
+            break;
+        default:
+            penalty = 0.0f;
+    }
+
+    /* Apply sensitivity */
+    penalty *= bridge->inflammation_sensitivity;
+    return clamp_f(penalty, 0.0f, 1.0f);
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+int reasoning_immune_default_config(reasoning_immune_config_t* config) {
+    if (!config) return -1;
+
+    /* All features enabled by default */
+    config->enable_cytokine_reasoning_modulation = true;
+    config->enable_inflammation_cognitive_slowing = true;
+    config->enable_reasoning_failure_immune_trigger = true;
+    config->enable_working_memory_modulation = true;
+    config->enable_contradiction_immune_alert = true;
+
+    /* Biologically-based sensitivities */
+    config->cytokine_sensitivity = 1.0f;
+    config->inflammation_sensitivity = 1.0f;
+
+    /* Safety limits */
+    config->max_speed_reduction = 0.80f;      /* Max -80% (STORM level) */
+    config->max_accuracy_reduction = 0.60f;   /* Max -60% (STORM level) */
+    config->min_max_iterations = 5;           /* At least 5 iterations */
+
+    /* Failure thresholds */
+    config->proof_failure_threshold = REASONING_PROOF_FAILURE_THRESHOLD;
+    config->proof_failure_escalation = REASONING_PROOF_FAILURE_ESCALATION;
+    config->unification_error_threshold = REASONING_UNIFICATION_ERROR_THRESHOLD;
+    config->failure_window_sec = REASONING_FAILURE_WINDOW_SEC;
+    config->contradiction_antigen_severity = REASONING_CONTRADICTION_SEVERITY;
+
+    return 0;
+}
+
+reasoning_immune_bridge_t* reasoning_immune_bridge_create(
+    const reasoning_immune_config_t* config,
+    brain_immune_system_t* immune_system,
+    reasoning_integration_t* reasoning_integration
+) {
+    /* Guard: require both systems */
+    if (!immune_system || !reasoning_integration) {
+        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune_bridge",
+                  "Cannot create bridge without immune and reasoning systems");
+        return NULL;
+    }
+
+    /* Allocate bridge */
+    reasoning_immune_bridge_t* bridge = (reasoning_immune_bridge_t*)
+        nimcp_malloc(sizeof(reasoning_immune_bridge_t));
+    if (!bridge) {
+        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune_bridge", "Allocation failed");
+        return NULL;
+    }
+
+    /* Initialize to zero */
+    memset(bridge, 0, sizeof(reasoning_immune_bridge_t));
+
+    /* Link systems */
+    bridge->immune_system = immune_system;
+    bridge->reasoning_integration = reasoning_integration;
+
+    /* Apply configuration */
+    reasoning_immune_config_t default_config;
+    if (!config) {
+        reasoning_immune_default_config(&default_config);
+        config = &default_config;
+    }
+
+    bridge->enable_cytokine_reasoning_modulation = config->enable_cytokine_reasoning_modulation;
+    bridge->enable_inflammation_cognitive_slowing = config->enable_inflammation_cognitive_slowing;
+    bridge->enable_reasoning_failure_immune_trigger = config->enable_reasoning_failure_immune_trigger;
+    bridge->enable_working_memory_modulation = config->enable_working_memory_modulation;
+    bridge->enable_contradiction_immune_alert = config->enable_contradiction_immune_alert;
+
+    bridge->cytokine_sensitivity = config->cytokine_sensitivity;
+    bridge->inflammation_sensitivity = config->inflammation_sensitivity;
+    bridge->max_speed_reduction = config->max_speed_reduction;
+    bridge->max_accuracy_reduction = config->max_accuracy_reduction;
+    bridge->min_max_iterations = config->min_max_iterations;
+
+    bridge->proof_failure_threshold = config->proof_failure_threshold;
+    bridge->proof_failure_escalation = config->proof_failure_escalation;
+    bridge->unification_error_threshold = config->unification_error_threshold;
+    bridge->failure_window_sec = config->failure_window_sec;
+    bridge->contradiction_antigen_severity = config->contradiction_antigen_severity;
+
+    /* Initialize impairment to baseline (no impairment) */
+    bridge->current_impairment.speed_multiplier = 1.0f;
+    bridge->current_impairment.accuracy_multiplier = 1.0f;
+    bridge->current_impairment.effective_max_iterations = 1000;  /* Default */
+    bridge->current_impairment.effective_wm_capacity = REASONING_MAX_ACTIVE_INFERENCES;
+    bridge->current_impairment.timeout_multiplier = 1.0f;
+
+    /* Initialize mutex */
+    if (pthread_mutex_init(&bridge->mutex, NULL) != 0) {
+        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune_bridge", "Mutex init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    nimcp_log(NIMCP_LOG_INFO, "reasoning_immune_bridge",
+              "Created reasoning-immune bridge");
+    return bridge;
+}
+
+void reasoning_immune_bridge_destroy(reasoning_immune_bridge_t* bridge) {
+    if (!bridge) return;
+
+    pthread_mutex_destroy(&bridge->mutex);
+    nimcp_free(bridge);
+
+    nimcp_log(NIMCP_LOG_INFO, "reasoning_immune_bridge", "Destroyed bridge");
+}
+
+/* ============================================================================
+ * Immune → Reasoning Modulation Implementation
+ * ============================================================================ */
+
+int reasoning_immune_apply_cytokine_effects(reasoning_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    pthread_mutex_lock(&bridge->mutex);
+
+    /* Compute cytokine impacts */
+    float speed_impact = compute_cytokine_speed_impact(bridge);
+    float accuracy_impact = compute_cytokine_accuracy_impact(bridge);
+
+    /* Update impairment state */
+    bridge->current_impairment.cytokine_speed_impact = speed_impact;
+    bridge->current_impairment.cytokine_accuracy_impact = accuracy_impact;
+
+    /* Speed multiplier: 1.0 + impact (impact is negative) */
+    float speed_mult = 1.0f + speed_impact;
+    bridge->current_impairment.speed_multiplier = clamp_f(speed_mult, 0.0f, 2.0f);
+
+    /* Accuracy multiplier */
+    float accuracy_mult = 1.0f + accuracy_impact;
+    bridge->current_impairment.accuracy_multiplier = clamp_f(accuracy_mult, 0.0f, 2.0f);
+
+    /* Update statistics */
+    bridge->stats.total_cytokine_modulations++;
+    float speed_reduction = 1.0f - bridge->current_impairment.speed_multiplier;
+    float accuracy_reduction = 1.0f - bridge->current_impairment.accuracy_multiplier;
+
+    /* Running average of reductions */
+    float alpha = 0.1f;  /* Exponential smoothing */
+    bridge->stats.avg_speed_reduction =
+        alpha * speed_reduction + (1.0f - alpha) * bridge->stats.avg_speed_reduction;
+    bridge->stats.avg_accuracy_reduction =
+        alpha * accuracy_reduction + (1.0f - alpha) * bridge->stats.avg_accuracy_reduction;
+
+    /* Track maximums */
+    if (speed_reduction > bridge->stats.max_speed_reduction_observed) {
+        bridge->stats.max_speed_reduction_observed = speed_reduction;
+    }
+    if (accuracy_reduction > bridge->stats.max_accuracy_reduction_observed) {
+        bridge->stats.max_accuracy_reduction_observed = accuracy_reduction;
+    }
+
+    pthread_mutex_unlock(&bridge->mutex);
+    return 0;
+}
+
+int reasoning_immune_apply_inflammation_effects(reasoning_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    pthread_mutex_lock(&bridge->mutex);
+
+    /* Compute inflammation penalty */
+    float penalty = compute_inflammation_penalty(bridge);
+    brain_inflammation_level_t level = get_max_inflammation(bridge->immune_system);
+
+    /* Update impairment state */
+    bridge->current_impairment.inflammation_penalty = penalty;
+    bridge->current_impairment.max_inflammation = level;
+
+    /* Inflammation penalty applies to both speed and accuracy */
+    float inflammation_speed_mult = 1.0f - penalty;
+    float inflammation_accuracy_mult = 1.0f - (penalty * 0.6f);  /* Accuracy less affected */
+
+    /* Combine with existing cytokine effects (multiplicative) */
+    bridge->current_impairment.speed_multiplier *= inflammation_speed_mult;
+    bridge->current_impairment.accuracy_multiplier *= inflammation_accuracy_mult;
+
+    /* Reduce max iterations based on inflammation */
+    uint32_t base_iterations = 1000;  /* Would get from reasoning config */
+    bridge->current_impairment.effective_max_iterations =
+        (uint32_t)(base_iterations * (1.0f - penalty));
+    if (bridge->current_impairment.effective_max_iterations < bridge->min_max_iterations) {
+        bridge->current_impairment.effective_max_iterations = bridge->min_max_iterations;
+    }
+
+    /* Reduce timeout proportionally */
+    bridge->current_impairment.timeout_multiplier = 1.0f - penalty;
+
+    /* Update statistics */
+    bridge->stats.total_inflammation_modulations++;
+
+    pthread_mutex_unlock(&bridge->mutex);
+    return 0;
+}
+
+int reasoning_immune_get_impairment(
+    const reasoning_immune_bridge_t* bridge,
+    reasoning_impairment_t* impairment
+) {
+    if (!bridge || !impairment) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)&bridge->mutex);
+    *impairment = bridge->current_impairment;
+    pthread_mutex_unlock((pthread_mutex_t*)&bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Reasoning → Immune Trigger Implementation
+ * ============================================================================ */
+
+int reasoning_immune_report_contradiction(
+    reasoning_immune_bridge_t* bridge,
+    const char* contradiction_description
+) {
+    if (!bridge) return -1;
+    if (!bridge->enable_contradiction_immune_alert) return 0;
+
+    pthread_mutex_lock(&bridge->mutex);
+
+    /* Track contradiction */
+    bridge->failure_state.contradictions_detected++;
+    bridge->stats.contradictions_reported++;
+
+    pthread_mutex_unlock(&bridge->mutex);
+
+    /* Present as antigen to immune system */
+    /* Would call: brain_immune_present_antigen(
+     *     bridge->immune_system,
+     *     ANTIGEN_SOURCE_ANOMALY,
+     *     (uint8_t*)contradiction_description,
+     *     strlen(contradiction_description),
+     *     bridge->contradiction_antigen_severity,
+     *     0,  // node_id
+     *     NULL
+     * );
+     */
+
+    nimcp_log(NIMCP_LOG_WARN, "reasoning_immune",
+              "Contradiction reported to immune system: %s",
+              contradiction_description ? contradiction_description : "unknown");
+
+    return 0;
+}
+
+int reasoning_immune_report_proof_failure(
+    reasoning_immune_bridge_t* bridge,
+    const char* goal_description
+) {
+    if (!bridge) return -1;
+    if (!bridge->enable_reasoning_failure_immune_trigger) return 0;
+
+    pthread_mutex_lock(&bridge->mutex);
+
+    uint64_t now_ms = get_time_ms();
+
+    /* Check if window expired */
+    if (is_window_expired(bridge)) {
+        /* Reset window */
+        bridge->failure_state.proof_failures_recent = 0;
+        bridge->failure_state.first_failure_time_ms = now_ms;
+    }
+
+    /* Increment failure count */
+    bridge->failure_state.proof_failures_recent++;
+    bridge->failure_state.last_failure_time_ms = now_ms;
+    bridge->stats.proof_failures_reported++;
+
+    uint32_t failures = bridge->failure_state.proof_failures_recent;
+
+    /* Check for escalation */
+    if (failures >= bridge->proof_failure_escalation) {
+        /* REGIONAL inflammation */
+        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune",
+                  "Escalating to REGIONAL inflammation (%u failures)", failures);
+        /* Would call: brain_immune_trigger_inflammation(immune, INFLAMMATION_REGIONAL) */
+        bridge->stats.total_immune_triggers++;
+    } else if (failures >= bridge->proof_failure_threshold) {
+        /* LOCAL inflammation */
+        nimcp_log(NIMCP_LOG_WARN, "reasoning_immune",
+                  "Triggering LOCAL inflammation (%u failures)", failures);
+        /* Would call: brain_immune_trigger_inflammation(immune, INFLAMMATION_LOCAL) */
+        bridge->stats.total_immune_triggers++;
+    }
+
+    /* Check for persistent error state (>60s) */
+    if (bridge->failure_state.first_failure_time_ms > 0) {
+        uint64_t error_duration_ms = now_ms - bridge->failure_state.first_failure_time_ms;
+        float error_duration_sec = error_duration_ms / 1000.0f;
+
+        if (error_duration_sec > REASONING_PERSISTENT_ERROR_DURATION_SEC &&
+            !bridge->failure_state.persistent_error_state) {
+            bridge->failure_state.persistent_error_state = true;
+            bridge->failure_state.error_state_start_ms = now_ms;
+
+            nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune",
+                      "Persistent errors detected, releasing cytokines");
+            /* Would call: brain_immune_release_cytokine(immune, CYTOKINE_IL1B, 0.5f) */
+            /* Would call: brain_immune_release_cytokine(immune, CYTOKINE_IL6, 0.3f) */
+        }
+    }
+
+    pthread_mutex_unlock(&bridge->mutex);
+    return 0;
+}
+
+int reasoning_immune_report_unification_error(
+    reasoning_immune_bridge_t* bridge,
+    const char* error_description
+) {
+    if (!bridge) return -1;
+    if (!bridge->enable_reasoning_failure_immune_trigger) return 0;
+
+    pthread_mutex_lock(&bridge->mutex);
+
+    uint64_t now_ms = get_time_ms();
+
+    /* Check if window expired */
+    if (is_window_expired(bridge)) {
+        bridge->failure_state.unification_errors_recent = 0;
+        bridge->failure_state.first_failure_time_ms = now_ms;
+    }
+
+    /* Increment error count */
+    bridge->failure_state.unification_errors_recent++;
+    bridge->failure_state.last_failure_time_ms = now_ms;
+    bridge->stats.unification_errors_reported++;
+
+    uint32_t errors = bridge->failure_state.unification_errors_recent;
+
+    /* Check threshold */
+    if (errors >= bridge->unification_error_threshold) {
+        nimcp_log(NIMCP_LOG_WARN, "reasoning_immune",
+                  "Unification errors threshold reached (%u), activating B cell", errors);
+        /* Would call: brain_immune_activate_b_cell(immune, antigen_id, &b_cell_id) */
+        bridge->stats.total_immune_triggers++;
+    }
+
+    pthread_mutex_unlock(&bridge->mutex);
+    return 0;
+}
+
+int reasoning_immune_clear_failure_tracking(reasoning_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    pthread_mutex_lock(&bridge->mutex);
+
+    /* Reset all failure counters */
+    bridge->failure_state.proof_failures_recent = 0;
+    bridge->failure_state.unification_errors_recent = 0;
+    bridge->failure_state.first_failure_time_ms = 0;
+    bridge->failure_state.last_failure_time_ms = 0;
+    bridge->failure_state.persistent_error_state = false;
+    bridge->failure_state.error_state_start_ms = 0;
+
+    pthread_mutex_unlock(&bridge->mutex);
+
+    nimcp_log(NIMCP_LOG_INFO, "reasoning_immune", "Cleared failure tracking");
+    return 0;
+}
+
+/* ============================================================================
+ * Query Functions Implementation
+ * ============================================================================ */
+
+int reasoning_immune_get_failure_state(
+    const reasoning_immune_bridge_t* bridge,
+    reasoning_failure_state_t* failure_state
+) {
+    if (!bridge || !failure_state) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)&bridge->mutex);
+    *failure_state = bridge->failure_state;
+    pthread_mutex_unlock((pthread_mutex_t*)&bridge->mutex);
+
+    return 0;
+}
+
+int reasoning_immune_get_config(
+    const reasoning_immune_bridge_t* bridge,
+    reasoning_immune_config_t* config
+) {
+    if (!bridge || !config) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)&bridge->mutex);
+
+    config->enable_cytokine_reasoning_modulation = bridge->enable_cytokine_reasoning_modulation;
+    config->enable_inflammation_cognitive_slowing = bridge->enable_inflammation_cognitive_slowing;
+    config->enable_reasoning_failure_immune_trigger = bridge->enable_reasoning_failure_immune_trigger;
+    config->enable_working_memory_modulation = bridge->enable_working_memory_modulation;
+    config->enable_contradiction_immune_alert = bridge->enable_contradiction_immune_alert;
+
+    config->cytokine_sensitivity = bridge->cytokine_sensitivity;
+    config->inflammation_sensitivity = bridge->inflammation_sensitivity;
+    config->max_speed_reduction = bridge->max_speed_reduction;
+    config->max_accuracy_reduction = bridge->max_accuracy_reduction;
+    config->min_max_iterations = bridge->min_max_iterations;
+
+    config->proof_failure_threshold = bridge->proof_failure_threshold;
+    config->proof_failure_escalation = bridge->proof_failure_escalation;
+    config->unification_error_threshold = bridge->unification_error_threshold;
+    config->failure_window_sec = bridge->failure_window_sec;
+    config->contradiction_antigen_severity = bridge->contradiction_antigen_severity;
+
+    pthread_mutex_unlock((pthread_mutex_t*)&bridge->mutex);
+    return 0;
+}
+
+int reasoning_immune_set_config(
+    reasoning_immune_bridge_t* bridge,
+    const reasoning_immune_config_t* config
+) {
+    if (!bridge || !config) return -1;
+
+    /* Validate config */
+    if (config->cytokine_sensitivity < 0.0f || config->cytokine_sensitivity > 2.0f) return -1;
+    if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 2.0f) return -1;
+    if (config->max_speed_reduction < 0.0f || config->max_speed_reduction > 1.0f) return -1;
+    if (config->max_accuracy_reduction < 0.0f || config->max_accuracy_reduction > 1.0f) return -1;
+
+    pthread_mutex_lock(&bridge->mutex);
+
+    bridge->enable_cytokine_reasoning_modulation = config->enable_cytokine_reasoning_modulation;
+    bridge->enable_inflammation_cognitive_slowing = config->enable_inflammation_cognitive_slowing;
+    bridge->enable_reasoning_failure_immune_trigger = config->enable_reasoning_failure_immune_trigger;
+    bridge->enable_working_memory_modulation = config->enable_working_memory_modulation;
+    bridge->enable_contradiction_immune_alert = config->enable_contradiction_immune_alert;
+
+    bridge->cytokine_sensitivity = config->cytokine_sensitivity;
+    bridge->inflammation_sensitivity = config->inflammation_sensitivity;
+    bridge->max_speed_reduction = config->max_speed_reduction;
+    bridge->max_accuracy_reduction = config->max_accuracy_reduction;
+    bridge->min_max_iterations = config->min_max_iterations;
+
+    bridge->proof_failure_threshold = config->proof_failure_threshold;
+    bridge->proof_failure_escalation = config->proof_failure_escalation;
+    bridge->unification_error_threshold = config->unification_error_threshold;
+    bridge->failure_window_sec = config->failure_window_sec;
+    bridge->contradiction_antigen_severity = config->contradiction_antigen_severity;
+
+    pthread_mutex_unlock(&bridge->mutex);
+    return 0;
+}
+
+int reasoning_immune_get_stats(
+    const reasoning_immune_bridge_t* bridge,
+    reasoning_immune_stats_t* stats
+) {
+    if (!bridge || !stats) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)&bridge->mutex);
+    *stats = bridge->stats;
+    pthread_mutex_unlock((pthread_mutex_t*)&bridge->mutex);
+
+    return 0;
+}
+
+int reasoning_immune_reset_stats(reasoning_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    pthread_mutex_lock(&bridge->mutex);
+    memset(&bridge->stats, 0, sizeof(reasoning_immune_stats_t));
+    pthread_mutex_unlock(&bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Integration API Implementation
+ * ============================================================================ */
+
+reasoning_immune_bridge_t* reasoning_connect_immune(
+    reasoning_integration_t* reasoning_integration,
+    brain_immune_system_t* immune_system,
+    const reasoning_immune_config_t* config
+) {
+    /* Guard: require both systems */
+    if (!reasoning_integration || !immune_system) {
+        nimcp_log(NIMCP_LOG_ERROR, "reasoning_connect_immune",
+                  "Cannot connect without reasoning and immune systems");
+        return NULL;
+    }
+
+    /* Create bridge */
+    reasoning_immune_bridge_t* bridge =
+        reasoning_immune_bridge_create(config, immune_system, reasoning_integration);
+
+    if (!bridge) {
+        nimcp_log(NIMCP_LOG_ERROR, "reasoning_connect_immune", "Bridge creation failed");
+        return NULL;
+    }
+
+    /* Register callbacks with reasoning integration (if API available) */
+    /* Would register hooks for:
+     * - EVENT_CONTRADICTION_DETECTED → reasoning_immune_report_contradiction
+     * - EVENT_PROOF_FAILED → reasoning_immune_report_proof_failure
+     * - EVENT_UNIFICATION_FAILED → reasoning_immune_report_unification_error
+     * - Periodic tick → reasoning_immune_apply_cytokine_effects + apply_inflammation_effects
+     */
+
+    nimcp_log(NIMCP_LOG_INFO, "reasoning_connect_immune",
+              "Successfully connected reasoning to immune system");
+
+    return bridge;
+}

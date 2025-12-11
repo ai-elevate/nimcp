@@ -51,3 +51,18 @@ target_link_libraries(unit_middleware_routing_signal_wrapper
     )
 add_test(NAME unit_middleware_routing_signal_wrapper
          COMMAND unit_middleware_routing_signal_wrapper)
+# Test Thalamic-Immune Integration
+add_executable(unit_middleware_routing_thalamic_immune_integration
+    test_thalamic_immune_integration.cpp
+)
+target_link_libraries(unit_middleware_routing_thalamic_immune_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp_cognitive_immune
+        nimcp_middleware_immune
+        nimcp
+    )
+add_test(NAME unit_middleware_routing_thalamic_immune_integration
+         COMMAND unit_middleware_routing_thalamic_immune_integration)

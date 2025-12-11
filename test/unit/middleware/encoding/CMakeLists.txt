@@ -54,3 +54,18 @@ target_link_libraries(unit_middleware_encoding_all_encoders
     )
 add_test(NAME unit_middleware_encoding_all_encoders
          COMMAND unit_middleware_encoding_all_encoders)
+
+# Test Population Coding-Immune Integration
+add_executable(unit_middleware_encoding_population_immune
+    test_population_coding_immune_integration.cpp
+)
+target_link_libraries(unit_middleware_encoding_population_immune
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp_cognitive_immune
+        nimcp
+    )
+add_test(NAME unit_middleware_encoding_population_immune
+         COMMAND unit_middleware_encoding_population_immune)

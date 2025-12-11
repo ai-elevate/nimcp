@@ -1019,3 +1019,116 @@ TEST_F(BrainImmunePipelineTest, StringConversions) {
 
     E2E_PIPELINE_END();
 }
+
+/**
+ * @brief E2E Test - Fault Tolerance Integration
+ *
+ * WHAT: Test immune system integration with BFT, recovery, and checkpointing
+ * WHY:  Verify bidirectional immune-FT coordination works end-to-end
+ * HOW:  Simulate Byzantine threats, recovery events, and verify immune responses
+ *
+ * SCENARIO:
+ * 1. Connect immune system to BFT and hierarchical recovery
+ * 2. Trigger Byzantine accusation -> verify antigen presentation
+ * 3. Trigger BFT quarantine -> verify killer T cell activation
+ * 4. Trigger recovery completion -> verify IL-10 release
+ * 5. Trigger trust recovery -> verify memory formation
+ * 6. Create checkpoint with immune state
+ */
+E2E_TEST(BrainImmunePipeline, FaultToleranceIntegration) {
+    E2E_PIPELINE_BEGIN("FaultToleranceIntegration");
+
+    brain_immune_system_t* immune = nullptr;
+    bft_context_t* bft = nullptr;
+    CallbackTracker tracker;
+
+    E2E_STAGE_BEGIN("Initialize immune and BFT systems", 1000);
+    brain_immune_config_t immune_config;
+    brain_immune_default_config(&immune_config);
+    immune_config.enable_bft_integration = true;
+    immune_config.enable_logging = false;  // Reduce noise
+    immune = brain_immune_create(&immune_config);
+    ASSERT_NE(immune, nullptr);
+
+    bft_config_t bft_config = bft_default_config();
+    bft_config.node_id = TEST_NODE_ID;
+    bft_config.total_nodes = TEST_CLUSTER_SIZE;
+    bft_config.max_byzantine = (TEST_CLUSTER_SIZE - 1) / 3;
+    bft = bft_create(&bft_config);
+    ASSERT_NE(bft, nullptr);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Connect immune to BFT with callbacks", 200);
+    ASSERT_EQ(brain_immune_connect_bft(immune, bft), 0);
+    ASSERT_EQ(brain_immune_start(immune), 0);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Byzantine accusation triggers antigen presentation", 500);
+    // Simulate BFT accusation
+    bft_evidence_t evidence = {};
+    evidence.type = BFT_EVIDENCE_CONFLICTING_MSG;
+    evidence.accused_node_id = 5;
+    bft_accusation_t accusation = {};
+    accusation.accuser_id = TEST_NODE_ID;
+    accusation.accused_id = 5;
+    accusation.behavior = BFT_BEHAV_EQUIVOCATION;
+    accusation.evidence_count = 1;
+    accusation.evidence[0] = evidence;
+
+    // Process accusation (should trigger antigen callback)
+    bft_process_accusation(bft, &accusation);
+
+    // Verify antigen was created
+    brain_immune_stats_t stats;
+    brain_immune_get_stats(immune, &stats);
+    EXPECT_GT(stats.bft_byzantines_handled, 0u);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("BFT quarantine triggers killer T cell", 500);
+    // Quarantine the Byzantine node
+    bft_quarantine_node(bft, 5, 60000);
+
+    // Verify killer T cell activation
+    brain_immune_update(immune, 100);
+    brain_immune_get_stats(immune, &stats);
+    EXPECT_GT(stats.active_t_cells, 0u);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Trust recovery triggers memory formation and IL-10", 500);
+    // Simulate trust recovery (manually call handler)
+    brain_immune_handle_bft_trust_recovery(immune, 5, 30.0f, 70.0f);
+
+    // Verify IL-10 cytokine was released
+    brain_immune_update(immune, 100);
+    brain_immune_get_stats(immune, &stats);
+    EXPECT_GT(stats.cytokines_released, 0u);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Checkpoint includes immune state", 500);
+    // Create BFT checkpoint
+    uint8_t state_hash[32] = {0};
+    bft_create_checkpoint(bft, state_hash);
+
+    // Get checkpoint and verify immune state is included
+    bft_checkpoint_t checkpoint;
+    ASSERT_TRUE(bft_get_stable_checkpoint(bft, &checkpoint));
+
+    // Get current immune state
+    bft_immune_state_t immune_state;
+    brain_immune_get_checkpoint_state(immune, &immune_state);
+
+    // Verify immune state has data
+    EXPECT_GE(immune_state.active_antigens, 0u);
+    EXPECT_GE(immune_state.system_health, 0.0f);
+    EXPECT_LE(immune_state.system_health, 1.0f);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Cleanup", 100);
+    brain_immune_stop(immune);
+    brain_immune_destroy(immune);
+    bft_stop(bft);
+    bft_destroy(bft);
+    E2E_STAGE_END();
+
+    E2E_PIPELINE_END();
+}

@@ -68,13 +68,13 @@ typedef enum {
 } NimcpSwarmResponseType;
 
 /**
- * @brief Threat severity levels
+ * @brief Threat severity levels for swarm immune system
  */
 typedef enum {
-    SEVERITY_LOW = 0,
-    SEVERITY_MEDIUM,
-    SEVERITY_HIGH,
-    SEVERITY_CRITICAL
+    SWARM_SEVERITY_LOW = 0,
+    SWARM_SEVERITY_MEDIUM,
+    SWARM_SEVERITY_HIGH,
+    SWARM_SEVERITY_CRITICAL
 } NimcpSwarmSeverity;
 
 /**

@@ -21,6 +21,9 @@
 // Forward declaration for Theory of Mind integration
 typedef struct theory_of_mind_s* theory_of_mind_t;
 
+// Forward declaration for Brain Immune System integration
+typedef struct brain_immune_system brain_immune_system_t;
+
 //=============================================================================
 // Ethics Constants and Types
 //=============================================================================
@@ -130,6 +133,10 @@ typedef struct {
     // Theory of Mind integration (Phase 10.6.1)
     bool enable_tom_integration;  /**< Enable ToM-based perspective-taking (default: false) */
     float perspective_weight;     /**< Weight for agent perspective in harm assessment (0-1, default: 0.5) */
+
+    // Brain Immune System integration (Phase 12.x)
+    bool enable_immune_integration; /**< Enable immune response to ethics violations (default: false) */
+    float violation_immune_threshold; /**< Severity threshold to trigger immune response (default: 0.7) */
 } ethics_config_t;
 
 /**
@@ -1273,6 +1280,101 @@ bool ethics_empathy_based_evaluation(ethics_engine_t engine,
                                       const uint32_t* affected_agent_ids,
                                       uint32_t num_affected_agents,
                                       float* empathy_score);
+
+//=============================================================================
+// Brain Immune System Integration (Phase 12.x)
+//=============================================================================
+
+/**
+ * @brief Set brain immune system for ethics violation response
+ *
+ * WHAT: Associate ethics engine with immune system
+ * WHY:  Ethics violations trigger immune-like threat response
+ * HOW:  Store immune system reference, enable violation → antigen mapping
+ *
+ * BIOLOGICAL ANALOGY:
+ * - Ethics violations = "moral pathogens" threatening integrity
+ * - Severity → antigen danger signal
+ * - Repeated violations → memory cells (pattern recognition)
+ * - Response escalates with violation frequency/severity
+ *
+ * @param engine Ethics engine
+ * @param immune Brain immune system (can be NULL to disable)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void ethics_set_immune_system(ethics_engine_t engine, brain_immune_system_t* immune);
+
+/**
+ * @brief Evaluate action with immune health check
+ *
+ * WHAT: Perform ethical evaluation with immune system state consideration
+ * WHY:  High inflammation may impair ethical reasoning (cognitive fog)
+ * HOW:  Standard evaluation + inflammation-based confidence penalty
+ *
+ * BIOLOGICAL BASIS:
+ * - Sickness behavior reduces social cognition
+ * - Inflammation impairs prefrontal cortex (moral reasoning center)
+ * - High inflammation → lower confidence in nuanced ethical decisions
+ *
+ * @param engine Ethics engine
+ * @param action Action to evaluate
+ * @param evaluation Output: evaluation result
+ * @param inflammation_penalty Output: confidence reduction from inflammation [0, 1]
+ * @return true if evaluation succeeded
+ *
+ * COMPLEXITY: O(1) + evaluation complexity
+ * THREAD-SAFE: No
+ */
+bool ethics_evaluate_with_immune_check(ethics_engine_t engine,
+                                         const action_context_t* action,
+                                         ethics_evaluation_t* evaluation,
+                                         float* inflammation_penalty);
+
+/**
+ * @brief Trigger immune response for ethics violation
+ *
+ * WHAT: Present ethics violation as antigen to immune system
+ * WHY:  Build adaptive response to ethical threats
+ * HOW:  Create antigen from violation, trigger immune processing
+ *
+ * DESIGN: Ethics violations treated as "moral pathogens"
+ * - High severity → high danger signal
+ * - Repeated violations → memory formation
+ * - Adaptive response strengthens over time
+ *
+ * @param engine Ethics engine
+ * @param violation Violation type
+ * @param severity Violation severity [0, 1]
+ * @param description Violation description
+ * @return true if immune response triggered
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+bool ethics_trigger_immune_response(ethics_engine_t engine,
+                                      ethics_violation_type_t violation,
+                                      float severity,
+                                      const char* description);
+
+/**
+ * @brief Get immune-adjusted ethical decision threshold
+ *
+ * WHAT: Query decision threshold adjusted for inflammation
+ * WHY:  High inflammation should raise bar for risky decisions
+ * HOW:  Scale threshold based on immune state
+ *
+ * BIOLOGY: Inflamed state → conservative, risk-averse decisions
+ *
+ * @param engine Ethics engine
+ * @param base_threshold Base decision threshold [0, 1]
+ * @return Adjusted threshold [0, 1]
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float ethics_get_immune_adjusted_threshold(ethics_engine_t engine, float base_threshold);
 
 /**
  * @brief Check Asimov's First Law with false belief consideration

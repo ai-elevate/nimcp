@@ -149,6 +149,9 @@
 // Phase 1.5: Memory pools for hot-path allocations
 #include "utils/memory/nimcp_memory_pool.h"
 
+// Brain Immune System Integration
+#include "cognitive/immune/nimcp_brain_immune.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -575,6 +578,21 @@ struct brain_struct {
     void* bio_async_ctx_handle;                  // unified_mem_handle_t for context memory
     void* bio_async_mem_mgr;                     // unified_mem_manager_t for bio-async allocations
     bool bio_async_enabled;                      // Bio-async messaging enabled for this brain
+
+    // === BRAIN IMMUNE SYSTEM INTEGRATION ===
+    //
+    // Brain immune system provides unified adaptive defense coordination:
+    // - Antigen presentation: Converts BBB/BFT/swarm threats to immune antigens
+    // - B cells: Antibody production mapped to swarm immune responses
+    // - T cells: Helper coordination (cytokines) and killer actions (BFT quarantine)
+    // - Cytokines: Bio-async signaling for cross-module immune coordination
+    // - Inflammation: Hierarchical recovery escalation (node→pod→region→global)
+    // - Memory: Long-term threat pattern storage via swarm immune memory cells
+    //
+    // Auto-connected during brain creation to BBB, BFT, and swarm systems.
+    //
+    brain_immune_system_t* immune_system;        // Brain immune coordination layer
+    bool immune_enabled;                         // Immune system enabled for this brain
 };
 
 //=============================================================================

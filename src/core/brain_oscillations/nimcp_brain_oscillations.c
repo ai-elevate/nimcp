@@ -14,6 +14,7 @@
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -99,6 +100,12 @@ struct brain_oscillation_analyzer_struct {
     brain_wave_power_t last_wave_power;
     cognitive_state_t last_state;
     float last_confidence;
+
+    // Immune system integration
+    brain_immune_system_t* immune_system;  /**< Connected immune system */
+    immune_oscillation_effects_t active_effects;  /**< Current immune effects */
+    oscillation_abnormality_t last_abnormality;   /**< Last abnormality detection */
+    uint32_t consecutive_abnormal_count;   /**< Consecutive abnormal readings */
 };
 
 //=============================================================================
@@ -1498,4 +1505,320 @@ float brain_oscillation_compute_bandwidth(
     float bandwidth = high_freq - low_freq;
 
     return bandwidth;
+}
+
+//=============================================================================
+// Immune System Integration Implementation
+//=============================================================================
+
+/**
+ * WHAT: Connect oscillation analyzer to immune system
+ * WHY:  Enable bidirectional immune-oscillation modulation
+ * HOW:  Store immune handle, initialize effects tracking
+ */
+bool brain_oscillation_connect_immune(
+    brain_oscillation_analyzer_t* analyzer,
+    brain_immune_system_t* immune_system)
+{
+    // Guard: Validate inputs
+    if (!analyzer || !immune_system) {
+        return false;
+    }
+
+    // Store immune system reference
+    analyzer->immune_system = immune_system;
+
+    // Initialize effects to baseline (no disruption)
+    analyzer->active_effects.delta_amplification = 1.0F;
+    analyzer->active_effects.theta_suppression = 1.0F;
+    analyzer->active_effects.gamma_suppression = 1.0F;
+    analyzer->active_effects.beta_suppression = 1.0F;
+    analyzer->active_effects.coherence_disruption = 0.0F;
+    analyzer->active_effects.synchrony_disruption = 0.0F;
+
+    // Initialize abnormality tracking
+    memset(&analyzer->last_abnormality, 0, sizeof(oscillation_abnormality_t));
+    analyzer->consecutive_abnormal_count = 0;
+
+    LOG_INFO(LOG_MODULE, "Oscillation analyzer connected to immune system");
+    return true;
+}
+
+/**
+ * WHAT: Compute immune-induced oscillation effects
+ * WHY:  Model cytokine-induced EEG changes based on inflammation
+ * HOW:  Scale effects based on inflammation level and cytokine concentration
+ */
+immune_oscillation_effects_t brain_oscillation_compute_immune_effects(
+    brain_oscillation_analyzer_t* analyzer,
+    uint32_t inflammation_level,
+    float cytokine_concentration)
+{
+    // Guard: Validate inputs
+    immune_oscillation_effects_t effects = {0};
+    if (!analyzer) {
+        return effects;
+    }
+
+    // Clamp cytokine concentration
+    if (cytokine_concentration < 0.0F) cytokine_concentration = 0.0F;
+    if (cytokine_concentration > 1.0F) cytokine_concentration = 1.0F;
+
+    // Compute effects based on inflammation level
+    // BIOLOGICAL BASIS: Pro-inflammatory cytokines progressively disrupt oscillations
+    switch (inflammation_level) {
+        case 0: // INFLAMMATION_NONE
+            effects.delta_amplification = 1.0F;
+            effects.theta_suppression = 1.0F;
+            effects.gamma_suppression = 1.0F;
+            effects.beta_suppression = 1.0F;
+            effects.coherence_disruption = 0.0F;
+            effects.synchrony_disruption = 0.0F;
+            break;
+
+        case 1: // INFLAMMATION_LOCAL
+            // Minor effects, scaled by cytokine concentration
+            effects.delta_amplification = 1.0F + (0.3F * cytokine_concentration);
+            effects.theta_suppression = 1.0F - (0.1F * cytokine_concentration);
+            effects.gamma_suppression = 1.0F - (0.2F * cytokine_concentration);
+            effects.beta_suppression = 1.0F - (0.1F * cytokine_concentration);
+            effects.coherence_disruption = 0.1F * cytokine_concentration;
+            effects.synchrony_disruption = 0.1F * cytokine_concentration;
+            break;
+
+        case 2: // INFLAMMATION_REGIONAL
+            // Moderate effects
+            effects.delta_amplification = 1.0F + (0.8F * cytokine_concentration);
+            effects.theta_suppression = 1.0F - (0.25F * cytokine_concentration);
+            effects.gamma_suppression = 1.0F - (0.4F * cytokine_concentration);
+            effects.beta_suppression = 1.0F - (0.3F * cytokine_concentration);
+            effects.coherence_disruption = 0.3F * cytokine_concentration;
+            effects.synchrony_disruption = 0.3F * cytokine_concentration;
+            break;
+
+        case 3: // INFLAMMATION_SYSTEMIC
+            // Strong effects
+            effects.delta_amplification = 1.0F + (1.5F * cytokine_concentration);
+            effects.theta_suppression = 1.0F - (0.4F * cytokine_concentration);
+            effects.gamma_suppression = 1.0F - (0.6F * cytokine_concentration);
+            effects.beta_suppression = 1.0F - (0.45F * cytokine_concentration);
+            effects.coherence_disruption = 0.5F * cytokine_concentration;
+            effects.synchrony_disruption = 0.5F * cytokine_concentration;
+            break;
+
+        case 4: // INFLAMMATION_STORM
+            // Severe disruption
+            effects.delta_amplification = 1.0F + (2.0F * cytokine_concentration);
+            effects.theta_suppression = 1.0F - (0.5F * cytokine_concentration);
+            effects.gamma_suppression = 1.0F - (0.7F * cytokine_concentration);
+            effects.beta_suppression = 1.0F - (0.5F * cytokine_concentration);
+            effects.coherence_disruption = 0.7F * cytokine_concentration;
+            effects.synchrony_disruption = 0.7F * cytokine_concentration;
+            break;
+
+        default:
+            // Unknown level, no effects
+            effects.delta_amplification = 1.0F;
+            effects.theta_suppression = 1.0F;
+            effects.gamma_suppression = 1.0F;
+            effects.beta_suppression = 1.0F;
+            effects.coherence_disruption = 0.0F;
+            effects.synchrony_disruption = 0.0F;
+            break;
+    }
+
+    return effects;
+}
+
+/**
+ * WHAT: Apply immune effects to oscillation analysis
+ * WHY:  Modulate band powers based on immune state
+ * HOW:  Scale cached wave powers and coherence/synchrony
+ */
+bool brain_oscillation_apply_immune_effects(
+    brain_oscillation_analyzer_t* analyzer,
+    const immune_oscillation_effects_t* effects)
+{
+    // Guard: Validate inputs
+    if (!analyzer || !effects) {
+        return false;
+    }
+
+    // Store effects for tracking
+    analyzer->active_effects = *effects;
+
+    // Apply effects to cached wave power
+    analyzer->last_wave_power.delta_power *= effects->delta_amplification;
+    analyzer->last_wave_power.theta_power *= effects->theta_suppression;
+    analyzer->last_wave_power.gamma_power *= effects->gamma_suppression;
+    analyzer->last_wave_power.beta_power *= effects->beta_suppression;
+
+    // Recompute total power
+    analyzer->last_wave_power.total_power =
+        analyzer->last_wave_power.delta_power +
+        analyzer->last_wave_power.theta_power +
+        analyzer->last_wave_power.alpha_power +
+        analyzer->last_wave_power.beta_power +
+        analyzer->last_wave_power.gamma_power;
+
+    // Note: Coherence and synchrony would be modulated during computation
+    // This requires integration with brain_oscillation_analyze()
+
+    LOG_DEBUG(LOG_MODULE,
+        "Applied immune effects: delta_amp=%.2f, gamma_supp=%.2f, coherence_disr=%.2f",
+        effects->delta_amplification,
+        effects->gamma_suppression,
+        effects->coherence_disruption);
+
+    return true;
+}
+
+/**
+ * WHAT: Detect abnormal oscillation patterns
+ * WHY:  Identify neural dysfunction for immune surveillance
+ * HOW:  Check thresholds for delta, gamma, coherence, synchrony
+ */
+bool brain_oscillation_detect_abnormality(
+    brain_oscillation_analyzer_t* analyzer,
+    oscillation_abnormality_t* abnormality)
+{
+    // Guard: Validate inputs
+    if (!analyzer || !abnormality) {
+        return false;
+    }
+
+    // Initialize abnormality structure
+    memset(abnormality, 0, sizeof(oscillation_abnormality_t));
+
+    // Get current wave power (must have been computed)
+    if (analyzer->last_wave_power.total_power < 1e-6F) {
+        return false;  // No data
+    }
+
+    // Check excessive delta (> 50% total power)
+    float delta_ratio = analyzer->last_wave_power.delta_power /
+                       analyzer->last_wave_power.total_power;
+    if (delta_ratio > 0.5F) {
+        abnormality->excessive_delta = true;
+        abnormality->abnormality_score += 0.25F;
+    }
+
+    // Check suppressed gamma (< 5% total power)
+    float gamma_ratio = analyzer->last_wave_power.gamma_power /
+                       analyzer->last_wave_power.total_power;
+    if (gamma_ratio < 0.05F) {
+        abnormality->suppressed_gamma = true;
+        abnormality->abnormality_score += 0.25F;
+    }
+
+    // Check low coherence (< 0.3)
+    // Note: Would need to compute coherence in brain_oscillation_analyze()
+    // For now, use a placeholder based on spectral entropy
+    float coherence = 0.5F;  // Placeholder
+    if (coherence < 0.3F) {
+        abnormality->low_coherence = true;
+        abnormality->abnormality_score += 0.25F;
+    }
+
+    // Check low synchrony (< 0.2)
+    float synchrony = 0.5F;  // Placeholder
+    if (synchrony < 0.2F) {
+        abnormality->low_synchrony = true;
+        abnormality->abnormality_score += 0.25F;
+    }
+
+    // Track consecutive abnormal readings
+    if (abnormality->abnormality_score > 0.5F) {
+        analyzer->consecutive_abnormal_count++;
+        abnormality->consecutive_abnormal = analyzer->consecutive_abnormal_count;
+    } else {
+        analyzer->consecutive_abnormal_count = 0;
+        abnormality->consecutive_abnormal = 0;
+    }
+
+    // Store last abnormality
+    analyzer->last_abnormality = *abnormality;
+
+    // Return true if abnormal
+    bool is_abnormal = (abnormality->abnormality_score > 0.5F);
+
+    if (is_abnormal) {
+        LOG_WARNING(LOG_MODULE,
+            "Abnormal oscillation pattern detected: score=%.2f, "
+            "delta_excess=%d, gamma_supp=%d, consecutive=%u",
+            abnormality->abnormality_score,
+            abnormality->excessive_delta,
+            abnormality->suppressed_gamma,
+            abnormality->consecutive_abnormal);
+    }
+
+    return is_abnormal;
+}
+
+/**
+ * WHAT: Notify immune system of oscillation abnormality
+ * WHY:  Trigger immune surveillance for neural dysfunction
+ * HOW:  Present abnormal pattern as antigen to immune system
+ */
+bool brain_oscillation_notify_immune_abnormality(
+    brain_oscillation_analyzer_t* analyzer,
+    const oscillation_abnormality_t* abnormality)
+{
+    // Guard: Validate inputs
+    if (!analyzer || !abnormality) {
+        return false;
+    }
+
+    // Guard: Check if immune system is connected
+    if (!analyzer->immune_system) {
+        LOG_WARNING(LOG_MODULE,
+            "Cannot notify immune system: not connected");
+        return false;
+    }
+
+    // Create epitope from oscillation pattern
+    // WHAT: Encode abnormality signature as antigen epitope
+    // WHY: Allow immune system to recognize and respond to pattern
+    // HOW: Pack abnormality flags and scores into byte array
+    uint8_t epitope[64] = {0};
+    epitope[0] = 0xEE;  // Magic: oscillation abnormality
+    epitope[1] = 0xE0;  // Version: 1.0
+    epitope[2] = abnormality->excessive_delta ? 1 : 0;
+    epitope[3] = abnormality->suppressed_gamma ? 1 : 0;
+    epitope[4] = abnormality->low_coherence ? 1 : 0;
+    epitope[5] = abnormality->low_synchrony ? 1 : 0;
+
+    // Pack abnormality score (float to uint8_t)
+    epitope[6] = (uint8_t)(abnormality->abnormality_score * 255.0F);
+    epitope[7] = (uint8_t)(abnormality->consecutive_abnormal & 0xFF);
+
+    // Compute severity based on abnormality score
+    uint32_t severity = (uint32_t)(abnormality->abnormality_score * 10.0F);
+    if (severity < 1) severity = 1;
+    if (severity > 10) severity = 10;
+
+    // Present antigen to immune system
+    uint32_t antigen_id = 0;
+    int result = brain_immune_present_antigen(
+        analyzer->immune_system,
+        ANTIGEN_SOURCE_ANOMALY,  // Oscillation abnormality is an anomaly
+        epitope,
+        8,  // Just first 8 bytes contain relevant data
+        severity,
+        0,  // Source node: 0 for self/local
+        &antigen_id
+    );
+
+    if (result != 0) {
+        LOG_ERROR(LOG_MODULE,
+            "Failed to present oscillation abnormality to immune system");
+        return false;
+    }
+
+    LOG_INFO(LOG_MODULE,
+        "Presented oscillation abnormality to immune system: "
+        "antigen_id=%u, severity=%u, score=%.2f",
+        antigen_id, severity, abnormality->abnormality_score);
+
+    return true;
 }

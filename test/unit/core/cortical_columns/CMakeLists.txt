@@ -125,3 +125,40 @@ set_tests_properties(test_cortical_layers
         TIMEOUT 120
         LABELS "unit;core;cortical_columns;layers"
 )
+
+# Test executable for cortical immune integration
+add_executable(test_cortical_immune
+    test_cortical_immune.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/cortical_columns/nimcp_cortical_immune.c
+)
+
+# Link libraries
+target_link_libraries(test_cortical_immune
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+# C++17 standard
+target_compile_features(test_cortical_immune PRIVATE cxx_std_17)
+
+# Include directories
+target_include_directories(test_cortical_immune
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+# Add to test suite
+add_test(NAME test_cortical_immune
+         COMMAND test_cortical_immune)
+
+# Set test properties
+set_tests_properties(test_cortical_immune
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;immune"
+)

@@ -29,6 +29,8 @@
  */
 
 #include "cognitive/introspection/nimcp_temporal_patterns.h"
+#include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/containers/nimcp_queue.h"
@@ -221,6 +223,53 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
                 }
             }
             pattern_count++;
+        }
+    }
+
+    /* WHAT: Add immune threat patterns if immune system connected */
+    /* WHY: Threat sequences are temporal patterns for metacognition */
+    /* HOW: Query immune system for recent antigens and responses */
+    brain_immune_system_t* immune = introspection_get_immune(context);
+    if (immune != NULL && pattern_count < max_possible_patterns) {
+        brain_immune_stats_t stats;
+        if (brain_immune_get_stats(immune, &stats) == 0) {
+            /* WHAT: If significant immune activity, create threat pattern */
+            if (stats.antigens_processed > 0) {
+                snprintf(patterns[pattern_count].name, TEMPORAL_MAX_PATTERN_NAME,
+                        "immune_threat_%u", pattern_count);
+                patterns[pattern_count].sequence_length = 3; /* Simplified: detection->response->resolution */
+                patterns[pattern_count].state_dimension = 1;
+                patterns[pattern_count].occurrence_count = stats.threats_neutralized;
+                patterns[pattern_count].strength = 0.8F; /* High strength - important for survival */
+                patterns[pattern_count].first_detected = nimcp_time_monotonic_ms();
+                patterns[pattern_count].last_detected = patterns[pattern_count].first_detected;
+                patterns[pattern_count].average_duration_ms = stats.avg_response_time_ms;
+
+                /* Allocate simplified threat pattern sequence */
+                patterns[pattern_count].state_sequence =
+                    (float**)nimcp_malloc(3 * sizeof(float*));
+
+                if (patterns[pattern_count].state_sequence != NULL) {
+                    /* Detection phase */
+                    patterns[pattern_count].state_sequence[0] = (float*)nimcp_malloc(sizeof(float));
+                    if (patterns[pattern_count].state_sequence[0] != NULL) {
+                        patterns[pattern_count].state_sequence[0][0] = 0.3F; /* Low baseline */
+                    }
+                    /* Response phase */
+                    patterns[pattern_count].state_sequence[1] = (float*)nimcp_malloc(sizeof(float));
+                    if (patterns[pattern_count].state_sequence[1] != NULL) {
+                        patterns[pattern_count].state_sequence[1][0] = 0.8F; /* High activity */
+                    }
+                    /* Resolution phase */
+                    patterns[pattern_count].state_sequence[2] = (float*)nimcp_malloc(sizeof(float));
+                    if (patterns[pattern_count].state_sequence[2] != NULL) {
+                        patterns[pattern_count].state_sequence[2][0] = 0.4F; /* Returning to baseline */
+                    }
+                    pattern_count++;
+                    LOG_DEBUG("Added immune threat pattern: %u threats processed",
+                             stats.antigens_processed);
+                }
+            }
         }
     }
 

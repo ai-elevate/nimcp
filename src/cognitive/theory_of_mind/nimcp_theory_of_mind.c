@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/nimcp_theory_of_mind.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -142,6 +143,12 @@ struct theory_of_mind_s {
     // Multi-agent tracking (Phase 10.6.1)
     agent_model_t agent_models[MAX_TRACKED_AGENTS];
     uint32_t num_active_agents;
+
+    // Brain immune integration
+    brain_immune_system_t* immune_system;  /**< Connected immune system */
+    float immune_impairment;                /**< Current inflammation impairment [0,1] */
+    uint64_t last_immune_update_ms;        /**< Last immune state check */
+    uint32_t social_stress_events;         /**< Count of social stress triggers */
 };
 
 //=============================================================================
@@ -184,6 +191,13 @@ const char* tom_get_last_error(void)
 {
     return last_error;
 }
+
+//=============================================================================
+// Forward Declarations for Immune Integration
+//=============================================================================
+
+static void apply_immune_impairment_to_emotion(theory_of_mind_t tom, float* confidence);
+static void apply_immune_impairment_to_goal(theory_of_mind_t tom, float* confidence);
 
 //=============================================================================
 // Helper Functions: BDI Management
@@ -489,6 +503,9 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
     float emotion_conf = 0.0F;
     tom_emotion_t inferred_emotion = infer_emotion_from_observation(observation, &emotion_conf);
 
+    // Apply immune impairment to emotion inference
+    apply_immune_impairment_to_emotion(tom, &emotion_conf);
+
     if (inferred_emotion != TOM_EMOTION_UNKNOWN) {
         tom->current_emotion = inferred_emotion;
         tom->emotion_confidence = emotion_conf;
@@ -499,6 +516,9 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
     char goal_buffer[256];
     float goal_conf = 0.0F;
     if (infer_goal_from_observation(observation, goal_buffer, sizeof(goal_buffer), &goal_conf)) {
+        // Apply immune impairment to goal inference
+        apply_immune_impairment_to_goal(tom, &goal_conf);
+
         strncpy(tom->current_goal, goal_buffer, sizeof(tom->current_goal) - 1);
         tom->current_goal[sizeof(tom->current_goal) - 1] = '\0';
         tom->goal_confidence = goal_conf;
@@ -872,4 +892,242 @@ static agent_model_t* get_or_create_agent_model(theory_of_mind_t tom, agent_id_t
 
     set_error("Agent tracking array full (max %d agents)", MAX_TRACKED_AGENTS);
     return NULL;
+}
+
+//=============================================================================
+// Brain Immune Integration API
+//=============================================================================
+
+/**
+ * @brief Cytokine callback for immune system effects on ToM
+ *
+ * WHAT: Receive cytokine signals and adjust ToM capacity
+ * WHY:  Inflammation impairs social cognition (sickness behavior)
+ * HOW:  Pro-inflammatory cytokines reduce perspective score and confidence
+ *
+ * BIOLOGICAL BASIS:
+ * IL-6, TNF-α, and IL-1β impair mPFC and TPJ function, reducing
+ * theory of mind performance during inflammation.
+ */
+static void tom_immune_cytokine_callback(
+    brain_immune_system_t* system,
+    const brain_cytokine_t* cytokine,
+    void* user_data)
+{
+    theory_of_mind_t tom = (theory_of_mind_t)user_data;
+    if (!tom || !cytokine) return;
+
+    // Map cytokine type to impairment
+    float impairment_delta = 0.0f;
+
+    switch (cytokine->type) {
+        case CYTOKINE_IL1B:
+            // IL-1: Moderate pro-inflammatory, mild impairment
+            impairment_delta = cytokine->concentration * 0.15f;
+            break;
+
+        case CYTOKINE_IL6:
+            // IL-6: Strong pro-inflammatory, moderate impairment
+            impairment_delta = cytokine->concentration * 0.25f;
+            break;
+
+        case CYTOKINE_TNFA:
+            // TNF-α: Severe pro-inflammatory, strong impairment
+            impairment_delta = cytokine->concentration * 0.35f;
+            break;
+
+        case CYTOKINE_IL10:
+            // IL-10: Anti-inflammatory, reduces impairment
+            impairment_delta = -cytokine->concentration * 0.20f;
+            break;
+
+        case BRAIN_CYTOKINE_IFN_GAMMA:
+            // IFN-γ: Moderate pro-inflammatory
+            impairment_delta = cytokine->concentration * 0.20f;
+            break;
+
+        default:
+            return;
+    }
+
+    // Update impairment level (clamped to [0,1])
+    tom->immune_impairment = fmaxf(0.0f, fminf(1.0f,
+        tom->immune_impairment + impairment_delta));
+
+    // High inflammation reduces perspective-taking score
+    if (tom->immune_impairment > 0.5f) {
+        float reduction = (tom->immune_impairment - 0.5f) * 0.4f;  // Max 0.2 reduction
+        tom->perspective_score = fmaxf(0.5f, tom->perspective_score - reduction);
+    }
+
+    tom->last_immune_update_ms = nimcp_time_monotonic_ms();
+}
+
+/**
+ * @brief Inflammation callback for immune system effects on ToM
+ *
+ * WHAT: Receive inflammation level changes
+ * WHY:  Severe inflammation (cytokine storm) severely impairs social cognition
+ * HOW:  Map inflammation level to impairment multiplier
+ */
+static void tom_immune_inflammation_callback(
+    brain_immune_system_t* system,
+    const brain_inflammation_site_t* site,
+    void* user_data)
+{
+    theory_of_mind_t tom = (theory_of_mind_t)user_data;
+    if (!tom || !site) return;
+
+    // Map inflammation level to impairment
+    float base_impairment = 0.0f;
+
+    switch (site->level) {
+        case INFLAMMATION_NONE:
+            base_impairment = 0.0f;
+            break;
+        case INFLAMMATION_LOCAL:
+            base_impairment = 0.1f;
+            break;
+        case INFLAMMATION_REGIONAL:
+            base_impairment = 0.3f;
+            break;
+        case INFLAMMATION_SYSTEMIC:
+            base_impairment = 0.6f;
+            break;
+        case INFLAMMATION_STORM:
+            // Cytokine storm severely impairs all cognition
+            base_impairment = 0.9f;
+            break;
+    }
+
+    // Gradually update impairment (smooth transition)
+    tom->immune_impairment = tom->immune_impairment * 0.7f + base_impairment * 0.3f;
+    tom->last_immune_update_ms = nimcp_time_monotonic_ms();
+}
+
+bool tom_connect_immune(theory_of_mind_t tom, brain_immune_system_t* immune)
+{
+    // Guard: validate parameters
+    if (!tom) {
+        set_error("NULL tom in tom_connect_immune");
+        return false;
+    }
+    if (!immune) {
+        set_error("NULL immune in tom_connect_immune");
+        return false;
+    }
+
+    // Store immune system handle
+    tom->immune_system = immune;
+    tom->immune_impairment = 0.0f;
+    tom->last_immune_update_ms = nimcp_time_monotonic_ms();
+    tom->social_stress_events = 0;
+
+    // Register callbacks with immune system
+    brain_immune_set_cytokine_callback(immune, tom_immune_cytokine_callback, tom);
+    brain_immune_set_inflammation_callback(immune, tom_immune_inflammation_callback, tom);
+
+    LOG_INFO("ToM connected to brain immune system");
+    return true;
+}
+
+float tom_get_immune_impairment(theory_of_mind_t tom)
+{
+    // Guard: validate tom
+    if (!tom) {
+        return 0.0f;
+    }
+
+    // Return current impairment level
+    return tom->immune_impairment;
+}
+
+bool tom_trigger_social_stress(theory_of_mind_t tom,
+                                float prediction_error,
+                                bool is_social_rejection)
+{
+    // Guard: validate parameters
+    if (!tom) {
+        set_error("NULL tom in tom_trigger_social_stress");
+        return false;
+    }
+    if (!tom->immune_system) {
+        set_error("No immune system connected");
+        return false;
+    }
+    if (prediction_error < 0.0f || prediction_error > 1.0f) {
+        set_error("Invalid prediction_error (must be [0,1])");
+        return false;
+    }
+
+    // Track social stress event
+    tom->social_stress_events++;
+
+    // Determine cytokine type and concentration based on stress severity
+    brain_cytokine_type_t cytokine_type;
+    float concentration;
+
+    if (is_social_rejection) {
+        // Social rejection triggers stronger inflammatory response
+        cytokine_type = CYTOKINE_IL6;  // IL-6 associated with social stress
+        concentration = fminf(1.0f, prediction_error * 1.5f);
+    } else {
+        // General prediction error triggers milder response
+        cytokine_type = CYTOKINE_IL1B;  // IL-1 for general stress
+        concentration = prediction_error;
+    }
+
+    // Release cytokine via immune system
+    uint32_t cytokine_id;
+    int result = brain_immune_release_cytokine(
+        tom->immune_system,
+        cytokine_type,
+        0,  // Source cell ID (0 = from cognitive system)
+        concentration,
+        0,  // Target region (0 = broadcast)
+        &cytokine_id
+    );
+
+    if (result != 0) {
+        set_error("Failed to release stress cytokine");
+        return false;
+    }
+
+    LOG_DEBUG("Social stress triggered: error=%.2f, rejection=%d, cytokine=%s (%.2f)",
+              prediction_error, is_social_rejection,
+              brain_immune_cytokine_to_string(cytokine_type), concentration);
+
+    return true;
+}
+
+/**
+ * @brief Apply immune impairment to emotion inference
+ *
+ * WHAT: Reduce emotion inference confidence based on inflammation
+ * WHY:  Inflammation impairs social-emotional processing
+ * HOW:  Scale confidence by (1 - impairment)
+ */
+static void apply_immune_impairment_to_emotion(theory_of_mind_t tom, float* confidence)
+{
+    if (!tom || !confidence || !tom->immune_system) return;
+
+    // Reduce confidence proportional to impairment
+    float reduction_factor = 1.0f - (tom->immune_impairment * 0.7f);  // Max 70% reduction
+    *confidence *= reduction_factor;
+}
+
+/**
+ * @brief Apply immune impairment to goal inference
+ *
+ * WHAT: Reduce goal inference confidence based on inflammation
+ * WHY:  Inflammation impairs mentalizing and intention understanding
+ * HOW:  Scale confidence by (1 - impairment)
+ */
+static void apply_immune_impairment_to_goal(theory_of_mind_t tom, float* confidence)
+{
+    if (!tom || !confidence || !tom->immune_system) return;
+
+    // Reduce confidence proportional to impairment
+    float reduction_factor = 1.0f - (tom->immune_impairment * 0.8f);  // Max 80% reduction
+    *confidence *= reduction_factor;
 }

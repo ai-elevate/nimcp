@@ -197,6 +197,9 @@ struct curiosity_engine_struct {
     // Bio-async communication
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    // Immune system integration
+    void* immune_bridge;  // curiosity_immune_bridge_t*, void* to avoid circular dependency
 };
 
 //=============================================================================
@@ -878,6 +881,11 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
 {
     if (!engine) {
         return;
+    }
+
+    // Disconnect immune system if connected
+    if (engine->immune_bridge) {
+        curiosity_disconnect_immune(engine);
     }
 
     // Bio-async unregistration
@@ -1881,4 +1889,145 @@ float curiosity_get_information_gain(curiosity_engine_t engine)
 
     // Clamp to [0, 1]
     return fminf(fmaxf(information_gain, 0.0F), 1.0F);
+}
+
+//=============================================================================
+// Immune System Integration
+//=============================================================================
+
+#include "cognitive/immune/nimcp_curiosity_immune_bridge.h"
+
+/**
+ * @brief Connect curiosity engine to brain immune system
+ *
+ * WHAT: Establish bidirectional immune-curiosity coupling
+ * WHY:  Model sickness behavior (cytokines suppress exploration) and novelty vigilance
+ * HOW:  Create curiosity_immune_bridge, register callbacks with immune system
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param engine Curiosity engine
+ * @param immune_system Brain immune system to connect
+ * @return 0 on success, -1 on error
+ */
+int curiosity_connect_immune(curiosity_engine_t engine, struct brain_immune_system* immune_system)
+{
+    // Guard: NULL pointers
+    if (!engine || !immune_system) {
+        LOG_ERROR("Cannot connect NULL engine or immune system");
+        return -1;
+    }
+
+    // Guard: Already connected
+    if (engine->immune_bridge) {
+        LOG_WARN("Curiosity already connected to immune system, disconnecting first");
+        curiosity_disconnect_immune(engine);
+    }
+
+    // WHAT: Create curiosity-immune bridge
+    // WHY:  Bridge manages bidirectional coupling
+    // HOW:  Use default config, link both systems
+    curiosity_immune_bridge_t* bridge = curiosity_immune_bridge_create(
+        NULL,  // Use default config
+        immune_system,
+        engine
+    );
+
+    if (!bridge) {
+        LOG_ERROR("Failed to create curiosity-immune bridge");
+        return -1;
+    }
+
+    engine->immune_bridge = (void*)bridge;
+
+    LOG_INFO("Curiosity engine connected to brain immune system");
+    return 0;
+}
+
+/**
+ * @brief Disconnect from brain immune system
+ *
+ * WHAT: Tear down immune-curiosity coupling
+ * WHY:  Clean shutdown, restore original curiosity levels
+ * HOW:  Destroy bridge, unregister callbacks
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param engine Curiosity engine
+ * @return 0 on success, -1 on error
+ */
+int curiosity_disconnect_immune(curiosity_engine_t engine)
+{
+    // Guard: NULL engine
+    if (!engine) {
+        return -1;
+    }
+
+    // Guard: Not connected
+    if (!engine->immune_bridge) {
+        return 0;  // Already disconnected
+    }
+
+    // WHAT: Destroy bridge
+    // WHY:  Clean up resources, restore curiosity
+    // HOW:  Call bridge destructor
+    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)engine->immune_bridge;
+    curiosity_immune_bridge_destroy(bridge);
+
+    engine->immune_bridge = NULL;
+
+    LOG_INFO("Curiosity engine disconnected from brain immune system");
+    return 0;
+}
+
+/**
+ * @brief Get current sickness behavior suppression level
+ *
+ * WHAT: Query immune-induced curiosity suppression
+ * WHY:  Diagnostic visibility into sickness behavior effects
+ * HOW:  Return suppression factor from immune bridge
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param engine Curiosity engine
+ * @return Suppression factor (0-1, where 0=max suppression, 1=no suppression)
+ */
+float curiosity_get_immune_suppression(curiosity_engine_t engine)
+{
+    // Guard: NULL engine or not connected
+    if (!engine || !engine->immune_bridge) {
+        return 1.0F;  // No suppression if not connected
+    }
+
+    // WHAT: Query bridge for suppression factor
+    // WHY:  Bridge tracks immune-induced curiosity modulation
+    // HOW:  Call bridge getter
+    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)engine->immune_bridge;
+    return curiosity_immune_get_suppression_factor(bridge);
+}
+
+/**
+ * @brief Get current immune vigilance boost from novelty
+ *
+ * WHAT: Query curiosity-induced immune alertness
+ * WHY:  Diagnostic visibility into novelty-immune coupling
+ * HOW:  Return vigilance boost from immune bridge
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param engine Curiosity engine
+ * @return Immune vigilance boost (1.0-1.5x)
+ */
+float curiosity_get_novelty_vigilance_boost(curiosity_engine_t engine)
+{
+    // Guard: NULL engine or not connected
+    if (!engine || !engine->immune_bridge) {
+        return 1.0F;  // No boost if not connected
+    }
+
+    // WHAT: Query bridge for vigilance boost
+    // WHY:  Bridge tracks novelty-induced immune alertness
+    // HOW:  Call bridge getter
+    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)engine->immune_bridge;
+    return curiosity_immune_get_vigilance_boost(bridge);
 }

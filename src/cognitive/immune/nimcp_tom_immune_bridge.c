@@ -1,0 +1,601 @@
+/**
+ * @file nimcp_tom_immune_bridge.c
+ * @brief Theory of Mind-Immune System Integration Implementation
+ * @version 1.0.0
+ * @date 2025-12-11
+ *
+ * WHAT: Bidirectional coupling between brain immune and theory of mind systems
+ * WHY:  Biological realism - cytokines impair social cognition, social stress triggers inflammation
+ * HOW:  Monitor cytokine levels to impair ToM, monitor social stress to trigger immune responses
+ */
+
+#include "cognitive/immune/nimcp_tom_immune_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include <string.h>
+#include <math.h>
+#include <pthread.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * @brief Clamp value to range
+ *
+ * WHAT: Constrain value to [min, max]
+ * WHY:  Prevent overflow/underflow
+ * HOW:  Return min if below, max if above, value otherwise
+ */
+static inline float clamp_f(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/**
+ * @brief Query cytokine concentration from immune system
+ *
+ * WHAT: Get current concentration of specific cytokine
+ * WHY:  Need cytokine levels to compute ToM impairment
+ * HOW:  Iterate through immune system cytokines, find matching type
+ */
+static float query_cytokine_concentration(
+    const brain_immune_system_t* immune,
+    brain_cytokine_type_t type
+) {
+    if (!immune || !immune->cytokines) return 0.0f;
+
+    float total_concentration = 0.0f;
+    for (size_t i = 0; i < immune->cytokine_count; i++) {
+        if (immune->cytokines[i].type == type) {
+            total_concentration += immune->cytokines[i].concentration;
+        }
+    }
+
+    return clamp_f(total_concentration, 0.0f, 1.0f);
+}
+
+/**
+ * @brief Get inflammation duration
+ *
+ * WHAT: Calculate how long inflammation has persisted
+ * WHY:  Chronic inflammation (>7 days) has different ToM effects
+ * HOW:  Find oldest active inflammation site, compute duration
+ */
+static float get_inflammation_duration_sec(const brain_immune_system_t* immune) {
+    if (!immune || !immune->inflammation_sites) return 0.0f;
+
+    uint64_t current_time = 0;  /* Would use actual time */
+    uint64_t oldest_start = current_time;
+
+    for (size_t i = 0; i < immune->inflammation_count; i++) {
+        if (immune->inflammation_sites[i].start_time < oldest_start) {
+            oldest_start = immune->inflammation_sites[i].start_time;
+        }
+    }
+
+    return (float)(current_time - oldest_start) / 1000.0f;  /* Convert ms to sec */
+}
+
+/**
+ * @brief Get current inflammation level
+ *
+ * WHAT: Get highest inflammation level in system
+ * WHY:  Max inflammation determines ToM impact
+ * HOW:  Query immune system for max inflammation site level
+ */
+static brain_inflammation_level_t get_max_inflammation_level(
+    const brain_immune_system_t* immune
+) {
+    if (!immune || !immune->inflammation_sites) return INFLAMMATION_NONE;
+
+    brain_inflammation_level_t max_level = INFLAMMATION_NONE;
+    for (size_t i = 0; i < immune->inflammation_count; i++) {
+        if (immune->inflammation_sites[i].level > max_level) {
+            max_level = immune->inflammation_sites[i].level;
+        }
+    }
+
+    return max_level;
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+int tom_immune_default_config(tom_immune_config_t* config) {
+    if (!config) return -1;
+
+    /* All features enabled by default */
+    config->enable_cytokine_tom_modulation = true;
+    config->enable_inflammation_impairment = true;
+    config->enable_social_stress_immune_trigger = true;
+    config->enable_social_connection_boost = true;
+    config->enable_rejection_inflammation = true;
+    config->enable_isolation_chronic_inflammation = true;
+
+    /* Biologically-based default sensitivities */
+    config->cytokine_sensitivity = 1.0f;
+    config->inflammation_sensitivity = 1.0f;
+    config->social_stress_sensitivity = 1.0f;
+
+    /* Evidence-based thresholds */
+    config->social_stress_threshold = SOCIAL_STRESS_IMMUNE_THRESHOLD;
+    config->inflammation_tom_threshold = INFLAMMATION_TOM_THRESHOLD;
+
+    return 0;
+}
+
+tom_immune_bridge_t* tom_immune_bridge_create(
+    const tom_immune_config_t* config,
+    theory_of_mind_t tom_system,
+    brain_immune_system_t* immune_system
+) {
+    /* Guard: require both systems */
+    if (!tom_system || !immune_system) {
+        nimcp_log(NIMCP_LOG_ERROR, "tom_immune_bridge",
+                  "Cannot create bridge without ToM and immune systems");
+        return NULL;
+    }
+
+    /* Allocate bridge */
+    tom_immune_bridge_t* bridge = (tom_immune_bridge_t*)
+        nimcp_malloc(sizeof(tom_immune_bridge_t));
+    if (!bridge) {
+        nimcp_log(NIMCP_LOG_ERROR, "tom_immune_bridge", "Allocation failed");
+        return NULL;
+    }
+
+    /* Initialize to zero */
+    memset(bridge, 0, sizeof(tom_immune_bridge_t));
+
+    /* Link systems */
+    bridge->tom_system = tom_system;
+    bridge->immune_system = immune_system;
+
+    /* Apply configuration */
+    if (config) {
+        bridge->enable_cytokine_tom_modulation = config->enable_cytokine_tom_modulation;
+        bridge->enable_inflammation_impairment = config->enable_inflammation_impairment;
+        bridge->enable_social_stress_immune_trigger = config->enable_social_stress_immune_trigger;
+        bridge->enable_social_connection_boost = config->enable_social_connection_boost;
+        bridge->enable_rejection_inflammation = config->enable_rejection_inflammation;
+        bridge->enable_isolation_chronic_inflammation = config->enable_isolation_chronic_inflammation;
+    } else {
+        /* Use defaults */
+        tom_immune_config_t default_cfg;
+        tom_immune_default_config(&default_cfg);
+        bridge->enable_cytokine_tom_modulation = default_cfg.enable_cytokine_tom_modulation;
+        bridge->enable_inflammation_impairment = default_cfg.enable_inflammation_impairment;
+        bridge->enable_social_stress_immune_trigger = default_cfg.enable_social_stress_immune_trigger;
+        bridge->enable_social_connection_boost = default_cfg.enable_social_connection_boost;
+        bridge->enable_rejection_inflammation = default_cfg.enable_rejection_inflammation;
+        bridge->enable_isolation_chronic_inflammation = default_cfg.enable_isolation_chronic_inflammation;
+    }
+
+    /* Create mutex */
+    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+
+    nimcp_log(NIMCP_LOG_INFO, "tom_immune_bridge", "Bridge created successfully");
+    return bridge;
+}
+
+void tom_immune_bridge_destroy(tom_immune_bridge_t* bridge) {
+    if (!bridge) return;
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
+        nimcp_free(bridge->mutex);
+    }
+
+    /* Free bridge (don't destroy linked systems - we don't own them) */
+    nimcp_free(bridge);
+    nimcp_log(NIMCP_LOG_INFO, "tom_immune_bridge", "Bridge destroyed");
+}
+
+/* ============================================================================
+ * Immune → ToM Implementation
+ * ============================================================================ */
+
+int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_cytokine_tom_modulation) return 0;
+    if (!bridge->immune_system || !bridge->tom_system) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Compute cytokine effects */
+    cytokine_tom_effects_t* effects = &bridge->cytokine_effects;
+
+    /* Query cytokine concentrations */
+    float il6_level = query_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL6);
+    float tnf_level = query_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_TNF);
+    float il1_level = query_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
+    float ifn_gamma_level = query_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IFN_GAMMA);
+    float il10_level = query_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL10);
+
+    /* Pro-inflammatory cytokines → ToM impairment */
+    effects->il6_tom_impairment = il6_level * CYTOKINE_IL6_TOM_IMPAIRMENT;
+    effects->tnf_tom_impairment = tnf_level * CYTOKINE_TNF_TOM_IMPAIRMENT;
+    effects->il1_tom_impairment = il1_level * CYTOKINE_IL1_TOM_IMPAIRMENT;
+    effects->ifn_gamma_tom_impairment = ifn_gamma_level * CYTOKINE_IFN_GAMMA_TOM_IMPAIRMENT;
+
+    /* Anti-inflammatory cytokines → ToM recovery */
+    effects->il10_tom_recovery = il10_level * CYTOKINE_IL10_TOM_RECOVERY;
+
+    /* Aggregate effects */
+    float proinflam_total = effects->il6_tom_impairment +
+                           effects->tnf_tom_impairment +
+                           effects->il1_tom_impairment +
+                           effects->ifn_gamma_tom_impairment;
+
+    effects->total_perspective_impairment = clamp_f(
+        proinflam_total - effects->il10_tom_recovery,
+        0.0f, 1.0f
+    );
+
+    /* Specific ToM impairments */
+    effects->empathy_reduction = clamp_f(proinflam_total * 0.7f, 0.0f, 1.0f);
+    effects->social_motivation_loss = clamp_f(proinflam_total * 0.6f, 0.0f, 1.0f);
+    effects->mentalizing_accuracy_loss = clamp_f(proinflam_total * 0.8f, 0.0f, 1.0f);
+
+    bridge->cytokine_impairments++;
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_inflammation_impairment) return 0;
+    if (!bridge->immune_system) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    inflammation_tom_state_t* state = &bridge->inflammation_state;
+
+    /* Get inflammation state */
+    state->current_level = get_max_inflammation_level(bridge->immune_system);
+    state->inflammation_duration_sec = get_inflammation_duration_sec(bridge->immune_system);
+    state->is_chronic = (state->inflammation_duration_sec >= (86400.0f * 7));  /* 7 days */
+
+    /* Inflammation intensity */
+    float inflammation_intensity = (float)state->current_level / (float)INFLAMMATION_STORM;
+
+    /* Chronic inflammation → persistent ToM deficits */
+    if (state->is_chronic) {
+        float duration_factor = clamp_f(
+            state->inflammation_duration_sec / (86400.0f * 14),  /* 14 days */
+            0.0f, 1.0f
+        );
+        state->perspective_score_reduction = clamp_f(duration_factor * 0.6f, 0.0f, 1.0f);
+    } else {
+        state->perspective_score_reduction = clamp_f(inflammation_intensity * 0.4f, 0.0f, 1.0f);
+    }
+
+    /* Specific ToM impairments based on inflammation */
+    state->false_belief_impairment = clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
+    state->empathy_capacity_loss = clamp_f(inflammation_intensity * 0.8f, 0.0f, 1.0f);
+    state->social_withdrawal = clamp_f(inflammation_intensity * 0.9f, 0.0f, 1.0f);
+
+    /* Inference impairments */
+    state->emotion_inference_impairment = clamp_f(inflammation_intensity * 0.65f, 0.0f, 1.0f);
+    state->goal_inference_impairment = clamp_f(inflammation_intensity * 0.70f, 0.0f, 1.0f);
+    state->intention_inference_impairment = clamp_f(inflammation_intensity * 0.60f, 0.0f, 1.0f);
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+float tom_immune_compute_impairment(const tom_immune_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+
+    /* Combine cytokine-induced and inflammation-induced impairment */
+    float cytokine_impairment = bridge->cytokine_effects.total_perspective_impairment;
+    float inflammation_impairment = bridge->inflammation_state.perspective_score_reduction;
+
+    /* Take maximum (not additive) */
+    float total_impairment = fmaxf(cytokine_impairment, inflammation_impairment);
+    return clamp_f(total_impairment, 0.0f, 1.0f);
+}
+
+int tom_immune_impair_perspective_taking(tom_immune_bridge_t* bridge) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->tom_system) return -1;
+
+    /* Compute impairment */
+    float impairment = tom_immune_compute_impairment(bridge);
+
+    /* This would reduce the perspective score in the ToM system */
+    /* For now, we track it in the bridge state */
+    /* Actual ToM system modification would go here */
+
+    return 0;
+}
+
+int tom_immune_impair_empathy(tom_immune_bridge_t* bridge) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->tom_system) return -1;
+
+    /* Get empathy reduction from both cytokines and inflammation */
+    float cytokine_empathy_loss = bridge->cytokine_effects.empathy_reduction;
+    float inflammation_empathy_loss = bridge->inflammation_state.empathy_capacity_loss;
+
+    /* Take maximum */
+    float total_empathy_loss = fmaxf(cytokine_empathy_loss, inflammation_empathy_loss);
+    total_empathy_loss = clamp_f(total_empathy_loss, 0.0f, 1.0f);
+
+    /* This would reduce empathy accuracy in ToM system */
+    /* Actual ToM system modification would go here */
+
+    return 0;
+}
+
+/* ============================================================================
+ * ToM → Immune Implementation
+ * ============================================================================ */
+
+int tom_immune_trigger_from_rejection(
+    tom_immune_bridge_t* bridge,
+    float rejection_severity
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_rejection_inflammation) return 0;
+    if (!bridge->immune_system) return -1;
+    if (rejection_severity < 0.0f || rejection_severity > 1.0f) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update social stress state */
+    bridge->social_stress_trigger.rejection_severity = rejection_severity;
+    bridge->social_stress_trigger.cortisol_triggered = true;
+
+    /* Social rejection triggers IL-6 release */
+    if (rejection_severity >= SOCIAL_STRESS_IMMUNE_THRESHOLD) {
+        float il6_concentration = rejection_severity * REJECTION_INFLAMMATION_MULTIPLIER;
+        il6_concentration = clamp_f(il6_concentration, 0.0f, 1.0f);
+
+        uint32_t cytokine_id;
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_IL6,
+            0,  /* Source cell ID */
+            il6_concentration,
+            0,  /* Broadcast */
+            &cytokine_id
+        );
+
+        bridge->social_stress_trigger.inflammatory_response = true;
+        bridge->rejection_inflammations++;
+    }
+
+    bridge->social_stress_triggers++;
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+int tom_immune_trigger_from_prediction_error(
+    tom_immune_bridge_t* bridge,
+    float prediction_error
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_social_stress_immune_trigger) return 0;
+    if (!bridge->immune_system) return -1;
+    if (prediction_error < 0.0f || prediction_error > 1.0f) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update social stress state */
+    bridge->social_stress_trigger.prediction_error = prediction_error;
+
+    /* Prediction errors trigger IL-1β release */
+    if (prediction_error >= SOCIAL_STRESS_IMMUNE_THRESHOLD) {
+        float il1_concentration = prediction_error * 0.8f;
+
+        uint32_t cytokine_id;
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_IL1,
+            0,
+            il1_concentration,
+            0,
+            &cytokine_id
+        );
+
+        bridge->social_stress_trigger.inflammatory_response = true;
+        bridge->social_stress_triggers++;
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+int tom_immune_trigger_from_isolation(
+    tom_immune_bridge_t* bridge,
+    float isolation_duration_sec
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_isolation_chronic_inflammation) return 0;
+    if (!bridge->immune_system) return -1;
+    if (isolation_duration_sec < 0.0f) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update isolation state */
+    bridge->social_stress_trigger.isolation_duration_sec = isolation_duration_sec;
+    bridge->social_stress_trigger.is_chronic_isolation =
+        (isolation_duration_sec >= ISOLATION_CHRONIC_THRESHOLD);
+
+    /* Chronic isolation triggers sustained inflammation */
+    if (bridge->social_stress_trigger.is_chronic_isolation) {
+        float duration_factor = clamp_f(
+            isolation_duration_sec / (ISOLATION_CHRONIC_THRESHOLD * 2.0f),
+            0.0f, 1.0f
+        );
+
+        /* Release multiple pro-inflammatory cytokines */
+        uint32_t cytokine_id;
+
+        /* IL-6 (chronic inflammation marker) */
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_IL6,
+            0,
+            duration_factor * 0.7f,
+            0,
+            &cytokine_id
+        );
+
+        /* TNF-α (severe chronic inflammation) */
+        if (duration_factor > 0.5f) {
+            brain_immune_release_cytokine(
+                bridge->immune_system,
+                BRAIN_CYTOKINE_TNF,
+                0,
+                (duration_factor - 0.5f) * 0.6f,
+                0,
+                &cytokine_id
+            );
+        }
+
+        bridge->social_stress_trigger.chronic_inflammation_risk = duration_factor;
+        bridge->social_stress_trigger.gene_expression_changes = duration_factor * 0.8f;
+        bridge->isolation_inflammations++;
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+int tom_immune_boost_from_social_connection(
+    tom_immune_bridge_t* bridge,
+    float connection_strength
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_social_connection_boost) return 0;
+    if (!bridge->immune_system) return -1;
+    if (connection_strength < 0.0f || connection_strength > 1.0f) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update social connection state */
+    bridge->social_connection_boost.social_bond_strength = connection_strength;
+    bridge->social_connection_boost.mentalizing_success_rate = connection_strength * 0.9f;
+    bridge->social_connection_boost.empathy_engagement = connection_strength * 0.85f;
+
+    /* Strong social connection releases IL-10 (anti-inflammatory) */
+    if (connection_strength >= 0.6f) {
+        float il10_concentration = connection_strength * 0.5f;
+
+        uint32_t cytokine_id;
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_IL10,
+            0,
+            il10_concentration,
+            0,
+            &cytokine_id
+        );
+
+        bridge->social_connection_boost.immune_enhancement = connection_strength * 0.4f;
+        bridge->social_connection_boost.il10_release_boost = il10_concentration;
+        bridge->social_connection_boost.inflammation_reduction = connection_strength * 0.3f;
+        bridge->social_connection_boost.stress_resistance = connection_strength * 0.5f;
+
+        bridge->social_connection_boosts++;
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Bidirectional Update Implementation
+ * ============================================================================ */
+
+int tom_immune_bridge_update(
+    tom_immune_bridge_t* bridge,
+    uint64_t delta_ms
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+
+    /* Apply immune → ToM effects */
+    tom_immune_apply_cytokine_effects(bridge);
+    tom_immune_apply_inflammation_effects(bridge);
+    tom_immune_impair_perspective_taking(bridge);
+    tom_immune_impair_empathy(bridge);
+
+    /* ToM → Immune effects would be triggered by events, not periodic updates */
+    /* (e.g., rejection events, prediction errors, etc.) */
+
+    bridge->total_updates++;
+    return 0;
+}
+
+/* ============================================================================
+ * Query Implementation
+ * ============================================================================ */
+
+int tom_immune_get_cytokine_effects(
+    const tom_immune_bridge_t* bridge,
+    cytokine_tom_effects_t* effects
+) {
+    if (!bridge || !effects) return -1;
+
+    memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_tom_effects_t));
+    return 0;
+}
+
+int tom_immune_get_inflammation_state(
+    const tom_immune_bridge_t* bridge,
+    inflammation_tom_state_t* state
+) {
+    if (!bridge || !state) return -1;
+
+    memcpy(state, &bridge->inflammation_state, sizeof(inflammation_tom_state_t));
+    return 0;
+}
+
+bool tom_immune_is_social_withdrawal(const tom_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+
+    /* Social withdrawal if high social motivation loss or sickness behavior */
+    float motivation_loss = bridge->cytokine_effects.social_motivation_loss;
+    float social_withdrawal = bridge->inflammation_state.social_withdrawal;
+
+    return (motivation_loss > 0.6f) || (social_withdrawal > 0.7f);
+}
+
+float tom_immune_get_impairment_severity(const tom_immune_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return tom_immune_compute_impairment(bridge);
+}
+
+float tom_immune_get_perspective_impairment(const tom_immune_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->cytokine_effects.total_perspective_impairment;
+}
+
+float tom_immune_get_empathy_impairment(const tom_immune_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+
+    float cytokine_empathy = bridge->cytokine_effects.empathy_reduction;
+    float inflammation_empathy = bridge->inflammation_state.empathy_capacity_loss;
+
+    return fmaxf(cytokine_empathy, inflammation_empathy);
+}

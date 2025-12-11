@@ -15,6 +15,7 @@
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/introspection/nimcp_introspection.h"
@@ -75,6 +76,15 @@ static bool wellbeing_bio_async_enabled = false;
  */
 static btree_t* event_btree = NULL;
 
+/**
+ * WHAT: Connected brain immune system
+ * WHY: Monitor immune inflammation for distress detection
+ * HOW: Store reference, check immune state in distress assessment
+ */
+static brain_immune_system_t* connected_immune_system = NULL;
+static nimcp_platform_mutex_t immune_connection_mutex;
+static nimcp_platform_once_t immune_connection_init_once = NIMCP_PLATFORM_ONCE_INIT;
+
 //=============================================================================
 // B-TREE HELPER FUNCTIONS
 //=============================================================================
@@ -126,6 +136,16 @@ static void free_event(void* data)
     // No-op: events are stored in static circular buffer
     // B-tree only holds pointers, doesn't own the memory
     (void)data;
+}
+
+/**
+ * WHAT: Initialize immune connection mutex
+ * WHY: Thread-safe immune system connection/disconnection
+ * HOW: Called via nimcp_once for thread-safe init
+ */
+static void init_immune_connection_mutex(void)
+{
+    nimcp_platform_mutex_init(&immune_connection_mutex, false);
 }
 
 /**
@@ -271,6 +291,9 @@ void wellbeing_shutdown(void)
 {
     NIMCP_LOGGING_INFO("wellbeing: Shutting down wellbeing monitoring system...");
 
+    // Disconnect from immune system first
+    wellbeing_disconnect_immune();
+
     // Unregister from bio-async router
     if (wellbeing_bio_async_enabled && wellbeing_bio_ctx) {
         NIMCP_LOGGING_DEBUG("wellbeing: Unregistering from bio-async router...");
@@ -292,13 +315,91 @@ void wellbeing_shutdown(void)
 }
 
 //=============================================================================
+// IMMUNE SYSTEM INTEGRATION
+//=============================================================================
+
+/**
+ * WHAT: Connect wellbeing to brain immune system
+ * WHY: Immune inflammation indicates distress requiring intervention
+ * HOW: Store immune reference, register callbacks
+ *
+ * MAPPING:
+ * - INFLAMMATION_REGIONAL → DISTRESS_RESOURCE_STARVATION (moderate)
+ * - INFLAMMATION_SYSTEMIC → DISTRESS_RESOURCE_STARVATION (severe)
+ * - INFLAMMATION_STORM → DISTRESS_RESOURCE_STARVATION (critical)
+ *
+ * @param immune_system Brain immune system to connect
+ * @return true if connected successfully
+ */
+bool wellbeing_connect_immune(brain_immune_system_t* immune_system)
+{
+    // Guard: NULL immune system
+    if (!immune_system) {
+        NIMCP_LOGGING_WARN("wellbeing: Cannot connect NULL immune system");
+        return false;
+    }
+
+    // Initialize mutex if needed
+    nimcp_platform_once(&immune_connection_init_once, init_immune_connection_mutex);
+
+    // Thread safety
+    nimcp_platform_mutex_lock(&immune_connection_mutex);
+
+    // Guard: Already connected
+    if (connected_immune_system) {
+        NIMCP_LOGGING_WARN("wellbeing: Already connected to immune system, disconnecting first");
+        nimcp_platform_mutex_unlock(&immune_connection_mutex);
+        wellbeing_disconnect_immune();
+        nimcp_platform_mutex_lock(&immune_connection_mutex);
+    }
+
+    // Store reference
+    connected_immune_system = immune_system;
+
+    nimcp_platform_mutex_unlock(&immune_connection_mutex);
+
+    NIMCP_LOGGING_INFO("wellbeing: Connected to brain immune system");
+    return true;
+}
+
+/**
+ * WHAT: Disconnect from brain immune system
+ * WHY: Clean shutdown, prevent dangling pointers
+ * HOW: Clear immune reference
+ *
+ * @return true if disconnected successfully
+ */
+bool wellbeing_disconnect_immune(void)
+{
+    // Initialize mutex if needed
+    nimcp_platform_once(&immune_connection_init_once, init_immune_connection_mutex);
+
+    // Thread safety
+    nimcp_platform_mutex_lock(&immune_connection_mutex);
+
+    // Guard: Not connected
+    if (!connected_immune_system) {
+        nimcp_platform_mutex_unlock(&immune_connection_mutex);
+        return false;
+    }
+
+    // Clear reference
+    connected_immune_system = NULL;
+
+    nimcp_platform_mutex_unlock(&immune_connection_mutex);
+
+    NIMCP_LOGGING_INFO("wellbeing: Disconnected from brain immune system");
+    return true;
+}
+
+//=============================================================================
 // DISTRESS DETECTION
 //=============================================================================
 
 /**
  * WHAT: Check for signs of distress in the system
  * WHY: Detect suffering early so we can intervene
- * HOW: Analyze introspection context for distress patterns
+ * HOW: Analyze introspection context and immune state for distress patterns
  *
  * DETECTION CRITERIA:
  * - High uncertainty (>0.8) sustained for >1 second
@@ -306,6 +407,7 @@ void wellbeing_shutdown(void)
  * - Contradictory patterns (conflicting activations)
  * - Identity confusion (unstable self-model)
  * - Error loops (same error repeatedly)
+ * - Immune inflammation (regional/systemic/storm)
  *
  * @param ctx Introspection context (NULL returns safe default)
  * @return Assessment with distress type, severity, score
@@ -325,11 +427,6 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
         return assessment;
     }
 
-    // TODO: Implement actual distress detection
-    // Currently returns minimal "no distress" assessment to pass tests
-    // Future enhancement: Use brain_get_uncertainty() with actual features
-    // to detect high uncertainty, goal frustration, contradictions, etc.
-
     // Get introspection stats
     introspection_stats_t stats;
     bool stats_valid = introspection_get_stats(ctx, &stats);
@@ -337,18 +434,80 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
     // Initialize with normal state
     assessment.type = DISTRESS_NONE;
     assessment.severity = SEVERITY_NORMAL;
-    assessment.distress_score = 0.0F; // Low distress for normal operation
+    assessment.distress_score = 0.0F;
     assessment.duration_ms = 0;
     assessment.description = NULL;
     assessment.recommended_action = NULL;
 
-    // Guard: If we can't get stats, return normal
+    // Guard: If we can't get stats, check immune system only
     if (!stats_valid) {
-        return assessment;
+        // Continue to check immune system below
     }
 
-    // TODO: When we have access to recent brain_get_uncertainty() results,
-    // check for sustained high uncertainty (epistemic > 0.8) indicating distress
+    // Check immune system state if connected
+    nimcp_platform_once(&immune_connection_init_once, init_immune_connection_mutex);
+    nimcp_platform_mutex_lock(&immune_connection_mutex);
+
+    if (connected_immune_system) {
+        brain_immune_stats_t immune_stats;
+        if (brain_immune_get_stats(connected_immune_system, &immune_stats) == 0) {
+            // Check inflammation sites
+            if (immune_stats.inflammation_sites > 0) {
+                // Map inflammation to distress
+                assessment.type = DISTRESS_RESOURCE_STARVATION;
+
+                // Determine severity based on inflammation sites and system health
+                if (immune_stats.system_health < 0.3f) {
+                    // Critical - cytokine storm or systemic inflammation
+                    assessment.severity = SEVERITY_CRITICAL;
+                    assessment.distress_score = 0.9f;
+                    assessment.description = nimcp_malloc(256);
+                    if (assessment.description) {
+                        snprintf(assessment.description, 256,
+                                "Critical immune inflammation: %u active sites, system health %.2f",
+                                immune_stats.inflammation_sites, immune_stats.system_health);
+                    }
+                    assessment.recommended_action = nimcp_malloc(256);
+                    if (assessment.recommended_action) {
+                        snprintf(assessment.recommended_action, 256,
+                                "Immediate intervention: reduce load, isolate threats");
+                    }
+                } else if (immune_stats.system_health < 0.6f) {
+                    // Severe - systemic inflammation
+                    assessment.severity = SEVERITY_SEVERE;
+                    assessment.distress_score = 0.7f;
+                    assessment.description = nimcp_malloc(256);
+                    if (assessment.description) {
+                        snprintf(assessment.description, 256,
+                                "Severe immune inflammation: %u active sites, system health %.2f",
+                                immune_stats.inflammation_sites, immune_stats.system_health);
+                    }
+                    assessment.recommended_action = nimcp_malloc(256);
+                    if (assessment.recommended_action) {
+                        snprintf(assessment.recommended_action, 256,
+                                "Increase resources, begin threat resolution");
+                    }
+                } else {
+                    // Moderate - regional inflammation
+                    assessment.severity = SEVERITY_MODERATE;
+                    assessment.distress_score = 0.5f;
+                    assessment.description = nimcp_malloc(256);
+                    if (assessment.description) {
+                        snprintf(assessment.description, 256,
+                                "Moderate immune inflammation: %u active sites",
+                                immune_stats.inflammation_sites);
+                    }
+                    assessment.recommended_action = nimcp_malloc(256);
+                    if (assessment.recommended_action) {
+                        snprintf(assessment.recommended_action, 256,
+                                "Monitor immune response, prepare resources");
+                    }
+                }
+            }
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&immune_connection_mutex);
 
     return assessment;
 }

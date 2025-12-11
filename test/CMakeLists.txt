@@ -504,6 +504,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/oscillations")
 endif()
 
 # ============================================================================
+# Brain Regions Tests (Broca's Area + Immune Integration)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/regions")
+    message(STATUS "Adding brain regions unit tests (Broca immune integration)...")
+    add_subdirectory(unit/core/brain/regions)
+endif()
+
+# ============================================================================
 # Utils Math Tests (Phase 0.5: Complex Number Support)
 # ============================================================================
 
@@ -686,6 +695,20 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/cortical_columns")
 endif()
 
 # ============================================================================
+# Neuralnet Tests (Homeostasis-Immune Integration)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/neuralnet")
+    message(STATUS "Adding neuralnet unit tests...")
+    add_subdirectory(unit/core/neuralnet)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/neuralnet")
+    message(STATUS "Adding neuralnet integration tests...")
+    add_subdirectory(integration/core/neuralnet)
+endif()
+
+# ============================================================================
 # Dendrite Tests (Phase 1.5.7)
 # ============================================================================
 
@@ -818,11 +841,7 @@ endif()
 # ============================================================================
 # Sparse Synapse Tests (Memory Optimization)
 # ============================================================================
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/neuralnet")
-    message(STATUS "Adding sparse synapse unit tests...")
-    add_subdirectory(unit/core/neuralnet)
-endif()
+# Already added above in neuralnet section - removed duplicate
 
 # ============================================================================
 # Portia Spider Tests (Graceful Degradation, Learning, Sensor Fusion)

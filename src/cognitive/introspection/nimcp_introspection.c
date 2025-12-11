@@ -131,6 +131,9 @@ struct introspection_context_struct {
     /* Ensemble uncertainty (Phase: Real Ensemble Implementation) */
     ensemble_context_t ensemble; /* Ensemble for true uncertainty estimation */
 
+    /* Brain immune system integration */
+    struct brain_immune_system* immune_system; /* Connected immune system (optional) */
+
     /* Thread safety */
     nimcp_mutex_t lock; /* Protects context */
 };
@@ -254,6 +257,7 @@ introspection_context_t introspection_context_create(brain_t brain,
     context->bio_ctx = NULL;
     context->bio_async_enabled = false;
     context->ensemble = NULL;  /* Ensemble created on-demand or via introspection_set_ensemble */
+    context->immune_system = NULL;  /* Immune system connected via introspection_connect_immune */
     nimcp_mutex_init(&context->lock, NULL);
 
     /* WHAT: Initialize auto activity history state */
@@ -883,6 +887,40 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
         if (p > 1.0F - 1e-6F)
             p = 1.0F - 1e-6F;
         uncertainty.aleatoric = -(p * log2f(p) + (1.0F - p) * log2f(1.0F - p));
+    }
+
+    /* =========================================================================
+     * Immune system modulation of uncertainty
+     * =========================================================================
+     * WHAT: Immune system activity increases uncertainty
+     * WHY:  Active immune response indicates system instability
+     * HOW:  Antibody effectiveness affects confidence in predictions
+     */
+    brain_immune_system_t* immune = introspection_get_immune(context);
+    if (immune != NULL) {
+        brain_immune_stats_t stats;
+        if (brain_immune_get_stats(immune, &stats) == 0) {
+            /* WHAT: Active immune responses increase uncertainty */
+            /* WHY: System under attack cannot make reliable predictions */
+            /* HOW: Scale uncertainty based on active antibody count */
+            if (stats.active_antibodies > 0) {
+                float immune_factor = 1.0F + ((float)stats.active_antibodies / 10.0F) * 0.3F;
+                if (immune_factor > 1.5F) immune_factor = 1.5F; /* Cap at 50% increase */
+
+                uncertainty.epistemic *= immune_factor;
+                uncertainty.aleatoric *= immune_factor;
+
+                LOG_DEBUG("Immune modulation: %u active antibodies, factor=%.2f",
+                         stats.active_antibodies, immune_factor);
+            }
+
+            /* WHAT: Low system health increases uncertainty */
+            /* WHY: Compromised system has unreliable state */
+            if (stats.system_health < 0.7F) {
+                float health_penalty = (0.7F - stats.system_health) * 0.5F;
+                uncertainty.epistemic += health_penalty;
+            }
+        }
     }
 
     /* =========================================================================
@@ -1835,6 +1873,64 @@ bool introspection_set_activity_callback(introspection_context_t context,
     nimcp_mutex_unlock(&context->lock);
 
     return true;
+}
+
+/* ========================================================================
+ * IMMUNE SYSTEM INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Connect brain immune system to introspection module
+ * WHY: Enable immune state to influence consciousness and metacognition
+ * HOW: Store reference, register callbacks for immune events
+ *
+ * BIOLOGICAL BASIS:
+ * - Systemic inflammation reduces consciousness (cytokine fatigue)
+ * - Immune activation affects cognitive performance
+ * - Memory cell formation is metacognitive learning
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool introspection_connect_immune(introspection_context_t context,
+                                   struct brain_immune_system* immune_system)
+{
+    /* WHAT: Validate inputs */
+    if (context == NULL || immune_system == NULL) {
+        return false;
+    }
+
+    /* WHAT: Store immune system reference with thread safety */
+    nimcp_mutex_lock(&context->lock);
+    context->immune_system = immune_system;
+    nimcp_mutex_unlock(&context->lock);
+
+    LOG_INFO(LOG_MODULE, "Brain immune system connected to introspection");
+
+    return true;
+}
+
+/**
+ * WHAT: Get immune system from introspection context
+ * WHY: Access immune system for external queries
+ * HOW: Return stored reference
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+struct brain_immune_system* introspection_get_immune(introspection_context_t context)
+{
+    /* WHAT: Validate input */
+    if (context == NULL) {
+        return NULL;
+    }
+
+    /* WHAT: Get immune system with thread safety */
+    nimcp_mutex_lock(&context->lock);
+    struct brain_immune_system* immune = context->immune_system;
+    nimcp_mutex_unlock(&context->lock);
+
+    return immune;
 }
 
 /* ========================================================================

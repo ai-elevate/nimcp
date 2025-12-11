@@ -12,6 +12,7 @@ add_library(nimcp_middleware STATIC
     normalization/nimcp_min_max_normalizer.c
     normalization/nimcp_adaptive_normalizer.c
     normalization/nimcp_homeostatic_normalizer.c
+    normalization/nimcp_normalization_immune.c
 
     # Encoding (Phase 1 & Phase 2)
     encoding/nimcp_rate_coding.c

@@ -20,6 +20,7 @@
 #include "cognitive/nimcp_mental_health.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/ethics/nimcp_ethics.h"
@@ -121,18 +122,23 @@ struct mental_health_monitor {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // Brain immune integration
+    brain_immune_system_t* immune_system;  /**< Brain immune system (if connected) */
+    bool immune_connected;                 /**< Immune system connected */
 };
 
 // =============================================================================
 // FORWARD DECLARATIONS (internal helpers)
 // =============================================================================
 
-static void collect_all_markers(behavioral_markers_t* markers, brain_t brain);
+static void collect_all_markers(behavioral_markers_t* markers, brain_t brain, brain_immune_system_t* immune);
 static void collect_ethics_markers(behavioral_markers_t* markers, brain_t brain);
 static void collect_emotional_markers(behavioral_markers_t* markers, brain_t brain);
 static void collect_neurotransmitter_markers(behavioral_markers_t* markers, brain_t brain);
 static void collect_cognitive_markers(behavioral_markers_t* markers, brain_t brain);
 static void collect_performance_markers(behavioral_markers_t* markers, brain_t brain);
+static void collect_immune_markers(behavioral_markers_t* markers, brain_immune_system_t* immune);
 
 static float detect_sociopathy(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_psychopathy(mental_health_monitor_t* monitor, brain_t brain);
@@ -296,6 +302,10 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
     monitor->last_check_time_ms = nimcp_time_monotonic_ms();
     monitor->last_intervention_time_ms = 0;
 
+    // Initialize immune integration
+    monitor->immune_system = NULL;
+    monitor->immune_connected = false;
+
     // Initialize all scores to zero
     memset(monitor->disorder_scores, 0, sizeof(monitor->disorder_scores));
     memset(monitor->disorder_severities, 0, sizeof(monitor->disorder_severities));
@@ -437,7 +447,7 @@ void mental_health_update(mental_health_monitor_t* monitor,
     (void)output;
     (void)current_time;
 
-    collect_all_markers(&monitor->current_markers, brain);
+    collect_all_markers(&monitor->current_markers, brain, monitor->immune_system);
     monitor->total_decisions++;
 
     LOG_DEBUG("Mental health markers updated (decision #%u)", monitor->total_decisions);
@@ -546,6 +556,33 @@ disorder_severity_t mental_health_check(mental_health_monitor_t* monitor,
     }
 
     // =========================================================================
+    // CYTOKINE STORM DETECTION → CRISIS STATE
+    // =========================================================================
+    //
+    // BIOLOGICAL BASIS:
+    // Cytokine storm (excessive immune response) can trigger:
+    // - Severe depression (serotonin depletion)
+    // - Anxiety (HPA axis dysregulation)
+    // - Cognitive dysfunction (inflammation-induced)
+    // - Requires immediate intervention
+    //
+    if (monitor->current_markers.cytokine_storm) {
+        // Escalate to CRITICAL severity if cytokine storm detected
+        max_severity = DISORDER_SEVERITY_CRITICAL;
+
+        LOG_WARN("Cytokine storm detected - escalating to CRITICAL severity");
+
+        // Log immune metrics for diagnostics
+        LOG_INFO("Immune metrics: IL1=%.2f IL6=%.2f TNF=%.2f IFN=%.2f IL10=%.2f inflammation=%.2f",
+                 monitor->current_markers.cytokine_il1_level,
+                 monitor->current_markers.cytokine_il6_level,
+                 monitor->current_markers.cytokine_tnf_alpha_level,
+                 monitor->current_markers.cytokine_ifn_gamma_level,
+                 monitor->current_markers.cytokine_il10_level,
+                 monitor->current_markers.inflammation_level);
+    }
+
+    // =========================================================================
     // STATISTICS
     // =========================================================================
 
@@ -620,14 +657,15 @@ float mental_health_check_specific(mental_health_monitor_t* monitor,
  *
  * WHAT: Query all subsystems and populate markers structure
  * WHY:  Centralize marker collection in one place
- * HOW:  Call individual collection functions
+ * HOW:  Call individual collection functions, including immune
  *
  * @param markers Output structure to populate
  * @param brain Brain to query
+ * @param immune Brain immune system (may be NULL if not connected)
  *
  * COMPLEXITY: O(1) - fixed number of subsystem queries
  */
-static void collect_all_markers(behavioral_markers_t* markers, brain_t brain)
+static void collect_all_markers(behavioral_markers_t* markers, brain_t brain, brain_immune_system_t* immune)
 {
     if (!markers || !brain) {
         return;
@@ -639,9 +677,92 @@ static void collect_all_markers(behavioral_markers_t* markers, brain_t brain)
     // Collect from each subsystem
     collect_ethics_markers(markers, brain);
     collect_emotional_markers(markers, brain);
-    collect_neurotransmitter_markers(markers, brain);
+    collect_immune_markers(markers, immune);  // Collect immune BEFORE neurotransmitters
+    collect_neurotransmitter_markers(markers, brain);  // Applies cytokine effects
     collect_cognitive_markers(markers, brain);
     collect_performance_markers(markers, brain);
+}
+
+/**
+ * @brief Collect immune system markers
+ *
+ * WHAT: Query brain immune system for cytokine levels and inflammation
+ * WHY:  Cytokines affect neurotransmitters and mood (biological basis)
+ * HOW:  Read cytokine concentrations, count active threats, check for storm
+ *
+ * BIOLOGICAL BASIS:
+ * - Pro-inflammatory cytokines (IL-1, IL-6, TNF-alpha) decrease serotonin
+ * - Chronic inflammation linked to depression and anxiety
+ * - IFN-gamma affects dopamine pathways (can reduce dopamine)
+ * - IL-10 (anti-inflammatory) indicates recovery and resilience
+ * - Cytokine storm (excessive inflammatory response) → crisis state
+ *
+ * COMPLEXITY: O(1) - constant number of queries
+ */
+static void collect_immune_markers(behavioral_markers_t* markers, brain_immune_system_t* immune)
+{
+    if (!markers) {
+        return;
+    }
+
+    // Guard: no immune system connected
+    if (!immune) {
+        // Set to healthy defaults
+        markers->cytokine_il1_level = 0.0F;
+        markers->cytokine_il6_level = 0.0F;
+        markers->cytokine_il10_level = 0.5F;  // Baseline anti-inflammatory
+        markers->cytokine_tnf_alpha_level = 0.0F;
+        markers->cytokine_ifn_gamma_level = 0.0F;
+        markers->inflammation_level = 0.0F;
+        markers->active_threats = 0;
+        markers->cytokine_storm = false;
+        return;
+    }
+
+    // Get immune system statistics
+    brain_immune_stats_t stats = {0};
+    if (brain_immune_get_stats(immune, &stats) != 0) {
+        // Failed to get stats, use defaults
+        markers->cytokine_il1_level = 0.0F;
+        markers->cytokine_il6_level = 0.0F;
+        markers->cytokine_il10_level = 0.5F;
+        markers->cytokine_tnf_alpha_level = 0.0F;
+        markers->cytokine_ifn_gamma_level = 0.0F;
+        markers->inflammation_level = 0.0F;
+        markers->active_threats = 0;
+        markers->cytokine_storm = false;
+        return;
+    }
+
+    // Query cytokine levels from active cytokines
+    // For now, approximate from inflammation sites and active antibodies
+    uint32_t inflammation_sites = stats.inflammation_sites;
+    uint32_t active_antibodies = stats.active_antibodies;
+    uint32_t active_antigens = stats.antigens_processed - stats.threats_neutralized;
+
+    // Estimate cytokine levels based on immune activity
+    // Pro-inflammatory cytokines increase with inflammation
+    float inflammation_factor = (float)inflammation_sites / 10.0F;  // Normalize
+    if (inflammation_factor > 1.0F) inflammation_factor = 1.0F;
+
+    markers->cytokine_il1_level = inflammation_factor * 0.5F;
+    markers->cytokine_il6_level = inflammation_factor * 0.6F;
+    markers->cytokine_tnf_alpha_level = inflammation_factor * 0.4F;
+    markers->cytokine_ifn_gamma_level = (float)active_antibodies / 100.0F;
+    if (markers->cytokine_ifn_gamma_level > 1.0F) markers->cytokine_ifn_gamma_level = 1.0F;
+
+    // Anti-inflammatory (IL-10) is inverse - high when inflammation low
+    markers->cytokine_il10_level = 1.0F - (inflammation_factor * 0.5F);
+
+    // Overall inflammation level
+    markers->inflammation_level = inflammation_factor;
+
+    // Active threats
+    markers->active_threats = (uint32_t)active_antigens;
+
+    // Cytokine storm detection: excessive inflammation (>5 sites) or very high activity
+    markers->cytokine_storm = (inflammation_sites > 5) ||
+                              (inflammation_factor > 0.8F && active_antibodies > 50);
 }
 
 /**
@@ -739,13 +860,18 @@ static void collect_emotional_markers(behavioral_markers_t* markers, brain_t bra
  *
  * WHAT: Query dopamine, serotonin, norepinephrine current levels
  * WHY:  Neurotransmitter imbalances are primary indicators of mental disorders
- * HOW:  Access brain's neuromodulator system and query each transmitter level
+ * HOW:  Access brain's neuromodulator system, apply cytokine effects
  *
  * BIOLOGICAL BASIS:
  * - Low dopamine → Depression, ADHD
  * - High dopamine → Mania, psychosis
  * - Low serotonin → Depression, aggression, impulsivity
  * - High norepinephrine → Anxiety, paranoia, PTSD
+ *
+ * CYTOKINE EFFECTS (applied after base collection):
+ * - IL-1, IL-6, TNF-alpha → decrease serotonin (pro-inflammatory)
+ * - IFN-gamma → decrease dopamine
+ * - IL-10 → restore balance (anti-inflammatory)
  *
  * COMPLEXITY: O(1) - fixed number of queries
  */
@@ -783,6 +909,39 @@ static void collect_neurotransmitter_markers(behavioral_markers_t* markers, brai
     markers->dopamine_avg = neuromodulator_get_level(neuromod_system, NEUROMOD_DOPAMINE);
     markers->serotonin_avg = neuromodulator_get_level(neuromod_system, NEUROMOD_SEROTONIN);
     markers->norepinephrine_avg = neuromodulator_get_level(neuromod_system, NEUROMOD_NOREPINEPHRINE);
+
+    // =========================================================================
+    // APPLY CYTOKINE EFFECTS ON NEUROTRANSMITTERS
+    // =========================================================================
+    // NOTE: Immune markers must be collected BEFORE this function is called
+    //
+    // Pro-inflammatory cytokines decrease serotonin (linked to depression)
+    float proinflammatory = (markers->cytokine_il1_level +
+                            markers->cytokine_il6_level +
+                            markers->cytokine_tnf_alpha_level) / 3.0F;
+
+    // Decrease serotonin based on pro-inflammatory cytokines
+    // High inflammation → low serotonin → depression
+    if (proinflammatory > 0.1F) {
+        float serotonin_reduction = proinflammatory * 0.3F;  // Max 30% reduction
+        markers->serotonin_avg -= serotonin_reduction;
+        if (markers->serotonin_avg < 0.0F) markers->serotonin_avg = 0.0F;
+    }
+
+    // IFN-gamma decreases dopamine (linked to psychosis, ADHD worsening)
+    if (markers->cytokine_ifn_gamma_level > 0.1F) {
+        float dopamine_reduction = markers->cytokine_ifn_gamma_level * 0.2F;  // Max 20%
+        markers->dopamine_avg -= dopamine_reduction;
+        if (markers->dopamine_avg < 0.0F) markers->dopamine_avg = 0.0F;
+    }
+
+    // IL-10 (anti-inflammatory) helps restore balance
+    // Recovery indicator - slightly boosts serotonin
+    if (markers->cytokine_il10_level > 0.6F) {
+        float serotonin_boost = (markers->cytokine_il10_level - 0.5F) * 0.1F;
+        markers->serotonin_avg += serotonin_boost;
+        if (markers->serotonin_avg > 1.0F) markers->serotonin_avg = 1.0F;
+    }
 
     // TODO: Track variance over time (requires historical tracking)
     // For now, use default variance values
@@ -1202,6 +1361,64 @@ const char* mental_health_get_last_error(void)
 {
     // TODO: Implement thread-local error storage
     return "Error information available via global error system";
+}
+
+// =============================================================================
+// BRAIN IMMUNE INTEGRATION
+// =============================================================================
+
+/**
+ * @brief Connect mental health monitor to brain immune system
+ *
+ * WHAT: Link mental health monitoring to immune system cytokine levels
+ * WHY:  Cytokines affect neurotransmitters and mood (biological basis)
+ * HOW:  Store immune system pointer, enable cytokine marker collection
+ *
+ * BIOLOGICAL BASIS:
+ * - IL-1, IL-6, TNF-alpha (pro-inflammatory) decrease serotonin → depression
+ * - Chronic inflammation linked to depression, anxiety
+ * - IFN-gamma affects dopamine pathways → can worsen psychosis, ADHD
+ * - IL-10 (anti-inflammatory) indicates recovery/resilience
+ * - Cytokine storm (excessive immune response) → crisis state requiring intervention
+ *
+ * ALGORITHM:
+ * 1. Validate inputs (guard clauses)
+ * 2. Store immune system pointer in monitor
+ * 3. Set immune_connected flag to enable immune marker collection
+ *
+ * @param monitor Mental health monitor (non-NULL)
+ * @param immune Brain immune system (non-NULL)
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_connect_immune(mental_health_monitor_t* monitor,
+                                  brain_immune_system_t* immune)
+{
+    // =========================================================================
+    // GUARD: Validate inputs
+    // =========================================================================
+
+    if (!monitor) {
+        set_error("NULL monitor in mental_health_connect_immune");
+        return false;
+    }
+
+    if (!immune) {
+        set_error("NULL immune system in mental_health_connect_immune");
+        return false;
+    }
+
+    // =========================================================================
+    // CONNECTION: Store immune system pointer
+    // =========================================================================
+
+    monitor->immune_system = immune;
+    monitor->immune_connected = true;
+
+    LOG_INFO("Mental health monitor connected to brain immune system");
+
+    return true;
 }
 
 // Include detector implementations

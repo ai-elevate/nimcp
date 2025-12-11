@@ -115,3 +115,27 @@ target_include_directories(unit_cognitive_introspection_temporal_patterns
 add_test(NAME unit_cognitive_introspection_temporal_patterns
          COMMAND unit_cognitive_introspection_temporal_patterns)
 set_tests_properties(unit_cognitive_introspection_temporal_patterns PROPERTIES LABELS "unit")
+
+# Immune Integration Unit Tests
+add_executable(unit_cognitive_introspection_immune_integration
+    test_introspection_immune_integration.cpp
+)
+target_link_libraries(unit_cognitive_introspection_immune_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_introspection_immune_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/introspection
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_introspection_immune_integration
+         COMMAND unit_cognitive_introspection_immune_integration)
+set_tests_properties(unit_cognitive_introspection_immune_integration PROPERTIES LABELS "unit")

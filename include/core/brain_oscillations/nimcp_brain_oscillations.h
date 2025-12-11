@@ -398,6 +398,196 @@ bool brain_oscillation_get_activity_buffer(
 );
 
 //=============================================================================
+// Immune System Integration
+//=============================================================================
+
+/* Forward declaration for brain immune system */
+typedef struct brain_immune_system brain_immune_system_t;
+
+/**
+ * @brief Immune-induced oscillation disruption parameters
+ *
+ * BIOLOGICAL BASIS:
+ * Pro-inflammatory cytokines (IL-1β, IL-6, TNF-α) alter neural oscillations:
+ * - Increase slow-wave (delta) activity during infection
+ * - Reduce gamma oscillations (impaired cognition during illness)
+ * - Disrupt theta-gamma coupling (memory deficits)
+ * - Systemic inflammation → increased delta, decreased gamma/beta
+ */
+typedef struct {
+    float delta_amplification;     /**< Delta band amplification (1.0-3.0) */
+    float theta_suppression;       /**< Theta band suppression (0.5-1.0) */
+    float gamma_suppression;       /**< Gamma band suppression (0.3-1.0) */
+    float beta_suppression;        /**< Beta band suppression (0.5-1.0) */
+    float coherence_disruption;    /**< Network coherence reduction (0.0-1.0) */
+    float synchrony_disruption;    /**< Synchrony reduction (0.0-1.0) */
+} immune_oscillation_effects_t;
+
+/**
+ * @brief Oscillation abnormality detection for immune surveillance
+ *
+ * BIOLOGICAL BASIS:
+ * Abnormal EEG patterns can indicate infection, inflammation, or pathology:
+ * - Excessive slow-wave activity → possible infection/inflammation
+ * - Loss of gamma → cognitive impairment
+ * - Reduced coherence → network dysfunction
+ */
+typedef struct {
+    bool excessive_delta;          /**< Delta > 50% total power (infection marker) */
+    bool suppressed_gamma;         /**< Gamma < 5% total power (cognitive impairment) */
+    bool low_coherence;            /**< Coherence < 0.3 (network dysfunction) */
+    bool low_synchrony;            /**< Synchrony < 0.2 (desynchronization) */
+    float abnormality_score;       /**< Overall abnormality (0-1) */
+    uint32_t consecutive_abnormal; /**< Consecutive abnormal readings */
+} oscillation_abnormality_t;
+
+/**
+ * WHAT: Connect oscillation analyzer to immune system
+ * WHY:  Enable bidirectional immune-oscillation modulation
+ * HOW:  Store immune handle, register callbacks for cytokine effects
+ *
+ * @param analyzer Oscillation analyzer
+ * @param immune_system Brain immune system
+ * @return true on success, false on failure
+ *
+ * INTEGRATION:
+ * - Immune → Oscillations: Cytokine release disrupts oscillations
+ * - Oscillations → Immune: Abnormal patterns trigger immune surveillance
+ *
+ * BIOLOGICAL BASIS:
+ * Neuroimmune interactions are bidirectional:
+ * 1. Cytokines alter neural excitability and synchronization
+ * 2. Abnormal neural activity signals potential pathology to immune system
+ *
+ * USAGE:
+ * brain_oscillation_analyzer_t* osc = brain_oscillation_create(brain, 500, 250);
+ * brain_immune_system_t* immune = brain_immune_create(NULL);
+ * brain_oscillation_connect_immune(osc, immune);
+ */
+bool brain_oscillation_connect_immune(
+    brain_oscillation_analyzer_t* analyzer,
+    brain_immune_system_t* immune_system
+);
+
+/**
+ * WHAT: Apply immune-induced oscillation effects
+ * WHY:  Model cytokine-induced EEG changes
+ * HOW:  Modulate band powers based on inflammation level
+ *
+ * @param analyzer Oscillation analyzer
+ * @param inflammation_level Inflammation severity (0=none, 4=storm)
+ * @param cytokine_concentration Pro-inflammatory cytokine level (0-1)
+ * @return Computed oscillation effects
+ *
+ * COMPLEXITY: O(1)
+ *
+ * BIOLOGICAL MODEL:
+ * - LOCAL inflammation: Minor gamma suppression, slight delta increase
+ * - REGIONAL inflammation: Moderate effects, theta disruption
+ * - SYSTEMIC inflammation: Strong delta increase, major gamma/beta suppression
+ * - CYTOKINE STORM: Severe disruption, loss of coherent oscillations
+ *
+ * EFFECTS SCALE:
+ * - Delta amplification: 1.0x (baseline) → 3.0x (storm)
+ * - Gamma suppression: 1.0x (baseline) → 0.3x (storm)
+ * - Beta suppression: 1.0x (baseline) → 0.5x (storm)
+ * - Coherence/synchrony disruption: 0.0 (none) → 0.8 (severe)
+ */
+immune_oscillation_effects_t brain_oscillation_compute_immune_effects(
+    brain_oscillation_analyzer_t* analyzer,
+    uint32_t inflammation_level,
+    float cytokine_concentration
+);
+
+/**
+ * WHAT: Apply immune effects to current oscillation analysis
+ * WHY:  Modulate oscillations based on immune state
+ * HOW:  Scale band powers, reduce coherence/synchrony
+ *
+ * @param analyzer Oscillation analyzer
+ * @param effects Immune-induced effects to apply
+ * @return true on success, false on failure
+ *
+ * COMPLEXITY: O(1)
+ *
+ * SIDE EFFECTS:
+ * - Modifies cached wave power (delta amplified, gamma/beta suppressed)
+ * - Reduces synchrony and coherence
+ * - May change inferred cognitive state (e.g., focused → drowsy)
+ *
+ * BIOLOGICAL REALISM:
+ * Models observed EEG changes during infection/inflammation:
+ * - Increased slow-wave activity (delta) during sickness behavior
+ * - Reduced gamma power during cognitive impairment
+ * - Loss of network coherence during inflammatory states
+ */
+bool brain_oscillation_apply_immune_effects(
+    brain_oscillation_analyzer_t* analyzer,
+    const immune_oscillation_effects_t* effects
+);
+
+/**
+ * WHAT: Detect abnormal oscillation patterns for immune surveillance
+ * WHY:  Trigger immune response to neural dysfunction
+ * HOW:  Check for excessive delta, suppressed gamma, low coherence
+ *
+ * @param analyzer Oscillation analyzer
+ * @param abnormality Output abnormality detection results
+ * @return true if abnormal patterns detected, false if normal
+ *
+ * COMPLEXITY: O(1)
+ *
+ * DETECTION CRITERIA:
+ * - Excessive delta: > 50% of total power (infection marker)
+ * - Suppressed gamma: < 5% of total power (cognitive impairment)
+ * - Low coherence: < 0.3 (network dysfunction)
+ * - Low synchrony: < 0.2 (severe desynchronization)
+ *
+ * ABNORMALITY SCORE:
+ * Weighted sum of detected abnormalities:
+ * - Each criterion adds 0.25 to score
+ * - Score > 0.5 triggers immune surveillance
+ *
+ * BIOLOGICAL BASIS:
+ * Abnormal EEG patterns can indicate:
+ * - CNS infection (excessive slow waves)
+ * - Neurodegenerative disease (loss of gamma)
+ * - Autoimmune encephalitis (coherence loss)
+ * - Metabolic dysfunction (synchrony loss)
+ */
+bool brain_oscillation_detect_abnormality(
+    brain_oscillation_analyzer_t* analyzer,
+    oscillation_abnormality_t* abnormality
+);
+
+/**
+ * WHAT: Notify immune system of oscillation abnormality
+ * WHY:  Trigger immune surveillance and response
+ * HOW:  Present abnormal pattern as antigen to immune system
+ *
+ * @param analyzer Oscillation analyzer
+ * @param abnormality Detected abnormality
+ * @return true on success, false on failure
+ *
+ * COMPLEXITY: O(1)
+ *
+ * IMMUNE RESPONSE:
+ * - Creates antigen from oscillation pattern signature
+ * - Severity scaled by abnormality score
+ * - Triggers immune surveillance phase
+ * - May activate B/T cells if pattern persists
+ *
+ * BIOLOGICAL ANALOGY:
+ * Neural dysfunction (detected via abnormal oscillations) triggers
+ * immune surveillance, similar to how damaged cells release danger
+ * signals (DAMPs) that activate immune responses.
+ */
+bool brain_oscillation_notify_immune_abnormality(
+    brain_oscillation_analyzer_t* analyzer,
+    const oscillation_abnormality_t* abnormality
+);
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 

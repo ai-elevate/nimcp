@@ -55,5 +55,101 @@ message(STATUS "  [SKIP] test_emotion_consolidation.cpp - source file not implem
 # Working Memory subdirectory (PE tests)
 add_subdirectory(working_memory)
 
+# Wellbeing tests
+add_subdirectory(wellbeing)
+
+# Mental Health tests
+add_subdirectory(mental_health)
+
+# Working Memory - Immune Integration Tests
+add_executable(unit_cognitive_test_working_memory_immune
+    test_working_memory_immune_integration.cpp
+)
+
+target_link_libraries(unit_cognitive_test_working_memory_immune
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_working_memory_immune
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_working_memory_immune PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_working_memory_immune
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;working_memory;immune"
+        TIMEOUT 120
+)
+
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)
+
+# Predictive-Immune Integration tests
+add_subdirectory(predictive_immune)
+
+# Global Workspace - Immune Integration Tests
+add_executable(unit_cognitive_test_global_workspace_immune
+    global_workspace/test_global_workspace_immune_integration.cpp
+)
+
+target_link_libraries(unit_cognitive_test_global_workspace_immune
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_global_workspace_immune
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_global_workspace_immune PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_global_workspace_immune
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;global_workspace;immune"
+        TIMEOUT 120
+)
+
+# Curiosity - Immune Integration Tests
+add_executable(unit_cognitive_test_curiosity_immune
+    curiosity/test_curiosity_immune_integration.cpp
+)
+
+target_link_libraries(unit_cognitive_test_curiosity_immune
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_curiosity_immune
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_curiosity_immune PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_curiosity_immune
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;curiosity;immune"
+        TIMEOUT 120
+)

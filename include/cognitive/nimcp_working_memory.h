@@ -77,6 +77,9 @@
 #include "cognitive/nimcp_emotional_tagging.h"  // Phase 10.3: Emotional tagging
 #include "utils/encoding/nimcp_positional_encoding.h"  // Positional encoding for serial position
 
+/* Forward declaration for brain immune integration */
+struct brain_immune_system;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -625,6 +628,116 @@ void working_memory_get_stats(
  * @note Does NOT clear items, only resets counters
  */
 void working_memory_reset_stats(working_memory_t* wm);
+
+//=============================================================================
+// Brain Immune Integration
+//=============================================================================
+
+/**
+ * @brief Connect working memory to brain immune system
+ *
+ * WHAT: Establish bidirectional integration with brain immune system
+ * WHY:  Inflammation impairs working memory; WM stress triggers immune response
+ * HOW:  Register callback for inflammation events, enable cytokine release
+ *
+ * BIOLOGICAL BASIS:
+ * - Pro-inflammatory cytokines (IL-6, TNF-alpha) impair prefrontal cortex function
+ * - Inflammation reduces working memory capacity during illness/stress
+ * - Working memory overload triggers stress cytokine release
+ * - Recovery allows capacity restoration
+ *
+ * INTEGRATION MECHANISMS:
+ * 1. IMMUNE → WM: Inflammation reduces effective capacity
+ *    - LOCAL: -1 item capacity (6 items)
+ *    - REGIONAL: -2 items capacity (5 items)
+ *    - SYSTEMIC: -3 items capacity (4 items)
+ *    - STORM: -4 items capacity (3 items minimum)
+ *
+ * 2. WM → IMMUNE: Working memory stress triggers cytokine release
+ *    - Capacity >90% utilization: IL-6 release (cognitive load)
+ *    - Eviction events: TNF-alpha release (failure signal)
+ *    - Decay removal: IL-1 release (resource scarcity)
+ *
+ * COMPLEXITY: O(1) for connection setup
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param immune Brain immune system (non-NULL)
+ * @return true on success, false on invalid parameters
+ *
+ * @note Immune system must be running (brain_immune_start called)
+ * @note Callbacks registered for inflammation state changes
+ */
+bool working_memory_connect_immune(
+    working_memory_t* wm,
+    struct brain_immune_system* immune
+);
+
+/**
+ * @brief Disconnect working memory from brain immune system
+ *
+ * WHAT: Remove immune integration
+ * WHY:  Clean shutdown or disable immune modulation
+ * HOW:  Clear immune pointer, restore full capacity
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ */
+void working_memory_disconnect_immune(working_memory_t* wm);
+
+/**
+ * @brief Get effective capacity accounting for immune state
+ *
+ * WHAT: Return current capacity after inflammation penalties
+ * WHY:  Check available slots considering immune impairment
+ * HOW:  base_capacity - inflammation_penalty
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return Effective capacity (minimum 3 items, even under cytokine storm)
+ *
+ * @note Returns base capacity if no immune connection
+ */
+uint32_t working_memory_get_effective_capacity(const working_memory_t* wm);
+
+/**
+ * @brief Check if working memory is under immune impairment
+ *
+ * WHAT: Determine if inflammation is reducing capacity
+ * WHY:  Detect cognitive impairment due to immune response
+ * HOW:  Check if effective_capacity < base_capacity
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return true if capacity reduced by inflammation
+ */
+bool working_memory_is_immune_impaired(const working_memory_t* wm);
+
+/**
+ * @brief Trigger immune stress response from working memory overload
+ *
+ * WHAT: Manually signal immune system about cognitive stress
+ * WHY:  Allow explicit stress signaling for testing or special conditions
+ * HOW:  Release IL-6 cytokine at specified concentration
+ *
+ * BIOLOGICAL BASIS:
+ * Working memory overload activates HPA axis → cortisol release →
+ * immune activation with pro-inflammatory cytokines
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param stress_level Stress intensity [0.0, 1.0]
+ * @return true on success, false if no immune connection
+ *
+ * @note Automatically called internally on high utilization/evictions
+ */
+bool working_memory_signal_stress(
+    working_memory_t* wm,
+    float stress_level
+);
 
 //=============================================================================
 // Advanced Operations

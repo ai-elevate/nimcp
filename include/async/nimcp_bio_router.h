@@ -444,6 +444,74 @@ nimcp_error_t bio_router_on_wave_arrival(
 })
 
 /*=============================================================================
+ * BRAIN IMMUNE INTEGRATION
+ *============================================================================*/
+
+/**
+ * @brief Connect brain immune system to bio-async router
+ *
+ * WHAT: Register brain immune system with bio-async for cytokine messaging
+ * WHY:  Enable immune coordination via bio-async neuromodulator channels
+ * HOW:  Register immune module, set up NOREPINEPHRINE channel handlers
+ *
+ * @param immune_system Brain immune system to connect
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_async_connect_immune(void* immune_system);
+
+/**
+ * @brief Broadcast cytokine release via bio-async
+ *
+ * WHAT: Send immune cytokine signal to all modules
+ * WHY:  Coordinate immune response across system
+ * HOW:  Broadcast immune alert on NOREPINEPHRINE channel
+ *
+ * @param cytokine_type Type of cytokine released
+ * @param concentration Signal strength (0-1)
+ * @param source_cell Source cell ID
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_async_broadcast_cytokine(
+    uint32_t cytokine_type,
+    float concentration,
+    uint32_t source_cell
+);
+
+/**
+ * @brief Send inflammation alert as high-priority message
+ *
+ * WHAT: Send inflammation escalation alert
+ * WHY:  Notify system of immune response escalation
+ * HOW:  High-priority broadcast on NOREPINEPHRINE channel
+ *
+ * @param region_id Affected region
+ * @param severity Inflammation severity (0-4)
+ * @param antigen_id Triggering antigen
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_async_inflammation_alert(
+    uint32_t region_id,
+    uint32_t severity,
+    uint32_t antigen_id
+);
+
+/**
+ * @brief Notify immune phase change
+ *
+ * WHAT: Broadcast immune system phase transition
+ * WHY:  Coordinate system-wide immune state awareness
+ * HOW:  Broadcast phase change message
+ *
+ * @param old_phase Previous phase
+ * @param new_phase New phase
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_async_immune_phase_change(
+    uint32_t old_phase,
+    uint32_t new_phase
+);
+
+/*=============================================================================
  * MODULE CONTEXT ACCESSORS
  *============================================================================*/
 

@@ -309,6 +309,29 @@ add_e2e_test(e2e_test_brain_immune_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_immune_pipeline.cpp
 )
 
+# Distributed Immune Response E2E Test (Brain-Swarm Integration)
+add_e2e_test(e2e_test_distributed_immune_response
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_distributed_immune_response.cpp
+)
+
+# Brain Immune-Plasticity Integration Pipeline E2E Test
+add_e2e_test(e2e_test_brain_immune_plasticity_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_immune_plasticity_pipeline.cpp
+)
+
+# Brain Immune-Emotion Integration Pipeline E2E Test
+add_e2e_test(e2e_test_brain_immune_emotion_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_immune_emotion_pipeline.cpp
+)
+
+# Memory-Immune Integration Pipeline E2E Test
+add_e2e_test(e2e_test_memory_immune_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_memory_immune_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

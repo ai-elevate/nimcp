@@ -23,6 +23,8 @@ extern "C" {
 #include "swarm/nimcp_swarm_immune.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
+#include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_internal.h"
 }
 
 /* ============================================================================
@@ -486,4 +488,140 @@ TEST_F(BrainImmuneIntegrationTest, StatsAreAccurate) {
     EXPECT_EQ(stats.threats_neutralized, 1u);
     EXPECT_EQ(stats.cytokines_released, 2u);  // Helper T also releases
     EXPECT_EQ(stats.inflammation_sites, 1u);
+}
+
+/* ============================================================================
+ * Brain Factory Integration Tests
+ * ============================================================================ */
+
+/**
+ * @brief Test brain factory immune subsystem initialization
+ *
+ * WHAT: Verify brain factory correctly initializes immune system
+ * WHY:  Ensure auto-connection to BBB and bio-async works
+ * HOW:  Create brain with immune enabled, verify integration
+ */
+TEST(BrainFactoryImmuneTest, ImmuneSubsystemInitialization) {
+    // Create brain config with immune enabled
+    brain_config_t config = {0};
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 3;
+    config.enable_brain_immune = true;
+    config.enable_bbb_protection = true;
+    config.immune_enable_bbb_integration = true;
+    config.immune_enable_bio_async = true;
+    config.immune_max_antigens = 128;
+    config.immune_max_b_cells = 256;
+    config.immune_max_t_cells = 256;
+    config.immune_max_antibodies = 512;
+    config.minimal_mode = true;  // Fast initialization for test
+    strncpy(config.task_name, "immune_test", sizeof(config.task_name) - 1);
+
+    // Create brain - should auto-initialize immune system
+    brain_t brain = brain_create_custom(&config);
+    ASSERT_NE(brain, nullptr);
+
+    // Verify immune system was created
+    EXPECT_TRUE(brain->immune_enabled);
+    ASSERT_NE(brain->immune_system, nullptr);
+
+    // Verify immune system is running
+    brain_immune_phase_t phase = brain_immune_get_phase(brain->immune_system);
+    EXPECT_EQ(phase, IMMUNE_PHASE_SURVEILLANCE);
+
+    // Verify BBB connection if BBB is enabled
+    if (brain->bbb_enabled) {
+        EXPECT_TRUE(brain->immune_system->config.enable_bbb_integration);
+        EXPECT_NE(brain->immune_system->bbb_system, nullptr);
+    }
+
+    // Verify bio-async connection if bio-async is enabled
+    if (brain->bio_async_enabled) {
+        EXPECT_TRUE(brain->immune_system->config.enable_bio_async);
+    }
+
+    // Get immune stats
+    brain_immune_stats_t stats;
+    int result = brain_immune_get_stats(brain->immune_system, &stats);
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(stats.antigens_processed, 0u);
+    EXPECT_EQ(stats.threats_neutralized, 0u);
+    EXPECT_GE(stats.system_health, 0.9f);  // Healthy system
+
+    // Cleanup
+    brain_destroy(brain);
+}
+
+/**
+ * @brief Test immune system disabled by default
+ *
+ * WHAT: Verify immune system not created when disabled
+ * WHY:  Zero overhead when not needed
+ * HOW:  Create brain without immune, verify null
+ */
+TEST(BrainFactoryImmuneTest, ImmuneDisabledByDefault) {
+    brain_config_t config = {0};
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 3;
+    config.enable_brain_immune = false;  // Explicitly disabled
+    config.minimal_mode = true;
+    strncpy(config.task_name, "no_immune", sizeof(config.task_name) - 1);
+
+    brain_t brain = brain_create_custom(&config);
+    ASSERT_NE(brain, nullptr);
+
+    // Verify immune system was NOT created
+    EXPECT_FALSE(brain->immune_enabled);
+    EXPECT_EQ(brain->immune_system, nullptr);
+
+    brain_destroy(brain);
+}
+
+/**
+ * @brief Test immune system with custom configuration
+ *
+ * WHAT: Verify custom immune config values are applied
+ * WHY:  Allow tuning for different workloads
+ * HOW:  Set custom thresholds, verify they're used
+ */
+TEST(BrainFactoryImmuneTest, CustomImmuneConfiguration) {
+    brain_config_t config = {0};
+    config.size = BRAIN_SIZE_SMALL;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 20;
+    config.num_outputs = 5;
+    config.enable_brain_immune = true;
+    config.immune_max_antigens = 64;
+    config.immune_max_b_cells = 128;
+    config.immune_max_t_cells = 128;
+    config.immune_max_antibodies = 256;
+    config.immune_recognition_threshold = 0.8f;
+    config.immune_activation_threshold = 0.7f;
+    config.immune_inflammation_threshold = 0.9f;
+    config.immune_memory_response_multiplier = 3.0f;
+    config.immune_activation_delay_ms = 5;
+    config.minimal_mode = true;
+    strncpy(config.task_name, "custom_immune", sizeof(config.task_name) - 1);
+
+    brain_t brain = brain_create_custom(&config);
+    ASSERT_NE(brain, nullptr);
+    ASSERT_NE(brain->immune_system, nullptr);
+
+    // Verify config was applied
+    brain_immune_config_t* immune_cfg = &brain->immune_system->config;
+    EXPECT_EQ(immune_cfg->max_antigens, 64u);
+    EXPECT_EQ(immune_cfg->max_b_cells, 128u);
+    EXPECT_EQ(immune_cfg->max_t_cells, 128u);
+    EXPECT_EQ(immune_cfg->max_antibodies, 256u);
+    EXPECT_FLOAT_EQ(immune_cfg->recognition_threshold, 0.8f);
+    EXPECT_FLOAT_EQ(immune_cfg->activation_threshold, 0.7f);
+    EXPECT_FLOAT_EQ(immune_cfg->inflammation_threshold, 0.9f);
+    EXPECT_FLOAT_EQ(immune_cfg->memory_response_multiplier, 3.0f);
+    EXPECT_EQ(immune_cfg->activation_delay_ms, 5u);
+
+    brain_destroy(brain);
 }

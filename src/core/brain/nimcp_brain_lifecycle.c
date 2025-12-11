@@ -44,6 +44,7 @@
 #include "cognitive/epistemic/nimcp_epistemic_filter.h"
 #include "cognitive/nimcp_personality.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 
 #include <string.h>
@@ -649,6 +650,14 @@ void brain_destroy(brain_t brain)
 
     // Cleanup subsystems (extensive list truncated for brevity)
     // ... (all the cleanup code from original brain_destroy)
+
+    // Cleanup immune system
+    if (brain->immune_system) {
+        brain_immune_stop(brain->immune_system);
+        brain_immune_destroy(brain->immune_system);
+        brain->immune_system = NULL;
+        brain->immune_enabled = false;
+    }
 
     // Cleanup cache
     clear_cache(brain);

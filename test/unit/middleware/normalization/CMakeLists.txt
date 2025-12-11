@@ -64,3 +64,18 @@ target_link_libraries(unit_middleware_normalization_all_normalizers
     )
 add_test(NAME unit_middleware_normalization_all_normalizers
          COMMAND unit_middleware_normalization_all_normalizers)
+
+# Test Normalization Immune Integration
+add_executable(unit_middleware_normalization_immune
+    test_normalization_immune.cpp
+)
+target_link_libraries(unit_middleware_normalization_immune
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        nimcp_cognitive
+    )
+add_test(NAME unit_middleware_normalization_immune
+         COMMAND unit_middleware_normalization_immune)

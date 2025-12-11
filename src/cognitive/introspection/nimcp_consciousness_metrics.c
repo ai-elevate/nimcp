@@ -25,6 +25,7 @@
 
 #include "cognitive/introspection/nimcp_consciousness_metrics.h"
 #include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -495,6 +496,48 @@ consciousness_phi_result_t* introspection_compute_phi(
         result->phi = 0.0f;
     }
 
+    /* WHAT: Apply immune system modulation to phi */
+    /* WHY: Inflammation reduces consciousness (biological basis) */
+    /* HOW: Get inflammation level, apply reduction factor */
+    brain_immune_system_t* immune = introspection_get_immune(context);
+    if (immune != NULL) {
+        brain_immune_phase_t phase = brain_immune_get_phase(immune);
+
+        /* BIOLOGICAL: Systemic inflammation reduces consciousness */
+        /* RESEARCH: Cytokine-induced sickness behavior, fever effects on awareness */
+        float immune_penalty = 0.0f;
+
+        switch (phase) {
+            case 0: /* IMMUNE_PHASE_SURVEILLANCE */
+                immune_penalty = 0.0f;  /* Normal */
+                break;
+            case 1: /* IMMUNE_PHASE_RECOGNITION */
+                immune_penalty = 0.05f;  /* Slight reduction (5%) */
+                break;
+            case 2: /* IMMUNE_PHASE_ACTIVATION */
+                immune_penalty = 0.15f;  /* Moderate reduction (15%) */
+                break;
+            case 3: /* IMMUNE_PHASE_EFFECTOR */
+                immune_penalty = 0.25f;  /* Significant reduction (25%) */
+                break;
+            case 4: /* IMMUNE_PHASE_RESOLUTION */
+                immune_penalty = 0.10f;  /* Recovering (10%) */
+                break;
+            case 5: /* IMMUNE_PHASE_MEMORY */
+                immune_penalty = 0.02f;  /* Minimal (2%) */
+                break;
+            default:
+                immune_penalty = 0.0f;
+                break;
+        }
+
+        /* Apply penalty to phi */
+        result->phi *= (1.0f - immune_penalty);
+
+        LOG_DEBUG("Immune modulation: phase=%u, penalty=%.1f%%, adjusted phi=%.3f",
+                  phase, immune_penalty * 100.0f, result->phi);
+    }
+
     /* WHAT: Classify consciousness state */
     result->state = consciousness_classify_phi(result->phi);
 
@@ -511,14 +554,28 @@ consciousness_phi_result_t* introspection_compute_phi(
 
     /* WHAT: Generate interpretation */
     char interp_buffer[512];
-    snprintf(interp_buffer, sizeof(interp_buffer),
-             "Φ=%.3f (%s), network size=%u, method=%s, time=%.1fms",
-             result->phi,
-             consciousness_state_name(result->state),
-             result->network_size,
-             method == PHI_METHOD_EXACT ? "exact" :
-             method == PHI_METHOD_APPROXIMATE ? "approximate" : "fast",
-             result->computation_time_ms);
+    if (immune != NULL) {
+        brain_immune_phase_t phase = brain_immune_get_phase(immune);
+        extern const char* brain_immune_phase_to_string(brain_immune_phase_t phase);
+        snprintf(interp_buffer, sizeof(interp_buffer),
+                 "Φ=%.3f (%s), immune=%s, network size=%u, method=%s, time=%.1fms",
+                 result->phi,
+                 consciousness_state_name(result->state),
+                 brain_immune_phase_to_string(phase),
+                 result->network_size,
+                 method == PHI_METHOD_EXACT ? "exact" :
+                 method == PHI_METHOD_APPROXIMATE ? "approximate" : "fast",
+                 result->computation_time_ms);
+    } else {
+        snprintf(interp_buffer, sizeof(interp_buffer),
+                 "Φ=%.3f (%s), network size=%u, method=%s, time=%.1fms",
+                 result->phi,
+                 consciousness_state_name(result->state),
+                 result->network_size,
+                 method == PHI_METHOD_EXACT ? "exact" :
+                 method == PHI_METHOD_APPROXIMATE ? "approximate" : "fast",
+                 result->computation_time_ms);
+    }
     result->interpretation = nimcp_strdup(interp_buffer);
 
     LOG_INFO("Computed Φ: %s", result->interpretation);

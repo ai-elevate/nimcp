@@ -44,6 +44,12 @@ struct bft_context {
     void* consensus_user_data;
     bft_byzantine_callback_t byzantine_callback;
     void* byzantine_user_data;
+    bft_accusation_callback_t accusation_callback;
+    void* accusation_user_data;
+    bft_quarantine_callback_t quarantine_callback;
+    void* quarantine_user_data;
+    bft_trust_recovery_callback_t trust_recovery_callback;
+    void* trust_recovery_user_data;
     bft_stats_t stats;
     pthread_mutex_t lock;
     bool running;
@@ -444,6 +450,18 @@ bool bft_report_byzantine(bft_context_t* ctx, uint32_t accused_id, bft_behavior_
 bool bft_process_accusation(bft_context_t* ctx, const bft_accusation_t* accusation) {
     if (!ctx || !accusation) return false;
 
+    // Invoke accusation callback BEFORE processing (immune antigen presentation)
+    if (ctx->accusation_callback) {
+        ctx->accusation_callback(
+            accusation->accuser_id,
+            accusation->accused_id,
+            accusation->behavior,
+            accusation->evidence,
+            accusation->evidence_count,
+            ctx->accusation_user_data
+        );
+    }
+
     pthread_mutex_lock(&ctx->lock);
 
     ctx->stats.accusations_processed++;
@@ -545,6 +563,8 @@ float bft_update_trust(bft_context_t* ctx, uint32_t node_id, bool correct_behavi
     }
 
     trust->total_votes++;
+    float old_trust = trust->trust_score;
+    bool was_probation = (trust->status == BFT_STATUS_PROBATION);
 
     if (correct_behavior) {
         trust->correct_votes++;
@@ -566,9 +586,16 @@ float bft_update_trust(bft_context_t* ctx, uint32_t node_id, bool correct_behavi
         }
     }
 
-    float score = trust->trust_score;
+    float new_trust = trust->trust_score;
+    bool is_trusted = (trust->status == BFT_STATUS_TRUSTED);
     pthread_mutex_unlock(&ctx->lock);
-    return score;
+
+    // Invoke trust recovery callback (immune memory formation)
+    if (was_probation && is_trusted && ctx->trust_recovery_callback) {
+        ctx->trust_recovery_callback(node_id, old_trust, new_trust, ctx->trust_recovery_user_data);
+    }
+
+    return new_trust;
 }
 
 bool bft_quarantine_node(bft_context_t* ctx, uint32_t node_id, uint64_t duration_ms) {
@@ -582,7 +609,14 @@ bool bft_quarantine_node(bft_context_t* ctx, uint32_t node_id, uint64_t duration
         trust->quarantine_until_ms = nimcp_time_get_ms() + duration_ms;
         ctx->stats.nodes_quarantined++;
 
+        float trust_score = trust->trust_score;
+
         pthread_mutex_unlock(&ctx->lock);
+
+        // Invoke quarantine callback (immune killer T cell coordination)
+        if (ctx->quarantine_callback) {
+            ctx->quarantine_callback(node_id, duration_ms, trust_score, ctx->quarantine_user_data);
+        }
 
         bbb_audit_log(BBB_AUDIT_WARNING, "BFT", "QUARANTINE",
                      "Node %u quarantined for %lu ms", node_id, (unsigned long)duration_ms);
@@ -698,6 +732,9 @@ bool bft_create_checkpoint(bft_context_t* ctx, const uint8_t* state_hash) {
     cp->signatures_count = 1;
     cp->signers[0] = ctx->config.node_id;
 
+    // Initialize immune state (will be populated by immune system if connected)
+    memset(&cp->immune_state, 0, sizeof(bft_immune_state_t));
+
     // Sign checkpoint
     bft_sign(ctx, state_hash, BFT_HASH_SIZE, cp->signatures[0]);
 
@@ -757,6 +794,60 @@ bool bft_register_byzantine_callback(bft_context_t* ctx, bft_byzantine_callback_
     pthread_mutex_lock(&ctx->lock);
     ctx->byzantine_callback = callback;
     ctx->byzantine_user_data = user_data;
+    pthread_mutex_unlock(&ctx->lock);
+
+    return true;
+}
+
+/**
+ * @brief Register accusation callback
+ *
+ * WHAT: Store callback for accusation events
+ * WHY:  Enable immune system to present antigens on accusations
+ * HOW:  Store in context, invoke before processing
+ */
+bool bft_register_accusation_callback(bft_context_t* ctx, bft_accusation_callback_t callback, void* user_data) {
+    if (!ctx || !callback) return false;
+
+    pthread_mutex_lock(&ctx->lock);
+    ctx->accusation_callback = callback;
+    ctx->accusation_user_data = user_data;
+    pthread_mutex_unlock(&ctx->lock);
+
+    return true;
+}
+
+/**
+ * @brief Register quarantine callback
+ *
+ * WHAT: Store callback for quarantine actions
+ * WHY:  Enable immune killer T cell coordination
+ * HOW:  Store in context, invoke on quarantine
+ */
+bool bft_register_quarantine_callback(bft_context_t* ctx, bft_quarantine_callback_t callback, void* user_data) {
+    if (!ctx || !callback) return false;
+
+    pthread_mutex_lock(&ctx->lock);
+    ctx->quarantine_callback = callback;
+    ctx->quarantine_user_data = user_data;
+    pthread_mutex_unlock(&ctx->lock);
+
+    return true;
+}
+
+/**
+ * @brief Register trust recovery callback
+ *
+ * WHAT: Store callback for trust restoration
+ * WHY:  Enable immune memory formation on recovery
+ * HOW:  Store in context, invoke on trust recovery
+ */
+bool bft_register_trust_recovery_callback(bft_context_t* ctx, bft_trust_recovery_callback_t callback, void* user_data) {
+    if (!ctx || !callback) return false;
+
+    pthread_mutex_lock(&ctx->lock);
+    ctx->trust_recovery_callback = callback;
+    ctx->trust_recovery_user_data = user_data;
     pthread_mutex_unlock(&ctx->lock);
 
     return true;

@@ -1,0 +1,670 @@
+/**
+ * @file nimcp_perception_immune.c
+ * @brief Perception-Immune System Integration Implementation
+ * @version 1.0.0
+ * @date 2025-12-11
+ */
+
+#include "cognitive/immune/nimcp_perception_immune.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include <string.h>
+#include <math.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Compute inflammation factor for gain reduction
+ * WHY:  Inflammation should reduce perception sensitivity
+ * HOW:  Map inflammation level to multiplier (0.3-1.0)
+ */
+static float compute_inflammation_factor(brain_inflammation_level_t level) {
+    switch (level) {
+        case INFLAMMATION_NONE:     return 1.0f;
+        case INFLAMMATION_LOCAL:    return 0.85f;
+        case INFLAMMATION_REGIONAL: return 0.65f;
+        case INFLAMMATION_SYSTEMIC: return 0.45f;
+        case INFLAMMATION_STORM:    return 0.3f;
+        default:                    return 1.0f;
+    }
+}
+
+/**
+ * WHAT: Compute cytokine modulation factor
+ * WHY:  Pro-inflammatory cytokines increase thresholds
+ * HOW:  Weighted combination of IL-1, IL-6, TNF-alpha
+ */
+static float compute_cytokine_threshold_factor(
+    float il1, float il6, float tnf_alpha
+) {
+    /* Pro-inflammatory cytokines increase detection thresholds */
+    return 1.0f + (0.3f * il1 + 0.2f * il6 + 0.5f * tnf_alpha);
+}
+
+/**
+ * WHAT: Hash features to epitope
+ * WHY:  Convert perception features to immune signature
+ * HOW:  Simple hash over feature vector
+ */
+static void hash_features_to_epitope(
+    const float* features,
+    uint32_t feature_dim,
+    uint8_t* epitope,
+    size_t epitope_len
+) {
+    if (!features || !epitope || epitope_len == 0) return;
+
+    /* Simple hash: sum and modulo for each byte */
+    for (size_t i = 0; i < epitope_len; i++) {
+        uint32_t sum = 0;
+        for (uint32_t j = i; j < feature_dim; j += epitope_len) {
+            sum += (uint32_t)(fabsf(features[j]) * 1000.0f);
+        }
+        epitope[i] = (uint8_t)(sum % 256);
+    }
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+perception_immune_context_t* perception_immune_create(
+    brain_immune_system_t* immune_system
+) {
+    /* Guard: validate immune system */
+    if (!immune_system) {
+        NIMCP_LOGGING_ERROR("perception_immune", "Cannot create with NULL immune system");
+        return NULL;
+    }
+
+    /* Allocate context */
+    perception_immune_context_t* ctx = (perception_immune_context_t*)
+        nimcp_malloc(sizeof(perception_immune_context_t));
+    if (!ctx) {
+        NIMCP_LOGGING_ERROR("perception_immune", "Failed to allocate context");
+        return NULL;
+    }
+
+    /* Initialize */
+    memset(ctx, 0, sizeof(perception_immune_context_t));
+    ctx->immune_system = immune_system;
+    ctx->anomaly_capacity = PERCEPTION_IMMUNE_MAX_ANOMALIES;
+
+    /* Allocate anomaly buffer */
+    ctx->anomalies = (perception_anomaly_t*)
+        nimcp_malloc(sizeof(perception_anomaly_t) * ctx->anomaly_capacity);
+    if (!ctx->anomalies) {
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    /* Initialize modulation to defaults */
+    ctx->modulation.visual_gain = 1.0f;
+    ctx->modulation.audio_gain = 1.0f;
+    ctx->modulation.speech_gain = 1.0f;
+    ctx->modulation.visual_threshold = 0.5f;
+    ctx->modulation.audio_threshold = 0.5f;
+    ctx->modulation.speech_threshold = 0.5f;
+
+    ctx->enabled = true;
+
+    NIMCP_LOGGING_INFO("perception_immune", "Created perception-immune integration");
+    return ctx;
+}
+
+void perception_immune_destroy(perception_immune_context_t* ctx) {
+    if (!ctx) return;
+
+    if (ctx->anomalies) {
+        nimcp_free(ctx->anomalies);
+    }
+
+    nimcp_free(ctx);
+    NIMCP_LOGGING_INFO("perception_immune", "Destroyed perception-immune integration");
+}
+
+int perception_immune_connect_visual(
+    perception_immune_context_t* ctx,
+    visual_cortex_t* visual
+) {
+    /* Guard: validate inputs */
+    if (!ctx) return -1;
+    if (!visual) return -1;
+
+    ctx->visual_cortex = visual;
+    NIMCP_LOGGING_INFO("perception_immune", "Connected visual cortex");
+    return 0;
+}
+
+int perception_immune_connect_audio(
+    perception_immune_context_t* ctx,
+    audio_cortex_t* audio
+) {
+    if (!ctx) return -1;
+    if (!audio) return -1;
+
+    ctx->audio_cortex = audio;
+    NIMCP_LOGGING_INFO("perception_immune", "Connected audio cortex");
+    return 0;
+}
+
+int perception_immune_connect_speech(
+    perception_immune_context_t* ctx,
+    speech_cortex_t* speech
+) {
+    if (!ctx) return -1;
+    if (!speech) return -1;
+
+    ctx->speech_cortex = speech;
+    NIMCP_LOGGING_INFO("perception_immune", "Connected speech cortex");
+    return 0;
+}
+
+/* ============================================================================
+ * Anomaly Detection and Reporting API
+ * ============================================================================ */
+
+int perception_immune_report_visual_anomaly(
+    perception_immune_context_t* ctx,
+    perception_anomaly_type_t type,
+    float severity,
+    float confidence,
+    const float* features,
+    uint32_t feature_dim,
+    uint32_t* anomaly_id
+) {
+    /* Guard: validate inputs */
+    if (!ctx || !ctx->immune_system) return -1;
+    if (!features || feature_dim == 0) return -1;
+    if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
+
+    /* Create anomaly entry */
+    perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
+    anomaly->id = ctx->next_anomaly_id++;
+    anomaly->type = type;
+    anomaly->modality = PERCEPTION_VISUAL;
+    anomaly->severity = severity;
+    anomaly->confidence = confidence;
+    anomaly->timestamp_ms = 0; /* TODO: add timestamp */
+    anomaly->immune_responded = false;
+
+    /* Hash features to epitope */
+    uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    hash_features_to_epitope(features, feature_dim, epitope,
+                            BRAIN_IMMUNE_EPITOPE_SIZE);
+
+    /* Present to immune system */
+    uint32_t ag_id = 0;
+    int result = brain_immune_present_antigen(
+        ctx->immune_system,
+        ANTIGEN_SOURCE_ANOMALY,
+        epitope,
+        BRAIN_IMMUNE_EPITOPE_SIZE,
+        (uint32_t)(severity * 10.0f),
+        0, /* source_node */
+        &ag_id
+    );
+
+    if (result == 0) {
+        anomaly->antigen_id = ag_id;
+        anomaly->immune_responded = true;
+        ctx->immune_responses_triggered++;
+    }
+
+    ctx->anomaly_count++;
+    ctx->visual_anomalies_detected++;
+
+    if (anomaly_id) {
+        *anomaly_id = anomaly->id;
+    }
+
+    NIMCP_LOGGING_DEBUG("perception_immune",
+                   "Visual anomaly reported: type=%d severity=%.2f antigen=%u",
+                   type, severity, ag_id);
+    return 0;
+}
+
+int perception_immune_report_audio_anomaly(
+    perception_immune_context_t* ctx,
+    perception_anomaly_type_t type,
+    float severity,
+    float confidence,
+    const float* spectrum,
+    uint32_t num_bins,
+    uint32_t* anomaly_id
+) {
+    if (!ctx || !ctx->immune_system) return -1;
+    if (!spectrum || num_bins == 0) return -1;
+    if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
+
+    perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
+    anomaly->id = ctx->next_anomaly_id++;
+    anomaly->type = type;
+    anomaly->modality = PERCEPTION_AUDIO;
+    anomaly->severity = severity;
+    anomaly->confidence = confidence;
+    anomaly->timestamp_ms = 0;
+    anomaly->immune_responded = false;
+
+    uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    hash_features_to_epitope(spectrum, num_bins, epitope,
+                            BRAIN_IMMUNE_EPITOPE_SIZE);
+
+    uint32_t ag_id = 0;
+    int result = brain_immune_present_antigen(
+        ctx->immune_system,
+        ANTIGEN_SOURCE_ANOMALY,
+        epitope,
+        BRAIN_IMMUNE_EPITOPE_SIZE,
+        (uint32_t)(severity * 10.0f),
+        0,
+        &ag_id
+    );
+
+    if (result == 0) {
+        anomaly->antigen_id = ag_id;
+        anomaly->immune_responded = true;
+        ctx->immune_responses_triggered++;
+    }
+
+    ctx->anomaly_count++;
+    ctx->audio_anomalies_detected++;
+
+    if (anomaly_id) {
+        *anomaly_id = anomaly->id;
+    }
+
+    return 0;
+}
+
+int perception_immune_report_speech_anomaly(
+    perception_immune_context_t* ctx,
+    perception_anomaly_type_t type,
+    float severity,
+    float confidence,
+    const void* phoneme_features,
+    uint32_t num_phonemes,
+    uint32_t* anomaly_id
+) {
+    if (!ctx || !ctx->immune_system) return -1;
+    if (!phoneme_features || num_phonemes == 0) return -1;
+    if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
+
+    perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
+    anomaly->id = ctx->next_anomaly_id++;
+    anomaly->type = type;
+    anomaly->modality = PERCEPTION_SPEECH;
+    anomaly->severity = severity;
+    anomaly->confidence = confidence;
+    anomaly->timestamp_ms = 0;
+    anomaly->immune_responded = false;
+
+    /* Use phoneme data as epitope */
+    uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    size_t copy_len = (num_phonemes < BRAIN_IMMUNE_EPITOPE_SIZE) ?
+                      num_phonemes : BRAIN_IMMUNE_EPITOPE_SIZE;
+    memcpy(epitope, phoneme_features, copy_len);
+    if (copy_len < BRAIN_IMMUNE_EPITOPE_SIZE) {
+        memset(epitope + copy_len, 0, BRAIN_IMMUNE_EPITOPE_SIZE - copy_len);
+    }
+
+    uint32_t ag_id = 0;
+    int result = brain_immune_present_antigen(
+        ctx->immune_system,
+        ANTIGEN_SOURCE_ANOMALY,
+        epitope,
+        BRAIN_IMMUNE_EPITOPE_SIZE,
+        (uint32_t)(severity * 10.0f),
+        0,
+        &ag_id
+    );
+
+    if (result == 0) {
+        anomaly->antigen_id = ag_id;
+        anomaly->immune_responded = true;
+        ctx->immune_responses_triggered++;
+    }
+
+    ctx->anomaly_count++;
+    ctx->speech_anomalies_detected++;
+
+    if (anomaly_id) {
+        *anomaly_id = anomaly->id;
+    }
+
+    return 0;
+}
+
+/* ============================================================================
+ * Immune Modulation API
+ * ============================================================================ */
+
+int perception_immune_update_modulation(perception_immune_context_t* ctx) {
+    if (!ctx || !ctx->immune_system) return -1;
+
+    /* Query immune system state */
+    brain_immune_stats_t stats;
+    brain_immune_get_stats(ctx->immune_system, &stats);
+
+    /* Approximate inflammation levels from stats */
+    /* In real implementation, would query specific inflammation sites */
+    float inflammation_estimate = (stats.inflammation_sites > 0) ? 0.5f : 0.0f;
+
+    /* Set inflammation levels based on activity */
+    if (stats.inflammation_sites == 0) {
+        ctx->modulation.visual_inflammation = INFLAMMATION_NONE;
+        ctx->modulation.audio_inflammation = INFLAMMATION_NONE;
+        ctx->modulation.speech_inflammation = INFLAMMATION_NONE;
+    } else if (stats.inflammation_sites < 3) {
+        ctx->modulation.visual_inflammation = INFLAMMATION_LOCAL;
+        ctx->modulation.audio_inflammation = INFLAMMATION_LOCAL;
+        ctx->modulation.speech_inflammation = INFLAMMATION_LOCAL;
+    } else if (stats.inflammation_sites < 6) {
+        ctx->modulation.visual_inflammation = INFLAMMATION_REGIONAL;
+        ctx->modulation.audio_inflammation = INFLAMMATION_REGIONAL;
+        ctx->modulation.speech_inflammation = INFLAMMATION_REGIONAL;
+    } else {
+        ctx->modulation.visual_inflammation = INFLAMMATION_SYSTEMIC;
+        ctx->modulation.audio_inflammation = INFLAMMATION_SYSTEMIC;
+        ctx->modulation.speech_inflammation = INFLAMMATION_SYSTEMIC;
+    }
+
+    /* Estimate cytokine levels from inflammation */
+    ctx->modulation.il1_level = inflammation_estimate * 0.6f;
+    ctx->modulation.il6_level = inflammation_estimate * 0.5f;
+    ctx->modulation.tnf_alpha_level = inflammation_estimate * 0.3f;
+    ctx->modulation.il10_level = (1.0f - inflammation_estimate) * 0.4f;
+
+    /* Compute gains */
+    float visual_factor = compute_inflammation_factor(
+        ctx->modulation.visual_inflammation);
+    float audio_factor = compute_inflammation_factor(
+        ctx->modulation.audio_inflammation);
+    float speech_factor = compute_inflammation_factor(
+        ctx->modulation.speech_inflammation);
+
+    ctx->modulation.visual_gain = visual_factor;
+    ctx->modulation.audio_gain = audio_factor;
+    ctx->modulation.speech_gain = speech_factor;
+
+    /* Compute thresholds */
+    float threshold_factor = compute_cytokine_threshold_factor(
+        ctx->modulation.il1_level,
+        ctx->modulation.il6_level,
+        ctx->modulation.tnf_alpha_level
+    );
+
+    ctx->modulation.visual_threshold = 0.5f * threshold_factor;
+    ctx->modulation.audio_threshold = 0.5f * threshold_factor;
+    ctx->modulation.speech_threshold = 0.5f * threshold_factor;
+
+    /* Clamp values */
+    if (ctx->modulation.visual_gain < PERCEPTION_IMMUNE_MIN_GAIN) {
+        ctx->modulation.visual_gain = PERCEPTION_IMMUNE_MIN_GAIN;
+    }
+    if (ctx->modulation.audio_gain < PERCEPTION_IMMUNE_MIN_GAIN) {
+        ctx->modulation.audio_gain = PERCEPTION_IMMUNE_MIN_GAIN;
+    }
+    if (ctx->modulation.speech_gain < PERCEPTION_IMMUNE_MIN_GAIN) {
+        ctx->modulation.speech_gain = PERCEPTION_IMMUNE_MIN_GAIN;
+    }
+
+    return 0;
+}
+
+int perception_immune_apply_visual_modulation(
+    perception_immune_context_t* ctx
+) {
+    if (!ctx || !ctx->visual_cortex) return -1;
+
+    /* Apply gain modulation via neuromodulation */
+    /* In full implementation, would use visual_cortex API to adjust gains */
+    /* For now, store in modulation state for external access */
+
+    return 0;
+}
+
+int perception_immune_apply_audio_modulation(
+    perception_immune_context_t* ctx
+) {
+    if (!ctx || !ctx->audio_cortex) return -1;
+    /* Apply gain/threshold to audio cortex */
+    return 0;
+}
+
+int perception_immune_apply_speech_modulation(
+    perception_immune_context_t* ctx
+) {
+    if (!ctx || !ctx->speech_cortex) return -1;
+    /* Apply gain/threshold to speech cortex */
+    return 0;
+}
+
+/* ============================================================================
+ * Overload Protection API
+ * ============================================================================ */
+
+int perception_immune_check_visual_overload(
+    perception_immune_context_t* ctx,
+    const float* features,
+    uint32_t num_features,
+    bool* overload
+) {
+    if (!ctx || !features || !overload) return -1;
+
+    /* Compute feature variance as overload metric */
+    float mean = 0.0f;
+    for (uint32_t i = 0; i < num_features; i++) {
+        mean += features[i];
+    }
+    mean /= num_features;
+
+    float variance = 0.0f;
+    for (uint32_t i = 0; i < num_features; i++) {
+        float diff = features[i] - mean;
+        variance += diff * diff;
+    }
+    variance /= num_features;
+
+    /* High variance indicates overload */
+    *overload = (variance > PERCEPTION_IMMUNE_OVERLOAD_THRESHOLD);
+    return 0;
+}
+
+int perception_immune_check_audio_overload(
+    perception_immune_context_t* ctx,
+    const float* spectrum,
+    uint32_t num_bins,
+    bool* overload
+) {
+    if (!ctx || !spectrum || !overload) return -1;
+
+    /* Compute spectral energy */
+    float energy = 0.0f;
+    for (uint32_t i = 0; i < num_bins; i++) {
+        energy += spectrum[i] * spectrum[i];
+    }
+
+    /* Normalize */
+    energy = sqrtf(energy / num_bins);
+
+    *overload = (energy > PERCEPTION_IMMUNE_OVERLOAD_THRESHOLD);
+    return 0;
+}
+
+int perception_immune_check_speech_overload(
+    perception_immune_context_t* ctx,
+    const float* phoneme_confidence,
+    uint32_t num_phonemes,
+    bool* overload
+) {
+    if (!ctx || !phoneme_confidence || !overload) return -1;
+
+    /* Low average confidence indicates overload */
+    float avg_conf = 0.0f;
+    for (uint32_t i = 0; i < num_phonemes; i++) {
+        avg_conf += phoneme_confidence[i];
+    }
+    avg_conf /= num_phonemes;
+
+    *overload = (avg_conf < (1.0f - PERCEPTION_IMMUNE_OVERLOAD_THRESHOLD));
+    return 0;
+}
+
+int perception_immune_trigger_overload_protection(
+    perception_immune_context_t* ctx,
+    perception_modality_t modality
+) {
+    if (!ctx || !ctx->immune_system) return -1;
+
+    /* Trigger inflammation for modality */
+    switch (modality) {
+        case PERCEPTION_VISUAL:
+            ctx->modulation.visual_overload_protection = true;
+            ctx->modulation.visual_inflammation = INFLAMMATION_REGIONAL;
+            break;
+        case PERCEPTION_AUDIO:
+            ctx->modulation.audio_overload_protection = true;
+            ctx->modulation.audio_inflammation = INFLAMMATION_REGIONAL;
+            break;
+        case PERCEPTION_SPEECH:
+            ctx->modulation.speech_overload_protection = true;
+            ctx->modulation.speech_inflammation = INFLAMMATION_REGIONAL;
+            break;
+        default:
+            return -1;
+    }
+
+    ctx->overload_protections_activated++;
+
+    /* Update modulation */
+    perception_immune_update_modulation(ctx);
+
+    NIMCP_LOGGING_WARN("perception_immune",
+                     "Overload protection triggered for modality %d", modality);
+    return 0;
+}
+
+int perception_immune_release_overload_protection(
+    perception_immune_context_t* ctx,
+    perception_modality_t modality
+) {
+    if (!ctx) return -1;
+
+    switch (modality) {
+        case PERCEPTION_VISUAL:
+            ctx->modulation.visual_overload_protection = false;
+            ctx->modulation.visual_inflammation = INFLAMMATION_NONE;
+            break;
+        case PERCEPTION_AUDIO:
+            ctx->modulation.audio_overload_protection = false;
+            ctx->modulation.audio_inflammation = INFLAMMATION_NONE;
+            break;
+        case PERCEPTION_SPEECH:
+            ctx->modulation.speech_overload_protection = false;
+            ctx->modulation.speech_inflammation = INFLAMMATION_NONE;
+            break;
+        default:
+            return -1;
+    }
+
+    perception_immune_update_modulation(ctx);
+    return 0;
+}
+
+/* ============================================================================
+ * Query API
+ * ============================================================================ */
+
+int perception_immune_get_modulation(
+    const perception_immune_context_t* ctx,
+    perception_immune_modulation_t* modulation
+) {
+    if (!ctx || !modulation) return -1;
+    *modulation = ctx->modulation;
+    return 0;
+}
+
+const perception_anomaly_t* perception_immune_get_anomaly(
+    const perception_immune_context_t* ctx,
+    uint32_t anomaly_id
+) {
+    if (!ctx) return NULL;
+
+    for (size_t i = 0; i < ctx->anomaly_count; i++) {
+        if (ctx->anomalies[i].id == anomaly_id) {
+            return &ctx->anomalies[i];
+        }
+    }
+    return NULL;
+}
+
+bool perception_immune_is_protected(
+    const perception_immune_context_t* ctx,
+    perception_modality_t modality
+) {
+    if (!ctx) return false;
+
+    switch (modality) {
+        case PERCEPTION_VISUAL:
+            return ctx->modulation.visual_overload_protection;
+        case PERCEPTION_AUDIO:
+            return ctx->modulation.audio_overload_protection;
+        case PERCEPTION_SPEECH:
+            return ctx->modulation.speech_overload_protection;
+        default:
+            return false;
+    }
+}
+
+float perception_immune_get_visual_gain(
+    const perception_immune_context_t* ctx
+) {
+    return ctx ? ctx->modulation.visual_gain : 1.0f;
+}
+
+float perception_immune_get_audio_gain(
+    const perception_immune_context_t* ctx
+) {
+    return ctx ? ctx->modulation.audio_gain : 1.0f;
+}
+
+float perception_immune_get_speech_gain(
+    const perception_immune_context_t* ctx
+) {
+    return ctx ? ctx->modulation.speech_gain : 1.0f;
+}
+
+/* ============================================================================
+ * Utility Functions
+ * ============================================================================ */
+
+const char* perception_immune_anomaly_type_to_string(
+    perception_anomaly_type_t type
+) {
+    switch (type) {
+        case ANOMALY_VISUAL_NOISE:       return "VISUAL_NOISE";
+        case ANOMALY_VISUAL_ADVERSARIAL: return "VISUAL_ADVERSARIAL";
+        case ANOMALY_VISUAL_OVERLOAD:    return "VISUAL_OVERLOAD";
+        case ANOMALY_AUDIO_CORRUPTION:   return "AUDIO_CORRUPTION";
+        case ANOMALY_AUDIO_JAMMING:      return "AUDIO_JAMMING";
+        case ANOMALY_AUDIO_OVERLOAD:     return "AUDIO_OVERLOAD";
+        case ANOMALY_SPEECH_CONFUSION:   return "SPEECH_CONFUSION";
+        case ANOMALY_SPEECH_PROSODY:     return "SPEECH_PROSODY";
+        case ANOMALY_SPEECH_OVERLOAD:    return "SPEECH_OVERLOAD";
+        default:                         return "UNKNOWN";
+    }
+}
+
+const char* perception_immune_modality_to_string(
+    perception_modality_t modality
+) {
+    switch (modality) {
+        case PERCEPTION_VISUAL: return "VISUAL";
+        case PERCEPTION_AUDIO:  return "AUDIO";
+        case PERCEPTION_SPEECH: return "SPEECH";
+        default:                return "UNKNOWN";
+    }
+}

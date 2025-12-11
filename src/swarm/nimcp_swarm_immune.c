@@ -382,13 +382,13 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
 
         /* Determine severity based on confidence and threat type */
         if (best_match > 0.9F || threat->type == THREAT_MALICIOUS_DRONE) {
-            threat->severity = SEVERITY_CRITICAL;
+            threat->severity = SWARM_SEVERITY_CRITICAL;
         } else if (best_match > 0.8F) {
-            threat->severity = SEVERITY_HIGH;
+            threat->severity = SWARM_SEVERITY_HIGH;
         } else if (best_match > 0.7F) {
-            threat->severity = SEVERITY_MEDIUM;
+            threat->severity = SWARM_SEVERITY_MEDIUM;
         } else {
-            threat->severity = SEVERITY_LOW;
+            threat->severity = SWARM_SEVERITY_LOW;
         }
 
         /* Copy threat data */
@@ -712,7 +712,7 @@ NimcpSwarmResponseType nimcp_swarm_immune_get_response(
         {RESPONSE_ALERT,  RESPONSE_ISOLATION, RESPONSE_ISOLATION, RESPONSE_COORDINATION}       /* BYZANTINE */
     };
 
-    if (threat_type >= THREAT_COUNT || severity > SEVERITY_CRITICAL) {
+    if (threat_type >= THREAT_COUNT || severity > SWARM_SEVERITY_CRITICAL) {
         return RESPONSE_ALERT;
     }
 
@@ -767,11 +767,11 @@ nimcp_result_t nimcp_swarm_immune_generate_response(
     );
 
     /* Set response parameters based on severity */
-    response->intensity = (float)threat->severity / (float)SEVERITY_CRITICAL;
+    response->intensity = (float)threat->severity / (float)SWARM_SEVERITY_CRITICAL;
     response->duration = (uint64_t)(5000 * (1 + threat->severity)); /* 5-20 seconds */
 
     /* Determine if coordination needed */
-    response->coordinated = (threat->severity >= SEVERITY_HIGH) ||
+    response->coordinated = (threat->severity >= SWARM_SEVERITY_HIGH) ||
                            (response->type == RESPONSE_COORDINATION);
     response->participating_drones = response->coordinated ? 3 : 1;
 
@@ -833,7 +833,7 @@ nimcp_result_t nimcp_swarm_immune_execute_response(
         case RESPONSE_ALERT:
             LOG_INFO("EXECUTING: Broadcasting alert for threat %u", response->threat_id);
             if (system->config.enable_sharing && system->bio_ctx) {
-                nimcp_swarm_immune_broadcast_alert(system, response->threat_id, SEVERITY_MEDIUM);
+                nimcp_swarm_immune_broadcast_alert(system, response->threat_id, SWARM_SEVERITY_MEDIUM);
             }
             break;
 
@@ -1611,10 +1611,10 @@ nimcp_result_t immune_logic_response(
         threat->severity
     );
     response->intensity = threat->confidence;
-    response->requires_coordination = (threat->severity >= SEVERITY_HIGH);
+    response->requires_coordination = (threat->severity >= SWARM_SEVERITY_HIGH);
 
     /* Use IMPLIES logic: If threat_severe THEN coordinated_response */
-    if (threat->severity >= SEVERITY_HIGH) {
+    if (threat->severity >= SWARM_SEVERITY_HIGH) {
         /* High severity implies coordination required */
         response->requires_coordination = true;
         LOG_INFO("Logic response: IMPLIES (high_severity → coordination)");

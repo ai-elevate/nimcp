@@ -34,6 +34,7 @@ extern "C" {
 // Forward declarations
 typedef struct brain_struct* brain_t;
 typedef struct theory_of_mind_s* theory_of_mind_t;
+typedef struct brain_immune_system brain_immune_system_t;
 
 //=============================================================================
 // Task Types
@@ -120,6 +121,11 @@ typedef struct {
     // Theory of Mind integration (Phase 10.6.1)
     bool enable_tom_integration;      /**< Enable ToM-informed decision making (default: false) */
     uint32_t max_agent_models;        /**< Maximum agent models to track (default: 8) */
+
+    // Brain Immune System integration (Phase 12.x)
+    bool enable_immune_integration;   /**< Enable immune state modulation (default: false) */
+    float immune_impairment_threshold; /**< Inflammation level that impairs function (default: 0.6) */
+    float immune_critical_threshold;   /**< Critical inflammation requiring intervention (default: 0.85) */
 } executive_config_t;
 
 /**
@@ -634,6 +640,96 @@ bool executive_model_agent_intentions(executive_controller_t* exec,
                                        uint32_t agent_id,
                                        char* intention_output,
                                        float* likelihood);
+
+//=============================================================================
+// Brain Immune System Integration (Phase 12.x)
+//=============================================================================
+
+/**
+ * @brief Set brain immune system for executive function modulation
+ *
+ * WHAT: Associate executive controller with immune system for inflammation-based modulation
+ * WHY:  High inflammation (cytokines) impairs executive function (cognitive fog)
+ * HOW:  Store immune system reference, enable inflammation-based adjustments
+ *
+ * BIOLOGICAL BASIS:
+ * - Pro-inflammatory cytokines (IL-1, IL-6, TNF-α) impair prefrontal function
+ * - "Sickness behavior" reduces executive capacity during immune response
+ * - Cognitive fog manifests as: slower task switching, reduced inhibition, simpler planning
+ *
+ * @param exec Executive controller
+ * @param immune Brain immune system (can be NULL to disable)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void executive_set_immune_system(executive_controller_t* exec, brain_immune_system_t* immune);
+
+/**
+ * @brief Get current inflammation-adjusted cognitive capacity
+ *
+ * WHAT: Query executive capacity adjusted for immune-induced impairment
+ * WHY:  High inflammation reduces cognitive resources
+ * HOW:  Scale capacity by inflammation level (higher inflammation = lower capacity)
+ *
+ * BIOLOGY: Cytokine-induced cognitive fog reduces working memory, attention, processing speed
+ *
+ * @param exec Executive controller
+ * @return Adjusted capacity [0, 1] (1=full capacity, 0=completely impaired)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float executive_get_immune_adjusted_capacity(executive_controller_t* exec);
+
+/**
+ * @brief Check if executive function is significantly impaired
+ *
+ * WHAT: Determine if inflammation has crossed impairment threshold
+ * WHY:  System may need to reduce cognitive load or alert operator
+ * HOW:  Compare current inflammation to impairment threshold
+ *
+ * @param exec Executive controller
+ * @return true if executive function significantly impaired
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool executive_is_immune_impaired(executive_controller_t* exec);
+
+/**
+ * @brief Get inflammation-adjusted task switch cost
+ *
+ * WHAT: Calculate task switching cost adjusted for inflammation
+ * WHY:  Inflammation increases cognitive rigidity and switch cost
+ * HOW:  Scale base switch cost by inflammation level
+ *
+ * BIOLOGY: Cytokines increase perseveration and reduce cognitive flexibility
+ *
+ * @param exec Executive controller
+ * @return Adjusted switch cost in milliseconds
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float executive_get_immune_adjusted_switch_cost(executive_controller_t* exec);
+
+/**
+ * @brief Get inflammation-adjusted inhibition threshold
+ *
+ * WHAT: Calculate inhibition threshold adjusted for inflammation
+ * WHY:  High inflammation impairs impulse control
+ * HOW:  Increase threshold (harder to inhibit) with inflammation
+ *
+ * BIOLOGY: Pro-inflammatory states reduce prefrontal inhibitory control
+ *
+ * @param exec Executive controller
+ * @return Adjusted inhibition threshold [0, 1]
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float executive_get_immune_adjusted_inhibition(executive_controller_t* exec);
 
 #ifdef __cplusplus
 }

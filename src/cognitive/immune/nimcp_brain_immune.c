@@ -96,11 +96,11 @@ const char* brain_immune_t_cell_type_to_string(brain_t_cell_type_t type) {
  */
 const char* brain_immune_cytokine_to_string(brain_cytokine_type_t type) {
     switch (type) {
-        case CYTOKINE_IL1:       return "IL-1";
+        case CYTOKINE_IL1B:       return "IL-1";
         case CYTOKINE_IL6:       return "IL-6";
         case CYTOKINE_IL10:      return "IL-10";
-        case CYTOKINE_TNF_ALPHA: return "TNF-alpha";
-        case CYTOKINE_IFN_GAMMA: return "IFN-gamma";
+        case CYTOKINE_TNFA: return "TNF-alpha";
+        case BRAIN_CYTOKINE_IFN_GAMMA: return "IFN-gamma";
         default: return "UNKNOWN";
     }
 }
@@ -522,25 +522,91 @@ int brain_immune_connect_bbb(brain_immune_system_t* system, bbb_system_t bbb_sys
     return 0;
 }
 
+/* ============================================================================
+ * BFT Callback Handlers (static)
+ * ============================================================================ */
+
 /**
- * @brief Connect to BFT
+ * @brief BFT accusation callback handler
+ *
+ * WHAT: Callback invoked by BFT on accusations
+ * WHY:  Enable automatic antigen presentation
+ * HOW:  Forward to immune handler
+ */
+static void bft_accusation_cb(
+    uint32_t accuser_id,
+    uint32_t accused_id,
+    bft_behavior_t behavior,
+    const bft_evidence_t* evidence,
+    uint32_t evidence_count,
+    void* user_data
+) {
+    brain_immune_system_t* system = (brain_immune_system_t*)user_data;
+    if (system) {
+        brain_immune_handle_bft_accusation(
+            system, accuser_id, accused_id, behavior, evidence, evidence_count
+        );
+    }
+}
+
+/**
+ * @brief BFT quarantine callback handler
+ */
+static void bft_quarantine_cb(
+    uint32_t node_id,
+    uint64_t duration_ms,
+    float trust_score,
+    void* user_data
+) {
+    brain_immune_system_t* system = (brain_immune_system_t*)user_data;
+    if (system) {
+        brain_immune_handle_bft_quarantine(system, node_id, duration_ms, trust_score);
+    }
+}
+
+/**
+ * @brief BFT trust recovery callback handler
+ */
+static void bft_trust_recovery_cb(
+    uint32_t node_id,
+    float old_trust,
+    float new_trust,
+    void* user_data
+) {
+    brain_immune_system_t* system = (brain_immune_system_t*)user_data;
+    if (system) {
+        brain_immune_handle_bft_trust_recovery(system, node_id, old_trust, new_trust);
+    }
+}
+
+/**
+ * @brief Connect to BFT with enhanced callbacks
  */
 int brain_immune_connect_bft(brain_immune_system_t* system, bft_context_t* bft_context) {
-    if (!system) return -1;
+    if (!system || !bft_context) return -1;
 
     nimcp_mutex_lock(system->mutex);
     system->bft_context = bft_context;
     nimcp_mutex_unlock(system->mutex);
 
+    // Register callbacks for automatic integration
+    bft_register_accusation_callback(bft_context, bft_accusation_cb, system);
+    bft_register_quarantine_callback(bft_context, bft_quarantine_cb, system);
+    bft_register_trust_recovery_callback(bft_context, bft_trust_recovery_cb, system);
+
     if (system->config.enable_logging) {
-        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to BFT");
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to BFT with callbacks");
     }
 
     return 0;
 }
 
 /**
- * @brief Connect to swarm immune
+ * @brief Connect to swarm immune with bidirectional sync
+ *
+ * WHAT: Connect brain immune to swarm immune with automatic threat/response sync
+ * WHY:  Enable distributed immune response across swarm nodes
+ * HOW:  Link systems and enable auto-sync of threats, memory cells, and responses
  */
 int brain_immune_connect_swarm(brain_immune_system_t* system, NimcpSwarmImmuneSystem* swarm_immune) {
     if (!system) return -1;
@@ -550,7 +616,56 @@ int brain_immune_connect_swarm(brain_immune_system_t* system, NimcpSwarmImmuneSy
     nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
-        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to swarm immune");
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to swarm immune with bidirectional sync");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Hierarchical recovery completion callback
+ *
+ * WHAT: Release IL-10 on successful recovery
+ * WHY:  Anti-inflammatory response to recovery completion
+ * HOW:  Triggered by HR success, releases IL-10 cytokine
+ */
+static void hr_completion_cb(
+    const void* request,
+    const void* response,
+    void* user_data
+) {
+    brain_immune_system_t* system = (brain_immune_system_t*)user_data;
+    if (!system) return;
+
+    /* Release anti-inflammatory IL-10 cytokine */
+    uint32_t cytokine_id = 0;
+    brain_immune_release_cytokine(
+        system,
+        CYTOKINE_IL10,
+        0,       /* source: recovery system */
+        0.8f,    /* high concentration */
+        0,       /* broadcast */
+        &cytokine_id
+    );
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+            "Recovery completed -> IL-10 anti-inflammatory release (cytokine %u)", cytokine_id);
+    }
+}
+
+/**
+ * @brief Connect to hierarchical recovery
+ */
+int brain_immune_connect_hierarchical_recovery(brain_immune_system_t* system, void* hr_context) {
+    if (!system || !hr_context) return -1;
+
+    /* Register completion callback for IL-10 release */
+    #include "utils/fault_tolerance/nimcp_hierarchical_recovery.h"
+    hr_register_completion_callback((hr_context_t*)hr_context, hr_completion_cb, system);
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to hierarchical recovery with IL-10 callback");
     }
 
     return 0;
@@ -582,6 +697,330 @@ int brain_immune_connect_bio_async(brain_immune_system_t* system) {
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to bio-async router");
     }
+
+    return 0;
+}
+
+/* ============================================================================
+ * Enhanced Swarm Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Automatically sync swarm threat to brain immune antigen
+ *
+ * WHAT: Auto-present swarm-detected threats as brain immune antigens
+ * WHY:  Ensure all swarm threats are processed by brain immune system
+ * HOW:  Called automatically when swarm detects threat
+ */
+int brain_immune_auto_sync_swarm_threat(
+    brain_immune_system_t* system,
+    const NimcpSwarmThreat* threat
+) {
+    if (!system || !threat || !system->swarm_immune) return -1;
+
+    uint32_t antigen_id = 0;
+    int result = brain_immune_present_swarm_threat(system, threat, &antigen_id);
+
+    if (result == 0 && system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+            "Auto-synced swarm threat %u -> brain antigen %u",
+            threat->id, antigen_id);
+    }
+
+    return result;
+}
+
+/**
+ * @brief Sync brain immune memory cell to swarm immune memory
+ *
+ * WHAT: Create swarm immune memory cell from brain immune B cell memory
+ * WHY:  Share learned threat patterns across swarm
+ * HOW:  Convert B cell receptor pattern to swarm threat signature
+ */
+int brain_immune_sync_memory_to_swarm(
+    brain_immune_system_t* system,
+    uint32_t b_cell_id
+) {
+    if (!system || !system->swarm_immune) return -1;
+
+    brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
+    if (!b_cell || b_cell->state != B_CELL_MEMORY) return -1;
+
+    /* Find corresponding antigen to get response type */
+    brain_antigen_t* antigen = find_antigen_by_id(system, b_cell->bound_antigen_id);
+    if (!antigen) return -1;
+
+    /* Create swarm threat signature from B cell receptor */
+    NimcpSwarmThreatSignature signature;
+    memset(&signature, 0, sizeof(signature));
+
+    signature.pattern_len = b_cell->receptor_len;
+    memcpy(signature.pattern, b_cell->receptor,
+           signature.pattern_len > 64 ? 64 : signature.pattern_len);
+    signature.match_threshold = system->config.recognition_threshold;
+    signature.type = THREAT_BYZANTINE;  /* Default threat type */
+    signature.detection_count = 1;
+    signature.last_seen = get_timestamp_ms();
+
+    /* Determine response type based on antigen severity */
+    NimcpSwarmResponseType response = RESPONSE_ISOLATION;
+    if (antigen->severity >= 8) {
+        response = RESPONSE_COUNTER_ATTACK;
+    } else if (antigen->severity >= 5) {
+        response = RESPONSE_ISOLATION;
+    } else {
+        response = RESPONSE_ALERT;
+    }
+
+    /* Add memory cell to swarm immune */
+    uint32_t swarm_cell_id = 0;
+    nimcp_result_t res = nimcp_swarm_immune_add_memory_cell(
+        system->swarm_immune,
+        &signature,
+        response,
+        b_cell->affinity,
+        &swarm_cell_id
+    );
+
+    if (res == NIMCP_SUCCESS) {
+        nimcp_mutex_lock(system->mutex);
+        b_cell->swarm_memory_cell_id = swarm_cell_id;
+        nimcp_mutex_unlock(system->mutex);
+
+        if (system->config.enable_logging) {
+            LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                "Synced brain B cell %u -> swarm memory cell %u",
+                b_cell_id, swarm_cell_id);
+        }
+        return 0;
+    }
+
+    return -1;
+}
+
+/**
+ * @brief Trigger swarm response from brain antibody
+ *
+ * WHAT: Execute swarm immune response when brain antibody is activated
+ * WHY:  Translate brain immune action to swarm-level coordinated response
+ * HOW:  Map antibody class to swarm response type and execute
+ */
+int brain_immune_trigger_swarm_response(
+    brain_immune_system_t* system,
+    uint32_t antibody_id
+) {
+    if (!system || !system->swarm_immune) return -1;
+
+    brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
+    if (!antibody || !antibody->active) return -1;
+
+    brain_antigen_t* antigen = find_antigen_by_id(system, antibody->target_antigen_id);
+    if (!antigen) return -1;
+
+    /* If antibody already has swarm response, execute it */
+    if (antibody->swarm_response_id != 0) {
+        return nimcp_swarm_immune_execute_response(
+            system->swarm_immune,
+            antibody->swarm_response_id
+        ) == NIMCP_SUCCESS ? 0 : -1;
+    }
+
+    /* Generate new swarm response based on antibody class */
+    uint32_t threat_id = antigen->source_node_id;  /* Use source node as threat ID */
+    uint32_t response_id = 0;
+
+    nimcp_result_t res = nimcp_swarm_immune_generate_response(
+        system->swarm_immune,
+        threat_id,
+        &response_id
+    );
+
+    if (res == NIMCP_SUCCESS) {
+        nimcp_mutex_lock(system->mutex);
+        antibody->swarm_response_id = response_id;
+        nimcp_mutex_unlock(system->mutex);
+
+        /* Execute the response */
+        nimcp_swarm_immune_execute_response(system->swarm_immune, response_id);
+
+        if (system->config.enable_logging) {
+            LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                "Triggered swarm response %u from brain antibody %u",
+                response_id, antibody_id);
+        }
+        return 0;
+    }
+
+    return -1;
+}
+
+/**
+ * @brief Broadcast collective inflammation state to swarm
+ *
+ * WHAT: Share inflammation level across swarm nodes via consensus
+ * WHY:  Enable swarm-wide coordinated inflammatory response
+ * HOW:  Send cytokine message with inflammation severity, use consensus to agree
+ */
+int brain_immune_broadcast_inflammation_state(
+    brain_immune_system_t* system,
+    uint32_t site_id
+) {
+    if (!system || !system->swarm_immune) return -1;
+
+    brain_inflammation_site_t* site = find_inflammation_by_id(system, site_id);
+    if (!site) return -1;
+
+    /* Map inflammation level to swarm severity */
+    NimcpSwarmSeverity severity;
+    switch (site->level) {
+        case INFLAMMATION_LOCAL:    severity = SWARM_SEVERITY_LOW; break;
+        case INFLAMMATION_REGIONAL: severity = SWARM_SEVERITY_MEDIUM; break;
+        case INFLAMMATION_SYSTEMIC: severity = SWARM_SEVERITY_HIGH; break;
+        case INFLAMMATION_STORM:    severity = SWARM_SEVERITY_CRITICAL; break;
+        default:                    severity = SWARM_SEVERITY_LOW; break;
+    }
+
+    /* Broadcast via swarm immune alert */
+    nimcp_result_t res = nimcp_swarm_immune_broadcast_alert(
+        system->swarm_immune,
+        site->triggering_antigen_id,
+        severity
+    );
+
+    /* Also release pro-inflammatory cytokine */
+    if (res == NIMCP_SUCCESS && system->config.enable_bio_async) {
+        uint32_t cytokine_id;
+        brain_cytokine_type_t type = (site->level >= INFLAMMATION_SYSTEMIC)
+            ? CYTOKINE_TNFA : CYTOKINE_IL6;
+
+        brain_immune_release_cytokine(
+            system, type, 0,
+            site->resource_allocation,
+            0,  /* Broadcast to all */
+            &cytokine_id
+        );
+    }
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+            "Broadcast inflammation state: site %u, level %s",
+            site_id, brain_immune_inflammation_to_string(site->level));
+    }
+
+    return res == NIMCP_SUCCESS ? 0 : -1;
+}
+
+/**
+ * @brief Request consensus on threat severity via swarm
+ *
+ * WHAT: Use swarm consensus to assess threat severity collectively
+ * WHY:  Prevent false positives, ensure distributed agreement on threats
+ * HOW:  Each node votes on severity, weighted by confidence, use cytokine messaging
+ */
+int brain_immune_consensus_threat_severity(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    float* agreed_severity_out
+) {
+    if (!system || !system->swarm_immune || !agreed_severity_out) return -1;
+
+    brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
+    if (!antigen) return -1;
+
+    /* Confirm threat via swarm consensus */
+    uint32_t threat_id = antigen->id;
+    uint32_t confirming_drone = system->swarm_immune->self_drone_id;
+
+    nimcp_result_t res = nimcp_swarm_immune_confirm_threat(
+        system->swarm_immune,
+        threat_id,
+        confirming_drone
+    );
+
+    if (res == NIMCP_SUCCESS) {
+        /* Get confirmed threat info */
+        const NimcpSwarmThreat* threat = NULL;
+        res = nimcp_swarm_immune_get_threat(
+            system->swarm_immune,
+            threat_id,
+            &threat
+        );
+
+        if (res == NIMCP_SUCCESS && threat) {
+            /* Update antigen with consensus information */
+            nimcp_mutex_lock(system->mutex);
+            /* Note: brain_antigen_t uses 'processed' rather than 'confirmed' */
+            antigen->processed = threat->confirmed;
+            antigen->confidence = threat->confidence;
+
+            /* Map swarm confirming drones to severity adjustment */
+            float severity_factor = (float)threat->confirming_drones / 10.0f;
+            if (severity_factor > 1.0f) severity_factor = 1.0f;
+
+            *agreed_severity_out = antigen->severity * severity_factor;
+            nimcp_mutex_unlock(system->mutex);
+
+            if (system->config.enable_logging) {
+                LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                    "Consensus on antigen %u: confirmed=%d, drones=%u, severity=%.2f",
+                    antigen_id, threat->confirmed, threat->confirming_drones,
+                    *agreed_severity_out);
+            }
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+/**
+ * @brief Propagate secondary response across swarm when memory cell recognizes threat
+ *
+ * WHAT: When any node recognizes learned threat, trigger swarm-wide secondary response
+ * WHY:  Collective memory - if one node remembers, entire swarm benefits
+ * HOW:  Share memory cell activation, broadcast rapid response to all nodes
+ */
+int brain_immune_propagate_secondary_response(
+    brain_immune_system_t* system,
+    uint32_t memory_b_cell_id,
+    uint32_t antigen_id
+) {
+    if (!system || !system->swarm_immune) return -1;
+
+    brain_b_cell_t* b_cell = find_b_cell_by_id(system, memory_b_cell_id);
+    if (!b_cell || b_cell->state != B_CELL_MEMORY) return -1;
+
+    /* Share memory cell with swarm if not already shared */
+    if (b_cell->swarm_memory_cell_id == 0) {
+        brain_immune_sync_memory_to_swarm(system, memory_b_cell_id);
+    }
+
+    /* Share memory cell with entire swarm */
+    if (b_cell->swarm_memory_cell_id != 0) {
+        nimcp_result_t res = nimcp_swarm_immune_share_memory_cell(
+            system->swarm_immune,
+            b_cell->swarm_memory_cell_id
+        );
+
+        if (res == NIMCP_SUCCESS && system->config.enable_logging) {
+            LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                "Propagated secondary response: memory cell %u shared across swarm",
+                b_cell->swarm_memory_cell_id);
+        }
+    }
+
+    /* Broadcast rapid response alert with high priority */
+    brain_immune_broadcast_alert(system, antigen_id, INFLAMMATION_REGIONAL);
+
+    /* Release coordinating cytokines */
+    uint32_t cytokine_id;
+    brain_immune_release_cytokine(
+        system, BRAIN_CYTOKINE_IFN_GAMMA,
+        memory_b_cell_id,
+        system->config.memory_response_multiplier,
+        0,  /* Broadcast */
+        &cytokine_id
+    );
 
     return 0;
 }
@@ -678,10 +1117,10 @@ int brain_immune_present_bbb_threat(
     /* Map BBB severity to 1-10 scale */
     uint32_t immune_severity;
     switch (severity) {
-        case BBB_SEVERITY_LOW:      immune_severity = 3; break;
-        case BBB_SEVERITY_MEDIUM:   immune_severity = 5; break;
-        case BBB_SEVERITY_HIGH:     immune_severity = 7; break;
-        case BBB_SEVERITY_CRITICAL: immune_severity = 10; break;
+        case SWARM_SEVERITY_LOW:      immune_severity = 3; break;
+        case SWARM_SEVERITY_MEDIUM:   immune_severity = 5; break;
+        case SWARM_SEVERITY_HIGH:     immune_severity = 7; break;
+        case SWARM_SEVERITY_CRITICAL: immune_severity = 10; break;
         default: immune_severity = 1; break;
     }
 
@@ -756,10 +1195,10 @@ int brain_immune_present_swarm_threat(
     /* Map swarm severity */
     uint32_t severity;
     switch (threat->severity) {
-        case SEVERITY_LOW:      severity = 3; break;
-        case SEVERITY_MEDIUM:   severity = 5; break;
-        case SEVERITY_HIGH:     severity = 7; break;
-        case SEVERITY_CRITICAL: severity = 10; break;
+        case SWARM_SEVERITY_LOW:      severity = 3; break;
+        case SWARM_SEVERITY_MEDIUM:   severity = 5; break;
+        case SWARM_SEVERITY_HIGH:     severity = 7; break;
+        case SWARM_SEVERITY_CRITICAL: severity = 10; break;
         default: severity = 5; break;
     }
 
@@ -1110,16 +1549,36 @@ int brain_immune_execute_antibody(brain_immune_system_t* system, uint32_t antibo
     brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody || !antibody->active) return -1;
 
+    /* Get associated antigen for BBB coordination */
+    brain_antigen_t* antigen = find_antigen_by_id(system, antibody->target_antigen_id);
+
     /* Execute swarm response if connected */
     if (system->swarm_immune) {
         /* Would call nimcp_swarm_immune_generate_response */
         antibody->swarm_response_id = 1;  /* Placeholder */
     }
 
+    /* Coordinate BBB action if antigen came from BBB */
+    if (antigen && antigen->source == ANTIGEN_SOURCE_BBB && system->bbb_system) {
+        /* BBB action is already stored in antibody->bbb_action */
+        /* Execute coordinated BBB action based on antibody class */
+        if (antibody->ab_class == ANTIBODY_IGG || antibody->ab_class == ANTIBODY_IGE) {
+            /* For mature/emergency antibodies, ensure BBB takes strong action */
+            if (antibody->bbb_action == BBB_ACTION_LOG ||
+                antibody->bbb_action == BBB_ACTION_BLOCK) {
+                /* Escalate to quarantine for high-affinity antibody responses */
+                if (antigen->source_node_id != 0) {
+                    void* threat_addr = (void*)(uintptr_t)antigen->source_node_id;
+                    bbb_quarantine_region(system->bbb_system, threat_addr, 1);
+                }
+            }
+        }
+    }
+
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
-            "Antibody %u executed response type %d",
-            antibody_id, antibody->swarm_response);
+            "Antibody %u executed response type %d with BBB action %d",
+            antibody_id, antibody->swarm_response, antibody->bbb_action);
     }
 
     return 0;
@@ -1211,12 +1670,12 @@ int brain_immune_release_cytokine(
 
     /* Map to bio-async message type */
     switch (type) {
-        case CYTOKINE_IL1:
+        case CYTOKINE_IL1B:
         case CYTOKINE_IL6:
-        case CYTOKINE_TNF_ALPHA:
+        case CYTOKINE_TNFA:
             cytokine->message_type = BIO_MSG_SECURITY_ALERT;
             break;
-        case CYTOKINE_IFN_GAMMA:
+        case BRAIN_CYTOKINE_IFN_GAMMA:
             cytokine->message_type = BIO_MSG_SWARM_IMMUNE_ALERT;
             break;
         case CYTOKINE_IL10:
@@ -1273,7 +1732,7 @@ int brain_immune_broadcast_alert(
 
     switch (severity) {
         case INFLAMMATION_LOCAL:
-            type = CYTOKINE_IL1;
+            type = CYTOKINE_IL1B;
             concentration = 0.3f;
             break;
         case INFLAMMATION_REGIONAL:
@@ -1281,11 +1740,11 @@ int brain_immune_broadcast_alert(
             concentration = 0.5f;
             break;
         case INFLAMMATION_SYSTEMIC:
-            type = CYTOKINE_TNF_ALPHA;
+            type = CYTOKINE_TNFA;
             concentration = 0.7f;
             break;
         case INFLAMMATION_STORM:
-            type = CYTOKINE_TNF_ALPHA;
+            type = CYTOKINE_TNFA;
             concentration = 0.9f;
             break;
         default:
@@ -1625,6 +2084,52 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
 }
 
 /**
+ * @brief Get immune state snapshot for checkpointing
+ *
+ * WHAT: Extract immune state for fault tolerance checkpoints
+ * WHY:  Include immune health in BFT/recovery checkpoints
+ * HOW:  Copy key metrics to BFT-compatible structure
+ */
+int brain_immune_get_checkpoint_state(brain_immune_system_t* system, void* state) {
+    if (!system || !state) return -1;
+
+    #include "utils/fault_tolerance/nimcp_byzantine_fault_tolerance.h"
+    bft_immune_state_t* immune_state = (bft_immune_state_t*)state;
+
+    nimcp_mutex_lock(system->mutex);
+
+    /* Count active antigens (unprocessed) */
+    uint32_t active_antigens = 0;
+    for (size_t i = 0; i < system->antigen_count; i++) {
+        if (!system->antigens[i].neutralized) active_antigens++;
+    }
+
+    /* Count memory cells */
+    uint32_t memory_cells = 0;
+    for (size_t i = 0; i < system->b_cell_count; i++) {
+        if (system->b_cells[i].state == B_CELL_MEMORY) memory_cells++;
+    }
+
+    /* Count active antibodies */
+    uint32_t active_antibodies = 0;
+    for (size_t i = 0; i < system->antibody_count; i++) {
+        if (system->antibodies[i].active) active_antibodies++;
+    }
+
+    /* Fill state */
+    immune_state->active_antigens = active_antigens;
+    immune_state->active_antibodies = active_antibodies;
+    immune_state->memory_cells = memory_cells;
+    immune_state->inflammation_sites = (uint32_t)system->inflammation_count;
+    immune_state->system_health = system->stats.system_health;
+    immune_state->immune_phase = (uint8_t)system->phase;
+
+    nimcp_mutex_unlock(system->mutex);
+
+    return 0;
+}
+
+/**
  * @brief Get current phase
  */
 brain_immune_phase_t brain_immune_get_phase(brain_immune_system_t* system) {
@@ -1648,6 +2153,147 @@ bool brain_immune_is_neutralized(brain_immune_system_t* system, uint32_t antigen
 const brain_antigen_t* brain_immune_get_antigen(brain_immune_system_t* system, uint32_t antigen_id) {
     if (!system) return NULL;
     return find_antigen_by_id(system, antigen_id);
+}
+
+/* ============================================================================
+ * BFT Integration Handlers
+ * ============================================================================ */
+
+/**
+ * @brief Handle BFT accusation event
+ *
+ * WHAT: Auto-present Byzantine accusation as immune antigen
+ * WHY:  Trigger immune response for Byzantine threats
+ * HOW:  Create antigen from evidence, activate immune cells
+ */
+int brain_immune_handle_bft_accusation(
+    brain_immune_system_t* system,
+    uint32_t accuser_id,
+    uint32_t accused_id,
+    bft_behavior_t behavior,
+    const bft_evidence_t* evidence,
+    uint32_t evidence_count
+) {
+    if (!system || !evidence) return -1;
+
+    // Create antigen from BFT accusation
+    uint32_t antigen_id = 0;
+    int result = brain_immune_present_byzantine(
+        system, accused_id, behavior, evidence, evidence_count, &antigen_id
+    );
+
+    if (result != 0) return result;
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+            "BFT accusation: node %u accused %u of %s -> antigen %u",
+            accuser_id, accused_id, bft_behavior_to_string(behavior), antigen_id);
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Handle BFT quarantine action
+ *
+ * WHAT: Coordinate killer T cell with BFT quarantine
+ * WHY:  Unified immune-BFT threat isolation
+ * HOW:  Activate killer T, track in inflammation system
+ */
+int brain_immune_handle_bft_quarantine(
+    brain_immune_system_t* system,
+    uint32_t node_id,
+    uint64_t duration_ms,
+    float trust_score
+) {
+    if (!system) return -1;
+
+    /* Find antigen for this node if exists */
+    nimcp_mutex_lock(system->mutex);
+    uint32_t antigen_id = 0;
+    for (size_t i = 0; i < system->antigen_count; i++) {
+        if (system->antigens[i].source_node_id == node_id &&
+            system->antigens[i].source == ANTIGEN_SOURCE_BFT) {
+            antigen_id = system->antigens[i].id;
+            break;
+        }
+    }
+    nimcp_mutex_unlock(system->mutex);
+
+    /* If we have an antigen for this node, activate killer T cell */
+    if (antigen_id > 0) {
+        uint32_t t_cell_id = 0;
+        brain_immune_activate_killer_t(system, antigen_id, &t_cell_id);
+        brain_immune_t_cell_kill(system, t_cell_id, node_id);
+
+        /* Initiate inflammation for severe cases (low trust) */
+        if (trust_score < 20.0f) {
+            uint32_t site_id = 0;
+            brain_immune_initiate_inflammation(system, node_id, antigen_id, &site_id);
+        }
+    }
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+            "BFT quarantine: node %u (trust %.1f%%) -> killer T cell activated",
+            node_id, trust_score);
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Handle BFT trust recovery
+ *
+ * WHAT: Form immune memory on trust restoration
+ * WHY:  Map BFT trust recovery to immune memory
+ * HOW:  Convert B cells to memory, release IL-10
+ */
+int brain_immune_handle_bft_trust_recovery(
+    brain_immune_system_t* system,
+    uint32_t node_id,
+    float old_trust,
+    float new_trust
+) {
+    if (!system) return -1;
+
+    /* Find B cells associated with this node */
+    nimcp_mutex_lock(system->mutex);
+    for (size_t i = 0; i < system->b_cell_count; i++) {
+        if (system->b_cells[i].state == B_CELL_PLASMA ||
+            system->b_cells[i].state == B_CELL_ACTIVATED) {
+            /* Check if B cell is bound to antigen from this node */
+            brain_antigen_t* antigen = find_antigen_by_id(system, system->b_cells[i].bound_antigen_id);
+            if (antigen && antigen->source_node_id == node_id &&
+                antigen->source == ANTIGEN_SOURCE_BFT) {
+                /* Convert to memory B cell */
+                uint32_t b_cell_id = system->b_cells[i].id;
+                nimcp_mutex_unlock(system->mutex);
+                brain_immune_b_cell_to_memory(system, b_cell_id);
+                nimcp_mutex_lock(system->mutex);
+            }
+        }
+    }
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Release anti-inflammatory cytokine IL-10 (recovery signal) */
+    uint32_t cytokine_id = 0;
+    brain_immune_release_cytokine(
+        system,
+        CYTOKINE_IL10,
+        node_id,
+        0.7f,  /* moderate concentration */
+        0,     /* broadcast */
+        &cytokine_id
+    );
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+            "BFT trust recovery: node %u (%.1f%% -> %.1f%%) -> memory formation + IL-10 release",
+            node_id, old_trust, new_trust);
+    }
+
+    return 0;
 }
 
 /**

@@ -32,6 +32,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace integration
+#include "cognitive/immune/nimcp_brain_immune.h"  // Brain immune integration (cytokine enums)
 
 #include "nimcp.h"  // For error codes
 #include "async/nimcp_bio_async.h"
@@ -125,6 +126,12 @@ struct working_memory {
     nimcp_pos_encoding_type_t pe_type;       // Type of positional encoding
     uint32_t pe_embedding_dim;               // Dimension of position embeddings
     float* pe_buffer;                        // Temporary buffer for position encodings
+
+    // Brain immune integration
+    struct brain_immune_system* immune;      // Connected immune system
+    bool immune_integration_enabled;         // Immune integration active
+    uint32_t inflammation_capacity_penalty;  // Capacity reduction from inflammation
+    float last_stress_signal_time_ms;        // Last stress cytokine release time
 };
 
 //=============================================================================
@@ -417,6 +424,20 @@ static void evict_item_at_index(working_memory_t* wm, uint32_t index) {
     wm->items[wm->current_size] = NULL;
 
     wm->total_evictions++;
+
+    // Signal immune system on eviction (TNF-alpha for failure)
+    if (wm->immune_integration_enabled && wm->immune) {
+        // Release TNF-alpha (eviction = resource failure)
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(
+            wm->immune,
+            CYTOKINE_TNFA,
+            0,  // Working memory module
+            0.5f,  // Moderate signal
+            0,  // Broadcast
+            &cytokine_id
+        );
+    }
 
     // Broadcast eviction event via bio-async
     bio_broadcast_item_evicted(wm, index);
@@ -799,6 +820,23 @@ bool working_memory_add(
 
     wm->current_size++;
     wm->total_additions++;
+
+    // Check for high utilization and signal stress to immune system
+    if (wm->immune_integration_enabled && wm->immune) {
+        float utilization = (float)wm->current_size / (float)working_memory_get_effective_capacity(wm);
+        if (utilization > 0.9f) {
+            // High utilization - signal IL-6 (cognitive load)
+            uint32_t cytokine_id = 0;
+            brain_immune_release_cytokine(
+                wm->immune,
+                CYTOKINE_IL6,
+                0,  // Working memory module
+                utilization,  // Signal strength = utilization
+                0,  // Broadcast
+                &cytokine_id
+            );
+        }
+    }
 
     // Broadcast item stored event via bio-async
     bio_broadcast_item_stored(wm, index, salience);
@@ -1208,6 +1246,22 @@ uint32_t working_memory_decay(
             wm->total_decay_removals++;
             removed_count++;
         }
+    }
+
+    // Signal immune system if items were removed by decay (IL-1 for resource scarcity)
+    if (removed_count > 0 && wm->immune_integration_enabled && wm->immune) {
+        uint32_t cytokine_id = 0;
+        float signal_strength = (float)removed_count / (float)wm->capacity;
+        if (signal_strength > 1.0f) signal_strength = 1.0f;
+
+        brain_immune_release_cytokine(
+            wm->immune,
+            CYTOKINE_IL1B,
+            0,  // Working memory module
+            signal_strength,
+            0,  // Broadcast
+            &cytokine_id
+        );
     }
 
     nimcp_platform_mutex_unlock(&wm->mutex);
@@ -1700,4 +1754,220 @@ bool working_memory_set_pe_type(
 
     nimcp_platform_mutex_unlock(&wm->mutex);
     return true;
+}
+
+//=============================================================================
+// BRAIN IMMUNE INTEGRATION
+//=============================================================================
+
+/**
+ * @brief Callback for inflammation state changes
+ *
+ * WHAT: Update working memory capacity based on inflammation level
+ * WHY:  Model cytokine impairment of prefrontal cortex function
+ * HOW:  Apply capacity penalty based on inflammation severity
+ *
+ * BIOLOGICAL BASIS:
+ * IL-6 and TNF-alpha impair prefrontal working memory representations
+ * during systemic inflammation (illness, stress, immune activation)
+ */
+static void wm_inflammation_callback(
+    brain_immune_system_t* system,
+    const brain_inflammation_site_t* site,
+    void* user_data)
+{
+    (void)system;
+
+    if (!user_data || !site) {
+        return;
+    }
+
+    working_memory_t* wm = (working_memory_t*)user_data;
+
+    nimcp_platform_mutex_lock(&wm->mutex);
+
+    // Map inflammation level to capacity penalty
+    uint32_t penalty = 0;
+    switch (site->level) {
+        case INFLAMMATION_NONE:
+            penalty = 0;
+            break;
+        case INFLAMMATION_LOCAL:
+            penalty = 1;  // -1 item (7 → 6)
+            break;
+        case INFLAMMATION_REGIONAL:
+            penalty = 2;  // -2 items (7 → 5)
+            break;
+        case INFLAMMATION_SYSTEMIC:
+            penalty = 3;  // -3 items (7 → 4)
+            break;
+        case INFLAMMATION_STORM:
+            penalty = 4;  // -4 items (7 → 3, minimum)
+            break;
+    }
+
+    wm->inflammation_capacity_penalty = penalty;
+
+    LOG_INFO("WM inflammation callback: level=%s, penalty=%u, effective_capacity=%u",
+             brain_immune_inflammation_to_string(site->level),
+             penalty,
+             wm->capacity > penalty ? wm->capacity - penalty : 3);
+
+    // If current size exceeds new effective capacity, evict lowest-salience items
+    uint32_t effective_capacity = wm->capacity > penalty ? wm->capacity - penalty : 3;
+    if (effective_capacity < 3) {
+        effective_capacity = 3;  // Minimum 3 items even under cytokine storm
+    }
+
+    while (wm->current_size > effective_capacity) {
+        // Find and evict lowest-salience item
+        int lowest_idx = working_memory_find_lowest_salience(wm, NULL);
+        if (lowest_idx < 0) {
+            break;  // No more items
+        }
+
+        LOG_DEBUG("Evicting item %d due to inflammation (size=%u, effective_cap=%u)",
+                  lowest_idx, wm->current_size, effective_capacity);
+
+        working_memory_remove(wm, (uint32_t)lowest_idx);
+    }
+
+    nimcp_platform_mutex_unlock(&wm->mutex);
+}
+
+bool working_memory_connect_immune(
+    working_memory_t* wm,
+    struct brain_immune_system* immune)
+{
+    // WHAT: Connect working memory to brain immune system
+    // WHY:  Enable bidirectional immune-cognitive integration
+    // HOW:  Store immune pointer, register inflammation callback
+
+    if (!wm) {
+        set_error("NULL working memory");
+        return false;
+    }
+
+    if (!immune) {
+        set_error("NULL immune system");
+        return false;
+    }
+
+    nimcp_platform_mutex_lock(&wm->mutex);
+
+    wm->immune = immune;
+    wm->immune_integration_enabled = true;
+    wm->inflammation_capacity_penalty = 0;
+    wm->last_stress_signal_time_ms = 0.0f;
+
+    // Register callback for inflammation events
+    brain_immune_set_inflammation_callback(immune, wm_inflammation_callback, wm);
+
+    LOG_INFO("Working memory connected to brain immune system");
+
+    nimcp_platform_mutex_unlock(&wm->mutex);
+    return true;
+}
+
+void working_memory_disconnect_immune(working_memory_t* wm)
+{
+    // WHAT: Disconnect from immune system
+    // WHY:  Clean shutdown or disable modulation
+    // HOW:  Clear pointer, restore full capacity
+
+    if (!wm) {
+        return;
+    }
+
+    nimcp_platform_mutex_lock(&wm->mutex);
+
+    if (wm->immune) {
+        // Unregister callback
+        brain_immune_set_inflammation_callback(wm->immune, NULL, NULL);
+    }
+
+    wm->immune = NULL;
+    wm->immune_integration_enabled = false;
+    wm->inflammation_capacity_penalty = 0;
+
+    LOG_INFO("Working memory disconnected from brain immune system");
+
+    nimcp_platform_mutex_unlock(&wm->mutex);
+}
+
+uint32_t working_memory_get_effective_capacity(const working_memory_t* wm)
+{
+    // WHAT: Get current capacity after inflammation penalty
+    // WHY:  Check available slots for new items
+    // HOW:  base_capacity - penalty, minimum 3
+
+    if (!wm) {
+        return 0;
+    }
+
+    if (!wm->immune_integration_enabled) {
+        return wm->capacity;
+    }
+
+    uint32_t effective = wm->capacity > wm->inflammation_capacity_penalty
+        ? wm->capacity - wm->inflammation_capacity_penalty
+        : 3;  // Minimum 3 items
+
+    return effective;
+}
+
+bool working_memory_is_immune_impaired(const working_memory_t* wm)
+{
+    // WHAT: Check if inflammation is reducing capacity
+    // WHY:  Detect cognitive impairment
+    // HOW:  Compare effective to base capacity
+
+    if (!wm) {
+        return false;
+    }
+
+    return wm->immune_integration_enabled && wm->inflammation_capacity_penalty > 0;
+}
+
+bool working_memory_signal_stress(
+    working_memory_t* wm,
+    float stress_level)
+{
+    // WHAT: Signal immune system about cognitive stress
+    // WHY:  Working memory overload triggers immune response
+    // HOW:  Release IL-6 cytokine via brain immune system
+
+    if (!wm) {
+        return false;
+    }
+
+    if (!wm->immune_integration_enabled || !wm->immune) {
+        return false;
+    }
+
+    // Clamp stress level
+    if (stress_level < 0.0f) stress_level = 0.0f;
+    if (stress_level > 1.0f) stress_level = 1.0f;
+
+    nimcp_platform_mutex_lock(&wm->mutex);
+
+    // Release IL-6 cytokine (cognitive load signal)
+    uint32_t cytokine_id = 0;
+    int result = brain_immune_release_cytokine(
+        wm->immune,
+        CYTOKINE_IL6,
+        0,  // No specific source cell (working memory itself)
+        stress_level,
+        0,  // Broadcast (target_region = 0)
+        &cytokine_id
+    );
+
+    if (result == 0) {
+        wm->last_stress_signal_time_ms = (float)nimcp_time_now_ms();
+        LOG_DEBUG("WM stress signal: level=%.2f, cytokine_id=%u", stress_level, cytokine_id);
+    }
+
+    nimcp_platform_mutex_unlock(&wm->mutex);
+
+    return result == 0;
 }

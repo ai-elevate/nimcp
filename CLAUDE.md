@@ -110,6 +110,77 @@ float affinity = brain_immune_compute_affinity(pattern1, len1, pattern2, len2);
 
 **GOTCHA**: B cells must be in PLASMA state to produce antibodies. Use `brain_immune_t_help_b()` to transition from ACTIVATED → PLASMA.
 
+### Training-Immune Integration (Complete - Dec 2024)
+Bidirectional integration between brain immune system and training pipeline, modeling fever-induced learning suppression and immune responses to training instabilities:
+
+| Direction | Integration | Biological Basis |
+|-----------|-------------|------------------|
+| Immune → Training | Inflammation reduces learning rate | Fever suppresses synaptic plasticity to conserve energy |
+| Training → Immune | Divergence triggers immune response | Training instabilities are threats to neural integrity |
+
+**Learning Rate Modulation (Fever Model):**
+```
+Inflammation Level    LR Factor    Effect
+─────────────────────────────────────────────
+NONE                  1.00         Full learning
+LOCAL                 0.95         Slight reduction
+REGIONAL              0.80         Moderate reduction
+SYSTEMIC              0.50         Severe reduction
+STORM                 0.10         Emergency state
+```
+
+**API Examples:**
+```c
+// Create and connect training immune system
+training_immune_config_t config;
+training_immune_default_config(&config);
+training_immune_system_t* ti = training_immune_create(&config);
+
+training_immune_connect_brain_immune(ti, brain_immune);
+training_immune_connect_optimizer(ti, optimizer);
+training_immune_connect_gradient_manager(ti, grad_mgr);
+training_immune_start(ti);
+
+// Training loop with immune integration
+for (int step = 0; step < max_steps; step++) {
+    // Update metrics (auto-detects instabilities)
+    training_immune_update_metrics(ti, loss, grad_norm, lr);
+    training_immune_check_stability(ti);
+
+    // Get inflammation-modulated learning rate
+    float effective_lr = training_immune_get_effective_lr(ti, base_lr);
+    nimcp_optimizer_set_lr(optimizer, effective_lr);
+
+    // Train step...
+}
+
+// Inflammation automatically modulates learning
+training_immune_update_inflammation(ti, INFLAMMATION_SYSTEMIC);
+float lr_factor = training_immune_get_lr_factor(ti);  // Returns 0.50
+```
+
+**Instability Detection:**
+- **NaN/Inf**: Loss or gradients become invalid → Severity 10
+- **Loss Explosion**: Loss increases >10x → Severity 8
+- **Gradient Explosion**: Norm > threshold → Severity 6
+- **Gradient Vanishing**: Norm < 1e-7 → Severity 4
+- **Loss Plateau**: No improvement for N steps → Severity 3
+
+**Test Coverage: 30+ tests**
+- Lifecycle and configuration
+- Integration with brain immune, optimizer, gradient manager
+- LR modulation for all inflammation levels
+- All instability detection types
+- Auto-immune response triggering
+- Statistics and monitoring
+
+**Files:**
+- Header: `include/middleware/immune/nimcp_training_immune.h`
+- Implementation: `src/middleware/immune/nimcp_training_immune.c`
+- Tests: `test/unit/middleware/immune/test_training_immune.cpp`
+
+**GOTCHA**: Manual CMakeLists.txt edit required. See `TRAINING_IMMUNE_BUILD_INSTRUCTIONS.md` for details.
+
 ### Introspection Module Enhancements (Complete - Dec 2024)
 Implemented three major introspection subsystems for brain metacognition:
 

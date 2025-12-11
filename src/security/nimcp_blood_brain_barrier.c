@@ -28,6 +28,7 @@
 //=============================================================================
 
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
@@ -73,6 +74,12 @@ typedef struct {
 } bbb_quarantine_entry_t;
 
 /**
+ * WHAT: Forward declaration for brain immune system
+ * WHY:  Allow BBB to reference brain immune without circular dependency
+ */
+typedef struct brain_immune_system brain_immune_system_t;
+
+/**
  * WHAT: Internal BBB system structure
  * WHY:  Encapsulates all BBB state with thread-safe access
  */
@@ -99,6 +106,9 @@ struct bbb_system_struct {
     /* Quarantine list */
     bbb_quarantine_entry_t quarantine[BBB_MAX_QUARANTINE_REGIONS];
     size_t quarantine_count;
+
+    /* Brain immune system integration */
+    brain_immune_system_t* immune_system;
 };
 
 //=============================================================================
@@ -327,6 +337,9 @@ NIMCP_EXPORT bbb_system_t bbb_system_create(const bbb_config_t* config)
     /* Initialize statistics */
     memset(&system->stats, 0, sizeof(system->stats));
 
+    /* Initialize immune system integration */
+    system->immune_system = NULL;
+
     return system;
 }
 
@@ -454,6 +467,101 @@ NIMCP_EXPORT void bbb_system_reset_statistics(bbb_system_t system)
 }
 
 //=============================================================================
+// Brain Immune System Integration
+//=============================================================================
+
+/**
+ * @brief Connect BBB to brain immune system
+ *
+ * WHAT: Link BBB threat detection to immune system
+ * WHY:  Enable automatic threat forwarding and coordinated response
+ * HOW:  Store immune system reference, enable automatic presentation
+ *
+ * @param system BBB system handle
+ * @param immune_system Brain immune system handle
+ * @return true on success
+ */
+NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t* immune_system)
+{
+    /* Guard: Null parameters */
+    if (!system) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+    system->immune_system = immune_system;
+    nimcp_mutex_unlock(&system->mutex);
+
+    return true;
+}
+
+/**
+ * @brief Map BBB severity to immune inflammation level
+ *
+ * WHAT: Convert BBB severity to immune inflammation severity
+ * WHY:  Coordinate threat escalation across systems
+ * HOW:  Direct mapping based on severity scale
+ */
+static brain_inflammation_level_t bbb_severity_to_inflammation(bbb_severity_t severity)
+{
+    switch (severity) {
+        case BBB_SEVERITY_NONE:
+            return INFLAMMATION_NONE;
+        case BBB_SEVERITY_LOW:
+            return INFLAMMATION_LOCAL;
+        case BBB_SEVERITY_MEDIUM:
+            return INFLAMMATION_REGIONAL;
+        case BBB_SEVERITY_HIGH:
+            return INFLAMMATION_SYSTEMIC;
+        case BBB_SEVERITY_CRITICAL:
+            return INFLAMMATION_STORM;
+        default:
+            return INFLAMMATION_LOCAL;
+    }
+}
+
+/**
+ * @brief Forward BBB threat to immune system
+ *
+ * WHAT: Present BBB threat as antigen to immune system
+ * WHY:  Enable immune response to BBB-detected threats
+ * HOW:  Call brain_immune_present_bbb_threat with threat data
+ */
+static void bbb_forward_threat_to_immune(bbb_system_t system,
+                                         const bbb_threat_report_t* report,
+                                         const void* threat_data,
+                                         size_t threat_size)
+{
+    /* Guard: No immune system connected */
+    if (!system->immune_system) {
+        return;
+    }
+
+    /* Present threat to immune system */
+    uint32_t antigen_id = 0;
+    brain_immune_present_bbb_threat(
+        system->immune_system,
+        report->type,
+        report->severity,
+        (const uint8_t*)threat_data,
+        threat_size,
+        &antigen_id
+    );
+
+    /* Initiate inflammation if severity warrants */
+    if (report->severity >= BBB_SEVERITY_MEDIUM) {
+        brain_inflammation_level_t level = bbb_severity_to_inflammation(report->severity);
+        uint32_t site_id = 0;
+        brain_immune_initiate_inflammation(
+            system->immune_system,
+            0, /* region_id: 0 for BBB (perimeter) */
+            antigen_id,
+            &site_id
+        );
+    }
+}
+
+//=============================================================================
 // Threat Reporting
 //=============================================================================
 
@@ -559,6 +667,9 @@ NIMCP_EXPORT bbb_threat_report_t bbb_report_threat(bbb_system_t system,
     }
 
     nimcp_mutex_unlock(&system->mutex);
+
+    /* Forward threat to immune system if connected */
+    bbb_forward_threat_to_immune(system, &report, threat_data, threat_size);
 
     /* Invoke alert callback if configured */
     if (system->config.alert_callback && severity >= BBB_SEVERITY_MEDIUM) {
@@ -709,7 +820,34 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     /* Update statistics */
     system->stats.threats_quarantined++;
 
+    /* Trigger killer T cell activation if immune system connected */
+    brain_immune_system_t* immune = system->immune_system;
+
     nimcp_mutex_unlock(&system->mutex);
+
+    /* Activate killer T cell to handle quarantined region */
+    if (immune) {
+        /* Create antigen for quarantine event */
+        uint32_t antigen_id = 0;
+        uint8_t epitope[32];
+        memset(epitope, 0, sizeof(epitope));
+        /* Hash address as epitope signature */
+        snprintf((char*)epitope, sizeof(epitope), "QUARANTINE:%p", address);
+
+        brain_immune_present_antigen(
+            immune,
+            ANTIGEN_SOURCE_BBB,
+            epitope,
+            strlen((const char*)epitope),
+            8, /* High severity for quarantine */
+            (uint32_t)(uintptr_t)address, /* Use address as source node */
+            &antigen_id
+        );
+
+        /* Activate killer T cell for direct action */
+        uint32_t t_cell_id = 0;
+        brain_immune_activate_killer_t(immune, antigen_id, &t_cell_id);
+    }
 
     return true;
 }

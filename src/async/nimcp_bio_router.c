@@ -137,6 +137,10 @@ struct bio_router_struct {
     // Predictive protocol (optional)
     predictive_protocol_t predictive_proto;
 
+    // Brain immune integration
+    void* brain_immune_system;         /**< Brain immune system handle */
+    bio_module_context_t immune_ctx;   /**< Immune module context */
+
     unified_mem_manager_t mem_mgr;
     bool initialized;
     bool shutdown_requested;
@@ -463,6 +467,10 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         }
     }
 
+    // Initialize immune integration fields
+    g_router->brain_immune_system = NULL;
+    g_router->immune_ctx = NULL;
+
     g_router->initialized = true;
     g_router->shutdown_requested = false;
 
@@ -485,6 +493,13 @@ void bio_router_shutdown(void) {
     LOG_INFO("Shutting down bio-router");
 
     g_router->shutdown_requested = true;
+
+    // Cleanup immune integration if connected
+    if (g_router->immune_ctx) {
+        bio_router_unregister_module(g_router->immune_ctx);
+        g_router->immune_ctx = NULL;
+        g_router->brain_immune_system = NULL;
+    }
 
     // Unregister all modules
     nimcp_platform_mutex_lock(&g_router->modules_mutex);
@@ -1815,6 +1830,109 @@ void bio_async_unsubscribe(int channel, uint32_t msg_type, void* callback, void*
         LOG_DEBUG("bio_async_unsubscribe: no matching subscription found "
                   "(channel=%d, msg_type=0x%04x)", channel, msg_type);
     }
+}
+
+/*=============================================================================
+ * BRAIN IMMUNE INTEGRATION
+ *============================================================================*/
+
+/**
+ * @brief Forward declaration for immune message handler
+ *
+ * WHAT: Handler for immune-related bio-async messages
+ * WHY:  Process cytokine signals and immune coordination messages
+ * HOW:  Delegate to brain immune system for processing
+ */
+static nimcp_error_t bio_immune_message_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+);
+
+/**
+ * @brief Connect brain immune system to bio-async router
+ *
+ * WHAT: Register brain immune system with bio-async for cytokine messaging
+ * WHY:  Enable immune coordination via bio-async neuromodulator channels
+ * HOW:  Register immune module, set up NOREPINEPHRINE channel handlers
+ *
+ * @param immune_system Brain immune system to connect
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_async_connect_immune(void* immune_system) {
+    /* Guard clause: Validate parameters */
+    if (!immune_system) {
+        LOG_ERROR("bio_async_connect_immune: NULL immune system");
+        return -1;
+    }
+
+    /* Guard clause: Router must be initialized */
+    if (!g_router || !g_router->initialized) {
+        LOG_ERROR("bio_async_connect_immune: Router not initialized");
+        return -1;
+    }
+
+    /* Store immune system reference (simplified implementation) */
+    g_router->brain_immune_system = immune_system;
+
+    LOG_INFO("bio_async_connect_immune: Brain immune system connected (simplified)");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast cytokine release via bio-async (stub)
+ *
+ * WHAT: Send immune cytokine signal to all modules
+ * WHY:  Coordinate immune response across system
+ * HOW:  Currently a stub - full implementation pending
+ */
+nimcp_error_t bio_async_broadcast_cytokine(
+    uint32_t cytokine_type,
+    float concentration,
+    uint32_t source_cell
+) {
+    (void)cytokine_type;
+    (void)concentration;
+    (void)source_cell;
+    /* Stub - full implementation pending bio-async immune integration */
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Send inflammation alert as high-priority message (stub)
+ *
+ * WHAT: Send inflammation escalation alert
+ * WHY:  Notify system of immune response escalation
+ * HOW:  Currently a stub - full implementation pending
+ */
+nimcp_error_t bio_async_inflammation_alert(
+    uint32_t region_id,
+    uint32_t severity,
+    uint32_t antigen_id
+) {
+    (void)region_id;
+    (void)severity;
+    (void)antigen_id;
+    /* Stub - full implementation pending bio-async immune integration */
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Notify immune phase change (stub)
+ *
+ * WHAT: Broadcast immune system phase transition
+ * WHY:  Coordinate system-wide immune state awareness
+ * HOW:  Currently a stub - full implementation pending
+ */
+nimcp_error_t bio_async_immune_phase_change(
+    uint32_t old_phase,
+    uint32_t new_phase
+) {
+    (void)old_phase;
+    (void)new_phase;
+    /* Stub - full implementation pending bio-async immune integration */
+    return NIMCP_SUCCESS;
 }
 
 /*=============================================================================

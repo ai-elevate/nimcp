@@ -66,6 +66,18 @@ typedef enum {
     EVENT_TYPE_STATE_CHANGED,      /**< System state transition */
     EVENT_TYPE_CUSTOM,             /**< User-defined event */
 
+    // Immune events
+    EVENT_TYPE_IMMUNE_ANTIGEN_DETECTED,    /**< Antigen (threat) detected */
+    EVENT_TYPE_IMMUNE_RESPONSE_ACTIVATED,  /**< Immune response triggered */
+    EVENT_TYPE_IMMUNE_THREAT_NEUTRALIZED,  /**< Threat successfully neutralized */
+    EVENT_TYPE_IMMUNE_INFLAMMATION,        /**< Inflammation state change */
+    EVENT_TYPE_IMMUNE_CYTOKINE_RELEASED,   /**< Cytokine signaling event */
+    EVENT_TYPE_IMMUNE_MEMORY_FORMED,       /**< Immune memory cell created */
+
+    // Routing immune events
+    EVENT_TYPE_ROUTING_ANOMALY,            /**< Routing anomaly detected */
+    EVENT_TYPE_ROUTING_IMMUNE_MODULATION,  /**< Immune modulation applied to routing */
+
     EVENT_TYPE_COUNT               /**< Total event types */
 } event_type_t;
 
@@ -105,6 +117,8 @@ typedef enum {
     EVENT_SOURCE_SALIENCE,
     EVENT_SOURCE_WORKING_MEMORY,
     EVENT_SOURCE_PREDICTIVE,
+    EVENT_SOURCE_IMMUNE,
+    EVENT_SOURCE_ROUTING_IMMUNE,
     EVENT_SOURCE_CUSTOM
 } event_source_t;
 
@@ -228,6 +242,101 @@ typedef struct {
     const char* description;   /**< Human-readable description */
 } custom_event_data_t;
 
+/**
+ * @brief Immune antigen detected event data
+ *
+ * WHAT: Threat detected by immune system
+ * WHY:  Track immune system threat detection
+ */
+typedef struct {
+    uint32_t antigen_id;           /**< Antigen identifier */
+    uint32_t source_type;          /**< Antigen source (BBB, BFT, etc.) */
+    uint32_t severity;             /**< Threat severity 1-10 */
+    float confidence;              /**< Detection confidence [0,1] */
+    const char* description;       /**< Human-readable description */
+} immune_antigen_data_t;
+
+/**
+ * @brief Immune response activated event data
+ *
+ * WHAT: Immune response triggered
+ * WHY:  Track immune system activation
+ */
+typedef struct {
+    uint32_t antigen_id;           /**< Target antigen */
+    uint32_t response_type;        /**< B cell, T cell, etc. */
+    float response_strength;       /**< Response intensity [0,1] */
+    bool is_memory_response;       /**< Secondary (memory) response */
+} immune_response_data_t;
+
+/**
+ * @brief Immune threat neutralized event data
+ *
+ * WHAT: Successful threat neutralization
+ * WHY:  Track immune system effectiveness
+ */
+typedef struct {
+    uint32_t antigen_id;           /**< Neutralized antigen */
+    uint32_t antibody_id;          /**< Antibody that neutralized */
+    uint32_t antibody_class;       /**< IgM, IgG, IgE */
+    uint64_t neutralization_time_ms; /**< Time to neutralize */
+} immune_neutralize_data_t;
+
+/**
+ * @brief Immune inflammation event data
+ *
+ * WHAT: Inflammation state change
+ * WHY:  Track inflammatory response escalation/resolution
+ */
+typedef struct {
+    uint32_t site_id;              /**< Inflammation site */
+    uint32_t region_id;            /**< Affected region */
+    uint32_t level;                /**< Inflammation level (LOCAL, REGIONAL, etc.) */
+    bool escalating;               /**< True if escalating, false if resolving */
+} immune_inflammation_data_t;
+
+/**
+ * @brief Immune cytokine released event data
+ *
+ * WHAT: Cytokine signaling event
+ * WHY:  Track immune signaling molecules
+ */
+typedef struct {
+    uint32_t cytokine_id;          /**< Cytokine identifier */
+    uint32_t cytokine_type;        /**< IL-1, IL-6, TNF-α, etc. */
+    float concentration;           /**< Signal strength [0,1] */
+    bool pro_inflammatory;         /**< Pro vs anti-inflammatory */
+    uint32_t target_region;        /**< Target (0=broadcast) */
+} immune_cytokine_data_t;
+
+/**
+ * @brief Routing anomaly event data
+ *
+ * WHAT: Routing system anomaly detected
+ * WHY:  Track routing failures for immune presentation
+ */
+typedef struct {
+    uint32_t anomaly_type;         /**< Type of anomaly */
+    uint32_t affected_source;      /**< Affected source module */
+    uint32_t affected_dest;        /**< Affected destination */
+    float severity;                /**< Anomaly severity [0,1] */
+    float drop_rate;               /**< Signal drop rate */
+    float avg_latency_ms;          /**< Average latency */
+} routing_anomaly_data_t;
+
+/**
+ * @brief Routing immune modulation event data
+ *
+ * WHAT: Immune system modulated routing
+ * WHY:  Track immune effects on routing behavior
+ */
+typedef struct {
+    uint32_t modulation_type;      /**< Type of modulation */
+    float inflammation_boost;      /**< Priority boost factor */
+    float cytokine_modifier;       /**< Attention modifier */
+    uint32_t routing_strategy;     /**< Current routing strategy */
+} routing_immune_modulation_data_t;
+
 //=============================================================================
 // Main Event Structure (Tagged Union)
 //=============================================================================
@@ -260,6 +369,13 @@ typedef struct {
         error_detected_data_t error_detected;
         decision_made_data_t decision_made;
         custom_event_data_t custom;
+        immune_antigen_data_t immune_antigen;
+        immune_response_data_t immune_response;
+        immune_neutralize_data_t immune_neutralize;
+        immune_inflammation_data_t immune_inflammation;
+        immune_cytokine_data_t immune_cytokine;
+        routing_anomaly_data_t routing_anomaly;
+        routing_immune_modulation_data_t routing_immune_modulation;
     } data;
 
 } event_t;

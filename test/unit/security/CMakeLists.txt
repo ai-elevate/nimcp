@@ -32,6 +32,33 @@ set_tests_properties(unit_security_test_blood_brain_barrier PROPERTIES
     TIMEOUT 60
 )
 
+# BBB-Immune Integration Tests
+add_executable(unit_security_test_bbb_immune_integration
+    test_bbb_immune_integration.cpp
+)
+target_link_libraries(unit_security_test_bbb_immune_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_bbb_immune_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_security_test_bbb_immune_integration
+         COMMAND unit_security_test_bbb_immune_integration)
+set_tests_properties(unit_security_test_bbb_immune_integration PROPERTIES
+    LABELS "unit;integration;security;immune"
+    TIMEOUT 60
+)
+
 # General Security Unit Tests (legacy)
 add_executable(unit_security_test_security
     test_security.cpp

@@ -171,6 +171,14 @@ typedef struct {
     float target_activity; /**< Target average activity */
     float time_scale;      /**< Time scale for averaging */
     float strength;        /**< Strength of homeostatic adjustment */
+
+    // Immune system integration
+    float baseline_target_activity;  /**< Original target activity (before immune modulation) */
+    float inflammation_modulation;   /**< Inflammation effect on set point (0.0-1.0) */
+    float cytokine_scaling_factor;   /**< Cytokine effect on scaling rate (-1.0 to 1.0) */
+    float metabolic_load;            /**< Current metabolic load from immune response (0.0-1.0) */
+    float allostatic_load;           /**< Accumulated allostatic burden (0.0-inf, 0=healthy) */
+    uint64_t inflammation_start;     /**< When inflammation began (0 = no inflammation) */
 } homeostatic_params_t;
 
 /**

@@ -229,6 +229,16 @@ typedef struct {
     float accuracy_obsession;           /**< Perfectionism [0,1] */
     float interest_narrowness;          /**< Focus breadth [0,1] */
 
+    // Immune system markers (depression, mania, anxiety via cytokines)
+    float cytokine_il1_level;           /**< Pro-inflammatory [0,1] */
+    float cytokine_il6_level;           /**< Acute phase [0,1] */
+    float cytokine_il10_level;          /**< Anti-inflammatory [0,1] */
+    float cytokine_tnf_alpha_level;     /**< Severe inflammation [0,1] */
+    float cytokine_ifn_gamma_level;     /**< Antiviral-style [0,1] */
+    float inflammation_level;           /**< Chronic inflammation [0,1] */
+    uint32_t active_threats;            /**< Active immune threats */
+    bool cytokine_storm;                /**< Cytokine storm detected */
+
 } behavioral_markers_t;
 
 //=============================================================================
@@ -616,6 +626,39 @@ mental_health_config_t mental_health_default_config(void);
  * THREAD-SAFE: No (thread-local storage)
  */
 const char* mental_health_get_last_error(void);
+
+//=============================================================================
+// Brain Immune Integration API
+//=============================================================================
+
+// Forward declaration for brain immune system
+struct brain_immune_system;
+typedef struct brain_immune_system brain_immune_system_t;
+
+/**
+ * @brief Connect mental health monitor to brain immune system
+ *
+ * WHAT: Link mental health monitoring to immune system cytokine levels
+ * WHY:  Cytokines affect neurotransmitters and mood (biological basis)
+ * HOW:  Store immune system pointer, enable cytokine marker collection
+ *
+ * BIOLOGICAL BASIS:
+ * - IL-1, IL-6, TNF-alpha (pro-inflammatory) decrease serotonin
+ * - Chronic inflammation linked to depression, anxiety
+ * - IFN-gamma affects dopamine pathways
+ * - IL-10 (anti-inflammatory) indicates recovery/resilience
+ * - Cytokine storm can trigger crisis states
+ *
+ * @param monitor Mental health monitor (non-NULL)
+ * @param immune Brain immune system (non-NULL)
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_connect_immune(
+    mental_health_monitor_t* monitor,
+    brain_immune_system_t* immune
+);
 
 //=============================================================================
 // Test Accessors (only available in test builds)

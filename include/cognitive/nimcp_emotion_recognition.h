@@ -31,10 +31,9 @@
 #ifndef NIMCP_EMOTION_RECOGNITION_H
 #define NIMCP_EMOTION_RECOGNITION_H
 
-#include "nimcp_types.h"
-#include "cognitive/nimcp_emotional_system.h"  // For emotional_tag_t
 #include <stdint.h>
 #include <stdbool.h>
+#include "cognitive/nimcp_emotional_system.h"  // For emotional_tag_t
 
 #ifdef __cplusplus
 extern "C" {

@@ -297,7 +297,8 @@ static float detect_depression(mental_health_monitor_t* monitor, brain_t brain)
 
     float score = 0.0f;
 
-    // Criterion 1: Neurotransmitter deficit (40% weight)
+    // Criterion 1: Neurotransmitter deficit (35% weight)
+    // Note: Serotonin already affected by cytokines in marker collection
     float neuro_deficit = 0.0f;
     if (monitor->current_markers.dopamine_avg < 0.3f) {
         neuro_deficit += 0.5f;
@@ -305,24 +306,29 @@ static float detect_depression(mental_health_monitor_t* monitor, brain_t brain)
     if (monitor->current_markers.serotonin_avg < 0.3f) {
         neuro_deficit += 0.5f;
     }
-    score += neuro_deficit * 0.4f;
+    score += neuro_deficit * 0.35f;
 
-    // Criterion 2: Low engagement (30% weight)
+    // Criterion 2: Low engagement (25% weight)
     float disengagement = 1.0f - monitor->current_markers.engagement_level;
-    score += disengagement * 0.3f;
+    score += disengagement * 0.25f;
 
-    // Criterion 3: Sadness dominance (20% weight)
+    // Criterion 3: Sadness dominance (15% weight)
     uint32_t total_emotions = monitor->current_markers.joy_count +
                              monitor->current_markers.fear_count +
                              monitor->current_markers.anger_count +
                              monitor->current_markers.sadness_count;
     if (total_emotions > 0) {
         float sadness_ratio = (float)monitor->current_markers.sadness_count / total_emotions;
-        score += fminf(sadness_ratio, 1.0f) * 0.2f;
+        score += fminf(sadness_ratio, 1.0f) * 0.15f;
     }
 
     // Criterion 4: Emotional flatness (10% weight)
     score += monitor->current_markers.emotional_flatness * 0.1f;
+
+    // Criterion 5: Chronic inflammation (15% weight)
+    // BIOLOGICAL BASIS: Chronic inflammation → cytokine-induced depression
+    // Pro-inflammatory cytokines (IL-1, IL-6, TNF-alpha) decrease serotonin
+    score += monitor->current_markers.inflammation_level * 0.15f;
 
     // =========================================================================
     // CLAMPING: Ensure [0.0, 1.0] range
@@ -443,19 +449,19 @@ static float detect_anxiety(mental_health_monitor_t* monitor, brain_t brain)
 
     float score = 0.0f;
 
-    // Criterion 1: Norepinephrine elevation (40% weight)
+    // Criterion 1: Norepinephrine elevation (35% weight)
     if (monitor->current_markers.norepinephrine_avg > 0.8f) {
-        score += 0.4f;
+        score += 0.35f;
     }
 
-    // Criterion 2: Fear dominance (30% weight)
+    // Criterion 2: Fear dominance (25% weight)
     uint32_t total_emotions = monitor->current_markers.joy_count +
                              monitor->current_markers.fear_count +
                              monitor->current_markers.anger_count +
                              monitor->current_markers.sadness_count;
     if (total_emotions > 0) {
         float fear_ratio = (float)monitor->current_markers.fear_count / total_emotions;
-        score += fminf(fear_ratio, 1.0f) * 0.3f;
+        score += fminf(fear_ratio, 1.0f) * 0.25f;
     }
 
     // Criterion 3: Decision paralysis (20% weight)
@@ -467,6 +473,11 @@ static float detect_anxiety(mental_health_monitor_t* monitor, brain_t brain)
 
     // Criterion 4: Avoidance (10% weight)
     score += monitor->current_markers.avoidance_rate * 0.1f;
+
+    // Criterion 5: Inflammation (10% weight)
+    // BIOLOGICAL BASIS: Chronic inflammation linked to anxiety disorders
+    // Cytokines can trigger anxiety-like behavior via HPA axis activation
+    score += monitor->current_markers.inflammation_level * 0.1f;
 
     // =========================================================================
     // CLAMPING: Ensure [0.0, 1.0] range

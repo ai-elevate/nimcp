@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/nimcp_executive.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -108,6 +109,12 @@ struct executive_controller {
     float swarm_consensus_threshold;        /**< Threshold for swarm consensus [0,1] */
     uint32_t pending_consensus_proposals;   /**< Count of proposals awaiting consensus */
     nimcp_mutex_t swarm_lock;               /**< Protect swarm state */
+
+    // Brain Immune System integration (Phase 12.x)
+    brain_immune_system_t* immune_system;   /**< Brain immune system reference */
+    bool immune_integration_enabled;        /**< Immune integration active */
+    float last_inflammation_level;          /**< Cached inflammation level */
+    uint64_t last_immune_check_ms;          /**< Last time immune state checked */
 };
 
 //=============================================================================
@@ -612,6 +619,14 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     exec->workspace = NULL;
     exec->workspace_integration_enabled = false;
     exec->workspace_ignition_threshold = 0.7F;  // Default threshold
+
+    // =========================================================================
+    // BRAIN IMMUNE SYSTEM: Initialize integration fields
+    // =========================================================================
+    exec->immune_system = NULL;
+    exec->immune_integration_enabled = false;
+    exec->last_inflammation_level = 0.0F;
+    exec->last_immune_check_ms = 0;
 
     // =========================================================================
     // BIO-ASYNC: Register with bio-router
@@ -1632,4 +1647,224 @@ uint32_t executive_process_messages(executive_controller_t* exec, uint32_t max_m
     }
 
     return bio_router_process_inbox(exec->bio_ctx, max_messages);
+}
+
+//=============================================================================
+// Brain Immune System Integration Functions
+//=============================================================================
+
+/**
+ * @brief Set brain immune system for executive function modulation
+ *
+ * WHAT: Associate executive controller with immune system
+ * WHY:  Enable cytokine-induced cognitive fog modeling
+ * HOW:  Store immune system reference, enable integration
+ *
+ * COMPLEXITY: O(1)
+ */
+void executive_set_immune_system(executive_controller_t* exec, brain_immune_system_t* immune)
+{
+    // Guard: NULL check
+    if (!exec) {
+        return;
+    }
+
+    exec->immune_system = immune;
+    exec->immune_integration_enabled = (immune != NULL);
+
+    if (immune) {
+        LOG_MODULE_INFO(LOG_MODULE, "Executive controller integrated with brain immune system");
+    }
+}
+
+/**
+ * @brief Get current inflammation level from immune system
+ *
+ * WHAT: Query inflammation level with caching
+ * WHY:  Avoid excessive immune system queries
+ * HOW:  Check cache expiry, query if needed
+ *
+ * COMPLEXITY: O(1)
+ */
+static float get_current_inflammation_level(executive_controller_t* exec)
+{
+    // Guard: Immune integration not enabled
+    if (!exec || !exec->immune_integration_enabled || !exec->immune_system) {
+        return 0.0F;
+    }
+
+    // WHAT: Cache inflammation level for 100ms to avoid excessive queries
+    // WHY:  Immune state changes slowly, no need to query every call
+    // HOW:  Check timestamp, refresh if expired
+    uint64_t now = exec_get_time_ms();
+    if (now - exec->last_immune_check_ms > 100) {
+        brain_immune_stats_t stats;
+        if (brain_immune_get_stats(exec->immune_system, &stats) == 0) {
+            // WHAT: Compute overall inflammation from sites
+            // WHY:  Multiple inflammation sites contribute to systemic effect
+            // HOW:  Average inflammation across sites, weighted by severity
+            if (stats.inflammation_sites > 0) {
+                exec->last_inflammation_level = (float)stats.inflammation_sites /
+                                                (float)BRAIN_IMMUNE_MAX_INFLAMMATION;
+                exec->last_inflammation_level = fminf(exec->last_inflammation_level, 1.0F);
+            } else {
+                exec->last_inflammation_level = 0.0F;
+            }
+        }
+        exec->last_immune_check_ms = now;
+    }
+
+    return exec->last_inflammation_level;
+}
+
+/**
+ * @brief Get current inflammation-adjusted cognitive capacity
+ *
+ * WHAT: Calculate capacity reduction from inflammation
+ * WHY:  Cytokines impair prefrontal function
+ * HOW:  Scale 1.0 down based on inflammation level
+ *
+ * BIOLOGY: Pro-inflammatory cytokines (IL-1, IL-6, TNF-α) impair:
+ *          - Working memory capacity
+ *          - Attention span
+ *          - Processing speed
+ *          - Executive control
+ *
+ * COMPLEXITY: O(1)
+ */
+float executive_get_immune_adjusted_capacity(executive_controller_t* exec)
+{
+    // Guard: NULL check
+    if (!exec) {
+        return 1.0F;
+    }
+
+    // Guard: Immune integration not enabled
+    if (!exec->immune_integration_enabled || !exec->immune_system) {
+        return 1.0F;
+    }
+
+    float inflammation = get_current_inflammation_level(exec);
+
+    // WHAT: Map inflammation [0, 1] to capacity [1, 0]
+    // WHY:  Higher inflammation = lower capacity
+    // HOW:  Linear scaling with floor at 0.1 (never completely disabled)
+    //
+    // inflammation=0.0 → capacity=1.0 (full capacity)
+    // inflammation=0.5 → capacity=0.55 (moderate impairment)
+    // inflammation=1.0 → capacity=0.1 (severe impairment)
+    float capacity = 1.0F - (inflammation * 0.9F);
+    return fmaxf(capacity, 0.1F);
+}
+
+/**
+ * @brief Check if executive function is significantly impaired
+ *
+ * WHAT: Determine if inflammation exceeds impairment threshold
+ * WHY:  Signal to system that cognitive load should be reduced
+ * HOW:  Compare inflammation to configured threshold
+ *
+ * COMPLEXITY: O(1)
+ */
+bool executive_is_immune_impaired(executive_controller_t* exec)
+{
+    // Guard: NULL check
+    if (!exec) {
+        return false;
+    }
+
+    // Guard: Immune integration not enabled
+    if (!exec->immune_integration_enabled || !exec->immune_system) {
+        return false;
+    }
+
+    float inflammation = get_current_inflammation_level(exec);
+    float threshold = exec->config.immune_impairment_threshold;
+
+    return (inflammation >= threshold);
+}
+
+/**
+ * @brief Get inflammation-adjusted task switch cost
+ *
+ * WHAT: Calculate switch cost with cytokine-induced rigidity
+ * WHY:  Inflammation increases perseveration and reduces flexibility
+ * HOW:  Scale base cost up with inflammation
+ *
+ * BIOLOGY: Pro-inflammatory states → cognitive rigidity
+ *          - Harder to disengage from current task
+ *          - Reduced set-shifting ability
+ *          - Increased switch cost
+ *
+ * COMPLEXITY: O(1)
+ */
+float executive_get_immune_adjusted_switch_cost(executive_controller_t* exec)
+{
+    // Guard: NULL check
+    if (!exec) {
+        return DEFAULT_SWITCH_COST_MS;
+    }
+
+    float base_cost = exec->config.task_switch_cost_ms;
+
+    // Guard: Immune integration not enabled
+    if (!exec->immune_integration_enabled || !exec->immune_system) {
+        return base_cost;
+    }
+
+    float inflammation = get_current_inflammation_level(exec);
+
+    // WHAT: Map inflammation [0, 1] to cost multiplier [1.0, 3.0]
+    // WHY:  Inflammation increases cognitive rigidity
+    // HOW:  Linear scaling
+    //
+    // inflammation=0.0 → multiplier=1.0 (normal switching)
+    // inflammation=0.5 → multiplier=2.0 (moderate difficulty)
+    // inflammation=1.0 → multiplier=3.0 (severe perseveration)
+    float multiplier = 1.0F + (inflammation * 2.0F);
+    return base_cost * multiplier;
+}
+
+/**
+ * @brief Get inflammation-adjusted inhibition threshold
+ *
+ * WHAT: Calculate inhibition threshold with inflammatory impairment
+ * WHY:  Inflammation impairs impulse control
+ * HOW:  Increase threshold (harder to inhibit) with inflammation
+ *
+ * BIOLOGY: Prefrontal inhibitory control requires:
+ *          - Good working memory (holds goal state)
+ *          - Strong executive function (overrides prepotent response)
+ *          Both are impaired by cytokines → weaker inhibition
+ *
+ * COMPLEXITY: O(1)
+ */
+float executive_get_immune_adjusted_inhibition(executive_controller_t* exec)
+{
+    // Guard: NULL check
+    if (!exec) {
+        return DEFAULT_INHIBITION_THRESHOLD;
+    }
+
+    float base_threshold = exec->config.inhibition_threshold;
+
+    // Guard: Immune integration not enabled
+    if (!exec->immune_integration_enabled || !exec->immune_system) {
+        return base_threshold;
+    }
+
+    float inflammation = get_current_inflammation_level(exec);
+
+    // WHAT: Map inflammation [0, 1] to threshold increase [0.0, 0.25]
+    // WHY:  Higher threshold = harder to inhibit = impaired control
+    // HOW:  Add inflammation-scaled offset
+    //
+    // inflammation=0.0 → offset=0.0 (normal inhibition)
+    // inflammation=0.5 → offset=0.125 (moderate impairment)
+    // inflammation=1.0 → offset=0.25 (severe impairment)
+    float offset = inflammation * 0.25F;
+    float adjusted = base_threshold + offset;
+
+    // Clamp to [0, 1]
+    return fminf(adjusted, 1.0F);
 }

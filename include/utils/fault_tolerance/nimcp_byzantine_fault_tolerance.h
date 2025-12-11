@@ -185,6 +185,22 @@ typedef struct {
 } bft_trust_info_t;
 
 /**
+ * @brief Immune state snapshot for checkpoints
+ *
+ * WHAT: Immune system state at checkpoint time
+ * WHY:  Include immune health in fault tolerance checkpoints
+ * HOW:  Snapshot of key immune metrics
+ */
+typedef struct {
+    uint32_t active_antigens;           /**< Active threats */
+    uint32_t active_antibodies;         /**< Active responses */
+    uint32_t memory_cells;              /**< Immune memory */
+    uint32_t inflammation_sites;        /**< Active inflammation */
+    float system_health;                /**< Overall health (0-1) */
+    uint8_t immune_phase;               /**< Current immune phase */
+} bft_immune_state_t;
+
+/**
  * @brief Checkpoint for BFT state
  */
 typedef struct {
@@ -194,6 +210,7 @@ typedef struct {
     uint32_t signatures_count;      /**< Number of signatures */
     uint8_t signatures[BFT_MAX_NODES][BFT_SIGNATURE_SIZE]; /**< Node sigs */
     uint32_t signers[BFT_MAX_NODES]; /**< Signing nodes */
+    bft_immune_state_t immune_state; /**< Immune system state */
 } bft_checkpoint_t;
 
 /**
@@ -249,6 +266,50 @@ typedef void (*bft_byzantine_callback_t)(
     uint32_t node_id,
     bft_behavior_t behavior,
     const bft_evidence_t* evidence,
+    void* user_data
+);
+
+/**
+ * @brief Accusation event callback
+ *
+ * WHAT: Callback when Byzantine accusation is raised
+ * WHY:  Enable immune system to react to accusations
+ * HOW:  Called before accusation is processed
+ */
+typedef void (*bft_accusation_callback_t)(
+    uint32_t accuser_id,
+    uint32_t accused_id,
+    bft_behavior_t behavior,
+    const bft_evidence_t* evidence,
+    uint32_t evidence_count,
+    void* user_data
+);
+
+/**
+ * @brief Quarantine action callback
+ *
+ * WHAT: Callback when node is quarantined
+ * WHY:  Enable immune system to coordinate quarantine
+ * HOW:  Called when BFT quarantines a node
+ */
+typedef void (*bft_quarantine_callback_t)(
+    uint32_t node_id,
+    uint64_t duration_ms,
+    float trust_score,
+    void* user_data
+);
+
+/**
+ * @brief Trust recovery callback
+ *
+ * WHAT: Callback when node trust is restored
+ * WHY:  Enable immune memory formation
+ * HOW:  Called when node exits probation
+ */
+typedef void (*bft_trust_recovery_callback_t)(
+    uint32_t node_id,
+    float old_trust,
+    float new_trust,
     void* user_data
 );
 
@@ -629,6 +690,60 @@ bool bft_register_consensus_callback(
 bool bft_register_byzantine_callback(
     bft_context_t* ctx,
     bft_byzantine_callback_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Register accusation callback
+ *
+ * WHAT: Register callback for accusation events
+ * WHY:  Enable immune system antigen presentation
+ * HOW:  Store callback, invoke on accusations
+ *
+ * @param ctx BFT context
+ * @param callback Accusation callback
+ * @param user_data User data
+ * @return true on success
+ */
+bool bft_register_accusation_callback(
+    bft_context_t* ctx,
+    bft_accusation_callback_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Register quarantine callback
+ *
+ * WHAT: Register callback for quarantine actions
+ * WHY:  Enable immune system killer T cell coordination
+ * HOW:  Store callback, invoke on quarantine
+ *
+ * @param ctx BFT context
+ * @param callback Quarantine callback
+ * @param user_data User data
+ * @return true on success
+ */
+bool bft_register_quarantine_callback(
+    bft_context_t* ctx,
+    bft_quarantine_callback_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Register trust recovery callback
+ *
+ * WHAT: Register callback for trust restoration
+ * WHY:  Enable immune memory formation
+ * HOW:  Store callback, invoke on trust recovery
+ *
+ * @param ctx BFT context
+ * @param callback Trust recovery callback
+ * @param user_data User data
+ * @return true on success
+ */
+bool bft_register_trust_recovery_callback(
+    bft_context_t* ctx,
+    bft_trust_recovery_callback_t callback,
     void* user_data
 );
 

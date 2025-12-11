@@ -48,6 +48,9 @@
 #include <stdint.h>
 #include "core/brain/nimcp_brain.h"
 
+/* Forward declaration for immune system integration */
+struct brain_immune_system;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -785,6 +788,60 @@ bool introspection_get_stats(introspection_context_t context, introspection_stat
  * THREAD-SAFE: Yes
  */
 void introspection_reset_stats(introspection_context_t context);
+
+/* ========================================================================
+ * IMMUNE SYSTEM INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Connect brain immune system to introspection module
+ * WHY: Enable immune state to influence consciousness metrics and metacognition
+ * HOW: Store immune system reference, register for immune event callbacks
+ *
+ * INTEGRATION EFFECTS:
+ * - Inflammation reduces consciousness phi (IIT metric)
+ * - Threat patterns appear in temporal pattern detection
+ * - Antibody effectiveness contributes to ensemble uncertainty
+ * - Immune phase visible in state reporting
+ * - Memory cell formation triggers metacognitive callbacks
+ *
+ * BIOLOGICAL BASIS:
+ * - Systemic inflammation reduces consciousness (cytokine-induced fatigue)
+ * - Immune activation affects cognitive performance
+ * - Fever states alter consciousness levels
+ * - Immune memory formation is a metacognitive learning event
+ *
+ * @param context Introspection context
+ * @param immune_system Brain immune system to connect
+ * @return true on success, false on error
+ *
+ * ERRORS: Returns false if context or immune_system is NULL
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ *
+ * USAGE:
+ * ```c
+ * brain_immune_system_t* immune = brain_immune_create(NULL);
+ * introspection_context_t intro = brain_get_introspection(brain);
+ * introspection_connect_immune(intro, immune);
+ * ```
+ */
+bool introspection_connect_immune(introspection_context_t context,
+                                   struct brain_immune_system* immune_system);
+
+/**
+ * WHAT: Get immune system from introspection context
+ * WHY: Access immune system for external queries
+ * HOW: Return immune system reference
+ *
+ * @param context Introspection context
+ * @return Immune system or NULL if none connected
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+struct brain_immune_system* introspection_get_immune(introspection_context_t context);
 
 #ifdef __cplusplus
 }

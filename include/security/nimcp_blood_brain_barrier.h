@@ -65,6 +65,7 @@ typedef struct bbb_input_gate_struct* bbb_input_gate_t;
 typedef struct bbb_code_signer_struct* bbb_code_signer_t;
 typedef struct bbb_memory_boundary_struct* bbb_memory_boundary_t;
 typedef struct bbb_access_control_struct* bbb_access_control_t;
+typedef struct brain_immune_system brain_immune_system_t;
 
 //=============================================================================
 // BBB Threat Types
@@ -551,6 +552,29 @@ NIMCP_EXPORT bool bbb_revoke_capability(bbb_system_t system, uint32_t subject_id
  *       Resets: access control, memory boundary, and other stateful subsystems.
  */
 void bbb_reset_test_state(void);
+
+//=============================================================================
+// Brain Immune System Integration API
+//=============================================================================
+
+/**
+ * @brief Connect BBB to brain immune system
+ *
+ * WHAT: Link BBB threat detection to immune system
+ * WHY:  Enable automatic threat forwarding and coordinated response
+ * HOW:  Store immune system reference for automatic antigen presentation
+ *
+ * INTEGRATION FEATURES:
+ * - BBB threats automatically presented as antigens
+ * - BBB severity mapped to immune inflammation levels
+ * - BBB quarantine actions trigger killer T cell activation
+ * - Coordinated response between BBB and immune antibodies
+ *
+ * @param system BBB system handle
+ * @param immune_system Brain immune system handle
+ * @return true on success, false on error
+ */
+NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t* immune_system);
 
 //=============================================================================
 // Threat Response API

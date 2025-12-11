@@ -567,6 +567,86 @@ bool tom_get_agent_state(theory_of_mind_t tom,
  */
 const char* tom_get_last_error(void);
 
+//=============================================================================
+// Brain Immune System Integration API
+//=============================================================================
+
+// Forward declare immune system
+struct brain_immune_system;
+typedef struct brain_immune_system brain_immune_system_t;
+
+/**
+ * @brief Connect ToM to brain immune system
+ *
+ * WHAT: Establish bidirectional communication between ToM and immune system
+ * WHY:  Inflammation affects social cognition; social stress affects immunity
+ * HOW:  Store immune handle, register callbacks for cytokine effects
+ *
+ * BIOLOGICAL BASIS:
+ * - IL-6 and pro-inflammatory cytokines impair mentalizing and perspective-taking
+ * - Failed social predictions trigger stress response (cortisol, inflammation)
+ * - Sickness behavior reduces social engagement and theory of mind capacity
+ *
+ * INTEGRATION:
+ * - Immune → ToM: High inflammation reduces perspective_score
+ * - Immune → ToM: Cytokine storm impairs emotion inference confidence
+ * - ToM → Immune: Failed predictions trigger stress cytokine release
+ * - ToM → Immune: Social isolation increases inflammatory markers
+ *
+ * @param tom ToM handle
+ * @param immune Immune system handle
+ * @return true on success, false on error
+ *
+ * SIDE EFFECTS:
+ * - Registers callbacks with immune system
+ * - Enables inflammation monitoring
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_connect_immune(theory_of_mind_t tom, brain_immune_system_t* immune);
+
+/**
+ * @brief Get current social cognition impairment level
+ *
+ * WHAT: Calculate how much inflammation is impairing ToM capacity
+ * WHY:  Model sickness behavior effects on social cognition
+ * HOW:  Query immune inflammation level, map to impairment score
+ *
+ * BIOLOGICAL BASIS:
+ * Studies show IL-6 and TNF-α reduce theory of mind performance by
+ * affecting prefrontal and temporoparietal junction activity.
+ *
+ * @param tom ToM handle
+ * @return Impairment level [0.0, 1.0], 0 = no impairment, 1 = severe
+ *
+ * COMPLEXITY: O(1)
+ */
+float tom_get_immune_impairment(theory_of_mind_t tom);
+
+/**
+ * @brief Trigger stress response from social prediction failure
+ *
+ * WHAT: Signal immune system when social predictions fail
+ * WHY:  Social stress triggers inflammatory response
+ * HOW:  Release pro-inflammatory cytokines proportional to prediction error
+ *
+ * BIOLOGICAL BASIS:
+ * Social rejection and failed social predictions activate stress pathways,
+ * leading to increased cortisol and inflammatory markers (IL-6, CRP).
+ *
+ * @param tom ToM handle
+ * @param prediction_error Magnitude of prediction failure [0.0, 1.0]
+ * @param is_social_rejection true if failure was social rejection
+ * @return true if stress response triggered
+ *
+ * SIDE EFFECTS:
+ * - Releases IL-1 or IL-6 cytokines via immune system
+ * - May initiate localized inflammation
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_trigger_social_stress(theory_of_mind_t tom, float prediction_error, bool is_social_rejection);
+
 #ifdef __cplusplus
 }
 #endif

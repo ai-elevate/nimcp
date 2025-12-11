@@ -64,3 +64,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_enhanced_integration.cpp
     integration
 )
+
+# Test 10: Brain-Swarm Immune Integration
+add_test_binary(
+    test_brain_swarm_immune_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_swarm_immune_integration.cpp
+    integration
+)

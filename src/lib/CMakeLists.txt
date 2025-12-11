@@ -100,6 +100,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_topographic_maps.c      # Retinotopic, tonotopic, somatotopic maps
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_orientation_columns.c   # V1 orientation selectivity (Gabor)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_feature_hypercolumns.c  # Feature dimension coverage
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_immune.c  # Cortical columns-immune integration
 
     # Broca's region sub-modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_syntax_processor.c
@@ -107,6 +108,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_speech_motor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_adapter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_language_production_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_immune.c  # Broca's region-immune integration
     # TODO: Fix error codes and re-enable
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # Predictive coding brain region extension
 
@@ -216,6 +218,32 @@ set(NIMCP_CORE_SOURCES
 
     # Brain Immune System (Coordination Layer for FT/Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune.c  # B/T cells, antibodies, cytokines coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_plasticity.c  # Immune-plasticity integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_perception_immune.c  # Perception-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_memory_immune_integration.c  # Memory-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_emotion_immune_bridge.c  # Emotion-immune bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_reasoning_immune.c  # Reasoning-immune bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_attention_immune_bridge.c  # Attention-immune bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_curiosity_immune_bridge.c  # Curiosity-immune bidirectional integration (sickness behavior)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_autobiographical_immune_bridge.c  # Autobiographical memory-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_executive_immune_bridge.c  # Executive function-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_introspection_immune_bridge.c  # Introspection-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_knowledge_immune_bridge.c  # Knowledge base-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_mental_health_immune_bridge.c  # Mental health-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_self_model_immune_bridge.c  # Self-model-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_sleep_immune_bridge.c  # Sleep-wake-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_tom_immune_bridge.c  # Theory of mind-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_wellbeing_immune_bridge.c  # Wellbeing-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_immune.c  # Ethics-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # Predictive-immune bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_feature_extractor_immune_bridge.c  # Feature extractor-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_population_coding_immune_bridge.c  # Population coding-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_sequence_immune_bridge.c  # Sequence detector-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_thalamic_immune_bridge.c  # Thalamic router-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_training_immune.c  # Training-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/normalization/nimcp_normalization_immune.c  # Normalization-immune integration
 
     # Core Logic Modules (Phase 10.x: Neural Logic Gates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_attachment.c  # Neural logic attachment
@@ -229,6 +257,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_stdp.c  # Phase 10.11.4: STDP Learning
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_resonance.c  # Phase 10.11.5: Motor Resonance
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_hierarchy.c  # Phase 10.11.6: Hierarchical Goals
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_immune_integration.c  # Phase 10.11.7: Mirror-Immune Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_shannon.c  # Phase 1.5.3: Shannon Information-Weighted Competition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
@@ -252,6 +281,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_phasic_tonic.c  # Phase C2.2 Enhancement #2: Phasic-tonic dynamics
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_vesicle_packaging.c  # Phase C2.3 Enhancement #3: Synaptic vesicle packaging
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_metabolic_pathways.c  # Phase C2.4 Enhancement #4: Metabolic pathways
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_neuromodulator_immune.c  # Neuromodulator-immune integration (cytokine effects, imbalance detection)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_bcm_immune_bridge.c  # BCM learning-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_dendritic_immune_bridge.c  # Dendritic plasticity-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_eligibility_immune_bridge.c  # Eligibility trace-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_homeostatic_immune_bridge.c  # Homeostatic plasticity-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_stdp_immune_bridge.c  # STDP-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_synaptic_scaling_immune_bridge.c  # Synaptic scaling-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/second_messengers/nimcp_second_messengers.c  # Second Messenger Cascades (cAMP, IP3/DAG, Ca2+, gene expression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp.c
@@ -454,6 +490,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_future.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async.c      # Phase BIO-ASYNC: Biologically-inspired async
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_router.c     # Phase BIO-ASYNC: Bio-router message routing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/immune/nimcp_bio_router_immune_bridge.c  # Bio-router-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_predictive_protocol.c  # Predictive communication protocol
 
     # Utils - Algorithms (Graph metrics for brain topology validation)
@@ -501,11 +538,15 @@ set(NIMCP_CORE_SOURCES
     # Brain Oscillations
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_brain_oscillations.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/oscillations/nimcp_brain_complex_oscillations.c  # Phase C2.2: Complex phasor oscillation tracking
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_oscillations_immune_bridge.c  # Oscillations-immune integration
 
     # Perception
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_speech_cortex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_visual_immune_bridge.c  # Visual cortex-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_audio_immune_bridge.c  # Audio cortex-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_speech_immune_bridge.c  # Speech cortex-immune integration
 
     # GPU Support (CPU fallback when CUDA unavailable)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c
@@ -533,6 +574,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/buffering/nimcp_sliding_window.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/buffering/nimcp_temporal_accumulator.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/buffering/nimcp_integration_buffer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/buffering/nimcp_phase_coded_buffer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_buffer_immune.c  # Buffer immune integration
 
     # Middleware - Normalization
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/normalization/nimcp_zscore_normalizer.c
@@ -569,6 +612,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/routing/nimcp_thalamic_router.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/routing/nimcp_attention_gate.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/routing/nimcp_routing_table.c
+
+    # Middleware - Immune Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_routing_immune.c
 
     # Middleware - Pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/pipeline/nimcp_middleware_context.c

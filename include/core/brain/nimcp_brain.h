@@ -891,6 +891,59 @@ typedef struct {
      */
     bool enable_bbb_protection;           /**< Enable Blood-Brain Barrier perimeter defense (default: false) */
 
+    // === BRAIN IMMUNE SYSTEM (Adaptive Defense Coordination) ===
+    /**
+     * Brain Immune System Configuration
+     *
+     * WHAT: Unified adaptive defense coordination layer implementing biological immune concepts
+     * WHY:  Provides comprehensive threat response by coordinating BBB, BFT, and swarm systems
+     * HOW:  Maps biological immune mechanisms (B cells, T cells, antibodies, cytokines) to
+     *       existing security modules for adaptive defense
+     *
+     * BIOLOGICAL MODEL:
+     * - B cells → Swarm immune memory cells + BBB threat signatures (antibody production)
+     * - T cells → BFT quarantine actions (killer) + bio-async coordination (helper)
+     * - Antibodies → Coordinated response strategies across modules
+     * - Cytokines → Bio-async signaling for cross-module communication
+     * - Inflammation → Hierarchical recovery escalation (node→pod→region→global)
+     * - Memory → Long-term threat pattern storage via swarm immune
+     *
+     * INTEGRATION:
+     * - Auto-connects to BBB (antigen presentation from threat detection)
+     * - Auto-connects to BFT if available (killer T cell quarantine actions)
+     * - Auto-connects to swarm immune if available (B cell memory + antibody responses)
+     * - Uses bio-async for cytokine signaling between modules
+     *
+     * PERFORMANCE:
+     * - Antigen processing: ~5-20µs per threat
+     * - Memory lookup: ~1-5µs for secondary response
+     * - Response coordination: ~10-50µs depending on complexity
+     */
+    bool enable_brain_immune;             /**< Enable brain immune system coordination (default: false) */
+
+    // Immune system sizing
+    uint32_t immune_max_antigens;         /**< Max pending antigens (default: 256) */
+    uint32_t immune_max_b_cells;          /**< Max B cell abstractions (default: 512) */
+    uint32_t immune_max_t_cells;          /**< Max T cell abstractions (default: 512) */
+    uint32_t immune_max_antibodies;       /**< Max active antibodies (default: 1024) */
+
+    // Immune response tuning
+    float immune_recognition_threshold;   /**< Antigen recognition threshold 0-1 (default: 0.7) */
+    float immune_activation_threshold;    /**< Cell activation threshold 0-1 (default: 0.6) */
+    float immune_inflammation_threshold;  /**< Inflammation trigger threshold 0-1 (default: 0.8) */
+    float immune_memory_response_multiplier; /**< Secondary response speedup (default: 2.0) */
+
+    // Immune timing
+    uint64_t immune_activation_delay_ms;  /**< Delay before response activation (default: 10) */
+    uint64_t immune_memory_formation_delay_ms; /**< Memory formation delay (default: 100) */
+    uint64_t immune_antibody_half_life_ms; /**< Antibody decay time (default: 60000) */
+
+    // Integration enables
+    bool immune_enable_bbb_integration;   /**< Integrate with BBB (default: true if BBB enabled) */
+    bool immune_enable_bft_integration;   /**< Integrate with BFT if available (default: true) */
+    bool immune_enable_swarm_integration; /**< Integrate with swarm immune if available (default: true) */
+    bool immune_enable_bio_async;         /**< Enable cytokine signaling via bio-async (default: true) */
+
     // === PHASE T1: BIOLOGICAL FRAMEWORK ENHANCEMENTS (Training Pipeline) ===
     /**
      * Biological Plasticity Mechanisms

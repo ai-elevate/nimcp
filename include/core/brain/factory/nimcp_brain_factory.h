@@ -668,6 +668,31 @@ bool nimcp_brain_factory_init_self_model_subsystem(brain_t brain);
  */
 bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain);
 
+/**
+ * @brief Initialize brain immune system subsystem
+ *
+ * WHAT: Creates adaptive defense coordination layer
+ * WHY:  Unified threat response across BBB, BFT, and swarm systems
+ * HOW:  Creates immune system and auto-connects to available security modules
+ *
+ * INTEGRATION:
+ * - Connects to BBB for antigen presentation from threat detection
+ * - Connects to BFT if available for killer T cell quarantine actions
+ * - Connects to swarm immune if available for B cell memory and responses
+ * - Registers with bio-async for cytokine signaling
+ *
+ * BIOLOGICAL MODEL:
+ * - B cells → Antibody production via swarm immune responses
+ * - T cells → Coordination (helper) and quarantine (killer)
+ * - Cytokines → Bio-async cross-module signaling
+ * - Inflammation → Hierarchical recovery escalation
+ * - Memory → Long-term threat pattern storage
+ *
+ * @param brain Brain instance with config.enable_brain_immune = true
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_init_immune_subsystem(brain_t brain);
+
 //=============================================================================
 // Decision Caching (Internal Helpers)
 //=============================================================================

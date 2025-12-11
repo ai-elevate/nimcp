@@ -110,6 +110,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
+#include "glial/microglia/nimcp_microglia.h"  /* For cytokine_type_t */
 
 #ifdef __cplusplus
 extern "C" {
@@ -181,18 +182,21 @@ typedef enum {
 } brain_antibody_class_t;
 
 /**
- * @brief Cytokine types (maps to bio-async message channels)
+ * @brief Brain-specific cytokine types (extends microglia cytokine_type_t)
  *
  * BIOLOGICAL BASIS:
  * Different cytokines trigger different immune cascades.
+ * We use the microglia cytokine definitions and add IFN-gamma for antiviral response.
+ *
+ * NOTE: IL1, IL6, IL10, TNF-alpha already defined in glial/microglia/nimcp_microglia.h as cytokine_type_t
  */
 typedef enum {
-    CYTOKINE_IL1 = 0,          /**< Pro-inflammatory, alerts */
-    CYTOKINE_IL6,              /**< Acute phase, escalation */
-    CYTOKINE_IL10,             /**< Anti-inflammatory, resolution */
-    CYTOKINE_TNF_ALPHA,        /**< Severe inflammation */
-    CYTOKINE_IFN_GAMMA,        /**< Antiviral-style (quarantine) */
-    CYTOKINE_COUNT
+    BRAIN_CYTOKINE_IL1 = CYTOKINE_IL1B,    /**< Pro-inflammatory, alerts */
+    BRAIN_CYTOKINE_IL6 = CYTOKINE_IL6,     /**< Acute phase, escalation */
+    BRAIN_CYTOKINE_IL10 = CYTOKINE_IL10,   /**< Anti-inflammatory, resolution */
+    BRAIN_CYTOKINE_TNF = CYTOKINE_TNFA,    /**< Severe inflammation */
+    BRAIN_CYTOKINE_IFN_GAMMA = 5,          /**< Antiviral-style (quarantine) - brain-specific */
+    BRAIN_CYTOKINE_COUNT = 6
 } brain_cytokine_type_t;
 
 /**
@@ -672,6 +676,22 @@ int brain_immune_connect_swarm(
 );
 
 /**
+ * @brief Connect to hierarchical recovery
+ *
+ * WHAT: Link immune system to hierarchical recovery
+ * WHY:  Release IL-10 on successful recoveries
+ * HOW:  Register completion callback
+ *
+ * @param system Immune system
+ * @param hr_context Hierarchical recovery context
+ * @return 0 on success
+ */
+int brain_immune_connect_hierarchical_recovery(
+    brain_immune_system_t* system,
+    void* hr_context
+);
+
+/**
  * @brief Connect to bio-async router
  *
  * WHAT: Enable cytokine messaging via bio-async
@@ -682,6 +702,174 @@ int brain_immune_connect_swarm(
  * @return 0 on success
  */
 int brain_immune_connect_bio_async(brain_immune_system_t* system);
+
+/**
+ * @brief Handle BFT accusation event
+ *
+ * WHAT: Process BFT accusation as antigen presentation
+ * WHY:  Auto-present Byzantine accusations as immune threats
+ * HOW:  Create antigen from accusation evidence
+ *
+ * @param system Immune system
+ * @param accuser_id Accusing node
+ * @param accused_id Accused node
+ * @param behavior Byzantine behavior detected
+ * @param evidence Evidence array
+ * @param evidence_count Evidence count
+ * @return 0 on success
+ */
+int brain_immune_handle_bft_accusation(
+    brain_immune_system_t* system,
+    uint32_t accuser_id,
+    uint32_t accused_id,
+    bft_behavior_t behavior,
+    const bft_evidence_t* evidence,
+    uint32_t evidence_count
+);
+
+/**
+ * @brief Handle BFT quarantine action
+ *
+ * WHAT: Coordinate killer T cell response with BFT quarantine
+ * WHY:  Unified threat isolation
+ * HOW:  Activate killer T cell, track quarantine in immune system
+ *
+ * @param system Immune system
+ * @param node_id Quarantined node
+ * @param duration_ms Quarantine duration
+ * @param trust_score Node trust score
+ * @return 0 on success
+ */
+int brain_immune_handle_bft_quarantine(
+    brain_immune_system_t* system,
+    uint32_t node_id,
+    uint64_t duration_ms,
+    float trust_score
+);
+
+/**
+ * @brief Handle BFT trust recovery
+ *
+ * WHAT: Form immune memory on trust restoration
+ * WHY:  Map trust recovery to learned immunity
+ * HOW:  Convert B cell to memory, store in swarm immune
+ *
+ * @param system Immune system
+ * @param node_id Recovered node
+ * @param old_trust Previous trust score
+ * @param new_trust New trust score
+ * @return 0 on success
+ */
+int brain_immune_handle_bft_trust_recovery(
+    brain_immune_system_t* system,
+    uint32_t node_id,
+    float old_trust,
+    float new_trust
+);
+
+/* ============================================================================
+ * Enhanced Swarm Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Automatically sync swarm threat to brain immune antigen
+ *
+ * WHAT: Auto-present swarm-detected threats as brain immune antigens
+ * WHY:  Ensure all swarm threats are processed by brain immune system
+ * HOW:  Called automatically when swarm detects threat
+ *
+ * @param system Immune system
+ * @param threat Swarm threat to sync
+ * @return 0 on success
+ */
+int brain_immune_auto_sync_swarm_threat(
+    brain_immune_system_t* system,
+    const NimcpSwarmThreat* threat
+);
+
+/**
+ * @brief Sync brain immune memory cell to swarm immune memory
+ *
+ * WHAT: Create swarm immune memory cell from brain immune B cell memory
+ * WHY:  Share learned threat patterns across swarm
+ * HOW:  Convert B cell receptor pattern to swarm threat signature
+ *
+ * @param system Immune system
+ * @param b_cell_id B cell memory to sync
+ * @return 0 on success
+ */
+int brain_immune_sync_memory_to_swarm(
+    brain_immune_system_t* system,
+    uint32_t b_cell_id
+);
+
+/**
+ * @brief Trigger swarm response from brain antibody
+ *
+ * WHAT: Execute swarm immune response when brain antibody is activated
+ * WHY:  Translate brain immune action to swarm-level coordinated response
+ * HOW:  Map antibody class to swarm response type and execute
+ *
+ * @param system Immune system
+ * @param antibody_id Antibody to trigger response from
+ * @return 0 on success
+ */
+int brain_immune_trigger_swarm_response(
+    brain_immune_system_t* system,
+    uint32_t antibody_id
+);
+
+/**
+ * @brief Broadcast collective inflammation state to swarm
+ *
+ * WHAT: Share inflammation level across swarm nodes via consensus
+ * WHY:  Enable swarm-wide coordinated inflammatory response
+ * HOW:  Send cytokine message with inflammation severity
+ *
+ * @param system Immune system
+ * @param site_id Inflammation site to broadcast
+ * @return 0 on success
+ */
+int brain_immune_broadcast_inflammation_state(
+    brain_immune_system_t* system,
+    uint32_t site_id
+);
+
+/**
+ * @brief Request consensus on threat severity via swarm
+ *
+ * WHAT: Use swarm consensus to assess threat severity collectively
+ * WHY:  Prevent false positives, ensure distributed agreement
+ * HOW:  Each node votes on severity, weighted by confidence
+ *
+ * @param system Immune system
+ * @param antigen_id Antigen to assess
+ * @param agreed_severity_out Output: consensus severity
+ * @return 0 on success
+ */
+int brain_immune_consensus_threat_severity(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    float* agreed_severity_out
+);
+
+/**
+ * @brief Propagate secondary response across swarm
+ *
+ * WHAT: When any node recognizes learned threat, trigger swarm-wide response
+ * WHY:  Collective memory - if one node remembers, entire swarm benefits
+ * HOW:  Share memory cell activation, broadcast rapid response
+ *
+ * @param system Immune system
+ * @param memory_b_cell_id Memory B cell that recognized threat
+ * @param antigen_id Antigen that was recognized
+ * @return 0 on success
+ */
+int brain_immune_propagate_secondary_response(
+    brain_immune_system_t* system,
+    uint32_t memory_b_cell_id,
+    uint32_t antigen_id
+);
 
 /* ============================================================================
  * Antigen Presentation API
@@ -1172,6 +1360,22 @@ int brain_immune_update(
 int brain_immune_get_stats(
     brain_immune_system_t* system,
     brain_immune_stats_t* stats
+);
+
+/**
+ * @brief Get immune state snapshot for checkpointing
+ *
+ * WHAT: Capture immune state for fault tolerance checkpoints
+ * WHY:  Include immune health in system checkpoints
+ * HOW:  Extract key metrics for checkpoint storage
+ *
+ * @param system Immune system
+ * @param state Output state snapshot (must be bft_immune_state_t*)
+ * @return 0 on success
+ */
+int brain_immune_get_checkpoint_state(
+    brain_immune_system_t* system,
+    void* state
 );
 
 /**

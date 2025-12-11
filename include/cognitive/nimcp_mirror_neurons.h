@@ -523,6 +523,48 @@ bool mirror_neurons_integrate_glial(
     void* glial_integration  // glial_integration_t* (avoid circular dependency)
 );
 
+/**
+ * @brief Integrate with brain immune system
+ *
+ * WHAT: Enable bidirectional coupling between mirror neurons and immune system
+ * WHY:  Model biological interactions:
+ *       - Inflammation reduces empathic resonance (sickness behavior)
+ *       - Social isolation triggers inflammatory response
+ * HOW:  Create integration layer that modulates resonance based on cytokines
+ *       and releases cytokines based on social activity
+ *
+ * Biological basis:
+ * - Pro-inflammatory cytokines (IL-1β, IL-6, TNF-α) reduce social motivation
+ * - Social isolation increases inflammatory markers (IL-6, CRP)
+ * - Mirror neuron activity decreases during illness-induced withdrawal
+ * - Social success releases anti-inflammatory cytokines (IL-10)
+ *
+ * Integration effects:
+ * Immune → Mirror:
+ *   - Cytokine levels modulate motor resonance suppression
+ *   - Inflammation raises empathy threshold (reduces automatic imitation)
+ *   - Sickness behavior suppresses observation mode
+ *
+ * Mirror → Immune:
+ *   - Social isolation (>5min no observation) → IL-6 release
+ *   - Failed imitation (rejection) → stress cytokines
+ *   - Successful imitation → IL-10 (anti-inflammatory)
+ *
+ * @param mirror Mirror neuron system
+ * @param immune_system Brain immune system handle
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1) - creates integration layer
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @see nimcp_mirror_immune_integration.h for detailed integration API
+ * @see Phase 10.11.7 - Mirror Neuron Immune Integration
+ */
+bool mirror_neurons_connect_immune(
+    mirror_neurons_t mirror,
+    void* immune_system  // brain_immune_system_t* (avoid circular dependency)
+);
+
 //=============================================================================
 // Utility Functions
 //=============================================================================

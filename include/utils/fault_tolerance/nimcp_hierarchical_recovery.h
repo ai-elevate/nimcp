@@ -241,6 +241,19 @@ typedef hr_result_t (*hr_recovery_handler_t)(
 );
 
 /**
+ * @brief Recovery completion callback
+ *
+ * WHAT: Callback invoked when recovery completes
+ * WHY:  Enable immune system to release anti-inflammatory signals
+ * HOW:  Called after successful recovery
+ */
+typedef void (*hr_recovery_completion_callback_t)(
+    const hr_recovery_request_t* request,
+    const hr_recovery_response_t* response,
+    void* user_data
+);
+
+/**
  * @brief Opaque hierarchical recovery handle
  */
 typedef struct hr_context hr_context_t;
@@ -378,6 +391,24 @@ bool hr_register_handler(
     hr_context_t* ctx,
     hr_level_t level,
     hr_recovery_handler_t handler,
+    void* user_data
+);
+
+/**
+ * @brief Register recovery completion callback
+ *
+ * WHAT: Register callback for recovery completion
+ * WHY:  Enable immune anti-inflammatory response
+ * HOW:  Store callback, invoke after successful recovery
+ *
+ * @param ctx HR context
+ * @param callback Completion callback
+ * @param user_data User data
+ * @return true on success
+ */
+bool hr_register_completion_callback(
+    hr_context_t* ctx,
+    hr_recovery_completion_callback_t callback,
     void* user_data
 );
 

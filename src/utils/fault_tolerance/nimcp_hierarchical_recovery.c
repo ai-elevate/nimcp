@@ -44,6 +44,8 @@ struct hr_context {
     uint32_t next_request_id;
     hr_recovery_handler_t handlers[HR_MAX_LEVELS];
     void* handler_data[HR_MAX_LEVELS];
+    hr_recovery_completion_callback_t completion_callback;
+    void* completion_user_data;
     hr_stats_t stats;
     pthread_mutex_t lock;
     bool running;
@@ -336,6 +338,11 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
 
     pthread_mutex_unlock(&ctx->lock);
 
+    // Invoke completion callback on successful recovery (immune IL-10 release)
+    if ((result == HR_RESULT_SUCCESS || result == HR_RESULT_PARTIAL) && ctx->completion_callback) {
+        ctx->completion_callback(request, response, ctx->completion_user_data);
+    }
+
     return result;
 }
 
@@ -357,6 +364,29 @@ bool hr_register_handler(hr_context_t* ctx, hr_level_t level, hr_recovery_handle
     pthread_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("HR", "Registered handler for level %s", hr_level_to_string(level));
+    return true;
+}
+
+/**
+ * @brief Register recovery completion callback
+ *
+ * WHAT: Store callback for recovery completion events
+ * WHY:  Enable immune anti-inflammatory response
+ * HOW:  Store in context, invoke after successful recovery
+ */
+bool hr_register_completion_callback(
+    hr_context_t* ctx,
+    hr_recovery_completion_callback_t callback,
+    void* user_data
+) {
+    if (!ctx || !callback) return false;
+
+    pthread_mutex_lock(&ctx->lock);
+    ctx->completion_callback = callback;
+    ctx->completion_user_data = user_data;
+    pthread_mutex_unlock(&ctx->lock);
+
+    LOG_DEBUG("HR", "Registered recovery completion callback");
     return true;
 }
 

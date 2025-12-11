@@ -28,6 +28,7 @@
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/error/nimcp_error_codes.h"
 
 #define LOG_MODULE "BRAIN_INIT_SECURITY"
@@ -309,6 +310,127 @@ bool nimcp_brain_factory_init_security_subsystem(brain_t brain)
     } else {
         LOG_DEBUG("BBB protection disabled in config");
     }
+
+    return true;
+}
+
+//=============================================================================
+// Brain Immune System Initialization
+//=============================================================================
+
+/**
+ * @brief Initialize brain immune system subsystem
+ *
+ * WHAT: Creates adaptive defense coordination layer
+ * WHY:  Unified threat response across BBB, BFT, and swarm systems
+ * HOW:  Creates immune system and auto-connects to available security modules
+ */
+bool nimcp_brain_factory_init_immune_subsystem(brain_t brain)
+{
+    // Guard clause: Validate brain pointer
+    if (!brain) {
+        LOG_ERROR("Null brain in init_immune_subsystem");
+        return false;
+    }
+
+    // Initialize immune fields to defaults
+    brain->immune_system = NULL;
+    brain->immune_enabled = false;
+
+    // Check if immune system is enabled in config
+    if (!brain->config.enable_brain_immune) {
+        LOG_DEBUG("Brain immune system disabled in config");
+        return true;  // Success - immune disabled
+    }
+
+    // Build immune system configuration from brain config
+    brain_immune_config_t immune_config = {0};
+    brain_immune_default_config(&immune_config);
+
+    // Override defaults with brain config values
+    immune_config.max_antigens = brain->config.immune_max_antigens > 0 ?
+        brain->config.immune_max_antigens : BRAIN_IMMUNE_MAX_ANTIGENS;
+    immune_config.max_b_cells = brain->config.immune_max_b_cells > 0 ?
+        brain->config.immune_max_b_cells : BRAIN_IMMUNE_MAX_B_CELLS;
+    immune_config.max_t_cells = brain->config.immune_max_t_cells > 0 ?
+        brain->config.immune_max_t_cells : BRAIN_IMMUNE_MAX_T_CELLS;
+    immune_config.max_antibodies = brain->config.immune_max_antibodies > 0 ?
+        brain->config.immune_max_antibodies : BRAIN_IMMUNE_MAX_ANTIBODIES;
+
+    // Thresholds
+    immune_config.recognition_threshold = brain->config.immune_recognition_threshold > 0.0f ?
+        brain->config.immune_recognition_threshold : 0.7f;
+    immune_config.activation_threshold = brain->config.immune_activation_threshold > 0.0f ?
+        brain->config.immune_activation_threshold : 0.6f;
+    immune_config.inflammation_threshold = brain->config.immune_inflammation_threshold > 0.0f ?
+        brain->config.immune_inflammation_threshold : 0.8f;
+    immune_config.memory_response_multiplier = brain->config.immune_memory_response_multiplier > 0.0f ?
+        brain->config.immune_memory_response_multiplier : 2.0f;
+
+    // Timing
+    immune_config.activation_delay_ms = brain->config.immune_activation_delay_ms > 0 ?
+        brain->config.immune_activation_delay_ms : 10;
+    immune_config.memory_formation_delay_ms = brain->config.immune_memory_formation_delay_ms > 0 ?
+        brain->config.immune_memory_formation_delay_ms : 100;
+    immune_config.antibody_half_life_ms = brain->config.immune_antibody_half_life_ms > 0 ?
+        brain->config.immune_antibody_half_life_ms : 60000;
+
+    // Integration enables
+    immune_config.enable_bbb_integration = brain->config.immune_enable_bbb_integration && brain->bbb_enabled;
+    immune_config.enable_bft_integration = brain->config.immune_enable_bft_integration;
+    immune_config.enable_swarm_integration = brain->config.immune_enable_swarm_integration;
+    immune_config.enable_bio_async = brain->config.immune_enable_bio_async && brain->bio_async_enabled;
+    immune_config.enable_logging = true;
+
+    // Create immune system
+    brain_immune_system_t* immune = brain_immune_create(&immune_config);
+    if (!immune) {
+        LOG_WARNING("Failed to create brain immune system - continuing without immune coordination");
+        return true;  // Non-fatal - continue without immune system
+    }
+
+    // Auto-connect to BBB if enabled
+    if (immune_config.enable_bbb_integration && brain->bbb_system) {
+        if (brain_immune_connect_bbb(immune, brain->bbb_system) == 0) {
+            LOG_DEBUG("Brain immune connected to BBB for threat presentation");
+        } else {
+            LOG_WARNING("Failed to connect immune system to BBB");
+        }
+    }
+
+    // Auto-connect to bio-async for cytokine signaling if enabled
+    if (immune_config.enable_bio_async && brain->bio_async_enabled) {
+        if (brain_immune_connect_bio_async(immune) == 0) {
+            LOG_DEBUG("Brain immune connected to bio-async for cytokine signaling");
+        } else {
+            LOG_WARNING("Failed to connect immune system to bio-async");
+        }
+    }
+
+    // Note: BFT and swarm immune connections are handled in distributed cognition module
+    // when the brain is integrated into a swarm or distributed system
+
+    // Start immune system monitoring
+    if (brain_immune_start(immune) != 0) {
+        LOG_WARNING("Failed to start immune system monitoring");
+        brain_immune_destroy(immune);
+        return true;  // Non-fatal
+    }
+
+    // Store immune system in brain structure
+    brain->immune_system = immune;
+    brain->immune_enabled = true;
+
+    LOG_INFO("Brain immune system initialized: antigens=%u, b_cells=%u, t_cells=%u, antibodies=%u, "
+             "bbb=%s, bft=%s, swarm=%s, bio_async=%s",
+             immune_config.max_antigens,
+             immune_config.max_b_cells,
+             immune_config.max_t_cells,
+             immune_config.max_antibodies,
+             immune_config.enable_bbb_integration ? "enabled" : "disabled",
+             immune_config.enable_bft_integration ? "enabled" : "disabled",
+             immune_config.enable_swarm_integration ? "enabled" : "disabled",
+             immune_config.enable_bio_async ? "enabled" : "disabled");
 
     return true;
 }

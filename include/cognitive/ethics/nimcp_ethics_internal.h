@@ -137,6 +137,13 @@ struct ethics_engine_struct {
     bio_module_context_t bio_ctx;           // Bio-async module context
     bool bio_async_enabled;                 // Bio-async registration status
     unified_mem_manager_t mem_mgr;          // Unified memory manager
+
+    // BRAIN IMMUNE SYSTEM INTEGRATION (Phase 12.x)
+    brain_immune_system_t* immune_system;   // Brain immune system reference
+    bool immune_integration_enabled;        // Immune integration active
+    float last_inflammation_level;          // Cached inflammation level
+    uint64_t last_immune_check_ms;          // Last immune state check time
+    uint32_t immune_violations_triggered;   // Violations that triggered immune response
 };
 
 /**

@@ -1,0 +1,677 @@
+/**
+ * @file nimcp_audio_immune_bridge.c
+ * @brief Audio Cortex-Immune System Integration Implementation
+ * @version 1.0.0
+ * @date 2025-12-11
+ *
+ * WHAT: Bidirectional coupling between brain immune and auditory processing systems
+ * WHY:  Biological realism - cytokines impair auditory processing, auditory threats affect immunity
+ * HOW:  Monitor cytokine levels to modulate processing, monitor audio to trigger immune responses
+ */
+
+#include "perception/immune/nimcp_audio_immune_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include <string.h>
+#include <math.h>
+#include <pthread.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * @brief Clamp value to range
+ *
+ * WHAT: Constrain value to [min, max]
+ * WHY:  Prevent overflow/underflow
+ * HOW:  Return min if below, max if above, value otherwise
+ */
+static inline float clamp_f(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/**
+ * @brief Get inflammation duration
+ *
+ * WHAT: Calculate how long inflammation has persisted
+ * WHY:  Chronic inflammation (>7 days) has different auditory effects
+ * HOW:  Find oldest active inflammation site, compute duration
+ */
+static float get_inflammation_duration_sec(const brain_immune_system_t* immune) {
+    if (!immune) return 0.0f;
+
+    /* Query immune system for inflammation sites */
+    brain_immune_stats_t stats;
+    if (brain_immune_get_stats((brain_immune_system_t*)immune, &stats) != 0) {
+        return 0.0f;
+    }
+
+    /* If no inflammation, return 0 */
+    if (stats.inflammation_sites == 0) {
+        return 0.0f;
+    }
+
+    /* For simplicity, estimate duration from system health */
+    /* Lower health suggests longer-duration inflammation */
+    float duration = (1.0f - stats.system_health) * 604800.0f; /* Up to 7 days */
+    return duration;
+}
+
+/**
+ * @brief Get current inflammation level
+ *
+ * WHAT: Get highest inflammation level in system
+ * WHY:  Max inflammation determines auditory impact
+ * HOW:  Query immune system for max inflammation site level
+ */
+static brain_inflammation_level_t get_max_inflammation_level(
+    const brain_immune_system_t* immune
+) {
+    if (!immune) return INFLAMMATION_NONE;
+
+    brain_immune_stats_t stats;
+    if (brain_immune_get_stats((brain_immune_system_t*)immune, &stats) != 0) {
+        return INFLAMMATION_NONE;
+    }
+
+    /* Map inflammation sites to severity level */
+    if (stats.inflammation_sites == 0) return INFLAMMATION_NONE;
+    if (stats.inflammation_sites == 1) return INFLAMMATION_LOCAL;
+    if (stats.inflammation_sites <= 3) return INFLAMMATION_REGIONAL;
+    if (stats.inflammation_sites <= 6) return INFLAMMATION_SYSTEMIC;
+    return INFLAMMATION_STORM;
+}
+
+/**
+ * @brief Compute cytokine concentration estimate
+ *
+ * WHAT: Estimate cytokine levels from immune stats
+ * WHY:  Need cytokine levels to modulate auditory processing
+ * HOW:  Use immune stats as proxy for cytokine activity
+ */
+static void estimate_cytokine_levels(
+    const brain_immune_system_t* immune,
+    float* il1,
+    float* il6,
+    float* tnf,
+    float* ifn_gamma,
+    float* il10
+) {
+    if (!immune || !il1 || !il6 || !tnf || !ifn_gamma || !il10) return;
+
+    brain_immune_stats_t stats;
+    if (brain_immune_get_stats((brain_immune_system_t*)immune, &stats) != 0) {
+        *il1 = *il6 = *tnf = *ifn_gamma = *il10 = 0.0f;
+        return;
+    }
+
+    /* Pro-inflammatory: scale with active immune cells and inflammation */
+    float inflammation_factor = (float)stats.inflammation_sites / 10.0f;
+    float activity_factor = (float)stats.active_t_cells / 100.0f;
+
+    *il1 = clamp_f(inflammation_factor * 0.5f, 0.0f, 1.0f);
+    *il6 = clamp_f(inflammation_factor * 0.6f, 0.0f, 1.0f);
+    *tnf = clamp_f(inflammation_factor * 0.4f, 0.0f, 1.0f);
+    *ifn_gamma = clamp_f(activity_factor * 0.3f, 0.0f, 1.0f);
+
+    /* Anti-inflammatory: inversely related to inflammation */
+    *il10 = clamp_f(1.0f - inflammation_factor * 0.5f, 0.0f, 1.0f);
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+int audio_immune_default_config(audio_immune_config_t* config) {
+    if (!config) return -1;
+
+    /* All features enabled by default */
+    config->enable_cytokine_audio_modulation = true;
+    config->enable_inflammation_processing_impairment = true;
+    config->enable_audio_immune_trigger = true;
+    config->enable_audio_immune_boost = true;
+    config->enable_tinnitus_inflammation_coupling = true;
+
+    /* Biologically-based default sensitivities */
+    config->cytokine_sensitivity = 1.0f;
+    config->inflammation_sensitivity = 1.0f;
+    config->threat_trigger_sensitivity = 1.0f;
+
+    /* Evidence-based thresholds */
+    config->loudness_trigger_threshold = AUDIO_THREAT_LOUDNESS_THRESHOLD;
+    config->anomaly_trigger_threshold = AUDIO_THREAT_NOVELTY_THRESHOLD;
+    config->inflammation_audio_threshold = INFLAMMATION_AUDIO_THRESHOLD;
+
+    return 0;
+}
+
+audio_immune_bridge_t* audio_immune_bridge_create(
+    const audio_immune_config_t* config,
+    brain_immune_system_t* immune_system,
+    audio_cortex_t* audio_cortex
+) {
+    /* Guard: require immune and audio systems */
+    if (!immune_system || !audio_cortex) {
+        nimcp_log(NIMCP_LOG_ERROR, "audio_immune_bridge",
+                  "Cannot create bridge without immune and audio systems");
+        return NULL;
+    }
+
+    /* Allocate bridge */
+    audio_immune_bridge_t* bridge = (audio_immune_bridge_t*)
+        nimcp_malloc(sizeof(audio_immune_bridge_t));
+    if (!bridge) {
+        nimcp_log(NIMCP_LOG_ERROR, "audio_immune_bridge", "Allocation failed");
+        return NULL;
+    }
+
+    /* Initialize to zero */
+    memset(bridge, 0, sizeof(audio_immune_bridge_t));
+
+    /* Link systems */
+    bridge->immune_system = immune_system;
+    bridge->audio_cortex = audio_cortex;
+
+    /* Apply configuration */
+    if (config) {
+        bridge->enable_cytokine_audio_modulation = config->enable_cytokine_audio_modulation;
+        bridge->enable_inflammation_processing_impairment = config->enable_inflammation_processing_impairment;
+        bridge->enable_audio_immune_trigger = config->enable_audio_immune_trigger;
+        bridge->enable_audio_immune_boost = config->enable_audio_immune_boost;
+        bridge->enable_tinnitus_inflammation_coupling = config->enable_tinnitus_inflammation_coupling;
+    } else {
+        /* Use defaults */
+        audio_immune_config_t default_cfg;
+        audio_immune_default_config(&default_cfg);
+        bridge->enable_cytokine_audio_modulation = default_cfg.enable_cytokine_audio_modulation;
+        bridge->enable_inflammation_processing_impairment = default_cfg.enable_inflammation_processing_impairment;
+        bridge->enable_audio_immune_trigger = default_cfg.enable_audio_immune_trigger;
+        bridge->enable_audio_immune_boost = default_cfg.enable_audio_immune_boost;
+        bridge->enable_tinnitus_inflammation_coupling = default_cfg.enable_tinnitus_inflammation_coupling;
+    }
+
+    /* Initialize baselines */
+    bridge->baseline_processing_accuracy = 1.0f;
+    bridge->baseline_noise_tolerance = 1.0f;
+
+    /* Create mutex */
+    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+
+    nimcp_log(NIMCP_LOG_INFO, "audio_immune_bridge", "Bridge created successfully");
+    return bridge;
+}
+
+void audio_immune_bridge_destroy(audio_immune_bridge_t* bridge) {
+    if (!bridge) return;
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
+        nimcp_free(bridge->mutex);
+    }
+
+    /* Free bridge (don't destroy linked systems - we don't own them) */
+    nimcp_free(bridge);
+    nimcp_log(NIMCP_LOG_INFO, "audio_immune_bridge", "Bridge destroyed");
+}
+
+/* ============================================================================
+ * Immune → Audio Implementation
+ * ============================================================================ */
+
+int audio_immune_apply_cytokine_effects(audio_immune_bridge_t* bridge) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_cytokine_audio_modulation) return 0;
+    if (!bridge->immune_system || !bridge->audio_cortex) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Get cytokine levels */
+    float il1, il6, tnf, ifn_gamma, il10;
+    estimate_cytokine_levels(bridge->immune_system, &il1, &il6, &tnf, &ifn_gamma, &il10);
+
+    /* Compute individual cytokine effects */
+    bridge->cytokine_effects.il1_discrimination_loss = il1 * fabsf(CYTOKINE_IL1_AUDIO_IMPACT);
+    bridge->cytokine_effects.il6_processing_impairment = il6 * fabsf(CYTOKINE_IL6_AUDIO_IMPACT);
+    bridge->cytokine_effects.tnf_accuracy_reduction = tnf * fabsf(CYTOKINE_TNF_AUDIO_IMPACT);
+    bridge->cytokine_effects.ifn_gamma_sensitivity_loss = ifn_gamma * fabsf(CYTOKINE_IFN_GAMMA_AUDIO_IMPACT);
+    bridge->cytokine_effects.il10_recovery_boost = il10 * CYTOKINE_IL10_AUDIO_IMPACT;
+
+    /* Compute aggregate effects */
+    float pro_inflammatory_total =
+        (il1 * CYTOKINE_IL1_AUDIO_IMPACT) +
+        (il6 * CYTOKINE_IL6_AUDIO_IMPACT) +
+        (tnf * CYTOKINE_TNF_AUDIO_IMPACT) +
+        (ifn_gamma * CYTOKINE_IFN_GAMMA_AUDIO_IMPACT);
+
+    bridge->cytokine_effects.total_processing_impact =
+        pro_inflammatory_total + bridge->cytokine_effects.il10_recovery_boost;
+
+    /* Noise sensitivity increases with pro-inflammatory cytokines */
+    bridge->cytokine_effects.noise_sensitivity_increase =
+        clamp_f((il1 + il6 + tnf) / 3.0f, 0.0f, 1.0f);
+
+    /* Auditory attention impairment (sickness behavior) */
+    bridge->cytokine_effects.attention_impairment =
+        clamp_f((il1 * 0.4f + il6 * 0.3f + tnf * 0.3f), 0.0f, 1.0f);
+
+    /* Auditory fatigue from cytokines */
+    bridge->cytokine_effects.fatigue_level =
+        clamp_f((il1 + il6 + tnf) / 3.0f * 0.8f, 0.0f, 1.0f);
+
+    bridge->cytokine_modulations++;
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+int audio_immune_apply_inflammation_effects(audio_immune_bridge_t* bridge) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_inflammation_processing_impairment) return 0;
+    if (!bridge->immune_system) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Get inflammation state */
+    brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
+    float duration_sec = get_inflammation_duration_sec(bridge->immune_system);
+    bool is_chronic = duration_sec >= (86400.0f * 7); /* 7 days */
+
+    /* Update inflammation state */
+    bridge->inflammation_state.current_level = level;
+    bridge->inflammation_state.inflammation_duration_sec = duration_sec;
+    bridge->inflammation_state.is_chronic = is_chronic;
+
+    /* Map inflammation to processing impacts */
+    float severity_factor = 0.0f;
+    switch (level) {
+        case INFLAMMATION_NONE:     severity_factor = 0.0f; break;
+        case INFLAMMATION_LOCAL:    severity_factor = 0.2f; break;
+        case INFLAMMATION_REGIONAL: severity_factor = 0.4f; break;
+        case INFLAMMATION_SYSTEMIC: severity_factor = 0.7f; break;
+        case INFLAMMATION_STORM:    severity_factor = 1.0f; break;
+    }
+
+    /* Chronic inflammation has worse effects */
+    if (is_chronic) {
+        severity_factor *= 1.3f;
+        severity_factor = clamp_f(severity_factor, 0.0f, 1.0f);
+    }
+
+    /* Processing accuracy degrades with inflammation */
+    bridge->inflammation_state.processing_accuracy = 1.0f - (severity_factor * 0.6f);
+
+    /* Frequency discrimination impairment (IL-6 effect) */
+    bridge->inflammation_state.frequency_discrimination = 1.0f - (severity_factor * 0.5f);
+
+    /* Temporal resolution impairment */
+    bridge->inflammation_state.temporal_resolution = 1.0f - (severity_factor * 0.4f);
+
+    /* Noise tolerance reduction */
+    bridge->inflammation_state.noise_tolerance = 1.0f - (severity_factor * 0.7f);
+
+    /* Processing bandwidth reduction */
+    float bandwidth_reduction = audio_immune_compute_bandwidth_reduction(bridge);
+    bridge->inflammation_state.processing_bandwidth = 1.0f - bandwidth_reduction;
+
+    /* Tinnitus severity increases with chronic inflammation */
+    if (is_chronic && severity_factor > 0.5f) {
+        bridge->inflammation_state.tinnitus_severity =
+            clamp_f((severity_factor - 0.5f) * 2.0f, 0.0f, 1.0f);
+        bridge->tinnitus_episodes++;
+    } else {
+        bridge->inflammation_state.tinnitus_severity = 0.0f;
+    }
+
+    /* Auditory attention reduction (sickness behavior) */
+    bridge->inflammation_state.auditory_attention = 1.0f - (severity_factor * 0.6f);
+
+    /* Orienting response reduction */
+    bridge->inflammation_state.orienting_response = 1.0f - (severity_factor * 0.5f);
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+float audio_immune_compute_bandwidth_reduction(const audio_immune_bridge_t* bridge) {
+    if (!bridge || !bridge->immune_system) return 0.0f;
+
+    brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
+
+    /* Map inflammation to bandwidth reduction */
+    float reduction = 0.0f;
+    switch (level) {
+        case INFLAMMATION_NONE:     reduction = 0.0f; break;
+        case INFLAMMATION_LOCAL:    reduction = 0.1f; break;
+        case INFLAMMATION_REGIONAL: reduction = 0.25f; break;
+        case INFLAMMATION_SYSTEMIC: reduction = 0.45f; break;
+        case INFLAMMATION_STORM:    reduction = MAX_BANDWIDTH_REDUCTION; break;
+    }
+
+    return clamp_f(reduction, 0.0f, MAX_BANDWIDTH_REDUCTION);
+}
+
+float audio_immune_compute_noise_sensitivity(const audio_immune_bridge_t* bridge) {
+    if (!bridge || !bridge->immune_system) return 1.0f;
+
+    brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
+
+    /* Map inflammation to noise sensitivity multiplier */
+    float multiplier = 1.0f;
+    switch (level) {
+        case INFLAMMATION_NONE:     multiplier = 1.0f; break;
+        case INFLAMMATION_LOCAL:    multiplier = 1.2f; break;
+        case INFLAMMATION_REGIONAL: multiplier = 1.5f; break;
+        case INFLAMMATION_SYSTEMIC: multiplier = 2.0f; break;
+        case INFLAMMATION_STORM:    multiplier = 3.0f; break;
+    }
+
+    return multiplier;
+}
+
+/* ============================================================================
+ * Audio → Immune Implementation
+ * ============================================================================ */
+
+int audio_immune_trigger_from_threat(
+    audio_immune_bridge_t* bridge,
+    float loudness,
+    float novelty,
+    float anomaly_score
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_audio_immune_trigger) return 0;
+    if (!bridge->immune_system) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update trigger state */
+    bridge->audio_trigger.loudness_level = clamp_f(loudness, 0.0f, 1.0f);
+    bridge->audio_trigger.novelty_score = clamp_f(novelty, 0.0f, 1.0f);
+    bridge->audio_trigger.anomaly_score = clamp_f(anomaly_score, 0.0f, 1.0f);
+
+    /* Check if threat level warrants immune response */
+    bool should_trigger =
+        (loudness >= AUDIO_THREAT_LOUDNESS_THRESHOLD) ||
+        (novelty >= AUDIO_THREAT_NOVELTY_THRESHOLD) ||
+        (anomaly_score >= AUDIO_THREAT_NOVELTY_THRESHOLD);
+
+    if (should_trigger) {
+        /* Compute threat severity */
+        float threat_severity = fmaxf(fmaxf(loudness, novelty), anomaly_score);
+        uint32_t severity = (uint32_t)(threat_severity * 10.0f);
+        if (severity < 1) severity = 1;
+        if (severity > 10) severity = 10;
+
+        /* Create threat signature */
+        uint8_t epitope[16];
+        memset(epitope, 0, sizeof(epitope));
+        epitope[0] = (uint8_t)(loudness * 255);
+        epitope[1] = (uint8_t)(novelty * 255);
+        epitope[2] = (uint8_t)(anomaly_score * 255);
+        epitope[3] = 0xAD; /* Audio marker */
+
+        /* Present antigen to immune system */
+        uint32_t antigen_id;
+        int result = brain_immune_present_antigen(
+            bridge->immune_system,
+            ANTIGEN_SOURCE_ANOMALY,
+            epitope,
+            16,
+            severity,
+            0, /* source node */
+            &antigen_id
+        );
+
+        if (result == 0) {
+            bridge->audio_trigger.stress_response_triggered = true;
+            bridge->audio_trigger.immune_surveillance_active = true;
+            bridge->audio_trigger.immune_activation_level = threat_severity;
+            bridge->audio_triggered_responses++;
+            bridge->anomaly_count++;
+        }
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+int audio_immune_trigger_from_processing_failure(
+    audio_immune_bridge_t* bridge,
+    float failure_rate
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_audio_immune_trigger) return 0;
+    if (!bridge->immune_system) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update failure tracking */
+    bridge->audio_trigger.processing_failure_rate = clamp_f(failure_rate, 0.0f, 1.0f);
+    bridge->processing_failures++;
+
+    /* High failure rate triggers immune response */
+    if (failure_rate >= 0.5f) {
+        /* Create failure signature */
+        uint8_t epitope[8];
+        memset(epitope, 0, sizeof(epitope));
+        epitope[0] = (uint8_t)(failure_rate * 255);
+        epitope[1] = 0xF1; /* Failure marker */
+
+        uint32_t severity = (uint32_t)(failure_rate * 8.0f);
+        if (severity < 1) severity = 1;
+
+        uint32_t antigen_id;
+        brain_immune_present_antigen(
+            bridge->immune_system,
+            ANTIGEN_SOURCE_ANOMALY,
+            epitope,
+            8,
+            severity,
+            0,
+            &antigen_id
+        );
+
+        bridge->audio_trigger.immune_activation_level = failure_rate;
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+int audio_immune_amplify_tinnitus_inflammation(
+    audio_immune_bridge_t* bridge,
+    float tinnitus_severity
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_tinnitus_inflammation_coupling) return 0;
+    if (!bridge->immune_system) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update tinnitus state */
+    bridge->inflammation_state.tinnitus_severity = clamp_f(tinnitus_severity, 0.0f, 1.0f);
+
+    /* Tinnitus above threshold triggers inflammation */
+    if (tinnitus_severity >= 0.5f) {
+        /* Create tinnitus signature */
+        uint8_t epitope[8];
+        memset(epitope, 0, sizeof(epitope));
+        epitope[0] = (uint8_t)(tinnitus_severity * 255);
+        epitope[1] = 0x71; /* Tinnitus marker */
+
+        uint32_t severity = (uint32_t)(tinnitus_severity * 6.0f);
+
+        uint32_t antigen_id;
+        brain_immune_present_antigen(
+            bridge->immune_system,
+            ANTIGEN_SOURCE_ANOMALY,
+            epitope,
+            8,
+            severity,
+            0,
+            &antigen_id
+        );
+
+        bridge->tinnitus_episodes++;
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+int audio_immune_boost_from_calm_environment(
+    audio_immune_bridge_t* bridge,
+    float quietness,
+    float music_presence,
+    float predictability
+) {
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->enable_audio_immune_boost) return 0;
+    if (!bridge->immune_system) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Update boost state */
+    bridge->audio_boost.quietness_level = clamp_f(quietness, 0.0f, 1.0f);
+    bridge->audio_boost.music_presence = clamp_f(music_presence, 0.0f, 1.0f);
+    bridge->audio_boost.predictability = clamp_f(predictability, 0.0f, 1.0f);
+
+    /* Calm environment boosts immunity */
+    float calm_score = (quietness + music_presence + predictability) / 3.0f;
+
+    if (calm_score >= 0.6f) {
+        bridge->audio_boost.immune_enhancement = calm_score * 0.3f;
+        bridge->audio_boost.il10_release_boost = calm_score * 0.4f;
+        bridge->audio_boost.inflammation_reduction = calm_score * 0.25f;
+        bridge->audio_boost.stress_reduction = calm_score * 0.5f;
+        bridge->audio_boosts++;
+
+        /* Note: Actual IL-10 release would require immune system API support */
+    } else {
+        bridge->audio_boost.immune_enhancement = 0.0f;
+        bridge->audio_boost.il10_release_boost = 0.0f;
+        bridge->audio_boost.inflammation_reduction = 0.0f;
+        bridge->audio_boost.stress_reduction = 0.0f;
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Bidirectional Update Implementation
+ * ============================================================================ */
+
+int audio_immune_bridge_update(
+    audio_immune_bridge_t* bridge,
+    uint64_t delta_ms
+) {
+    if (!bridge) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    bridge->total_updates++;
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    /* Apply immune effects on audio */
+    audio_immune_apply_cytokine_effects(bridge);
+    audio_immune_apply_inflammation_effects(bridge);
+
+    /* Note: Audio-to-immune effects are event-driven via trigger functions */
+
+    return 0;
+}
+
+/* ============================================================================
+ * Query Implementation
+ * ============================================================================ */
+
+int audio_immune_get_cytokine_effects(
+    const audio_immune_bridge_t* bridge,
+    cytokine_audio_effects_t* effects
+) {
+    if (!bridge || !effects) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_audio_effects_t));
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+int audio_immune_get_inflammation_state(
+    const audio_immune_bridge_t* bridge,
+    inflammation_audio_state_t* state
+) {
+    if (!bridge || !state) return -1;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    memcpy(state, &bridge->inflammation_state, sizeof(inflammation_audio_state_t));
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return 0;
+}
+
+bool audio_immune_is_impaired(const audio_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Impairment if accuracy < 70% or bandwidth < 60% */
+    bool impaired =
+        (bridge->inflammation_state.processing_accuracy < 0.7f) ||
+        (bridge->inflammation_state.processing_bandwidth < 0.6f);
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return impaired;
+}
+
+float audio_immune_get_accuracy_reduction(const audio_immune_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    float reduction = 1.0f - bridge->inflammation_state.processing_accuracy;
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return reduction;
+}
+
+float audio_immune_get_tinnitus_severity(const audio_immune_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    float severity = bridge->inflammation_state.tinnitus_severity;
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return severity;
+}
+
+float audio_immune_get_attention_level(const audio_immune_bridge_t* bridge) {
+    if (!bridge) return 1.0f;
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    float attention = bridge->inflammation_state.auditory_attention;
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+
+    return attention;
+}

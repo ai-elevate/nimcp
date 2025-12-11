@@ -449,6 +449,66 @@ void curiosity_set_exploration_rate(curiosity_engine_t engine, float exploration
  */
 float curiosity_get_information_gain(curiosity_engine_t engine);
 
+//=============================================================================
+// Immune System Integration (Brain Immune System)
+//=============================================================================
+
+/* Forward declaration to avoid circular dependency */
+struct brain_immune_system;
+
+/**
+ * @brief Connect curiosity engine to brain immune system
+ *
+ * WHAT: Establish bidirectional immune-curiosity coupling
+ * WHY:  Model sickness behavior (cytokines suppress exploration) and novelty vigilance
+ * HOW:  Create curiosity_immune_bridge, register callbacks with immune system
+ *
+ * BIOLOGICAL BASIS:
+ * - Immune → Curiosity: Cytokines (IL-1, IL-6, TNF-α) reduce dopaminergic exploration
+ * - Curiosity → Immune: Novel stimuli trigger immune vigilance (stress response)
+ *
+ * @param engine Curiosity engine
+ * @param immune_system Brain immune system to connect
+ * @return 0 on success, -1 on error
+ */
+int curiosity_connect_immune(curiosity_engine_t engine, struct brain_immune_system* immune_system);
+
+/**
+ * @brief Disconnect from brain immune system
+ *
+ * WHAT: Tear down immune-curiosity coupling
+ * WHY:  Clean shutdown, restore original curiosity levels
+ * HOW:  Destroy bridge, unregister callbacks
+ *
+ * @param engine Curiosity engine
+ * @return 0 on success, -1 on error
+ */
+int curiosity_disconnect_immune(curiosity_engine_t engine);
+
+/**
+ * @brief Get current sickness behavior suppression level
+ *
+ * WHAT: Query immune-induced curiosity suppression
+ * WHY:  Diagnostic visibility into sickness behavior effects
+ * HOW:  Return suppression factor from immune bridge
+ *
+ * @param engine Curiosity engine
+ * @return Suppression factor (0-1, where 0=max suppression, 1=no suppression)
+ */
+float curiosity_get_immune_suppression(curiosity_engine_t engine);
+
+/**
+ * @brief Get current immune vigilance boost from novelty
+ *
+ * WHAT: Query curiosity-induced immune alertness
+ * WHY:  Diagnostic visibility into novelty-immune coupling
+ * HOW:  Return vigilance boost from immune bridge
+ *
+ * @param engine Curiosity engine
+ * @return Immune vigilance boost (1.0-1.5x)
+ */
+float curiosity_get_novelty_vigilance_boost(curiosity_engine_t engine);
+
 
 #ifdef __cplusplus
 }
