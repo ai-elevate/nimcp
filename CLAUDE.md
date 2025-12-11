@@ -55,6 +55,61 @@ nimcp_tensor_destroy(t);
 
 ## Recent Completions
 
+### Brain Immune System (Complete - Dec 2024)
+Implemented biologically-inspired immune coordination layer integrating BBB, BFT, and swarm immune:
+
+| Component | Biological Analog | NIMCP Integration |
+|-----------|------------------|-------------------|
+| B Cells | Antibody producers | Swarm memory cells, pattern storage |
+| T Helper (CD4+) | Coordination | Bio-async signaling, B cell activation |
+| T Killer (CD8+) | Cytotoxic | BFT quarantine, node isolation |
+| Antibodies | Countermeasures | Swarm responses (ALERT, ISOLATION, COUNTER_ATTACK) |
+| Cytokines | Signaling | Bio-async NOREPINEPHRINE channel |
+| Inflammation | Escalation | Local → Regional → Systemic → Storm |
+
+**Key Features:**
+- **Auto-learning**: Neutralization converts B cells to memory automatically
+- **Fuzzy affinity**: 3-component matching (exact 50%, bit 30%, length 20%)
+- **Cross-reactive immunity**: Recognizes variants at 70% threshold
+- **Auto-recognition**: Memory check triggers secondary response on antigen presentation
+
+**API Examples:**
+```c
+// Create and start immune system
+brain_immune_config_t config;
+brain_immune_default_config(&config);
+brain_immune_system_t* immune = brain_immune_create(&config);
+brain_immune_start(immune);
+
+// Connect integrations
+brain_immune_connect_bbb(immune, bbb);
+brain_immune_connect_bft(immune, bft);
+brain_immune_connect_swarm(immune, swarm_immune);
+
+// Present threat (auto-checks memory for secondary response)
+uint32_t antigen_id;
+brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL, epitope, len, severity, node, &antigen_id);
+
+// Full immune cycle
+uint32_t b_cell_id, helper_id, antibody_id;
+brain_immune_activate_b_cell(immune, antigen_id, &b_cell_id);
+brain_immune_activate_helper_t(immune, antigen_id, &helper_id);
+brain_immune_t_help_b(immune, helper_id, b_cell_id);  // B cell → PLASMA state
+brain_immune_produce_antibody(immune, b_cell_id, ANTIBODY_IGG, &antibody_id);
+brain_immune_neutralize(immune, antigen_id, antibody_id);  // Auto-creates memory
+
+// Affinity computation for threat recognition
+float affinity = brain_immune_compute_affinity(pattern1, len1, pattern2, len2);
+```
+
+**Test Coverage: 104 tests**
+- Unit: 47 tests (`./test/unit/cognitive/immune/unit_cognitive_immune_brain_immune`)
+- Integration: 15 tests (`./test/integration/cognitive/immune/integration_cognitive_immune_brain_immune`)
+- Regression: 29 tests (`./test/regression/cognitive/immune/regression_cognitive_immune_brain_immune`)
+- E2E: 13 tests (`./test/e2e/e2e_test_brain_immune_pipeline`)
+
+**GOTCHA**: B cells must be in PLASMA state to produce antibodies. Use `brain_immune_t_help_b()` to transition from ACTIVATED → PLASMA.
+
 ### Introspection Module Enhancements (Complete - Dec 2024)
 Implemented three major introspection subsystems for brain metacognition:
 
@@ -115,12 +170,15 @@ Integrated PE into 10 modules with full test coverage:
 include/
 ├── utils/tensor/          # Tensor library
 ├── utils/encoding/        # Positional encoding
+├── utils/fault_tolerance/ # BFT, recovery cache, checkpointing
 ├── plasticity/attention/  # Multihead attention with PE
 ├── cognitive/introspection/  # Consciousness metrics, temporal patterns, ensemble uncertainty
+├── cognitive/immune/      # Brain immune system (B/T cells, antibodies, cytokines)
 ├── cognitive/             # Working memory, emotion-attention
 ├── middleware/            # Sequence detector, circular buffer, population coding
 ├── perception/            # Speech cortex
-├── swarm/                 # Swarm signal
+├── security/              # Blood-brain barrier (BBB)
+├── swarm/                 # Swarm signal, swarm immune
 └── core/brain/regions/    # Language production, predictive regions
 
 test/
