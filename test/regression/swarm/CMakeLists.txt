@@ -43,3 +43,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_regression.cpp
     regression
 )
+
+# Test 7: Enhanced Swarm Consciousness Regression (Peer Callbacks, Remote Phi, Dynamics)
+add_test_binary(
+    test_swarm_consciousness_enhanced_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_enhanced_regression.cpp
+    regression
+)

@@ -85,3 +85,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness.cpp
     unit
 )
+
+# Test 13: Enhanced Swarm Consciousness (Peer Callbacks, Remote Phi, Dynamics)
+add_test_binary(
+    test_swarm_consciousness_enhanced
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_enhanced.cpp
+    unit
+)

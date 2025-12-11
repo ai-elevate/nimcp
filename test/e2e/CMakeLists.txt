@@ -291,6 +291,12 @@ add_e2e_test(e2e_test_swarm_consciousness_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_consciousness_pipeline.cpp
 )
 
+# Enhanced Swarm Consciousness Pipeline E2E Test (Peer Callbacks, Remote Phi, Dynamics)
+add_e2e_test(e2e_test_swarm_consciousness_enhanced_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_consciousness_enhanced_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================
