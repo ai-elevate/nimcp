@@ -157,7 +157,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_fractal.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_ensemble_uncertainty.c  # Real Ensemble Uncertainty Quantification
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_connectivity_health.c  # Phase 1.5.4: Connectivity Health Assessment
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_consciousness_metrics.c  # Consciousness Metrics (IIT Φ)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_temporal_patterns.c  # Temporal Pattern Analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience.c

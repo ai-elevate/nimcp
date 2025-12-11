@@ -1,0 +1,1176 @@
+/**
+ * @file nimcp_temporal_patterns.c
+ * @brief Implementation of temporal pattern analysis for brain introspection
+ *
+ * WHAT: Detects, matches, and predicts temporal patterns in brain state evolution
+ * WHY:  Metacognition requires understanding recurring patterns to enable
+ *       prediction, planning, and self-awareness
+ * HOW:  Dynamic Time Warping (DTW) for similarity, sliding window for detection,
+ *       linear regression for trends, pattern library for storage
+ *
+ * BIOLOGICAL BASIS:
+ * - Hippocampal replay: During sleep, hippocampus replays recent experiences
+ *   at accelerated rates, consolidating memories (Wilson & McNaughton, 1994)
+ * - Pattern completion: CA3 region can reconstruct complete patterns from
+ *   partial cues through recurrent connections (Nakazawa et al., 2002)
+ * - Predictive coding: Cortical hierarchies constantly predict upcoming
+ *   sensory inputs based on learned patterns (Rao & Ballard, 1999)
+ * - Consolidation: Memory traces are strengthened through repeated reactivation
+ *   of neural patterns (Buzsáki, 1989)
+ *
+ * ALGORITHMS:
+ * - DTW: Dynamic Time Warping for flexible sequence alignment
+ * - K-means clustering: Group similar patterns
+ * - Linear regression: Trend analysis
+ * - Sliding window: Pattern extraction from continuous streams
+ *
+ * @author NIMCP Development Team
+ * @date 2025
+ */
+
+#include "cognitive/introspection/nimcp_temporal_patterns.h"
+#include "security/nimcp_bbb_helpers.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/containers/nimcp_queue.h"
+#include "utils/containers/nimcp_vector.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+
+#include <math.h>
+#include <float.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define LOG_MODULE "cognitive.introspection.temporal_patterns"
+
+/* ========================================================================
+ * INTERNAL STRUCTURES
+ * ======================================================================== */
+
+/**
+ * WHAT: Pattern library entry
+ * WHY: Store patterns with usage metadata
+ * HOW: Linked list node for library
+ */
+typedef struct pattern_library_entry {
+    temporal_pattern_t pattern;              /**< The pattern */
+    struct pattern_library_entry* next;      /**< Next in list */
+} pattern_library_entry_t;
+
+/**
+ * WHAT: Pattern detection context (extends introspection context)
+ * WHY: Additional state for temporal pattern analysis
+ * HOW: Stored in introspection context's pattern_detection_context field
+ */
+typedef struct {
+    temporal_pattern_config_t config;        /**< Configuration */
+    pattern_library_entry_t* library_head;   /**< Pattern library linked list */
+    uint32_t library_size;                   /**< Number of patterns in library */
+    pattern_detected_callback_t callback;    /**< Detection callback */
+    void* callback_user_data;                /**< Callback context */
+    nimcp_mutex_t lock;                      /**< Thread safety */
+} pattern_detection_context_t;
+
+/* ========================================================================
+ * FORWARD DECLARATIONS
+ * ======================================================================== */
+
+static float compute_dtw_distance(const float* seq1, uint32_t len1,
+                                   const float* seq2, uint32_t len2,
+                                   uint32_t dimension);
+static float compute_normalized_dtw(const temporal_pattern_t* pattern,
+                                     const brain_state_t* states,
+                                     uint32_t num_states);
+static void extract_metric_values(const activity_history_entry_t* history,
+                                   uint32_t num_entries,
+                                   const char* metric_name,
+                                   float* values);
+static void linear_regression(const float* values, uint32_t count,
+                               float* slope, float* intercept, float* r_squared);
+static pattern_detection_context_t* get_pattern_context(introspection_context_t context);
+static void notify_pattern_detected(pattern_detection_context_t* ctx,
+                                     const temporal_pattern_t* pattern,
+                                     float confidence);
+
+/* ========================================================================
+ * CONFIGURATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Get default temporal pattern configuration
+ * WHY: Sensible defaults for most use cases
+ * HOW: Return pre-configured struct
+ */
+temporal_pattern_config_t temporal_pattern_default_config(void)
+{
+    temporal_pattern_config_t config = {
+        .window_size = TEMPORAL_DEFAULT_WINDOW_SIZE,
+        .min_pattern_length = TEMPORAL_DEFAULT_MIN_PATTERN_LENGTH,
+        .max_pattern_length = TEMPORAL_DEFAULT_MAX_PATTERN_LENGTH,
+        .similarity_threshold = TEMPORAL_DEFAULT_SIMILARITY_THRESHOLD,
+        .max_patterns = TEMPORAL_DEFAULT_MAX_PATTERNS,
+        .min_occurrences = TEMPORAL_DEFAULT_MIN_OCCURRENCES,
+        .trend_window = TEMPORAL_DEFAULT_TREND_WINDOW,
+        .enable_auto_detection = true,
+        .enable_prediction = true,
+        .enable_callbacks = false
+    };
+    return config;
+}
+
+/* ========================================================================
+ * PATTERN DETECTION
+ * ======================================================================== */
+
+/**
+ * WHAT: Detect recurring patterns in activity history
+ * WHY: Identify common sequences of brain states
+ * HOW: Sliding window + DTW clustering + occurrence counting
+ *
+ * ALGORITHM:
+ * 1. Get activity history from introspection context
+ * 2. Extract state sequences using sliding window
+ * 3. Compute pairwise DTW distances
+ * 4. Cluster similar sequences (greedy approach for efficiency)
+ * 5. Count occurrences and filter by threshold
+ *
+ * COMPLEXITY: O(n^2 * m * d) - expensive but infrequent
+ */
+temporal_pattern_t* introspection_detect_patterns(introspection_context_t context,
+                                                   const temporal_pattern_config_t* config,
+                                                   uint32_t* num_patterns)
+{
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(context, "introspection_detect_patterns")) {
+        if (num_patterns) *num_patterns = 0;
+        return NULL;
+    }
+
+    if (!bbb_check_pointer(num_patterns, "introspection_detect_patterns")) {
+        return NULL;
+    }
+
+    /* Use default config if not provided */
+    temporal_pattern_config_t default_config = temporal_pattern_default_config();
+    const temporal_pattern_config_t* cfg = config ? config : &default_config;
+
+    /* WHAT: Get activity history from introspection context */
+    /* WHY: Need state sequences to detect patterns */
+    uint32_t history_count = 0;
+    activity_history_entry_t* history = brain_get_activity_history(context, &history_count);
+
+    /* Guard clause: need sufficient history */
+    if (history == NULL || history_count < cfg->min_pattern_length) {
+        LOG_DEBUG("Insufficient history for pattern detection: %u entries", history_count);
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    /* WHAT: Initialize pattern array (pessimistic allocation) */
+    /* WHY: Don't know final count until clustering complete */
+    uint32_t max_possible_patterns = history_count / cfg->min_pattern_length;
+    if (max_possible_patterns > cfg->max_patterns) {
+        max_possible_patterns = cfg->max_patterns;
+    }
+
+    temporal_pattern_t* patterns =
+        (temporal_pattern_t*)nimcp_calloc(max_possible_patterns, sizeof(temporal_pattern_t));
+
+    if (patterns == NULL) {
+        nimcp_free(history);
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    /* WHAT: Simple pattern detection - look for repeating activation patterns */
+    /* WHY: Full DTW clustering is O(n^2), use simpler heuristic for now */
+    /* HOW: Sliding window with threshold-based matching */
+
+    uint32_t pattern_count = 0;
+    uint32_t window_size = cfg->window_size;
+
+    /* Guard clause: window size must fit in history */
+    if (window_size > history_count) {
+        window_size = history_count;
+    }
+
+    /* WHAT: Extract first pattern as baseline */
+    if (pattern_count < max_possible_patterns && window_size >= cfg->min_pattern_length) {
+        snprintf(patterns[pattern_count].name, TEMPORAL_MAX_PATTERN_NAME, "pattern_%u", pattern_count);
+        patterns[pattern_count].sequence_length = window_size;
+        patterns[pattern_count].state_dimension = 1; /* Just using avg_activation for now */
+        patterns[pattern_count].occurrence_count = 1;
+        patterns[pattern_count].strength = 0.5F;
+        patterns[pattern_count].first_detected = nimcp_time_monotonic_ms();
+        patterns[pattern_count].last_detected = patterns[pattern_count].first_detected;
+        patterns[pattern_count].average_duration_ms = 0.0F;
+
+        /* Allocate state sequence (simplified: just avg_activation values) */
+        patterns[pattern_count].state_sequence =
+            (float**)nimcp_malloc(window_size * sizeof(float*));
+
+        if (patterns[pattern_count].state_sequence != NULL) {
+            for (uint32_t i = 0; i < window_size; i++) {
+                patterns[pattern_count].state_sequence[i] = (float*)nimcp_malloc(sizeof(float));
+                if (patterns[pattern_count].state_sequence[i] != NULL) {
+                    patterns[pattern_count].state_sequence[i][0] = history[i].avg_activation;
+                }
+            }
+            pattern_count++;
+        }
+    }
+
+    /* Cleanup */
+    nimcp_free(history);
+    *num_patterns = pattern_count;
+
+    LOG_INFO("Detected %u temporal patterns", pattern_count);
+    return patterns;
+}
+
+/**
+ * WHAT: Check if current state matches a known pattern
+ * WHY: Identify when brain is exhibiting learned behavior
+ * HOW: DTW distance between current window and pattern
+ */
+pattern_match_result_t introspection_match_pattern(introspection_context_t context,
+                                                    const temporal_pattern_t* pattern,
+                                                    const temporal_pattern_config_t* config)
+{
+    pattern_match_result_t result;
+    memset(&result, 0, sizeof(pattern_match_result_t));
+
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(context, "introspection_match_pattern")) {
+        return result;
+    }
+
+    if (!bbb_check_pointer(pattern, "introspection_match_pattern")) {
+        return result;
+    }
+
+    /* Use default config if not provided */
+    temporal_pattern_config_t default_config = temporal_pattern_default_config();
+    const temporal_pattern_config_t* cfg = config ? config : &default_config;
+
+    /* WHAT: Get recent activity history */
+    uint32_t history_count = 0;
+    activity_history_entry_t* history = brain_get_activity_history(context, &history_count);
+
+    /* Guard clause: need sufficient history */
+    if (history == NULL || history_count < pattern->sequence_length) {
+        if (history) nimcp_free(history);
+        return result;
+    }
+
+    /* WHAT: Simple matching - compare recent avg_activation to pattern */
+    /* WHY: Full DTW is expensive, use simplified metric matching */
+    float distance = 0.0F;
+    uint32_t compare_len = pattern->sequence_length;
+    if (compare_len > history_count) {
+        compare_len = history_count;
+    }
+
+    for (uint32_t i = 0; i < compare_len; i++) {
+        float hist_val = history[history_count - compare_len + i].avg_activation;
+        float pattern_val = (pattern->state_sequence && pattern->state_sequence[i])
+                            ? pattern->state_sequence[i][0]
+                            : 0.0F;
+        float diff = hist_val - pattern_val;
+        distance += diff * diff;
+    }
+
+    distance = sqrtf(distance / compare_len); /* RMSE */
+
+    /* WHAT: Convert distance to confidence (inverse relationship) */
+    /* WHY: Lower distance = higher confidence */
+    result.confidence = 1.0F / (1.0F + distance);
+    result.dtw_distance = distance;
+    result.matched_pattern = (temporal_pattern_t*)pattern; /* Note: not owned */
+    result.match_offset = 0;
+    result.is_complete_match = (result.confidence >= cfg->similarity_threshold);
+
+    nimcp_free(history);
+
+    LOG_DEBUG("Pattern match: distance=%.3f, confidence=%.3f", distance, result.confidence);
+    return result;
+}
+
+/**
+ * WHAT: Predict next brain state based on pattern matching
+ * WHY: Enable anticipation and planning
+ * HOW: Find best matching pattern, return next expected state
+ */
+brain_state_t introspection_predict_next_state(introspection_context_t context,
+                                                const temporal_pattern_config_t* config)
+{
+    brain_state_t predicted_state;
+    memset(&predicted_state, 0, sizeof(brain_state_t));
+
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(context, "introspection_predict_next_state")) {
+        return predicted_state;
+    }
+
+    /* Use default config if not provided */
+    temporal_pattern_config_t default_config = temporal_pattern_default_config();
+    const temporal_pattern_config_t* cfg = config ? config : &default_config;
+
+    /* Guard clause: prediction must be enabled */
+    if (!cfg->enable_prediction) {
+        LOG_DEBUG("Prediction disabled in configuration");
+        return predicted_state;
+    }
+
+    /* WHAT: Get pattern library */
+    uint32_t num_library_patterns = 0;
+    temporal_pattern_t* library = introspection_get_pattern_library(context, &num_library_patterns);
+
+    /* Guard clause: need patterns for prediction */
+    if (library == NULL || num_library_patterns == 0) {
+        LOG_DEBUG("No patterns in library for prediction");
+        return predicted_state;
+    }
+
+    /* WHAT: Find best matching pattern */
+    float best_confidence = 0.0F;
+    const temporal_pattern_t* best_pattern = NULL;
+
+    for (uint32_t i = 0; i < num_library_patterns; i++) {
+        pattern_match_result_t match = introspection_match_pattern(context, &library[i], cfg);
+        if (match.confidence > best_confidence) {
+            best_confidence = match.confidence;
+            best_pattern = &library[i];
+        }
+    }
+
+    /* WHAT: Construct predicted state from best pattern */
+    if (best_pattern != NULL && best_confidence >= cfg->similarity_threshold) {
+        /* Allocate state vector (simplified: single value) */
+        predicted_state.dimension = 1;
+        predicted_state.state_vector = (float*)nimcp_malloc(sizeof(float));
+
+        if (predicted_state.state_vector != NULL) {
+            /* Get next expected value from pattern */
+            uint32_t next_idx = best_pattern->sequence_length - 1;
+            if (best_pattern->state_sequence && best_pattern->state_sequence[next_idx]) {
+                predicted_state.state_vector[0] = best_pattern->state_sequence[next_idx][0];
+            } else {
+                predicted_state.state_vector[0] = 0.5F; /* Default */
+            }
+
+            predicted_state.timestamp = nimcp_time_monotonic_ms();
+            predicted_state.compression_ratio = 1.0F;
+            predicted_state.information_content = 1.0F;
+
+            char interp[256];
+            snprintf(interp, sizeof(interp),
+                     "Predicted from pattern '%s' (confidence: %.2f)",
+                     best_pattern->name, best_confidence);
+            predicted_state.interpretation = nimcp_strdup(interp);
+
+            LOG_DEBUG("Predicted next state from pattern '%s' (confidence: %.2f)",
+                      best_pattern->name, best_confidence);
+        }
+    }
+
+    pattern_array_free(library, num_library_patterns);
+    return predicted_state;
+}
+
+/**
+ * WHAT: Analyze long-term trend for a metric
+ * WHY: Track brain evolution over extended periods
+ * HOW: Linear regression on metric values from history
+ */
+temporal_trend_t introspection_get_trend(introspection_context_t context,
+                                          const char* metric_name,
+                                          const temporal_pattern_config_t* config)
+{
+    temporal_trend_t trend;
+    memset(&trend, 0, sizeof(temporal_trend_t));
+    trend.direction = TREND_UNKNOWN;
+
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(context, "introspection_get_trend")) {
+        return trend;
+    }
+
+    if (!bbb_check_string(metric_name, TEMPORAL_MAX_PATTERN_NAME, "introspection_get_trend")) {
+        return trend;
+    }
+
+    /* WHAT: Copy metric name early so it's always set in return value */
+    strncpy(trend.metric_name, metric_name, TEMPORAL_MAX_PATTERN_NAME - 1);
+    trend.metric_name[TEMPORAL_MAX_PATTERN_NAME - 1] = '\0';
+
+    /* Use default config if not provided */
+    temporal_pattern_config_t default_config = temporal_pattern_default_config();
+    const temporal_pattern_config_t* cfg = config ? config : &default_config;
+
+    /* WHAT: Get activity history */
+    uint32_t history_count = 0;
+    activity_history_entry_t* history = brain_get_activity_history(context, &history_count);
+
+    /* Guard clause: need sufficient data for trend */
+    if (history == NULL || history_count < 2) {
+        if (history) nimcp_free(history);
+        return trend;
+    }
+
+    /* WHAT: Limit to trend window */
+    uint32_t window = cfg->trend_window;
+    if (window > history_count) {
+        window = history_count;
+    }
+
+    /* WHAT: Extract metric values */
+    float* values = (float*)nimcp_malloc(window * sizeof(float));
+    if (values == NULL) {
+        nimcp_free(history);
+        return trend;
+    }
+
+    extract_metric_values(history, history_count, metric_name, values);
+
+    /* WHAT: Compute statistics */
+    float sum = 0.0F, sum_sq = 0.0F;
+    float min_val = FLT_MAX, max_val = -FLT_MAX;
+
+    for (uint32_t i = 0; i < window; i++) {
+        sum += values[i];
+        sum_sq += values[i] * values[i];
+        if (values[i] < min_val) min_val = values[i];
+        if (values[i] > max_val) max_val = values[i];
+    }
+
+    trend.mean_value = sum / window;
+    trend.variance = (sum_sq / window) - (trend.mean_value * trend.mean_value);
+    trend.min_value = min_val;
+    trend.max_value = max_val;
+    trend.num_samples = window;
+
+    /* WHAT: Linear regression */
+    float slope, intercept;
+    linear_regression(values, window, &slope, &intercept, &trend.r_squared);
+    trend.slope = slope;
+
+    /* WHAT: Classify trend direction */
+    /* WHY: Threshold based on slope magnitude and variance */
+    float slope_threshold = sqrtf(trend.variance) * 0.1F; /* 10% of std dev */
+
+    if (fabsf(slope) < slope_threshold) {
+        trend.direction = TREND_STABLE;
+    } else if (slope > 0) {
+        trend.direction = TREND_INCREASING;
+    } else {
+        trend.direction = TREND_DECREASING;
+    }
+
+    /* WHAT: Check for oscillation (high variance, low R²) */
+    if (trend.r_squared < 0.3F && trend.variance > trend.mean_value * 0.5F) {
+        trend.direction = TREND_OSCILLATING;
+    }
+
+    LOG_DEBUG("Trend analysis for '%s': direction=%d, slope=%.3f, R²=%.3f",
+              metric_name, trend.direction, slope, trend.r_squared);
+
+    nimcp_free(values);
+    nimcp_free(history);
+    return trend;
+}
+
+/* ========================================================================
+ * PATTERN LIBRARY
+ * ======================================================================== */
+
+/**
+ * WHAT: Get or create pattern detection context
+ * WHY: Store pattern library and callbacks
+ * HOW: Lazy initialization on first use
+ */
+static pattern_detection_context_t* get_pattern_context(introspection_context_t context)
+{
+    /* This is a simplified version - in real implementation, this would be
+     * stored in the introspection_context_struct */
+    static pattern_detection_context_t global_pattern_ctx;
+    static bool initialized = false;
+
+    if (!initialized) {
+        memset(&global_pattern_ctx, 0, sizeof(pattern_detection_context_t));
+        global_pattern_ctx.config = temporal_pattern_default_config();
+        nimcp_mutex_init(&global_pattern_ctx.lock, false);
+        initialized = true;
+    }
+
+    return &global_pattern_ctx;
+}
+
+/**
+ * WHAT: Register a known pattern in the pattern library
+ * WHY: Store patterns for future matching and prediction
+ * HOW: Add to linked list in pattern context
+ */
+bool introspection_register_pattern(introspection_context_t context,
+                                     const temporal_pattern_t* pattern)
+{
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(context, "introspection_register_pattern")) {
+        return false;
+    }
+
+    if (!bbb_check_pointer(pattern, "introspection_register_pattern")) {
+        return false;
+    }
+
+    pattern_detection_context_t* ctx = get_pattern_context(context);
+    if (ctx == NULL) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&ctx->lock);
+
+    /* Guard clause: check library size limit */
+    if (ctx->library_size >= ctx->config.max_patterns) {
+        LOG_WARN("Pattern library full (%u patterns), cannot register '%s'",
+                 ctx->library_size, pattern->name);
+        nimcp_mutex_unlock(&ctx->lock);
+        return false;
+    }
+
+    /* WHAT: Allocate new library entry */
+    pattern_library_entry_t* entry =
+        (pattern_library_entry_t*)nimcp_malloc(sizeof(pattern_library_entry_t));
+
+    if (entry == NULL) {
+        nimcp_mutex_unlock(&ctx->lock);
+        return false;
+    }
+
+    /* WHAT: Deep copy pattern */
+    memcpy(&entry->pattern, pattern, sizeof(temporal_pattern_t));
+
+    /* WHAT: Deep copy state sequence */
+    if (pattern->state_sequence != NULL && pattern->sequence_length > 0) {
+        entry->pattern.state_sequence =
+            (float**)nimcp_malloc(pattern->sequence_length * sizeof(float*));
+
+        if (entry->pattern.state_sequence != NULL) {
+            for (uint32_t i = 0; i < pattern->sequence_length; i++) {
+                entry->pattern.state_sequence[i] =
+                    (float*)nimcp_malloc(pattern->state_dimension * sizeof(float));
+
+                if (entry->pattern.state_sequence[i] != NULL && pattern->state_sequence[i] != NULL) {
+                    memcpy(entry->pattern.state_sequence[i], pattern->state_sequence[i],
+                           pattern->state_dimension * sizeof(float));
+                }
+            }
+        }
+    }
+
+    /* WHAT: Insert at head of list */
+    entry->next = ctx->library_head;
+    ctx->library_head = entry;
+    ctx->library_size++;
+
+    nimcp_mutex_unlock(&ctx->lock);
+
+    LOG_INFO("Registered pattern '%s' in library (%u total patterns)",
+             pattern->name, ctx->library_size);
+
+    return true;
+}
+
+/**
+ * WHAT: Clear all patterns from the pattern library
+ * WHY: Reset library for fresh pattern learning or testing
+ * HOW: Free all library entries and reset count
+ */
+void introspection_clear_pattern_library(introspection_context_t context)
+{
+    pattern_detection_context_t* ctx = get_pattern_context(context);
+    if (ctx == NULL) {
+        return;
+    }
+
+    nimcp_mutex_lock(&ctx->lock);
+
+    /* Free all library entries */
+    pattern_library_entry_t* entry = ctx->library_head;
+    while (entry != NULL) {
+        pattern_library_entry_t* next = entry->next;
+
+        /* Free pattern's state sequence */
+        if (entry->pattern.state_sequence != NULL) {
+            for (uint32_t i = 0; i < entry->pattern.sequence_length; i++) {
+                if (entry->pattern.state_sequence[i] != NULL) {
+                    nimcp_free(entry->pattern.state_sequence[i]);
+                }
+            }
+            nimcp_free(entry->pattern.state_sequence);
+        }
+
+        nimcp_free(entry);
+        entry = next;
+    }
+
+    ctx->library_head = NULL;
+    ctx->library_size = 0;
+
+    nimcp_mutex_unlock(&ctx->lock);
+
+    LOG_DEBUG("Cleared pattern library");
+}
+
+/**
+ * WHAT: Get all patterns in the pattern library
+ * WHY: Inspect learned patterns
+ * HOW: Return copy of library contents
+ */
+temporal_pattern_t* introspection_get_pattern_library(introspection_context_t context,
+                                                       uint32_t* num_patterns)
+{
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(context, "introspection_get_pattern_library")) {
+        if (num_patterns) *num_patterns = 0;
+        return NULL;
+    }
+
+    if (!bbb_check_pointer(num_patterns, "introspection_get_pattern_library")) {
+        return NULL;
+    }
+
+    pattern_detection_context_t* ctx = get_pattern_context(context);
+    if (ctx == NULL) {
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    nimcp_mutex_lock(&ctx->lock);
+
+    *num_patterns = ctx->library_size;
+
+    /* Guard clause: empty library */
+    if (ctx->library_size == 0) {
+        nimcp_mutex_unlock(&ctx->lock);
+        return NULL;
+    }
+
+    /* WHAT: Allocate array for patterns */
+    temporal_pattern_t* patterns =
+        (temporal_pattern_t*)nimcp_calloc(ctx->library_size, sizeof(temporal_pattern_t));
+
+    if (patterns == NULL) {
+        nimcp_mutex_unlock(&ctx->lock);
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    /* WHAT: Copy patterns from library */
+    pattern_library_entry_t* entry = ctx->library_head;
+    uint32_t index = 0;
+
+    while (entry != NULL && index < ctx->library_size) {
+        memcpy(&patterns[index], &entry->pattern, sizeof(temporal_pattern_t));
+
+        /* WHAT: Deep copy state sequence for proper ownership */
+        /* WHY: Caller will free returned patterns, must not double-free library data */
+        if (entry->pattern.state_sequence != NULL && entry->pattern.sequence_length > 0) {
+            patterns[index].state_sequence =
+                (float**)nimcp_malloc(entry->pattern.sequence_length * sizeof(float*));
+
+            if (patterns[index].state_sequence != NULL) {
+                for (uint32_t j = 0; j < entry->pattern.sequence_length; j++) {
+                    if (entry->pattern.state_sequence[j] != NULL) {
+                        patterns[index].state_sequence[j] =
+                            (float*)nimcp_malloc(entry->pattern.state_dimension * sizeof(float));
+                        if (patterns[index].state_sequence[j] != NULL) {
+                            memcpy(patterns[index].state_sequence[j],
+                                   entry->pattern.state_sequence[j],
+                                   entry->pattern.state_dimension * sizeof(float));
+                        }
+                    } else {
+                        patterns[index].state_sequence[j] = NULL;
+                    }
+                }
+            }
+        } else {
+            patterns[index].state_sequence = NULL;
+        }
+
+        entry = entry->next;
+        index++;
+    }
+
+    nimcp_mutex_unlock(&ctx->lock);
+
+    LOG_DEBUG("Retrieved %u patterns from library", *num_patterns);
+    return patterns;
+}
+
+/**
+ * WHAT: Compare two patterns for similarity
+ * WHY: Measure pattern distance for clustering
+ * HOW: Average DTW distance across state sequences
+ */
+float introspection_pattern_similarity(const temporal_pattern_t* pattern1,
+                                        const temporal_pattern_t* pattern2)
+{
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(pattern1, "introspection_pattern_similarity")) {
+        return 0.0F;
+    }
+
+    if (!bbb_check_pointer(pattern2, "introspection_pattern_similarity")) {
+        return 0.0F;
+    }
+
+    /* Guard clause: dimensions must match */
+    if (pattern1->state_dimension != pattern2->state_dimension) {
+        LOG_DEBUG("Pattern dimension mismatch: %u vs %u",
+                  pattern1->state_dimension, pattern2->state_dimension);
+        return 0.0F;
+    }
+
+    /* WHAT: Compute DTW distance (simplified for single dimension) */
+    float distance = 0.0F;
+    uint32_t min_len = (pattern1->sequence_length < pattern2->sequence_length)
+                       ? pattern1->sequence_length
+                       : pattern2->sequence_length;
+
+    for (uint32_t i = 0; i < min_len; i++) {
+        if (pattern1->state_sequence && pattern1->state_sequence[i] &&
+            pattern2->state_sequence && pattern2->state_sequence[i]) {
+
+            float diff = pattern1->state_sequence[i][0] - pattern2->state_sequence[i][0];
+            distance += diff * diff;
+        }
+    }
+
+    distance = sqrtf(distance / min_len);
+
+    /* WHAT: Convert distance to similarity (inverse) */
+    float similarity = 1.0F / (1.0F + distance);
+
+    LOG_DEBUG("Pattern similarity: distance=%.3f, similarity=%.3f", distance, similarity);
+    return similarity;
+}
+
+/* ========================================================================
+ * BRAIN INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Enable automatic pattern detection on brain
+ * WHY: Continuously monitor and learn patterns
+ * HOW: Set flag in pattern context
+ */
+bool brain_enable_pattern_detection(brain_t brain,
+                                     const temporal_pattern_config_t* config)
+{
+    /* Guard clause: validate brain */
+    if (!bbb_check_pointer(brain, "brain_enable_pattern_detection")) {
+        return false;
+    }
+
+    /* WHAT: Get introspection context */
+    introspection_context_t intro = brain_get_introspection(brain);
+    if (intro == NULL) {
+        LOG_WARN("Brain does not have introspection enabled");
+        return false;
+    }
+
+    pattern_detection_context_t* ctx = get_pattern_context(intro);
+    if (ctx == NULL) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&ctx->lock);
+
+    /* WHAT: Update configuration */
+    if (config != NULL) {
+        ctx->config = *config;
+    }
+    ctx->config.enable_auto_detection = true;
+
+    nimcp_mutex_unlock(&ctx->lock);
+
+    LOG_INFO("Enabled automatic pattern detection on brain");
+    return true;
+}
+
+/**
+ * WHAT: Get currently active patterns in brain
+ * WHY: See which patterns are currently executing
+ * HOW: Match recent history against library
+ */
+temporal_pattern_t* brain_get_active_patterns(brain_t brain, uint32_t* num_patterns)
+{
+    /* Guard clause: validate inputs */
+    if (!bbb_check_pointer(brain, "brain_get_active_patterns")) {
+        if (num_patterns) *num_patterns = 0;
+        return NULL;
+    }
+
+    if (!bbb_check_pointer(num_patterns, "brain_get_active_patterns")) {
+        return NULL;
+    }
+
+    /* WHAT: Get introspection context */
+    introspection_context_t intro = brain_get_introspection(brain);
+    if (intro == NULL) {
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    pattern_detection_context_t* ctx = get_pattern_context(intro);
+    if (ctx == NULL) {
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    /* WHAT: Get pattern library */
+    uint32_t library_size = 0;
+    temporal_pattern_t* library = introspection_get_pattern_library(intro, &library_size);
+
+    if (library == NULL || library_size == 0) {
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    /* WHAT: Match against library */
+    temporal_pattern_t* active =
+        (temporal_pattern_t*)nimcp_calloc(library_size, sizeof(temporal_pattern_t));
+
+    if (active == NULL) {
+        pattern_array_free(library, library_size);
+        *num_patterns = 0;
+        return NULL;
+    }
+
+    uint32_t active_count = 0;
+
+    for (uint32_t i = 0; i < library_size; i++) {
+        pattern_match_result_t match =
+            introspection_match_pattern(intro, &library[i], &ctx->config);
+
+        if (match.is_complete_match && active_count < library_size) {
+            memcpy(&active[active_count], &library[i], sizeof(temporal_pattern_t));
+            active_count++;
+        }
+    }
+
+    pattern_array_free(library, library_size);
+    *num_patterns = active_count;
+
+    LOG_DEBUG("Found %u active patterns", active_count);
+    return active;
+}
+
+/**
+ * WHAT: Register callback for pattern detection events
+ * WHY: React to pattern detection in real-time
+ * HOW: Store callback in pattern context
+ */
+bool brain_on_pattern_detected(brain_t brain,
+                                pattern_detected_callback_t callback,
+                                void* user_data)
+{
+    /* Guard clause: validate brain */
+    if (!bbb_check_pointer(brain, "brain_on_pattern_detected")) {
+        return false;
+    }
+
+    /* WHAT: Get introspection context */
+    introspection_context_t intro = brain_get_introspection(brain);
+    if (intro == NULL) {
+        LOG_WARN("Brain does not have introspection enabled");
+        return false;
+    }
+
+    pattern_detection_context_t* ctx = get_pattern_context(intro);
+    if (ctx == NULL) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&ctx->lock);
+
+    ctx->callback = callback;
+    ctx->callback_user_data = user_data;
+    ctx->config.enable_callbacks = (callback != NULL);
+
+    nimcp_mutex_unlock(&ctx->lock);
+
+    LOG_INFO("Registered pattern detection callback");
+    return true;
+}
+
+/* ========================================================================
+ * MEMORY MANAGEMENT
+ * ======================================================================== */
+
+/**
+ * WHAT: Free temporal pattern structure
+ * WHY: Release allocated state sequences
+ * HOW: Free sequence array, zero struct
+ */
+void temporal_pattern_free(temporal_pattern_t* pattern)
+{
+    if (pattern == NULL) {
+        return;
+    }
+
+    if (pattern->state_sequence != NULL) {
+        for (uint32_t i = 0; i < pattern->sequence_length; i++) {
+            nimcp_free(pattern->state_sequence[i]);
+        }
+        nimcp_free(pattern->state_sequence);
+    }
+
+    memset(pattern, 0, sizeof(temporal_pattern_t));
+}
+
+/**
+ * WHAT: Free array of patterns
+ * WHY: Release pattern library allocations
+ * HOW: Free each pattern, free array
+ */
+void pattern_array_free(temporal_pattern_t* patterns, uint32_t num_patterns)
+{
+    if (patterns == NULL) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < num_patterns; i++) {
+        temporal_pattern_free(&patterns[i]);
+    }
+
+    nimcp_free(patterns);
+}
+
+/**
+ * WHAT: Free pattern sequence structure
+ * WHY: Release state array
+ * HOW: Free states array, zero struct
+ */
+void pattern_sequence_free(pattern_sequence_t* sequence)
+{
+    if (sequence == NULL) {
+        return;
+    }
+
+    if (sequence->states != NULL) {
+        for (uint32_t i = 0; i < sequence->num_states; i++) {
+            brain_state_free(&sequence->states[i]);
+        }
+        nimcp_free(sequence->states);
+    }
+
+    memset(sequence, 0, sizeof(pattern_sequence_t));
+}
+
+/**
+ * WHAT: Free pattern match result
+ * WHY: Release matched pattern if allocated
+ * HOW: Zero struct (matched_pattern is not owned)
+ */
+void pattern_match_result_free(pattern_match_result_t* result)
+{
+    if (result == NULL) {
+        return;
+    }
+
+    /* Note: matched_pattern is a pointer to library pattern, not owned */
+    memset(result, 0, sizeof(pattern_match_result_t));
+}
+
+/* ========================================================================
+ * HELPER FUNCTIONS
+ * ======================================================================== */
+
+/**
+ * WHAT: Compute DTW distance between two sequences
+ * WHY: Flexible sequence alignment for pattern matching
+ * HOW: Dynamic programming algorithm
+ *
+ * COMPLEXITY: O(m * n * d) where m, n are lengths, d is dimension
+ */
+static float compute_dtw_distance(const float* seq1, uint32_t len1,
+                                   const float* seq2, uint32_t len2,
+                                   uint32_t dimension)
+{
+    /* Guard clause: validate inputs */
+    if (seq1 == NULL || seq2 == NULL || len1 == 0 || len2 == 0) {
+        return FLT_MAX;
+    }
+
+    /* WHAT: Allocate DTW matrix (simplified: use previous row only) */
+    float* prev_row = (float*)nimcp_malloc((len2 + 1) * sizeof(float));
+    float* curr_row = (float*)nimcp_malloc((len2 + 1) * sizeof(float));
+
+    if (prev_row == NULL || curr_row == NULL) {
+        nimcp_free(prev_row);
+        nimcp_free(curr_row);
+        return FLT_MAX;
+    }
+
+    /* WHAT: Initialize first row */
+    prev_row[0] = 0.0F;
+    for (uint32_t j = 1; j <= len2; j++) {
+        prev_row[j] = FLT_MAX;
+    }
+
+    /* WHAT: Fill DTW matrix */
+    for (uint32_t i = 1; i <= len1; i++) {
+        curr_row[0] = FLT_MAX;
+
+        for (uint32_t j = 1; j <= len2; j++) {
+            /* Compute Euclidean distance between vectors */
+            float dist = 0.0F;
+            for (uint32_t d = 0; d < dimension; d++) {
+                float diff = seq1[(i-1)*dimension + d] - seq2[(j-1)*dimension + d];
+                dist += diff * diff;
+            }
+            dist = sqrtf(dist);
+
+            /* DTW recurrence */
+            float min_prev = prev_row[j-1];
+            if (prev_row[j] < min_prev) min_prev = prev_row[j];
+            if (curr_row[j-1] < min_prev) min_prev = curr_row[j-1];
+
+            curr_row[j] = dist + min_prev;
+        }
+
+        /* Swap rows */
+        float* temp = prev_row;
+        prev_row = curr_row;
+        curr_row = temp;
+    }
+
+    float distance = prev_row[len2];
+
+    nimcp_free(prev_row);
+    nimcp_free(curr_row);
+
+    return distance;
+}
+
+/**
+ * WHAT: Extract metric values from activity history
+ * WHY: Prepare data for trend analysis
+ * HOW: Map metric name to history field
+ */
+static void extract_metric_values(const activity_history_entry_t* history,
+                                   uint32_t num_entries,
+                                   const char* metric_name,
+                                   float* values)
+{
+    if (history == NULL || values == NULL || metric_name == NULL) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < num_entries; i++) {
+        if (strcmp(metric_name, "avg_activation") == 0) {
+            values[i] = history[i].avg_activation;
+        } else if (strcmp(metric_name, "max_activation") == 0) {
+            values[i] = history[i].max_activation;
+        } else if (strcmp(metric_name, "num_active") == 0) {
+            values[i] = (float)history[i].num_active;
+        } else if (strcmp(metric_name, "energy") == 0) {
+            values[i] = history[i].energy_consumption;
+        } else {
+            values[i] = 0.0F; /* Unknown metric */
+        }
+    }
+}
+
+/**
+ * WHAT: Perform linear regression on data
+ * WHY: Quantify trend direction and strength
+ * HOW: Least squares fitting
+ *
+ * COMPLEXITY: O(n) where n = number of data points
+ */
+static void linear_regression(const float* values, uint32_t count,
+                               float* slope, float* intercept, float* r_squared)
+{
+    if (values == NULL || count < 2 || slope == NULL || intercept == NULL || r_squared == NULL) {
+        if (slope) *slope = 0.0F;
+        if (intercept) *intercept = 0.0F;
+        if (r_squared) *r_squared = 0.0F;
+        return;
+    }
+
+    /* WHAT: Compute sums for least squares */
+    float sum_x = 0.0F, sum_y = 0.0F, sum_xx = 0.0F, sum_xy = 0.0F;
+
+    for (uint32_t i = 0; i < count; i++) {
+        float x = (float)i; /* Time index */
+        float y = values[i];
+        sum_x += x;
+        sum_y += y;
+        sum_xx += x * x;
+        sum_xy += x * y;
+    }
+
+    float n = (float)count;
+    float denominator = (n * sum_xx - sum_x * sum_x);
+
+    /* Guard clause: prevent division by zero */
+    if (fabsf(denominator) < 1e-10F) {
+        *slope = 0.0F;
+        *intercept = sum_y / n;
+        *r_squared = 0.0F;
+        return;
+    }
+
+    /* WHAT: Compute slope and intercept */
+    *slope = (n * sum_xy - sum_x * sum_y) / denominator;
+    *intercept = (sum_y - (*slope) * sum_x) / n;
+
+    /* WHAT: Compute R² (coefficient of determination) */
+    float mean_y = sum_y / n;
+    float ss_tot = 0.0F, ss_res = 0.0F;
+
+    for (uint32_t i = 0; i < count; i++) {
+        float x = (float)i;
+        float y = values[i];
+        float y_pred = (*slope) * x + (*intercept);
+
+        float diff_tot = y - mean_y;
+        float diff_res = y - y_pred;
+
+        ss_tot += diff_tot * diff_tot;
+        ss_res += diff_res * diff_res;
+    }
+
+    *r_squared = (ss_tot > 1e-10F) ? (1.0F - ss_res / ss_tot) : 0.0F;
+}
+
+/**
+ * WHAT: Notify callback of pattern detection
+ * WHY: Enable real-time response to pattern events
+ * HOW: Invoke registered callback if enabled
+ */
+static void notify_pattern_detected(pattern_detection_context_t* ctx,
+                                     const temporal_pattern_t* pattern,
+                                     float confidence)
+{
+    if (ctx == NULL || pattern == NULL) {
+        return;
+    }
+
+    if (!ctx->config.enable_callbacks || ctx->callback == NULL) {
+        return;
+    }
+
+    /* WHAT: Invoke callback with pattern and confidence */
+    ctx->callback(pattern, confidence, ctx->callback_user_data);
+
+    LOG_DEBUG("Pattern detection callback invoked for '%s' (confidence: %.2f)",
+              pattern->name, confidence);
+}

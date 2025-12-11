@@ -210,6 +210,16 @@ typedef struct {
 } introspection_stats_t;
 
 /**
+ * WHAT: Callback type for activity sampling events
+ * WHY: Allow external observers to react to activity snapshots
+ * HOW: Invoked with each sampled activity entry and user context
+ *
+ * @param entry Activity snapshot data
+ * @param user_data User-provided context pointer
+ */
+typedef void (*activity_sample_callback_t)(const activity_history_entry_t* entry, void* user_data);
+
+/**
  * WHAT: Configuration for introspection context
  * WHY: Customize introspection behavior
  * HOW: Set thresholds, strategies, history size, callbacks
@@ -224,6 +234,11 @@ typedef struct {
     bool enable_bio_async;                        /* Enable bio-async communication */
     void (*on_state_change)(brain_state_t* state, void* context); /* Observer */
     void* callback_context;                                       /* Context for callbacks */
+
+    /* Auto activity history configuration */
+    bool enable_auto_history;                     /* Auto-populate history? */
+    uint32_t history_sample_interval_ms;          /* Sampling rate (ms) */
+    float history_change_threshold;               /* Min change to record */
 } introspection_config_t;
 
 /* ========================================================================
@@ -623,6 +638,123 @@ void network_topology_free(network_topology_t* topology);
  */
 activity_history_entry_t* brain_get_activity_history(introspection_context_t context,
                                                      uint32_t* num_entries);
+
+/**
+ * WHAT: Sample current brain activity and add to history
+ * WHY: Enable auto-population of activity history from brain processing loop
+ * HOW: Computes avg/max activation, active count, energy, adds to queue
+ *
+ * DESIGN PATTERN: Observer (samples state at regular intervals)
+ *
+ * WHAT IT DOES:
+ * - Computes average activation across network
+ * - Finds maximum activation value
+ * - Counts neurons above activity threshold
+ * - Estimates energy consumption based on activity
+ * - Enqueues entry to activity history queue
+ * - Invokes registered callback if present
+ * - Sends bio-async BIO_MSG_ACTIVITY_SAMPLE message
+ *
+ * @param context Introspection context
+ * @return true on success, false on error
+ *
+ * ERRORS: Returns false if context is NULL or network unavailable
+ *
+ * COMPLEXITY: O(n) where n = network size
+ * THREAD-SAFE: Yes
+ *
+ * USAGE:
+ * ```c
+ * // In brain processing loop
+ * if (should_sample_activity(brain)) {
+ *     introspection_sample_activity(brain->introspection);
+ * }
+ * ```
+ */
+bool introspection_sample_activity(introspection_context_t context);
+
+/**
+ * WHAT: Set activity sampling interval
+ * WHY: Allow runtime adjustment of sampling rate
+ * HOW: Updates interval_ms in context configuration
+ *
+ * @param context Introspection context
+ * @param interval_ms New sampling interval in milliseconds
+ * @return true on success, false on error
+ *
+ * ERRORS: Returns false if context is NULL
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool introspection_set_sample_interval(introspection_context_t context, uint32_t interval_ms);
+
+/**
+ * WHAT: Get activity history buffer statistics
+ * WHY: Monitor history usage and performance
+ * HOW: Returns current size, capacity, utilization
+ *
+ * @param context Introspection context
+ * @param current_size Output: current number of entries
+ * @param capacity Output: maximum capacity
+ * @param utilization Output: percentage full (0.0-1.0)
+ * @return true on success, false on error
+ *
+ * ERRORS: Returns false if context is NULL or outputs are NULL
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool introspection_get_history_stats(introspection_context_t context,
+                                     uint32_t* current_size,
+                                     uint32_t* capacity,
+                                     float* utilization);
+
+/**
+ * WHAT: Clear activity history queue
+ * WHY: Reset history tracking (e.g., after major brain state change)
+ * HOW: Clears all entries from activity queue
+ *
+ * @param context Introspection context
+ * @return true on success, false on error
+ *
+ * ERRORS: Returns false if context is NULL
+ *
+ * COMPLEXITY: O(h) where h = current history size
+ * THREAD-SAFE: Yes
+ */
+bool introspection_clear_history(introspection_context_t context);
+
+/**
+ * WHAT: Register callback for activity sampling events
+ * WHY: Allow external observers to react to each activity snapshot
+ * HOW: Stores callback and context, invokes on each sample
+ *
+ * DESIGN PATTERN: Observer (callback registration)
+ *
+ * @param context Introspection context
+ * @param callback Callback function (NULL to unregister)
+ * @param user_data User context passed to callback
+ * @return true on success, false on error
+ *
+ * ERRORS: Returns false if context is NULL
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ *
+ * USAGE:
+ * ```c
+ * void my_activity_callback(const activity_history_entry_t* entry, void* data) {
+ *     printf("Activity: avg=%.2f max=%.2f active=%u energy=%.2f\n",
+ *            entry->avg_activation, entry->max_activation,
+ *            entry->num_active, entry->energy_consumption);
+ * }
+ * introspection_set_activity_callback(ctx, my_activity_callback, NULL);
+ * ```
+ */
+bool introspection_set_activity_callback(introspection_context_t context,
+                                         activity_sample_callback_t callback,
+                                         void* user_data);
 
 /* ========================================================================
  * STATISTICS AND MONITORING

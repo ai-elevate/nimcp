@@ -1658,3 +1658,277 @@ const char* bio_module_name(bio_module_id_t module) {
         default: return "UNKNOWN";
     }
 }
+
+/*=============================================================================
+ * SUBSCRIPTION/UNSUBSCRIPTION IMPLEMENTATIONS
+ *============================================================================*/
+
+/**
+ * @brief Subscription entry for tracking message subscriptions
+ */
+typedef struct {
+    uint32_t msg_type;          /**< Message type subscribed to */
+    void* callback;             /**< Handler callback */
+    void* user_data;            /**< User context data */
+    int channel;                /**< Neuromodulator channel */
+    bool active;                /**< Whether subscription is active */
+} bio_subscription_entry_t;
+
+#define MAX_SUBSCRIPTIONS 256
+static bio_subscription_entry_t g_subscriptions[MAX_SUBSCRIPTIONS];
+static uint32_t g_subscription_count = 0;
+static nimcp_platform_mutex_t g_subscription_mutex;
+static bool g_subscription_initialized = false;
+
+/**
+ * @brief Initialize subscription subsystem
+ *
+ * WHAT: Initialize mutex and state for subscriptions
+ * WHY:  Thread-safe subscription management
+ * HOW:  Create mutex, clear subscription array
+ */
+static void subscription_init(void) {
+    if (g_subscription_initialized) {
+        return;
+    }
+    nimcp_platform_mutex_init(&g_subscription_mutex, false);
+    memset(g_subscriptions, 0, sizeof(g_subscriptions));
+    g_subscription_count = 0;
+    g_subscription_initialized = true;
+}
+
+/**
+ * @brief Subscribe to a message type on a bio-async context
+ *
+ * WHAT: Subscribe to receive messages of a specific type
+ * WHY:  Enables modules to receive bio-async messages for inter-module communication
+ * HOW:  Add subscription to global registry with thread-safe mutex protection
+ *
+ * @param ctx Bio-async context (module context pointer)
+ * @param msg_type Message type to subscribe to (BIO_MSG_* constant)
+ * @return true on success, false if subscription limit reached or invalid params
+ */
+bool bio_router_subscribe(void* ctx, uint32_t msg_type) {
+    /* WHAT: Guard clause - validate parameters */
+    if (ctx == NULL) {
+        LOG_WARNING("bio_router_subscribe: NULL context");
+        return false;
+    }
+
+    /* WHAT: Initialize subscription system on first use */
+    if (!g_subscription_initialized) {
+        subscription_init();
+    }
+
+    /* WHAT: Acquire lock for thread-safe modification */
+    nimcp_platform_mutex_lock(&g_subscription_mutex);
+
+    /* WHAT: Check subscription limit */
+    if (g_subscription_count >= MAX_SUBSCRIPTIONS) {
+        nimcp_platform_mutex_unlock(&g_subscription_mutex);
+        LOG_ERROR("bio_router_subscribe: subscription limit reached (%u)",
+                  MAX_SUBSCRIPTIONS);
+        return false;
+    }
+
+    /* WHAT: Check for duplicate subscription */
+    for (uint32_t i = 0; i < g_subscription_count; i++) {
+        if (g_subscriptions[i].active &&
+            g_subscriptions[i].msg_type == msg_type &&
+            g_subscriptions[i].user_data == ctx) {
+            /* Already subscribed - not an error */
+            nimcp_platform_mutex_unlock(&g_subscription_mutex);
+            LOG_DEBUG("bio_router_subscribe: already subscribed to 0x%04x", msg_type);
+            return true;
+        }
+    }
+
+    /* WHAT: Find free slot (prefer reusing inactive entries) */
+    uint32_t slot = g_subscription_count;
+    for (uint32_t i = 0; i < g_subscription_count; i++) {
+        if (!g_subscriptions[i].active) {
+            slot = i;
+            break;
+        }
+    }
+
+    /* WHAT: Create subscription entry */
+    g_subscriptions[slot].msg_type = msg_type;
+    g_subscriptions[slot].callback = NULL;  /* Callback set via bio_module_register_handler */
+    g_subscriptions[slot].user_data = ctx;
+    g_subscriptions[slot].channel = -1;     /* Default channel */
+    g_subscriptions[slot].active = true;
+
+    if (slot == g_subscription_count) {
+        g_subscription_count++;
+    }
+
+    nimcp_platform_mutex_unlock(&g_subscription_mutex);
+
+    LOG_DEBUG("bio_router_subscribe: subscribed to msg_type=0x%04x (slot=%u)",
+              msg_type, slot);
+    return true;
+}
+
+/**
+ * @brief Unsubscribe from a message channel
+ *
+ * WHAT: Remove subscription from bio-async message system
+ * WHY:  Clean up subscriptions when module shuts down to prevent dangling callbacks
+ * HOW:  Find matching subscription and mark inactive with thread-safe access
+ *
+ * @param channel Neuromodulator channel (BIO_CHANNEL_*)
+ * @param msg_type Message type to unsubscribe from (BIO_MSG_* constant)
+ * @param callback Callback function that was registered
+ * @param user_data User context data that was provided during subscription
+ */
+void bio_async_unsubscribe(int channel, uint32_t msg_type, void* callback, void* user_data) {
+    /* WHAT: Guard clause - ensure subscription system initialized */
+    if (!g_subscription_initialized) {
+        LOG_DEBUG("bio_async_unsubscribe: subscription system not initialized");
+        return;
+    }
+
+    /* WHAT: Acquire lock for thread-safe modification */
+    nimcp_platform_mutex_lock(&g_subscription_mutex);
+
+    /* WHAT: Find and deactivate matching subscription */
+    bool found = false;
+    for (uint32_t i = 0; i < g_subscription_count; i++) {
+        if (g_subscriptions[i].active &&
+            g_subscriptions[i].msg_type == msg_type &&
+            (callback == NULL || g_subscriptions[i].callback == callback) &&
+            (user_data == NULL || g_subscriptions[i].user_data == user_data) &&
+            (channel < 0 || g_subscriptions[i].channel == channel)) {
+
+            g_subscriptions[i].active = false;
+            found = true;
+            LOG_DEBUG("bio_async_unsubscribe: removed subscription at slot %u "
+                      "(channel=%d, msg_type=0x%04x)", i, channel, msg_type);
+            break;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&g_subscription_mutex);
+
+    if (!found) {
+        LOG_DEBUG("bio_async_unsubscribe: no matching subscription found "
+                  "(channel=%d, msg_type=0x%04x)", channel, msg_type);
+    }
+}
+
+/*=============================================================================
+ * BBB EMOTION QUERY REGISTRATION
+ *============================================================================*/
+
+/**
+ * @brief Emotion query registration entry
+ */
+typedef struct {
+    void* system;               /**< System context pointer */
+    char module_name[64];       /**< Module name */
+    uint64_t query_count;       /**< Number of queries performed */
+    bool active;                /**< Whether registration is active */
+} bbb_emotion_registration_t;
+
+#define MAX_EMOTION_REGISTRATIONS 64
+static bbb_emotion_registration_t g_emotion_registrations[MAX_EMOTION_REGISTRATIONS];
+static uint32_t g_emotion_registration_count = 0;
+static nimcp_platform_mutex_t g_emotion_reg_mutex;
+static bool g_emotion_reg_initialized = false;
+
+/**
+ * @brief Initialize emotion registration subsystem
+ */
+static void emotion_registration_init(void) {
+    if (g_emotion_reg_initialized) {
+        return;
+    }
+    nimcp_platform_mutex_init(&g_emotion_reg_mutex, false);
+    memset(g_emotion_registrations, 0, sizeof(g_emotion_registrations));
+    g_emotion_registration_count = 0;
+    g_emotion_reg_initialized = true;
+}
+
+/**
+ * @brief Register with BBB for emotion queries
+ *
+ * WHAT: Register a module with the Blood-Brain Barrier for emotion-related queries
+ * WHY:  Security validation ensures only authorized modules can access emotion state
+ * HOW:  Add module to registration table with mutex protection for thread safety
+ *
+ * @param system System/module context pointer
+ * @param module_name Human-readable module name for logging and auditing
+ */
+void bbb_register_emotion_query(void* system, const char* module_name) {
+    /* WHAT: Guard clause - validate system pointer */
+    if (system == NULL) {
+        LOG_WARNING("bbb_register_emotion_query: NULL system pointer");
+        return;
+    }
+
+    /* WHAT: Initialize registration system on first use */
+    if (!g_emotion_reg_initialized) {
+        emotion_registration_init();
+    }
+
+    /* WHAT: Acquire lock for thread-safe modification */
+    nimcp_platform_mutex_lock(&g_emotion_reg_mutex);
+
+    /* WHAT: Check registration limit */
+    if (g_emotion_registration_count >= MAX_EMOTION_REGISTRATIONS) {
+        nimcp_platform_mutex_unlock(&g_emotion_reg_mutex);
+        LOG_ERROR("bbb_register_emotion_query: registration limit reached (%u)",
+                  MAX_EMOTION_REGISTRATIONS);
+        return;
+    }
+
+    /* WHAT: Check for duplicate registration */
+    for (uint32_t i = 0; i < g_emotion_registration_count; i++) {
+        if (g_emotion_registrations[i].active &&
+            g_emotion_registrations[i].system == system) {
+            /* Already registered - update name if provided */
+            if (module_name != NULL) {
+                strncpy(g_emotion_registrations[i].module_name, module_name,
+                        sizeof(g_emotion_registrations[i].module_name) - 1);
+            }
+            nimcp_platform_mutex_unlock(&g_emotion_reg_mutex);
+            LOG_DEBUG("bbb_register_emotion_query: updated registration for %s",
+                      module_name ? module_name : "unknown");
+            return;
+        }
+    }
+
+    /* WHAT: Find free slot */
+    uint32_t slot = g_emotion_registration_count;
+    for (uint32_t i = 0; i < g_emotion_registration_count; i++) {
+        if (!g_emotion_registrations[i].active) {
+            slot = i;
+            break;
+        }
+    }
+
+    /* WHAT: Create registration entry */
+    g_emotion_registrations[slot].system = system;
+    if (module_name != NULL) {
+        strncpy(g_emotion_registrations[slot].module_name, module_name,
+                sizeof(g_emotion_registrations[slot].module_name) - 1);
+        g_emotion_registrations[slot].module_name[
+            sizeof(g_emotion_registrations[slot].module_name) - 1] = '\0';
+    } else {
+        snprintf(g_emotion_registrations[slot].module_name,
+                 sizeof(g_emotion_registrations[slot].module_name),
+                 "module_%p", system);
+    }
+    g_emotion_registrations[slot].query_count = 0;
+    g_emotion_registrations[slot].active = true;
+
+    if (slot == g_emotion_registration_count) {
+        g_emotion_registration_count++;
+    }
+
+    nimcp_platform_mutex_unlock(&g_emotion_reg_mutex);
+
+    LOG_INFO("bbb_register_emotion_query: registered module '%s' (slot=%u)",
+             g_emotion_registrations[slot].module_name, slot);
+}

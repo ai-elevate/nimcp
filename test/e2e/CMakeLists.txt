@@ -279,6 +279,12 @@ add_e2e_test(e2e_test_positional_encoding_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_positional_encoding_pipeline.cpp
 )
 
+# Introspection Pipeline E2E Test (Consciousness, Temporal Patterns, Uncertainty)
+add_e2e_test(e2e_test_introspection_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_introspection_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

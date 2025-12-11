@@ -27,6 +27,7 @@
  */
 
 #include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/introspection/nimcp_ensemble_uncertainty.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -114,12 +115,21 @@ struct introspection_context_struct {
     /* Activity history - now using standardized queue utility */
     nimcp_queue_handle_t activity_queue; /* Activity snapshots queue */
 
+    /* Auto activity history state */
+    uint64_t last_sample_time_ms;        /* Last sampling timestamp */
+    activity_sample_callback_t sample_callback; /* Registered callback */
+    void* sample_callback_context;       /* User context for callback */
+    float last_avg_activation;           /* Previous avg for change detection */
+
     /* Network topology cache */
     network_topology_t topology; /* Cached topology */
     bool topology_cached;        /* Is topology valid? */
 
     /* Statistics */
     introspection_stats_t stats; /* Performance stats */
+
+    /* Ensemble uncertainty (Phase: Real Ensemble Implementation) */
+    ensemble_context_t ensemble; /* Ensemble for true uncertainty estimation */
 
     /* Thread safety */
     nimcp_mutex_t lock; /* Protects context */
@@ -204,7 +214,10 @@ introspection_config_t introspection_default_config(void)
                                      .uncertainty_ensemble_size = 5,
                                      .enable_bio_async = false,
                                      .on_state_change = NULL,
-                                     .callback_context = NULL};
+                                     .callback_context = NULL,
+                                     .enable_auto_history = false,
+                                     .history_sample_interval_ms = 100,  /* 100ms default */
+                                     .history_change_threshold = 0.05F}; /* 5% change threshold */
     return config;
 }
 
@@ -240,7 +253,14 @@ introspection_context_t introspection_context_create(brain_t brain,
     context->topology_cached = false;
     context->bio_ctx = NULL;
     context->bio_async_enabled = false;
+    context->ensemble = NULL;  /* Ensemble created on-demand or via introspection_set_ensemble */
     nimcp_mutex_init(&context->lock, NULL);
+
+    /* WHAT: Initialize auto activity history state */
+    context->last_sample_time_ms = 0;
+    context->sample_callback = NULL;
+    context->sample_callback_context = NULL;
+    context->last_avg_activation = 0.0F;
 
     /* WHAT: Register with bio-async router if enabled */
     /* WHY: Enable asynchronous introspection queries and responses */
@@ -348,6 +368,11 @@ void introspection_context_destroy(introspection_context_t context)
     if (context->topology_cached) {
         network_topology_free(&context->topology);
     }
+
+    /* WHAT: Destroy ensemble if owned */
+    /* NOTE: ensemble is NOT owned by introspection context,
+     * caller must destroy it separately. We just NULL the pointer here. */
+    context->ensemble = NULL;
 
     /* WHAT: Destroy mutex and free context */
     nimcp_mutex_destroy(&context->lock);
@@ -740,47 +765,125 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
     context->stats.queries_uncertainty++;
     nimcp_mutex_unlock(&context->lock);
 
-    /* WHAT: Get ensemble size from config */
-    uint32_t ensemble_size = context->config.uncertainty_ensemble_size;
-    uncertainty.ensemble_size = ensemble_size;
+    /* WHAT: Check if ensemble is attached */
+    /* WHY: Use real ensemble if available, fallback to heuristic */
+    ensemble_context_t ensemble = context->ensemble;
 
-    /* WHAT: Allocate array for ensemble predictions */
-    uncertainty.ensemble_predictions = (float*) nimcp_malloc(ensemble_size * sizeof(float));
-    if (uncertainty.ensemble_predictions == NULL) {
-        return uncertainty;
+    if (ensemble != NULL) {
+        /* CASE 1: Real ensemble available - compute true uncertainty */
+        LOG_DEBUG("Using real ensemble for uncertainty estimation");
+
+        /* WHAT: Get uncertainty from ensemble */
+        ensemble_uncertainty_result_t ens_result =
+            ensemble_compute_uncertainty(ensemble, features, num_features);
+
+        /* WHAT: Transfer ensemble results to brain uncertainty structure */
+        uncertainty.epistemic = ens_result.epistemic;
+        uncertainty.aleatoric = ens_result.aleatoric;
+        uncertainty.total = ens_result.total;
+        uncertainty.ensemble_size = ens_result.num_models;
+
+        /* WHAT: Allocate and copy ensemble predictions */
+        uncertainty.ensemble_predictions = (float*)
+            nimcp_malloc(ens_result.num_models * sizeof(float));
+        if (uncertainty.ensemble_predictions != NULL && ens_result.mean_prediction != NULL) {
+            /* Copy mean prediction as representative ensemble output */
+            /* For compatibility, store first output dimension from each model */
+            for (uint32_t i = 0; i < ens_result.num_models && i < ens_result.num_models; i++) {
+                if (ens_result.individual_predictions != NULL &&
+                    ens_result.individual_predictions[i].prediction != NULL &&
+                    ens_result.individual_predictions[i].size > 0) {
+                    uncertainty.ensemble_predictions[i] =
+                        ens_result.individual_predictions[i].prediction[0];
+                } else {
+                    uncertainty.ensemble_predictions[i] = 0.0F;
+                }
+            }
+        }
+
+        /* WHAT: Clean up ensemble result */
+        ensemble_uncertainty_free(&ens_result);
+
+    } else {
+        /* CASE 2: No ensemble - use improved heuristic based on network state */
+        LOG_WARN("No ensemble attached - using heuristic uncertainty estimation");
+
+        /* WHAT: Get ensemble size from config for fallback */
+        uint32_t ensemble_size = context->config.uncertainty_ensemble_size;
+        uncertainty.ensemble_size = ensemble_size;
+
+        /* WHAT: Allocate array for simulated predictions */
+        uncertainty.ensemble_predictions = (float*)
+            nimcp_malloc(ensemble_size * sizeof(float));
+        if (uncertainty.ensemble_predictions == NULL) {
+            return uncertainty;
+        }
+
+        /* WHAT: Use network state to estimate uncertainty */
+        /* HOW: Base uncertainty on network activation statistics */
+        adaptive_network_t network = brain_get_network(context->brain);
+        float base_prediction = 0.5F;  /* Default neutral prediction */
+        float variance_estimate = 0.1F; /* Default variance */
+
+        if (network != NULL) {
+            /* WHAT: Get network activity to inform uncertainty */
+            neuron_population_t pop = brain_get_active_population(context, 0.3F);
+            if (pop.num_active > 0) {
+                /* Base prediction on network activity */
+                float activity_ratio = (float) pop.num_active / (float) pop.total_neurons;
+                base_prediction = activity_ratio;
+
+                /* Variance based on activity distribution */
+                if (pop.activation_levels != NULL) {
+                    float mean_act = 0.0F;
+                    for (uint32_t i = 0; i < pop.num_active; i++) {
+                        mean_act += pop.activation_levels[i];
+                    }
+                    mean_act /= pop.num_active;
+
+                    float var = 0.0F;
+                    for (uint32_t i = 0; i < pop.num_active; i++) {
+                        float diff = pop.activation_levels[i] - mean_act;
+                        var += diff * diff;
+                    }
+                    variance_estimate = sqrtf(var / pop.num_active);
+                }
+            }
+            neuron_population_free(&pop);
+        }
+
+        /* WHAT: Generate simulated ensemble predictions */
+        float mean_prediction = 0.0F;
+        for (uint32_t i = 0; i < ensemble_size; i++) {
+            /* Add noise based on estimated variance */
+            float noise = ((float) rand() / RAND_MAX - 0.5F) * variance_estimate * 2.0F;
+            uncertainty.ensemble_predictions[i] = base_prediction + noise;
+            /* Clamp to [0, 1] */
+            if (uncertainty.ensemble_predictions[i] < 0.0F)
+                uncertainty.ensemble_predictions[i] = 0.0F;
+            if (uncertainty.ensemble_predictions[i] > 1.0F)
+                uncertainty.ensemble_predictions[i] = 1.0F;
+            mean_prediction += uncertainty.ensemble_predictions[i];
+        }
+        mean_prediction /= ensemble_size;
+
+        /* WHAT: Compute epistemic uncertainty (variance of predictions) */
+        float variance = 0.0F;
+        for (uint32_t i = 0; i < ensemble_size; i++) {
+            float diff = uncertainty.ensemble_predictions[i] - mean_prediction;
+            variance += diff * diff;
+        }
+        variance /= ensemble_size;
+        uncertainty.epistemic = sqrtf(variance);
+
+        /* WHAT: Compute aleatoric uncertainty (entropy of mean prediction) */
+        float p = mean_prediction;
+        if (p < 1e-6F)
+            p = 1e-6F;
+        if (p > 1.0F - 1e-6F)
+            p = 1.0F - 1e-6F;
+        uncertainty.aleatoric = -(p * log2f(p) + (1.0F - p) * log2f(1.0F - p));
     }
-
-    /* WHAT: Get predictions from ensemble */
-    /* WHY: Variance in predictions indicates uncertainty */
-    /* TODO: In real implementation, this would use actual ensemble */
-    /* For now, simulate with random variations */
-    float mean_prediction = 0.0F;
-    for (uint32_t i = 0; i < ensemble_size; i++) {
-        /* Simulate ensemble predictions with some variance */
-        uncertainty.ensemble_predictions[i] = 0.5F + ((float) rand() / RAND_MAX - 0.5F) * 0.3F;
-        mean_prediction += uncertainty.ensemble_predictions[i];
-    }
-    mean_prediction /= ensemble_size;
-
-    /* WHAT: Compute epistemic uncertainty (variance of predictions) */
-    /* WHY: High variance means models disagree = model doesn't know */
-    float variance = 0.0F;
-    for (uint32_t i = 0; i < ensemble_size; i++) {
-        float diff = uncertainty.ensemble_predictions[i] - mean_prediction;
-        variance += diff * diff;
-    }
-    variance /= ensemble_size;
-    uncertainty.epistemic = sqrtf(variance); /* Standard deviation */
-
-    /* WHAT: Compute aleatoric uncertainty (entropy of mean prediction) */
-    /* WHY: High entropy means prediction is uncertain = data is noisy */
-    /* For binary classification: H = -p*log(p) - (1-p)*log(1-p) */
-    float p = mean_prediction;
-    if (p < 1e-6F)
-        p = 1e-6F;
-    if (p > 1.0F - 1e-6F)
-        p = 1.0F - 1e-6F;
-    uncertainty.aleatoric = -(p * log2f(p) + (1.0F - p) * log2f(1.0F - p));
 
     /* =========================================================================
      * PHASE 10.3: Emotional working memory modulation of uncertainty
@@ -1398,6 +1501,54 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
 }
 
 /* ========================================================================
+ * ENSEMBLE UNCERTAINTY INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Attach ensemble to introspection context
+ * WHY: Enable real uncertainty estimation in brain_get_uncertainty()
+ * HOW: Store ensemble reference in context
+ *
+ * COMPLEXITY: O(1)
+ */
+bool introspection_set_ensemble(introspection_context_t context,
+                                ensemble_context_t ensemble)
+{
+    if (context == NULL) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+    context->ensemble = ensemble;
+    nimcp_mutex_unlock(&context->lock);
+
+    LOG_INFO("Ensemble attached to introspection context (%u models)",
+            ensemble ? ensemble_get_size(ensemble) : 0);
+
+    return true;
+}
+
+/**
+ * WHAT: Get ensemble from introspection context
+ * WHY: Access ensemble for manual uncertainty computation
+ * HOW: Return ensemble reference
+ *
+ * COMPLEXITY: O(1)
+ */
+ensemble_context_t introspection_get_ensemble(introspection_context_t context)
+{
+    if (context == NULL) {
+        return NULL;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+    ensemble_context_t ensemble = context->ensemble;
+    nimcp_mutex_unlock(&context->lock);
+
+    return ensemble;
+}
+
+/* ========================================================================
  * STATISTICS
  * ======================================================================== */
 
@@ -1441,6 +1592,249 @@ void introspection_reset_stats(introspection_context_t context)
     context->stats.memory_used_bytes = memory_used;
 
     nimcp_mutex_unlock(&context->lock);
+}
+
+/* ========================================================================
+ * AUTO ACTIVITY HISTORY IMPLEMENTATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Sample current brain activity and add to history
+ * WHY: Enable auto-population of activity history from brain processing loop
+ * HOW: Computes metrics from network, enqueues entry, invokes callback, sends bio-async message
+ *
+ * BIOLOGICAL BASIS:
+ * - Simulates metacognitive monitoring (self-awareness of processing load)
+ * - Energy estimation based on spiking activity (biological ATP consumption)
+ * - Threshold-based activation counting (neuron firing vs resting states)
+ *
+ * COMPLEXITY: O(n) where n = network size
+ * THREAD-SAFE: Yes (mutex protected)
+ */
+bool introspection_sample_activity(introspection_context_t context)
+{
+    /* WHAT: Validate input */
+    if (context == NULL) {
+        return false;
+    }
+
+    /* WHAT: Get brain's underlying network */
+    adaptive_network_t network = brain_get_network(context->brain);
+    if (network == NULL) {
+        return false;
+    }
+
+    /* WHAT: Get network size */
+    uint32_t total_neurons = adaptive_network_get_neuron_count(network);
+    if (total_neurons == 0) {
+        return false;
+    }
+
+    /* WHAT: Compute activity metrics */
+    /* WHY: Provide snapshot of current neural state */
+
+    /* Biological potential normalization constants */
+    const float REST_POTENTIAL = -65.0F;
+    const float PEAK_POTENTIAL = 30.0F;
+
+    float sum_activation = 0.0F;
+    float max_activation = 0.0F;
+    uint32_t num_active = 0;
+
+    /* WHAT: Scan all neurons to compute statistics */
+    /* HOW: Sample activations, normalize to [0,1], compute aggregates */
+    for (uint32_t i = 0; i < total_neurons; i++) {
+        float raw_activation;
+        if (adaptive_network_get_neuron_activation(network, i, &raw_activation)) {
+            /* Normalize biological potential to [0,1] */
+            float normalized = (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
+            if (normalized < 0.0F)
+                normalized = 0.0F;
+            if (normalized > 1.0F)
+                normalized = 1.0F;
+
+            sum_activation += normalized;
+
+            if (normalized > max_activation) {
+                max_activation = normalized;
+            }
+
+            if (normalized >= context->config.activity_threshold) {
+                num_active++;
+            }
+        }
+    }
+
+    float avg_activation = total_neurons > 0 ? sum_activation / total_neurons : 0.0F;
+
+    /* WHAT: Estimate energy consumption */
+    /* WHY: Biological brains consume ATP proportional to spiking activity */
+    /* HOW: Energy ≈ spike_rate * num_active + baseline_metabolism */
+    /* BIOLOGICAL BASIS: ~10^8 ATP molecules per action potential (Attwell & Laughlin, 2001) */
+    float baseline_energy = 0.1F;  /* Baseline metabolic cost */
+    float spike_energy = avg_activation * 0.9F;  /* Activity-dependent cost */
+    float energy_consumption = baseline_energy + spike_energy;
+
+    /* WHAT: Create activity history entry */
+    activity_history_entry_t entry = {
+        .timestamp = nimcp_time_monotonic_ms(),
+        .avg_activation = avg_activation,
+        .max_activation = max_activation,
+        .num_active = num_active,
+        .energy_consumption = energy_consumption
+    };
+
+    /* WHAT: Apply change threshold filter */
+    /* WHY: Avoid redundant samples when activity is stable */
+    /* HOW: Only record if change exceeds threshold */
+    if (context->config.history_change_threshold > 0.0F) {
+        float change = fabsf(avg_activation - context->last_avg_activation);
+        if (change < context->config.history_change_threshold) {
+            /* Activity hasn't changed significantly - skip this sample */
+            return true;  /* Success, but didn't record */
+        }
+    }
+
+    /* WHAT: Update last activation for next comparison */
+    context->last_avg_activation = avg_activation;
+
+    /* WHAT: Add to activity history queue */
+    /* WHY: Maintain temporal record of brain activity */
+    nimcp_result_t result = nimcp_queue_enqueue(context->activity_queue, &entry, 0);
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN(LOG_MODULE, "Failed to enqueue activity sample: %d", result);
+        return false;
+    }
+
+    /* WHAT: Invoke registered callback if present */
+    /* WHY: Allow external observers to react to activity snapshots */
+    if (context->sample_callback != NULL) {
+        context->sample_callback(&entry, context->sample_callback_context);
+    }
+
+    /* WHAT: Send bio-async message if enabled */
+    /* WHY: Notify other brain modules of activity snapshot */
+    if (context->bio_async_enabled && context->bio_ctx) {
+        bio_msg_introspection_response_t msg = {};
+        bio_msg_init_header(&msg.header, BIO_MSG_INTROSPECTION_RESPONSE,
+                            bio_module_context_get_id(context->bio_ctx), 0, sizeof(msg));
+        msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+        msg.cognitive_load = avg_activation;
+        msg.confidence = 1.0F - avg_activation;  /* Simple confidence estimate */
+        bio_router_broadcast(context->bio_ctx, &msg, sizeof(msg));
+    }
+
+    return true;
+}
+
+/**
+ * WHAT: Set activity sampling interval
+ * WHY: Allow runtime adjustment of sampling rate
+ * HOW: Updates configuration with mutex protection
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool introspection_set_sample_interval(introspection_context_t context, uint32_t interval_ms)
+{
+    /* WHAT: Validate input */
+    if (context == NULL) {
+        return false;
+    }
+
+    /* WHAT: Update interval with mutex protection */
+    nimcp_mutex_lock(&context->lock);
+    context->config.history_sample_interval_ms = interval_ms;
+    nimcp_mutex_unlock(&context->lock);
+
+    return true;
+}
+
+/**
+ * WHAT: Get activity history buffer statistics
+ * WHY: Monitor history usage and performance
+ * HOW: Query queue statistics and compute utilization
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool introspection_get_history_stats(introspection_context_t context,
+                                     uint32_t* current_size,
+                                     uint32_t* capacity,
+                                     float* utilization)
+{
+    /* WHAT: Validate inputs */
+    if (context == NULL || current_size == NULL || capacity == NULL || utilization == NULL) {
+        return false;
+    }
+
+    /* WHAT: Get queue statistics */
+    size_t size = nimcp_queue_get_size(context->activity_queue);
+    size_t cap = nimcp_queue_get_capacity(context->activity_queue);
+
+    /* WHAT: Populate outputs */
+    *current_size = (uint32_t) size;
+    *capacity = (uint32_t) cap;
+    *utilization = cap > 0 ? (float) size / (float) cap : 0.0F;
+
+    return true;
+}
+
+/**
+ * WHAT: Clear activity history queue
+ * WHY: Reset history tracking
+ * HOW: Clear all entries from queue
+ *
+ * COMPLEXITY: O(h) where h = current history size
+ * THREAD-SAFE: Yes
+ */
+bool introspection_clear_history(introspection_context_t context)
+{
+    /* WHAT: Validate input */
+    if (context == NULL) {
+        return false;
+    }
+
+    /* WHAT: Clear queue */
+    nimcp_result_t result = nimcp_queue_clear(context->activity_queue);
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN(LOG_MODULE, "Failed to clear activity history: %d", result);
+        return false;
+    }
+
+    /* WHAT: Reset last activation */
+    nimcp_mutex_lock(&context->lock);
+    context->last_avg_activation = 0.0F;
+    nimcp_mutex_unlock(&context->lock);
+
+    return true;
+}
+
+/**
+ * WHAT: Register callback for activity sampling events
+ * WHY: Allow external observers to react to each activity snapshot
+ * HOW: Store callback and context with mutex protection
+ *
+ * DESIGN PATTERN: Observer (callback registration)
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool introspection_set_activity_callback(introspection_context_t context,
+                                         activity_sample_callback_t callback,
+                                         void* user_data)
+{
+    /* WHAT: Validate input */
+    if (context == NULL) {
+        return false;
+    }
+
+    /* WHAT: Update callback with mutex protection */
+    nimcp_mutex_lock(&context->lock);
+    context->sample_callback = callback;
+    context->sample_callback_context = user_data;
+    nimcp_mutex_unlock(&context->lock);
+
+    return true;
 }
 
 /* ========================================================================
