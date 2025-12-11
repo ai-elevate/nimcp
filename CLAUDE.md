@@ -73,6 +73,24 @@ Implemented biologically-inspired immune coordination layer integrating BBB, BFT
 - **Cross-reactive immunity**: Recognizes variants at 70% threshold
 - **Auto-recognition**: Memory check triggers secondary response on antigen presentation
 
+**Cytokine Enum Naming:**
+```c
+// Base cytokine types (from nimcp_swarm_immune.h)
+CYTOKINE_IL1B, CYTOKINE_IL6, CYTOKINE_IL10, CYTOKINE_TNFA
+
+// Brain-specific wrapper (from nimcp_brain_immune.h)
+BRAIN_CYTOKINE_IL1 = CYTOKINE_IL1B    // Use BRAIN_CYTOKINE_IL1 in code
+BRAIN_CYTOKINE_IL6 = CYTOKINE_IL6
+BRAIN_CYTOKINE_IL10 = CYTOKINE_IL10
+BRAIN_CYTOKINE_TNF = CYTOKINE_TNFA
+BRAIN_CYTOKINE_IFN_GAMMA = 5          // Brain-specific (quarantine)
+BRAIN_CYTOKINE_COUNT = 6
+
+// Module-specific constants use CYTOKINE_IL1_ prefix (not IL1B):
+CYTOKINE_IL1_ATTENTION_IMPACT, CYTOKINE_IL1_LTP_IMPAIRMENT, etc.
+CYTOKINE_IFN_GAMMA_* (not BRAIN_CYTOKINE_IFN_GAMMA_*)
+```
+
 **API Examples:**
 ```c
 // Create and start immune system
@@ -109,6 +127,64 @@ float affinity = brain_immune_compute_affinity(pattern1, len1, pattern2, len2);
 - E2E: 13 tests (`./test/e2e/e2e_test_brain_immune_pipeline`)
 
 **GOTCHA**: B cells must be in PLASMA state to produce antibodies. Use `brain_immune_t_help_b()` to transition from ACTIVATED → PLASMA.
+
+### Brain Immune Integration Across Modules (Complete - Dec 2024)
+Integrated brain immune system bidirectionally with 27+ NIMCP modules:
+
+| Category | Modules | Bridge Headers |
+|----------|---------|----------------|
+| Cognitive | Attention, Memory, Reasoning, Executive, Introspection, Curiosity, Wellbeing, Mental Health, ToM, Self-Model, Sleep | `include/cognitive/immune/nimcp_*_immune_bridge.h` |
+| Perception | Visual Cortex, Audio Cortex, Speech Cortex | `include/perception/immune/nimcp_*_immune_bridge.h` |
+| Plasticity | STDP, BCM, Homeostatic, Synaptic Scaling, Eligibility Traces | `include/plasticity/immune/nimcp_*_immune_bridge.h` |
+| Middleware | Routing, Buffering, Population Coding, Feature Extraction, Thalamic | `include/middleware/immune/nimcp_*_immune*.h` |
+| Core | Oscillations, Cortical Columns, Broca's Area | Various locations |
+
+**Integration Pattern:**
+```c
+// Each bridge follows this pattern:
+typedef struct {
+    brain_immune_system_t* immune_system;  // Pointer to brain immune
+    <module>_t* module;                     // Module being integrated
+    <module>_immune_config_t config;        // Bridge configuration
+    <module>_cytokine_effects_t cytokine_effects;  // Computed effects
+    nimcp_mutex_t* mutex;                   // Thread safety
+} <module>_immune_bridge_t;
+
+// Standard API:
+<module>_immune_bridge_t* <module>_immune_create(config, module, immune_system);
+void <module>_immune_destroy(bridge);
+int <module>_immune_update(bridge);  // Update cytokine effects
+int <module>_immune_apply_modulation(bridge);  // Apply to module
+```
+
+**Logging Macros:**
+```c
+// Correct: NIMCP_LOGGING_* macros
+NIMCP_LOGGING_ERROR("message");
+NIMCP_LOGGING_WARN("message");
+NIMCP_LOGGING_INFO("message");
+NIMCP_LOGGING_DEBUG("message");
+
+// Wrong: nimcp_log_* (doesn't exist)
+```
+
+**Error Codes:**
+```c
+// Correct error codes
+NIMCP_ERROR_NULL_POINTER
+NIMCP_ERROR_INVALID_STATE
+NIMCP_ERROR_INVALID_PARAMETER
+NIMCP_ERROR_OPERATION_FAILED
+NIMCP_ERROR_NO_MEMORY
+
+// Wrong (don't use)
+NIMCP_ERR_*, NIMCP_ERROR_INVALID_ARGUMENT, NIMCP_ERROR_RESOURCE_EXHAUSTED
+```
+
+**Files Added (289 files, 119K+ lines):**
+- 27 header files in `include/*/immune/`
+- 27 implementation files in `src/*/immune/`
+- 70+ test files in `test/unit/*/immune/`
 
 ### Training-Immune Integration (Complete - Dec 2024)
 Bidirectional integration between brain immune system and training pipeline, modeling fever-induced learning suppression and immune responses to training instabilities:
