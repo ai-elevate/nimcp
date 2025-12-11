@@ -36,3 +36,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_quorum_immune_logic_regression.cpp
     regression
 )
+
+# Test 6: Swarm Consciousness Regression
+add_test_binary(
+    test_swarm_consciousness_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_regression.cpp
+    regression
+)

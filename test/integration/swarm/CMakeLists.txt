@@ -50,3 +50,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_quorum_immune_logic_integration.cpp
     integration
 )
+
+# Test 8: Swarm Consciousness Integration
+add_test_binary(
+    test_swarm_consciousness_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_integration.cpp
+    integration
+)

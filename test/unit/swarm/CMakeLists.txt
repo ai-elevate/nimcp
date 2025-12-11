@@ -78,3 +78,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_immune_threat_logic.cpp
     unit
 )
+
+# Test 12: Swarm Consciousness (Gestalt)
+add_test_binary(
+    test_swarm_consciousness
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness.cpp
+    unit
+)

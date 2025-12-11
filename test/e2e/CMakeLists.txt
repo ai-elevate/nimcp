@@ -285,6 +285,12 @@ add_e2e_test(e2e_test_introspection_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_introspection_pipeline.cpp
 )
 
+# Swarm Consciousness Pipeline E2E Test (Gestalt Consciousness)
+add_e2e_test(e2e_test_swarm_consciousness_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_consciousness_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

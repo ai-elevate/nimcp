@@ -637,6 +637,7 @@ set(NIMCP_CORE_SOURCES
 
     # Swarm Infrastructure - Local Brain Instantiation and Protocol Metrics
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_brain_local.c    # Per-agent brain management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consciousness.c  # Gestalt consciousness (collective phi)
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_protocol_metrics.c # Protocol metrics dashboard
 
     # Platform Tier System (Portia Spider Foundation)
