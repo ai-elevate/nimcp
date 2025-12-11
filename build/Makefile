@@ -5853,6 +5853,19 @@ e2e_test_fault_tolerance_pipeline/fast:
 .PHONY : e2e_test_fault_tolerance_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_brain_immune_pipeline
+
+# Build rule for target.
+e2e_test_brain_immune_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_brain_immune_pipeline
+.PHONY : e2e_test_brain_immune_pipeline
+
+# fast build rule for target.
+e2e_test_brain_immune_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_brain_immune_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_brain_immune_pipeline.dir/build
+.PHONY : e2e_test_brain_immune_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -7853,6 +7866,45 @@ regression_cognitive_mirror_neurons_substrate: cmake_check_build_system
 regression_cognitive_mirror_neurons_substrate/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_substrate.dir/build.make test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_substrate.dir/build
 .PHONY : regression_cognitive_mirror_neurons_substrate/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_brain_immune
+
+# Build rule for target.
+unit_cognitive_immune_brain_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_brain_immune
+.PHONY : unit_cognitive_immune_brain_immune
+
+# fast build rule for target.
+unit_cognitive_immune_brain_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_brain_immune.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_brain_immune.dir/build
+.PHONY : unit_cognitive_immune_brain_immune/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_immune_brain_immune
+
+# Build rule for target.
+integration_cognitive_immune_brain_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_immune_brain_immune
+.PHONY : integration_cognitive_immune_brain_immune
+
+# fast build rule for target.
+integration_cognitive_immune_brain_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_brain_immune.dir/build.make test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_brain_immune.dir/build
+.PHONY : integration_cognitive_immune_brain_immune/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_immune_brain_immune
+
+# Build rule for target.
+regression_cognitive_immune_brain_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_immune_brain_immune
+.PHONY : regression_cognitive_immune_brain_immune
+
+# fast build rule for target.
+regression_cognitive_immune_brain_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_brain_immune.dir/build.make test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_brain_immune.dir/build
+.PHONY : regression_cognitive_immune_brain_immune/fast
 
 #=============================================================================
 # Target rules for targets named test_protocol_control_message
@@ -11998,6 +12050,7 @@ help:
 	@echo "... e2e_test_bio_async_pipeline"
 	@echo "... e2e_test_bio_async_plasticity_pipeline"
 	@echo "... e2e_test_bio_async_training_pipeline"
+	@echo "... e2e_test_brain_immune_pipeline"
 	@echo "... e2e_test_brain_pipeline"
 	@echo "... e2e_test_cognitive_bio_async"
 	@echo "... e2e_test_cognitive_pipeline"
@@ -12059,6 +12112,7 @@ help:
 	@echo "... integration_cognitive_global_workspace_test_global_workspace_integration"
 	@echo "... integration_cognitive_global_workspace_test_global_workspace_shannon_integration"
 	@echo "... integration_cognitive_grief_test_grief_and_loss_integration"
+	@echo "... integration_cognitive_immune_brain_immune"
 	@echo "... integration_cognitive_introspection_auto_activity_history"
 	@echo "... integration_cognitive_introspection_connectivity_health"
 	@echo "... integration_cognitive_introspection_consciousness_metrics"
@@ -12209,6 +12263,7 @@ help:
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_regression"
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_shannon_regression"
 	@echo "... regression_cognitive_grief_test_grief_and_loss_backward_compat"
+	@echo "... regression_cognitive_immune_brain_immune"
 	@echo "... regression_cognitive_introspection_auto_activity_history"
 	@echo "... regression_cognitive_introspection_connectivity_health"
 	@echo "... regression_cognitive_introspection_consciousness_metrics"
@@ -12503,6 +12558,7 @@ help:
 	@echo "... unit_cognitive_global_workspace_test_global_workspace"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_shannon"
 	@echo "... unit_cognitive_grief_test_grief_and_loss"
+	@echo "... unit_cognitive_immune_brain_immune"
 	@echo "... unit_cognitive_introspection_auto_activity_history"
 	@echo "... unit_cognitive_introspection_connectivity_health"
 	@echo "... unit_cognitive_introspection_consciousness_metrics"

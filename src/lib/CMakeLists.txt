@@ -214,6 +214,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_attention.c  # Attention integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_curiosity.c  # Curiosity integration
 
+    # Brain Immune System (Coordination Layer for FT/Security Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune.c  # B/T cells, antibodies, cytokines coordination
+
     # Core Logic Modules (Phase 10.x: Neural Logic Gates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_attachment.c  # Neural logic attachment
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_evaluation.c  # Logic gate evaluation

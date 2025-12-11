@@ -303,6 +303,12 @@ add_e2e_test(e2e_test_fault_tolerance_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_fault_tolerance_pipeline.cpp
 )
 
+# Brain Immune System Pipeline E2E Test (B cells, T cells, Antibodies, Cytokines)
+add_e2e_test(e2e_test_brain_immune_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_immune_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

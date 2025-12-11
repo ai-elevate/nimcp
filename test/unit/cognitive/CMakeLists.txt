@@ -54,3 +54,6 @@ message(STATUS "  [SKIP] test_emotion_consolidation.cpp - source file not implem
 
 # Working Memory subdirectory (PE tests)
 add_subdirectory(working_memory)
+
+# Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
+# add_subdirectory(immune)

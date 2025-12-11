@@ -377,6 +377,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/mirror_neurons")
 endif()
 
 # ============================================================================
+# Cognitive Immune System Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/immune")
+    message(STATUS "Adding cognitive immune system unit tests...")
+    add_subdirectory(unit/cognitive/immune)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/immune")
+    message(STATUS "Adding cognitive immune system integration tests...")
+    add_subdirectory(integration/cognitive/immune)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/immune")
+    message(STATUS "Adding cognitive immune system regression tests...")
+    add_subdirectory(regression/cognitive/immune)
+endif()
+
+# ============================================================================
 # Networking Protocol Tests
 # ============================================================================
 

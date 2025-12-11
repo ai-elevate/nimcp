@@ -1121,6 +1121,30 @@ __/cognitive/grief/nimcp_grief_and_loss.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_and_loss.c.s
 .PHONY : __/cognitive/grief/nimcp_grief_and_loss.c.s
 
+__/cognitive/immune/nimcp_brain_immune.o: __/cognitive/immune/nimcp_brain_immune.c.o
+.PHONY : __/cognitive/immune/nimcp_brain_immune.o
+
+# target to build an object file
+__/cognitive/immune/nimcp_brain_immune.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_brain_immune.c.o
+.PHONY : __/cognitive/immune/nimcp_brain_immune.c.o
+
+__/cognitive/immune/nimcp_brain_immune.i: __/cognitive/immune/nimcp_brain_immune.c.i
+.PHONY : __/cognitive/immune/nimcp_brain_immune.i
+
+# target to preprocess a source file
+__/cognitive/immune/nimcp_brain_immune.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_brain_immune.c.i
+.PHONY : __/cognitive/immune/nimcp_brain_immune.c.i
+
+__/cognitive/immune/nimcp_brain_immune.s: __/cognitive/immune/nimcp_brain_immune.c.s
+.PHONY : __/cognitive/immune/nimcp_brain_immune.s
+
+# target to generate assembly for a file
+__/cognitive/immune/nimcp_brain_immune.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_brain_immune.c.s
+.PHONY : __/cognitive/immune/nimcp_brain_immune.c.s
+
 __/cognitive/introspection/nimcp_connectivity_health.o: __/cognitive/introspection/nimcp_connectivity_health.c.o
 .PHONY : __/cognitive/introspection/nimcp_connectivity_health.o
 
@@ -10684,6 +10708,9 @@ help:
 	@echo "... __/cognitive/grief/nimcp_grief_and_loss.o"
 	@echo "... __/cognitive/grief/nimcp_grief_and_loss.i"
 	@echo "... __/cognitive/grief/nimcp_grief_and_loss.s"
+	@echo "... __/cognitive/immune/nimcp_brain_immune.o"
+	@echo "... __/cognitive/immune/nimcp_brain_immune.i"
+	@echo "... __/cognitive/immune/nimcp_brain_immune.s"
 	@echo "... __/cognitive/introspection/nimcp_connectivity_health.o"
 	@echo "... __/cognitive/introspection/nimcp_connectivity_health.i"
 	@echo "... __/cognitive/introspection/nimcp_connectivity_health.s"

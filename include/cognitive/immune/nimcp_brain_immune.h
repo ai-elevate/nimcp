@@ -1,0 +1,1245 @@
+/**
+ * @file nimcp_brain_immune.h
+ * @brief Brain Immune System - Adaptive Defense Coordination Layer
+ * @version 1.0.0
+ * @date 2025-12-11
+ *
+ * WHAT: Coordination layer implementing biological immune concepts (B cells,
+ *       T cells, antibodies, cytokines) by orchestrating existing FT and
+ *       security modules.
+ * WHY:  Provides unified immune-style API for threat detection and response,
+ *       coordinating BBB security, BFT, swarm immune, and recovery systems.
+ * HOW:  Maps biological immune concepts to existing module operations:
+ *       - B cells → Swarm immune memory cells + BBB threat signatures
+ *       - T cells → BFT quarantine actions + recovery triggers
+ *       - Antibodies → Coordinated response strategies
+ *       - Cytokines → Bio-async signaling between modules
+ *       - Inflammation → Hierarchical recovery escalation
+ *
+ * BIOLOGICAL MODEL:
+ * ```
+ * BIOLOGICAL CONCEPT              NIMCP IMPLEMENTATION
+ * ─────────────────────────────────────────────────────────────────
+ * Antigen presentation         → BBB threat detection → immune processing
+ * B cells (antibody production)→ Swarm immune memory cells + response gen
+ * Helper T cells (CD4+)        → Coordination signals via bio-async
+ * Killer T cells (CD8+/CTL)    → BFT quarantine + DFT node isolation
+ * Antibodies                   → Swarm immune response strategies
+ * Memory cells                 → Swarm immune memory + BFT trust scores
+ * Cytokines                    → Bio-async messages (NOREPINEPHRINE channel)
+ * Inflammation                 → Hierarchical recovery escalation
+ * Resolution                   → Recovery completion + trust restoration
+ * ```
+ *
+ * ARCHITECTURE:
+ * ```
+ * ╔═══════════════════════════════════════════════════════════════════════════╗
+ * ║                    BRAIN IMMUNE SYSTEM (Coordination Layer)                ║
+ * ╠═══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                            ║
+ * ║   ┌────────────────────────────────────────────────────────────────────┐  ║
+ * ║   │              ANTIGEN PRESENTATION (Threat Intake)                   │  ║
+ * ║   │   ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐    │  ║
+ * ║   │   │ BBB Threats  │  │ BFT Byzantine│  │ Anomaly Detection    │    │  ║
+ * ║   │   │   Reports    │  │   Reports    │  │     Alerts           │    │  ║
+ * ║   │   └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘    │  ║
+ * ║   │          │                 │                      │                │  ║
+ * ║   │          └─────────────────┼──────────────────────┘                │  ║
+ * ║   │                            ▼                                       │  ║
+ * ║   │                   [Antigen Processing]                             │  ║
+ * ║   │                    (Threat Analysis)                               │  ║
+ * ║   └────────────────────────────┬───────────────────────────────────────┘  ║
+ * ║                                │                                          ║
+ * ║                                ▼                                          ║
+ * ║   ┌────────────────────────────────────────────────────────────────────┐  ║
+ * ║   │                    ADAPTIVE RESPONSE                                │  ║
+ * ║   │                                                                     │  ║
+ * ║   │   ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐   │  ║
+ * ║   │   │   B CELLS   │    │   T CELLS   │    │     CYTOKINES       │   │  ║
+ * ║   │   │ ──────────  │    │ ──────────  │    │ ─────────────────   │   │  ║
+ * ║   │   │ Swarm Immune│    │ Helper:     │    │ BIO_MSG_SECURITY_*  │   │  ║
+ * ║   │   │ Memory Cells│    │  Coordinate │    │ BIO_MSG_SWARM_      │   │  ║
+ * ║   │   │ + Signatures│    │ Killer:     │    │  IMMUNE_ALERT       │   │  ║
+ * ║   │   │             │    │  BFT Quaran │    │                     │   │  ║
+ * ║   │   └──────┬──────┘    └──────┬──────┘    └──────────┬──────────┘   │  ║
+ * ║   │          │                  │                      │              │  ║
+ * ║   │          ▼                  ▼                      ▼              │  ║
+ * ║   │   ┌─────────────────────────────────────────────────────────────┐ │  ║
+ * ║   │   │                     ANTIBODIES                               │ │  ║
+ * ║   │   │    Swarm Immune Response Strategies + BBB Actions            │ │  ║
+ * ║   │   │    (ISOLATION, EVASION, COUNTER_ATTACK, RECONFIGURATION)     │ │  ║
+ * ║   │   └─────────────────────────────────────────────────────────────┘ │  ║
+ * ║   └────────────────────────────────────────────────────────────────────┘  ║
+ * ║                                │                                          ║
+ * ║                                ▼                                          ║
+ * ║   ┌────────────────────────────────────────────────────────────────────┐  ║
+ * ║   │                    INFLAMMATION & RECOVERY                          │  ║
+ * ║   │   Hierarchical Recovery (Node→Pod→Region→Global) + Resolution       │  ║
+ * ║   └────────────────────────────────────────────────────────────────────┘  ║
+ * ║                                                                            ║
+ * ╚═══════════════════════════════════════════════════════════════════════════╝
+ * ```
+ *
+ * DESIGN PATTERNS:
+ * - Facade: Unified interface over BBB, BFT, Swarm Immune, Recovery
+ * - Observer: Callbacks for immune events
+ * - Strategy: Pluggable response strategies
+ * - Mediator: Coordinates cross-module communication
+ *
+ * NIMCP STANDARDS:
+ * - All functions < 50 lines
+ * - Guard clauses (early returns)
+ * - WHAT-WHY-HOW documentation
+ * - Thread-safe via mutex
+ * - nimcp_malloc/nimcp_free memory management
+ *
+ * @author NIMCP Development Team
+ */
+
+#ifndef NIMCP_BRAIN_IMMUNE_H
+#define NIMCP_BRAIN_IMMUNE_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+/* Module integrations */
+#include "security/nimcp_blood_brain_barrier.h"
+#include "utils/fault_tolerance/nimcp_byzantine_fault_tolerance.h"
+#include "swarm/nimcp_swarm_immune.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ============================================================================
+ * Constants
+ * ============================================================================ */
+
+#define BRAIN_IMMUNE_MAX_ANTIGENS        256   /**< Max pending antigens */
+#define BRAIN_IMMUNE_MAX_B_CELLS         512   /**< Max B cell abstractions */
+#define BRAIN_IMMUNE_MAX_T_CELLS         512   /**< Max T cell abstractions */
+#define BRAIN_IMMUNE_MAX_ANTIBODIES      1024  /**< Max active antibodies */
+#define BRAIN_IMMUNE_MAX_CYTOKINES       128   /**< Max active cytokine signals */
+#define BRAIN_IMMUNE_MAX_INFLAMMATION    64    /**< Max inflammation sites */
+#define BRAIN_IMMUNE_EPITOPE_SIZE        64    /**< Threat signature size */
+#define BRAIN_IMMUNE_MODULE_NAME         "brain_immune"
+
+/* ============================================================================
+ * Forward Declarations
+ * ============================================================================ */
+
+typedef struct brain_immune_system brain_immune_system_t;
+
+/* ============================================================================
+ * Enumerations
+ * ============================================================================ */
+
+/**
+ * @brief B cell states (maps to swarm immune memory lifecycle)
+ *
+ * BIOLOGICAL BASIS:
+ * B cells progress from naive → activated → memory/plasma states.
+ * We map this to swarm immune memory cell lifecycle.
+ */
+typedef enum {
+    B_CELL_NAIVE = 0,          /**< Unactivated, no bound antigen */
+    B_CELL_ACTIVATED,          /**< Activated by antigen recognition */
+    B_CELL_PLASMA,             /**< Producing antibodies (responses) */
+    B_CELL_MEMORY,             /**< Long-term memory (swarm memory cell) */
+    B_CELL_APOPTOTIC           /**< Marked for removal */
+} brain_b_cell_state_t;
+
+/**
+ * @brief T cell types (maps to BFT and coordination actions)
+ *
+ * BIOLOGICAL BASIS:
+ * CD4+ Helper T cells coordinate response.
+ * CD8+ Killer T cells directly eliminate threats.
+ */
+typedef enum {
+    T_CELL_NAIVE = 0,          /**< Unactivated */
+    T_CELL_HELPER,             /**< Coordinates response (cytokine release) */
+    T_CELL_KILLER,             /**< Direct action (BFT quarantine) */
+    T_CELL_REGULATORY,         /**< Suppresses over-response */
+    T_CELL_MEMORY              /**< Long-term (BFT trust history) */
+} brain_t_cell_type_t;
+
+/**
+ * @brief Antibody classes (maps to response intensity)
+ *
+ * BIOLOGICAL BASIS:
+ * IgM = first, fast but weak; IgG = mature, high affinity
+ */
+typedef enum {
+    ANTIBODY_IGM = 0,          /**< First response, lower effectiveness */
+    ANTIBODY_IGG,              /**< Mature response, high effectiveness */
+    ANTIBODY_IGE               /**< Emergency/severe threat response */
+} brain_antibody_class_t;
+
+/**
+ * @brief Cytokine types (maps to bio-async message channels)
+ *
+ * BIOLOGICAL BASIS:
+ * Different cytokines trigger different immune cascades.
+ */
+typedef enum {
+    CYTOKINE_IL1 = 0,          /**< Pro-inflammatory, alerts */
+    CYTOKINE_IL6,              /**< Acute phase, escalation */
+    CYTOKINE_IL10,             /**< Anti-inflammatory, resolution */
+    CYTOKINE_TNF_ALPHA,        /**< Severe inflammation */
+    CYTOKINE_IFN_GAMMA,        /**< Antiviral-style (quarantine) */
+    CYTOKINE_COUNT
+} brain_cytokine_type_t;
+
+/**
+ * @brief Antigen source types
+ */
+typedef enum {
+    ANTIGEN_SOURCE_BBB = 0,    /**< Blood-brain barrier threat */
+    ANTIGEN_SOURCE_BFT,        /**< Byzantine fault detection */
+    ANTIGEN_SOURCE_ANOMALY,    /**< Behavioral anomaly */
+    ANTIGEN_SOURCE_SWARM,      /**< Swarm immune detection */
+    ANTIGEN_SOURCE_MANUAL      /**< Manually reported */
+} brain_antigen_source_t;
+
+/**
+ * @brief Inflammation severity levels
+ */
+typedef enum {
+    INFLAMMATION_NONE = 0,     /**< No inflammation */
+    INFLAMMATION_LOCAL,        /**< Node-level (localized) */
+    INFLAMMATION_REGIONAL,     /**< Pod/region-level */
+    INFLAMMATION_SYSTEMIC,     /**< System-wide */
+    INFLAMMATION_STORM         /**< Cytokine storm (dangerous) */
+} brain_inflammation_level_t;
+
+/**
+ * @brief Immune system phase
+ */
+typedef enum {
+    IMMUNE_PHASE_SURVEILLANCE = 0,  /**< Normal monitoring */
+    IMMUNE_PHASE_RECOGNITION,       /**< Antigen detected */
+    IMMUNE_PHASE_ACTIVATION,        /**< Immune response activating */
+    IMMUNE_PHASE_EFFECTOR,          /**< Active response */
+    IMMUNE_PHASE_RESOLUTION,        /**< Threat cleared */
+    IMMUNE_PHASE_MEMORY             /**< Memory formation */
+} brain_immune_phase_t;
+
+/* ============================================================================
+ * Core Structures
+ * ============================================================================ */
+
+/**
+ * @brief Antigen - processed threat for immune response
+ *
+ * Represents a threat detected by BBB, BFT, or anomaly systems,
+ * normalized for immune processing.
+ */
+typedef struct {
+    uint32_t id;                           /**< Unique antigen ID */
+    brain_antigen_source_t source;         /**< Detection source */
+    uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE]; /**< Threat signature */
+    size_t epitope_len;                    /**< Signature length */
+
+    /* Source-specific data */
+    bbb_threat_type_t bbb_threat_type;     /**< BBB threat type (if source=BBB) */
+    bft_behavior_t bft_behavior;           /**< BFT behavior (if source=BFT) */
+    uint32_t source_node_id;               /**< Source node/entity */
+
+    /* Severity and confidence */
+    uint32_t severity;                     /**< 1-10 severity */
+    float confidence;                      /**< Detection confidence (0-1) */
+    float danger_signal;                   /**< Cumulative danger (0-1) */
+
+    /* State */
+    uint64_t detection_time;               /**< When first detected */
+    bool processed;                        /**< Processed by T cells */
+    bool neutralized;                      /**< Threat neutralized */
+    uint32_t response_count;               /**< Responses generated */
+} brain_antigen_t;
+
+/**
+ * @brief B Cell - antibody-producing abstraction
+ *
+ * Maps to swarm immune memory cells and response generation.
+ */
+typedef struct {
+    uint32_t id;                           /**< Unique B cell ID */
+    brain_b_cell_state_t state;            /**< Current state */
+    uint8_t receptor[BRAIN_IMMUNE_EPITOPE_SIZE]; /**< Recognition pattern */
+    size_t receptor_len;                   /**< Pattern length */
+    float affinity;                        /**< Antigen binding strength (0-1) */
+
+    uint32_t bound_antigen_id;             /**< Currently bound antigen */
+    uint32_t swarm_memory_cell_id;         /**< Linked swarm memory cell */
+
+    uint32_t antibodies_produced;          /**< Total antibodies produced */
+    uint64_t activation_time;              /**< When activated */
+    bool received_t_help;                  /**< Received helper T cell signal */
+} brain_b_cell_t;
+
+/**
+ * @brief T Cell - coordination and killer abstraction
+ *
+ * Helper T cells coordinate response via cytokines.
+ * Killer T cells trigger BFT quarantine and isolation.
+ */
+typedef struct {
+    uint32_t id;                           /**< Unique T cell ID */
+    brain_t_cell_type_t type;              /**< T cell type */
+    uint8_t receptor[BRAIN_IMMUNE_EPITOPE_SIZE]; /**< Recognition pattern */
+    size_t receptor_len;                   /**< Pattern length */
+
+    uint32_t recognized_antigen_id;        /**< Target antigen */
+    float activation_level;                /**< Activation (0-1) */
+
+    /* Actions taken */
+    uint32_t kills;                        /**< Nodes quarantined (killer) */
+    uint32_t help_given;                   /**< B cells helped (helper) */
+    uint32_t cytokines_released;           /**< Signals sent */
+
+    uint64_t activation_time;              /**< When activated */
+} brain_t_cell_t;
+
+/**
+ * @brief Antibody - active threat countermeasure
+ *
+ * Maps to swarm immune response strategies and BBB actions.
+ */
+typedef struct {
+    uint32_t id;                           /**< Unique antibody ID */
+    brain_antibody_class_t ab_class;       /**< Ig class (renamed from 'class' for C++ compat) */
+    uint32_t target_antigen_id;            /**< Target antigen */
+    uint32_t producer_b_cell_id;           /**< Producing B cell */
+
+    /* Mapped response */
+    NimcpSwarmResponseType swarm_response; /**< Swarm response type */
+    bbb_action_t bbb_action;               /**< BBB action taken */
+    uint32_t swarm_response_id;            /**< Swarm response ID */
+
+    float effectiveness;                   /**< Effectiveness (0-1) */
+    uint64_t creation_time;                /**< When created */
+    bool active;                           /**< Currently active */
+    uint32_t neutralizations;              /**< Successful neutralizations */
+} brain_antibody_t;
+
+/**
+ * @brief Cytokine - signaling molecule abstraction
+ *
+ * Maps to bio-async messages for cross-module coordination.
+ */
+typedef struct {
+    uint32_t id;                           /**< Unique cytokine ID */
+    brain_cytokine_type_t type;            /**< Cytokine type */
+    uint32_t source_cell_id;               /**< Producing cell */
+    uint32_t target_region;                /**< Target (0=broadcast) */
+
+    float concentration;                   /**< Signal strength (0-1) */
+    bool pro_inflammatory;                 /**< Pro vs anti-inflammatory */
+
+    /* Bio-async mapping */
+    bio_message_type_t message_type;       /**< Mapped bio-message */
+    uint64_t release_time;                 /**< When released */
+    bool delivered;                        /**< Message sent */
+} brain_cytokine_t;
+
+/**
+ * @brief Inflammation site - localized response escalation
+ *
+ * Maps to hierarchical recovery levels.
+ */
+typedef struct {
+    uint32_t id;                           /**< Site ID */
+    uint32_t region_id;                    /**< Affected region/node */
+    brain_inflammation_level_t level;      /**< Current severity */
+
+    uint32_t triggering_antigen_id;        /**< Antigen that triggered */
+    uint64_t start_time;                   /**< When started */
+
+    /* Resource mobilization */
+    float resource_allocation;             /**< Extra resources (0-1) */
+    uint32_t cells_recruited;              /**< Immune cells at site */
+    bool isolated;                         /**< Region isolated */
+
+    /* Recovery mapping */
+    float resolution_progress;             /**< Resolution (0-1) */
+} brain_inflammation_site_t;
+
+/* ============================================================================
+ * Configuration
+ * ============================================================================ */
+
+/**
+ * @brief Brain immune system configuration
+ */
+typedef struct {
+    /* Population limits */
+    size_t max_antigens;                   /**< Max pending antigens */
+    size_t max_b_cells;                    /**< Max B cells */
+    size_t max_t_cells;                    /**< Max T cells */
+    size_t max_antibodies;                 /**< Max antibodies */
+
+    /* Timing (milliseconds) */
+    uint64_t activation_delay_ms;          /**< Delay before response */
+    uint64_t memory_formation_delay_ms;    /**< Delay for memory formation */
+    uint64_t antibody_half_life_ms;        /**< Antibody decay time */
+
+    /* Thresholds */
+    float recognition_threshold;           /**< Antigen recognition (0-1) */
+    float activation_threshold;            /**< Cell activation (0-1) */
+    float inflammation_threshold;          /**< Inflammation trigger (0-1) */
+    float cytokine_storm_threshold;        /**< Storm prevention (0-1) */
+
+    /* Response tuning */
+    float memory_response_multiplier;      /**< Faster secondary response */
+    float helper_amplification;            /**< Helper T cell boost */
+
+    /* Integration enables */
+    bool enable_bbb_integration;           /**< Integrate with BBB */
+    bool enable_bft_integration;           /**< Integrate with BFT */
+    bool enable_swarm_integration;         /**< Integrate with swarm immune */
+    bool enable_bio_async;                 /**< Enable bio-async messaging */
+    bool enable_logging;                   /**< Enable security logging */
+} brain_immune_config_t;
+
+/**
+ * @brief Immune system statistics
+ */
+typedef struct {
+    /* Cell counts */
+    uint32_t active_b_cells;
+    uint32_t active_t_cells;
+    uint32_t active_antibodies;
+    uint32_t memory_cells;
+
+    /* Activity */
+    uint64_t antigens_processed;
+    uint64_t threats_neutralized;
+    uint64_t responses_generated;
+    uint64_t cytokines_released;
+
+    /* Health */
+    uint32_t inflammation_sites;
+    float avg_response_time_ms;
+    float system_health;                   /**< Overall health (0-1) */
+
+    /* Integration stats */
+    uint64_t bbb_threats_processed;
+    uint64_t bft_byzantines_handled;
+    uint64_t swarm_alerts_processed;
+} brain_immune_stats_t;
+
+/* ============================================================================
+ * Callback Types
+ * ============================================================================ */
+
+/**
+ * @brief Callback for antigen detection
+ */
+typedef void (*brain_immune_antigen_cb_t)(
+    brain_immune_system_t* system,
+    const brain_antigen_t* antigen,
+    void* user_data
+);
+
+/**
+ * @brief Callback for threat neutralization
+ */
+typedef void (*brain_immune_neutralize_cb_t)(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    const brain_antibody_t* antibody,
+    void* user_data
+);
+
+/**
+ * @brief Callback for cytokine signaling
+ */
+typedef void (*brain_immune_cytokine_cb_t)(
+    brain_immune_system_t* system,
+    const brain_cytokine_t* cytokine,
+    void* user_data
+);
+
+/**
+ * @brief Callback for inflammation events
+ */
+typedef void (*brain_immune_inflammation_cb_t)(
+    brain_immune_system_t* system,
+    const brain_inflammation_site_t* site,
+    void* user_data
+);
+
+/**
+ * @brief Callback for killer T cell actions
+ */
+typedef void (*brain_immune_kill_cb_t)(
+    brain_immune_system_t* system,
+    const brain_t_cell_t* killer,
+    uint32_t target_node_id,
+    void* user_data
+);
+
+/* ============================================================================
+ * Main System Structure
+ * ============================================================================ */
+
+/**
+ * @brief Brain immune system state
+ */
+struct brain_immune_system {
+    brain_immune_config_t config;          /**< Configuration */
+    brain_immune_phase_t phase;            /**< Current phase */
+
+    /* Antigen pool */
+    brain_antigen_t* antigens;
+    size_t antigen_count;
+    size_t antigen_capacity;
+    uint32_t next_antigen_id;
+
+    /* B cells */
+    brain_b_cell_t* b_cells;
+    size_t b_cell_count;
+    size_t b_cell_capacity;
+    uint32_t next_b_cell_id;
+
+    /* T cells */
+    brain_t_cell_t* t_cells;
+    size_t t_cell_count;
+    size_t t_cell_capacity;
+    uint32_t next_t_cell_id;
+
+    /* Antibodies */
+    brain_antibody_t* antibodies;
+    size_t antibody_count;
+    size_t antibody_capacity;
+    uint32_t next_antibody_id;
+
+    /* Cytokines */
+    brain_cytokine_t* cytokines;
+    size_t cytokine_count;
+    size_t cytokine_capacity;
+    uint32_t next_cytokine_id;
+
+    /* Inflammation sites */
+    brain_inflammation_site_t* inflammation_sites;
+    size_t inflammation_count;
+    size_t inflammation_capacity;
+    uint32_t next_inflammation_id;
+
+    /* Integration handles */
+    bbb_system_t bbb_system;               /**< BBB system handle */
+    bft_context_t* bft_context;            /**< BFT context */
+    NimcpSwarmImmuneSystem* swarm_immune;  /**< Swarm immune system */
+    bio_module_context_t bio_context;      /**< Bio-async context */
+
+    /* Callbacks */
+    brain_immune_antigen_cb_t on_antigen;
+    brain_immune_neutralize_cb_t on_neutralize;
+    brain_immune_cytokine_cb_t on_cytokine;
+    brain_immune_inflammation_cb_t on_inflammation;
+    brain_immune_kill_cb_t on_kill;
+    void* callback_user_data;
+
+    /* Statistics */
+    brain_immune_stats_t stats;
+
+    /* Thread safety */
+    void* mutex;                           /**< Platform mutex */
+
+    /* State */
+    bool running;                          /**< System is active */
+    uint64_t start_time;                   /**< System start time */
+};
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+/**
+ * @brief Get default configuration
+ *
+ * WHAT: Provide sensible default configuration
+ * WHY:  Easy initialization with good defaults
+ * HOW:  Return struct with balanced parameters
+ *
+ * @param config Output configuration
+ * @return 0 on success, -1 on error
+ */
+int brain_immune_default_config(brain_immune_config_t* config);
+
+/**
+ * @brief Create brain immune system
+ *
+ * WHAT: Initialize immune coordination layer
+ * WHY:  Set up unified threat response infrastructure
+ * HOW:  Allocate pools, register with bio-async
+ *
+ * @param config Configuration (NULL for defaults)
+ * @return New immune system or NULL on failure
+ */
+brain_immune_system_t* brain_immune_create(const brain_immune_config_t* config);
+
+/**
+ * @brief Destroy brain immune system
+ *
+ * WHAT: Clean up immune system resources
+ * WHY:  Proper resource deallocation
+ * HOW:  Free pools, unregister from bio-async
+ *
+ * @param system System to destroy
+ */
+void brain_immune_destroy(brain_immune_system_t* system);
+
+/**
+ * @brief Start immune system monitoring
+ *
+ * WHAT: Activate immune surveillance
+ * WHY:  Begin threat detection and response
+ * HOW:  Register handlers with integrated modules
+ *
+ * @param system Immune system
+ * @return 0 on success
+ */
+int brain_immune_start(brain_immune_system_t* system);
+
+/**
+ * @brief Stop immune system
+ *
+ * WHAT: Deactivate immune system
+ * WHY:  Graceful shutdown
+ * HOW:  Unregister handlers, complete pending responses
+ *
+ * @param system Immune system
+ * @return 0 on success
+ */
+int brain_immune_stop(brain_immune_system_t* system);
+
+/* ============================================================================
+ * Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect to BBB security system
+ *
+ * WHAT: Link immune system to BBB threat detection
+ * WHY:  Receive BBB threats as antigens
+ * HOW:  Register as BBB alert callback target
+ *
+ * @param system Immune system
+ * @param bbb_system BBB system handle
+ * @return 0 on success
+ */
+int brain_immune_connect_bbb(
+    brain_immune_system_t* system,
+    bbb_system_t bbb_system
+);
+
+/**
+ * @brief Connect to Byzantine fault tolerance
+ *
+ * WHAT: Link immune system to BFT detection
+ * WHY:  Receive Byzantine detections as antigens
+ * HOW:  Register as BFT byzantine callback
+ *
+ * @param system Immune system
+ * @param bft_context BFT context
+ * @return 0 on success
+ */
+int brain_immune_connect_bft(
+    brain_immune_system_t* system,
+    bft_context_t* bft_context
+);
+
+/**
+ * @brief Connect to swarm immune system
+ *
+ * WHAT: Link to swarm immune for memory cells
+ * WHY:  Share threat patterns and responses
+ * HOW:  Direct integration with swarm immune
+ *
+ * @param system Immune system
+ * @param swarm_immune Swarm immune system
+ * @return 0 on success
+ */
+int brain_immune_connect_swarm(
+    brain_immune_system_t* system,
+    NimcpSwarmImmuneSystem* swarm_immune
+);
+
+/**
+ * @brief Connect to bio-async router
+ *
+ * WHAT: Enable cytokine messaging via bio-async
+ * WHY:  Distributed immune signaling
+ * HOW:  Register module, set up handlers
+ *
+ * @param system Immune system
+ * @return 0 on success
+ */
+int brain_immune_connect_bio_async(brain_immune_system_t* system);
+
+/* ============================================================================
+ * Antigen Presentation API
+ * ============================================================================ */
+
+/**
+ * @brief Present antigen from BBB threat
+ *
+ * WHAT: Convert BBB threat to immune antigen
+ * WHY:  Unified threat processing
+ * HOW:  Extract epitope from threat data
+ *
+ * @param system Immune system
+ * @param threat_type BBB threat type
+ * @param severity BBB severity
+ * @param threat_data Threat signature data
+ * @param data_len Data length
+ * @param antigen_id Output: assigned antigen ID
+ * @return 0 on success
+ */
+int brain_immune_present_bbb_threat(
+    brain_immune_system_t* system,
+    bbb_threat_type_t threat_type,
+    bbb_severity_t severity,
+    const uint8_t* threat_data,
+    size_t data_len,
+    uint32_t* antigen_id
+);
+
+/**
+ * @brief Present antigen from BFT byzantine detection
+ *
+ * WHAT: Convert BFT detection to immune antigen
+ * WHY:  Handle Byzantine nodes as threats
+ * HOW:  Create antigen from node behavior
+ *
+ * @param system Immune system
+ * @param node_id Byzantine node ID
+ * @param behavior Detected behavior
+ * @param evidence Evidence data
+ * @param evidence_len Evidence length
+ * @param antigen_id Output: assigned antigen ID
+ * @return 0 on success
+ */
+int brain_immune_present_byzantine(
+    brain_immune_system_t* system,
+    uint32_t node_id,
+    bft_behavior_t behavior,
+    const bft_evidence_t* evidence,
+    size_t evidence_len,
+    uint32_t* antigen_id
+);
+
+/**
+ * @brief Present antigen from swarm threat
+ *
+ * WHAT: Convert swarm threat to immune antigen
+ * WHY:  Process swarm-detected threats
+ * HOW:  Map swarm threat to antigen
+ *
+ * @param system Immune system
+ * @param threat Swarm threat
+ * @param antigen_id Output: assigned antigen ID
+ * @return 0 on success
+ */
+int brain_immune_present_swarm_threat(
+    brain_immune_system_t* system,
+    const NimcpSwarmThreat* threat,
+    uint32_t* antigen_id
+);
+
+/**
+ * @brief Present generic antigen
+ *
+ * WHAT: Present arbitrary threat signature
+ * WHY:  Handle custom/manual threat reports
+ * HOW:  Create antigen from raw data
+ *
+ * @param system Immune system
+ * @param source Antigen source
+ * @param epitope Threat signature
+ * @param epitope_len Signature length
+ * @param severity Severity (1-10)
+ * @param source_node Source node/entity ID
+ * @param antigen_id Output: assigned antigen ID
+ * @return 0 on success
+ */
+int brain_immune_present_antigen(
+    brain_immune_system_t* system,
+    brain_antigen_source_t source,
+    const uint8_t* epitope,
+    size_t epitope_len,
+    uint32_t severity,
+    uint32_t source_node,
+    uint32_t* antigen_id
+);
+
+/* ============================================================================
+ * B Cell API
+ * ============================================================================ */
+
+/**
+ * @brief Activate B cell for antigen
+ *
+ * WHAT: Activate B cell that recognizes antigen
+ * WHY:  Begin antibody production process
+ * HOW:  Find/create B cell, set activated state
+ *
+ * @param system Immune system
+ * @param antigen_id Target antigen
+ * @param b_cell_id Output: activated B cell ID
+ * @return 0 on success, -1 if no match
+ */
+int brain_immune_activate_b_cell(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    uint32_t* b_cell_id
+);
+
+/**
+ * @brief Convert B cell to memory
+ *
+ * WHAT: Transition B cell to memory state
+ * WHY:  Persist learned threat pattern
+ * HOW:  Create swarm memory cell, update state
+ *
+ * @param system Immune system
+ * @param b_cell_id B cell to convert
+ * @return 0 on success
+ */
+int brain_immune_b_cell_to_memory(
+    brain_immune_system_t* system,
+    uint32_t b_cell_id
+);
+
+/* ============================================================================
+ * T Cell API
+ * ============================================================================ */
+
+/**
+ * @brief Activate helper T cell
+ *
+ * WHAT: Activate helper T for antigen coordination
+ * WHY:  Amplify immune response
+ * HOW:  Create helper T, begin cytokine release
+ *
+ * @param system Immune system
+ * @param antigen_id Target antigen
+ * @param t_cell_id Output: activated T cell ID
+ * @return 0 on success
+ */
+int brain_immune_activate_helper_t(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    uint32_t* t_cell_id
+);
+
+/**
+ * @brief Activate killer T cell
+ *
+ * WHAT: Activate killer T for direct action
+ * WHY:  Eliminate threat via quarantine
+ * HOW:  Create killer T, prepare BFT quarantine
+ *
+ * @param system Immune system
+ * @param antigen_id Target antigen
+ * @param t_cell_id Output: activated T cell ID
+ * @return 0 on success
+ */
+int brain_immune_activate_killer_t(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    uint32_t* t_cell_id
+);
+
+/**
+ * @brief Execute killer T cell action
+ *
+ * WHAT: Quarantine/isolate threat node
+ * WHY:  Direct threat elimination
+ * HOW:  Trigger BFT quarantine
+ *
+ * @param system Immune system
+ * @param t_cell_id Killer T cell
+ * @param target_node Target node to quarantine
+ * @return 0 on success
+ */
+int brain_immune_t_cell_kill(
+    brain_immune_system_t* system,
+    uint32_t t_cell_id,
+    uint32_t target_node
+);
+
+/**
+ * @brief Helper T provides help to B cell
+ *
+ * WHAT: Signal B cell to enhance response
+ * WHY:  Amplify antibody production
+ * HOW:  Set B cell flag, boost effectiveness
+ *
+ * @param system Immune system
+ * @param helper_id Helper T cell ID
+ * @param b_cell_id Target B cell ID
+ * @return 0 on success
+ */
+int brain_immune_t_help_b(
+    brain_immune_system_t* system,
+    uint32_t helper_id,
+    uint32_t b_cell_id
+);
+
+/* ============================================================================
+ * Antibody API
+ * ============================================================================ */
+
+/**
+ * @brief Produce antibody from B cell
+ *
+ * WHAT: Generate antibody response
+ * WHY:  Create countermeasure for antigen
+ * HOW:  Map to swarm immune response
+ *
+ * @param system Immune system
+ * @param b_cell_id Producing B cell
+ * @param ab_class Antibody class
+ * @param antibody_id Output: new antibody ID
+ * @return 0 on success
+ */
+int brain_immune_produce_antibody(
+    brain_immune_system_t* system,
+    uint32_t b_cell_id,
+    brain_antibody_class_t ab_class,
+    uint32_t* antibody_id
+);
+
+/**
+ * @brief Execute antibody response
+ *
+ * WHAT: Apply antibody countermeasure
+ * WHY:  Neutralize threat
+ * HOW:  Execute swarm response + BBB action
+ *
+ * @param system Immune system
+ * @param antibody_id Antibody to execute
+ * @return 0 on success
+ */
+int brain_immune_execute_antibody(
+    brain_immune_system_t* system,
+    uint32_t antibody_id
+);
+
+/**
+ * @brief Mark antigen as neutralized
+ *
+ * WHAT: Record successful neutralization
+ * WHY:  Complete immune response cycle
+ * HOW:  Update antigen, antibody stats
+ *
+ * @param system Immune system
+ * @param antigen_id Neutralized antigen
+ * @param antibody_id Successful antibody
+ * @return 0 on success
+ */
+int brain_immune_neutralize(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    uint32_t antibody_id
+);
+
+/* ============================================================================
+ * Cytokine Signaling API
+ * ============================================================================ */
+
+/**
+ * @brief Release cytokine signal
+ *
+ * WHAT: Send immune coordination message
+ * WHY:  Cross-module immune signaling
+ * HOW:  Send bio-async message
+ *
+ * @param system Immune system
+ * @param type Cytokine type
+ * @param source_cell Source cell ID
+ * @param concentration Signal strength (0-1)
+ * @param target_region Target region (0=broadcast)
+ * @param cytokine_id Output: new cytokine ID
+ * @return 0 on success
+ */
+int brain_immune_release_cytokine(
+    brain_immune_system_t* system,
+    brain_cytokine_type_t type,
+    uint32_t source_cell,
+    float concentration,
+    uint32_t target_region,
+    uint32_t* cytokine_id
+);
+
+/**
+ * @brief Broadcast immune alert
+ *
+ * WHAT: System-wide immune alert
+ * WHY:  Notify all modules of threat
+ * HOW:  Bio-async broadcast message
+ *
+ * @param system Immune system
+ * @param antigen_id Alert about this antigen
+ * @param severity Alert severity
+ * @return 0 on success
+ */
+int brain_immune_broadcast_alert(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    brain_inflammation_level_t severity
+);
+
+/* ============================================================================
+ * Inflammation API
+ * ============================================================================ */
+
+/**
+ * @brief Initiate inflammation at region
+ *
+ * WHAT: Start localized immune response
+ * WHY:  Mobilize resources to threat site
+ * HOW:  Trigger hierarchical recovery
+ *
+ * @param system Immune system
+ * @param region_id Affected region
+ * @param antigen_id Triggering antigen
+ * @param site_id Output: inflammation site ID
+ * @return 0 on success
+ */
+int brain_immune_initiate_inflammation(
+    brain_immune_system_t* system,
+    uint32_t region_id,
+    uint32_t antigen_id,
+    uint32_t* site_id
+);
+
+/**
+ * @brief Escalate inflammation level
+ *
+ * WHAT: Increase inflammation severity
+ * WHY:  More severe threat response
+ * HOW:  Escalate recovery level
+ *
+ * @param system Immune system
+ * @param site_id Inflammation site
+ * @return 0 on success
+ */
+int brain_immune_escalate_inflammation(
+    brain_immune_system_t* system,
+    uint32_t site_id
+);
+
+/**
+ * @brief Resolve inflammation
+ *
+ * WHAT: Begin inflammation resolution
+ * WHY:  Threat cleared, return to normal
+ * HOW:  Release anti-inflammatory cytokines
+ *
+ * @param system Immune system
+ * @param site_id Site to resolve
+ * @return 0 on success
+ */
+int brain_immune_resolve_inflammation(
+    brain_immune_system_t* system,
+    uint32_t site_id
+);
+
+/* ============================================================================
+ * Memory Response API
+ * ============================================================================ */
+
+/**
+ * @brief Check for memory cell match
+ *
+ * WHAT: Check if antigen matches memory
+ * WHY:  Faster secondary response
+ * HOW:  Search swarm immune memory cells
+ *
+ * @param system Immune system
+ * @param antigen_id Antigen to match
+ * @param b_cell_id Output: matching memory B cell (if found)
+ * @return 0 if found, -1 if no match
+ */
+int brain_immune_check_memory(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    uint32_t* b_cell_id
+);
+
+/**
+ * @brief Trigger secondary response
+ *
+ * WHAT: Fast response from memory
+ * WHY:  Previously seen antigen
+ * HOW:  Rapid B cell activation + antibody production
+ *
+ * @param system Immune system
+ * @param antigen_id Target antigen
+ * @param memory_b_cell_id Memory B cell to reactivate
+ * @return 0 on success
+ */
+int brain_immune_secondary_response(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    uint32_t memory_b_cell_id
+);
+
+/* ============================================================================
+ * Callback Registration
+ * ============================================================================ */
+
+/**
+ * @brief Set antigen detection callback
+ */
+int brain_immune_set_antigen_callback(
+    brain_immune_system_t* system,
+    brain_immune_antigen_cb_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Set neutralization callback
+ */
+int brain_immune_set_neutralize_callback(
+    brain_immune_system_t* system,
+    brain_immune_neutralize_cb_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Set cytokine callback
+ */
+int brain_immune_set_cytokine_callback(
+    brain_immune_system_t* system,
+    brain_immune_cytokine_cb_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Set inflammation callback
+ */
+int brain_immune_set_inflammation_callback(
+    brain_immune_system_t* system,
+    brain_immune_inflammation_cb_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Set kill callback
+ */
+int brain_immune_set_kill_callback(
+    brain_immune_system_t* system,
+    brain_immune_kill_cb_t callback,
+    void* user_data
+);
+
+/* ============================================================================
+ * Update and Query API
+ * ============================================================================ */
+
+/**
+ * @brief Update immune system state
+ *
+ * WHAT: Process pending immune activity
+ * WHY:  Advance immune state machine
+ * HOW:  Process antigens, decay antibodies, resolve inflammation
+ *
+ * @param system Immune system
+ * @param delta_ms Time since last update
+ * @return 0 on success
+ */
+int brain_immune_update(
+    brain_immune_system_t* system,
+    uint64_t delta_ms
+);
+
+/**
+ * @brief Get immune system statistics
+ *
+ * @param system Immune system
+ * @param stats Output statistics
+ * @return 0 on success
+ */
+int brain_immune_get_stats(
+    brain_immune_system_t* system,
+    brain_immune_stats_t* stats
+);
+
+/**
+ * @brief Get current immune phase
+ *
+ * @param system Immune system
+ * @return Current phase
+ */
+brain_immune_phase_t brain_immune_get_phase(
+    brain_immune_system_t* system
+);
+
+/**
+ * @brief Check if antigen is neutralized
+ *
+ * @param system Immune system
+ * @param antigen_id Antigen to check
+ * @return true if neutralized
+ */
+bool brain_immune_is_neutralized(
+    brain_immune_system_t* system,
+    uint32_t antigen_id
+);
+
+/**
+ * @brief Get antigen by ID
+ *
+ * @param system Immune system
+ * @param antigen_id Antigen ID
+ * @return Antigen or NULL if not found
+ */
+const brain_antigen_t* brain_immune_get_antigen(
+    brain_immune_system_t* system,
+    uint32_t antigen_id
+);
+
+/**
+ * @brief Compute affinity between patterns
+ *
+ * WHAT: Calculate pattern similarity
+ * WHY:  Determine receptor-epitope binding strength
+ * HOW:  Fuzzy pattern matching
+ *
+ * @param pattern1 First pattern
+ * @param len1 First length
+ * @param pattern2 Second pattern
+ * @param len2 Second length
+ * @return Affinity score (0-1)
+ */
+float brain_immune_compute_affinity(
+    const uint8_t* pattern1,
+    size_t len1,
+    const uint8_t* pattern2,
+    size_t len2
+);
+
+/* ============================================================================
+ * String Conversion Utilities
+ * ============================================================================ */
+
+const char* brain_immune_phase_to_string(brain_immune_phase_t phase);
+const char* brain_immune_b_cell_state_to_string(brain_b_cell_state_t state);
+const char* brain_immune_t_cell_type_to_string(brain_t_cell_type_t type);
+const char* brain_immune_cytokine_to_string(brain_cytokine_type_t type);
+const char* brain_immune_inflammation_to_string(brain_inflammation_level_t level);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NIMCP_BRAIN_IMMUNE_H */
