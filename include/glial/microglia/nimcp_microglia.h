@@ -182,6 +182,9 @@ typedef enum {
     CYTOKINE_TGFB = 4    /**< Transforming Growth Factor-β (anti-inflammatory) */
 } cytokine_type_t;
 
+/* Backward compatibility aliases for base cytokine_type_t */
+#define CYTOKINE_IL1       CYTOKINE_IL1B
+
 /**
  * @brief Complement tag state
  *

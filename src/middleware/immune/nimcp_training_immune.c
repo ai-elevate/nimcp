@@ -276,7 +276,7 @@ training_immune_system_t* training_immune_create(
     system->start_time_ms = get_timestamp_ms();
 
     if (config->enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Training immune system created");
     }
 
@@ -303,7 +303,7 @@ void training_immune_destroy(training_immune_system_t* system) {
     nimcp_free(system);
 
     if (system->config.enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Training immune system destroyed");
     }
 }
@@ -321,7 +321,7 @@ int training_immune_start(training_immune_system_t* system) {
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Training immune monitoring started");
     }
 
@@ -340,7 +340,7 @@ int training_immune_stop(training_immune_system_t* system) {
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Training immune monitoring stopped");
     }
 
@@ -365,7 +365,7 @@ int training_immune_connect_brain_immune(
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Connected to brain immune system");
     }
 
@@ -386,7 +386,7 @@ int training_immune_connect_optimizer(
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Connected to optimizer");
     }
 
@@ -407,7 +407,7 @@ int training_immune_connect_gradient_manager(
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Connected to gradient manager");
     }
 
@@ -428,7 +428,7 @@ int training_immune_connect_callbacks(
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Connected to training callbacks");
     }
 
@@ -495,7 +495,7 @@ int training_immune_update_inflammation(
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging && inflammation != prev_inflammation) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Inflammation changed: %d -> %d, LR factor: %.3f",
                   prev_inflammation, inflammation, new_factor);
     }
@@ -693,7 +693,7 @@ int training_immune_report_instability(
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging) {
-        nimcp_log(LOG_LEVEL_WARN, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_WARN(TRAINING_IMMUNE_MODULE_NAME,
                   "Training instability detected: %s (severity=%u)",
                   training_instability_type_to_string(type), severity);
     }
@@ -753,7 +753,7 @@ int training_immune_trigger_immune_response(
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
     if (system->config.enable_logging && result == 0) {
-        nimcp_log(NIMCP_LOG_INFO, TRAINING_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Immune response triggered for instability event %u (antigen=%u)",
                   event_id, antigen_id);
     }

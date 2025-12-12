@@ -288,7 +288,7 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
 ) {
     /* Guard: require both systems */
     if (!immune_system || !reasoning_integration) {
-        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune_bridge",
+        LOG_MODULE_ERROR("reasoning_immune_bridge",
                   "Cannot create bridge without immune and reasoning systems");
         return NULL;
     }
@@ -297,7 +297,7 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
     reasoning_immune_bridge_t* bridge = (reasoning_immune_bridge_t*)
         nimcp_malloc(sizeof(reasoning_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("reasoning_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -342,13 +342,13 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
 
     /* Initialize mutex */
     if (pthread_mutex_init(&bridge->mutex, NULL) != 0) {
-        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune_bridge", "Mutex init failed");
+        LOG_MODULE_ERROR("reasoning_immune_bridge", "Mutex init failed");
         nimcp_free(bridge);
         return NULL;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "reasoning_immune_bridge",
-              "Created reasoning-immune bridge");
+    LOG_MODULE_INFO("reasoning_immune_bridge",
+                  "Created reasoning-immune bridge");
     return bridge;
 }
 
@@ -358,7 +358,7 @@ void reasoning_immune_bridge_destroy(reasoning_immune_bridge_t* bridge) {
     pthread_mutex_destroy(&bridge->mutex);
     nimcp_free(bridge);
 
-    nimcp_log(NIMCP_LOG_INFO, "reasoning_immune_bridge", "Destroyed bridge");
+    LOG_MODULE_INFO("reasoning_immune_bridge", "Destroyed bridge");
 }
 
 /* ============================================================================
@@ -493,8 +493,8 @@ int reasoning_immune_report_contradiction(
      * );
      */
 
-    nimcp_log(NIMCP_LOG_WARN, "reasoning_immune",
-              "Contradiction reported to immune system: %s",
+    LOG_MODULE_WARN("reasoning_immune",
+                  "Contradiction reported to immune system: %s",
               contradiction_description ? contradiction_description : "unknown");
 
     return 0;
@@ -528,13 +528,13 @@ int reasoning_immune_report_proof_failure(
     /* Check for escalation */
     if (failures >= bridge->proof_failure_escalation) {
         /* REGIONAL inflammation */
-        nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune",
+        LOG_MODULE_ERROR("reasoning_immune",
                   "Escalating to REGIONAL inflammation (%u failures)", failures);
         /* Would call: brain_immune_trigger_inflammation(immune, INFLAMMATION_REGIONAL) */
         bridge->stats.total_immune_triggers++;
     } else if (failures >= bridge->proof_failure_threshold) {
         /* LOCAL inflammation */
-        nimcp_log(NIMCP_LOG_WARN, "reasoning_immune",
+        LOG_MODULE_WARN("reasoning_immune",
                   "Triggering LOCAL inflammation (%u failures)", failures);
         /* Would call: brain_immune_trigger_inflammation(immune, INFLAMMATION_LOCAL) */
         bridge->stats.total_immune_triggers++;
@@ -550,8 +550,8 @@ int reasoning_immune_report_proof_failure(
             bridge->failure_state.persistent_error_state = true;
             bridge->failure_state.error_state_start_ms = now_ms;
 
-            nimcp_log(NIMCP_LOG_ERROR, "reasoning_immune",
-                      "Persistent errors detected, releasing cytokines");
+            LOG_MODULE_ERROR("reasoning_immune",
+                  "Persistent errors detected, releasing cytokines");
             /* Would call: brain_immune_release_cytokine(immune, CYTOKINE_IL1B, 0.5f) */
             /* Would call: brain_immune_release_cytokine(immune, CYTOKINE_IL6, 0.3f) */
         }
@@ -587,7 +587,7 @@ int reasoning_immune_report_unification_error(
 
     /* Check threshold */
     if (errors >= bridge->unification_error_threshold) {
-        nimcp_log(NIMCP_LOG_WARN, "reasoning_immune",
+        LOG_MODULE_WARN("reasoning_immune",
                   "Unification errors threshold reached (%u), activating B cell", errors);
         /* Would call: brain_immune_activate_b_cell(immune, antigen_id, &b_cell_id) */
         bridge->stats.total_immune_triggers++;
@@ -612,7 +612,7 @@ int reasoning_immune_clear_failure_tracking(reasoning_immune_bridge_t* bridge) {
 
     pthread_mutex_unlock(&bridge->mutex);
 
-    nimcp_log(NIMCP_LOG_INFO, "reasoning_immune", "Cleared failure tracking");
+    LOG_MODULE_INFO("reasoning_immune", "Cleared failure tracking");
     return 0;
 }
 
@@ -733,7 +733,7 @@ reasoning_immune_bridge_t* reasoning_connect_immune(
 ) {
     /* Guard: require both systems */
     if (!reasoning_integration || !immune_system) {
-        nimcp_log(NIMCP_LOG_ERROR, "reasoning_connect_immune",
+        LOG_MODULE_ERROR("reasoning_connect_immune",
                   "Cannot connect without reasoning and immune systems");
         return NULL;
     }
@@ -743,7 +743,7 @@ reasoning_immune_bridge_t* reasoning_connect_immune(
         reasoning_immune_bridge_create(config, immune_system, reasoning_integration);
 
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "reasoning_connect_immune", "Bridge creation failed");
+        LOG_MODULE_ERROR("reasoning_connect_immune", "Bridge creation failed");
         return NULL;
     }
 
@@ -755,8 +755,8 @@ reasoning_immune_bridge_t* reasoning_connect_immune(
      * - Periodic tick → reasoning_immune_apply_cytokine_effects + apply_inflammation_effects
      */
 
-    nimcp_log(NIMCP_LOG_INFO, "reasoning_connect_immune",
-              "Successfully connected reasoning to immune system");
+    LOG_MODULE_INFO("reasoning_connect_immune",
+                  "Successfully connected reasoning to immune system");
 
     return bridge;
 }

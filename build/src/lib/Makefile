@@ -2249,30 +2249,6 @@ __/cognitive/predictive/nimcp_predictive.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/predictive/nimcp_predictive.c.s
 .PHONY : __/cognitive/predictive/nimcp_predictive.c.s
 
-__/cognitive/predictive_immune/nimcp_predictive_immune.o: __/cognitive/predictive_immune/nimcp_predictive_immune.c.o
-.PHONY : __/cognitive/predictive_immune/nimcp_predictive_immune.o
-
-# target to build an object file
-__/cognitive/predictive_immune/nimcp_predictive_immune.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/predictive_immune/nimcp_predictive_immune.c.o
-.PHONY : __/cognitive/predictive_immune/nimcp_predictive_immune.c.o
-
-__/cognitive/predictive_immune/nimcp_predictive_immune.i: __/cognitive/predictive_immune/nimcp_predictive_immune.c.i
-.PHONY : __/cognitive/predictive_immune/nimcp_predictive_immune.i
-
-# target to preprocess a source file
-__/cognitive/predictive_immune/nimcp_predictive_immune.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/predictive_immune/nimcp_predictive_immune.c.i
-.PHONY : __/cognitive/predictive_immune/nimcp_predictive_immune.c.i
-
-__/cognitive/predictive_immune/nimcp_predictive_immune.s: __/cognitive/predictive_immune/nimcp_predictive_immune.c.s
-.PHONY : __/cognitive/predictive_immune/nimcp_predictive_immune.s
-
-# target to generate assembly for a file
-__/cognitive/predictive_immune/nimcp_predictive_immune.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/predictive_immune/nimcp_predictive_immune.c.s
-.PHONY : __/cognitive/predictive_immune/nimcp_predictive_immune.c.s
-
 __/cognitive/reasoning/integration/nimcp_reasoning_attention.o: __/cognitive/reasoning/integration/nimcp_reasoning_attention.c.o
 .PHONY : __/cognitive/reasoning/integration/nimcp_reasoning_attention.o
 
@@ -11905,9 +11881,6 @@ help:
 	@echo "... __/cognitive/predictive/nimcp_predictive.o"
 	@echo "... __/cognitive/predictive/nimcp_predictive.i"
 	@echo "... __/cognitive/predictive/nimcp_predictive.s"
-	@echo "... __/cognitive/predictive_immune/nimcp_predictive_immune.o"
-	@echo "... __/cognitive/predictive_immune/nimcp_predictive_immune.i"
-	@echo "... __/cognitive/predictive_immune/nimcp_predictive_immune.s"
 	@echo "... __/cognitive/reasoning/integration/nimcp_reasoning_attention.o"
 	@echo "... __/cognitive/reasoning/integration/nimcp_reasoning_attention.i"
 	@echo "... __/cognitive/reasoning/integration/nimcp_reasoning_attention.s"

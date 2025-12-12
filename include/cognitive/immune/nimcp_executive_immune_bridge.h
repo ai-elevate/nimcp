@@ -136,6 +136,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_executive.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -287,6 +291,11 @@ typedef struct {
     uint32_t success_boosts;
     uint32_t overload_events;
     uint32_t burnout_events;
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
+
 
     /* Thread safety */
     void* mutex;
@@ -570,6 +579,43 @@ bool executive_immune_is_burnout(const executive_immune_bridge_t* bridge);
  * @return Burnout level [0-1]
  */
 float executive_immune_get_burnout_severity(const executive_immune_bridge_t* bridge);
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_EXECUTIVE
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int executive_immune_connect_bio_async(executive_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool executive_immune_is_bio_async_connected(const executive_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

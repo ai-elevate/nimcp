@@ -131,6 +131,10 @@
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -275,6 +279,11 @@ typedef struct {
     uint32_t positive_boosts;
     uint32_t distress_events_logged;
     uint32_t flourishing_memory_formations;
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
+
 
     /* Thread safety */
     void* mutex;
@@ -580,6 +589,43 @@ int wellbeing_immune_get_stats(
     uint32_t* wellbeing_triggered_out,
     uint32_t* positive_boosts_out
 );
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_WELLBEING
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int wellbeing_immune_connect_bio_async(wellbeing_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int wellbeing_immune_disconnect_bio_async(wellbeing_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool wellbeing_immune_is_bio_async_connected(const wellbeing_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

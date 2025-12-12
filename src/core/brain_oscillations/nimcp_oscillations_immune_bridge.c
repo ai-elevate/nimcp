@@ -169,7 +169,7 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
 ) {
     /* Guard: require both systems */
     if (!oscillation_analyzer || !immune_system) {
-        nimcp_log(NIMCP_LOG_ERROR, "oscillations_immune_bridge",
+        LOG_MODULE_ERROR("oscillations_immune_bridge",
                   "Cannot create bridge without oscillation analyzer and immune system");
         return NULL;
     }
@@ -178,7 +178,7 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
     oscillations_immune_bridge_t* bridge = (oscillations_immune_bridge_t*)
         nimcp_malloc(sizeof(oscillations_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "oscillations_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("oscillations_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -218,7 +218,7 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
     }
     pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
 
-    nimcp_log(NIMCP_LOG_INFO, "oscillations_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("oscillations_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -233,7 +233,7 @@ void oscillations_immune_bridge_destroy(oscillations_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "oscillations_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("oscillations_immune_bridge", "Bridge destroyed");
 }
 
 int oscillations_immune_establish_baseline(oscillations_immune_bridge_t* bridge) {
@@ -261,7 +261,7 @@ int oscillations_immune_establish_baseline(oscillations_immune_bridge_t* bridge)
 
     pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
 
-    nimcp_log(NIMCP_LOG_INFO, "oscillations_immune_bridge", "Baseline established");
+    LOG_MODULE_INFO("oscillations_immune_bridge", "Baseline established");
     return 0;
 }
 
@@ -583,7 +583,7 @@ int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* b
         bridge->immune_triggers++;
         bridge->antigens_presented++;
 
-        nimcp_log(LOG_LEVEL_WARN, "oscillations_immune_bridge",
+        LOG_MODULE_WARN("oscillations_immune_bridge",
                   "Abnormal oscillations triggered immune response (severity=%u, score=%.2f)",
                   trigger->immune_severity, trigger->abnormality_score);
     }

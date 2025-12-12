@@ -130,7 +130,7 @@ dendritic_immune_bridge_t* dendritic_immune_bridge_create(
 ) {
     /* Guard: require immune and dendritic systems */
     if (!immune_system || !dendritic_tree) {
-        nimcp_log(NIMCP_LOG_ERROR, "dendritic_immune_bridge",
+        LOG_MODULE_ERROR("dendritic_immune_bridge",
                   "Cannot create bridge without immune and dendritic systems");
         return NULL;
     }
@@ -139,7 +139,7 @@ dendritic_immune_bridge_t* dendritic_immune_bridge_create(
     dendritic_immune_bridge_t* bridge = (dendritic_immune_bridge_t*)
         nimcp_malloc(sizeof(dendritic_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "dendritic_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("dendritic_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -185,7 +185,7 @@ dendritic_immune_bridge_t* dendritic_immune_bridge_create(
     }
     pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
 
-    nimcp_log(NIMCP_LOG_INFO, "dendritic_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("dendritic_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -200,7 +200,7 @@ void dendritic_immune_bridge_destroy(dendritic_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "dendritic_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("dendritic_immune_bridge", "Bridge destroyed");
 }
 
 /* ============================================================================
@@ -521,4 +521,60 @@ float dendritic_immune_get_spine_density(const dendritic_immune_bridge_t* bridge
 float dendritic_immune_get_complexity_loss(const dendritic_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
     return bridge->inflammation_state.complexity_loss;
+}
+
+/* ============================================================================
+ * Bio-Async Integration Implementation
+ * ============================================================================ */
+
+#define DENDRITIC_IMMUNE_MODULE_NAME "dendritic_immune_bridge"
+
+/**
+ * @brief Connect bridge to bio-async router
+ */
+int dendritic_immune_connect_bio_async(dendritic_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_DENDRITIC,
+        .module_name = DENDRITIC_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("dendritic_immune_bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from bio-async router
+ */
+int dendritic_immune_disconnect_bio_async(dendritic_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_DEBUG("dendritic_immune_bridge disconnected from bio-async router");
+    return 0;
+}
+
+/**
+ * @brief Check if bio-async is connected
+ */
+bool dendritic_immune_is_bio_async_connected(const dendritic_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

@@ -240,7 +240,7 @@ synaptic_scaling_immune_bridge_t* synaptic_scaling_immune_bridge_create(
 ) {
     /* Guard: require immune system */
     if (!immune_system) {
-        nimcp_log(NIMCP_LOG_ERROR, "synaptic_scaling_immune_bridge",
+        LOG_MODULE_ERROR("synaptic_scaling_immune_bridge",
                   "Cannot create bridge without immune system");
         return NULL;
     }
@@ -249,7 +249,7 @@ synaptic_scaling_immune_bridge_t* synaptic_scaling_immune_bridge_create(
     synaptic_scaling_immune_bridge_t* bridge = (synaptic_scaling_immune_bridge_t*)
         nimcp_malloc(sizeof(synaptic_scaling_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "synaptic_scaling_immune_bridge",
+        LOG_MODULE_ERROR("synaptic_scaling_immune_bridge",
                   "Allocation failed");
         return NULL;
     }
@@ -316,8 +316,8 @@ synaptic_scaling_immune_bridge_t* synaptic_scaling_immune_bridge_create(
         bridge->mutex = mutex;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "synaptic_scaling_immune_bridge",
-              "Bridge created successfully");
+    LOG_MODULE_INFO("synaptic_scaling_immune_bridge",
+                  "Bridge created successfully");
 
     return bridge;
 }
@@ -645,7 +645,7 @@ int synaptic_scaling_immune_trigger_from_aberrance(
         bridge->aberrance.trigger_count++;
         bridge->immune_triggers++;
 
-        nimcp_log(NIMCP_LOG_INFO, "synaptic_scaling_immune_bridge",
+        LOG_MODULE_INFO("synaptic_scaling_immune_bridge",
                   "Triggered immune response from aberrant scaling (severity=%u, antigen=%u)",
                   severity, antigen_id);
     }
@@ -692,8 +692,8 @@ int synaptic_scaling_immune_signal_recovery(
                 /* Reset aberrance trigger flag */
                 bridge->aberrance.immune_triggered = false;
 
-                nimcp_log(NIMCP_LOG_INFO, "synaptic_scaling_immune_bridge",
-                          "Scaling recovered, released IL-10 (cytokine=%u)", cytokine_id);
+                LOG_MODULE_INFO("synaptic_scaling_immune_bridge",
+                  "Scaling recovered, released IL-10 (cytokine=%u)", cytokine_id);
             }
         }
     } else {
@@ -853,4 +853,60 @@ float synaptic_scaling_immune_get_recovery_progress(
     if (!bridge) return 0.0f;
 
     return bridge->recovery.recovery_progress;
+}
+
+/* ============================================================================
+ * Bio-Async Integration Implementation
+ * ============================================================================ */
+
+#define SYNAPTIC_SCALING_IMMUNE_MODULE_NAME "synaptic_scaling_immune_bridge"
+
+/**
+ * @brief Connect bridge to bio-async router
+ */
+int synaptic_scaling_immune_connect_bio_async(synaptic_scaling_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_SYNAPTIC_SCALING,
+        .module_name = SYNAPTIC_SCALING_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("synaptic_scaling_immune_bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from bio-async router
+ */
+int synaptic_scaling_immune_disconnect_bio_async(synaptic_scaling_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_DEBUG("synaptic_scaling_immune_bridge disconnected from bio-async router");
+    return 0;
+}
+
+/**
+ * @brief Check if bio-async is connected
+ */
+bool synaptic_scaling_immune_is_bio_async_connected(const synaptic_scaling_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

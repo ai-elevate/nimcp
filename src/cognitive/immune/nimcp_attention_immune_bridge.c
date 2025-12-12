@@ -94,14 +94,14 @@ attention_immune_bridge_t* attention_immune_bridge_create(
 ) {
     /* Guard: require immune system */
     if (!immune_system) {
-        nimcp_log(NIMCP_LOG_ERROR, "attention_immune_bridge_create: immune_system required");
+        LOG_ERROR("attention_immune_bridge_create: immune_system required");
         return NULL;
     }
 
     /* Allocate bridge */
     attention_immune_bridge_t* bridge = nimcp_malloc(sizeof(attention_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "attention_immune_bridge_create: allocation failed");
+        LOG_ERROR("attention_immune_bridge_create: allocation failed");
         return NULL;
     }
 
@@ -135,13 +135,18 @@ attention_immune_bridge_t* attention_immune_bridge_create(
         bridge->mutex = mutex;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "attention_immune_bridge: created successfully");
+    LOG_INFO("attention_immune_bridge: created successfully");
     return bridge;
 }
 
 void attention_immune_bridge_destroy(attention_immune_bridge_t* bridge) {
     if (!bridge) {
         return;
+    }
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        attention_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
@@ -511,4 +516,96 @@ float attention_immune_get_capacity_factor(const attention_immune_bridge_t* brid
 
 float attention_immune_get_narrowing_factor(const attention_immune_bridge_t* bridge) {
     return attention_immune_compute_narrowing(bridge);
+}
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/** Module name for logging */
+#define ATTENTION_IMMUNE_MODULE_NAME "attention_immune_bridge"
+
+int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge) {
+    /**
+     * WHAT: Register bridge with bio-async router
+     * WHY:  Enable distributed immune signaling via NOREPINEPHRINE channel
+     * HOW:  Use bio_router_register_module with immune module ID
+     */
+
+    /* Guard: null check */
+    if (!bridge) {
+        LOG_ERROR("attention_immune_connect_bio_async: NULL bridge");
+        return -1;
+    }
+
+    /* Guard: already connected */
+    if (bridge->bio_async_enabled) {
+        LOG_MODULE_WARN(ATTENTION_IMMUNE_MODULE_NAME, "Already connected to bio-async");
+        return 0;
+    }
+
+    /* Build module info */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_ATTENTION,
+        .module_name = ATTENTION_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Register with router */
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        LOG_MODULE_INFO(ATTENTION_IMMUNE_MODULE_NAME, "Connected to bio-async router");
+    } else {
+        LOG_MODULE_WARN(ATTENTION_IMMUNE_MODULE_NAME,
+            "Bio-async router not available, skipping registration");
+    }
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+int attention_immune_disconnect_bio_async(attention_immune_bridge_t* bridge) {
+    /**
+     * WHAT: Unregister bridge from bio-async router
+     * WHY:  Clean shutdown of messaging infrastructure
+     * HOW:  Use bio_router_unregister_module
+     */
+
+    /* Guard: null check */
+    if (!bridge) {
+        return -1;
+    }
+
+    /* Guard: not connected */
+    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+        return 0;
+    }
+
+    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+
+    /* Unregister */
+    bio_router_unregister_module(bridge->bio_ctx);
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+
+    LOG_MODULE_INFO(ATTENTION_IMMUNE_MODULE_NAME, "Disconnected from bio-async router");
+
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    return 0;
+}
+
+bool attention_immune_is_bio_async_connected(const attention_immune_bridge_t* bridge) {
+    /**
+     * WHAT: Check bio-async connection status
+     * WHY:  Allow callers to verify messaging capability
+     * HOW:  Return internal flag
+     */
+    if (!bridge) {
+        return false;
+    }
+    return bridge->bio_async_enabled;
 }

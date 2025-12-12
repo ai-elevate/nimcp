@@ -394,7 +394,7 @@ TEST_F(BrainImmuneTest, ReleaseCytokine) {
     uint32_t cytokine_id = 0;
     int result = brain_immune_release_cytokine(
         system,
-        CYTOKINE_IL6,
+        BRAIN_CYTOKINE_IL6,
         0,  // source cell
         0.5f,  // concentration
         0,  // broadcast
@@ -639,8 +639,8 @@ TEST_F(BrainImmuneTest, TCellTypeToString) {
 }
 
 TEST_F(BrainImmuneTest, CytokineToString) {
-    EXPECT_STREQ(brain_immune_cytokine_to_string(CYTOKINE_IL6), "IL-6");
-    EXPECT_STREQ(brain_immune_cytokine_to_string(CYTOKINE_TNF_ALPHA), "TNF-alpha");
+    EXPECT_STREQ(brain_immune_cytokine_to_string(BRAIN_CYTOKINE_IL6), "IL-6");
+    EXPECT_STREQ(brain_immune_cytokine_to_string(BRAIN_CYTOKINE_TNF), "TNF-alpha");
 }
 
 TEST_F(BrainImmuneTest, InflammationToString) {

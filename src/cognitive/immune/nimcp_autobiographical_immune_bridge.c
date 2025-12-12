@@ -145,7 +145,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
 ) {
     /* Guard: require both systems */
     if (!immune_system || !autobio_memory) {
-        nimcp_log(NIMCP_LOG_ERROR, "autobio_immune_bridge",
+        LOG_MODULE_ERROR("autobio_immune_bridge",
                   "Cannot create bridge without immune and autobio memory systems");
         return NULL;
     }
@@ -154,7 +154,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
     autobio_immune_bridge_t* bridge = (autobio_immune_bridge_t*)
         nimcp_malloc(sizeof(autobio_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "autobio_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("autobio_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -197,7 +197,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
     }
     pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
 
-    nimcp_log(NIMCP_LOG_INFO, "autobio_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("autobio_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -217,7 +217,7 @@ void autobio_immune_bridge_destroy(autobio_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "autobio_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("autobio_immune_bridge", "Bridge destroyed");
 }
 
 /* ============================================================================
@@ -412,8 +412,8 @@ int autobio_immune_create_sickness_landmark(
     *landmark_id = mem_id;
 
     pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
-    nimcp_log(NIMCP_LOG_INFO, "autobio_immune_bridge",
-              "Created sickness landmark: %s", landmark->description);
+    LOG_MODULE_INFO("autobio_immune_bridge",
+                  "Created sickness landmark: %s", landmark->description);
 
     return 0;
 }
@@ -463,7 +463,7 @@ int autobio_immune_close_sickness_landmark(
     }
 
     pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
-    nimcp_log(NIMCP_LOG_INFO, "autobio_immune_bridge",
+    LOG_MODULE_INFO("autobio_immune_bridge",
               "Closed sickness landmark: %llu", (unsigned long long)landmark_id);
 
     return 0;
@@ -516,7 +516,7 @@ int autobio_immune_trigger_from_trauma_recall(
     /* Trigger immune system (simplified - would create antigen) */
     if (bridge->memory_trigger.inflammatory_response > 0.5f) {
         /* High trauma recall triggers immune activation */
-        nimcp_log(NIMCP_LOG_DEBUG, "autobio_immune_bridge",
+        LOG_MODULE_DEBUG("autobio_immune_bridge",
                   "Trauma recall triggered immune response: importance=%.2f",
                   memory->importance);
     }
@@ -546,7 +546,7 @@ int autobio_immune_ruminate_on_negative_memory(
         bridge->memory_trigger.inflammatory_response =
             clamp_f(bridge->memory_trigger.inflammatory_response * 1.2f, 0.0f, 1.0f);
 
-        nimcp_log(NIMCP_LOG_DEBUG, "autobio_immune_bridge",
+        LOG_MODULE_DEBUG("autobio_immune_bridge",
                   "Chronic rumination detected, escalating inflammation");
     }
 
@@ -728,4 +728,60 @@ float autobio_immune_get_consolidation_impairment(
 float autobio_immune_get_memory_decline_rate(const autobio_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
     return bridge->inflammation_state.memory_decline_rate;
+}
+
+/* ============================================================================
+ * Bio-Async Integration Implementation
+ * ============================================================================ */
+
+#define AUTOBIOGRAPHICAL_IMMUNE_MODULE_NAME "autobiographical_immune_bridge"
+
+/**
+ * @brief Connect bridge to bio-async router
+ */
+int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_AUTOBIOGRAPHICAL,
+        .module_name = AUTOBIOGRAPHICAL_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("autobiographical_immune_bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from bio-async router
+ */
+int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_DEBUG("autobiographical_immune_bridge disconnected from bio-async router");
+    return 0;
+}
+
+/**
+ * @brief Check if bio-async is connected
+ */
+bool autobiographical_immune_is_bio_async_connected(const autobio_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

@@ -136,6 +136,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_autobiographical_memory.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -310,6 +314,10 @@ typedef struct {
     uint32_t positive_boosts;
     uint32_t sickness_landmarks_created;
     uint32_t trauma_recalls;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
 
     /* Thread safety */
     void* mutex;
@@ -630,6 +638,43 @@ float autobio_immune_get_consolidation_impairment(const autobio_immune_bridge_t*
  * @return Memory decline rate [0-1]
  */
 float autobio_immune_get_memory_decline_rate(const autobio_immune_bridge_t* bridge);
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_AUTOBIOGRAPHICAL
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool autobiographical_immune_is_bio_async_connected(const autobio_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

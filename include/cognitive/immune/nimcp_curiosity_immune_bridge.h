@@ -46,6 +46,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -150,6 +154,11 @@ typedef struct {
     uint64_t novelty_triggers;              /**< Novelty-based immune triggers */
     uint64_t chronic_suppression_duration;  /**< Total chronic suppression time */
     float max_suppression_observed;         /**< Peak suppression recorded */
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
+
 
     /* Thread safety */
     void* mutex;
@@ -421,6 +430,43 @@ float curiosity_immune_get_vigilance_boost(
 bool curiosity_immune_is_chronic_inflammation(
     const curiosity_immune_bridge_t* bridge
 );
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_CURIOSITY
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool curiosity_immune_is_bio_async_connected(const curiosity_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

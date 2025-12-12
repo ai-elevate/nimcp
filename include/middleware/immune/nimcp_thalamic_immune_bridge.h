@@ -131,6 +131,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -277,6 +281,11 @@ typedef struct {
     uint32_t health_boosts;
     uint64_t priority_escalations;
     uint64_t gating_adjustments;
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
+
 
     /* Thread safety */
     void* mutex;
@@ -546,6 +555,43 @@ float thalamic_immune_get_gating_threshold(const thalamic_immune_bridge_t* bridg
 float thalamic_immune_get_threat_priority_multiplier(
     const thalamic_immune_bridge_t* bridge
 );
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_THALAMIC
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int thalamic_immune_connect_bio_async(thalamic_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int thalamic_immune_disconnect_bio_async(thalamic_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool thalamic_immune_is_bio_async_connected(const thalamic_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

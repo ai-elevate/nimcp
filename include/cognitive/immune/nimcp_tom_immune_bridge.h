@@ -152,6 +152,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -294,6 +298,11 @@ typedef struct {
     uint32_t social_connection_boosts;
     uint32_t rejection_inflammations;
     uint32_t isolation_inflammations;
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
+
 
     /* Thread safety */
     void* mutex;
@@ -581,6 +590,43 @@ float tom_immune_get_perspective_impairment(const tom_immune_bridge_t* bridge);
  * @return Empathy impairment [0-1]
  */
 float tom_immune_get_empathy_impairment(const tom_immune_bridge_t* bridge);
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_TOM
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int tom_immune_connect_bio_async(tom_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool tom_immune_is_bio_async_connected(const tom_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

@@ -134,6 +134,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "plasticity/dendritic/nimcp_dendritic.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -281,6 +285,11 @@ typedef struct {
     uint32_t recovery_supports;
     float total_spine_loss;
     float total_spine_growth;
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
+
 
     /* Thread safety */
     void* mutex;
@@ -523,6 +532,43 @@ float dendritic_immune_get_spine_density(const dendritic_immune_bridge_t* bridge
  * @return Complexity reduction [0-1]
  */
 float dendritic_immune_get_complexity_loss(const dendritic_immune_bridge_t* bridge);
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_DENDRITIC
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int dendritic_immune_connect_bio_async(dendritic_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int dendritic_immune_disconnect_bio_async(dendritic_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool dendritic_immune_is_bio_async_connected(const dendritic_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

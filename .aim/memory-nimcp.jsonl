@@ -1,0 +1,6 @@
+{"type":"_aim","source":"mcp-knowledge-graph"}
+{"type":"entity","name":"NIMCP","entityType":"Project","observations":["C-based neural simulation library","Build: cd build && make nimcp -j4","Library: libnimcp.so.2.6.2"]}
+{"type":"entity","name":"Brain Immune System","entityType":"Module","observations":["27+ module integrations","B Cells, T Cells, Antibodies, Cytokines","119K+ lines added across 289 files"]}
+{"type":"entity","name":"Cytokine Convention","entityType":"Convention","observations":["Base: CYTOKINE_IL1B, CYTOKINE_IL6, CYTOKINE_TNFA","Brain: BRAIN_CYTOKINE_IL1, BRAIN_CYTOKINE_IL6","Constants: CYTOKINE_IL1_* prefix (not IL1B)"]}
+{"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
+{"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}

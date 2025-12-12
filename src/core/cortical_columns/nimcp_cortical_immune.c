@@ -251,8 +251,8 @@ cortical_immune_system_t* cortical_immune_create(
     system->next_site_id = 1;
     system->brain_immune_connected = false;
 
-    nimcp_log(NIMCP_LOG_INFO, "cortical_immune",
-              "Created cortical immune system with %u max sites",
+    LOG_MODULE_INFO("cortical_immune",
+                  "Created cortical immune system with %u max sites",
               system->config.max_microglial_sites);
 
     return system;
@@ -304,8 +304,8 @@ int cortical_immune_connect_brain_immune(
     system->brain_immune_connected = true;
     nimcp_platform_mutex_unlock(system->mutex);
 
-    nimcp_log(NIMCP_LOG_INFO, "cortical_immune",
-              "Connected to brain immune system");
+    LOG_MODULE_INFO("cortical_immune",
+                  "Connected to brain immune system");
 
     return 0;
 }
@@ -355,8 +355,8 @@ int cortical_immune_register_hypercolumn(
     if (!system || !hcol) return -1;
 
     /* For now, just log registration */
-    nimcp_log(NIMCP_LOG_DEBUG, "cortical_immune",
-              "Registered hypercolumn %u for monitoring", hcol_id);
+    LOG_MODULE_DEBUG("cortical_immune",
+                  "Registered hypercolumn %u for monitoring", hcol_id);
 
     return 0;
 }
@@ -395,8 +395,8 @@ int cortical_immune_register_laminar_structure(
 
     nimcp_platform_mutex_unlock(system->mutex);
 
-    nimcp_log(NIMCP_LOG_DEBUG, "cortical_immune",
-              "Registered laminar structure region %u", region_id);
+    LOG_MODULE_DEBUG("cortical_immune",
+                  "Registered laminar structure region %u", region_id);
 
     return 0;
 }
@@ -408,8 +408,8 @@ int cortical_immune_register_orientation_hypercolumn(
 ) {
     if (!system || !orient_hcol) return -1;
 
-    nimcp_log(NIMCP_LOG_DEBUG, "cortical_immune",
-              "Registered orientation hypercolumn %u for selectivity monitoring",
+    LOG_MODULE_DEBUG("cortical_immune",
+                  "Registered orientation hypercolumn %u for selectivity monitoring",
               hcol_id);
 
     return 0;
@@ -906,7 +906,7 @@ int cortical_immune_present_abnormality(
     if (result == 0) {
         system->stats.antigens_presented++;
 
-        nimcp_log(NIMCP_LOG_DEBUG, "cortical_immune",
+        LOG_MODULE_DEBUG("cortical_immune",
                   "Presented cortical abnormality (type=%d, column=%u, score=%.2f) as antigen %u",
                   abnormality_type, column_id, abnormality_score, *antigen_id);
     }

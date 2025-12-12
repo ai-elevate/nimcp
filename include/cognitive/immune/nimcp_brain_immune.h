@@ -199,6 +199,10 @@ typedef enum {
     BRAIN_CYTOKINE_COUNT = 6
 } brain_cytokine_type_t;
 
+/* Backward compatibility aliases for brain_cytokine_type_t */
+#define CYTOKINE_TNF_ALPHA  ((brain_cytokine_type_t)BRAIN_CYTOKINE_TNF)
+#define CYTOKINE_IL1_BRAIN  ((brain_cytokine_type_t)BRAIN_CYTOKINE_IL1)
+
 /**
  * @brief Antigen source types
  */

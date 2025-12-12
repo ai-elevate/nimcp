@@ -142,7 +142,7 @@ feature_immune_bridge_t* feature_immune_bridge_create(
 ) {
     /* Guard: require immune and feature extractor */
     if (!immune_system || !feature_extractor) {
-        nimcp_log(NIMCP_LOG_ERROR, "feature_immune_bridge",
+        LOG_MODULE_ERROR("feature_immune_bridge",
                   "Cannot create bridge without immune and feature extractor");
         return NULL;
     }
@@ -151,7 +151,7 @@ feature_immune_bridge_t* feature_immune_bridge_create(
     feature_immune_bridge_t* bridge = (feature_immune_bridge_t*)
         nimcp_malloc(sizeof(feature_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "feature_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("feature_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -195,7 +195,7 @@ feature_immune_bridge_t* feature_immune_bridge_create(
     }
     pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
 
-    nimcp_log(NIMCP_LOG_INFO, "feature_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("feature_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -210,7 +210,7 @@ void feature_immune_bridge_destroy(feature_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "feature_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("feature_immune_bridge", "Bridge destroyed");
 }
 
 /* ============================================================================
@@ -643,4 +643,60 @@ float feature_immune_get_quality_score(const feature_immune_bridge_t* bridge) {
     float degradation_penalty = bridge->quality_monitor.chronic_degradation ? 0.5f : 1.0f;
 
     return precision_score * stability_score * degradation_penalty;
+}
+
+/* ============================================================================
+ * Bio-Async Integration Implementation
+ * ============================================================================ */
+
+#define FEATURE_EXTRACTOR_IMMUNE_MODULE_NAME "feature_extractor_immune_bridge"
+
+/**
+ * @brief Connect bridge to bio-async router
+ */
+int feature_extractor_immune_connect_bio_async(feature_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_FEATURE_EXTRACTOR,
+        .module_name = FEATURE_EXTRACTOR_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("feature_extractor_immune_bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from bio-async router
+ */
+int feature_extractor_immune_disconnect_bio_async(feature_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_DEBUG("feature_extractor_immune_bridge disconnected from bio-async router");
+    return 0;
+}
+
+/**
+ * @brief Check if bio-async is connected
+ */
+bool feature_extractor_immune_is_bio_async_connected(const feature_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

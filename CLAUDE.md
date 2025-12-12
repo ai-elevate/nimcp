@@ -257,6 +257,58 @@ float lr_factor = training_immune_get_lr_factor(ti);  // Returns 0.50
 
 **GOTCHA**: Manual CMakeLists.txt edit required. See `TRAINING_IMMUNE_BUILD_INSTRUCTIONS.md` for details.
 
+### Bio-Async Integration for Immune Bridges (Complete - Dec 2024)
+All 24+ immune bridge modules now have bio-async integration for inter-module messaging:
+
+| Category | Bridges | Module IDs |
+|----------|---------|------------|
+| Cognitive | attention, emotion, memory, reasoning, executive, introspection, curiosity, wellbeing, mental_health, tom, self_model, sleep, autobiographical, knowledge | BIO_MODULE_IMMUNE_ATTENTION, etc. |
+| Perception | visual, audio, speech | BIO_MODULE_IMMUNE_VISUAL, etc. |
+| Plasticity | stdp, bcm, homeostatic, synaptic_scaling, eligibility, dendritic | BIO_MODULE_IMMUNE_STDP, etc. |
+| Middleware | routing, buffering, population_coding, feature_extractor, thalamic, sequence, training | BIO_MODULE_IMMUNE_ROUTING, etc. |
+| Core | oscillations, cortical, broca | BIO_MODULE_IMMUNE_OSCILLATIONS, etc. |
+
+**Bio-async Pattern:**
+```c
+// Struct fields (add to bridge struct)
+bio_module_context_t bio_ctx;       // Bio-async module context
+bool bio_async_enabled;              // Whether bio-async is active
+
+// Standard API functions
+int <prefix>_connect_bio_async(<bridge>_t* bridge);
+int <prefix>_disconnect_bio_async(<bridge>_t* bridge);
+bool <prefix>_is_bio_async_connected(const <bridge>_t* bridge);
+
+// Implementation pattern
+int emotion_immune_connect_bio_async(emotion_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_EMOTION,
+        .module_name = "emotion_immune_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected to bio-async router");
+    }
+    return 0;
+}
+```
+
+**BIO_MODULE_* Definitions (nimcp_bio_messages.h):**
+```c
+/* Immune bridge modules (0x0D00 - 0x0DFF) */
+BIO_MODULE_IMMUNE_BRAIN = 0x0D00,
+BIO_MODULE_IMMUNE_ATTENTION,
+BIO_MODULE_IMMUNE_MEMORY,
+// ... 40+ immune module definitions
+```
+
 ### Introspection Module Enhancements (Complete - Dec 2024)
 Implemented three major introspection subsystems for brain metacognition:
 

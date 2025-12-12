@@ -5,8 +5,13 @@
 #include "middleware/immune/nimcp_routing_immune.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <math.h>
+
+/* Mutex convenience macro */
+#define nimcp_mutex_create() nimcp_platform_mutex_create()
 
 //=============================================================================
 // Internal Structures
@@ -417,7 +422,7 @@ bool routing_immune_publish_event(
     event.type = event_type;
     event.source = EVENT_SOURCE_ROUTER;
     event.priority = MW_EVENT_PRIORITY_HIGH;
-    event.timestamp_us = nimcp_get_time_us();
+    event.timestamp_us = nimcp_time_get_us();
 
     // Publish to event bus
     bool result = event_bus_publish(bridge->event_bus, &event);
@@ -494,7 +499,7 @@ bool routing_immune_update(
             // Create anomaly record
             routing_anomaly_t anomaly = {
                 .type = anomaly_type,
-                .detection_time_ms = nimcp_get_time_ms(),
+                .detection_time_ms = nimcp_time_get_ms(),
                 .severity = 0.5f,  // Medium severity by default
                 .drop_rate = (routing_stats.signals_routed > 0) ?
                     (float)routing_stats.signals_dropped / (float)routing_stats.signals_routed : 0.0f,

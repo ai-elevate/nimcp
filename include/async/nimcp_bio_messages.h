@@ -605,6 +605,52 @@ typedef enum {
     BIO_MODULE_PORTIA_CLASSIFICATION,
     BIO_MODULE_PORTIA_DECEPTION,
 
+    /* Immune bridge modules (0x0D00 - 0x0DFF) */
+    BIO_MODULE_IMMUNE_BRAIN = 0x0D00,           /**< Brain immune system core */
+    BIO_MODULE_IMMUNE_ATTENTION,                /**< Attention-immune bridge */
+    BIO_MODULE_IMMUNE_MEMORY,                   /**< Memory-immune integration */
+    BIO_MODULE_IMMUNE_EMOTION,                  /**< Emotion-immune bridge */
+    BIO_MODULE_IMMUNE_REASONING,                /**< Reasoning-immune bridge */
+    BIO_MODULE_IMMUNE_CURIOSITY,                /**< Curiosity-immune bridge */
+    BIO_MODULE_IMMUNE_EXECUTIVE,                /**< Executive-immune bridge */
+    BIO_MODULE_IMMUNE_INTROSPECTION,            /**< Introspection-immune bridge */
+    BIO_MODULE_IMMUNE_KNOWLEDGE,                /**< Knowledge-immune bridge */
+    BIO_MODULE_IMMUNE_WELLBEING,                /**< Wellbeing-immune bridge */
+    BIO_MODULE_IMMUNE_MENTAL_HEALTH,            /**< Mental health-immune bridge */
+    BIO_MODULE_IMMUNE_SELF_MODEL,               /**< Self model-immune bridge */
+    BIO_MODULE_IMMUNE_TOM,                      /**< Theory of mind-immune bridge */
+    BIO_MODULE_IMMUNE_SLEEP,                    /**< Sleep-immune bridge */
+    BIO_MODULE_IMMUNE_AUTOBIOGRAPHICAL,         /**< Autobiographical-immune bridge */
+
+    /* Perception immune modules */
+    BIO_MODULE_IMMUNE_VISUAL = 0x0D20,          /**< Visual cortex-immune bridge */
+    BIO_MODULE_IMMUNE_AUDIO,                    /**< Audio cortex-immune bridge */
+    BIO_MODULE_IMMUNE_SPEECH,                   /**< Speech cortex-immune bridge */
+
+    /* Plasticity immune modules */
+    BIO_MODULE_IMMUNE_STDP = 0x0D30,            /**< STDP-immune bridge */
+    BIO_MODULE_IMMUNE_BCM,                      /**< BCM-immune bridge */
+    BIO_MODULE_IMMUNE_HOMEOSTATIC,              /**< Homeostatic-immune bridge */
+    BIO_MODULE_IMMUNE_SYNAPTIC_SCALING,         /**< Synaptic scaling-immune bridge */
+    BIO_MODULE_IMMUNE_ELIGIBILITY,              /**< Eligibility trace-immune bridge */
+    BIO_MODULE_IMMUNE_DENDRITIC,                /**< Dendritic-immune bridge */
+    BIO_MODULE_IMMUNE_NEUROMODULATOR,           /**< Neuromodulator-immune bridge */
+
+    /* Middleware immune modules */
+    BIO_MODULE_IMMUNE_ROUTING = 0x0D40,         /**< Routing-immune bridge */
+    BIO_MODULE_IMMUNE_BUFFER,                   /**< Buffer-immune bridge */
+    BIO_MODULE_IMMUNE_POPULATION_CODING,        /**< Population coding-immune bridge */
+    BIO_MODULE_IMMUNE_FEATURE_EXTRACTOR,        /**< Feature extractor-immune bridge */
+    BIO_MODULE_IMMUNE_THALAMIC,                 /**< Thalamic router-immune bridge */
+    BIO_MODULE_IMMUNE_SEQUENCE,                 /**< Sequence detector-immune bridge */
+    BIO_MODULE_IMMUNE_TRAINING,                 /**< Training-immune bridge */
+    BIO_MODULE_IMMUNE_PATTERN,                  /**< Pattern-immune bridge */
+
+    /* Core immune modules */
+    BIO_MODULE_IMMUNE_OSCILLATIONS = 0x0D50,    /**< Oscillations-immune bridge */
+    BIO_MODULE_IMMUNE_CORTICAL,                 /**< Cortical columns-immune bridge */
+    BIO_MODULE_IMMUNE_BROCA,                    /**< Broca's area-immune bridge */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

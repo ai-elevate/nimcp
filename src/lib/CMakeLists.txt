@@ -109,8 +109,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_adapter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_language_production_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_immune.c  # Broca's region-immune integration
-    # TODO: Fix error codes and re-enable
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # Predictive coding brain region extension
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # Predictive coding brain region extension - DISABLED: needs refactoring
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
@@ -236,7 +235,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_wellbeing_immune_bridge.c  # Wellbeing-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_immune.c  # Ethics-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # Predictive-immune bidirectional integration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_feature_extractor_immune_bridge.c  # Feature extractor-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_population_coding_immune_bridge.c  # Population coding-immune integration

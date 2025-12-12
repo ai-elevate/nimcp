@@ -98,7 +98,7 @@ static bool is_chronic_inflammation(
 ) {
     if (!immune) return false;
 
-    uint64_t now = nimcp_time_now_ms();
+    uint64_t now = nimcp_time_get_ms();
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
         uint64_t duration = now - immune->inflammation_sites[i].start_time;
@@ -164,8 +164,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
 ) {
     /* Guard: require both systems */
     if (!immune_system || !curiosity_engine) {
-        nimcp_log(NIMCP_LOG_ERROR, LOG_MODULE,
-                  "Cannot create bridge without immune and curiosity systems");
+        LOG_MODULE_ERROR(LOG_MODULE, "Cannot create bridge without immune and curiosity systems");
         return NULL;
     }
 
@@ -173,7 +172,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)
         nimcp_malloc(sizeof(curiosity_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, LOG_MODULE, "Allocation failed");
+        LOG_MODULE_ERROR(LOG_MODULE, "Allocation failed");
         return NULL;
     }
 
@@ -212,19 +211,19 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     /* Create mutex */
     bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) {
-        nimcp_log(NIMCP_LOG_ERROR, LOG_MODULE, "Mutex creation failed");
+        LOG_MODULE_ERROR(LOG_MODULE, "Mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, LOG_MODULE, "Curiosity-immune bridge created");
+    LOG_MODULE_INFO(LOG_MODULE, "Curiosity-immune bridge created");
     return bridge;
 }
 
 void curiosity_immune_bridge_destroy(curiosity_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_log(NIMCP_LOG_INFO, LOG_MODULE, "Destroying curiosity-immune bridge");
+    LOG_MODULE_INFO(LOG_MODULE, "Destroying curiosity-immune bridge");
 
     /* Restore original curiosity if suppressed */
     if (bridge->in_sickness_state && bridge->curiosity_engine) {
@@ -260,16 +259,15 @@ int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge)
     /* Check if entering sickness state */
     if (!bridge->in_sickness_state && sickness >= bridge->config.sickness_threshold) {
         bridge->in_sickness_state = true;
-        bridge->sickness_onset_time = nimcp_time_now_ms();
+        bridge->sickness_onset_time = nimcp_time_get_ms();
         bridge->sickness_episodes++;
-        nimcp_log(NIMCP_LOG_INFO, LOG_MODULE,
-                  "Entering sickness state (level: %.2f)", sickness);
+        LOG_MODULE_INFO(LOG_MODULE, "Entering sickness state (level: %.2f)", sickness);
     }
 
     /* Check if exiting sickness state */
     if (bridge->in_sickness_state && sickness < bridge->config.sickness_threshold * 0.5f) {
         bridge->in_sickness_state = false;
-        nimcp_log(NIMCP_LOG_INFO, LOG_MODULE, "Exiting sickness state");
+        LOG_MODULE_INFO(LOG_MODULE, "Exiting sickness state");
     }
 
     /* Apply suppression if in sickness state */
@@ -302,7 +300,7 @@ int curiosity_immune_on_cytokine_release(
         bridge->current_sickness_level += effect * 0.2f;  /* Incremental effect */
         bridge->current_sickness_level = clamp_f(bridge->current_sickness_level, 0.0f, 1.0f);
 
-        nimcp_log(NIMCP_LOG_DEBUG, LOG_MODULE,
+        LOG_MODULE_DEBUG(LOG_MODULE,
                   "Cytokine release: type=%s, concentration=%.2f, sickness=%.2f",
                   brain_immune_cytokine_to_string(cytokine->type),
                   cytokine->concentration,
@@ -315,8 +313,7 @@ int curiosity_immune_on_cytokine_release(
             bridge->current_sickness_level -= cytokine->concentration * 0.3f;
             bridge->current_sickness_level = clamp_f(bridge->current_sickness_level, 0.0f, 1.0f);
 
-            nimcp_log(NIMCP_LOG_DEBUG, LOG_MODULE,
-                      "IL-10 recovery: sickness reduced to %.2f",
+            LOG_MODULE_DEBUG(LOG_MODULE, "IL-10 recovery: sickness reduced to %.2f",
                       bridge->current_sickness_level);
         }
     }
@@ -344,8 +341,7 @@ int curiosity_immune_on_inflammation(
         bridge->current_sickness_level = clamp_f(
             bridge->current_sickness_level + 0.3f, 0.0f, 1.0f
         );
-        nimcp_log(NIMCP_LOG_WARN, LOG_MODULE,
-                  "Systemic inflammation detected, severe curiosity suppression");
+        LOG_MODULE_WARN(LOG_MODULE, "Systemic inflammation detected, severe curiosity suppression");
     }
 
     /* Check for chronic inflammation */
@@ -360,8 +356,7 @@ int curiosity_immune_on_inflammation(
             );
             bridge->chronic_suppression_duration++;
 
-            nimcp_log(NIMCP_LOG_WARN, LOG_MODULE,
-                      "Chronic inflammation detected, sustained curiosity suppression");
+            LOG_MODULE_WARN(LOG_MODULE, "Chronic inflammation detected, sustained curiosity suppression");
         }
     }
 
@@ -416,8 +411,7 @@ int curiosity_immune_apply_suppression(
     float adjusted_curiosity = bridge->baseline_curiosity_backup * suppression_factor;
     curiosity_set_baseline(bridge->curiosity_engine, adjusted_curiosity);
 
-    nimcp_log(NIMCP_LOG_DEBUG, LOG_MODULE,
-              "Applied curiosity suppression: factor=%.2f, adjusted=%.2f",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Applied curiosity suppression: factor=%.2f, adjusted=%.2f",
               suppression_factor, adjusted_curiosity);
 
     return 0;
@@ -441,8 +435,7 @@ int curiosity_immune_restore_curiosity(curiosity_immune_bridge_t* bridge) {
         bridge->baseline_curiosity_backup * bridge->curiosity_suppression_factor;
     curiosity_set_baseline(bridge->curiosity_engine, adjusted_curiosity);
 
-    nimcp_log(NIMCP_LOG_DEBUG, LOG_MODULE,
-              "Restoring curiosity: factor=%.2f",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Restoring curiosity: factor=%.2f",
               bridge->curiosity_suppression_factor);
 
     return 0;
@@ -476,8 +469,7 @@ int curiosity_immune_update_novelty_vigilance(curiosity_immune_bridge_t* bridge)
             if (bridge->immune_vigilance_boost <= 1.0f) {
                 bridge->immune_vigilance_boost = 1.0f;
                 bridge->immune_vigilance_active = false;
-                nimcp_log(NIMCP_LOG_DEBUG, LOG_MODULE,
-                          "Immune vigilance deactivated");
+                LOG_MODULE_DEBUG(LOG_MODULE, "Immune vigilance deactivated");
             }
         }
     }
@@ -500,11 +492,10 @@ int curiosity_immune_trigger_vigilance(
 
     bridge->immune_vigilance_boost = boost;
     bridge->immune_vigilance_active = true;
-    bridge->last_novelty_trigger = nimcp_time_now_ms();
+    bridge->last_novelty_trigger = nimcp_time_get_ms();
     bridge->novelty_triggers++;
 
-    nimcp_log(NIMCP_LOG_INFO, LOG_MODULE,
-              "Immune vigilance triggered: novelty=%.2f, boost=%.2fx",
+    LOG_MODULE_INFO(LOG_MODULE, "Immune vigilance triggered: novelty=%.2f, boost=%.2fx",
               novelty_level, boost);
 
     return 0;
@@ -525,8 +516,7 @@ int curiosity_immune_on_knowledge_gap(
         /* Trigger immune vigilance for significant novel concepts */
         curiosity_immune_trigger_vigilance(bridge, gap->gap_size);
 
-        nimcp_log(NIMCP_LOG_DEBUG, LOG_MODULE,
-                  "Knowledge gap triggered immune vigilance: topic='%s', gap_size=%.2f",
+        LOG_MODULE_DEBUG(LOG_MODULE, "Knowledge gap triggered immune vigilance: topic='%s', gap_size=%.2f",
                   gap->topic, gap->gap_size);
     }
 
@@ -596,4 +586,60 @@ bool curiosity_immune_is_chronic_inflammation(
         (uint64_t)(bridge->config.chronic_inflammation_days * 24 * 3600 * 1000);
 
     return is_chronic_inflammation(bridge->immune_system, chronic_threshold_ms);
+}
+
+/* ============================================================================
+ * Bio-Async Integration Implementation
+ * ============================================================================ */
+
+#define CURIOSITY_IMMUNE_MODULE_NAME "curiosity_immune_bridge"
+
+/**
+ * @brief Connect bridge to bio-async router
+ */
+int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_CURIOSITY,
+        .module_name = CURIOSITY_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("curiosity_immune_bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from bio-async router
+ */
+int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_DEBUG("curiosity_immune_bridge disconnected from bio-async router");
+    return 0;
+}
+
+/**
+ * @brief Check if bio-async is connected
+ */
+bool curiosity_immune_is_bio_async_connected(const curiosity_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

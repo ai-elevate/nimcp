@@ -132,6 +132,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "middleware/encoding/nimcp_population_coding.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -286,6 +290,11 @@ typedef struct {
     uint32_t anomaly_detections;
     uint32_t immune_triggers;
     uint32_t restorations;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
 
     /* Thread safety */
     void* mutex;
@@ -630,6 +639,43 @@ int population_immune_modulate_sparse_code(
     uint32_t num_neurons,
     bool* noisy_code_out
 );
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_POPULATION_CODING
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int population_coding_immune_connect_bio_async(population_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int population_coding_immune_disconnect_bio_async(population_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool population_coding_immune_is_bio_async_connected(const population_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

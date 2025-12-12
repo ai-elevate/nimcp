@@ -147,6 +147,8 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/attention/nimcp_emotion_attention.h"
 #include "plasticity/attention/nimcp_attention.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -286,6 +288,10 @@ typedef struct {
     uint32_t threat_boosts;
     uint32_t mindful_boosts;
     uint32_t hypervigilance_inflammation_events;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
 
     /* Thread safety */
     void* mutex;
@@ -527,6 +533,42 @@ float attention_immune_get_capacity_factor(const attention_immune_bridge_t* brid
  * @return Narrowing factor [0-1]
  */
 float attention_immune_get_narrowing_factor(const attention_immune_bridge_t* bridge);
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_ATTENTION
+ *
+ * @param bridge Attention-immune bridge
+ * @return 0 on success, -1 on error
+ */
+int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Attention-immune bridge
+ * @return 0 on success
+ */
+int attention_immune_disconnect_bio_async(attention_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Attention-immune bridge
+ * @return true if connected
+ */
+bool attention_immune_is_bio_async_connected(const attention_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

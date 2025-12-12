@@ -145,7 +145,7 @@ pattern_immune_bridge_t* pattern_immune_bridge_create(
 ) {
     /* Guard: require immune system */
     if (!immune_system) {
-        nimcp_log(NIMCP_LOG_ERROR, "pattern_immune_bridge",
+        LOG_MODULE_ERROR("pattern_immune_bridge",
                   "Cannot create bridge without immune system");
         return NULL;
     }
@@ -154,7 +154,7 @@ pattern_immune_bridge_t* pattern_immune_bridge_create(
     pattern_immune_bridge_t* bridge = (pattern_immune_bridge_t*)
         nimcp_malloc(sizeof(pattern_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "pattern_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("pattern_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -207,7 +207,7 @@ pattern_immune_bridge_t* pattern_immune_bridge_create(
     bridge->inflammation_effects.sequence_accuracy_factor = 1.0f;
     bridge->inflammation_effects.pattern_match_accuracy_factor = 1.0f;
 
-    nimcp_log(NIMCP_LOG_INFO, "pattern_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("pattern_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -227,7 +227,7 @@ void pattern_immune_bridge_destroy(pattern_immune_bridge_t* bridge) {
 
     /* Free bridge */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "pattern_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("pattern_immune_bridge", "Bridge destroyed");
 }
 
 /* ============================================================================
@@ -318,7 +318,7 @@ int pattern_immune_degrade_oscillation(pattern_immune_bridge_t* bridge) {
     float factor = bridge->inflammation_effects.oscillation_accuracy_factor;
 
     if (factor < 1.0f) {
-        nimcp_log(NIMCP_LOG_DEBUG, "pattern_immune_bridge",
+        LOG_MODULE_DEBUG("pattern_immune_bridge",
                   "Oscillation accuracy degraded to %.2f", factor);
     }
 
@@ -331,7 +331,7 @@ int pattern_immune_degrade_synchrony(pattern_immune_bridge_t* bridge) {
     float factor = bridge->inflammation_effects.synchrony_accuracy_factor;
 
     if (factor < 1.0f) {
-        nimcp_log(NIMCP_LOG_DEBUG, "pattern_immune_bridge",
+        LOG_MODULE_DEBUG("pattern_immune_bridge",
                   "Synchrony accuracy degraded to %.2f", factor);
     }
 
@@ -344,7 +344,7 @@ int pattern_immune_degrade_sequence(pattern_immune_bridge_t* bridge) {
     float factor = bridge->inflammation_effects.sequence_accuracy_factor;
 
     if (factor < 1.0f) {
-        nimcp_log(NIMCP_LOG_DEBUG, "pattern_immune_bridge",
+        LOG_MODULE_DEBUG("pattern_immune_bridge",
                   "Sequence accuracy degraded to %.2f", factor);
     }
 
@@ -357,7 +357,7 @@ int pattern_immune_degrade_pattern_library(pattern_immune_bridge_t* bridge) {
     float factor = bridge->inflammation_effects.pattern_match_accuracy_factor;
 
     if (factor < 1.0f) {
-        nimcp_log(NIMCP_LOG_DEBUG, "pattern_immune_bridge",
+        LOG_MODULE_DEBUG("pattern_immune_bridge",
                   "Pattern library accuracy degraded to %.2f", factor);
     }
 
@@ -577,7 +577,7 @@ int pattern_immune_present_anomaly(
         anomaly->immune_alerted = true;
         bridge->immune_alerts_triggered++;
 
-        nimcp_log(NIMCP_LOG_INFO, "pattern_immune_bridge",
+        LOG_MODULE_INFO("pattern_immune_bridge",
                   "Pattern anomaly %u presented as antigen %u (severity %u)",
                   anomaly->anomaly_id, anomaly->antigen_id, severity);
     }

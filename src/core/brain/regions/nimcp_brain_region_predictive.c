@@ -30,6 +30,7 @@
 #include "core/brain_regions/nimcp_brain_region_predictive.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "security/nimcp_security.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
 #include <math.h>
@@ -194,21 +195,21 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
 
     // Guard clauses
     if (!region) {
-        LOG_MODULE_ERROR("NULL region in brain_region_enable_predictive");
-        return NIMCP_ERROR_NULL_ARGUMENT;
+        LOG_MODULE_ERROR(LOG_MODULE, "NULL region in brain_region_enable_predictive");
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!config) {
-        LOG_MODULE_ERROR("NULL config in brain_region_enable_predictive");
-        return NIMCP_ERROR_NULL_ARGUMENT;
+        LOG_MODULE_ERROR(LOG_MODULE, "NULL config in brain_region_enable_predictive");
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (region->total_neurons == 0) {
-        LOG_MODULE_ERROR("Region has zero neurons");
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        LOG_MODULE_ERROR(LOG_MODULE, "Region has zero neurons");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Check if already enabled
     if (has_predictive_extension(region)) {
-        LOG_MODULE_WARN("Predictive processing already enabled for region %u", region->id);
+        LOG_MODULE_WARN(LOG_MODULE, "Predictive processing already enabled for region %u", region->id);
         return NIMCP_SUCCESS;
     }
 
@@ -219,7 +220,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
     brain_region_predictive_t* pred = nimcp_calloc(1, sizeof(brain_region_predictive_t));
     if (!pred) {
         nimcp_mutex_unlock(&region->lock);
-        LOG_MODULE_ERROR("Failed to allocate predictive extension");
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate predictive extension");
         return NIMCP_ERROR_OUT_OF_MEMORY;
     }
 
@@ -237,7 +238,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
         nimcp_free(pred->precision_weights);
         nimcp_free(pred);
         nimcp_mutex_unlock(&region->lock);
-        LOG_MODULE_ERROR("Failed to allocate prediction buffers");
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate prediction buffers");
         return NIMCP_ERROR_OUT_OF_MEMORY;
     }
 
@@ -265,7 +266,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
             nimcp_free(pred->precision_weights);
             nimcp_free(pred);
             nimcp_mutex_unlock(&region->lock);
-            LOG_MODULE_ERROR("Failed to create predictive hierarchy");
+            LOG_MODULE_ERROR(LOG_MODULE, "Failed to create predictive hierarchy");
             return NIMCP_ERROR_INITIALIZATION_FAILED;
         }
     }
@@ -308,14 +309,14 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
 
         pred->hierarchy_pe_encoder = nimcp_pos_encoder_create(&pe_config);
         if (!pred->hierarchy_pe_encoder) {
-            LOG_MODULE_WARN("Failed to create hierarchy PE encoder, continuing without it");
+            LOG_MODULE_WARN(LOG_MODULE, "Failed to create hierarchy PE encoder, continuing without it");
         } else {
             // Allocate hierarchy level embedding buffer
             pred->hierarchy_level_embedding = nimcp_calloc(config->pe_embedding_dim, sizeof(float));
             if (!pred->hierarchy_level_embedding) {
                 nimcp_pos_encoder_destroy(pred->hierarchy_pe_encoder);
                 pred->hierarchy_pe_encoder = NULL;
-                LOG_MODULE_WARN("Failed to allocate hierarchy level embedding buffer");
+                LOG_MODULE_WARN(LOG_MODULE, "Failed to allocate hierarchy level embedding buffer");
             }
         }
     }
@@ -333,7 +334,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
 
         pred->temporal_pe_encoder = nimcp_pos_encoder_create(&pe_config);
         if (!pred->temporal_pe_encoder) {
-            LOG_MODULE_WARN("Failed to create temporal PE encoder, continuing without it");
+            LOG_MODULE_WARN(LOG_MODULE, "Failed to create temporal PE encoder, continuing without it");
         } else {
             // Allocate temporal sequence buffer
             pred->temporal_sequence_buffer = nimcp_calloc(
@@ -343,7 +344,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
             if (!pred->temporal_sequence_buffer) {
                 nimcp_pos_encoder_destroy(pred->temporal_pe_encoder);
                 pred->temporal_pe_encoder = NULL;
-                LOG_MODULE_WARN("Failed to allocate temporal sequence buffer");
+                LOG_MODULE_WARN(LOG_MODULE, "Failed to allocate temporal sequence buffer");
             }
         }
     }
@@ -356,7 +357,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
 
     nimcp_mutex_unlock(&region->lock);
 
-    LOG_MODULE_INFO("Enabled predictive processing for region %u (level %u, %u neurons)",
+    LOG_MODULE_INFO(LOG_MODULE, "Enabled predictive processing for region %u (level %u, %u neurons)",
                     region->id, config->hierarchy_level, region->total_neurons);
 
     // Register with security if available
@@ -373,7 +374,7 @@ nimcp_result_t brain_region_disable_predictive(brain_region_t* region) {
      */
 
     // Guard clauses
-    if (!region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(&region->lock);
@@ -418,7 +419,7 @@ nimcp_result_t brain_region_disable_predictive(brain_region_t* region) {
 
     nimcp_mutex_unlock(&region->lock);
 
-    LOG_MODULE_INFO("Disabled predictive processing for region %u", region->id);
+    LOG_MODULE_INFO(LOG_MODULE, "Disabled predictive processing for region %u", region->id);
 
     return NIMCP_SUCCESS;
 }
@@ -447,7 +448,7 @@ nimcp_result_t brain_region_predict_lower(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !prediction) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !prediction) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -500,7 +501,7 @@ nimcp_result_t brain_region_predict_lower(brain_region_t* region,
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_DEBUG("Region %u generated prediction for region %u",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Region %u generated prediction for region %u",
                      region->id, lower_region_id);
 
     return NIMCP_SUCCESS;
@@ -518,13 +519,13 @@ nimcp_result_t brain_region_compute_error(brain_region_t* region,
 
     // Guard clauses
     if (!region || !actual || !predicted || !error) {
-        return NIMCP_ERROR_NULL_ARGUMENT;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!has_predictive_extension(region)) {
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
     if (!validate_buffer_size(region, error_size)) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -552,7 +553,7 @@ nimcp_result_t brain_region_compute_error(brain_region_t* region,
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_DEBUG("Region %u computed prediction error (mean=%.4f)",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Region %u computed prediction error (mean=%.4f)",
                      region->id, pred->mean_prediction_error);
 
     return NIMCP_SUCCESS;
@@ -568,9 +569,9 @@ nimcp_result_t brain_region_update_from_error(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !error) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !error) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (dt <= 0.0f) return NIMCP_ERROR_INVALID_ARGUMENT;
+    if (dt <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -597,7 +598,7 @@ nimcp_result_t brain_region_update_from_error(brain_region_t* region,
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_DEBUG("Region %u updated from error (dt=%.2f, FE=%.4f)",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Region %u updated from error (dt=%.2f, FE=%.4f)",
                      region->id, dt, pred->total_free_energy);
 
     return NIMCP_SUCCESS;
@@ -621,7 +622,7 @@ nimcp_result_t brain_region_hierarchical_step(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -728,7 +729,7 @@ uint32_t brain_region_hierarchical_converge(brain_region_t* region,
         float change = fabsf(current_fe - prev_fe) / (fabsf(prev_fe) + 1e-8f);
 
         if (change < tolerance) {
-            LOG_MODULE_DEBUG("Region %u converged after %u iterations (FE=%.4f)",
+            LOG_MODULE_DEBUG(LOG_MODULE, "Region %u converged after %u iterations (FE=%.4f)",
                              region->id, iteration + 1, current_fe);
             return iteration + 1;
         }
@@ -736,7 +737,7 @@ uint32_t brain_region_hierarchical_converge(brain_region_t* region,
         prev_fe = current_fe;
     }
 
-    LOG_MODULE_DEBUG("Region %u reached max iterations %u (FE=%.4f)",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Region %u reached max iterations %u (FE=%.4f)",
                      region->id, iteration, prev_fe);
 
     return iteration;
@@ -754,10 +755,10 @@ nimcp_result_t brain_region_set_precision(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
     if (!validate_buffer_size(region, precision_size)) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -781,7 +782,7 @@ nimcp_result_t brain_region_set_precision(brain_region_t* region,
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_DEBUG("Region %u precision set (mean=%.4f)",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Region %u precision set (mean=%.4f)",
                      region->id, pred->mean_precision);
 
     return NIMCP_SUCCESS;
@@ -795,10 +796,10 @@ nimcp_result_t brain_region_get_precision(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !precisions) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !precisions) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
     if (!validate_buffer_size(region, precision_size)) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -817,9 +818,9 @@ nimcp_result_t brain_region_learn_precisions(brain_region_t* region, float dt) {
      */
 
     // Guard clauses
-    if (!region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (dt <= 0.0f) return NIMCP_ERROR_INVALID_ARGUMENT;
+    if (dt <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -876,13 +877,13 @@ nimcp_result_t brain_region_connect_predictive(brain_region_t* higher_region,
      */
 
     // Guard clauses
-    if (!higher_region || !lower_region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!higher_region || !lower_region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(higher_region) ||
         !has_predictive_extension(lower_region)) {
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
     if (connection_strength < 0.0f || connection_strength > 1.0f) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     brain_region_predictive_t* higher_pred = higher_region->predictive_extension;
@@ -924,7 +925,7 @@ nimcp_result_t brain_region_connect_predictive(brain_region_t* higher_region,
     nimcp_mutex_unlock(&second->lock);
     nimcp_mutex_unlock(&first->lock);
 
-    LOG_MODULE_INFO("Connected regions hierarchically: %u (higher) → %u (lower), strength=%.2f",
+    LOG_MODULE_INFO(LOG_MODULE, "Connected regions hierarchically: %u (higher) → %u (lower), strength=%.2f",
                     higher_region->id, lower_region->id, connection_strength);
 
     return NIMCP_SUCCESS;
@@ -937,7 +938,7 @@ nimcp_result_t brain_region_disconnect_predictive(brain_region_t* higher_region,
      */
 
     // Guard clauses
-    if (!higher_region || !lower_region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!higher_region || !lower_region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(higher_region) ||
         !has_predictive_extension(lower_region)) {
         return NIMCP_ERROR_NOT_INITIALIZED;
@@ -980,7 +981,7 @@ nimcp_result_t brain_region_disconnect_predictive(brain_region_t* higher_region,
     nimcp_mutex_unlock(&second->lock);
     nimcp_mutex_unlock(&first->lock);
 
-    LOG_MODULE_INFO("Disconnected regions hierarchically: %u ↛ %u",
+    LOG_MODULE_INFO(LOG_MODULE, "Disconnected regions hierarchically: %u ↛ %u",
                     higher_region->id, lower_region->id);
 
     return NIMCP_SUCCESS;
@@ -997,7 +998,7 @@ nimcp_result_t brain_region_register_predictive_bio_async(brain_region_t* region
      */
 
     // Guard clauses
-    if (!region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1014,7 +1015,7 @@ nimcp_result_t brain_region_register_predictive_bio_async(brain_region_t* region
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_INFO("Region %u registered with bio-async (module_id=%u)",
+    LOG_MODULE_INFO(LOG_MODULE, "Region %u registered with bio-async (module_id=%u)",
                     region->id, module_id);
 
     return NIMCP_SUCCESS;
@@ -1026,7 +1027,7 @@ nimcp_result_t brain_region_unregister_predictive_bio_async(brain_region_t* regi
      */
 
     // Guard clauses
-    if (!region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1038,7 +1039,7 @@ nimcp_result_t brain_region_unregister_predictive_bio_async(brain_region_t* regi
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_INFO("Region %u unregistered from bio-async", region->id);
+    LOG_MODULE_INFO(LOG_MODULE, "Region %u unregistered from bio-async", region->id);
 
     return NIMCP_SUCCESS;
 }
@@ -1052,7 +1053,7 @@ nimcp_result_t brain_region_broadcast_prediction(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !prediction) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !prediction) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1064,7 +1065,7 @@ nimcp_result_t brain_region_broadcast_prediction(brain_region_t* region,
     // Create prediction update message
     // In full implementation, would use bio_router_send()
     // For now, just log
-    LOG_MODULE_DEBUG("Region %u broadcasting prediction to region %u (size=%u)",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Region %u broadcasting prediction to region %u (size=%u)",
                      region->id, target_region_id, size);
 
     return NIMCP_SUCCESS;
@@ -1079,7 +1080,7 @@ nimcp_result_t brain_region_broadcast_error(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !error) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !error) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1091,7 +1092,7 @@ nimcp_result_t brain_region_broadcast_error(brain_region_t* region,
     // Create prediction error message
     // In full implementation, would use bio_router_send()
     // For now, just log
-    LOG_MODULE_DEBUG("Region %u broadcasting error to region %u (size=%u)",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Region %u broadcasting error to region %u (size=%u)",
                      region->id, target_region_id, size);
 
     return NIMCP_SUCCESS;
@@ -1109,9 +1110,9 @@ nimcp_result_t brain_region_get_prediction(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !prediction) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !prediction) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (!validate_buffer_size(region, size)) return NIMCP_ERROR_INVALID_ARGUMENT;
+    if (!validate_buffer_size(region, size)) return NIMCP_ERROR_INVALID_PARAM;
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -1130,9 +1131,9 @@ nimcp_result_t brain_region_get_prediction_error(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !error) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !error) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (!validate_buffer_size(region, size)) return NIMCP_ERROR_INVALID_ARGUMENT;
+    if (!validate_buffer_size(region, size)) return NIMCP_ERROR_INVALID_PARAM;
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -1167,7 +1168,7 @@ nimcp_result_t brain_region_get_predictive_stats(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !stats) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region || !stats) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1200,14 +1201,14 @@ nimcp_result_t brain_region_predictive_enable_security(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region) return NIMCP_ERROR_NULL_ARGUMENT;
+    if (!region) return NIMCP_ERROR_NULL_POINTER;
     if (!has_predictive_extension(region)) return NIMCP_ERROR_NOT_INITIALIZED;
 
     if (enable) {
-        LOG_MODULE_INFO("Enabled security monitoring for region %u predictions", region->id);
+        LOG_MODULE_INFO(LOG_MODULE, "Enabled security monitoring for region %u predictions", region->id);
         // In full implementation, would register with BBB
     } else {
-        LOG_MODULE_INFO("Disabled security monitoring for region %u predictions", region->id);
+        LOG_MODULE_INFO(LOG_MODULE, "Disabled security monitoring for region %u predictions", region->id);
     }
 
     return NIMCP_SUCCESS;
@@ -1226,17 +1227,17 @@ nimcp_result_t brain_region_set_hierarchy_pe(brain_region_t* region,
 
     // Guard clauses
     if (!region) {
-        LOG_MODULE_ERROR("NULL region in brain_region_set_hierarchy_pe");
-        return NIMCP_ERROR_NULL_ARGUMENT;
+        LOG_MODULE_ERROR(LOG_MODULE, "NULL region in brain_region_set_hierarchy_pe");
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!has_predictive_extension(region)) {
-        LOG_MODULE_ERROR("Region %u does not have predictive extension enabled", region->id);
+        LOG_MODULE_ERROR(LOG_MODULE, "Region %u does not have predictive extension enabled", region->id);
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
     if (hierarchy_level >= MAX_HIERARCHY_LEVELS) {
-        LOG_MODULE_ERROR("Hierarchy level %u exceeds maximum %u",
+        LOG_MODULE_ERROR(LOG_MODULE, "Hierarchy level %u exceeds maximum %u",
                          hierarchy_level, MAX_HIERARCHY_LEVELS);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1246,14 +1247,14 @@ nimcp_result_t brain_region_set_hierarchy_pe(brain_region_t* region,
     // Check if hierarchy PE is enabled
     if (!pred->config.enable_hierarchy_pe) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_WARN("Hierarchy PE not enabled for region %u", region->id);
+        LOG_MODULE_WARN(LOG_MODULE, "Hierarchy PE not enabled for region %u", region->id);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     // Check if encoder is initialized
     if (!pred->hierarchy_pe_encoder || !pred->hierarchy_level_embedding) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Hierarchy PE encoder not initialized for region %u", region->id);
+        LOG_MODULE_ERROR(LOG_MODULE, "Hierarchy PE encoder not initialized for region %u", region->id);
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
@@ -1266,7 +1267,7 @@ nimcp_result_t brain_region_set_hierarchy_pe(brain_region_t* region,
 
     if (result != NIMCP_POS_SUCCESS) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Failed to encode hierarchy level %u: error %d",
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to encode hierarchy level %u: error %d",
                          hierarchy_level, result);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
@@ -1276,13 +1277,13 @@ nimcp_result_t brain_region_set_hierarchy_pe(brain_region_t* region,
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_INFO("Set hierarchy PE for region %u at level %u",
+    LOG_MODULE_INFO(LOG_MODULE, "Set hierarchy PE for region %u at level %u",
                     region->id, hierarchy_level);
 
     // Broadcast encoding computation message if bio-async enabled
     if (pred->bio_async_registered) {
         // In full implementation, would send BIO_MSG_ENCODING_COMPUTE
-        LOG_MODULE_DEBUG("Region %u hierarchy PE update (bio-async module %u)",
+        LOG_MODULE_DEBUG(LOG_MODULE, "Region %u hierarchy PE update (bio-async module %u)",
                          region->id, pred->bio_async_module_id);
     }
 
@@ -1300,16 +1301,16 @@ nimcp_result_t brain_region_encode_prediction_sequence(brain_region_t* region,
 
     // Guard clauses
     if (!region || !prediction_sequence || !output) {
-        LOG_MODULE_ERROR("NULL parameter in brain_region_encode_prediction_sequence");
-        return NIMCP_ERROR_NULL_ARGUMENT;
+        LOG_MODULE_ERROR(LOG_MODULE, "NULL parameter in brain_region_encode_prediction_sequence");
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!has_predictive_extension(region)) {
-        LOG_MODULE_ERROR("Region %u does not have predictive extension enabled", region->id);
+        LOG_MODULE_ERROR(LOG_MODULE, "Region %u does not have predictive extension enabled", region->id);
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
     if (seq_length == 0) {
-        LOG_MODULE_ERROR("Invalid sequence length 0");
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        LOG_MODULE_ERROR(LOG_MODULE, "Invalid sequence length 0");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1319,23 +1320,23 @@ nimcp_result_t brain_region_encode_prediction_sequence(brain_region_t* region,
     // Check if temporal PE is enabled
     if (!pred->config.enable_temporal_pe) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_WARN("Temporal PE not enabled for region %u", region->id);
+        LOG_MODULE_WARN(LOG_MODULE, "Temporal PE not enabled for region %u", region->id);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     // Check if encoder is initialized
     if (!pred->temporal_pe_encoder || !pred->temporal_sequence_buffer) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Temporal PE encoder not initialized for region %u", region->id);
+        LOG_MODULE_ERROR(LOG_MODULE, "Temporal PE encoder not initialized for region %u", region->id);
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
     // Check sequence length bounds
     if (seq_length > pred->config.max_prediction_sequence) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Sequence length %u exceeds maximum %u",
+        LOG_MODULE_ERROR(LOG_MODULE, "Sequence length %u exceeds maximum %u",
                          seq_length, pred->config.max_prediction_sequence);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Generate positional encodings for the sequence
@@ -1348,7 +1349,7 @@ nimcp_result_t brain_region_encode_prediction_sequence(brain_region_t* region,
 
     if (result != NIMCP_POS_SUCCESS) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Failed to encode prediction sequence: error %d", result);
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to encode prediction sequence: error %d", result);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -1360,14 +1361,14 @@ nimcp_result_t brain_region_encode_prediction_sequence(brain_region_t* region,
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_DEBUG("Applied temporal PE to prediction sequence (region %u, seq_len %u)",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Applied temporal PE to prediction sequence (region %u, seq_len %u)",
                      region->id, seq_length);
 
     // Broadcast prediction update if bio-async enabled
     if (pred->config.broadcast_predictions && pred->bio_async_registered) {
         // In full implementation, would broadcast BIO_MSG_PREDICTION_UPDATE
         // with PE-enhanced predictions
-        LOG_MODULE_DEBUG("Broadcasting PE-enhanced predictions from region %u", region->id);
+        LOG_MODULE_DEBUG(LOG_MODULE, "Broadcasting PE-enhanced predictions from region %u", region->id);
     }
 
     return NIMCP_SUCCESS;
@@ -1384,17 +1385,17 @@ nimcp_result_t brain_region_get_level_embedding(brain_region_t* region,
 
     // Guard clauses
     if (!region || !embedding) {
-        LOG_MODULE_ERROR("NULL parameter in brain_region_get_level_embedding");
-        return NIMCP_ERROR_NULL_ARGUMENT;
+        LOG_MODULE_ERROR(LOG_MODULE, "NULL parameter in brain_region_get_level_embedding");
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!has_predictive_extension(region)) {
-        LOG_MODULE_ERROR("Region %u does not have predictive extension enabled", region->id);
+        LOG_MODULE_ERROR(LOG_MODULE, "Region %u does not have predictive extension enabled", region->id);
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
     if (hierarchy_level >= MAX_HIERARCHY_LEVELS) {
-        LOG_MODULE_ERROR("Hierarchy level %u exceeds maximum %u",
+        LOG_MODULE_ERROR(LOG_MODULE, "Hierarchy level %u exceeds maximum %u",
                          hierarchy_level, MAX_HIERARCHY_LEVELS);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1404,23 +1405,23 @@ nimcp_result_t brain_region_get_level_embedding(brain_region_t* region,
     // Check if hierarchy PE is enabled
     if (!pred->config.enable_hierarchy_pe) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_WARN("Hierarchy PE not enabled for region %u", region->id);
+        LOG_MODULE_WARN(LOG_MODULE, "Hierarchy PE not enabled for region %u", region->id);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     // Check if encoder is initialized
     if (!pred->hierarchy_pe_encoder) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Hierarchy PE encoder not initialized for region %u", region->id);
+        LOG_MODULE_ERROR(LOG_MODULE, "Hierarchy PE encoder not initialized for region %u", region->id);
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
     // Validate embedding size
     if (embedding_size != pred->config.pe_embedding_dim) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Embedding size %u does not match PE dimension %u",
+        LOG_MODULE_ERROR(LOG_MODULE, "Embedding size %u does not match PE dimension %u",
                          embedding_size, pred->config.pe_embedding_dim);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Encode the requested hierarchy level
@@ -1432,14 +1433,14 @@ nimcp_result_t brain_region_get_level_embedding(brain_region_t* region,
 
     if (result != NIMCP_POS_SUCCESS) {
         nimcp_mutex_unlock(&pred->lock);
-        LOG_MODULE_ERROR("Failed to get level embedding for level %u: error %d",
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to get level embedding for level %u: error %d",
                          hierarchy_level, result);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     nimcp_mutex_unlock(&pred->lock);
 
-    LOG_MODULE_DEBUG("Retrieved level embedding for region %u, hierarchy level %u",
+    LOG_MODULE_DEBUG(LOG_MODULE, "Retrieved level embedding for region %u, hierarchy level %u",
                      region->id, hierarchy_level);
 
     return NIMCP_SUCCESS;

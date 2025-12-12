@@ -140,7 +140,7 @@ stdp_immune_bridge_t* stdp_immune_bridge_create(
 ) {
     /* Guard: require immune system and synapses */
     if (!immune_system || !synapses || num_synapses == 0) {
-        nimcp_log(NIMCP_LOG_ERROR, "stdp_immune_bridge",
+        LOG_MODULE_ERROR("stdp_immune_bridge",
                   "Cannot create bridge without immune system and synapses");
         return NULL;
     }
@@ -149,7 +149,7 @@ stdp_immune_bridge_t* stdp_immune_bridge_create(
     stdp_immune_bridge_t* bridge = (stdp_immune_bridge_t*)
         nimcp_malloc(sizeof(stdp_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "stdp_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("stdp_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -198,7 +198,7 @@ stdp_immune_bridge_t* stdp_immune_bridge_create(
     }
     pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
 
-    nimcp_log(NIMCP_LOG_INFO, "stdp_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("stdp_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -213,7 +213,7 @@ void stdp_immune_bridge_destroy(stdp_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "stdp_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("stdp_immune_bridge", "Bridge destroyed");
 }
 
 /* ============================================================================
@@ -647,4 +647,60 @@ float stdp_immune_get_ltp_capacity_reduction(const stdp_immune_bridge_t* bridge)
 
     /* Return as percentage */
     return bridge->inflammation_state.ltp_capacity_reduction * 100.0f;
+}
+
+/* ============================================================================
+ * Bio-Async Integration Implementation
+ * ============================================================================ */
+
+#define STDP_IMMUNE_MODULE_NAME "stdp_immune_bridge"
+
+/**
+ * @brief Connect bridge to bio-async router
+ */
+int stdp_immune_connect_bio_async(stdp_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_STDP,
+        .module_name = STDP_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("stdp_immune_bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from bio-async router
+ */
+int stdp_immune_disconnect_bio_async(stdp_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_DEBUG("stdp_immune_bridge disconnected from bio-async router");
+    return 0;
+}
+
+/**
+ * @brief Check if bio-async is connected
+ */
+bool stdp_immune_is_bio_async_connected(const stdp_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

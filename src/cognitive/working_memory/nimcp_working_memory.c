@@ -1444,6 +1444,57 @@ int working_memory_find_highest_salience(
 }
 
 /**
+ * @brief Find index of item with lowest salience
+ *
+ * WHAT: Search for least important item
+ * WHY:  Identify item for eviction when memory full
+ * HOW:  Linear scan with min tracking
+ *
+ * COMPLEXITY: O(n) where n = current_size
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param salience Output parameter for salience value (nullable)
+ * @return Index of lowest salience item, or -1 if empty
+ */
+int working_memory_find_lowest_salience(
+    const working_memory_t* wm,
+    float* salience
+)
+{
+    /* Guard: NULL working memory */
+    if (!wm) {
+        return -1;
+    }
+
+    /* Lock mutex for thread-safe access */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    /* Guard: Empty buffer */
+    if (wm->current_size == 0) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        return -1;
+    }
+
+    int min_index = 0;
+    float min_salience = wm->salience[0];
+
+    for (uint32_t i = 1; i < wm->current_size; i++) {
+        if (wm->salience[i] < min_salience) {
+            min_salience = wm->salience[i];
+            min_index = i;
+        }
+    }
+
+    /* Set salience if requested */
+    if (salience) {
+        *salience = min_salience;
+    }
+
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+    return min_index;
+}
+
+/**
  * @brief Get working memory statistics
  *
  * WHAT: Retrieve lifetime usage statistics
@@ -1963,7 +2014,7 @@ bool working_memory_signal_stress(
     );
 
     if (result == 0) {
-        wm->last_stress_signal_time_ms = (float)nimcp_time_now_ms();
+        wm->last_stress_signal_time_ms = (float)nimcp_time_get_ms();
         LOG_DEBUG("WM stress signal: level=%.2f, cytokine_id=%u", stress_level, cytokine_id);
     }
 

@@ -160,7 +160,7 @@ bcm_immune_bridge_t* bcm_immune_bridge_create(
 ) {
     /* Guard: require immune and BCM systems */
     if (!immune_system || !bcm_params) {
-        nimcp_log(NIMCP_LOG_ERROR, "bcm_immune_bridge",
+        LOG_MODULE_ERROR("bcm_immune_bridge",
                   "Cannot create bridge without immune and BCM systems");
         return NULL;
     }
@@ -169,7 +169,7 @@ bcm_immune_bridge_t* bcm_immune_bridge_create(
     bcm_immune_bridge_t* bridge = (bcm_immune_bridge_t*)
         nimcp_malloc(sizeof(bcm_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "bcm_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("bcm_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -213,7 +213,7 @@ bcm_immune_bridge_t* bcm_immune_bridge_create(
     }
     pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
 
-    nimcp_log(NIMCP_LOG_INFO, "bcm_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("bcm_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -228,7 +228,7 @@ void bcm_immune_bridge_destroy(bcm_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "bcm_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("bcm_immune_bridge", "Bridge destroyed");
 }
 
 /* ============================================================================
@@ -437,7 +437,7 @@ int bcm_immune_update_baseline(
         /* Check if baseline established (need 100 samples by default) */
         if (baseline->samples_collected >= 100) {
             baseline->baseline_established = true;
-            nimcp_log(NIMCP_LOG_INFO, "bcm_immune_bridge", "Baseline established");
+            LOG_MODULE_INFO("bcm_immune_bridge", "Baseline established");
         }
     }
 
@@ -567,7 +567,7 @@ int bcm_immune_trigger_from_abnormality(bcm_immune_bridge_t* bridge) {
 
     if (result == 0) {
         bridge->immune_triggered_responses++;
-        nimcp_log(NIMCP_LOG_WARN, "bcm_immune_bridge",
+        LOG_MODULE_WARN("bcm_immune_bridge",
                   "BCM abnormality triggered immune response (severity %u)",
                   abnormality->immune_trigger_severity);
     }
@@ -687,4 +687,60 @@ float bcm_immune_get_learning_activity(const bcm_immune_bridge_t* bridge) {
 float bcm_immune_get_metaplasticity_health(const bcm_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
     return bridge->abnormality_state.metaplasticity_health;
+}
+
+/* ============================================================================
+ * Bio-Async Integration Implementation
+ * ============================================================================ */
+
+#define BCM_IMMUNE_MODULE_NAME "bcm_immune_bridge"
+
+/**
+ * @brief Connect bridge to bio-async router
+ */
+int bcm_immune_connect_bio_async(bcm_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_BCM,
+        .module_name = BCM_IMMUNE_MODULE_NAME,
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("bcm_immune_bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from bio-async router
+ */
+int bcm_immune_disconnect_bio_async(bcm_immune_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_DEBUG("bcm_immune_bridge disconnected from bio-async router");
+    return 0;
+}
+
+/**
+ * @brief Check if bio-async is connected
+ */
+bool bcm_immune_is_bio_async_connected(const bcm_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

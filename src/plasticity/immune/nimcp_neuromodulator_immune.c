@@ -119,7 +119,7 @@ neuromod_immune_system_t* neuromod_immune_create(const neuromod_immune_config_t*
     neuromod_immune_system_t* system = (neuromod_immune_system_t*)nimcp_malloc(
         sizeof(neuromod_immune_system_t));
     if (!system) {
-        nimcp_log(NIMCP_LOG_ERROR, NEUROMOD_IMMUNE_MODULE_NAME,
+        LOG_MODULE_ERROR(NEUROMOD_IMMUNE_MODULE_NAME,
                   "Failed to allocate neuromod-immune system");
         return NULL;
     }
@@ -212,8 +212,8 @@ neuromod_immune_system_t* neuromod_immune_create(const neuromod_immune_config_t*
 
     system->running = false;
 
-    nimcp_log(NIMCP_LOG_INFO, NEUROMOD_IMMUNE_MODULE_NAME,
-              "Created neuromod-immune integration system");
+    LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
+                  "Created neuromod-immune integration system");
 
     return system;
 }
@@ -237,8 +237,8 @@ void neuromod_immune_destroy(neuromod_immune_system_t* system) {
 
     nimcp_free(system);
 
-    nimcp_log(NIMCP_LOG_INFO, NEUROMOD_IMMUNE_MODULE_NAME,
-              "Destroyed neuromod-immune integration system");
+    LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
+                  "Destroyed neuromod-immune integration system");
 }
 
 int neuromod_immune_connect_immune(
@@ -256,8 +256,8 @@ int neuromod_immune_connect_immune(
     system->immune_system = immune_system;
     pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
 
-    nimcp_log(NIMCP_LOG_INFO, NEUROMOD_IMMUNE_MODULE_NAME,
-              "Connected to brain immune system");
+    LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
+                  "Connected to brain immune system");
 
     return 0;
 }
@@ -277,8 +277,8 @@ int neuromod_immune_connect_neuromod(
     system->neuromod_system = neuromod_system;
     pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
 
-    nimcp_log(NIMCP_LOG_INFO, NEUROMOD_IMMUNE_MODULE_NAME,
-              "Connected to neuromodulator system");
+    LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
+                  "Connected to neuromodulator system");
 
     return 0;
 }
@@ -414,8 +414,8 @@ int neuromod_immune_apply_proinflammatory_effect(
 
     pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
 
-    nimcp_log(NIMCP_LOG_DEBUG, NEUROMOD_IMMUNE_MODULE_NAME,
-              "Applied pro-inflammatory effect: severity=%.2f", severity);
+    LOG_MODULE_DEBUG(NEUROMOD_IMMUNE_MODULE_NAME,
+                  "Applied pro-inflammatory effect: severity=%.2f", severity);
 
     return 0;
 }
@@ -464,8 +464,8 @@ int neuromod_immune_apply_antiinflammatory_effect(
 
     pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
 
-    nimcp_log(NIMCP_LOG_DEBUG, NEUROMOD_IMMUNE_MODULE_NAME,
-              "Applied anti-inflammatory effect: IL-10=%.2f", il10_concentration);
+    LOG_MODULE_DEBUG(NEUROMOD_IMMUNE_MODULE_NAME,
+                  "Applied anti-inflammatory effect: IL-10=%.2f", il10_concentration);
 
     return 0;
 }
@@ -561,7 +561,7 @@ int neuromod_immune_detect_imbalance(
 
     pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
 
-    nimcp_log(NIMCP_LOG_INFO, NEUROMOD_IMMUNE_MODULE_NAME,
+    LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
               "Detected neuromodulator imbalance: type=%s severity=%.2f",
               neuromod_immune_imbalance_to_string(type), imbalance->severity);
 
@@ -611,7 +611,7 @@ int neuromod_immune_alert_imbalance(
         imbalance->antigen_id = *antigen_id_out;
         system->total_immune_alerts++;
 
-        nimcp_log(NIMCP_LOG_INFO, NEUROMOD_IMMUNE_MODULE_NAME,
+        LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
                   "Alerted immune system of imbalance: type=%s antigen_id=%u",
                   neuromod_immune_imbalance_to_string(imbalance->type), *antigen_id_out);
     }
@@ -665,7 +665,7 @@ int neuromod_immune_correct_imbalance(
 
     pthread_mutex_unlock((pthread_mutex_t*)system->mutex);
 
-    nimcp_log(NIMCP_LOG_INFO, NEUROMOD_IMMUNE_MODULE_NAME,
+    LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
               "Applied homeostatic correction for imbalance: type=%s",
               neuromod_immune_imbalance_to_string(imbalance->type));
 

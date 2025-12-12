@@ -136,6 +136,10 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "perception/nimcp_visual_cortex.h"
 
+/* Bio-async integration */
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -279,6 +283,11 @@ typedef struct {
     uint32_t visual_triggered_responses;
     uint32_t threat_detections;
     uint32_t anomaly_detections;
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;       /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Whether bio-async is active */
+
+
 
     /* Thread safety */
     void* mutex;
@@ -574,6 +583,43 @@ float visual_immune_get_attention_capacity(const visual_immune_bridge_t* bridge)
  * @return Threat salience boost [1.0-2.0], 1.0 = normal, >1.0 = enhanced
  */
 float visual_immune_get_threat_salience_boost(const visual_immune_bridge_t* bridge);
+
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_VISUAL
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int visual_immune_connect_bio_async(visual_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Bridge instance
+ * @return 0 on success
+ */
+int visual_immune_disconnect_bio_async(visual_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * @param bridge Bridge instance
+ * @return true if connected
+ */
+bool visual_immune_is_bio_async_connected(const visual_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

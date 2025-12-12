@@ -203,7 +203,7 @@ router_immune_bridge_t* router_immune_bridge_create(
 ) {
     /* Guard: require router and immune system */
     if (!router || !immune_system) {
-        nimcp_log(NIMCP_LOG_ERROR, "router_immune_bridge",
+        LOG_MODULE_ERROR("router_immune_bridge",
                   "Cannot create bridge without router and immune system");
         return NULL;
     }
@@ -212,7 +212,7 @@ router_immune_bridge_t* router_immune_bridge_create(
     router_immune_bridge_t* bridge = (router_immune_bridge_t*)
         nimcp_malloc(sizeof(router_immune_bridge_t));
     if (!bridge) {
-        nimcp_log(NIMCP_LOG_ERROR, "router_immune_bridge", "Allocation failed");
+        LOG_MODULE_ERROR("router_immune_bridge", "Allocation failed");
         return NULL;
     }
 
@@ -290,7 +290,7 @@ router_immune_bridge_t* router_immune_bridge_create(
     }
     pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
 
-    nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge", "Bridge created successfully");
+    LOG_MODULE_INFO("router_immune_bridge", "Bridge created successfully");
     return bridge;
 }
 
@@ -311,7 +311,7 @@ void router_immune_bridge_destroy(router_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
-    nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge", "Bridge destroyed");
+    LOG_MODULE_INFO("router_immune_bridge", "Bridge destroyed");
 }
 
 int router_immune_bridge_start(router_immune_bridge_t* bridge) {
@@ -329,13 +329,13 @@ int router_immune_bridge_start(router_immune_bridge_t* bridge) {
 
         bridge->module_ctx = bio_router_register_module(&module_info);
         if (!bridge->module_ctx) {
-            nimcp_log(NIMCP_LOG_ERROR, "router_immune_bridge",
-                      "Failed to register with bio-async router");
+            LOG_MODULE_ERROR("router_immune_bridge",
+                  "Failed to register with bio-async router");
             return -1;
         }
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge", "Bridge started");
+    LOG_MODULE_INFO("router_immune_bridge", "Bridge started");
     return 0;
 }
 
@@ -348,7 +348,7 @@ int router_immune_bridge_stop(router_immune_bridge_t* bridge) {
         bridge->module_ctx = NULL;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge", "Bridge stopped");
+    LOG_MODULE_INFO("router_immune_bridge", "Bridge stopped");
     return 0;
 }
 
@@ -380,8 +380,8 @@ int router_immune_prioritize_cytokine(
     bridge->cytokine_count++;
     bridge->cytokine_messages_routed++;
 
-    nimcp_log(NIMCP_LOG_DEBUG, "router_immune_bridge",
-              "Prioritized cytokine type %d with priority %u",
+    LOG_MODULE_DEBUG("router_immune_bridge",
+                  "Prioritized cytokine type %d with priority %u",
               cytokine_type, state->priority_level);
 
     pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
@@ -418,8 +418,8 @@ int router_immune_apply_inflammation_latency(
     impact->routing_cost_penalty = (float)(inflammation_level) * 100.0f;
     impact->active = (inflammation_level != INFLAMMATION_NONE);
 
-    nimcp_log(NIMCP_LOG_DEBUG, "router_immune_bridge",
-              "Applied inflammation latency for region %u: multiplier %.2f",
+    LOG_MODULE_DEBUG("router_immune_bridge",
+                  "Applied inflammation latency for region %u: multiplier %.2f",
               region_id, impact->latency_multiplier);
 
     pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
@@ -453,7 +453,7 @@ int router_immune_quarantine_node(
     /* Add new quarantine */
     if (bridge->quarantine_count >= bridge->quarantine_capacity) {
         pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
-        nimcp_log(NIMCP_LOG_WARN, "router_immune_bridge", "Quarantine capacity exceeded");
+        LOG_MODULE_WARN("router_immune_bridge", "Quarantine capacity exceeded");
         return -1;
     }
 
@@ -467,8 +467,8 @@ int router_immune_quarantine_node(
 
     bridge->nodes_quarantined++;
 
-    nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge",
-              "Quarantined node %u for %lu ms (trust: %.2f)",
+    LOG_MODULE_INFO("router_immune_bridge",
+                  "Quarantined node %u for %lu ms (trust: %.2f)",
               node_id, duration_ms, trust_score);
 
     pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
@@ -494,8 +494,8 @@ int router_immune_restore_node(
             }
             bridge->quarantine_count--;
 
-            nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge",
-                      "Restored node %u to routing", node_id);
+            LOG_MODULE_INFO("router_immune_bridge",
+                  "Restored node %u to routing", node_id);
 
             pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
             return 0;
@@ -535,13 +535,13 @@ int router_immune_broadcast_alert(
     );
 
     if (err != NIMCP_SUCCESS) {
-        nimcp_log(NIMCP_LOG_ERROR, "router_immune_bridge",
+        LOG_MODULE_ERROR("router_immune_bridge",
                   "Failed to broadcast immune alert");
         return -1;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge",
-              "Broadcast immune alert for antigen %u (severity %u)",
+    LOG_MODULE_INFO("router_immune_bridge",
+                  "Broadcast immune alert for antigen %u (severity %u)",
               antigen_id, severity);
 
     return 0;
@@ -605,7 +605,7 @@ int router_immune_detect_anomalies(
 
         bridge->anomalies_detected++;
 
-        nimcp_log(NIMCP_LOG_WARN, "router_immune_bridge",
+        LOG_MODULE_WARN("router_immune_bridge",
                   "Detected routing anomaly on node %u (severity %u)",
                   node_id, anomaly.severity);
 
@@ -655,7 +655,7 @@ int router_immune_trigger_from_anomaly(
 
     if (result == 0) {
         bridge->immune_triggers++;
-        nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge",
+        LOG_MODULE_INFO("router_immune_bridge",
                   "Triggered immune response from anomaly (antigen %u)", antigen_id);
     }
 
@@ -675,8 +675,8 @@ int router_immune_detect_byzantine(
     /* Byzantine detection logic would go here */
     /* For now, this is a placeholder */
 
-    nimcp_log(NIMCP_LOG_DEBUG, "router_immune_bridge",
-              "Byzantine detection check for node %u", node_id);
+    LOG_MODULE_DEBUG("router_immune_bridge",
+                  "Byzantine detection check for node %u", node_id);
 
     return 0;
 }
@@ -705,7 +705,7 @@ int router_immune_present_byzantine(
 
     if (result == 0) {
         bridge->immune_triggers++;
-        nimcp_log(NIMCP_LOG_WARN, "router_immune_bridge",
+        LOG_MODULE_WARN("router_immune_bridge",
                   "Presented Byzantine behavior as antigen %u", antigen_id);
     }
 
@@ -807,7 +807,7 @@ int router_immune_expire_cytokines(
     bridge->cytokine_count = write_idx;
 
     if (expired_count > 0) {
-        nimcp_log(NIMCP_LOG_DEBUG, "router_immune_bridge",
+        LOG_MODULE_DEBUG("router_immune_bridge",
                   "Expired %zu cytokine routing states", expired_count);
     }
 
@@ -834,8 +834,8 @@ int router_immune_release_expired_quarantines(
             }
             write_idx++;
         } else {
-            nimcp_log(NIMCP_LOG_INFO, "router_immune_bridge",
-                      "Released quarantine for node %u", qnode->node_id);
+            LOG_MODULE_INFO("router_immune_bridge",
+                  "Released quarantine for node %u", qnode->node_id);
         }
     }
 
