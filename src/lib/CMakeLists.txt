@@ -295,6 +295,17 @@ set(NIMCP_CORE_SOURCES
     # Free Energy Principle - Karl Friston's predictive processing framework
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy.c  # Core FEP implementation (variational free energy, active inference)
 
+    # Free Energy Principle Enhancements
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_learning.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_curiosity.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_neuromod.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_consciousness.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_planning.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_evidence.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_context.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_sleep.c
+
     # Plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c

@@ -711,6 +711,20 @@ typedef enum {
     BIO_MODULE_IMMUNE_OPTIMIZATION = 0x0E80,    /**< Optimization-immune base */
     BIO_MODULE_IMMUNE_QUANTUM_ANNEALING,        /**< Quantum annealing-immune bridge */
 
+    /* Free Energy Principle modules (0x0F00 - 0x0FFF) */
+    BIO_MODULE_FEP = 0x0F00,                    /**< FEP core module */
+    BIO_MODULE_FEP_LEARNING,                    /**< FEP learning module */
+    BIO_MODULE_FEP_LEARNING_TRANSITION,         /**< FEP transition learner */
+    BIO_MODULE_FEP_LEARNING_LIKELIHOOD,         /**< FEP likelihood learner */
+    BIO_MODULE_FEP_CURIOSITY,                   /**< FEP curiosity module */
+    BIO_MODULE_FEP_CONSCIOUSNESS,               /**< FEP consciousness bridge */
+    BIO_MODULE_FEP_NEUROMOD,                    /**< FEP neuromodulation module */
+    BIO_MODULE_FEP_PLANNING,                    /**< FEP planning module */
+    BIO_MODULE_FEP_EVIDENCE,                    /**< FEP evidence module */
+    BIO_MODULE_FEP_CONTEXT,                     /**< FEP context module */
+    BIO_MODULE_FEP_SLEEP,                       /**< FEP sleep module */
+    BIO_MODULE_FEP_IMMUNE_BRIDGE,               /**< FEP-immune bridge module */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

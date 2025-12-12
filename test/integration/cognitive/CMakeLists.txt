@@ -62,3 +62,6 @@ gtest_discover_tests(integration_cognitive_working_memory_pe
 
 # Note: Subdirectories (logic, introspection, fault_tolerance, reasoning, bio_async, mirror_neurons)
 # are added directly from the main test/CMakeLists.txt to avoid duplicate target issues
+
+# Free Energy Principle Enhancement integration tests
+add_subdirectory(free_energy)

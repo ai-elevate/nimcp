@@ -96,6 +96,9 @@ gtest_discover_tests(unit_cognitive_test_working_memory_immune
 # Predictive-Immune Integration tests
 add_subdirectory(predictive_immune)
 
+# Free Energy Principle Enhancement tests
+add_subdirectory(free_energy)
+
 # Global Workspace - Immune Integration Tests
 add_executable(unit_cognitive_test_global_workspace_immune
     global_workspace/test_global_workspace_immune_integration.cpp

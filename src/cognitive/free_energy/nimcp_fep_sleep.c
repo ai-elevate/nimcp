@@ -1,0 +1,587 @@
+/**
+ * @file nimcp_fep_sleep.c
+ * @brief Sleep-Dependent Memory Consolidation for Free Energy Principle
+ * @version 1.0.0
+ * @date 2025-12-12
+ *
+ * WHAT: Implementation of sleep-dependent memory consolidation for FEP
+ * WHY:  Sleep is essential for synaptic homeostasis and model optimization
+ * HOW:  Sleep stages, replay consolidation, synaptic downscaling
+ */
+
+#include "cognitive/free_energy/nimcp_fep_sleep.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+static inline float clamp_f(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+static uint64_t get_time_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+}
+
+static void free_experience(fep_experience_t* exp) {
+    if (!exp) return;
+    if (exp->state) nimcp_free(exp->state);
+    if (exp->observation) nimcp_free(exp->observation);
+    if (exp->next_state) nimcp_free(exp->next_state);
+}
+
+/* Get stage duration from config */
+static uint32_t get_stage_duration(const fep_sleep_system_t* sys, fep_sleep_stage_t stage) {
+    switch (stage) {
+        case SLEEP_STAGE_N1:  return sys->config.n1_duration_ms;
+        case SLEEP_STAGE_N2:  return sys->config.n2_duration_ms;
+        case SLEEP_STAGE_SWS: return sys->config.sws_duration_ms;
+        case SLEEP_STAGE_REM: return sys->config.rem_duration_ms;
+        default:              return 0;
+    }
+}
+
+/* Get next stage in sleep cycle */
+static fep_sleep_stage_t get_next_stage(fep_sleep_stage_t current) {
+    switch (current) {
+        case SLEEP_STAGE_WAKE: return SLEEP_STAGE_N1;
+        case SLEEP_STAGE_N1:   return SLEEP_STAGE_N2;
+        case SLEEP_STAGE_N2:   return SLEEP_STAGE_SWS;
+        case SLEEP_STAGE_SWS:  return SLEEP_STAGE_REM;
+        case SLEEP_STAGE_REM:  return SLEEP_STAGE_N2;  /* Cycle back */
+        default:               return SLEEP_STAGE_WAKE;
+    }
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+void fep_sleep_default_config(fep_sleep_config_t* config) {
+    if (!config) return;
+
+    config->n1_duration_ms = FEP_SLEEP_N1_DURATION_MS;
+    config->n2_duration_ms = FEP_SLEEP_N2_DURATION_MS;
+    config->sws_duration_ms = FEP_SLEEP_SWS_DURATION_MS;
+    config->rem_duration_ms = FEP_SLEEP_REM_DURATION_MS;
+
+    config->replays_per_cycle = FEP_SLEEP_DEFAULT_REPLAY_COUNT;
+    config->downscale_factor = FEP_SLEEP_DEFAULT_DOWNSCALE_FACTOR;
+    config->experience_buffer_size = FEP_SLEEP_DEFAULT_BUFFER_SIZE;
+
+    config->enable_auto_cycle = true;
+    config->enable_synaptic_homeostasis = true;
+    config->enable_replay_consolidation = true;
+    config->enable_rem_integration = true;
+}
+
+fep_sleep_system_t* fep_sleep_create(const fep_sleep_config_t* config) {
+    fep_sleep_system_t* sys = (fep_sleep_system_t*)nimcp_calloc(
+        1, sizeof(fep_sleep_system_t));
+    if (!sys) {
+        NIMCP_LOGGING_ERROR("Failed to allocate sleep system");
+        return NULL;
+    }
+
+    /* Apply configuration */
+    fep_sleep_config_t default_cfg;
+    if (!config) {
+        fep_sleep_default_config(&default_cfg);
+        config = &default_cfg;
+    }
+    sys->config = *config;
+
+    /* Initialize state */
+    sys->state.current_stage = SLEEP_STAGE_WAKE;
+    sys->state.stage_start_ms = get_time_ms();
+    sys->state.total_sleep_ms = 0;
+    sys->state.cycle_count = 0;
+    sys->state.sleep_efficiency = 1.0f;
+    sys->state.consolidation_quality = 0.0f;
+
+    /* Allocate experience buffer */
+    sys->buffer_capacity = config->experience_buffer_size;
+    sys->experience_buffer = (fep_experience_t*)nimcp_calloc(
+        sys->buffer_capacity, sizeof(fep_experience_t));
+    if (!sys->experience_buffer) {
+        fep_sleep_destroy(sys);
+        return NULL;
+    }
+
+    /* Create mutex */
+    sys->mutex = nimcp_platform_mutex_create();
+    if (!sys->mutex) {
+        fep_sleep_destroy(sys);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO("Sleep system created: buffer_size=%zu", config->experience_buffer_size);
+    return sys;
+}
+
+void fep_sleep_destroy(fep_sleep_system_t* sys) {
+    if (!sys) return;
+
+    if (sys->bio_async_enabled) {
+        fep_sleep_disconnect_bio_async(sys);
+    }
+
+    /* Free experience buffer */
+    if (sys->experience_buffer) {
+        for (size_t i = 0; i < sys->buffer_count; i++) {
+            free_experience(&sys->experience_buffer[i]);
+        }
+        nimcp_free(sys->experience_buffer);
+    }
+
+    if (sys->mutex) {
+        nimcp_platform_mutex_destroy(sys->mutex);
+        nimcp_free(sys->mutex);
+    }
+
+    nimcp_free(sys);
+    NIMCP_LOGGING_INFO("Sleep system destroyed");
+}
+
+/* ============================================================================
+ * Sleep Stage Implementation
+ * ============================================================================ */
+
+int fep_sleep_set_stage(fep_sleep_system_t* sys, fep_sleep_stage_t stage) {
+    if (!sys) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    fep_sleep_stage_t prev_stage = sys->state.current_stage;
+    uint64_t now = get_time_ms();
+    uint64_t stage_duration = now - sys->state.stage_start_ms;
+
+    /* Update time tracking for previous stage */
+    switch (prev_stage) {
+        case SLEEP_STAGE_WAKE:
+            sys->stats.total_wake_time_ms += stage_duration;
+            break;
+        case SLEEP_STAGE_N1:
+            sys->stats.total_n1_time_ms += stage_duration;
+            sys->state.total_sleep_ms += stage_duration;
+            break;
+        case SLEEP_STAGE_N2:
+            sys->stats.total_n2_time_ms += stage_duration;
+            sys->state.total_sleep_ms += stage_duration;
+            break;
+        case SLEEP_STAGE_SWS:
+            sys->stats.total_sws_time_ms += stage_duration;
+            sys->state.total_sleep_ms += stage_duration;
+            break;
+        case SLEEP_STAGE_REM:
+            sys->stats.total_rem_time_ms += stage_duration;
+            sys->state.total_sleep_ms += stage_duration;
+            /* Check for complete cycle */
+            sys->state.cycle_count++;
+            sys->stats.total_cycles++;
+            break;
+    }
+
+    /* Set new stage */
+    sys->state.current_stage = stage;
+    sys->state.stage_start_ms = now;
+    sys->state.replays_this_cycle = 0;
+
+    NIMCP_LOGGING_INFO("Sleep stage transition: %s -> %s",
+                      fep_sleep_stage_to_string(prev_stage),
+                      fep_sleep_stage_to_string(stage));
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+fep_sleep_stage_t fep_sleep_get_stage(const fep_sleep_system_t* sys) {
+    return sys ? sys->state.current_stage : SLEEP_STAGE_WAKE;
+}
+
+int fep_sleep_update(fep_sleep_system_t* sys, uint64_t delta_ms) {
+    if (!sys) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    /* Update time tracking for current stage based on delta_ms */
+    fep_sleep_stage_t current = sys->state.current_stage;
+    switch (current) {
+        case SLEEP_STAGE_WAKE:
+            sys->stats.total_wake_time_ms += delta_ms;
+            break;
+        case SLEEP_STAGE_N1:
+            sys->stats.total_n1_time_ms += delta_ms;
+            sys->state.total_sleep_ms += delta_ms;
+            break;
+        case SLEEP_STAGE_N2:
+            sys->stats.total_n2_time_ms += delta_ms;
+            sys->state.total_sleep_ms += delta_ms;
+            break;
+        case SLEEP_STAGE_SWS:
+            sys->stats.total_sws_time_ms += delta_ms;
+            sys->state.total_sleep_ms += delta_ms;
+            break;
+        case SLEEP_STAGE_REM:
+            sys->stats.total_rem_time_ms += delta_ms;
+            sys->state.total_sleep_ms += delta_ms;
+            break;
+    }
+
+    uint64_t now = get_time_ms();
+    uint64_t stage_elapsed = now - sys->state.stage_start_ms;
+
+    /* Auto-cycle through stages if enabled */
+    if (sys->config.enable_auto_cycle && current != SLEEP_STAGE_WAKE) {
+        uint32_t stage_duration = get_stage_duration(sys, current);
+
+        if (stage_elapsed >= stage_duration) {
+            fep_sleep_stage_t next = get_next_stage(current);
+
+            /* Run stage-specific consolidation before transitioning */
+            if (current == SLEEP_STAGE_SWS && sys->config.enable_replay_consolidation) {
+                if (sys->fep_system) {
+                    fep_sleep_replay_consolidation(sys, sys->fep_system,
+                                                   sys->config.replays_per_cycle);
+                }
+
+                if (sys->config.enable_synaptic_homeostasis && sys->fep_system) {
+                    fep_sleep_apply_downscaling(sys, sys->fep_system,
+                                               sys->config.downscale_factor);
+                }
+            }
+
+            if (current == SLEEP_STAGE_REM && sys->config.enable_rem_integration) {
+                if (sys->fep_system) {
+                    fep_sleep_rem_integration(sys, sys->fep_system);
+                }
+            }
+
+            nimcp_platform_mutex_unlock(sys->mutex);
+            fep_sleep_set_stage(sys, next);
+            return 0;
+        }
+    }
+
+    /* Update consolidation progress */
+    if (current == SLEEP_STAGE_SWS) {
+        uint32_t stage_duration = get_stage_duration(sys, current);
+        sys->state.consolidation_progress = (float)stage_elapsed / (float)stage_duration;
+    }
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Consolidation Implementation
+ * ============================================================================ */
+
+int fep_sleep_add_experience(
+    fep_sleep_system_t* sys,
+    const float* state,
+    const float* observation,
+    const float* next_state,
+    size_t dim,
+    size_t obs_dim
+) {
+    if (!sys || !state || !next_state) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    /* Check buffer capacity */
+    if (sys->buffer_count >= sys->buffer_capacity) {
+        /* Overwrite oldest experience (FIFO) */
+        free_experience(&sys->experience_buffer[0]);
+        memmove(sys->experience_buffer, sys->experience_buffer + 1,
+                (sys->buffer_count - 1) * sizeof(fep_experience_t));
+        sys->buffer_count--;
+    }
+
+    /* Add new experience */
+    fep_experience_t* exp = &sys->experience_buffer[sys->buffer_count];
+
+    exp->state = (float*)nimcp_calloc(dim, sizeof(float));
+    exp->next_state = (float*)nimcp_calloc(dim, sizeof(float));
+    if (observation && obs_dim > 0) {
+        exp->observation = (float*)nimcp_calloc(obs_dim, sizeof(float));
+    }
+
+    if (!exp->state || !exp->next_state) {
+        free_experience(exp);
+        nimcp_platform_mutex_unlock(sys->mutex);
+        return -1;
+    }
+
+    memcpy(exp->state, state, dim * sizeof(float));
+    memcpy(exp->next_state, next_state, dim * sizeof(float));
+    if (observation && exp->observation) {
+        memcpy(exp->observation, observation, obs_dim * sizeof(float));
+    }
+
+    exp->dim = (uint32_t)dim;
+    exp->obs_dim = observation ? (uint32_t)obs_dim : 0;
+    exp->importance = 1.0f;  /* Default importance */
+
+    sys->buffer_count++;
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+int fep_sleep_replay_consolidation(
+    fep_sleep_system_t* sys,
+    fep_system_t* fep,
+    uint32_t num_replays
+) {
+    if (!sys || !fep) return -1;
+    if (sys->buffer_count == 0) return 0;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    /* Replay experiences and update FEP model */
+    uint32_t replays_done = 0;
+    float total_error = 0.0f;
+
+    for (uint32_t r = 0; r < num_replays && r < sys->buffer_count; r++) {
+        /* Sample experience (simple: sequential, could use prioritized) */
+        size_t idx = (size_t)(rand() % sys->buffer_count);
+        fep_experience_t* exp = &sys->experience_buffer[idx];
+
+        /* Compute prediction error */
+        if (fep->num_levels > 0 && exp->dim > 0) {
+            fep_hierarchy_level_t* level = &fep->levels[0];
+            size_t dim = exp->dim < level->beliefs.dim ? exp->dim : level->beliefs.dim;
+
+            float error = 0.0f;
+            for (size_t i = 0; i < dim; i++) {
+                float pred = level->beliefs.mean[i];
+                float actual = exp->next_state[i];
+                float diff = actual - pred;
+                error += diff * diff;
+
+                /* Update belief toward actual (learning during replay) */
+                float lr = 0.01f;  /* Sleep learning rate */
+                level->beliefs.mean[i] += lr * diff;
+            }
+            total_error += sqrtf(error / (float)dim);
+        }
+
+        replays_done++;
+    }
+
+    sys->state.replays_this_cycle += replays_done;
+    sys->stats.total_replays += replays_done;
+
+    /* Update consolidation quality based on error reduction */
+    if (replays_done > 0) {
+        float avg_error = total_error / (float)replays_done;
+        sys->state.consolidation_quality = 1.0f / (1.0f + avg_error);
+    }
+
+    NIMCP_LOGGING_DEBUG("Replay consolidation: %u replays, avg_error=%.4f",
+                       replays_done, total_error / (float)replays_done);
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+int fep_sleep_apply_downscaling(
+    fep_sleep_system_t* sys,
+    fep_system_t* fep,
+    float factor
+) {
+    if (!sys || !fep) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    factor = clamp_f(factor, 0.5f, 1.0f);
+
+    /* Apply synaptic downscaling to all FEP levels */
+    for (uint32_t l = 0; l < fep->num_levels; l++) {
+        fep_hierarchy_level_t* level = &fep->levels[l];
+
+        /* Downscale precision (inverse of variance) */
+        for (uint32_t i = 0; i < level->errors.dim; i++) {
+            level->errors.precision[i] *= factor;
+        }
+
+        /* Downscale belief variance */
+        for (uint32_t i = 0; i < level->beliefs.dim; i++) {
+            level->beliefs.variance[i] /= factor;
+        }
+    }
+
+    sys->state.total_downscaling += (1.0f - factor);
+    sys->stats.avg_downscaling =
+        (sys->stats.avg_downscaling * 0.9f) + ((1.0f - factor) * 0.1f);
+
+    NIMCP_LOGGING_DEBUG("Synaptic downscaling applied: factor=%.3f", factor);
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+int fep_sleep_rem_integration(
+    fep_sleep_system_t* sys,
+    fep_system_t* fep
+) {
+    if (!sys || !fep) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    /* REM integration: Creative recombination and abstraction */
+    /* This is a simplified version - full implementation would involve
+     * hippocampal-cortical transfer and schema extraction */
+
+    if (fep->num_levels > 1) {
+        /* Propagate lower-level patterns to higher levels */
+        fep_hierarchy_level_t* lower = &fep->levels[0];
+        fep_hierarchy_level_t* higher = &fep->levels[1];
+
+        size_t dim = lower->beliefs.dim < higher->beliefs.dim ?
+                     lower->beliefs.dim : higher->beliefs.dim;
+
+        /* Abstract/generalize lower-level beliefs to higher level */
+        float smoothing = 0.1f;
+        for (size_t i = 0; i < dim; i++) {
+            float lower_mean = lower->beliefs.mean[i];
+            higher->beliefs.mean[i] =
+                (1.0f - smoothing) * higher->beliefs.mean[i] +
+                smoothing * lower_mean;
+        }
+    }
+
+    /* Update model improvement metric */
+    float avg_precision = 0.0f;
+    uint32_t total_dims = 0;
+    for (uint32_t l = 0; l < fep->num_levels; l++) {
+        for (uint32_t i = 0; i < fep->levels[l].errors.dim; i++) {
+            avg_precision += fep->levels[l].errors.precision[i];
+            total_dims++;
+        }
+    }
+    if (total_dims > 0) {
+        sys->stats.model_improvement = avg_precision / (float)total_dims;
+    }
+
+    NIMCP_LOGGING_DEBUG("REM integration completed");
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * State/Stats Implementation
+ * ============================================================================ */
+
+int fep_sleep_get_state(
+    const fep_sleep_system_t* sys,
+    fep_sleep_state_t* state
+) {
+    if (!sys || !state) return -1;
+    *state = sys->state;
+    return 0;
+}
+
+int fep_sleep_get_stats(
+    const fep_sleep_system_t* sys,
+    fep_sleep_stats_t* stats
+) {
+    if (!sys || !stats) return -1;
+    *stats = sys->stats;
+    return 0;
+}
+
+float fep_sleep_get_precision_modifier(const fep_sleep_system_t* sys) {
+    if (!sys) return 1.0f;
+
+    switch (sys->state.current_stage) {
+        case SLEEP_STAGE_WAKE: return FEP_SLEEP_WAKE_PRECISION;
+        case SLEEP_STAGE_N1:   return FEP_SLEEP_N1_PRECISION;
+        case SLEEP_STAGE_N2:   return FEP_SLEEP_N2_PRECISION;
+        case SLEEP_STAGE_SWS:  return FEP_SLEEP_SWS_PRECISION;
+        case SLEEP_STAGE_REM:  return FEP_SLEEP_REM_PRECISION;
+        default:               return 1.0f;
+    }
+}
+
+/* ============================================================================
+ * Integration Implementation
+ * ============================================================================ */
+
+int fep_sleep_connect(fep_sleep_system_t* sleep, fep_system_t* fep) {
+    if (!sleep || !fep) return -1;
+
+    nimcp_platform_mutex_lock(sleep->mutex);
+    sleep->fep_system = fep;
+    nimcp_platform_mutex_unlock(sleep->mutex);
+
+    NIMCP_LOGGING_INFO("Sleep system connected to FEP");
+    return 0;
+}
+
+/* ============================================================================
+ * Bio-Async Implementation
+ * ============================================================================ */
+
+int fep_sleep_connect_bio_async(fep_sleep_system_t* sys) {
+    if (!sys) return -1;
+    if (sys->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_SLEEP,
+        .module_name = "fep_sleep",
+        .inbox_capacity = 32,
+        .user_data = sys
+    };
+
+    sys->bio_ctx = bio_router_register_module(&info);
+    if (sys->bio_ctx) {
+        sys->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Sleep connected to bio-async");
+    } else {
+        NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    }
+    return 0;
+}
+
+int fep_sleep_disconnect_bio_async(fep_sleep_system_t* sys) {
+    if (!sys) return -1;
+    if (!sys->bio_async_enabled) return 0;
+
+    if (sys->bio_ctx) {
+        bio_router_unregister_module(sys->bio_ctx);
+        sys->bio_ctx = NULL;
+    }
+    sys->bio_async_enabled = false;
+    return 0;
+}
+
+bool fep_sleep_is_bio_async_connected(const fep_sleep_system_t* sys) {
+    return sys && sys->bio_async_enabled;
+}
+
+/* ============================================================================
+ * String Conversion Implementation
+ * ============================================================================ */
+
+const char* fep_sleep_stage_to_string(fep_sleep_stage_t stage) {
+    switch (stage) {
+        case SLEEP_STAGE_WAKE: return "WAKE";
+        case SLEEP_STAGE_N1:   return "N1";
+        case SLEEP_STAGE_N2:   return "N2";
+        case SLEEP_STAGE_SWS:  return "SWS";
+        case SLEEP_STAGE_REM:  return "REM";
+        default:               return "UNKNOWN";
+    }
+}
