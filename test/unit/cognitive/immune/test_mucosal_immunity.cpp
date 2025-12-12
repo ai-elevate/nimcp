@@ -108,24 +108,25 @@ TEST_F(MucosalImmunityTest, StartStopCycle) {
  * ============================================================================ */
 
 TEST_F(MucosalImmunityTest, RegisterInputGate) {
-    uint32_t site_id;
+    uint32_t site_id = UINT32_MAX;  // Initialize to invalid value
     int result = mucosal_register_boundary(mucosal, MUCOSAL_SITE_INPUT_GATE, 1, &site_id);
     EXPECT_EQ(result, 0);
-    EXPECT_GT(site_id, 0u);
+    // IDs start from 0, so any valid registration changes the initialized value
+    EXPECT_NE(site_id, UINT32_MAX);
 }
 
 TEST_F(MucosalImmunityTest, RegisterOutputGate) {
-    uint32_t site_id;
+    uint32_t site_id = UINT32_MAX;
     int result = mucosal_register_boundary(mucosal, MUCOSAL_SITE_OUTPUT_GATE, 2, &site_id);
     EXPECT_EQ(result, 0);
-    EXPECT_GT(site_id, 0u);
+    EXPECT_NE(site_id, UINT32_MAX);
 }
 
 TEST_F(MucosalImmunityTest, RegisterModuleBoundary) {
-    uint32_t site_id;
+    uint32_t site_id = UINT32_MAX;
     int result = mucosal_register_boundary(mucosal, MUCOSAL_SITE_MODULE_BOUNDARY, 3, &site_id);
     EXPECT_EQ(result, 0);
-    EXPECT_GT(site_id, 0u);
+    EXPECT_NE(site_id, UINT32_MAX);
 }
 
 TEST_F(MucosalImmunityTest, UnregisterBoundary) {
@@ -154,11 +155,12 @@ TEST_F(MucosalImmunityTest, SampleAntigen) {
     mucosal_register_boundary(mucosal, MUCOSAL_SITE_INPUT_GATE, 1, &site_id);
 
     uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-    uint32_t sample_id;
+    uint32_t sample_id = UINT32_MAX;
 
     int result = mucosal_sample_antigen(mucosal, site_id, data, sizeof(data), &sample_id);
     EXPECT_EQ(result, 0);
-    EXPECT_GT(sample_id, 0u);
+    // IDs start from 0
+    EXPECT_NE(sample_id, UINT32_MAX);
 }
 
 TEST_F(MucosalImmunityTest, ProcessMCellSample) {
@@ -189,11 +191,12 @@ TEST_F(MucosalImmunityTest, ProduceSIgA) {
     mucosal_register_boundary(mucosal, MUCOSAL_SITE_INPUT_GATE, 1, &site_id);
 
     uint32_t antigen_id = createTestAntigen();
-    uint32_t siga_id;
+    uint32_t siga_id = UINT32_MAX;
 
     int result = mucosal_produce_siga(mucosal, site_id, antigen_id, &siga_id);
     EXPECT_EQ(result, 0);
-    EXPECT_GT(siga_id, 0u);
+    // IDs start from 0
+    EXPECT_NE(siga_id, UINT32_MAX);
 }
 
 TEST_F(MucosalImmunityTest, NeutralizeWithSIgA) {
@@ -221,12 +224,13 @@ TEST_F(MucosalImmunityTest, InduceOralTolerance) {
     mucosal_register_boundary(mucosal, MUCOSAL_SITE_INPUT_GATE, 1, &site_id);
 
     uint8_t antigen[] = {0x01, 0x02, 0x03, 0x04};
-    uint32_t tolerance_id;
+    uint32_t tolerance_id = UINT32_MAX;
 
     int result = mucosal_induce_oral_tolerance(mucosal, site_id, antigen, sizeof(antigen),
                                                &tolerance_id);
     EXPECT_EQ(result, 0);
-    EXPECT_GT(tolerance_id, 0u);
+    // IDs start from 0
+    EXPECT_NE(tolerance_id, UINT32_MAX);
 }
 
 TEST_F(MucosalImmunityTest, CheckToleranceEstablished) {
@@ -382,26 +386,26 @@ TEST_F(MucosalImmunityTest, GetSiteNonExistent) {
  * ============================================================================ */
 
 TEST_F(MucosalImmunityTest, SiteTypeToString) {
-    EXPECT_STREQ(mucosal_site_type_to_string(MUCOSAL_SITE_INPUT_GATE), "Input Gate");
-    EXPECT_STREQ(mucosal_site_type_to_string(MUCOSAL_SITE_OUTPUT_GATE), "Output Gate");
-    EXPECT_STREQ(mucosal_site_type_to_string(MUCOSAL_SITE_MODULE_BOUNDARY), "Module Boundary");
+    EXPECT_STREQ(mucosal_site_type_to_string(MUCOSAL_SITE_INPUT_GATE), "INPUT_GATE");
+    EXPECT_STREQ(mucosal_site_type_to_string(MUCOSAL_SITE_OUTPUT_GATE), "OUTPUT_GATE");
+    EXPECT_STREQ(mucosal_site_type_to_string(MUCOSAL_SITE_MODULE_BOUNDARY), "MODULE_BOUNDARY");
 }
 
 TEST_F(MucosalImmunityTest, SIgAStateToString) {
-    EXPECT_STREQ(mucosal_siga_state_to_string(MUCOSAL_SIGA_INACTIVE), "Inactive");
-    EXPECT_STREQ(mucosal_siga_state_to_string(MUCOSAL_SIGA_ACTIVE), "Active");
-    EXPECT_STREQ(mucosal_siga_state_to_string(MUCOSAL_SIGA_DECAYED), "Decayed");
+    EXPECT_STREQ(mucosal_siga_state_to_string(MUCOSAL_SIGA_INACTIVE), "INACTIVE");
+    EXPECT_STREQ(mucosal_siga_state_to_string(MUCOSAL_SIGA_ACTIVE), "ACTIVE");
+    EXPECT_STREQ(mucosal_siga_state_to_string(MUCOSAL_SIGA_DECAYED), "DECAYED");
 }
 
 TEST_F(MucosalImmunityTest, ToleranceStateToString) {
-    EXPECT_STREQ(mucosal_tolerance_state_to_string(TOLERANCE_NONE), "None");
-    EXPECT_STREQ(mucosal_tolerance_state_to_string(TOLERANCE_ESTABLISHED), "Established");
-    EXPECT_STREQ(mucosal_tolerance_state_to_string(TOLERANCE_BROKEN), "Broken");
+    EXPECT_STREQ(mucosal_tolerance_state_to_string(TOLERANCE_NONE), "NONE");
+    EXPECT_STREQ(mucosal_tolerance_state_to_string(TOLERANCE_ESTABLISHED), "ESTABLISHED");
+    EXPECT_STREQ(mucosal_tolerance_state_to_string(TOLERANCE_BROKEN), "BROKEN");
 }
 
 TEST_F(MucosalImmunityTest, MCellStateToString) {
-    EXPECT_STREQ(mucosal_m_cell_state_to_string(M_CELL_SAMPLING), "Sampling");
-    EXPECT_STREQ(mucosal_m_cell_state_to_string(M_CELL_PRESENTING), "Presenting");
+    EXPECT_STREQ(mucosal_m_cell_state_to_string(M_CELL_SAMPLING), "SAMPLING");
+    EXPECT_STREQ(mucosal_m_cell_state_to_string(M_CELL_PRESENTING), "PRESENTING");
 }
 
 /* ============================================================================

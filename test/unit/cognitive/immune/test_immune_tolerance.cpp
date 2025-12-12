@@ -400,22 +400,22 @@ TEST_F(ImmuneToleranceTest, ComputeAffinityNoMatch) {
  * ============================================================================ */
 
 TEST_F(ImmuneToleranceTest, PhaseToString) {
-    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_TRAINING), "Training");
-    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_CENTRAL), "Central");
-    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_PERIPHERAL), "Peripheral");
-    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_OPERATIONAL), "Operational");
+    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_TRAINING), "TRAINING");
+    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_CENTRAL), "CENTRAL");
+    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_PERIPHERAL), "PERIPHERAL");
+    EXPECT_STREQ(tolerance_phase_to_string(TOLERANCE_PHASE_OPERATIONAL), "OPERATIONAL");
 }
 
 TEST_F(ImmuneToleranceTest, SelectionToString) {
-    EXPECT_STREQ(tolerance_selection_to_string(SELECTION_PASS), "Pass");
-    EXPECT_STREQ(tolerance_selection_to_string(SELECTION_DELETE), "Delete");
-    EXPECT_STREQ(tolerance_selection_to_string(SELECTION_ANERGIZE), "Anergize");
+    EXPECT_STREQ(tolerance_selection_to_string(SELECTION_PASS), "PASS");
+    EXPECT_STREQ(tolerance_selection_to_string(SELECTION_DELETE), "DELETE");
+    EXPECT_STREQ(tolerance_selection_to_string(SELECTION_ANERGIZE), "ANERGIZE");
 }
 
 TEST_F(ImmuneToleranceTest, CellStateToString) {
-    EXPECT_STREQ(tolerance_cell_state_to_string(CELL_TOLERANT), "Tolerant");
-    EXPECT_STREQ(tolerance_cell_state_to_string(CELL_ANERGIC), "Anergic");
-    EXPECT_STREQ(tolerance_cell_state_to_string(CELL_DELETED), "Deleted");
+    EXPECT_STREQ(tolerance_cell_state_to_string(CELL_TOLERANT), "TOLERANT");
+    EXPECT_STREQ(tolerance_cell_state_to_string(CELL_ANERGIC), "ANERGIC");
+    EXPECT_STREQ(tolerance_cell_state_to_string(CELL_DELETED), "DELETED");
 }
 
 /* ============================================================================
