@@ -216,3 +216,183 @@ target_include_directories(unit_cognitive_immune_reasoning_bridge
 add_test(NAME unit_cognitive_immune_reasoning_bridge
          COMMAND unit_cognitive_immune_reasoning_bridge)
 set_tests_properties(unit_cognitive_immune_reasoning_bridge PROPERTIES LABELS "unit")
+
+# ============================================================================
+# New Immune Enhancement Module Unit Tests
+# ============================================================================
+
+# Trained Immunity Unit Tests
+add_executable(unit_cognitive_immune_trained_immunity
+    test_trained_immunity.cpp
+)
+target_link_libraries(unit_cognitive_immune_trained_immunity
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_trained_immunity
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_trained_immunity
+         COMMAND unit_cognitive_immune_trained_immunity)
+set_tests_properties(unit_cognitive_immune_trained_immunity PROPERTIES LABELS "unit")
+
+# Complement System Unit Tests
+add_executable(unit_cognitive_immune_complement_system
+    test_complement_system.cpp
+)
+target_link_libraries(unit_cognitive_immune_complement_system
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_complement_system
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_complement_system
+         COMMAND unit_cognitive_immune_complement_system)
+set_tests_properties(unit_cognitive_immune_complement_system PROPERTIES LABELS "unit")
+
+# Regulatory T Cells Unit Tests
+add_executable(unit_cognitive_immune_regulatory_tcells
+    test_regulatory_tcells.cpp
+)
+target_link_libraries(unit_cognitive_immune_regulatory_tcells
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_regulatory_tcells
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_regulatory_tcells
+         COMMAND unit_cognitive_immune_regulatory_tcells)
+set_tests_properties(unit_cognitive_immune_regulatory_tcells PROPERTIES LABELS "unit")
+
+# Immune Exhaustion Unit Tests
+add_executable(unit_cognitive_immune_exhaustion
+    test_immune_exhaustion.cpp
+)
+target_link_libraries(unit_cognitive_immune_exhaustion
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_exhaustion
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_exhaustion
+         COMMAND unit_cognitive_immune_exhaustion)
+set_tests_properties(unit_cognitive_immune_exhaustion PROPERTIES LABELS "unit")
+
+# Immune Tolerance Unit Tests
+add_executable(unit_cognitive_immune_tolerance
+    test_immune_tolerance.cpp
+)
+target_link_libraries(unit_cognitive_immune_tolerance
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_tolerance
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_tolerance
+         COMMAND unit_cognitive_immune_tolerance)
+set_tests_properties(unit_cognitive_immune_tolerance PROPERTIES LABELS "unit")
+
+# Immune Vaccine Unit Tests
+add_executable(unit_cognitive_immune_vaccine
+    test_immune_vaccine.cpp
+)
+target_link_libraries(unit_cognitive_immune_vaccine
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_vaccine
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_vaccine
+         COMMAND unit_cognitive_immune_vaccine)
+set_tests_properties(unit_cognitive_immune_vaccine PROPERTIES LABELS "unit")
+
+# Mucosal Immunity Unit Tests
+add_executable(unit_cognitive_immune_mucosal
+    test_mucosal_immunity.cpp
+)
+target_link_libraries(unit_cognitive_immune_mucosal
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_mucosal
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_mucosal
+         COMMAND unit_cognitive_immune_mucosal)
+set_tests_properties(unit_cognitive_immune_mucosal PROPERTIES LABELS "unit")
+
+# Immune Persistence Unit Tests
+add_executable(unit_cognitive_immune_persistence
+    test_immune_persistence.cpp
+)
+target_link_libraries(unit_cognitive_immune_persistence
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_persistence
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_persistence
+         COMMAND unit_cognitive_immune_persistence)
+set_tests_properties(unit_cognitive_immune_persistence PROPERTIES LABELS "unit")

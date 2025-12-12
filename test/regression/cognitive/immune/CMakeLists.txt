@@ -25,3 +25,29 @@ target_include_directories(regression_cognitive_immune_brain_immune
 add_test(NAME regression_cognitive_immune_brain_immune
          COMMAND regression_cognitive_immune_brain_immune)
 set_tests_properties(regression_cognitive_immune_brain_immune PROPERTIES LABELS "regression")
+
+# ============================================================================
+# New Immune Enhancement Module Regression Tests
+# ============================================================================
+
+# Immune Modules Regression Tests (all 8 new modules)
+add_executable(regression_cognitive_immune_modules
+    test_immune_modules_regression.cpp
+)
+target_link_libraries(regression_cognitive_immune_modules
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(regression_cognitive_immune_modules
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME regression_cognitive_immune_modules
+         COMMAND regression_cognitive_immune_modules)
+set_tests_properties(regression_cognitive_immune_modules PROPERTIES LABELS "regression")

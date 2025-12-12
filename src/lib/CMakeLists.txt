@@ -233,6 +233,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_sleep_immune_bridge.c  # Sleep-wake-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_tom_immune_bridge.c  # Theory of mind-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_wellbeing_immune_bridge.c  # Wellbeing-immune integration
+    # New Immune Enhancement Modules (Phase 11.x)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_trained_immunity.c  # Trained (innate) immunity with epigenetic reprogramming
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_complement_system.c  # Complement cascade system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_regulatory_tcells.c  # Regulatory T cells (Treg) - cytokine storm prevention
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_exhaustion.c  # T cell exhaustion tracking and recovery
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_tolerance.c  # Self vs non-self tolerance
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_vaccine.c  # Vaccine pre-training system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_mucosal_immunity.c  # Mucosal barrier immunity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_persistence.c  # Immune memory persistence
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_immune.c  # Ethics-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c

@@ -121,3 +121,29 @@ target_include_directories(integration_emotion_immune_pipeline
 add_test(NAME integration_emotion_immune_pipeline
          COMMAND integration_emotion_immune_pipeline)
 set_tests_properties(integration_emotion_immune_pipeline PROPERTIES LABELS "integration")
+
+# ============================================================================
+# New Immune Enhancement Module Integration Tests
+# ============================================================================
+
+# Immune Modules Integration Tests (all 8 new modules)
+add_executable(integration_cognitive_immune_modules
+    test_immune_modules_integration.cpp
+)
+target_link_libraries(integration_cognitive_immune_modules
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_cognitive_immune_modules
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME integration_cognitive_immune_modules
+         COMMAND integration_cognitive_immune_modules)
+set_tests_properties(integration_cognitive_immune_modules PROPERTIES LABELS "integration")

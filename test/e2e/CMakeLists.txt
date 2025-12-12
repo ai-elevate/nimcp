@@ -332,6 +332,13 @@ add_e2e_test(e2e_test_memory_immune_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_memory_immune_pipeline.cpp
 )
 
+# Immune Enhancement Pipeline E2E Test (Trained Immunity, Complement, Treg, Exhaustion,
+# Tolerance, Vaccine, Mucosal, Persistence)
+add_e2e_test(e2e_test_immune_enhancement_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_immune_enhancement_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================
