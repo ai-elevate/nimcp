@@ -72,7 +72,8 @@ TEST_F(CuriosityFepBridgeTest, DefaultConfigNullPtr) {
 TEST_F(CuriosityFepBridgeTest, ConnectFep) {
     fep_config_t fep_config;
     fep_default_config(&fep_config);
-    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    fep_config.num_levels = 2;
+    fep_system_t* fep = fep_create(&fep_config, 4, 4);
     ASSERT_NE(fep, nullptr);
 
     int ret = curiosity_fep_bridge_connect_fep(bridge, fep);
@@ -215,4 +216,144 @@ TEST_F(CuriosityFepBridgeTest, IsBioAsyncConnected) {
 TEST_F(CuriosityFepBridgeTest, IsBioAsyncConnectedNull) {
     bool connected = curiosity_fep_bridge_is_bio_async_connected(nullptr);
     EXPECT_FALSE(connected);
+}
+
+/* ============================================================================
+ * Epistemic Value Computation Tests
+ * ============================================================================ */
+
+TEST_F(CuriosityFepBridgeTest, EpistemicValueWithFEP) {
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_config.num_levels = 2;
+    fep_system_t* fep = fep_create(&fep_config, 4, 4);
+    ASSERT_NE(fep, nullptr);
+
+    curiosity_fep_bridge_connect_fep(bridge, fep);
+
+    /* Set prediction error magnitude */
+    fep->levels[0].errors.magnitude = 0.5f;
+    fep->levels[1].errors.magnitude = 0.3f;
+
+    int ret = curiosity_fep_compute_epistemic_value(bridge);
+    EXPECT_EQ(ret, 0);
+
+    /* Should have computed epistemic value */
+    EXPECT_GT(bridge->state.current_epistemic_value, 0.0f);
+    EXPECT_LE(bridge->state.current_epistemic_value, EPISTEMIC_VALUE_MAX);
+
+    fep_destroy(fep);
+}
+
+TEST_F(CuriosityFepBridgeTest, EpistemicValueDisabled) {
+    bridge->config.enable_epistemic_curiosity = false;
+    int ret = curiosity_fep_compute_epistemic_value(bridge);
+    EXPECT_EQ(ret, 0);
+}
+
+/* ============================================================================
+ * Knowledge Gap Detection Tests
+ * ============================================================================ */
+
+TEST_F(CuriosityFepBridgeTest, KnowledgeGapsWithUncertainty) {
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_config.num_levels = 2;
+    fep_system_t* fep = fep_create(&fep_config, 4, 4);
+    ASSERT_NE(fep, nullptr);
+
+    curiosity_fep_bridge_connect_fep(bridge, fep);
+
+    /* Set low precision (high uncertainty) */
+    for (uint32_t i = 0; i < fep->levels[0].errors.dim; i++) {
+        fep->levels[0].errors.precision[i] = 0.05f;
+    }
+
+    int ret = curiosity_fep_detect_knowledge_gaps(bridge);
+    EXPECT_EQ(ret, 0);
+    EXPECT_GT(bridge->state.current_uncertainty, 0.0f);
+
+    fep_destroy(fep);
+}
+
+TEST_F(CuriosityFepBridgeTest, KnowledgeGapsDisabled) {
+    bridge->config.enable_knowledge_gap_detection = false;
+    int ret = curiosity_fep_detect_knowledge_gaps(bridge);
+    EXPECT_EQ(ret, 0);
+}
+
+/* ============================================================================
+ * Exploration Trigger Tests
+ * ============================================================================ */
+
+TEST_F(CuriosityFepBridgeTest, ExplorationWithHighEpistemic) {
+    bridge->state.current_epistemic_value = 0.8f;
+    bridge->state.current_uncertainty = 0.6f;
+
+    int ret = curiosity_fep_trigger_exploration(bridge);
+    EXPECT_EQ(ret, 0);
+    EXPECT_GT(bridge->effects.exploration_motivation, 0.0f);
+    EXPECT_GT(bridge->effects.curiosity_boost, 0.0f);
+}
+
+TEST_F(CuriosityFepBridgeTest, ExplorationDisabled) {
+    bridge->config.enable_exploration_feedback = false;
+    int ret = curiosity_fep_trigger_exploration(bridge);
+    EXPECT_EQ(ret, 0);
+}
+
+/* ============================================================================
+ * Update Integration Tests
+ * ============================================================================ */
+
+TEST_F(CuriosityFepBridgeTest, UpdateWithConnectedFEP) {
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_config.num_levels = 2;
+    fep_system_t* fep = fep_create(&fep_config, 4, 4);
+    ASSERT_NE(fep, nullptr);
+
+    curiosity_fep_bridge_connect_fep(bridge, fep);
+
+    /* Set prediction errors */
+    fep->levels[0].errors.magnitude = 0.5f;
+    fep->levels[1].errors.magnitude = 0.3f;
+
+    int ret = curiosity_fep_bridge_update(bridge, 100);
+    EXPECT_EQ(ret, 0);
+
+    /* Should have updated stats */
+    EXPECT_GT(bridge->stats.total_epistemic_triggers, 0);
+
+    fep_destroy(fep);
+}
+
+TEST_F(CuriosityFepBridgeTest, UpdateMultipleTimes) {
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_config.num_levels = 2;
+    fep_system_t* fep = fep_create(&fep_config, 4, 4);
+    ASSERT_NE(fep, nullptr);
+
+    curiosity_fep_bridge_connect_fep(bridge, fep);
+
+    /* Update multiple times */
+    for (int i = 0; i < 5; i++) {
+        fep->levels[0].errors.magnitude = 0.5f + (float)i * 0.1f;
+        curiosity_fep_bridge_update(bridge, 100);
+    }
+
+    /* Should have accumulated statistics */
+    EXPECT_GE(bridge->stats.total_epistemic_triggers, 5);
+
+    fep_destroy(fep);
+}
+
+/* ============================================================================
+ * Main
+ * ============================================================================ */
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

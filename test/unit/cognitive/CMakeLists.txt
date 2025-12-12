@@ -99,6 +99,9 @@ add_subdirectory(predictive_immune)
 # Free Energy Principle Enhancement tests
 add_subdirectory(free_energy)
 
+# Autobiographical Memory tests
+add_subdirectory(autobiographical_memory)
+
 # Global Workspace - Immune Integration Tests
 add_executable(unit_cognitive_test_global_workspace_immune
     global_workspace/test_global_workspace_immune_integration.cpp
@@ -154,5 +157,34 @@ gtest_discover_tests(unit_cognitive_test_curiosity_immune
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES
         LABELS "unit;cognitive;curiosity;immune"
+        TIMEOUT 120
+)
+
+# Curiosity - FEP Bridge Tests
+add_executable(unit_cognitive_test_curiosity_fep_bridge
+    curiosity/test_curiosity_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_curiosity_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_curiosity_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_curiosity_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_curiosity_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;curiosity;fep"
         TIMEOUT 120
 )

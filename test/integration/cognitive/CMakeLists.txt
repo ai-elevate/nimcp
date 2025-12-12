@@ -65,3 +65,33 @@ gtest_discover_tests(integration_cognitive_working_memory_pe
 
 # Free Energy Principle Enhancement integration tests
 add_subdirectory(free_energy)
+add_subdirectory(autobiographical_memory)
+
+# Curiosity - FEP Bridge Integration Test
+add_executable(integration_cognitive_curiosity_fep_bridge
+    curiosity/test_curiosity_fep_bridge_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_curiosity_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_curiosity_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_cognitive_curiosity_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_curiosity_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;curiosity;fep"
+        TIMEOUT 120
+)

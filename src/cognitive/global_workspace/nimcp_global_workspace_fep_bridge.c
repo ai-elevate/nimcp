@@ -1,0 +1,619 @@
+/**
+ * @file nimcp_global_workspace_fep_bridge.c
+ * @brief Free Energy Principle - Global Workspace Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-12
+ *
+ * WHAT: Bidirectional integration between FEP and global workspace
+ * WHY:  Conscious access in GWT = precision-weighted belief propagation in FEP
+ * HOW:  FEP beliefs compete for workspace; broadcast content updates priors
+ *
+ * BIOLOGICAL BASIS:
+ * ==================================================================================
+ *
+ * THEORETICAL INTEGRATION (Dehaene + Friston):
+ * --------------------------------------------
+ * This bridge implements the convergence between:
+ * 1. Global Workspace Theory (Dehaene & Changeux, 2011)
+ *    - Conscious access = global broadcast
+ *    - Competition for limited capacity
+ *    - Winner reaches prefrontal-parietal network
+ *
+ * 2. Free Energy Principle (Friston, 2010)
+ *    - Beliefs minimize prediction error
+ *    - Precision-weighted evidence
+ *    - Hierarchical belief propagation
+ *
+ * MECHANISTIC MAPPING:
+ * -------------------
+ * FEP → GWT:
+ *   - High-precision beliefs compete for workspace access
+ *   - Model evidence → competition strength
+ *   - Belief crossing threshold → workspace ignition
+ *   - Winner = hypothesis with highest evidence
+ *
+ * GWT → FEP:
+ *   - Broadcast content → shared prior across hierarchy
+ *   - Global availability → prior update signal
+ *   - Ignition threshold modulated by FEP precision
+ *
+ * KEY INSIGHT:
+ * -----------
+ * Consciousness (workspace content) represents the brain's current "best guess"
+ * (highest evidence belief). Broadcasting this hypothesis allows all modules to
+ * update their priors, enabling coordinated inference across the cognitive hierarchy.
+ *
+ * REFERENCES:
+ * - Hohwy (2012) "Attention and conscious perception in the hypothesis testing brain"
+ * - Dehaene, Changeux (2011) "Experimental and theoretical approaches to conscious processing"
+ * - Friston (2010) "The free-energy principle: a unified brain theory"
+ */
+
+#include "cognitive/global_workspace/nimcp_global_workspace_fep_bridge.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include <string.h>
+#include <math.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Clamp float to range
+ * WHY:  Prevent values from exceeding valid bounds
+ * HOW:  Return min/max if outside range, value otherwise
+ */
+static inline float clamp_f(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/**
+ * WHAT: Compute model evidence from FEP free energy
+ * WHY:  Evidence = exp(-F) measures how well model explains data
+ * HOW:  Transform free energy to evidence scale
+ *
+ * THEORY: Free energy F upper-bounds surprise: F ≥ -ln p(o)
+ *         Therefore: p(o) ≥ exp(-F)
+ *         We use exp(-F) as evidence proxy
+ */
+static float compute_model_evidence(float free_energy) {
+    /* Prevent overflow for very negative free energy */
+    float clamped_fe = clamp_f(free_energy, -50.0f, 50.0f);
+    return expf(-clamped_fe);
+}
+
+/**
+ * WHAT: Compute competition strength from belief precision and model evidence
+ * WHY:  High-precision, high-evidence beliefs should win workspace access
+ * HOW:  Weighted combination of precision and evidence
+ *
+ * BIOLOGICAL: Precision = neuromodulatory gain (dopamine/acetylcholine)
+ *             Evidence = population firing rates (cortical columns)
+ *             Strength = gain × activity = workspace ignition signal
+ */
+static float compute_competition_strength(
+    float precision,
+    float evidence,
+    float precision_weight,
+    float evidence_weight
+) {
+    float precision_norm = clamp_f(precision, 0.0f, 1.0f);
+    float evidence_norm = clamp_f(evidence, 0.0f, 1.0f);
+    return precision_weight * precision_norm + evidence_weight * evidence_norm;
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Initialize default configuration
+ * WHY:  Provide sensible defaults for bridge operation
+ * HOW:  Set biologically-plausible parameter values
+ */
+int global_workspace_fep_bridge_default_config(global_workspace_fep_config_t* config) {
+    if (!config) return -1;
+
+    config->belief_evidence_threshold = BELIEF_EVIDENCE_THRESHOLD;
+    config->broadcast_prior_weight = BROADCAST_PRIOR_UPDATE_RATE;
+    config->model_evidence_sensitivity = 1.0f;
+    config->competition_strength_factor = 0.5f;
+
+    config->enable_belief_broadcasting = true;
+    config->enable_prior_updates = true;
+    config->enable_evidence_competition = true;
+
+    return 0;
+}
+
+/**
+ * WHAT: Create FEP-workspace bridge
+ * WHY:  Enable bidirectional integration between systems
+ * HOW:  Allocate structure, initialize state, create mutex
+ */
+global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
+    const global_workspace_fep_config_t* config
+) {
+    global_workspace_fep_bridge_t* bridge = (global_workspace_fep_bridge_t*)nimcp_calloc(
+        1, sizeof(global_workspace_fep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate global workspace FEP bridge");
+        return NULL;
+    }
+
+    /* Apply configuration */
+    global_workspace_fep_config_t default_cfg;
+    if (!config) {
+        global_workspace_fep_bridge_default_config(&default_cfg);
+        config = &default_cfg;
+    }
+    bridge->config = *config;
+
+    /* Initialize state */
+    memset(&bridge->state, 0, sizeof(global_workspace_fep_state_t));
+    bridge->state.belief_in_workspace = false;
+
+    /* Initialize effects */
+    memset(&bridge->effects, 0, sizeof(global_workspace_fep_effects_t));
+
+    /* Initialize statistics */
+    memset(&bridge->stats, 0, sizeof(global_workspace_fep_stats_t));
+
+    /* Create mutex */
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex for global workspace FEP bridge");
+        global_workspace_fep_bridge_destroy(bridge);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO("Global workspace FEP bridge created");
+    return bridge;
+}
+
+/**
+ * WHAT: Destroy FEP-workspace bridge
+ * WHY:  Clean resource management
+ * HOW:  Disconnect bio-async, destroy mutex, free memory
+ */
+void global_workspace_fep_bridge_destroy(global_workspace_fep_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->bio_async_enabled) {
+        global_workspace_fep_bridge_disconnect_bio_async(bridge);
+    }
+
+    if (bridge->mutex) {
+        nimcp_platform_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Global workspace FEP bridge destroyed");
+}
+
+/* ============================================================================
+ * Connection Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Connect bridge to FEP system
+ * WHY:  Access FEP beliefs for workspace competition
+ * HOW:  Store pointer, enable FEP → workspace direction
+ */
+int global_workspace_fep_bridge_connect_fep(
+    global_workspace_fep_bridge_t* bridge,
+    fep_system_t* fep
+) {
+    if (!bridge || !fep) return -1;
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    bridge->fep_system = fep;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Global workspace FEP bridge connected to FEP system");
+    return 0;
+}
+
+/**
+ * WHAT: Connect bridge to global workspace
+ * WHY:  Access workspace for broadcasting and reading
+ * HOW:  Store pointer, enable bidirectional flow
+ */
+int global_workspace_fep_bridge_connect_workspace(
+    global_workspace_fep_bridge_t* bridge,
+    global_workspace_t* workspace
+) {
+    if (!bridge || !workspace) return -1;
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    bridge->workspace = workspace;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Global workspace FEP bridge connected to workspace");
+    return 0;
+}
+
+/* ============================================================================
+ * FEP → Workspace Direction Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Have FEP beliefs compete for workspace access
+ * WHY:  High-evidence beliefs should reach consciousness (workspace)
+ * HOW:  Compute evidence from free energy, compete with strength
+ *
+ * BIOLOGICAL BASIS:
+ * - FEP beliefs = distributed cortical representations
+ * - Model evidence = population firing strength
+ * - Workspace competition = prefrontal-parietal ignition
+ * - Winner = conscious percept/hypothesis
+ *
+ * ALGORITHM:
+ * 1. Get current FEP free energy F
+ * 2. Compute evidence: evidence = exp(-F)
+ * 3. Get belief precision (gain control)
+ * 4. Compute competition strength: strength = f(precision, evidence)
+ * 5. Submit to workspace competition
+ * 6. If win → beliefs become conscious (globally broadcast)
+ */
+int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
+    if (!bridge->config.enable_evidence_competition) return 0;
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    fep_system_t* fep = bridge->fep_system;
+
+    /* Get current free energy and compute evidence */
+    float free_energy = fep->free_energy.total;
+    float evidence = compute_model_evidence(free_energy);
+    evidence *= bridge->config.model_evidence_sensitivity;
+
+    /* Get average belief precision across hierarchy */
+    float avg_precision = 0.0f;
+    uint32_t precision_count = 0;
+    for (uint32_t l = 0; l < fep->num_levels; l++) {
+        fep_hierarchy_level_t* level = &fep->levels[l];
+        for (uint32_t i = 0; i < level->beliefs.dim; i++) {
+            avg_precision += level->beliefs.precision[i];
+            precision_count++;
+        }
+    }
+    if (precision_count > 0) {
+        avg_precision /= (float)precision_count;
+    }
+
+    /* Compute competition strength */
+    float strength = compute_competition_strength(
+        avg_precision,
+        evidence,
+        0.4f,  /* precision weight */
+        0.6f   /* evidence weight */
+    );
+    strength *= bridge->config.competition_strength_factor;
+
+    /* Store current evidence */
+    bridge->state.current_belief_evidence = evidence;
+    bridge->effects.model_evidence = evidence;
+    bridge->effects.competition_strength = strength;
+
+    /* Check if evidence exceeds threshold */
+    if (evidence < bridge->config.belief_evidence_threshold) {
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return 0;  /* Below threshold, don't compete */
+    }
+
+    /* Prepare belief content for broadcast (use top-level beliefs) */
+    float belief_content[256];
+    uint32_t content_dim = 0;
+
+    if (fep->num_levels > 0) {
+        fep_hierarchy_level_t* top_level = &fep->levels[fep->num_levels - 1];
+        content_dim = top_level->beliefs.dim < 256 ? top_level->beliefs.dim : 256;
+        memcpy(belief_content, top_level->beliefs.mean, content_dim * sizeof(float));
+    }
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    /* Compete for workspace access */
+    bool won = global_workspace_compete(
+        bridge->workspace,
+        MODULE_PREDICTIVE,
+        belief_content,
+        content_dim,
+        strength
+    );
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    bridge->state.belief_in_workspace = won;
+    if (won) {
+        bridge->stats.total_competitions_won++;
+    }
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return won ? 1 : 0;
+}
+
+/**
+ * WHAT: Broadcast winning FEP belief to workspace
+ * WHY:  Make high-evidence hypothesis globally available (conscious)
+ * HOW:  Extract belief, submit to workspace with evidence as strength
+ *
+ * THEORY: Winning belief = hypothesis with highest model evidence
+ *         Broadcasting = making it globally available to all modules
+ *         This is the FEP interpretation of "conscious access"
+ */
+int global_workspace_fep_broadcast_winning_belief(global_workspace_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
+    if (!bridge->config.enable_belief_broadcasting) return 0;
+
+    /* Compete with beliefs (includes broadcast if win) */
+    int result = global_workspace_fep_compete_with_beliefs(bridge);
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    if (result > 0) {
+        bridge->state.broadcasts_from_beliefs++;
+        bridge->stats.total_belief_broadcasts++;
+
+        /* Update running average of broadcast evidence */
+        float alpha = 0.1f;
+        bridge->stats.avg_broadcast_evidence =
+            alpha * bridge->state.current_belief_evidence +
+            (1.0f - alpha) * bridge->stats.avg_broadcast_evidence;
+    }
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+/* ============================================================================
+ * Workspace → FEP Direction Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Update FEP priors from workspace broadcast
+ * WHY:  Broadcast content = shared belief that should inform predictions
+ * HOW:  Read workspace, inject as prior into FEP hierarchy
+ *
+ * BIOLOGICAL BASIS:
+ * - Workspace broadcast = prefrontal-parietal → distributed cortex
+ * - Prior update = top-down prediction from "conscious hypothesis"
+ * - All sensory/cognitive areas receive same prior (global coherence)
+ *
+ * THEORY (Hohwy 2012):
+ * - Attention (workspace access) = precision-weighting
+ * - Conscious content = high-precision prior for perceptual inference
+ * - Broadcast enables hypothesis testing across entire hierarchy
+ *
+ * ALGORITHM:
+ * 1. Read current workspace broadcast
+ * 2. Check if broadcast is from FEP (avoid circular update)
+ * 3. Extract broadcast content and strength
+ * 4. Inject as prior into FEP top-level beliefs
+ * 5. Scale by broadcast_prior_weight (prevent override)
+ */
+int global_workspace_fep_update_priors_from_broadcast(
+    global_workspace_fep_bridge_t* bridge
+) {
+    if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
+    if (!bridge->config.enable_prior_updates) return 0;
+
+    /* Check if workspace has broadcast */
+    if (!global_workspace_has_broadcast(bridge->workspace)) {
+        return 0;
+    }
+
+    /* Read broadcast */
+    float broadcast_content[256];
+    uint32_t broadcast_dim;
+    cognitive_module_t source;
+
+    bool has_broadcast = global_workspace_read_broadcast(
+        bridge->workspace,
+        broadcast_content,
+        256,
+        &broadcast_dim,
+        &source
+    );
+
+    if (!has_broadcast) {
+        return 0;
+    }
+
+    /* Avoid circular update (don't update from own broadcasts) */
+    if (source == MODULE_PREDICTIVE) {
+        return 0;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    fep_system_t* fep = bridge->fep_system;
+
+    /* Get broadcast strength (= confidence in this prior) */
+    float broadcast_strength = global_workspace_get_broadcast_strength(bridge->workspace);
+    float prior_weight = bridge->config.broadcast_prior_weight * broadcast_strength;
+
+    /* Update top-level beliefs with broadcast content as prior */
+    if (fep->num_levels > 0) {
+        fep_hierarchy_level_t* top_level = &fep->levels[fep->num_levels - 1];
+        uint32_t update_dim = broadcast_dim < top_level->beliefs.dim ?
+                              broadcast_dim : top_level->beliefs.dim;
+
+        /* Blend broadcast into current beliefs (weighted prior update) */
+        for (uint32_t i = 0; i < update_dim; i++) {
+            float current = top_level->beliefs.mean[i];
+            float prior = broadcast_content[i];
+            top_level->beliefs.mean[i] = (1.0f - prior_weight) * current +
+                                         prior_weight * prior;
+        }
+
+        /* Boost precision for broadcast-aligned beliefs (attention effect) */
+        float precision_boost = 1.0f + bridge->config.broadcast_prior_weight;
+        for (uint32_t i = 0; i < update_dim; i++) {
+            top_level->beliefs.precision[i] *= precision_boost;
+            /* Clamp to prevent runaway precision */
+            top_level->beliefs.precision[i] = clamp_f(
+                top_level->beliefs.precision[i],
+                0.01f,
+                100.0f
+            );
+        }
+    }
+
+    /* Update state and statistics */
+    bridge->state.prior_updates_from_broadcast++;
+    bridge->stats.total_prior_updates++;
+    bridge->effects.broadcast_prior_boost = prior_weight;
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Update Cycle Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Main update cycle for bridge
+ * WHY:  Maintain bidirectional flow between FEP and workspace
+ * HOW:  Execute both directions: compete → broadcast, read → update priors
+ *
+ * OPERATION SEQUENCE:
+ * 1. FEP beliefs compete for workspace (FEP → workspace)
+ * 2. If win, broadcast belief to all modules
+ * 3. Read any workspace broadcasts from other modules
+ * 4. Update FEP priors from broadcast (workspace → FEP)
+ *
+ * This creates a feedback loop:
+ * - FEP hypotheses compete for global access (bottom-up)
+ * - Workspace broadcasts guide FEP predictions (top-down)
+ * - Result: coordinated inference across cognitive hierarchy
+ */
+int global_workspace_fep_bridge_update(
+    global_workspace_fep_bridge_t* bridge,
+    uint64_t delta_ms
+) {
+    if (!bridge) return -1;
+
+    /* FEP → Workspace: Compete with current beliefs */
+    global_workspace_fep_compete_with_beliefs(bridge);
+
+    /* Workspace → FEP: Update priors from broadcast */
+    global_workspace_fep_update_priors_from_broadcast(bridge);
+
+    return 0;
+}
+
+/* ============================================================================
+ * State/Stats Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Get current bridge state
+ * WHY:  Monitor bridge operation
+ * HOW:  Copy state structure
+ */
+int global_workspace_fep_bridge_get_state(
+    const global_workspace_fep_bridge_t* bridge,
+    global_workspace_fep_state_t* state
+) {
+    if (!bridge || !state) return -1;
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *state = bridge->state;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/**
+ * WHAT: Get accumulated statistics
+ * WHY:  Track performance and usage
+ * HOW:  Copy stats structure
+ */
+int global_workspace_fep_bridge_get_stats(
+    const global_workspace_fep_bridge_t* bridge,
+    global_workspace_fep_stats_t* stats
+) {
+    if (!bridge || !stats) return -1;
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Bio-Async Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Connect bridge to bio-async messaging
+ * WHY:  Enable inter-module communication
+ * HOW:  Register with bio_router, get module context
+ */
+int global_workspace_fep_bridge_connect_bio_async(
+    global_workspace_fep_bridge_t* bridge
+) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_GLOBAL_WORKSPACE_BRIDGE,
+        .module_name = "global_workspace_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Global workspace FEP bridge connected to bio-async");
+    } else {
+        NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Disconnect from bio-async messaging
+ * WHY:  Clean shutdown
+ * HOW:  Unregister from bio_router
+ */
+int global_workspace_fep_bridge_disconnect_bio_async(
+    global_workspace_fep_bridge_t* bridge
+) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Global workspace FEP bridge disconnected from bio-async");
+
+    return 0;
+}
+
+/**
+ * WHAT: Check if bio-async is connected
+ * WHY:  Query connection state
+ * HOW:  Return enabled flag
+ */
+bool global_workspace_fep_bridge_is_bio_async_connected(
+    const global_workspace_fep_bridge_t* bridge
+) {
+    return bridge && bridge->bio_async_enabled;
+}
