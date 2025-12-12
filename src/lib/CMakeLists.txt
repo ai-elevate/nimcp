@@ -92,6 +92,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_contextual_language.c    # Contextual language adaptation
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_language_production_bridge.c  # Language production bridge API
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions_immune_bridge.c  # Brain regions-immune integration
+
+    # Neural substrate - Computational infrastructure layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neural_substrate/nimcp_neural_substrate.c       # Metabolic/physical substrate modeling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neural_substrate/nimcp_substrate_immune_bridge.c  # Substrate-immune integration
 
     # Cortical columns - Tier 0.65: Cortical Columns Architecture (Phase CC-1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column.c       # Core minicolumn/hypercolumn structures
@@ -119,15 +124,20 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_izhikevich.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_two_compartment.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_neuron_model_bio_async.c  # Phase BIO-ASYNC: Neuron model bio-async integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_neuron_substrate_bridge.c  # Neuron model-substrate integration (Q10, ATP excitability)
 
     # Synapse computation - NIMCP 2.7 MAJOR FEATURE
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_compute.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_substrate_bridge.c  # Synapse-substrate integration (release probability, kinetics)
 
     # Axon signal propagation - Action potential modeling
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/axon/nimcp_axon.c
 
     # Dendrite computation and integration - Phase 1.5.7
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/dendrite/nimcp_dendrite.c
+
+    # Axon/Dendrite-Substrate Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/nimcp_axon_dendrite_substrate_bridge.c  # Axon/dendrite-substrate integration (myelination, ATP transport)
 
     # Synapse type system - NIMCP 2.8.7 (Phase 8.7) - BIOLOGICAL DIVERSITY
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_types/nimcp_synapse_types.c
@@ -276,6 +286,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
+    # Free Energy Principle - Karl Friston's predictive processing framework
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy.c  # Core FEP implementation (variational free energy, active inference)
+
     # Plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c
@@ -289,6 +302,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_phasic_tonic.c  # Phase C2.2 Enhancement #2: Phasic-tonic dynamics
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_vesicle_packaging.c  # Phase C2.3 Enhancement #3: Synaptic vesicle packaging
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_metabolic_pathways.c  # Phase C2.4 Enhancement #4: Metabolic pathways
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_substrate_bridge.c  # Neuromodulator-substrate integration (DA/5-HT/NE substrate effects)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_neuromodulator_immune.c  # Neuromodulator-immune integration (cytokine effects, imbalance detection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_bcm_immune_bridge.c  # BCM learning-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_dendritic_immune_bridge.c  # Dendritic plasticity-immune integration
@@ -302,6 +316,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_trace.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_substrate_bridge.c  # Plasticity-substrate integration (STDP/BCM/homeostatic LR modulation)
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
@@ -312,6 +327,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/myelin_sheath/nimcp_myelin_sheath.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/myelin_sheath/nimcp_myelin_math.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/integration/nimcp_glial_integration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/nimcp_glial_substrate_bridge.c  # Glial-substrate integration (astrocyte ATP, microglia substrate)
 
     # Networking
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/p2p/nimcp_p2pnode.c

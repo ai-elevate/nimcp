@@ -650,6 +650,8 @@ typedef enum {
     BIO_MODULE_IMMUNE_OSCILLATIONS = 0x0D50,    /**< Oscillations-immune bridge */
     BIO_MODULE_IMMUNE_CORTICAL,                 /**< Cortical columns-immune bridge */
     BIO_MODULE_IMMUNE_BROCA,                    /**< Broca's area-immune bridge */
+    BIO_MODULE_IMMUNE_SUBSTRATE,                /**< Substrate-immune bridge */
+    BIO_MODULE_NEURON_SUBSTRATE,                /**< Neuron-substrate bridge */
 
     /* Information immune modules (0x0D60 - 0x0D6F) */
     BIO_MODULE_IMMUNE_SHANNON = 0x0D60,         /**< Shannon entropy-immune bridge */

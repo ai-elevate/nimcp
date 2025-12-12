@@ -89,6 +89,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_explanations_test_explanations_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_explanations_test_explanations_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_explanations_test_explanations_regression.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_free_energy_test_free_energy.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace_immune_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace_shannon.dir
@@ -166,13 +167,17 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_pretrained_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_version_checking.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_integration_test_numerical_integration.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neural_substrate_test_neural_substrate.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neural_substrate_test_substrate_immune_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_models_test_neuron_model_coverage.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_models_test_neuron_model_real.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_models_test_neuron_substrate_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_models_test_neuron_types.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_types_test_a1_neurons.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_types_test_neural_logic_connectivity.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_types_test_neuron_types_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_types_test_v1_neurons.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_synapse_compute_test_synapse_substrate_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_synapse_compute_test_three_factor_learning.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_synapse_types_test_synapse_compute_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_synapse_types_test_synapse_embeddings.dir
@@ -186,6 +191,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_astrocytes_test_astrocytes.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_myelin_math_test_myelin_math.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_myelin_sheath_test_myelin_sheath.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_substrate_test_glial_substrate_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_gpu_spike_event_unit_spike_event_test_amplitude_validation.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_gpu_test_execution_mode.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_gpu_test_gpu_neuron.dir
@@ -234,6 +240,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_dendritic_test_dendritic_bioasync.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_eligibility_test_eligibility_burst.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_homeostatic_test_homeostatic.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_neuromodulators_test_neuromod_substrate_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_neuromodulators_test_neuromodulators.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_neuromodulators_test_neuromodulators_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_neuromodulators_test_phasic_tonic.dir
@@ -245,6 +252,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_predictive_test_predictive_coding.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_second_messengers_test_second_messengers.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_second_messengers_test_second_messengers_modules.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_substrate_test_plasticity_substrate_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_full_simulation.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_comprehensive_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_algorithms_test_centrality.dir
@@ -321,6 +329,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_core_integration_test_wm_transfer_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_core_neuron_models_test_cognitive_neuron_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_core_synapse_compute_test_three_factor_network_learning.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/integration_core_test_core_immune_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_core_topology_topology_integration_tests.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_fault_tolerance_test_fault_tolerance_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_gpu_test_gpu_execution_mode_integration.dir
@@ -385,6 +394,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_core_brain_regions_test_visual_cortex_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_core_integration_test_integration_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_core_synapse_compute_test_three_factor_backward_compat.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_core_test_core_immune_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_core_test_love_loyalty_friendship_backward_compat.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_core_test_oscillation_backward_compat.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_core_test_regression.dir
@@ -483,6 +493,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_immune_plasticity_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_immune_emotion_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_memory_immune_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_immune_enhancement_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1001,6 +1012,14 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_plasticity_full.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_attention_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_reasoning_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_trained_immunity.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_complement_system.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_regulatory_tcells.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_exhaustion.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_tolerance.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_vaccine.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_mucosal.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_persistence.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/rebuild_cache.dir
@@ -1013,6 +1032,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_perception_immune.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_memory.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_emotion_immune_pipeline.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_modules.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/rebuild_cache.dir
@@ -1021,6 +1041,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_brain_immune.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_modules.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/immune/CMakeFiles/rebuild_cache.dir

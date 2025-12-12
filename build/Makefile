@@ -809,6 +809,19 @@ unit_cognitive_explanations_test_explanations_regression/fast:
 .PHONY : unit_cognitive_explanations_test_explanations_regression/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_free_energy_test_free_energy
+
+# Build rule for target.
+unit_cognitive_free_energy_test_free_energy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_free_energy_test_free_energy
+.PHONY : unit_cognitive_free_energy_test_free_energy
+
+# fast build rule for target.
+unit_cognitive_free_energy_test_free_energy/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_free_energy_test_free_energy.dir/build.make test/CMakeFiles/unit_cognitive_free_energy_test_free_energy.dir/build
+.PHONY : unit_cognitive_free_energy_test_free_energy/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_global_workspace_test_global_workspace
 
 # Build rule for target.
@@ -1810,6 +1823,32 @@ unit_core_integration_test_numerical_integration/fast:
 .PHONY : unit_core_integration_test_numerical_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_neural_substrate_test_neural_substrate
+
+# Build rule for target.
+unit_core_neural_substrate_test_neural_substrate: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_neural_substrate_test_neural_substrate
+.PHONY : unit_core_neural_substrate_test_neural_substrate
+
+# fast build rule for target.
+unit_core_neural_substrate_test_neural_substrate/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_neural_substrate_test_neural_substrate.dir/build.make test/CMakeFiles/unit_core_neural_substrate_test_neural_substrate.dir/build
+.PHONY : unit_core_neural_substrate_test_neural_substrate/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_neural_substrate_test_substrate_immune_bridge
+
+# Build rule for target.
+unit_core_neural_substrate_test_substrate_immune_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_neural_substrate_test_substrate_immune_bridge
+.PHONY : unit_core_neural_substrate_test_substrate_immune_bridge
+
+# fast build rule for target.
+unit_core_neural_substrate_test_substrate_immune_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_neural_substrate_test_substrate_immune_bridge.dir/build.make test/CMakeFiles/unit_core_neural_substrate_test_substrate_immune_bridge.dir/build
+.PHONY : unit_core_neural_substrate_test_substrate_immune_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_neuron_models_test_neuron_model_coverage
 
 # Build rule for target.
@@ -1834,6 +1873,19 @@ unit_core_neuron_models_test_neuron_model_real: cmake_check_build_system
 unit_core_neuron_models_test_neuron_model_real/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_neuron_models_test_neuron_model_real.dir/build.make test/CMakeFiles/unit_core_neuron_models_test_neuron_model_real.dir/build
 .PHONY : unit_core_neuron_models_test_neuron_model_real/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_neuron_models_test_neuron_substrate_bridge
+
+# Build rule for target.
+unit_core_neuron_models_test_neuron_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_neuron_models_test_neuron_substrate_bridge
+.PHONY : unit_core_neuron_models_test_neuron_substrate_bridge
+
+# fast build rule for target.
+unit_core_neuron_models_test_neuron_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_neuron_models_test_neuron_substrate_bridge.dir/build.make test/CMakeFiles/unit_core_neuron_models_test_neuron_substrate_bridge.dir/build
+.PHONY : unit_core_neuron_models_test_neuron_substrate_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_neuron_models_test_neuron_types
@@ -1899,6 +1951,19 @@ unit_core_neuron_types_test_v1_neurons: cmake_check_build_system
 unit_core_neuron_types_test_v1_neurons/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_neuron_types_test_v1_neurons.dir/build.make test/CMakeFiles/unit_core_neuron_types_test_v1_neurons.dir/build
 .PHONY : unit_core_neuron_types_test_v1_neurons/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_synapse_compute_test_synapse_substrate_bridge
+
+# Build rule for target.
+unit_core_synapse_compute_test_synapse_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_synapse_compute_test_synapse_substrate_bridge
+.PHONY : unit_core_synapse_compute_test_synapse_substrate_bridge
+
+# fast build rule for target.
+unit_core_synapse_compute_test_synapse_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_synapse_compute_test_synapse_substrate_bridge.dir/build.make test/CMakeFiles/unit_core_synapse_compute_test_synapse_substrate_bridge.dir/build
+.PHONY : unit_core_synapse_compute_test_synapse_substrate_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_synapse_compute_test_three_factor_learning
@@ -2068,6 +2133,19 @@ unit_glial_myelin_sheath_test_myelin_sheath: cmake_check_build_system
 unit_glial_myelin_sheath_test_myelin_sheath/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_glial_myelin_sheath_test_myelin_sheath.dir/build.make test/CMakeFiles/unit_glial_myelin_sheath_test_myelin_sheath.dir/build
 .PHONY : unit_glial_myelin_sheath_test_myelin_sheath/fast
+
+#=============================================================================
+# Target rules for targets named unit_glial_substrate_test_glial_substrate_bridge
+
+# Build rule for target.
+unit_glial_substrate_test_glial_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_glial_substrate_test_glial_substrate_bridge
+.PHONY : unit_glial_substrate_test_glial_substrate_bridge
+
+# fast build rule for target.
+unit_glial_substrate_test_glial_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_glial_substrate_test_glial_substrate_bridge.dir/build.make test/CMakeFiles/unit_glial_substrate_test_glial_substrate_bridge.dir/build
+.PHONY : unit_glial_substrate_test_glial_substrate_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_gpu_spike_event_unit_spike_event_test_amplitude_validation
@@ -2694,6 +2772,19 @@ unit_plasticity_homeostatic_test_homeostatic/fast:
 .PHONY : unit_plasticity_homeostatic_test_homeostatic/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_neuromodulators_test_neuromod_substrate_bridge
+
+# Build rule for target.
+unit_plasticity_neuromodulators_test_neuromod_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_neuromodulators_test_neuromod_substrate_bridge
+.PHONY : unit_plasticity_neuromodulators_test_neuromod_substrate_bridge
+
+# fast build rule for target.
+unit_plasticity_neuromodulators_test_neuromod_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_neuromodulators_test_neuromod_substrate_bridge.dir/build.make test/CMakeFiles/unit_plasticity_neuromodulators_test_neuromod_substrate_bridge.dir/build
+.PHONY : unit_plasticity_neuromodulators_test_neuromod_substrate_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_neuromodulators_test_neuromodulators
 
 # Build rule for target.
@@ -2835,6 +2926,19 @@ unit_plasticity_second_messengers_test_second_messengers_modules: cmake_check_bu
 unit_plasticity_second_messengers_test_second_messengers_modules/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_second_messengers_test_second_messengers_modules.dir/build.make test/CMakeFiles/unit_plasticity_second_messengers_test_second_messengers_modules.dir/build
 .PHONY : unit_plasticity_second_messengers_test_second_messengers_modules/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_substrate_test_plasticity_substrate_bridge
+
+# Build rule for target.
+unit_plasticity_substrate_test_plasticity_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_substrate_test_plasticity_substrate_bridge
+.PHONY : unit_plasticity_substrate_test_plasticity_substrate_bridge
+
+# fast build rule for target.
+unit_plasticity_substrate_test_plasticity_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_substrate_test_plasticity_substrate_bridge.dir/build.make test/CMakeFiles/unit_plasticity_substrate_test_plasticity_substrate_bridge.dir/build
+.PHONY : unit_plasticity_substrate_test_plasticity_substrate_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_test_brain_full_simulation
@@ -3825,6 +3929,19 @@ integration_core_synapse_compute_test_three_factor_network_learning/fast:
 .PHONY : integration_core_synapse_compute_test_three_factor_network_learning/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_test_core_immune_integration
+
+# Build rule for target.
+integration_core_test_core_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_test_core_immune_integration
+.PHONY : integration_core_test_core_immune_integration
+
+# fast build rule for target.
+integration_core_test_core_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_core_test_core_immune_integration.dir/build.make test/CMakeFiles/integration_core_test_core_immune_integration.dir/build
+.PHONY : integration_core_test_core_immune_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_topology_topology_integration_tests
 
 # Build rule for target.
@@ -4655,6 +4772,19 @@ regression_core_synapse_compute_test_three_factor_backward_compat: cmake_check_b
 regression_core_synapse_compute_test_three_factor_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_synapse_compute_test_three_factor_backward_compat.dir/build.make test/CMakeFiles/regression_core_synapse_compute_test_three_factor_backward_compat.dir/build
 .PHONY : regression_core_synapse_compute_test_three_factor_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_test_core_immune_regression
+
+# Build rule for target.
+regression_core_test_core_immune_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_test_core_immune_regression
+.PHONY : regression_core_test_core_immune_regression
+
+# fast build rule for target.
+regression_core_test_core_immune_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_test_core_immune_regression.dir/build.make test/CMakeFiles/regression_core_test_core_immune_regression.dir/build
+.PHONY : regression_core_test_core_immune_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_test_love_loyalty_friendship_backward_compat
@@ -5838,6 +5968,19 @@ e2e_test_memory_immune_pipeline: cmake_check_build_system
 e2e_test_memory_immune_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_memory_immune_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_memory_immune_pipeline.dir/build
 .PHONY : e2e_test_memory_immune_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_immune_enhancement_pipeline
+
+# Build rule for target.
+e2e_test_immune_enhancement_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_immune_enhancement_pipeline
+.PHONY : e2e_test_immune_enhancement_pipeline
+
+# fast build rule for target.
+e2e_test_immune_enhancement_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_immune_enhancement_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_immune_enhancement_pipeline.dir/build
+.PHONY : e2e_test_immune_enhancement_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -8297,6 +8440,110 @@ unit_cognitive_immune_reasoning_bridge/fast:
 .PHONY : unit_cognitive_immune_reasoning_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_immune_trained_immunity
+
+# Build rule for target.
+unit_cognitive_immune_trained_immunity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_trained_immunity
+.PHONY : unit_cognitive_immune_trained_immunity
+
+# fast build rule for target.
+unit_cognitive_immune_trained_immunity/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_trained_immunity.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_trained_immunity.dir/build
+.PHONY : unit_cognitive_immune_trained_immunity/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_complement_system
+
+# Build rule for target.
+unit_cognitive_immune_complement_system: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_complement_system
+.PHONY : unit_cognitive_immune_complement_system
+
+# fast build rule for target.
+unit_cognitive_immune_complement_system/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_complement_system.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_complement_system.dir/build
+.PHONY : unit_cognitive_immune_complement_system/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_regulatory_tcells
+
+# Build rule for target.
+unit_cognitive_immune_regulatory_tcells: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_regulatory_tcells
+.PHONY : unit_cognitive_immune_regulatory_tcells
+
+# fast build rule for target.
+unit_cognitive_immune_regulatory_tcells/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_regulatory_tcells.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_regulatory_tcells.dir/build
+.PHONY : unit_cognitive_immune_regulatory_tcells/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_exhaustion
+
+# Build rule for target.
+unit_cognitive_immune_exhaustion: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_exhaustion
+.PHONY : unit_cognitive_immune_exhaustion
+
+# fast build rule for target.
+unit_cognitive_immune_exhaustion/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_exhaustion.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_exhaustion.dir/build
+.PHONY : unit_cognitive_immune_exhaustion/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_tolerance
+
+# Build rule for target.
+unit_cognitive_immune_tolerance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_tolerance
+.PHONY : unit_cognitive_immune_tolerance
+
+# fast build rule for target.
+unit_cognitive_immune_tolerance/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_tolerance.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_tolerance.dir/build
+.PHONY : unit_cognitive_immune_tolerance/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_vaccine
+
+# Build rule for target.
+unit_cognitive_immune_vaccine: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_vaccine
+.PHONY : unit_cognitive_immune_vaccine
+
+# fast build rule for target.
+unit_cognitive_immune_vaccine/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_vaccine.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_vaccine.dir/build
+.PHONY : unit_cognitive_immune_vaccine/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_mucosal
+
+# Build rule for target.
+unit_cognitive_immune_mucosal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_mucosal
+.PHONY : unit_cognitive_immune_mucosal
+
+# fast build rule for target.
+unit_cognitive_immune_mucosal/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_mucosal.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_mucosal.dir/build
+.PHONY : unit_cognitive_immune_mucosal/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_persistence
+
+# Build rule for target.
+unit_cognitive_immune_persistence: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_persistence
+.PHONY : unit_cognitive_immune_persistence
+
+# fast build rule for target.
+unit_cognitive_immune_persistence/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_persistence.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_persistence.dir/build
+.PHONY : unit_cognitive_immune_persistence/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_immune_brain_immune
 
 # Build rule for target.
@@ -8362,6 +8609,19 @@ integration_emotion_immune_pipeline/fast:
 .PHONY : integration_emotion_immune_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_immune_modules
+
+# Build rule for target.
+integration_cognitive_immune_modules: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_immune_modules
+.PHONY : integration_cognitive_immune_modules
+
+# fast build rule for target.
+integration_cognitive_immune_modules/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_modules.dir/build.make test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_modules.dir/build
+.PHONY : integration_cognitive_immune_modules/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_immune_brain_immune
 
 # Build rule for target.
@@ -8373,6 +8633,19 @@ regression_cognitive_immune_brain_immune: cmake_check_build_system
 regression_cognitive_immune_brain_immune/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_brain_immune.dir/build.make test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_brain_immune.dir/build
 .PHONY : regression_cognitive_immune_brain_immune/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_immune_modules
+
+# Build rule for target.
+regression_cognitive_immune_modules: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_immune_modules
+.PHONY : regression_cognitive_immune_modules
+
+# fast build rule for target.
+regression_cognitive_immune_modules/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_modules.dir/build.make test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_modules.dir/build
+.PHONY : regression_cognitive_immune_modules/fast
 
 #=============================================================================
 # Target rules for targets named test_protocol_control_message
@@ -12789,6 +13062,7 @@ help:
 	@echo "... e2e_test_distributed_pipeline"
 	@echo "... e2e_test_emotion_tensor_pipeline"
 	@echo "... e2e_test_fault_tolerance_pipeline"
+	@echo "... e2e_test_immune_enhancement_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
@@ -12847,6 +13121,7 @@ help:
 	@echo "... integration_cognitive_immune_bbb"
 	@echo "... integration_cognitive_immune_brain_immune"
 	@echo "... integration_cognitive_immune_memory"
+	@echo "... integration_cognitive_immune_modules"
 	@echo "... integration_cognitive_immune_perception_immune"
 	@echo "... integration_cognitive_introspection_auto_activity_history"
 	@echo "... integration_cognitive_introspection_connectivity_health"
@@ -12873,6 +13148,7 @@ help:
 	@echo "... integration_core_neuralnet_homeostasis_immune"
 	@echo "... integration_core_neuron_models_test_cognitive_neuron_integration"
 	@echo "... integration_core_synapse_compute_test_three_factor_network_learning"
+	@echo "... integration_core_test_core_immune_integration"
 	@echo "... integration_core_topology_topology_integration_tests"
 	@echo "... integration_cortical_columns_brain"
 	@echo "... integration_emotion_immune_pipeline"
@@ -13001,6 +13277,7 @@ help:
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_shannon_regression"
 	@echo "... regression_cognitive_grief_test_grief_and_loss_backward_compat"
 	@echo "... regression_cognitive_immune_brain_immune"
+	@echo "... regression_cognitive_immune_modules"
 	@echo "... regression_cognitive_introspection_auto_activity_history"
 	@echo "... regression_cognitive_introspection_connectivity_health"
 	@echo "... regression_cognitive_introspection_consciousness_metrics"
@@ -13027,6 +13304,7 @@ help:
 	@echo "... regression_core_integration_test_integration_regression"
 	@echo "... regression_core_neuron_types_regression"
 	@echo "... regression_core_synapse_compute_test_three_factor_backward_compat"
+	@echo "... regression_core_test_core_immune_regression"
 	@echo "... regression_core_test_love_loyalty_friendship_backward_compat"
 	@echo "... regression_core_test_oscillation_backward_compat"
 	@echo "... regression_core_test_regression"
@@ -13298,19 +13576,28 @@ help:
 	@echo "... unit_cognitive_explanations_test_explanations_real"
 	@echo "... unit_cognitive_explanations_test_explanations_regression"
 	@echo "... unit_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... unit_cognitive_free_energy_test_free_energy"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_immune_integration"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_shannon"
 	@echo "... unit_cognitive_grief_test_grief_and_loss"
 	@echo "... unit_cognitive_immune_attention_bridge"
 	@echo "... unit_cognitive_immune_brain_immune"
+	@echo "... unit_cognitive_immune_complement_system"
 	@echo "... unit_cognitive_immune_emotion_bridge"
+	@echo "... unit_cognitive_immune_exhaustion"
 	@echo "... unit_cognitive_immune_memory_integration"
 	@echo "... unit_cognitive_immune_memory_subsystem_integration"
+	@echo "... unit_cognitive_immune_mucosal"
 	@echo "... unit_cognitive_immune_perception_immune"
+	@echo "... unit_cognitive_immune_persistence"
 	@echo "... unit_cognitive_immune_plasticity_full"
 	@echo "... unit_cognitive_immune_plasticity_modulation"
 	@echo "... unit_cognitive_immune_reasoning_bridge"
+	@echo "... unit_cognitive_immune_regulatory_tcells"
+	@echo "... unit_cognitive_immune_tolerance"
+	@echo "... unit_cognitive_immune_trained_immunity"
+	@echo "... unit_cognitive_immune_vaccine"
 	@echo "... unit_cognitive_introspection_auto_activity_history"
 	@echo "... unit_cognitive_introspection_connectivity_health"
 	@echo "... unit_cognitive_introspection_consciousness_metrics"
@@ -13427,13 +13714,17 @@ help:
 	@echo "... unit_core_brain_test_version_checking"
 	@echo "... unit_core_dendrite_test_dendrite"
 	@echo "... unit_core_integration_test_numerical_integration"
+	@echo "... unit_core_neural_substrate_test_neural_substrate"
+	@echo "... unit_core_neural_substrate_test_substrate_immune_bridge"
 	@echo "... unit_core_neuron_models_test_neuron_model_coverage"
 	@echo "... unit_core_neuron_models_test_neuron_model_real"
+	@echo "... unit_core_neuron_models_test_neuron_substrate_bridge"
 	@echo "... unit_core_neuron_models_test_neuron_types"
 	@echo "... unit_core_neuron_types_test_a1_neurons"
 	@echo "... unit_core_neuron_types_test_neural_logic_connectivity"
 	@echo "... unit_core_neuron_types_test_neuron_types_bio_async"
 	@echo "... unit_core_neuron_types_test_v1_neurons"
+	@echo "... unit_core_synapse_compute_test_synapse_substrate_bridge"
 	@echo "... unit_core_synapse_compute_test_three_factor_learning"
 	@echo "... unit_core_synapse_types_test_synapse_compute_real"
 	@echo "... unit_core_synapse_types_test_synapse_embeddings"
@@ -13453,6 +13744,7 @@ help:
 	@echo "... unit_glial_myelin_sheath"
 	@echo "... unit_glial_myelin_sheath_test_myelin_sheath"
 	@echo "... unit_glial_oligodendrocytes_enhanced"
+	@echo "... unit_glial_substrate_test_glial_substrate_bridge"
 	@echo "... unit_glial_test_bio_async"
 	@echo "... unit_gpu_immune_execution"
 	@echo "... unit_gpu_immune_multigpu"
@@ -13572,6 +13864,7 @@ help:
 	@echo "... unit_plasticity_dendritic_test_dendritic_bioasync"
 	@echo "... unit_plasticity_eligibility_test_eligibility_burst"
 	@echo "... unit_plasticity_homeostatic_test_homeostatic"
+	@echo "... unit_plasticity_neuromodulators_test_neuromod_substrate_bridge"
 	@echo "... unit_plasticity_neuromodulators_test_neuromodulators"
 	@echo "... unit_plasticity_neuromodulators_test_neuromodulators_bio_async"
 	@echo "... unit_plasticity_neuromodulators_test_phasic_tonic"
@@ -13583,6 +13876,7 @@ help:
 	@echo "... unit_plasticity_predictive_test_predictive_coding"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers_modules"
+	@echo "... unit_plasticity_substrate_test_plasticity_substrate_bridge"
 	@echo "... unit_portia_immune_bridges"
 	@echo "... unit_security_immune_pattern_db"
 	@echo "... unit_security_test_anomaly_detector"
