@@ -393,7 +393,7 @@ int fep_select_best_model(
     size_t n_models,
     uint32_t* best_model_id
 ) {
-    if (!scores || !best_model_id || n_models == 0) return -1;
+    if (!sys || !scores || !best_model_id || n_models == 0) return -1;
 
     uint32_t best_id = 0;
     float best_prob = scores[0].posterior_probability;
@@ -468,18 +468,17 @@ int fep_evidence_set_reference(
 ) {
     if (!sys || !reference || !observations) return -1;
 
-    nimcp_platform_mutex_lock(sys->mutex);
-
-    sys->reference_model = reference;
-
-    /* Compute reference evidence */
+    /* Compute reference evidence BEFORE locking (avoids deadlock) */
     fep_evidence_result_t result;
     fep_compute_log_evidence(sys, reference, observations, n_obs, obs_dim, &result);
 
+    /* Now lock and update reference fields */
+    nimcp_platform_mutex_lock(sys->mutex);
+    sys->reference_model = reference;
     sys->reference_log_evidence = result.log_evidence;
     sys->reference_valid = true;
-
     nimcp_platform_mutex_unlock(sys->mutex);
+
     return 0;
 }
 

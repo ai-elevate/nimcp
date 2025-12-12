@@ -547,11 +547,11 @@ int fep_compare_models(
  * WHY:  MAP (Maximum A Posteriori) model selection
  * HOW:  argmax_i p(Mi|o)
  *
- * @param sys Evidence system (may be NULL)
+ * @param sys Evidence system
  * @param scores Model scores
  * @param n_models Number of models
  * @param best_model_id Output best model ID
- * @return 0 on success
+ * @return 0 on success, -1 on error
  */
 int fep_select_best_model(
     fep_evidence_system_t* sys,

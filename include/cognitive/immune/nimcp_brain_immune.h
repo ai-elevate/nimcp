@@ -201,6 +201,7 @@ typedef enum {
 
 /* Backward compatibility aliases for brain_cytokine_type_t */
 #define CYTOKINE_TNF_ALPHA  ((brain_cytokine_type_t)BRAIN_CYTOKINE_TNF)
+#define CYTOKINE_IFN_GAMMA  ((brain_cytokine_type_t)BRAIN_CYTOKINE_IFN_GAMMA)
 #define CYTOKINE_IL1_BRAIN  ((brain_cytokine_type_t)BRAIN_CYTOKINE_IL1)
 
 /**

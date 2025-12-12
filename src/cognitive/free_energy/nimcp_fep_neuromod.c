@@ -31,6 +31,20 @@ static uint64_t get_time_ms(void) {
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
 }
 
+static void update_precision_multiplier(fep_neuromod_system_t* sys) {
+    float ach_level = sys->state.levels[FEP_NEUROMOD_ACH];
+    float ne_level = sys->state.levels[FEP_NEUROMOD_NE];
+
+    /* Precision multiplier: Π = (1 + ACh*gain_ach) * (1 + NE*gain_ne) */
+    float pi_ach = 1.0f + ach_level * sys->config.precision_gain_ach;
+    float pi_ne = 1.0f + ne_level * sys->config.precision_gain_ne;
+    sys->state.precision_multiplier = clamp_f(
+        pi_ach * pi_ne,
+        FEP_NEUROMOD_MIN_PRECISION,
+        FEP_NEUROMOD_MAX_PRECISION
+    );
+}
+
 /* ============================================================================
  * Lifecycle Implementation
  * ============================================================================ */
@@ -146,19 +160,11 @@ int fep_neuromod_update(fep_neuromod_system_t* sys, uint64_t delta_ms) {
         sys->config.serotonin_baseline + (serotonin - sys->config.serotonin_baseline) * serotonin_decay;
 
     /* Update computed effects */
-    float ach_level = sys->state.levels[FEP_NEUROMOD_ACH];
-    float ne_level = sys->state.levels[FEP_NEUROMOD_NE];
     float da_level = sys->state.levels[FEP_NEUROMOD_DA];
     float serotonin_level = sys->state.levels[FEP_NEUROMOD_5HT];
 
-    /* Precision multiplier: Π = (1 + ACh*gain_ach) * (1 + NE*gain_ne) */
-    float pi_ach = 1.0f + ach_level * sys->config.precision_gain_ach;
-    float pi_ne = 1.0f + ne_level * sys->config.precision_gain_ne;
-    sys->state.precision_multiplier = clamp_f(
-        pi_ach * pi_ne,
-        FEP_NEUROMOD_MIN_PRECISION,
-        FEP_NEUROMOD_MAX_PRECISION
-    );
+    /* Update precision multiplier (ACh, NE) */
+    update_precision_multiplier(sys);
 
     /* Exploration bonus from DA */
     sys->state.exploration_bonus = da_level * sys->config.exploration_rate_da;
@@ -189,6 +195,11 @@ int fep_neuromod_release(
         FEP_NEUROMOD_MAX_LEVEL
     );
 
+    /* Update precision multiplier if ACh or NE changed */
+    if (type == FEP_NEUROMOD_ACH || type == FEP_NEUROMOD_NE) {
+        update_precision_multiplier(sys);
+    }
+
     /* Update release statistics */
     switch (type) {
         case FEP_NEUROMOD_ACH: sys->ach_releases++; break;
@@ -212,6 +223,12 @@ int fep_neuromod_set_level(
 
     nimcp_platform_mutex_lock(sys->mutex);
     sys->state.levels[type] = clamp_f(level, FEP_NEUROMOD_MIN_LEVEL, FEP_NEUROMOD_MAX_LEVEL);
+
+    /* Update precision multiplier if ACh or NE changed */
+    if (type == FEP_NEUROMOD_ACH || type == FEP_NEUROMOD_NE) {
+        update_precision_multiplier(sys);
+    }
+
     nimcp_platform_mutex_unlock(sys->mutex);
 
     return 0;

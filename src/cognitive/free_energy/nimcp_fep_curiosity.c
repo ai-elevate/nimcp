@@ -288,7 +288,7 @@ float fep_compute_novelty(
     const float* state,
     size_t dim
 ) {
-    if (!sys || !state || dim == 0) return 1.0f;  /* Unknown = novel */
+    if (!sys || !state || dim == 0) return 0.0f;  /* NULL = no novelty */
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -397,6 +397,26 @@ int fep_curiosity_record_observation(
         }
     }
 
+    /* Compute novelty for this observation */
+    uint32_t count = FEP_CURIOSITY_MIN_COUNT;
+    for (size_t i = 0; i < sys->memory_count; i++) {
+        if (sys->memory[i].dim == dim && sys->memory[i].state) {
+            uint32_t entry_hash = hash_state(sys->memory[i].state, dim);
+            if (entry_hash == hash) {
+                count = sys->memory[i].visit_count;
+                break;
+            }
+        }
+    }
+
+    float novelty = 1.0f / sqrtf((float)(count + 1));
+    if (novelty > sys->config.novelty_threshold) {
+        sys->stats.novel_states_found++;
+    }
+
+    /* Increment observation counter */
+    sys->stats.observations_processed++;
+
     nimcp_platform_mutex_unlock(sys->mutex);
     return 0;
 }
@@ -493,11 +513,11 @@ bool fep_curiosity_is_bio_async_connected(const fep_curiosity_system_t* sys) {
 
 const char* fep_curiosity_type_to_string(fep_curiosity_type_t type) {
     switch (type) {
-        case CURIOSITY_EPISTEMIC:   return "EPISTEMIC";
-        case CURIOSITY_EMPOWERMENT: return "EMPOWERMENT";
-        case CURIOSITY_COMPETENCE:  return "COMPETENCE";
-        case CURIOSITY_NOVELTY:     return "NOVELTY";
-        default:                    return "UNKNOWN";
+        case CURIOSITY_EPISTEMIC:   return "Epistemic";
+        case CURIOSITY_EMPOWERMENT: return "Empowerment";
+        case CURIOSITY_COMPETENCE:  return "Competence";
+        case CURIOSITY_NOVELTY:     return "Novelty";
+        default:                    return "Unknown";
     }
 }
 

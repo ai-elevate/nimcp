@@ -313,7 +313,7 @@ int fep_learn_transition(
     const float* state_t1,
     size_t dim
 ) {
-    if (!learner || !state_t || !state_t1) return -1;
+    if (!learner || !sys || !state_t || !state_t1) return -1;
     if (dim != learner->state_dim) return -1;
 
     nimcp_platform_mutex_lock(learner->mutex);
@@ -392,7 +392,7 @@ int fep_learn_transition_batch(
     size_t n_transitions,
     size_t dim
 ) {
-    if (!learner || !states || n_transitions == 0) return -1;
+    if (!learner || !sys || !states || n_transitions == 0) return -1;
     if (dim != learner->state_dim) return -1;
 
     nimcp_platform_mutex_lock(learner->mutex);
@@ -476,7 +476,7 @@ int fep_learn_likelihood(
     size_t obs_dim,
     size_t state_dim
 ) {
-    if (!learner || !observation || !state) return -1;
+    if (!learner || !sys || !observation || !state) return -1;
     if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) return -1;
 
     nimcp_platform_mutex_lock(learner->mutex);

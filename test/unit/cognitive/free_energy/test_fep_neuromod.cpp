@@ -183,7 +183,7 @@ TEST_F(FEPNeuromodTest, SetLevelAllTypes) {
     // WHAT: Set all neuromodulator types
     createNeuromod();
 
-    for (int type = FEP_NEUROMOD_ACH; type < NEUROMOD_COUNT; type++) {
+    for (int type = FEP_NEUROMOD_ACH; type < FEP_NEUROMOD_COUNT; type++) {
         float target = 0.3f + 0.1f * type;
         int ret = fep_neuromod_set_level(neuromod, (fep_neuromod_type_t)type, target);
         EXPECT_EQ(ret, 0);
@@ -501,10 +501,10 @@ TEST_F(FEPNeuromodTest, BioAsyncNullChecks) {
 
 TEST_F(FEPNeuromodTest, TypeToString) {
     // WHAT: Convert neuromod types to strings
-    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_ACH), "Acetylcholine");
-    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_NE), "Norepinephrine");
-    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_DA), "Dopamine");
-    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_5HT), "Serotonin");
+    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_ACH), "ACH");
+    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_NE), "NE");
+    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_DA), "DA");
+    EXPECT_STREQ(fep_neuromod_type_to_string(FEP_NEUROMOD_5HT), "5HT");
 }
 
 TEST_F(FEPNeuromodTest, TypeToStringInvalid) {
@@ -571,7 +571,7 @@ TEST_F(FEPNeuromodTest, MultipleUpdates) {
     }
 
     // All levels should still be valid
-    for (int type = FEP_NEUROMOD_ACH; type < NEUROMOD_COUNT; type++) {
+    for (int type = FEP_NEUROMOD_ACH; type < FEP_NEUROMOD_COUNT; type++) {
         float level = fep_neuromod_get_level(neuromod, (fep_neuromod_type_t)type);
         EXPECT_GE(level, 0.0f);
         EXPECT_LE(level, 1.0f);
@@ -612,7 +612,7 @@ TEST_F(FEPNeuromodTest, AllEventsCombined) {
     fep_neuromod_state_t state;
     fep_neuromod_get_state(neuromod, &state);
 
-    for (int i = 0; i < NEUROMOD_COUNT; i++) {
+    for (int i = 0; i < FEP_NEUROMOD_COUNT; i++) {
         EXPECT_GE(state.levels[i], 0.0f);
         EXPECT_LE(state.levels[i], 1.0f);
     }

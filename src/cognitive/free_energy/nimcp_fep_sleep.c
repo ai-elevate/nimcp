@@ -294,7 +294,8 @@ int fep_sleep_add_experience(
     size_t dim,
     size_t obs_dim
 ) {
-    if (!sys || !state || !next_state) return -1;
+    if (!sys || !state || !observation || !next_state) return -1;
+    if (dim == 0) return -1;
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -503,7 +504,7 @@ int fep_sleep_get_stats(
 }
 
 float fep_sleep_get_precision_modifier(const fep_sleep_system_t* sys) {
-    if (!sys) return 1.0f;
+    if (!sys) return 0.0f;
 
     switch (sys->state.current_stage) {
         case SLEEP_STAGE_WAKE: return FEP_SLEEP_WAKE_PRECISION;
