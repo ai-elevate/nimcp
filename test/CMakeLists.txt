@@ -448,6 +448,24 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/networking/distributed")
 endif()
 
 # ============================================================================
+# Networking Immune Bridge Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/networking/immune")
+    message(STATUS "Adding networking immune bridge unit tests...")
+    add_subdirectory(unit/networking/immune)
+endif()
+
+# ============================================================================
+# NLP Immune Bridge Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/nlp/immune")
+    message(STATUS "Adding NLP immune bridge unit tests...")
+    add_subdirectory(unit/nlp/immune)
+endif()
+
+# ============================================================================
 # Brain Factory Tests
 # ============================================================================
 

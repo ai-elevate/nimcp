@@ -189,3 +189,8 @@ set_tests_properties(PortiaDeception PROPERTIES
     TIMEOUT 60
     LABELS "unit;portia;deception"
 )
+
+# ============================================================================
+# Portia-Immune Bridge Tests
+# ============================================================================
+add_subdirectory(immune)

@@ -157,3 +157,8 @@ gtest_discover_tests(unit_glial_test_bio_async
         LABELS "unit;glial;bio-async"
         TIMEOUT 90
 )
+
+# ============================================================================
+# Glial-Immune Bridge Tests
+# ============================================================================
+add_subdirectory(immune)

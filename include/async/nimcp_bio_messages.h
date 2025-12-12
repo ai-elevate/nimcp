@@ -651,6 +651,39 @@ typedef enum {
     BIO_MODULE_IMMUNE_CORTICAL,                 /**< Cortical columns-immune bridge */
     BIO_MODULE_IMMUNE_BROCA,                    /**< Broca's area-immune bridge */
 
+    /* Networking immune modules (0x0E00 - 0x0E0F) */
+    BIO_MODULE_IMMUNE_NETWORKING = 0x0E00,              /**< Networking-immune base */
+    BIO_MODULE_IMMUNE_NETWORKING_DISTRIBUTED,           /**< Distributed system-immune bridge */
+    BIO_MODULE_IMMUNE_NETWORKING_PROTOCOL,              /**< Protocol-immune bridge */
+    BIO_MODULE_IMMUNE_NETWORKING_P2P,                   /**< P2P network-immune bridge */
+    BIO_MODULE_IMMUNE_NETWORKING_REPLICATION,           /**< Replication-immune bridge */
+    BIO_MODULE_IMMUNE_NETWORKING_EVENTS,                /**< Events-immune bridge */
+
+    /* NLP immune modules (0x0E10 - 0x0E1F) */
+    BIO_MODULE_IMMUNE_NLP = 0x0E10,             /**< NLP-immune base */
+    BIO_MODULE_IMMUNE_NLP_CORE,                 /**< Core NLP-immune bridge */
+    BIO_MODULE_IMMUNE_SPIKE_NLP,                /**< Spike NLP-immune bridge */
+    BIO_MODULE_IMMUNE_MULTIMODAL_NLP,           /**< Multimodal NLP-immune bridge */
+
+    /* Portia immune modules (0x0E20 - 0x0E3F) */
+    BIO_MODULE_IMMUNE_PORTIA = 0x0E20,          /**< Portia-immune base */
+    BIO_MODULE_IMMUNE_PORTIA_SENSOR,            /**< Portia sensor fusion-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_LEARNING,          /**< Portia learning-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_ATTENTION,         /**< Portia attention-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_CLASSIFICATION,    /**< Portia classification-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_PLANNING,          /**< Portia planning-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_POWER,             /**< Portia power-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_DECEPTION,         /**< Portia deception-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_DEGRADATION,       /**< Portia degradation-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_ACCELERATOR,       /**< Portia accelerator-immune bridge */
+    BIO_MODULE_IMMUNE_PORTIA_TIER,              /**< Portia tier switch-immune bridge */
+
+    /* Glial immune modules (0x0E40 - 0x0E4F) */
+    BIO_MODULE_IMMUNE_GLIAL = 0x0E40,           /**< Glial-immune base */
+    BIO_MODULE_IMMUNE_MICROGLIA,                /**< Microglia-immune bridge */
+    BIO_MODULE_IMMUNE_ASTROCYTE,                /**< Astrocyte-immune bridge */
+    BIO_MODULE_IMMUNE_OLIGODENDROCYTE,          /**< Oligodendrocyte-immune bridge */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

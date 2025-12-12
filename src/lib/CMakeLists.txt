@@ -547,6 +547,25 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_audio_immune_bridge.c  # Audio cortex-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_speech_immune_bridge.c  # Speech cortex-immune integration
 
+    # Glial-Immune Integration (Phase BII-G: Glial immune bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocyte_immune_bridge.c  # Astrocyte-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_microglia_immune_bridge.c  # Microglia-immune integration (brain macrophages)
+
+    # Networking-Immune Integration (Phase BII-N: Distributed cognition immune bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/immune/nimcp_distributed_immune_bridge.c  # Distributed cognition-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/immune/nimcp_protocol_immune_bridge.c  # NLP protocol-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/immune/nimcp_p2p_immune_bridge.c  # P2P network-immune integration
+
+    # NLP-Immune Integration (Phase BII-L: Language processing immune bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/immune/nimcp_nlp_immune_bridge.c  # NLP-immune integration (language impairment)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/immune/nimcp_spike_nlp_immune_bridge.c  # Spike NLP-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/immune/nimcp_multimodal_nlp_immune_bridge.c  # Multimodal NLP-immune integration
+
+    # Portia-Immune Integration (Phase BII-P: Adaptive intelligence immune bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/immune/nimcp_portia_attention_immune_bridge.c  # Portia attention-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/immune/nimcp_portia_learning_immune_bridge.c  # Portia learning-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c  # Portia sensor fusion-immune integration
+
     # GPU Support (CPU fallback when CUDA unavailable)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/spike_event/nimcp_spike_event.c
