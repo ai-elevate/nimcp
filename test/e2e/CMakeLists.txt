@@ -339,6 +339,12 @@ add_e2e_test(e2e_test_immune_enhancement_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_immune_enhancement_pipeline.cpp
 )
 
+# Enhanced Wellbeing Pipeline E2E Test (Substrate, Sleep, Mental Health, Immune Integration)
+add_e2e_test(e2e_test_wellbeing_enhanced_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_wellbeing_enhanced_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

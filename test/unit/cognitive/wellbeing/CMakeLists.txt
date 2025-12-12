@@ -185,3 +185,33 @@ set_tests_properties(unit_cognitive_wellbeing_immune_full_integration PROPERTIES
     LABELS "unit;wellbeing;immune;integration"
     TIMEOUT 120
 )
+
+# Enhanced Wellbeing Tests
+add_executable(unit_cognitive_wellbeing_enhanced
+    test_wellbeing_enhanced.cpp
+)
+target_link_libraries(unit_cognitive_wellbeing_enhanced
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_wellbeing_enhanced PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_wellbeing_enhanced
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/wellbeing
+        ${CMAKE_SOURCE_DIR}/src/cognitive/introspection
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_wellbeing_enhanced
+         COMMAND unit_cognitive_wellbeing_enhanced --gtest_brief=1)
+set_tests_properties(unit_cognitive_wellbeing_enhanced PROPERTIES
+    LABELS "unit;wellbeing;enhanced"
+    TIMEOUT 180
+)

@@ -396,6 +396,20 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/immune")
 endif()
 
 # ============================================================================
+# Enhanced Wellbeing Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/wellbeing")
+    message(STATUS "Adding enhanced wellbeing integration tests...")
+    add_subdirectory(integration/cognitive/wellbeing)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/wellbeing")
+    message(STATUS "Adding enhanced wellbeing regression tests...")
+    add_subdirectory(regression/cognitive/wellbeing)
+endif()
+
+# ============================================================================
 # Networking Protocol Tests
 # ============================================================================
 

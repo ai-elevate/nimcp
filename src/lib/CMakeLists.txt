@@ -173,6 +173,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_consciousness_metrics.c  # Consciousness Metrics (IIT Φ)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_temporal_patterns.c  # Temporal Pattern Analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_prediction.c  # Predictive Distress Modeling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_enhanced.c  # Enhanced Wellbeing Core (includes substrate, sleep, mental health integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_eudaimonic.c  # Eudaimonic Wellbeing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_free_energy_bridge.c  # Free Energy Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_resources.c  # Platform Resource Metrics
+    # NOTE: homeostasis, substrate_bridge, sleep_bridge, mental_health_bridge are already in enhanced.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_symbolic_logic.c
