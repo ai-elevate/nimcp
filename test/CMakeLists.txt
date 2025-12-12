@@ -881,6 +881,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/portia")
 endif()
 
 # ============================================================================
+# GPU Immune Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/gpu/immune/CMakeLists.txt")
+    message(STATUS "Adding GPU immune unit tests...")
+    add_subdirectory(unit/gpu/immune)
+endif()
+
+# ============================================================================
 # Performance Benchmarks
 # ============================================================================
 

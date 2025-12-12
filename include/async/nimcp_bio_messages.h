@@ -651,6 +651,10 @@ typedef enum {
     BIO_MODULE_IMMUNE_CORTICAL,                 /**< Cortical columns-immune bridge */
     BIO_MODULE_IMMUNE_BROCA,                    /**< Broca's area-immune bridge */
 
+    /* Information immune modules (0x0D60 - 0x0D6F) */
+    BIO_MODULE_IMMUNE_SHANNON = 0x0D60,         /**< Shannon entropy-immune bridge */
+    BIO_MODULE_IMMUNE_CROSS_MODAL,              /**< Cross-modal integration-immune bridge */
+
     /* Networking immune modules (0x0E00 - 0x0E0F) */
     BIO_MODULE_IMMUNE_NETWORKING = 0x0E00,              /**< Networking-immune base */
     BIO_MODULE_IMMUNE_NETWORKING_DISTRIBUTED,           /**< Distributed system-immune bridge */
@@ -683,6 +687,27 @@ typedef enum {
     BIO_MODULE_IMMUNE_MICROGLIA,                /**< Microglia-immune bridge */
     BIO_MODULE_IMMUNE_ASTROCYTE,                /**< Astrocyte-immune bridge */
     BIO_MODULE_IMMUNE_OLIGODENDROCYTE,          /**< Oligodendrocyte-immune bridge */
+
+    /* GPU immune modules (0x0E50 - 0x0E5F) */
+    BIO_MODULE_IMMUNE_GPU = 0x0E50,             /**< GPU-immune base */
+    BIO_MODULE_IMMUNE_GPU_NEURON,               /**< GPU neuron-immune bridge */
+    BIO_MODULE_IMMUNE_GPU_EXECUTION,            /**< GPU execution-immune bridge */
+    BIO_MODULE_IMMUNE_MULTIGPU,                 /**< Multi-GPU-immune bridge */
+    BIO_MODULE_IMMUNE_GPU_SPIKE_EVENT,          /**< GPU spike event-immune bridge */
+    BIO_MODULE_IMMUNE_GPU_SYNAPSE_COMPUTE,      /**< GPU synapse compute-immune bridge */
+
+    /* Information immune modules (0x0E60 - 0x0E6F) */
+    BIO_MODULE_IMMUNE_INFORMATION = 0x0E60,     /**< Information-immune base */
+
+    /* Security immune modules (0x0E70 - 0x0E7F) */
+    BIO_MODULE_IMMUNE_SECURITY = 0x0E70,        /**< Security-immune base */
+    BIO_MODULE_IMMUNE_ANOMALY,                  /**< Anomaly detector-immune bridge */
+    BIO_MODULE_IMMUNE_RATE_LIMITER,             /**< Rate limiter-immune bridge */
+    BIO_MODULE_IMMUNE_PATTERN_DB,               /**< Pattern database-immune bridge */
+
+    /* Optimization immune modules (0x0E80 - 0x0E8F) */
+    BIO_MODULE_IMMUNE_OPTIMIZATION = 0x0E80,    /**< Optimization-immune base */
+    BIO_MODULE_IMMUNE_QUANTUM_ANNEALING,        /**< Quantum annealing-immune bridge */
 
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */

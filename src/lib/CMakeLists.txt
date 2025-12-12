@@ -388,6 +388,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_sbom.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_artifact_verify.c
 
+    # Security Immune Integration (Phase BII-S: Security immune bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_pattern_db_immune_bridge.c  # Pattern DB-immune integration
+
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_guards.c
@@ -571,6 +574,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/spike_event/nimcp_spike_event.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_neuron.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/nimcp_multigpu.c
+
+    # GPU Immune Integration (Phase BII-GPU: GPU immune bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/immune/nimcp_gpu_execution_immune_bridge.c  # GPU execution-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/immune/nimcp_multigpu_immune_bridge.c  # Multi-GPU-immune integration
 
     # GPU CUDA kernels (only compiled if CUDA is available)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu>

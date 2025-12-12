@@ -331,3 +331,8 @@ target_link_libraries(unit_security_test_nan_inf_validation PRIVATE GTest::GTest
 target_include_directories(unit_security_test_nan_inf_validation PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME unit_security_test_nan_inf_validation COMMAND unit_security_test_nan_inf_validation)
 set_tests_properties(unit_security_test_nan_inf_validation PROPERTIES LABELS "unit;security" TIMEOUT 60)
+
+# Security Immune Bridge Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/immune/CMakeLists.txt")
+    add_subdirectory(immune)
+endif()

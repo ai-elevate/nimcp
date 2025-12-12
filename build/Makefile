@@ -8596,6 +8596,32 @@ unit_networking_distributed_test_distributed_cognition_refactored/fast:
 .PHONY : unit_networking_distributed_test_distributed_cognition_refactored/fast
 
 #=============================================================================
+# Target rules for targets named unit_networking_immune_bridges
+
+# Build rule for target.
+unit_networking_immune_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_networking_immune_bridges
+.PHONY : unit_networking_immune_bridges
+
+# fast build rule for target.
+unit_networking_immune_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/networking/immune/CMakeFiles/unit_networking_immune_bridges.dir/build.make test/unit/networking/immune/CMakeFiles/unit_networking_immune_bridges.dir/build
+.PHONY : unit_networking_immune_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_nlp_immune_bridges
+
+# Build rule for target.
+unit_nlp_immune_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_nlp_immune_bridges
+.PHONY : unit_nlp_immune_bridges
+
+# fast build rule for target.
+unit_nlp_immune_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/nlp/immune/CMakeFiles/unit_nlp_immune_bridges.dir/build.make test/unit/nlp/immune/CMakeFiles/unit_nlp_immune_bridges.dir/build
+.PHONY : unit_nlp_immune_bridges/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_factory_test_brain_create
 
 # Build rule for target.
@@ -9948,6 +9974,19 @@ unit_glial_test_bio_async/fast:
 .PHONY : unit_glial_test_bio_async/fast
 
 #=============================================================================
+# Target rules for targets named unit_glial_immune_bridges
+
+# Build rule for target.
+unit_glial_immune_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_glial_immune_bridges
+.PHONY : unit_glial_immune_bridges
+
+# fast build rule for target.
+unit_glial_immune_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/glial/immune/CMakeFiles/unit_glial_immune_bridges.dir/build.make test/unit/glial/immune/CMakeFiles/unit_glial_immune_bridges.dir/build
+.PHONY : unit_glial_immune_bridges/fast
+
+#=============================================================================
 # Target rules for targets named integration_glial_test_glial_integration
 
 # Build rule for target.
@@ -10557,6 +10596,19 @@ unit_security_test_nan_inf_validation: cmake_check_build_system
 unit_security_test_nan_inf_validation/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_nan_inf_validation.dir/build.make test/unit/security/CMakeFiles/unit_security_test_nan_inf_validation.dir/build
 .PHONY : unit_security_test_nan_inf_validation/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_immune_pattern_db
+
+# Build rule for target.
+unit_security_immune_pattern_db: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_immune_pattern_db
+.PHONY : unit_security_immune_pattern_db
+
+# fast build rule for target.
+unit_security_immune_pattern_db/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/immune/CMakeFiles/unit_security_immune_pattern_db.dir/build.make test/unit/security/immune/CMakeFiles/unit_security_immune_pattern_db.dir/build
+.PHONY : unit_security_immune_pattern_db/fast
 
 #=============================================================================
 # Target rules for targets named integration_security_test_bbb_integration
@@ -11768,6 +11820,19 @@ test_portia_deception/fast:
 .PHONY : test_portia_deception/fast
 
 #=============================================================================
+# Target rules for targets named unit_portia_immune_bridges
+
+# Build rule for target.
+unit_portia_immune_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_portia_immune_bridges
+.PHONY : unit_portia_immune_bridges
+
+# fast build rule for target.
+unit_portia_immune_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/portia/immune/CMakeFiles/unit_portia_immune_bridges.dir/build.make test/unit/portia/immune/CMakeFiles/unit_portia_immune_bridges.dir/build
+.PHONY : unit_portia_immune_bridges/fast
+
+#=============================================================================
 # Target rules for targets named test_portia_tier_integration
 
 # Build rule for target.
@@ -12078,6 +12143,32 @@ regression_portia_test_deception_effectiveness: cmake_check_build_system
 regression_portia_test_deception_effectiveness/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/portia/CMakeFiles/regression_portia_test_deception_effectiveness.dir/build.make test/regression/portia/CMakeFiles/regression_portia_test_deception_effectiveness.dir/build
 .PHONY : regression_portia_test_deception_effectiveness/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_immune_execution
+
+# Build rule for target.
+unit_gpu_immune_execution: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_immune_execution
+.PHONY : unit_gpu_immune_execution
+
+# fast build rule for target.
+unit_gpu_immune_execution/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/immune/CMakeFiles/unit_gpu_immune_execution.dir/build.make test/unit/gpu/immune/CMakeFiles/unit_gpu_immune_execution.dir/build
+.PHONY : unit_gpu_immune_execution/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_immune_multigpu
+
+# Build rule for target.
+unit_gpu_immune_multigpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_immune_multigpu
+.PHONY : unit_gpu_immune_multigpu
+
+# fast build rule for target.
+unit_gpu_immune_multigpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/immune/CMakeFiles/unit_gpu_immune_multigpu.dir/build.make test/unit/gpu/immune/CMakeFiles/unit_gpu_immune_multigpu.dir/build
+.PHONY : unit_gpu_immune_multigpu/fast
 
 #=============================================================================
 # Target rules for targets named bench_benchmark_complex_vs_real_oscillations
@@ -13355,6 +13446,7 @@ help:
 	@echo "... unit_glial_astrocytes_test_astrocyte_comprehensive"
 	@echo "... unit_glial_astrocytes_test_astrocyte_types_real"
 	@echo "... unit_glial_astrocytes_test_astrocytes"
+	@echo "... unit_glial_immune_bridges"
 	@echo "... unit_glial_microglia_enhanced"
 	@echo "... unit_glial_myelin_math"
 	@echo "... unit_glial_myelin_math_test_myelin_math"
@@ -13362,6 +13454,8 @@ help:
 	@echo "... unit_glial_myelin_sheath_test_myelin_sheath"
 	@echo "... unit_glial_oligodendrocytes_enhanced"
 	@echo "... unit_glial_test_bio_async"
+	@echo "... unit_gpu_immune_execution"
+	@echo "... unit_gpu_immune_multigpu"
 	@echo "... unit_gpu_spike_event_unit_spike_event_test_amplitude_validation"
 	@echo "... unit_gpu_test_execution_mode"
 	@echo "... unit_gpu_test_gpu_neuron"
@@ -13448,6 +13542,7 @@ help:
 	@echo "... unit_networking_distributed_test_distributed_cognition_refactored"
 	@echo "... unit_networking_events_test_events"
 	@echo "... unit_networking_events_test_spike_event_real"
+	@echo "... unit_networking_immune_bridges"
 	@echo "... unit_networking_nlp_test_nlp_crypto"
 	@echo "... unit_networking_nlp_test_nlp_header"
 	@echo "... unit_networking_nlp_test_nlp_message"
@@ -13455,6 +13550,7 @@ help:
 	@echo "... unit_networking_nlp_test_nlp_session"
 	@echo "... unit_networking_p2p_test_p2pnode"
 	@echo "... unit_networking_replication_test_replication"
+	@echo "... unit_nlp_immune_bridges"
 	@echo "... unit_nlp_test_brain_multimodal_features"
 	@echo "... unit_nlp_test_brain_multimodal_initialization"
 	@echo "... unit_nlp_test_brain_multimodal_processing"
@@ -13487,6 +13583,8 @@ help:
 	@echo "... unit_plasticity_predictive_test_predictive_coding"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers_modules"
+	@echo "... unit_portia_immune_bridges"
+	@echo "... unit_security_immune_pattern_db"
 	@echo "... unit_security_test_anomaly_detector"
 	@echo "... unit_security_test_bayesian_network"
 	@echo "... unit_security_test_bbb_immune_integration"

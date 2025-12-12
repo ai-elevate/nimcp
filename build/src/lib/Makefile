@@ -4769,6 +4769,54 @@ __/glial/astrocytes/nimcp_astrocytes.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/astrocytes/nimcp_astrocytes.c.s
 .PHONY : __/glial/astrocytes/nimcp_astrocytes.c.s
 
+__/glial/immune/nimcp_astrocyte_immune_bridge.o: __/glial/immune/nimcp_astrocyte_immune_bridge.c.o
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.o
+
+# target to build an object file
+__/glial/immune/nimcp_astrocyte_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_bridge.c.o
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.c.o
+
+__/glial/immune/nimcp_astrocyte_immune_bridge.i: __/glial/immune/nimcp_astrocyte_immune_bridge.c.i
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.i
+
+# target to preprocess a source file
+__/glial/immune/nimcp_astrocyte_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_bridge.c.i
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.c.i
+
+__/glial/immune/nimcp_astrocyte_immune_bridge.s: __/glial/immune/nimcp_astrocyte_immune_bridge.c.s
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.s
+
+# target to generate assembly for a file
+__/glial/immune/nimcp_astrocyte_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_bridge.c.s
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.c.s
+
+__/glial/immune/nimcp_microglia_immune_bridge.o: __/glial/immune/nimcp_microglia_immune_bridge.c.o
+.PHONY : __/glial/immune/nimcp_microglia_immune_bridge.o
+
+# target to build an object file
+__/glial/immune/nimcp_microglia_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_microglia_immune_bridge.c.o
+.PHONY : __/glial/immune/nimcp_microglia_immune_bridge.c.o
+
+__/glial/immune/nimcp_microglia_immune_bridge.i: __/glial/immune/nimcp_microglia_immune_bridge.c.i
+.PHONY : __/glial/immune/nimcp_microglia_immune_bridge.i
+
+# target to preprocess a source file
+__/glial/immune/nimcp_microglia_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_microglia_immune_bridge.c.i
+.PHONY : __/glial/immune/nimcp_microglia_immune_bridge.c.i
+
+__/glial/immune/nimcp_microglia_immune_bridge.s: __/glial/immune/nimcp_microglia_immune_bridge.c.s
+.PHONY : __/glial/immune/nimcp_microglia_immune_bridge.s
+
+# target to generate assembly for a file
+__/glial/immune/nimcp_microglia_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_microglia_immune_bridge.c.s
+.PHONY : __/glial/immune/nimcp_microglia_immune_bridge.c.s
+
 __/glial/integration/nimcp_glial_integration.o: __/glial/integration/nimcp_glial_integration.c.o
 .PHONY : __/glial/integration/nimcp_glial_integration.o
 
@@ -4912,6 +4960,54 @@ __/gpu/execution/nimcp_execution_mode.s: __/gpu/execution/nimcp_execution_mode.c
 __/gpu/execution/nimcp_execution_mode.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/execution/nimcp_execution_mode.c.s
 .PHONY : __/gpu/execution/nimcp_execution_mode.c.s
+
+__/gpu/immune/nimcp_gpu_execution_immune_bridge.o: __/gpu/immune/nimcp_gpu_execution_immune_bridge.c.o
+.PHONY : __/gpu/immune/nimcp_gpu_execution_immune_bridge.o
+
+# target to build an object file
+__/gpu/immune/nimcp_gpu_execution_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/immune/nimcp_gpu_execution_immune_bridge.c.o
+.PHONY : __/gpu/immune/nimcp_gpu_execution_immune_bridge.c.o
+
+__/gpu/immune/nimcp_gpu_execution_immune_bridge.i: __/gpu/immune/nimcp_gpu_execution_immune_bridge.c.i
+.PHONY : __/gpu/immune/nimcp_gpu_execution_immune_bridge.i
+
+# target to preprocess a source file
+__/gpu/immune/nimcp_gpu_execution_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/immune/nimcp_gpu_execution_immune_bridge.c.i
+.PHONY : __/gpu/immune/nimcp_gpu_execution_immune_bridge.c.i
+
+__/gpu/immune/nimcp_gpu_execution_immune_bridge.s: __/gpu/immune/nimcp_gpu_execution_immune_bridge.c.s
+.PHONY : __/gpu/immune/nimcp_gpu_execution_immune_bridge.s
+
+# target to generate assembly for a file
+__/gpu/immune/nimcp_gpu_execution_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/immune/nimcp_gpu_execution_immune_bridge.c.s
+.PHONY : __/gpu/immune/nimcp_gpu_execution_immune_bridge.c.s
+
+__/gpu/immune/nimcp_multigpu_immune_bridge.o: __/gpu/immune/nimcp_multigpu_immune_bridge.c.o
+.PHONY : __/gpu/immune/nimcp_multigpu_immune_bridge.o
+
+# target to build an object file
+__/gpu/immune/nimcp_multigpu_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/immune/nimcp_multigpu_immune_bridge.c.o
+.PHONY : __/gpu/immune/nimcp_multigpu_immune_bridge.c.o
+
+__/gpu/immune/nimcp_multigpu_immune_bridge.i: __/gpu/immune/nimcp_multigpu_immune_bridge.c.i
+.PHONY : __/gpu/immune/nimcp_multigpu_immune_bridge.i
+
+# target to preprocess a source file
+__/gpu/immune/nimcp_multigpu_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/immune/nimcp_multigpu_immune_bridge.c.i
+.PHONY : __/gpu/immune/nimcp_multigpu_immune_bridge.c.i
+
+__/gpu/immune/nimcp_multigpu_immune_bridge.s: __/gpu/immune/nimcp_multigpu_immune_bridge.c.s
+.PHONY : __/gpu/immune/nimcp_multigpu_immune_bridge.s
+
+# target to generate assembly for a file
+__/gpu/immune/nimcp_multigpu_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/immune/nimcp_multigpu_immune_bridge.c.s
+.PHONY : __/gpu/immune/nimcp_multigpu_immune_bridge.c.s
 
 __/gpu/neuron/nimcp_gpu_neuron.o: __/gpu/neuron/nimcp_gpu_neuron.c.o
 .PHONY : __/gpu/neuron/nimcp_gpu_neuron.o
@@ -6233,6 +6329,78 @@ __/networking/events/nimcp_events.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/events/nimcp_events.c.s
 .PHONY : __/networking/events/nimcp_events.c.s
 
+__/networking/immune/nimcp_distributed_immune_bridge.o: __/networking/immune/nimcp_distributed_immune_bridge.c.o
+.PHONY : __/networking/immune/nimcp_distributed_immune_bridge.o
+
+# target to build an object file
+__/networking/immune/nimcp_distributed_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_distributed_immune_bridge.c.o
+.PHONY : __/networking/immune/nimcp_distributed_immune_bridge.c.o
+
+__/networking/immune/nimcp_distributed_immune_bridge.i: __/networking/immune/nimcp_distributed_immune_bridge.c.i
+.PHONY : __/networking/immune/nimcp_distributed_immune_bridge.i
+
+# target to preprocess a source file
+__/networking/immune/nimcp_distributed_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_distributed_immune_bridge.c.i
+.PHONY : __/networking/immune/nimcp_distributed_immune_bridge.c.i
+
+__/networking/immune/nimcp_distributed_immune_bridge.s: __/networking/immune/nimcp_distributed_immune_bridge.c.s
+.PHONY : __/networking/immune/nimcp_distributed_immune_bridge.s
+
+# target to generate assembly for a file
+__/networking/immune/nimcp_distributed_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_distributed_immune_bridge.c.s
+.PHONY : __/networking/immune/nimcp_distributed_immune_bridge.c.s
+
+__/networking/immune/nimcp_p2p_immune_bridge.o: __/networking/immune/nimcp_p2p_immune_bridge.c.o
+.PHONY : __/networking/immune/nimcp_p2p_immune_bridge.o
+
+# target to build an object file
+__/networking/immune/nimcp_p2p_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_p2p_immune_bridge.c.o
+.PHONY : __/networking/immune/nimcp_p2p_immune_bridge.c.o
+
+__/networking/immune/nimcp_p2p_immune_bridge.i: __/networking/immune/nimcp_p2p_immune_bridge.c.i
+.PHONY : __/networking/immune/nimcp_p2p_immune_bridge.i
+
+# target to preprocess a source file
+__/networking/immune/nimcp_p2p_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_p2p_immune_bridge.c.i
+.PHONY : __/networking/immune/nimcp_p2p_immune_bridge.c.i
+
+__/networking/immune/nimcp_p2p_immune_bridge.s: __/networking/immune/nimcp_p2p_immune_bridge.c.s
+.PHONY : __/networking/immune/nimcp_p2p_immune_bridge.s
+
+# target to generate assembly for a file
+__/networking/immune/nimcp_p2p_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_p2p_immune_bridge.c.s
+.PHONY : __/networking/immune/nimcp_p2p_immune_bridge.c.s
+
+__/networking/immune/nimcp_protocol_immune_bridge.o: __/networking/immune/nimcp_protocol_immune_bridge.c.o
+.PHONY : __/networking/immune/nimcp_protocol_immune_bridge.o
+
+# target to build an object file
+__/networking/immune/nimcp_protocol_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_protocol_immune_bridge.c.o
+.PHONY : __/networking/immune/nimcp_protocol_immune_bridge.c.o
+
+__/networking/immune/nimcp_protocol_immune_bridge.i: __/networking/immune/nimcp_protocol_immune_bridge.c.i
+.PHONY : __/networking/immune/nimcp_protocol_immune_bridge.i
+
+# target to preprocess a source file
+__/networking/immune/nimcp_protocol_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_protocol_immune_bridge.c.i
+.PHONY : __/networking/immune/nimcp_protocol_immune_bridge.c.i
+
+__/networking/immune/nimcp_protocol_immune_bridge.s: __/networking/immune/nimcp_protocol_immune_bridge.c.s
+.PHONY : __/networking/immune/nimcp_protocol_immune_bridge.s
+
+# target to generate assembly for a file
+__/networking/immune/nimcp_protocol_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/immune/nimcp_protocol_immune_bridge.c.s
+.PHONY : __/networking/immune/nimcp_protocol_immune_bridge.c.s
+
 __/networking/nlp/nimcp_dialect_learning.o: __/networking/nlp/nimcp_dialect_learning.c.o
 .PHONY : __/networking/nlp/nimcp_dialect_learning.o
 
@@ -6544,6 +6712,78 @@ __/networking/replication/nimcp_replication.s: __/networking/replication/nimcp_r
 __/networking/replication/nimcp_replication.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/networking/replication/nimcp_replication.c.s
 .PHONY : __/networking/replication/nimcp_replication.c.s
+
+__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.o: __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.o
+.PHONY : __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.o
+
+# target to build an object file
+__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.o
+.PHONY : __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.o
+
+__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.i: __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.i
+.PHONY : __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.i
+
+# target to preprocess a source file
+__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.i
+.PHONY : __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.i
+
+__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.s: __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.s
+.PHONY : __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.s
+
+# target to generate assembly for a file
+__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.s
+.PHONY : __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.c.s
+
+__/nlp/immune/nimcp_nlp_immune_bridge.o: __/nlp/immune/nimcp_nlp_immune_bridge.c.o
+.PHONY : __/nlp/immune/nimcp_nlp_immune_bridge.o
+
+# target to build an object file
+__/nlp/immune/nimcp_nlp_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_nlp_immune_bridge.c.o
+.PHONY : __/nlp/immune/nimcp_nlp_immune_bridge.c.o
+
+__/nlp/immune/nimcp_nlp_immune_bridge.i: __/nlp/immune/nimcp_nlp_immune_bridge.c.i
+.PHONY : __/nlp/immune/nimcp_nlp_immune_bridge.i
+
+# target to preprocess a source file
+__/nlp/immune/nimcp_nlp_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_nlp_immune_bridge.c.i
+.PHONY : __/nlp/immune/nimcp_nlp_immune_bridge.c.i
+
+__/nlp/immune/nimcp_nlp_immune_bridge.s: __/nlp/immune/nimcp_nlp_immune_bridge.c.s
+.PHONY : __/nlp/immune/nimcp_nlp_immune_bridge.s
+
+# target to generate assembly for a file
+__/nlp/immune/nimcp_nlp_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_nlp_immune_bridge.c.s
+.PHONY : __/nlp/immune/nimcp_nlp_immune_bridge.c.s
+
+__/nlp/immune/nimcp_spike_nlp_immune_bridge.o: __/nlp/immune/nimcp_spike_nlp_immune_bridge.c.o
+.PHONY : __/nlp/immune/nimcp_spike_nlp_immune_bridge.o
+
+# target to build an object file
+__/nlp/immune/nimcp_spike_nlp_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_spike_nlp_immune_bridge.c.o
+.PHONY : __/nlp/immune/nimcp_spike_nlp_immune_bridge.c.o
+
+__/nlp/immune/nimcp_spike_nlp_immune_bridge.i: __/nlp/immune/nimcp_spike_nlp_immune_bridge.c.i
+.PHONY : __/nlp/immune/nimcp_spike_nlp_immune_bridge.i
+
+# target to preprocess a source file
+__/nlp/immune/nimcp_spike_nlp_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_spike_nlp_immune_bridge.c.i
+.PHONY : __/nlp/immune/nimcp_spike_nlp_immune_bridge.c.i
+
+__/nlp/immune/nimcp_spike_nlp_immune_bridge.s: __/nlp/immune/nimcp_spike_nlp_immune_bridge.c.s
+.PHONY : __/nlp/immune/nimcp_spike_nlp_immune_bridge.s
+
+# target to generate assembly for a file
+__/nlp/immune/nimcp_spike_nlp_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/immune/nimcp_spike_nlp_immune_bridge.c.s
+.PHONY : __/nlp/immune/nimcp_spike_nlp_immune_bridge.c.s
 
 __/nlp/nimcp_multimodal_nlp_bridge.o: __/nlp/nimcp_multimodal_nlp_bridge.c.o
 .PHONY : __/nlp/nimcp_multimodal_nlp_bridge.o
@@ -7313,6 +7553,78 @@ __/plasticity/stp/nimcp_stp.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stp/nimcp_stp.c.s
 .PHONY : __/plasticity/stp/nimcp_stp.c.s
 
+__/portia/immune/nimcp_portia_attention_immune_bridge.o: __/portia/immune/nimcp_portia_attention_immune_bridge.c.o
+.PHONY : __/portia/immune/nimcp_portia_attention_immune_bridge.o
+
+# target to build an object file
+__/portia/immune/nimcp_portia_attention_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_attention_immune_bridge.c.o
+.PHONY : __/portia/immune/nimcp_portia_attention_immune_bridge.c.o
+
+__/portia/immune/nimcp_portia_attention_immune_bridge.i: __/portia/immune/nimcp_portia_attention_immune_bridge.c.i
+.PHONY : __/portia/immune/nimcp_portia_attention_immune_bridge.i
+
+# target to preprocess a source file
+__/portia/immune/nimcp_portia_attention_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_attention_immune_bridge.c.i
+.PHONY : __/portia/immune/nimcp_portia_attention_immune_bridge.c.i
+
+__/portia/immune/nimcp_portia_attention_immune_bridge.s: __/portia/immune/nimcp_portia_attention_immune_bridge.c.s
+.PHONY : __/portia/immune/nimcp_portia_attention_immune_bridge.s
+
+# target to generate assembly for a file
+__/portia/immune/nimcp_portia_attention_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_attention_immune_bridge.c.s
+.PHONY : __/portia/immune/nimcp_portia_attention_immune_bridge.c.s
+
+__/portia/immune/nimcp_portia_learning_immune_bridge.o: __/portia/immune/nimcp_portia_learning_immune_bridge.c.o
+.PHONY : __/portia/immune/nimcp_portia_learning_immune_bridge.o
+
+# target to build an object file
+__/portia/immune/nimcp_portia_learning_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_learning_immune_bridge.c.o
+.PHONY : __/portia/immune/nimcp_portia_learning_immune_bridge.c.o
+
+__/portia/immune/nimcp_portia_learning_immune_bridge.i: __/portia/immune/nimcp_portia_learning_immune_bridge.c.i
+.PHONY : __/portia/immune/nimcp_portia_learning_immune_bridge.i
+
+# target to preprocess a source file
+__/portia/immune/nimcp_portia_learning_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_learning_immune_bridge.c.i
+.PHONY : __/portia/immune/nimcp_portia_learning_immune_bridge.c.i
+
+__/portia/immune/nimcp_portia_learning_immune_bridge.s: __/portia/immune/nimcp_portia_learning_immune_bridge.c.s
+.PHONY : __/portia/immune/nimcp_portia_learning_immune_bridge.s
+
+# target to generate assembly for a file
+__/portia/immune/nimcp_portia_learning_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_learning_immune_bridge.c.s
+.PHONY : __/portia/immune/nimcp_portia_learning_immune_bridge.c.s
+
+__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.o: __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.o
+.PHONY : __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.o
+
+# target to build an object file
+__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.o
+.PHONY : __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.o
+
+__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.i: __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.i
+.PHONY : __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.i
+
+# target to preprocess a source file
+__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.i
+.PHONY : __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.i
+
+__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.s: __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.s
+.PHONY : __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.s
+
+# target to generate assembly for a file
+__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.s
+.PHONY : __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.c.s
+
 __/portia/nimcp_portia.o: __/portia/nimcp_portia.c.o
 .PHONY : __/portia/nimcp_portia.o
 
@@ -7720,6 +8032,30 @@ __/python/nimcp_types.s: __/python/nimcp_types.c.s
 __/python/nimcp_types.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/python/nimcp_types.c.s
 .PHONY : __/python/nimcp_types.c.s
+
+__/security/immune/nimcp_pattern_db_immune_bridge.o: __/security/immune/nimcp_pattern_db_immune_bridge.c.o
+.PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.o
+
+# target to build an object file
+__/security/immune/nimcp_pattern_db_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_pattern_db_immune_bridge.c.o
+.PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.c.o
+
+__/security/immune/nimcp_pattern_db_immune_bridge.i: __/security/immune/nimcp_pattern_db_immune_bridge.c.i
+.PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.i
+
+# target to preprocess a source file
+__/security/immune/nimcp_pattern_db_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_pattern_db_immune_bridge.c.i
+.PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.c.i
+
+__/security/immune/nimcp_pattern_db_immune_bridge.s: __/security/immune/nimcp_pattern_db_immune_bridge.c.s
+.PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.s
+
+# target to generate assembly for a file
+__/security/immune/nimcp_pattern_db_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_pattern_db_immune_bridge.c.s
+.PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.c.s
 
 __/security/nimcp_anomaly_detector.o: __/security/nimcp_anomaly_detector.c.o
 .PHONY : __/security/nimcp_anomaly_detector.o
@@ -12196,6 +12532,12 @@ help:
 	@echo "... __/glial/astrocytes/nimcp_astrocytes.o"
 	@echo "... __/glial/astrocytes/nimcp_astrocytes.i"
 	@echo "... __/glial/astrocytes/nimcp_astrocytes.s"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_bridge.o"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_bridge.i"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_bridge.s"
+	@echo "... __/glial/immune/nimcp_microglia_immune_bridge.o"
+	@echo "... __/glial/immune/nimcp_microglia_immune_bridge.i"
+	@echo "... __/glial/immune/nimcp_microglia_immune_bridge.s"
 	@echo "... __/glial/integration/nimcp_glial_integration.o"
 	@echo "... __/glial/integration/nimcp_glial_integration.i"
 	@echo "... __/glial/integration/nimcp_glial_integration.s"
@@ -12214,6 +12556,12 @@ help:
 	@echo "... __/gpu/execution/nimcp_execution_mode.o"
 	@echo "... __/gpu/execution/nimcp_execution_mode.i"
 	@echo "... __/gpu/execution/nimcp_execution_mode.s"
+	@echo "... __/gpu/immune/nimcp_gpu_execution_immune_bridge.o"
+	@echo "... __/gpu/immune/nimcp_gpu_execution_immune_bridge.i"
+	@echo "... __/gpu/immune/nimcp_gpu_execution_immune_bridge.s"
+	@echo "... __/gpu/immune/nimcp_multigpu_immune_bridge.o"
+	@echo "... __/gpu/immune/nimcp_multigpu_immune_bridge.i"
+	@echo "... __/gpu/immune/nimcp_multigpu_immune_bridge.s"
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.o"
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.i"
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.s"
@@ -12379,6 +12727,15 @@ help:
 	@echo "... __/networking/events/nimcp_events.o"
 	@echo "... __/networking/events/nimcp_events.i"
 	@echo "... __/networking/events/nimcp_events.s"
+	@echo "... __/networking/immune/nimcp_distributed_immune_bridge.o"
+	@echo "... __/networking/immune/nimcp_distributed_immune_bridge.i"
+	@echo "... __/networking/immune/nimcp_distributed_immune_bridge.s"
+	@echo "... __/networking/immune/nimcp_p2p_immune_bridge.o"
+	@echo "... __/networking/immune/nimcp_p2p_immune_bridge.i"
+	@echo "... __/networking/immune/nimcp_p2p_immune_bridge.s"
+	@echo "... __/networking/immune/nimcp_protocol_immune_bridge.o"
+	@echo "... __/networking/immune/nimcp_protocol_immune_bridge.i"
+	@echo "... __/networking/immune/nimcp_protocol_immune_bridge.s"
 	@echo "... __/networking/nlp/nimcp_dialect_learning.o"
 	@echo "... __/networking/nlp/nimcp_dialect_learning.i"
 	@echo "... __/networking/nlp/nimcp_dialect_learning.s"
@@ -12418,6 +12775,15 @@ help:
 	@echo "... __/networking/replication/nimcp_replication.o"
 	@echo "... __/networking/replication/nimcp_replication.i"
 	@echo "... __/networking/replication/nimcp_replication.s"
+	@echo "... __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.o"
+	@echo "... __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.i"
+	@echo "... __/nlp/immune/nimcp_multimodal_nlp_immune_bridge.s"
+	@echo "... __/nlp/immune/nimcp_nlp_immune_bridge.o"
+	@echo "... __/nlp/immune/nimcp_nlp_immune_bridge.i"
+	@echo "... __/nlp/immune/nimcp_nlp_immune_bridge.s"
+	@echo "... __/nlp/immune/nimcp_spike_nlp_immune_bridge.o"
+	@echo "... __/nlp/immune/nimcp_spike_nlp_immune_bridge.i"
+	@echo "... __/nlp/immune/nimcp_spike_nlp_immune_bridge.s"
 	@echo "... __/nlp/nimcp_multimodal_nlp_bridge.o"
 	@echo "... __/nlp/nimcp_multimodal_nlp_bridge.i"
 	@echo "... __/nlp/nimcp_multimodal_nlp_bridge.s"
@@ -12514,6 +12880,15 @@ help:
 	@echo "... __/plasticity/stp/nimcp_stp.o"
 	@echo "... __/plasticity/stp/nimcp_stp.i"
 	@echo "... __/plasticity/stp/nimcp_stp.s"
+	@echo "... __/portia/immune/nimcp_portia_attention_immune_bridge.o"
+	@echo "... __/portia/immune/nimcp_portia_attention_immune_bridge.i"
+	@echo "... __/portia/immune/nimcp_portia_attention_immune_bridge.s"
+	@echo "... __/portia/immune/nimcp_portia_learning_immune_bridge.o"
+	@echo "... __/portia/immune/nimcp_portia_learning_immune_bridge.i"
+	@echo "... __/portia/immune/nimcp_portia_learning_immune_bridge.s"
+	@echo "... __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.o"
+	@echo "... __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.i"
+	@echo "... __/portia/immune/nimcp_portia_sensor_fusion_immune_bridge.s"
 	@echo "... __/portia/nimcp_portia.o"
 	@echo "... __/portia/nimcp_portia.i"
 	@echo "... __/portia/nimcp_portia.s"
@@ -12565,6 +12940,9 @@ help:
 	@echo "... __/python/nimcp_types.o"
 	@echo "... __/python/nimcp_types.i"
 	@echo "... __/python/nimcp_types.s"
+	@echo "... __/security/immune/nimcp_pattern_db_immune_bridge.o"
+	@echo "... __/security/immune/nimcp_pattern_db_immune_bridge.i"
+	@echo "... __/security/immune/nimcp_pattern_db_immune_bridge.s"
 	@echo "... __/security/nimcp_anomaly_detector.o"
 	@echo "... __/security/nimcp_anomaly_detector.i"
 	@echo "... __/security/nimcp_anomaly_detector.s"
