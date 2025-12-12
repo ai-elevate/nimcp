@@ -29,7 +29,7 @@ knowledge_fep_bridge_t* knowledge_fep_bridge_create(const knowledge_fep_config_t
     memset(bridge, 0, sizeof(knowledge_fep_bridge_t));
     if (config) bridge->config = *config;
     else knowledge_fep_bridge_default_config(&bridge->config);
-    bridge->mutex = nimcp_mutex_create();
+    bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
     bridge->state.current_semantic_prior = 0.5f;
     NIMCP_LOGGING_INFO(LOG_MODULE_KNOWLEDGE_FEP " Bridge created");
@@ -121,7 +121,7 @@ int knowledge_fep_bridge_connect_bio_async(knowledge_fep_bridge_t* bridge) {
         bridge->bio_async_enabled = true;
         return NIMCP_SUCCESS;
     }
-    return NIMCP_ERROR_OPERATION_FAILED;
+    return -1;
 }
 
 int knowledge_fep_bridge_disconnect_bio_async(knowledge_fep_bridge_t* bridge) {

@@ -54,7 +54,7 @@ tom_fep_bridge_t* tom_fep_bridge_create(const tom_fep_config_t* config) {
         tom_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_mutex_create();
+    bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -387,7 +387,7 @@ int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
 
     NIMCP_LOGGING_WARN(LOG_MODULE_TOM_FEP
         " Bio-async router not available, skipping registration");
-    return NIMCP_ERROR_OPERATION_FAILED;
+    return -1;
 }
 
 int tom_fep_bridge_disconnect_bio_async(tom_fep_bridge_t* bridge) {

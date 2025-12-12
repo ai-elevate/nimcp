@@ -4,8 +4,8 @@
  */
 
 #include "plasticity/bcm/nimcp_bcm_fep_bridge.h"
-#include "utils/memory/nimcp_malloc.h"
-#include "utils/thread/nimcp_mutex.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <string.h>
@@ -37,7 +37,7 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
         bcm_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_mutex_create();
+    bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) {
         nimcp_free(bridge);
         return NULL;

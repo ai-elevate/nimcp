@@ -26,7 +26,7 @@ int memory_fep_bridge_default_config(memory_fep_config_t* config) {
     config->enable_trace_persistence = true;
     config->fe_sensitivity = 1.0f;
     config->memory_sensitivity = 1.0f;
-    return NIMCP_OK;
+    return 0;
 }
 
 memory_fep_bridge_t* memory_fep_bridge_create(const memory_fep_config_t* config) {
@@ -35,7 +35,7 @@ memory_fep_bridge_t* memory_fep_bridge_create(const memory_fep_config_t* config)
     memset(bridge, 0, sizeof(memory_fep_bridge_t));
     if (config) bridge->config = *config;
     else memory_fep_bridge_default_config(&bridge->config);
-    bridge->mutex = nimcp_mutex_create();
+    bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -52,15 +52,15 @@ int memory_fep_bridge_connect_fep(memory_fep_bridge_t* bridge, fep_system_t* fep
     nimcp_mutex_lock(bridge->mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
-int memory_fep_bridge_connect_memory(memory_fep_bridge_t* bridge, semantic_memory_t* memory) {
+int memory_fep_bridge_connect_memory(memory_fep_bridge_t* bridge, semantic_memory_system_t* memory) {
     if (!bridge || !memory) return NIMCP_ERROR_NULL_POINTER;
     nimcp_mutex_lock(bridge->mutex);
     bridge->memory_system = memory;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_bridge_disconnect(memory_fep_bridge_t* bridge) {
@@ -69,22 +69,22 @@ int memory_fep_bridge_disconnect(memory_fep_bridge_t* bridge) {
     bridge->fep_system = NULL;
     bridge->memory_system = NULL;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_maintain_wm_beliefs(memory_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->config.enable_wm_belief_buffer) return NIMCP_OK;
+    if (!bridge->config.enable_wm_belief_buffer) return 0;
     nimcp_mutex_lock(bridge->mutex);
     bridge->fep_effects.wm_capacity_remaining = (float)MEMORY_FEP_WM_CAPACITY - bridge->state.current_wm_load;
     bridge->stats.wm_buffer_events++;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_trigger_consolidation(memory_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->config.enable_consolidation_replay) return NIMCP_OK;
+    if (!bridge->config.enable_consolidation_replay) return 0;
     nimcp_mutex_lock(bridge->mutex);
     if (bridge->state.current_wm_load > bridge->config.consolidation_threshold) {
         bridge->fep_effects.consolidation_triggered = true;
@@ -92,37 +92,37 @@ int memory_fep_trigger_consolidation(memory_fep_bridge_t* bridge) {
         bridge->stats.consolidation_events++;
     }
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_boost_retrieval_precision(memory_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->config.enable_retrieval_active_inference) return NIMCP_OK;
+    if (!bridge->config.enable_retrieval_active_inference) return 0;
     nimcp_mutex_lock(bridge->mutex);
     bridge->fep_effects.retrieval_precision = bridge->config.retrieval_precision_boost;
     bridge->stats.retrieval_events++;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_apply_belief_priors(memory_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->config.enable_belief_priors) return NIMCP_OK;
+    if (!bridge->config.enable_belief_priors) return 0;
     nimcp_mutex_lock(bridge->mutex);
     bridge->memory_effects.belief_prior_bias = bridge->config.belief_prior_strength;
     bridge->memory_effects.priors_active = true;
     bridge->stats.belief_prior_applications++;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_apply_trace_persistence(memory_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->config.enable_trace_persistence) return NIMCP_OK;
+    if (!bridge->config.enable_trace_persistence) return 0;
     nimcp_mutex_lock(bridge->mutex);
     bridge->memory_effects.trace_persistence_factor = bridge->config.memory_trace_persistence;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
@@ -132,7 +132,7 @@ int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
     memory_fep_boost_retrieval_precision(bridge);
     memory_fep_apply_belief_priors(bridge);
     memory_fep_apply_trace_persistence(bridge);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_state_t* state) {
@@ -140,7 +140,7 @@ int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_st
     nimcp_mutex_lock(bridge->mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_stats_t* stats) {
@@ -148,12 +148,12 @@ int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_st
     nimcp_mutex_lock(bridge->mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->mutex);
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_bridge_connect_bio_async(memory_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return NIMCP_OK;
+    if (bridge->bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_MEMORY_BRIDGE,
         .module_name = "memory_fep_bridge",
@@ -162,15 +162,15 @@ int memory_fep_bridge_connect_bio_async(memory_fep_bridge_t* bridge) {
     };
     bridge->bio_ctx = bio_router_register_module(&info);
     if (bridge->bio_ctx) bridge->bio_async_enabled = true;
-    return NIMCP_OK;
+    return 0;
 }
 
 int memory_fep_bridge_disconnect_bio_async(memory_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return NIMCP_OK;
+    if (!bridge || !bridge->bio_async_enabled) return 0;
     if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
     bridge->bio_ctx = NULL;
     bridge->bio_async_enabled = false;
-    return NIMCP_OK;
+    return 0;
 }
 
 bool memory_fep_bridge_is_bio_async_connected(const memory_fep_bridge_t* bridge) {

@@ -57,7 +57,7 @@ self_model_fep_bridge_t* self_model_fep_bridge_create(
         self_model_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_mutex_create();
+    bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -370,7 +370,7 @@ int self_model_fep_bridge_connect_bio_async(self_model_fep_bridge_t* bridge) {
 
     NIMCP_LOGGING_WARN(LOG_MODULE_SELF_MODEL_FEP
         " Bio-async router not available, skipping registration");
-    return NIMCP_ERROR_OPERATION_FAILED;
+    return -1;
 }
 
 int self_model_fep_bridge_disconnect_bio_async(

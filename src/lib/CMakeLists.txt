@@ -306,6 +306,40 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_context.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_sleep.c
 
+    # FEP Module Bridges - Bidirectional integration with FEP system
+    # Cognitive FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_emotion_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_fep_bridge.c
+    # Core Brain FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/oscillations/nimcp_oscillations_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_predictive_regions_fep_bridge.c
+    # Middleware FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/features/nimcp_feature_extractor_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/features/nimcp_population_coding_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/patterns/nimcp_sequence_detector_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/routing/nimcp_thalamic_router_fep_bridge.c
+    # Perception FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_audio_cortex_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_speech_cortex_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_visual_cortex_fep_bridge.c
+    # Plasticity FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_fep_bridge.c
+
     # Plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c

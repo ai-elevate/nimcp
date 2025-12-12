@@ -4,8 +4,8 @@
  */
 
 #include "plasticity/eligibility/nimcp_eligibility_fep_bridge.h"
-#include "utils/memory/nimcp_malloc.h"
-#include "utils/thread/nimcp_mutex.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <string.h>
@@ -29,7 +29,7 @@ eligibility_fep_bridge_t* eligibility_fep_bridge_create(const eligibility_fep_co
     memset(bridge, 0, sizeof(eligibility_fep_bridge_t));
     if (config) bridge->config = *config;
     else eligibility_fep_bridge_default_config(&bridge->config);
-    bridge->mutex = nimcp_mutex_create();
+    bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
     bridge->effects.total_decay_modulation = 1.0f;
     NIMCP_LOGGING_INFO("Eligibility-FEP bridge created");

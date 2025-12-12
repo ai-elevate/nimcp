@@ -72,7 +72,7 @@ audio_cortex_fep_bridge_t* audio_cortex_fep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create();
+    bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE_AUDIO_FEP " Failed to create mutex");
         nimcp_free(bridge);
@@ -446,7 +446,7 @@ int audio_cortex_fep_bridge_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN(LOG_MODULE_AUDIO_FEP " Bio-async router not available");
-    return NIMCP_ERROR_OPERATION_FAILED;
+    return -1;
 }
 
 /**
