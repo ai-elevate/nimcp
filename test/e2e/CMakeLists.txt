@@ -345,6 +345,12 @@ add_e2e_test(e2e_test_wellbeing_enhanced_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_wellbeing_enhanced_pipeline.cpp
 )
 
+# FEP Bridges Pipeline E2E Test (Free Energy Principle Integration)
+add_e2e_test(e2e_test_fep_bridges_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_fep_bridges_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

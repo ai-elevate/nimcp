@@ -727,6 +727,38 @@ float fep_compute_surprise(const fep_system_t* fep) {
  * Active Inference Implementation
  * ============================================================================ */
 
+/**
+ * @brief Internal policy evaluation (no mutex - caller must hold lock)
+ */
+static int fep_evaluate_policies_unlocked(fep_system_t* fep) {
+    if (!fep || !fep->policies) return -1;
+
+    /* Compute EFE for each policy */
+    for (uint32_t i = 0; i < fep->num_policies; i++) {
+        fep_efe_t efe;
+        fep_compute_efe(fep, &fep->policies[i], &efe);
+        fep->policies[i].expected_free_energy = efe.total;
+    }
+
+    /* Compute policy probabilities via softmax over -G(π) */
+    float* neg_efe = (float*)nimcp_malloc(fep->num_policies * sizeof(float));
+    if (neg_efe) {
+        for (uint32_t i = 0; i < fep->num_policies; i++) {
+            neg_efe[i] = -fep->policies[i].expected_free_energy;
+        }
+
+        softmax(neg_efe, fep->num_policies, fep->config.action_temperature);
+
+        for (uint32_t i = 0; i < fep->num_policies; i++) {
+            fep->policies[i].probability = neg_efe[i];
+        }
+
+        nimcp_free(neg_efe);
+    }
+
+    return 0;
+}
+
 int fep_compute_efe(
     const fep_system_t* fep,
     const fep_policy_t* policy,
@@ -769,32 +801,10 @@ int fep_evaluate_policies(fep_system_t* fep) {
     if (!fep || !fep->policies) return -1;
 
     nimcp_platform_mutex_lock(fep->mutex);
-
-    /* Compute EFE for each policy */
-    for (uint32_t i = 0; i < fep->num_policies; i++) {
-        fep_efe_t efe;
-        fep_compute_efe(fep, &fep->policies[i], &efe);
-        fep->policies[i].expected_free_energy = efe.total;
-    }
-
-    /* Compute policy probabilities via softmax over -G(π) */
-    float* neg_efe = (float*)nimcp_malloc(fep->num_policies * sizeof(float));
-    if (neg_efe) {
-        for (uint32_t i = 0; i < fep->num_policies; i++) {
-            neg_efe[i] = -fep->policies[i].expected_free_energy;
-        }
-
-        softmax(neg_efe, fep->num_policies, fep->config.action_temperature);
-
-        for (uint32_t i = 0; i < fep->num_policies; i++) {
-            fep->policies[i].probability = neg_efe[i];
-        }
-
-        nimcp_free(neg_efe);
-    }
-
+    int ret = fep_evaluate_policies_unlocked(fep);
     nimcp_platform_mutex_unlock(fep->mutex);
-    return 0;
+
+    return ret;
 }
 
 int fep_select_action(
@@ -807,8 +817,8 @@ int fep_select_action(
 
     nimcp_platform_mutex_lock(fep->mutex);
 
-    /* Evaluate policies first */
-    fep_evaluate_policies(fep);
+    /* Evaluate policies first (use unlocked version since we hold mutex) */
+    fep_evaluate_policies_unlocked(fep);
 
     /* Select based on mode */
     uint32_t selected = 0;

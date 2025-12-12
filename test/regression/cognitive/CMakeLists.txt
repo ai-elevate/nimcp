@@ -66,5 +66,6 @@ add_subdirectory(global_workspace)
 add_subdirectory(grief)
 add_subdirectory(joy)
 add_subdirectory(mirror_neurons)
+add_subdirectory(free_energy)
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)

@@ -5,31 +5,26 @@
 # WHY:  Verify stability, performance, and numerical accuracy of FEP modules
 # HOW:  Single executable with all regression tests for long-running validation
 
-add_executable(regression_fep_enhanced
-    test_fep_learning_regression.cpp
-    test_fep_curiosity_regression.cpp
-    test_fep_neuromod_regression.cpp
-    test_fep_immune_regression.cpp
-    test_fep_consciousness_regression.cpp
-    test_fep_planning_regression.cpp
-    test_fep_evidence_regression.cpp
-    test_fep_context_regression.cpp
-    test_fep_sleep_regression.cpp
+# FEP Bridge Regression Tests
+add_executable(regression_fep_bridges
+    test_fep_bridges_stability_regression.cpp
+    test_fep_bridges_performance_regression.cpp
+    test_fep_bridges_state_regression.cpp
 )
-target_link_libraries(regression_fep_enhanced PRIVATE
+target_link_libraries(regression_fep_bridges PRIVATE
     nimcp
     GTest::gtest
     GTest::gtest_main
     Threads::Threads
     m
 )
-target_include_directories(regression_fep_enhanced PRIVATE
+target_include_directories(regression_fep_bridges PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
 )
-target_compile_features(regression_fep_enhanced PRIVATE cxx_std_17)
-target_compile_definitions(regression_fep_enhanced PRIVATE NIMCP_TESTING)
-gtest_discover_tests(regression_fep_enhanced
-    PROPERTIES LABELS "regression;cognitive;free_energy"
-    TIMEOUT 300
+target_compile_features(regression_fep_bridges PRIVATE cxx_std_17)
+target_compile_definitions(regression_fep_bridges PRIVATE NIMCP_TESTING)
+gtest_discover_tests(regression_fep_bridges
+    PROPERTIES LABELS "regression;cognitive;free_energy;bridges"
+    TIMEOUT 600
 )

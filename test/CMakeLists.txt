@@ -409,6 +409,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/wellbeing")
     add_subdirectory(regression/cognitive/wellbeing)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/free_energy")
+    message(STATUS "Adding FEP bridge regression tests...")
+    add_subdirectory(regression/cognitive/free_energy)
+endif()
+
 # ============================================================================
 # Networking Protocol Tests
 # ============================================================================

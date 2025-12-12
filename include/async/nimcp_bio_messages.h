@@ -725,6 +725,41 @@ typedef enum {
     BIO_MODULE_FEP_SLEEP,                       /**< FEP sleep module */
     BIO_MODULE_FEP_IMMUNE_BRIDGE,               /**< FEP-immune bridge module */
 
+    /* FEP Integration Bridges - Cognitive (0x0F10 - 0x0F1F) */
+    BIO_MODULE_FEP_ATTENTION_BRIDGE = 0x0F10,   /**< FEP-attention bridge */
+    BIO_MODULE_FEP_EXECUTIVE_BRIDGE,            /**< FEP-executive bridge */
+    BIO_MODULE_FEP_REASONING_BRIDGE,            /**< FEP-reasoning bridge */
+    BIO_MODULE_FEP_MEMORY_BRIDGE,               /**< FEP-memory bridge */
+    BIO_MODULE_FEP_EMOTION_BRIDGE,              /**< FEP-emotion bridge */
+    BIO_MODULE_FEP_MENTAL_HEALTH_BRIDGE,        /**< FEP-mental health bridge */
+    BIO_MODULE_FEP_SELF_MODEL_BRIDGE,           /**< FEP-self model bridge */
+    BIO_MODULE_FEP_TOM_BRIDGE,                  /**< FEP-theory of mind bridge */
+    BIO_MODULE_FEP_INTROSPECTION_BRIDGE,        /**< FEP-introspection bridge */
+    BIO_MODULE_FEP_KNOWLEDGE_BRIDGE,            /**< FEP-knowledge bridge */
+    BIO_MODULE_FEP_BIAS_BRIDGE,                 /**< FEP-bias bridge */
+    BIO_MODULE_FEP_ETHICS_BRIDGE,               /**< FEP-ethics bridge */
+    BIO_MODULE_FEP_MIRROR_NEURONS_BRIDGE,       /**< FEP-mirror neurons bridge */
+    BIO_MODULE_FEP_CURIOSITY_CORE_BRIDGE,       /**< FEP-curiosity core bridge */
+    BIO_MODULE_FEP_AUTOBIOGRAPHICAL_BRIDGE,     /**< FEP-autobiographical bridge */
+    BIO_MODULE_FEP_SALIENCE_BRIDGE,             /**< FEP-salience bridge */
+
+    /* FEP Integration Bridges - Other (0x0F20 - 0x0F2F) */
+    BIO_MODULE_FEP_GLOBAL_WORKSPACE_BRIDGE = 0x0F20, /**< FEP-global workspace bridge */
+    BIO_MODULE_FEP_VISUAL_CORTEX_BRIDGE,        /**< FEP-visual cortex bridge */
+    BIO_MODULE_FEP_AUDIO_CORTEX_BRIDGE,         /**< FEP-audio cortex bridge */
+    BIO_MODULE_FEP_SPEECH_CORTEX_BRIDGE,        /**< FEP-speech cortex bridge */
+    BIO_MODULE_FEP_STDP_BRIDGE,                 /**< FEP-STDP bridge */
+    BIO_MODULE_FEP_BCM_BRIDGE,                  /**< FEP-BCM bridge */
+    BIO_MODULE_FEP_HOMEOSTATIC_BRIDGE,          /**< FEP-homeostatic bridge */
+    BIO_MODULE_FEP_ELIGIBILITY_BRIDGE,          /**< FEP-eligibility bridge */
+    BIO_MODULE_FEP_DENDRITIC_BRIDGE,            /**< FEP-dendritic bridge */
+    BIO_MODULE_FEP_POPULATION_CODING_BRIDGE,    /**< FEP-population coding bridge */
+    BIO_MODULE_FEP_FEATURE_EXTRACTOR_BRIDGE,    /**< FEP-feature extractor bridge */
+    BIO_MODULE_FEP_THALAMIC_ROUTER_BRIDGE,      /**< FEP-thalamic router bridge */
+    BIO_MODULE_FEP_SEQUENCE_DETECTOR_BRIDGE,    /**< FEP-sequence detector bridge */
+    BIO_MODULE_FEP_PREDICTIVE_REGIONS_BRIDGE,   /**< FEP-predictive regions bridge */
+    BIO_MODULE_FEP_OSCILLATIONS_BRIDGE,         /**< FEP-oscillations bridge */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

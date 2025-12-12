@@ -16,6 +16,10 @@ add_executable(integration_fep_enhanced
     test_fep_context_integration.cpp
     test_fep_sleep_integration.cpp
     test_fep_full_integration.cpp
+    test_fep_cognitive_bridges_integration.cpp
+    test_fep_perception_bridges_integration.cpp
+    test_fep_plasticity_bridges_integration.cpp
+    test_fep_bridges_full_pipeline_integration.cpp
 )
 target_link_libraries(integration_fep_enhanced PRIVATE
     nimcp

@@ -1,0 +1,487 @@
+/**
+ * @file nimcp_visual_cortex_fep_bridge.c
+ * @brief Free Energy Principle - Visual Cortex Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-12
+ */
+
+#include "perception/nimcp_visual_cortex_fep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/error/nimcp_error_codes.h"
+
+#include <string.h>
+#include <math.h>
+
+#define LOG_MODULE_VISUAL_FEP "[VISUAL_FEP]"
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Provide default configuration for visual-FEP bridge
+ * WHY:  Simplify initialization with reasonable defaults
+ * HOW:  Set biologically-plausible thresholds and enable all features
+ */
+int visual_cortex_fep_bridge_default_config(visual_cortex_fep_config_t* config) {
+    if (!config) {
+        NIMCP_LOGGING_ERROR(LOG_MODULE_VISUAL_FEP " NULL config pointer");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    config->prediction_error_threshold = VISUAL_FEP_PE_THRESHOLD_MEDIUM;
+    config->precision_gain_factor = VISUAL_FEP_PRECISION_GAIN_DEFAULT;
+    config->attention_boost_factor = VISUAL_FEP_ATTENTION_BOOST_MEDIUM;
+
+    config->enable_top_down_predictions = true;
+    config->enable_precision_attention = true;
+    config->enable_active_vision = true;
+    config->enable_visual_pe_updates = true;
+
+    config->visual_precision_sensitivity = 1.0f;
+    config->prediction_gain_sensitivity = 0.5f;
+    config->pe_propagation_rate = 0.1f;
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Create visual cortex FEP bridge
+ * WHY:  Initialize bidirectional integration between visual cortex and FEP
+ * HOW:  Allocate memory, initialize state, create mutex
+ */
+visual_cortex_fep_bridge_t* visual_cortex_fep_bridge_create(
+    const visual_cortex_fep_config_t* config
+) {
+    visual_cortex_fep_bridge_t* bridge = (visual_cortex_fep_bridge_t*)
+        nimcp_malloc(sizeof(visual_cortex_fep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR(LOG_MODULE_VISUAL_FEP " Failed to allocate bridge");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(visual_cortex_fep_bridge_t));
+
+    /* Set configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        visual_cortex_fep_bridge_default_config(&bridge->config);
+    }
+
+    /* Create mutex */
+    bridge->mutex = nimcp_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR(LOG_MODULE_VISUAL_FEP " Failed to create mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize state */
+    bridge->state.visual_precision = 1.0f;
+    bridge->effects.gabor_gain = 1.0f;
+    bridge->effects.attention_boost = 1.0f;
+    bridge->effects.feature_gain = 1.0f;
+    bridge->effects.precision_gain_modifier = 1.0f;
+
+    NIMCP_LOGGING_INFO(LOG_MODULE_VISUAL_FEP " Bridge created successfully");
+    return bridge;
+}
+
+/**
+ * WHAT: Destroy visual cortex FEP bridge
+ * WHY:  Free all allocated resources
+ * HOW:  Disconnect bio-async, destroy mutex, free memory
+ */
+void visual_cortex_fep_bridge_destroy(visual_cortex_fep_bridge_t* bridge) {
+    if (!bridge) return;
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        visual_cortex_fep_bridge_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO(LOG_MODULE_VISUAL_FEP " Bridge destroyed");
+}
+
+/* ============================================================================
+ * Connection Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Connect FEP system to bridge
+ * WHY:  Enable FEP state queries and updates
+ * HOW:  Store FEP pointer with mutex protection
+ */
+int visual_cortex_fep_bridge_connect_fep(
+    visual_cortex_fep_bridge_t* bridge,
+    fep_system_t* fep
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!fep) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = fep;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO(LOG_MODULE_VISUAL_FEP " FEP system connected");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Connect visual cortex to bridge
+ * WHY:  Enable visual processing monitoring and modulation
+ * HOW:  Store visual cortex pointer with mutex protection
+ */
+int visual_cortex_fep_bridge_connect_visual_cortex(
+    visual_cortex_fep_bridge_t* bridge,
+    visual_cortex_t* visual
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!visual) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->visual_cortex = visual;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO(LOG_MODULE_VISUAL_FEP " Visual cortex connected");
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * FEP → Visual Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Apply FEP predictions to visual gain
+ * WHY:  Top-down predictions modulate sensory processing
+ * HOW:  Query FEP beliefs, convert to Gabor gain modulation
+ */
+int visual_cortex_fep_apply_predictions(visual_cortex_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    if (!bridge->config.enable_top_down_predictions) return NIMCP_SUCCESS;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Compute prediction gain (simplified - would query FEP beliefs) */
+    float prediction_confidence = 0.8f; /* Placeholder */
+    bridge->effects.gabor_gain = 1.0f +
+        (prediction_confidence * bridge->config.prediction_gain_sensitivity);
+
+    /* Predictive suppression of expected features */
+    bridge->effects.prediction_suppression = prediction_confidence * 0.3f;
+
+    /* Enhancement of novel features */
+    bridge->effects.novelty_enhancement = (1.0f - prediction_confidence) * 0.5f;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Apply FEP precision to visual attention
+ * WHY:  Precision weights prediction errors
+ * HOW:  Scale attention map by precision
+ */
+int visual_cortex_fep_apply_precision(visual_cortex_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    if (!bridge->config.enable_precision_attention) return NIMCP_SUCCESS;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get precision from FEP (placeholder) */
+    float fep_precision = 1.0f;
+
+    /* Convert precision to attention boost */
+    bridge->effects.attention_boost = VISUAL_FEP_ATTENTION_BOOST_LOW +
+        (fep_precision * bridge->config.attention_boost_factor);
+
+    /* Clamp to valid range */
+    if (bridge->effects.attention_boost > VISUAL_FEP_ATTENTION_BOOST_HIGH) {
+        bridge->effects.attention_boost = VISUAL_FEP_ATTENTION_BOOST_HIGH;
+    }
+
+    bridge->state.visual_precision = fep_precision;
+    bridge->state.attention_precision = fep_precision *
+        bridge->config.visual_precision_sensitivity;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Generate saccade target via active inference
+ * WHY:  Eye movements minimize expected free energy
+ * HOW:  Find high-uncertainty visual regions
+ */
+int visual_cortex_fep_generate_saccade(
+    visual_cortex_fep_bridge_t* bridge,
+    float* target_x,
+    float* target_y
+) {
+    if (!bridge || !target_x || !target_y) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    if (!bridge->config.enable_active_vision) return NIMCP_ERROR_INVALID_STATE;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Simplified: move toward high-PE region (would use attention map) */
+    *target_x = bridge->state.saccade_target_x;
+    *target_y = bridge->state.saccade_target_y;
+
+    bridge->stats.saccades_generated++;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Visual → FEP Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Compute visual prediction error
+ * WHY:  PE drives belief updates in FEP
+ * HOW:  Compare visual features to FEP predictions
+ */
+int visual_cortex_fep_compute_prediction_error(
+    visual_cortex_fep_bridge_t* bridge,
+    const float* visual_features,
+    uint32_t num_features,
+    float* prediction_error
+) {
+    if (!bridge || !visual_features || !prediction_error) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Simplified PE computation (would compare to FEP predictions) */
+    float pe_sum = 0.0f;
+    for (uint32_t i = 0; i < num_features; i++) {
+        float expected = 0.0f; /* Placeholder: get from FEP */
+        float error = visual_features[i] - expected;
+        pe_sum += error * error;
+    }
+
+    *prediction_error = sqrtf(pe_sum / (float)num_features);
+
+    /* Update state */
+    bridge->state.current_visual_pe = *prediction_error;
+    bridge->state.avg_visual_pe =
+        0.9f * bridge->state.avg_visual_pe + 0.1f * (*prediction_error);
+
+    if (*prediction_error > bridge->state.max_visual_pe) {
+        bridge->state.max_visual_pe = *prediction_error;
+    }
+
+    /* Check for high PE events */
+    if (*prediction_error > bridge->config.prediction_error_threshold) {
+        bridge->state.pe_events++;
+        bridge->stats.high_pe_events++;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Report visual observations to FEP
+ * WHY:  Visual features drive inference
+ * HOW:  Convert V1 features to FEP observation format
+ */
+int visual_cortex_fep_report_observations(
+    visual_cortex_fep_bridge_t* bridge,
+    const float* visual_features,
+    uint32_t num_features
+) {
+    if (!bridge || !visual_features) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    if (!bridge->config.enable_visual_pe_updates) return NIMCP_SUCCESS;
+    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Report to FEP system (would call FEP observation API) */
+    bridge->state.frames_processed++;
+    bridge->stats.total_frames_processed++;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Report visual novelty to FEP
+ * WHY:  Novel patterns trigger learning
+ * HOW:  Detect high PE and signal FEP
+ */
+int visual_cortex_fep_report_novelty(
+    visual_cortex_fep_bridge_t* bridge,
+    float novelty_score
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    if (novelty_score < 0.0f || novelty_score > 1.0f) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (novelty_score > 0.7f) {
+        bridge->state.novelty_detected = true;
+        bridge->stats.novelty_events++;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Update Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Update visual-FEP bridge state
+ * WHY:  Maintain bidirectional coupling
+ * HOW:  Apply predictions, compute PE, update statistics
+ */
+int visual_cortex_fep_bridge_update(
+    visual_cortex_fep_bridge_t* bridge,
+    uint64_t delta_ms
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Apply FEP effects to visual processing */
+    visual_cortex_fep_apply_predictions(bridge);
+    visual_cortex_fep_apply_precision(bridge);
+
+    /* Update statistics */
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->stats.avg_prediction_error = bridge->state.avg_visual_pe;
+    bridge->stats.prediction_accuracy =
+        1.0f / (1.0f + bridge->state.avg_visual_pe);
+    bridge->stats.avg_precision_gain = bridge->effects.precision_gain_modifier;
+    bridge->stats.avg_attention_boost = bridge->effects.attention_boost;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * State/Stats Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Get current bridge state
+ * WHY:  Monitor visual-FEP interaction
+ * HOW:  Copy state with mutex protection
+ */
+int visual_cortex_fep_bridge_get_state(
+    const visual_cortex_fep_bridge_t* bridge,
+    visual_cortex_fep_state_t* state
+) {
+    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *state = bridge->state;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Get bridge statistics
+ * WHY:  Monitor performance and effects
+ * HOW:  Copy stats with mutex protection
+ */
+int visual_cortex_fep_bridge_get_stats(
+    const visual_cortex_fep_bridge_t* bridge,
+    visual_cortex_fep_stats_t* stats
+) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Bio-Async Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Connect to bio-async router
+ * WHY:  Enable distributed visual-FEP messaging
+ * HOW:  Register module with BIO_MODULE_FEP_VISUAL_CORTEX_BRIDGE ID
+ */
+int visual_cortex_fep_bridge_connect_bio_async(
+    visual_cortex_fep_bridge_t* bridge
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (bridge->bio_async_enabled) return NIMCP_SUCCESS;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_VISUAL_CORTEX_BRIDGE,
+        .module_name = "visual_cortex_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO(LOG_MODULE_VISUAL_FEP " Connected to bio-async router");
+        return NIMCP_SUCCESS;
+    }
+
+    NIMCP_LOGGING_WARN(LOG_MODULE_VISUAL_FEP " Bio-async router not available");
+    return NIMCP_ERROR_OPERATION_FAILED;
+}
+
+/**
+ * WHAT: Disconnect from bio-async router
+ * WHY:  Clean shutdown
+ * HOW:  Unregister module
+ */
+int visual_cortex_fep_bridge_disconnect_bio_async(
+    visual_cortex_fep_bridge_t* bridge
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->bio_async_enabled) return NIMCP_SUCCESS;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO(LOG_MODULE_VISUAL_FEP " Disconnected from bio-async");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Check bio-async connection status
+ * WHY:  Query if messaging is available
+ * HOW:  Return bio_async_enabled flag
+ */
+bool visual_cortex_fep_bridge_is_bio_async_connected(
+    const visual_cortex_fep_bridge_t* bridge
+) {
+    return bridge ? bridge->bio_async_enabled : false;
+}
