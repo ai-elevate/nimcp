@@ -1,0 +1,350 @@
+/**
+ * @file nimcp_sleep_wake_fep_bridge.c
+ * @brief Free Energy Principle - Sleep-Wake Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-15
+ */
+
+#include
+#include "utils/error/nimcp_error_codes.h" "cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
+
+#include <string.h>
+#include <math.h>
+
+/* Define LOG_MODULE for this file */
+#define LOG_MODULE "sleep_wake_fep_bridge"
+
+/* ============================================================================
+ * Default Configuration
+ * ============================================================================ */
+
+/**
+ * WHAT: Provide default Sleep-Wake-FEP configuration
+ * WHY:  Sensible defaults based on biological sleep-FE relationships
+ * HOW:  Set standard thresholds and enable all features
+ */
+int sleep_wake_fep_bridge_default_config(sleep_wake_fep_config_t* config) {
+    if (!config) return NIMCP_ERROR_NULL_POINTER;
+
+    /* FEP → Sleep-Wake */
+    config->fe_pressure_scaling = SLEEP_FEP_FE_PRESSURE_SCALING;
+    config->fe_sleep_threshold = SLEEP_FEP_HIGH_FE_THRESHOLD;
+    config->complexity_deep_sleep_scaling = 1.0f;
+    config->enable_fe_sleep_pressure = true;
+    config->enable_complexity_deep_sleep = true;
+    config->enable_surprise_rem = true;
+
+    /* Sleep-Wake → FEP */
+    config->consolidation_fe_reduction = SLEEP_FEP_CONSOLIDATION_FE_REDUCTION;
+    config->pruning_fe_reduction = SLEEP_FEP_PRUNING_FE_REDUCTION;
+    config->awake_lr_multiplier = SLEEP_FEP_AWAKE_LR_MULT;
+    config->drowsy_lr_multiplier = SLEEP_FEP_DROWSY_LR_MULT;
+    config->nrem_lr_multiplier = SLEEP_FEP_NREM_LR_MULT;
+    config->rem_lr_multiplier = SLEEP_FEP_REM_LR_MULT;
+    config->enable_state_lr_modulation = true;
+    config->enable_consolidation_fe_reduction = true;
+    config->enable_homeostasis_precision = true;
+
+    /* Sensitivity */
+    config->fe_sensitivity = 1.0f;
+    config->sleep_sensitivity = 1.0f;
+
+    return 0;
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+/**
+ * WHAT: Create Sleep-Wake-FEP bridge
+ * WHY:  Enable bidirectional sleep-FE integration
+ * HOW:  Allocate structure, initialize mutex, set defaults
+ */
+sleep_wake_fep_bridge_t* sleep_wake_fep_bridge_create(
+    const sleep_wake_fep_config_t* config
+) {
+    sleep_wake_fep_bridge_t* bridge = nimcp_malloc(sizeof(sleep_wake_fep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate sleep-wake FEP bridge");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(sleep_wake_fep_bridge_t));
+
+    /* Set configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        sleep_wake_fep_bridge_default_config(&bridge->config);
+    }
+
+    /* Create mutex */
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO("Created sleep-wake FEP bridge");
+    return bridge;
+}
+
+/**
+ * WHAT: Destroy Sleep-Wake-FEP bridge
+ * WHY:  Clean up resources
+ * HOW:  Disconnect bio-async, destroy mutex, free memory
+ */
+void sleep_wake_fep_bridge_destroy(sleep_wake_fep_bridge_t* bridge) {
+    if (!bridge) return;
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        sleep_wake_fep_bridge_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Destroyed sleep-wake FEP bridge");
+}
+
+/* ============================================================================
+ * Connection API
+ * ============================================================================ */
+
+/**
+ * WHAT: Connect FEP system to bridge
+ * WHY:  Enable FEP state monitoring
+ * HOW:  Store FEP system pointer with thread safety
+ */
+int sleep_wake_fep_bridge_connect_fep(
+    sleep_wake_fep_bridge_t* bridge,
+    fep_system_t* fep
+) {
+    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = fep;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Connected FEP system to sleep-wake bridge");
+    return 0;
+}
+
+/**
+ * WHAT: Connect sleep-wake system to bridge
+ * WHY:  Enable sleep state monitoring
+ * HOW:  Store sleep system handle with thread safety
+ */
+int sleep_wake_fep_bridge_connect_sleep_wake(
+    sleep_wake_fep_bridge_t* bridge,
+    sleep_system_t sleep
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->sleep_system = sleep;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Connected sleep-wake system to FEP bridge");
+    return 0;
+}
+
+/**
+ * WHAT: Disconnect all systems from bridge
+ * WHY:  Safe shutdown
+ * HOW:  Clear system pointers with thread safety
+ */
+int sleep_wake_fep_bridge_disconnect(sleep_wake_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = NULL;
+    bridge->sleep_system = NULL;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Disconnected all systems from sleep-wake FEP bridge");
+    return 0;
+}
+
+/* ============================================================================
+ * Update Cycle
+ * ============================================================================ */
+
+/**
+ * WHAT: Update Sleep-Wake-FEP bridge state
+ * WHY:  Synchronize sleep and FEP systems bidirectionally
+ * HOW:  Check both systems, apply modulations, update statistics
+ */
+int sleep_wake_fep_bridge_update(sleep_wake_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->fep_system || !bridge->sleep_system) return NIMCP_ERROR_INVALID_STATE;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get current FEP free energy */
+    bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
+    bridge->fep_effects.current_free_energy = bridge->state.current_free_energy;
+
+    /* Get current sleep state and pressure */
+    bridge->state.current_sleep_state = sleep_get_current_state(bridge->sleep_system);
+    bridge->state.current_sleep_pressure = sleep_get_pressure(bridge->sleep_system);
+    bridge->sleep_effects.current_state = bridge->state.current_sleep_state;
+    bridge->sleep_effects.sleep_pressure = bridge->state.current_sleep_pressure;
+
+    /* FEP → Sleep-Wake: Free energy affects sleep pressure */
+    if (bridge->config.enable_fe_sleep_pressure) {
+        float fe_boost = bridge->state.current_free_energy *
+                        bridge->config.fe_pressure_scaling;
+        bridge->fep_effects.fe_sleep_pressure = fe_boost;
+        bridge->state.sleep_pressure_boost = fe_boost;
+
+        if (bridge->state.current_free_energy > bridge->config.fe_sleep_threshold) {
+            bridge->state.fe_sleep_triggered = true;
+            bridge->stats.fe_sleep_triggers++;
+        }
+    }
+
+    /* Sleep-Wake → FEP: Sleep state modulates learning rate */
+    if (bridge->config.enable_state_lr_modulation) {
+        float lr_mult = 1.0f;
+        switch (bridge->state.current_sleep_state) {
+            case SLEEP_STATE_AWAKE:
+                lr_mult = bridge->config.awake_lr_multiplier;
+                break;
+            case SLEEP_STATE_DROWSY:
+                lr_mult = bridge->config.drowsy_lr_multiplier;
+                break;
+            case SLEEP_STATE_LIGHT_NREM:
+            case SLEEP_STATE_DEEP_NREM:
+                lr_mult = bridge->config.nrem_lr_multiplier;
+                break;
+            case SLEEP_STATE_REM:
+                lr_mult = bridge->config.rem_lr_multiplier;
+                break;
+        }
+        bridge->sleep_effects.state_lr_modifier = lr_mult;
+        bridge->state.lr_modulation = lr_mult;
+        bridge->stats.lr_modulation_events++;
+    }
+
+    /* Update statistics */
+    bridge->stats.avg_free_energy =
+        (bridge->stats.avg_free_energy * 0.99f) +
+        (bridge->state.current_free_energy * 0.01f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Updated sleep-wake FEP bridge");
+    return 0;
+}
+
+/* ============================================================================
+ * State/Stats API
+ * ============================================================================ */
+
+/**
+ * WHAT: Get current bridge state
+ * WHY:  Monitoring and debugging
+ * HOW:  Copy state structure with thread safety
+ */
+int sleep_wake_fep_bridge_get_state(
+    const sleep_wake_fep_bridge_t* bridge,
+    sleep_wake_fep_state_t* state
+) {
+    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *state = bridge->state;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/**
+ * WHAT: Get bridge statistics
+ * WHY:  Performance monitoring
+ * HOW:  Copy stats structure with thread safety
+ */
+int sleep_wake_fep_bridge_get_stats(
+    const sleep_wake_fep_bridge_t* bridge,
+    sleep_wake_fep_stats_t* stats
+) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Bio-Async Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Connect to bio-async router
+ * WHY:  Enable distributed messaging between sleep and FEP systems
+ * HOW:  Register module with bio-async router
+ */
+int sleep_wake_fep_bridge_connect_bio_async(sleep_wake_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_SLEEP_WAKE_BRIDGE,
+        .module_name = "sleep_wake_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected to bio-async router");
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Disconnect from bio-async router
+ * WHY:  Clean shutdown
+ * HOW:  Unregister module, clear context
+ */
+int sleep_wake_fep_bridge_disconnect_bio_async(sleep_wake_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Disconnected from bio-async router");
+
+    return 0;
+}
+
+/**
+ * WHAT: Check if bio-async is connected
+ * WHY:  Query connection status
+ * HOW:  Return bio_async_enabled flag
+ */
+bool sleep_wake_fep_bridge_is_bio_async_connected(
+    const sleep_wake_fep_bridge_t* bridge
+) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
+}

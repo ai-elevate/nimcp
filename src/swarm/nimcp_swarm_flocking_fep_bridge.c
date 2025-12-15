@@ -1,0 +1,110 @@
+/**
+ * @file nimcp_swarm_flocking_fep_bridge.c
+ */
+
+#include "swarm/nimcp_swarm_flocking_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
+#include <string.h>
+#include <math.h>
+
+void swarm_flocking_fep_default_config(swarm_flocking_fep_config_t* config) {
+    if (!config) return;
+    config->alignment_precision_weight = 0.8f;
+    config->cohesion_fe_coupling = 0.6f;
+    config->formation_prior_strength = 0.75f;
+    config->enable_active_inference_steering = true;
+}
+
+swarm_flocking_fep_bridge_t* swarm_flocking_fep_create(const swarm_flocking_fep_config_t* config, nimcp_flocking_engine_t* flocking_engine, fep_system_t* fep_system) {
+    if (!flocking_engine || !fep_system) return NULL;
+    swarm_flocking_fep_bridge_t* bridge = (swarm_flocking_fep_bridge_t*)nimcp_malloc(sizeof(swarm_flocking_fep_bridge_t));
+    if (!bridge) return NULL;
+    memset(bridge, 0, sizeof(swarm_flocking_fep_bridge_t));
+    if (config) bridge->config = *config;
+    else swarm_flocking_fep_default_config(&bridge->config);
+    bridge->fep_system = fep_system;
+    bridge->flocking_engine = flocking_engine;
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    return bridge;
+}
+
+void swarm_flocking_fep_destroy(swarm_flocking_fep_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->bio_async_enabled) swarm_flocking_fep_disconnect_bio_async(bridge);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    nimcp_free(bridge);
+}
+
+int swarm_flocking_fep_update(swarm_flocking_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    float fe = fep_get_free_energy(bridge->fep_system);
+    float precision = fep_get_precision(bridge->fep_system);
+    nimcp_flocking_stats_t flock_stats;
+    nimcp_flocking_get_stats(bridge->flocking_engine, &flock_stats);
+    bridge->fep_effects.separation_adjustment = fe * 0.1f - 0.05f;
+    bridge->fep_effects.alignment_adjustment = -fe * 0.15f;
+    bridge->fep_effects.cohesion_adjustment = -fe * bridge->config.cohesion_fe_coupling;
+    bridge->fep_effects.formation_tightness = fmaxf(0.3f, 1.0f - fe * 0.2f);
+    bridge->flocking_effects.precision_from_alignment = 0.4f + flock_stats.alignment_metric * precision;
+    bridge->flocking_effects.uncertainty_from_dispersion = (1.0f - flock_stats.cohesion_metric) * 0.5f;
+    bridge->flocking_effects.formation_confidence = flock_stats.formation_quality;
+    bridge->state.last_alignment_metric = flock_stats.alignment_metric;
+    bridge->state.last_cohesion_metric = flock_stats.cohesion_metric;
+    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->stats.total_updates++;
+    bridge->stats.avg_alignment_fe = (bridge->stats.avg_alignment_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
+    bridge->stats.avg_formation_quality = (bridge->stats.avg_formation_quality * (bridge->stats.total_updates - 1) + flock_stats.formation_quality) / bridge->stats.total_updates;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_flocking_fep_apply_modulation(swarm_flocking_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    return 0;
+}
+
+int swarm_flocking_fep_get_effects(const swarm_flocking_fep_bridge_t* bridge, swarm_flocking_fep_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->fep_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_flocking_fep_get_flocking_effects(const swarm_flocking_fep_bridge_t* bridge, fep_swarm_flocking_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->flocking_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_flocking_fep_get_stats(const swarm_flocking_fep_bridge_t* bridge, swarm_flocking_fep_stats_t* stats) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_flocking_fep_connect_bio_async(swarm_flocking_fep_bridge_t* bridge) {
+    if (!bridge || bridge->bio_async_enabled) return 0;
+    bio_module_info_t info = { .module_id = BIO_MODULE_FEP_SWARM_FLOCKING, .module_name = "swarm_flocking_fep_bridge", .inbox_capacity = 32, .user_data = bridge };
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    return 0;
+}
+
+int swarm_flocking_fep_disconnect_bio_async(swarm_flocking_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+    return 0;
+}
+
+bool swarm_flocking_fep_is_bio_async_connected(const swarm_flocking_fep_bridge_t* bridge) {
+    return bridge && bridge->bio_async_enabled;
+}

@@ -1,0 +1,147 @@
+/**
+ * @file nimcp_swarm_consciousness_fep_bridge.c
+ * @brief FEP Bridge Implementation for Swarm Collective Consciousness
+ */
+
+#include "swarm/nimcp_swarm_consciousness_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
+#include <string.h>
+#include <math.h>
+
+void swarm_consciousness_fep_default_config(swarm_consciousness_fep_config_t* config) {
+    if (!config) return;
+    config->phi_fe_coupling = 0.8f;
+    config->integration_precision_gain = 1.3f;
+    config->consciousness_lr_boost = 1.1f;
+    config->enable_phi_tracking = true;
+    config->enable_emergence_detection = true;
+}
+
+swarm_consciousness_fep_bridge_t* swarm_consciousness_fep_create(
+    const swarm_consciousness_fep_config_t* config,
+    swarm_consciousness_ctx_t* consciousness_ctx,
+    fep_system_t* fep_system)
+{
+    if (!consciousness_ctx || !fep_system) return NULL;
+
+    swarm_consciousness_fep_bridge_t* bridge = (swarm_consciousness_fep_bridge_t*)nimcp_malloc(sizeof(swarm_consciousness_fep_bridge_t));
+    if (!bridge) return NULL;
+
+    memset(bridge, 0, sizeof(swarm_consciousness_fep_bridge_t));
+
+    if (config) bridge->config = *config;
+    else swarm_consciousness_fep_default_config(&bridge->config);
+
+    bridge->fep_system = fep_system;
+    bridge->consciousness_ctx = consciousness_ctx;
+    bridge->bio_async_enabled = false;
+
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO("Swarm consciousness FEP bridge created");
+    return bridge;
+}
+
+void swarm_consciousness_fep_destroy(swarm_consciousness_fep_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->bio_async_enabled) swarm_consciousness_fep_disconnect_bio_async(bridge);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    nimcp_free(bridge);
+}
+
+int swarm_consciousness_fep_update(swarm_consciousness_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    swarm_consciousness_state_t cons_state;
+    swarm_consciousness_get_state(bridge->consciousness_ctx, &cons_state);
+    float phi = swarm_consciousness_get_phi(bridge->consciousness_ctx);
+    float free_energy = fep_get_free_energy(bridge->fep_system);
+
+    // FEP effects on consciousness: high FE → reduce phi
+    bridge->fep_effects.phi_modulation = -tanhf(free_energy * 0.3f);
+    bridge->fep_effects.integration_boost = fmaxf(0.0f, 1.0f - free_energy * 0.2f);
+    bridge->fep_effects.coherence_adjustment = -free_energy * 0.1f;
+    bridge->fep_effects.consciousness_bias = expf(-free_energy);
+
+    // Consciousness effects on FEP: high phi → high precision
+    bridge->consciousness_effects.precision_from_phi = 0.5f + phi * 1.5f;
+    bridge->consciousness_effects.learning_rate_from_consciousness = 0.8f + (cons_state == SWARM_CONSCIOUS ? 0.4f : 0.0f);
+    bridge->consciousness_effects.integration_weight = phi;
+    bridge->consciousness_effects.consciousness_prior = cons_state;
+
+    bridge->state.last_collective_phi = phi;
+    bridge->state.last_free_energy = free_energy;
+    if (bridge->state.last_consciousness_state != cons_state) {
+        bridge->state.consciousness_transitions++;
+        bridge->state.last_consciousness_state = cons_state;
+        bridge->stats.emergence_events++;
+    }
+    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+
+    bridge->stats.total_updates++;
+    bridge->stats.avg_phi = (bridge->stats.avg_phi * (bridge->stats.total_updates - 1) + phi) / bridge->stats.total_updates;
+    bridge->stats.avg_free_energy = (bridge->stats.avg_free_energy * (bridge->stats.total_updates - 1) + free_energy) / bridge->stats.total_updates;
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_consciousness_fep_apply_modulation(swarm_consciousness_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    return 0;
+}
+
+int swarm_consciousness_fep_get_effects(const swarm_consciousness_fep_bridge_t* bridge, swarm_consciousness_fep_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->fep_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_consciousness_fep_get_consciousness_effects(const swarm_consciousness_fep_bridge_t* bridge, fep_swarm_consciousness_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->consciousness_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_consciousness_fep_get_stats(const swarm_consciousness_fep_bridge_t* bridge, swarm_consciousness_fep_stats_t* stats) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_consciousness_fep_connect_bio_async(swarm_consciousness_fep_bridge_t* bridge) {
+    if (!bridge || bridge->bio_async_enabled) return 0;
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_SWARM_CONSCIOUSNESS,
+        .module_name = "swarm_consciousness_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    return 0;
+}
+
+int swarm_consciousness_fep_disconnect_bio_async(swarm_consciousness_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+    return 0;
+}
+
+bool swarm_consciousness_fep_is_bio_async_connected(const swarm_consciousness_fep_bridge_t* bridge) {
+    return bridge && bridge->bio_async_enabled;
+}

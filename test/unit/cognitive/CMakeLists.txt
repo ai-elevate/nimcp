@@ -188,3 +188,40 @@ gtest_discover_tests(unit_cognitive_test_curiosity_fep_bridge
         LABELS "unit;cognitive;curiosity;fep"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Cognitive FEP Bridge Tests (Comprehensive)
+# ============================================================================
+# WHAT: Unit tests for Cognitive-FEP bidirectional integration bridges
+# WHY:  Ensure cognitive systems integrate with FEP predictions and precision
+# HOW:  Test lifecycle, effects, and bio-async for consolidation, hierarchical,
+#       meta-learning, personality, wellbeing, sleep-wake, and brain immune
+# ============================================================================
+
+add_executable(unit_cognitive_test_fep_bridges
+    test_cognitive_fep_bridges.cpp
+)
+
+target_link_libraries(unit_cognitive_test_fep_bridges
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_fep_bridges
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_fep_bridges PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_fep_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;fep;bridge"
+        TIMEOUT 120
+)

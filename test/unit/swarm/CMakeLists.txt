@@ -92,3 +92,28 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_enhanced.cpp
     unit
 )
+
+# ============================================================================
+# FEP Bridge Tests
+# ============================================================================
+
+# Test FEP-1: Swarm Brain FEP Bridge
+add_test_binary(
+    test_swarm_brain_fep_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_brain_fep_bridge.cpp
+    unit
+)
+
+# Test FEP-2: Swarm Consciousness FEP Bridge
+add_test_binary(
+    test_swarm_consciousness_fep_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_fep_bridge.cpp
+    unit
+)
+
+# Test FEP-3: All Swarm FEP Bridges (Combined)
+add_test_binary(
+    test_swarm_fep_bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_fep_bridges.cpp
+    unit
+)

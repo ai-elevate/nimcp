@@ -159,6 +159,36 @@ gtest_discover_tests(unit_glial_test_bio_async
 )
 
 # ============================================================================
+# Glial FEP Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for Glial-FEP bidirectional integration bridges
+# WHY:  Ensure glial support integrates with FEP precision and predictions
+# HOW:  Test lifecycle, effects, and bio-async for each bridge type
+# ============================================================================
+
+add_executable(unit_glial_test_fep_bridges test_glial_fep_bridges.cpp)
+target_link_libraries(unit_glial_test_fep_bridges
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(unit_glial_test_fep_bridges
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_glial_test_fep_bridges PRIVATE cxx_std_17)
+gtest_discover_tests(unit_glial_test_fep_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;glial;fep;bridge"
+        TIMEOUT 60
+)
+
+# ============================================================================
 # Glial-Immune Bridge Tests
 # ============================================================================
 add_subdirectory(immune)

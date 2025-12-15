@@ -1,0 +1,106 @@
+/**
+ * @file nimcp_swarm_pheromone_fep_bridge.c
+ */
+
+#include "swarm/nimcp_swarm_pheromone_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
+#include <string.h>
+#include <math.h>
+
+void swarm_pheromone_fep_default_config(swarm_pheromone_fep_config_t* config) {
+    if (!config) return;
+    config->gradient_precision_weight = 0.75f;
+    config->evaporation_fe_coupling = 0.2f;
+    config->trail_strength_gain = 1.1f;
+    config->enable_fe_gradient_descent = true;
+}
+
+swarm_pheromone_fep_bridge_t* swarm_pheromone_fep_create(const swarm_pheromone_fep_config_t* config, swarm_pheromone_ctx_t* pheromone_ctx, fep_system_t* fep_system) {
+    if (!pheromone_ctx || !fep_system) return NULL;
+    swarm_pheromone_fep_bridge_t* bridge = (swarm_pheromone_fep_bridge_t*)nimcp_malloc(sizeof(swarm_pheromone_fep_bridge_t));
+    if (!bridge) return NULL;
+    memset(bridge, 0, sizeof(swarm_pheromone_fep_bridge_t));
+    if (config) bridge->config = *config;
+    else swarm_pheromone_fep_default_config(&bridge->config);
+    bridge->fep_system = fep_system;
+    bridge->pheromone_ctx = pheromone_ctx;
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    return bridge;
+}
+
+void swarm_pheromone_fep_destroy(swarm_pheromone_fep_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->bio_async_enabled) swarm_pheromone_fep_disconnect_bio_async(bridge);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    nimcp_free(bridge);
+}
+
+int swarm_pheromone_fep_update(swarm_pheromone_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    float fe = fep_get_free_energy(bridge->fep_system);
+    float precision = fep_get_precision(bridge->fep_system);
+    bridge->fep_effects.deposition_rate = precision * bridge->config.trail_strength_gain;
+    bridge->fep_effects.evaporation_adjustment = 1.0f + fe * bridge->config.evaporation_fe_coupling;
+    bridge->fep_effects.gradient_following_bias = fmaxf(0.5f, 1.0f - fe * 0.2f);
+    float gradient_mag = 0.8f;
+    bridge->pheromone_effects.precision_from_gradient = 0.4f + gradient_mag * bridge->config.gradient_precision_weight;
+    bridge->pheromone_effects.action_bias_from_trail = bridge->fep_effects.gradient_following_bias;
+    bridge->pheromone_effects.uncertainty_from_evaporation = fe * 0.3f;
+    bridge->state.last_gradient_magnitude = gradient_mag;
+    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->stats.total_updates++;
+    bridge->stats.avg_gradient_fe = (bridge->stats.avg_gradient_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_pheromone_fep_apply_modulation(swarm_pheromone_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    return 0;
+}
+
+int swarm_pheromone_fep_get_effects(const swarm_pheromone_fep_bridge_t* bridge, swarm_pheromone_fep_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->fep_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_pheromone_fep_get_pheromone_effects(const swarm_pheromone_fep_bridge_t* bridge, fep_swarm_pheromone_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->pheromone_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_pheromone_fep_get_stats(const swarm_pheromone_fep_bridge_t* bridge, swarm_pheromone_fep_stats_t* stats) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_pheromone_fep_connect_bio_async(swarm_pheromone_fep_bridge_t* bridge) {
+    if (!bridge || bridge->bio_async_enabled) return 0;
+    bio_module_info_t info = { .module_id = BIO_MODULE_FEP_SWARM_PHEROMONE, .module_name = "swarm_pheromone_fep_bridge", .inbox_capacity = 32, .user_data = bridge };
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    return 0;
+}
+
+int swarm_pheromone_fep_disconnect_bio_async(swarm_pheromone_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+    return 0;
+}
+
+bool swarm_pheromone_fep_is_bio_async_connected(const swarm_pheromone_fep_bridge_t* bridge) {
+    return bridge && bridge->bio_async_enabled;
+}

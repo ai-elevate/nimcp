@@ -112,5 +112,28 @@ target_compile_features(unit_plasticity_neuromodulator_immune PRIVATE cxx_std_17
 gtest_discover_tests(unit_plasticity_neuromodulator_immune
     PROPERTIES LABELS "unit;plasticity;immune;neuromodulator")
 
+# ============================================================================
+# Plasticity FEP Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for Plasticity-FEP bidirectional integration bridges
+# WHY:  Ensure synaptic plasticity integrates with FEP precision and predictions
+# HOW:  Test lifecycle, effects, and bio-async for each bridge type
+# ============================================================================
+
+add_executable(unit_plasticity_test_fep_bridges test_plasticity_fep_bridges.cpp)
+target_link_libraries(unit_plasticity_test_fep_bridges
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_test_fep_bridges PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_test_fep_bridges
+    PROPERTIES LABELS "unit;plasticity;fep;bridge"
+    TIMEOUT 60
+)
+
 # Attention subdirectory (PE tests)
 add_subdirectory(attention)

@@ -1,0 +1,103 @@
+/**
+ * @file nimcp_swarm_memory_fep_bridge.c
+ */
+
+#include "swarm/nimcp_swarm_memory_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
+#include <string.h>
+#include <math.h>
+
+void swarm_memory_fep_default_config(swarm_memory_fep_config_t* config) {
+    if (!config) return;
+    config->recall_precision_weight = 0.9f;
+    config->consolidation_fe_threshold = 0.5f;
+    config->pattern_completion_gain = 1.2f;
+    config->enable_predictive_recall = true;
+}
+
+swarm_memory_fep_bridge_t* swarm_memory_fep_create(const swarm_memory_fep_config_t* config, swarm_memory_ctx_t* memory_ctx, fep_system_t* fep_system) {
+    if (!memory_ctx || !fep_system) return NULL;
+    swarm_memory_fep_bridge_t* bridge = (swarm_memory_fep_bridge_t*)nimcp_malloc(sizeof(swarm_memory_fep_bridge_t));
+    if (!bridge) return NULL;
+    memset(bridge, 0, sizeof(swarm_memory_fep_bridge_t));
+    if (config) bridge->config = *config;
+    else swarm_memory_fep_default_config(&bridge->config);
+    bridge->fep_system = fep_system;
+    bridge->memory_ctx = memory_ctx;
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    return bridge;
+}
+
+void swarm_memory_fep_destroy(swarm_memory_fep_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->bio_async_enabled) swarm_memory_fep_disconnect_bio_async(bridge);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    nimcp_free(bridge);
+}
+
+int swarm_memory_fep_update(swarm_memory_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    float fe = fep_get_free_energy(bridge->fep_system);
+    bridge->fep_effects.recall_confidence = 1.0f - fe * 0.2f;
+    bridge->fep_effects.consolidation_rate = (fe < bridge->config.consolidation_fe_threshold) ? 1.2f : 0.8f;
+    bridge->fep_effects.pattern_strength = 1.0f - fe * 0.15f;
+    bridge->memory_effects.precision_from_recall = 0.6f + bridge->fep_effects.recall_confidence * 0.8f;
+    bridge->memory_effects.prior_strength_from_memory = 0.7f;
+    bridge->state.last_recall_fe = fe;
+    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->stats.total_updates++;
+    bridge->stats.avg_recall_fe = (bridge->stats.avg_recall_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_memory_fep_apply_modulation(swarm_memory_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    return 0;
+}
+
+int swarm_memory_fep_get_effects(const swarm_memory_fep_bridge_t* bridge, swarm_memory_fep_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->fep_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_memory_fep_get_memory_effects(const swarm_memory_fep_bridge_t* bridge, fep_swarm_memory_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *effects = bridge->memory_effects;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_memory_fep_get_stats(const swarm_memory_fep_bridge_t* bridge, swarm_memory_fep_stats_t* stats) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_platform_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_memory_fep_connect_bio_async(swarm_memory_fep_bridge_t* bridge) {
+    if (!bridge || bridge->bio_async_enabled) return 0;
+    bio_module_info_t info = { .module_id = BIO_MODULE_FEP_SWARM_MEMORY, .module_name = "swarm_memory_fep_bridge", .inbox_capacity = 32, .user_data = bridge };
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    return 0;
+}
+
+int swarm_memory_fep_disconnect_bio_async(swarm_memory_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+    return 0;
+}
+
+bool swarm_memory_fep_is_bio_async_connected(const swarm_memory_fep_bridge_t* bridge) {
+    return bridge && bridge->bio_async_enabled;
+}

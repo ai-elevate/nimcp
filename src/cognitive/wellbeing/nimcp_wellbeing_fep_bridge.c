@@ -1,0 +1,158 @@
+/**
+ * @file nimcp_wellbeing_fep_bridge.c
+ * @brief Free Energy Principle - Wellbeing Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-15
+ */
+
+#include
+#include "utils/error/nimcp_error_codes.h" "cognitive/wellbeing/nimcp_wellbeing_fep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
+#include <string.h>
+#include <math.h>
+
+#define LOG_MODULE "wellbeing_fep_bridge"
+
+int wellbeing_fep_bridge_default_config(wellbeing_fep_config_t* config) {
+    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    config->chronic_fe_threshold = WELLBEING_FEP_CHRONIC_FE_THRESHOLD;
+    config->acute_surprise_threshold = WELLBEING_FEP_ACUTE_SURPRISE_THRESHOLD;
+    config->fe_window_ms = WELLBEING_FEP_DISTRESS_FE_WINDOW_MS;
+    config->enable_fe_distress_detection = true;
+    config->enable_surprise_distress = true;
+    config->enable_complexity_distress = true;
+    config->distress_lr_reduction = WELLBEING_FEP_DISTRESS_LR_REDUCTION;
+    config->relief_fe_reduction = WELLBEING_FEP_RELIEF_FE_REDUCTION;
+    config->enable_distress_lr_modulation = true;
+    config->enable_relief_fe_reduction = true;
+    config->mild_fe_threshold = WELLBEING_FEP_MILD_FE_THRESHOLD;
+    config->moderate_fe_threshold = WELLBEING_FEP_MODERATE_FE_THRESHOLD;
+    config->severe_fe_threshold = WELLBEING_FEP_SEVERE_FE_THRESHOLD;
+    config->critical_fe_threshold = WELLBEING_FEP_CRITICAL_FE_THRESHOLD;
+    config->fe_sensitivity = 1.0f;
+    config->wellbeing_sensitivity = 1.0f;
+    return 0;
+}
+
+wellbeing_fep_bridge_t* wellbeing_fep_bridge_create(const wellbeing_fep_config_t* config) {
+    wellbeing_fep_bridge_t* bridge = nimcp_malloc(sizeof(wellbeing_fep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate wellbeing FEP bridge");
+        return NULL;
+    }
+    memset(bridge, 0, sizeof(wellbeing_fep_bridge_t));
+    if (config) {
+        bridge->config = *config;
+    } else {
+        wellbeing_fep_bridge_default_config(&bridge->config);
+    }
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
+    NIMCP_LOGGING_INFO("Created wellbeing FEP bridge");
+    return bridge;
+}
+
+void wellbeing_fep_bridge_destroy(wellbeing_fep_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->bio_async_enabled) {
+        wellbeing_fep_bridge_disconnect_bio_async(bridge);
+    }
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Destroyed wellbeing FEP bridge");
+}
+
+int wellbeing_fep_bridge_connect_fep(wellbeing_fep_bridge_t* bridge, fep_system_t* fep) {
+    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = fep;
+    nimcp_mutex_unlock(bridge->mutex);
+    NIMCP_LOGGING_INFO("Connected FEP system to wellbeing bridge");
+    return 0;
+}
+
+int wellbeing_fep_bridge_disconnect(wellbeing_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = NULL;
+    nimcp_mutex_unlock(bridge->mutex);
+    NIMCP_LOGGING_INFO("Disconnected all systems from wellbeing FEP bridge");
+    return 0;
+}
+
+int wellbeing_fep_bridge_update(wellbeing_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
+    bridge->fep_effects.current_free_energy = bridge->state.current_free_energy;
+    if (bridge->config.enable_fe_distress_detection) {
+        if (bridge->state.current_free_energy > bridge->config.chronic_fe_threshold) {
+            bridge->state.chronic_distress_detected = true;
+            bridge->stats.chronic_distress_detections++;
+        }
+    }
+    bridge->stats.avg_free_energy =
+        (bridge->stats.avg_free_energy * 0.99f) + (bridge->state.current_free_energy * 0.01f);
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int wellbeing_fep_bridge_get_state(const wellbeing_fep_bridge_t* bridge,
+                                    wellbeing_fep_state_t* state) {
+    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_mutex_lock(bridge->mutex);
+    *state = bridge->state;
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int wellbeing_fep_bridge_get_stats(const wellbeing_fep_bridge_t* bridge,
+                                    wellbeing_fep_stats_t* stats) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int wellbeing_fep_bridge_connect_bio_async(wellbeing_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (bridge->bio_async_enabled) return 0;
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_WELLBEING_BRIDGE,
+        .module_name = "wellbeing_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected to bio-async router");
+    }
+    return 0;
+}
+
+int wellbeing_fep_bridge_disconnect_bio_async(wellbeing_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Disconnected from bio-async router");
+    return 0;
+}
+
+bool wellbeing_fep_bridge_is_bio_async_connected(const wellbeing_fep_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
+}

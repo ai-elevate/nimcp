@@ -332,6 +332,20 @@ target_include_directories(unit_security_test_nan_inf_validation PRIVATE ${CMAKE
 add_test(NAME unit_security_test_nan_inf_validation COMMAND unit_security_test_nan_inf_validation)
 set_tests_properties(unit_security_test_nan_inf_validation PROPERTIES LABELS "unit;security" TIMEOUT 60)
 
+# ============================================================================
+# Security FEP Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for Security-FEP bidirectional integration bridges
+# WHY:  Ensure threat detection integrates with FEP predictions
+# HOW:  Test lifecycle, effects, and security-specific FEP modulations
+# ============================================================================
+
+add_executable(unit_security_test_fep_bridges test_security_fep_bridges.cpp)
+target_link_libraries(unit_security_test_fep_bridges PRIVATE GTest::GTest GTest::Main nimcp pthread)
+target_include_directories(unit_security_test_fep_bridges PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME unit_security_test_fep_bridges COMMAND unit_security_test_fep_bridges)
+set_tests_properties(unit_security_test_fep_bridges PROPERTIES LABELS "unit;security;fep" TIMEOUT 60)
+
 # Security Immune Bridge Tests
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/immune/CMakeLists.txt")
     add_subdirectory(immune)

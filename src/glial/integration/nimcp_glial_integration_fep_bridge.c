@@ -1,0 +1,181 @@
+/**
+ * @file nimcp_glial_integration_fep_bridge.c
+ * @brief Implementation of glial_integration-FEP bridge
+ */
+
+#include "glial/integration/nimcp_glial_integration_fep_bridge.h"
+#include <string.h>
+#include <math.h>
+
+int glial_integration_fep_default_config(glial_integration_fep_config_t* config) {
+    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    config->metabolic_gain = GLIAL_INTEGRATION_FEP_DEFAULT_METABOLIC_GAIN;
+    config->homeostasis_gain = GLIAL_INTEGRATION_FEP_DEFAULT_HOMEOSTASIS_GAIN;
+    config->network_precision_factor = 0.75f;
+    config->enable_metabolic_prediction = true;
+    config->enable_homeostatic_precision = true;
+    config->enable_coordinated_response = true;
+    return 0;
+}
+
+glial_integration_fep_bridge_t* glial_integration_fep_create(
+    const glial_integration_fep_config_t* config,
+    glial_integration_t* glial_integration,
+    fep_system_t* fep_system)
+{
+    if (!config || !glial_integration || !fep_system) {
+        NIMCP_LOGGING_ERROR("glial_integration_fep_create: NULL parameters");
+        return NULL;
+    }
+
+    glial_integration_fep_bridge_t* bridge = (glial_integration_fep_bridge_t*)
+        nimcp_malloc(sizeof(glial_integration_fep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("glial_integration_fep_create: allocation failed");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(glial_integration_fep_bridge_t));
+    memcpy(&bridge->config, config, sizeof(glial_integration_fep_config_t));
+    bridge->glial_integration = glial_integration;
+    bridge->fep_system = fep_system;
+
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("glial_integration_fep_create: mutex creation failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Glial integration-FEP bridge created");
+    return bridge;
+}
+
+void glial_integration_fep_destroy(glial_integration_fep_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->bio_async_enabled) {
+        glial_integration_fep_disconnect_bio_async(bridge);
+    }
+    if (bridge->mutex) {
+        nimcp_platform_mutex_destroy(bridge->mutex);
+    }
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Glial integration-FEP bridge destroyed");
+}
+
+int glial_integration_fep_update_fep_to_glial(glial_integration_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+
+    float free_energy = fep_get_free_energy(bridge->fep_system);
+
+    // Metabolic demand prediction based on free energy
+    bridge->fep_effects.metabolic_demand_prediction =
+        bridge->config.metabolic_gain * free_energy / 10.0f;
+
+    // Network stability requirement
+    float precision_estimate = 1.0f / (1.0f + free_energy);
+    bridge->fep_effects.network_stability_requirement =
+        bridge->config.homeostasis_gain * (1.0f - precision_estimate);
+
+    // Precision distribution pattern
+    bridge->fep_effects.precision_distribution_pattern = precision_estimate;
+
+    // Coordinated support level
+    bridge->fep_effects.coordinated_support_level =
+        (free_energy > 5.0f) ? 1.0f : (free_energy / 5.0f);
+
+    bridge->stats.total_updates++;
+    return 0;
+}
+
+int glial_integration_fep_update_glial_to_fep(glial_integration_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->glial_integration) return NIMCP_ERROR_NULL_POINTER;
+
+    glial_integration_stats_t stats;
+    glial_integration_get_stats(bridge->glial_integration, &stats);
+
+    // Metabolic capacity
+    bridge->glial_effects.metabolic_capacity =
+        (float)stats.num_astrocytes / 100.0f; // Normalized
+
+    // Network homeostasis level
+    bridge->glial_effects.network_homeostasis_level =
+        stats.avg_synaptic_modulation;
+
+    // Overall precision support
+    bridge->glial_effects.overall_precision_support =
+        bridge->config.network_precision_factor *
+        (stats.avg_synaptic_modulation + stats.avg_myelination_factor) / 2.0f;
+
+    // Glial prediction capacity
+    bridge->glial_effects.glial_prediction_capacity =
+        (float)(stats.num_astrocytes + stats.num_oligodendrocytes) / 200.0f;
+
+    return 0;
+}
+
+int glial_integration_fep_update(glial_integration_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    int ret = glial_integration_fep_update_fep_to_glial(bridge);
+    if (ret != 0) return ret;
+    return glial_integration_fep_update_glial_to_fep(bridge);
+}
+
+int glial_integration_fep_apply_modulation(glial_integration_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    bridge->stats.homeostatic_adjustments++;
+    return 0;
+}
+
+float glial_integration_fep_get_metabolic_prediction(const glial_integration_fep_bridge_t* bridge) {
+    return bridge ? bridge->fep_effects.metabolic_demand_prediction : 0.0f;
+}
+
+float glial_integration_fep_get_precision_support(const glial_integration_fep_bridge_t* bridge) {
+    return bridge ? bridge->glial_effects.overall_precision_support : 0.0f;
+}
+
+int glial_integration_fep_get_stats(const glial_integration_fep_bridge_t* bridge,
+                                    glial_integration_fep_stats_t* stats)
+{
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    memcpy(stats, &bridge->stats, sizeof(glial_integration_fep_stats_t));
+    return 0;
+}
+
+int glial_integration_fep_connect_bio_async(glial_integration_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_GLIAL_INTEGRATION,
+        .module_name = "glial_integration_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Glial integration-FEP bridge connected to bio-async");
+        return 0;
+    }
+    NIMCP_LOGGING_WARN("Bio-async router not available for glial integration-FEP bridge");
+    return -1;
+}
+
+int glial_integration_fep_disconnect_bio_async(glial_integration_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Glial integration-FEP bridge disconnected from bio-async");
+    return 0;
+}
+
+bool glial_integration_fep_is_bio_async_connected(const glial_integration_fep_bridge_t* bridge) {
+    return bridge && bridge->bio_async_enabled;
+}
