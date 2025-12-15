@@ -47,6 +47,14 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 
+/* Coordinator/Orchestrator headers for cleanup */
+#include "async/nimcp_bio_async_orchestrator.h"
+#include "plasticity/nimcp_plasticity_coordinator.h"
+#include "cognitive/immune/nimcp_immune_bridge_coordinator.h"
+#include "cognitive/nimcp_cognitive_meta_controller.h"
+#include "security/nimcp_security_perception_bridge.h"
+#include "swarm/nimcp_swarm_module_registry.h"
+
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
@@ -659,7 +667,75 @@ void brain_destroy(brain_t brain)
         brain->immune_enabled = false;
     }
 
-    // Cleanup FEP orchestrator
+    // ========================================================================
+    // COORDINATOR/ORCHESTRATOR CLEANUP (reverse initialization order)
+    // ========================================================================
+    // Cleanup order is reverse of init order:
+    // 6. Swarm Module Registry
+    // 5. Security-Perception Bridge
+    // 4. Cognitive Meta-Controller
+    // 3. Immune Bridge Coordinator
+    // 2. Plasticity Coordinator
+    // 1. Bio-Async Orchestrator
+    // 0. FEP Orchestrator
+
+    // 6. Cleanup swarm module registry
+    if (brain->swarm_module_registry) {
+        swarm_registry_disconnect_bio_async(brain->swarm_module_registry);
+        swarm_registry_disconnect_brain_immune(brain->swarm_module_registry);
+        swarm_registry_disconnect_swarm_brain(brain->swarm_module_registry);
+        swarm_registry_destroy(brain->swarm_module_registry);
+        brain->swarm_module_registry = NULL;
+        brain->swarm_module_registry_enabled = false;
+    }
+
+    // 5. Cleanup security-perception bridge
+    if (brain->security_perception_bridge) {
+        sec_percept_stop(brain->security_perception_bridge);
+        sec_percept_disconnect_bio_async(brain->security_perception_bridge);
+        sec_percept_destroy(brain->security_perception_bridge);
+        brain->security_perception_bridge = NULL;
+        brain->security_perception_bridge_enabled = false;
+    }
+
+    // 4. Cleanup cognitive meta-controller
+    if (brain->cognitive_meta_controller) {
+        meta_controller_stop(brain->cognitive_meta_controller);
+        meta_controller_disconnect_bio_async(brain->cognitive_meta_controller);
+        meta_controller_disconnect_brain_immune(brain->cognitive_meta_controller);
+        meta_controller_destroy(brain->cognitive_meta_controller);
+        brain->cognitive_meta_controller = NULL;
+        brain->cognitive_meta_controller_enabled = false;
+    }
+
+    // 3. Cleanup immune bridge coordinator
+    if (brain->immune_bridge_coordinator) {
+        immune_bridge_coordinator_stop(brain->immune_bridge_coordinator);
+        immune_bridge_coordinator_disconnect_bio_async(brain->immune_bridge_coordinator);
+        immune_bridge_coordinator_disconnect_brain_immune(brain->immune_bridge_coordinator);
+        immune_bridge_coordinator_destroy(brain->immune_bridge_coordinator);
+        brain->immune_bridge_coordinator = NULL;
+        brain->immune_bridge_coordinator_enabled = false;
+    }
+
+    // 2. Cleanup plasticity coordinator
+    if (brain->plasticity_coordinator) {
+        plasticity_coordinator_disconnect_bio_async(brain->plasticity_coordinator);
+        plasticity_coordinator_disconnect_brain_immune(brain->plasticity_coordinator);
+        plasticity_coordinator_destroy(brain->plasticity_coordinator);
+        brain->plasticity_coordinator = NULL;
+        brain->plasticity_coordinator_enabled = false;
+    }
+
+    // 1. Cleanup bio-async orchestrator
+    if (brain->bio_async_orchestrator) {
+        bio_orchestrator_stop(brain->bio_async_orchestrator);
+        bio_orchestrator_destroy(brain->bio_async_orchestrator);
+        brain->bio_async_orchestrator = NULL;
+        brain->bio_async_orchestrator_enabled = false;
+    }
+
+    // 0. Cleanup FEP orchestrator
     if (brain->fep_orchestrator) {
         fep_orchestrator_stop(brain->fep_orchestrator);
         fep_orchestrator_destroy(brain->fep_orchestrator);

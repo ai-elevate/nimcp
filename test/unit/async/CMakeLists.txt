@@ -217,3 +217,32 @@ gtest_discover_tests(unit_async_predictive_protocol_fep_bridge
         LABELS "unit;async;fep;bridge;protocol"
         TIMEOUT 60
 )
+
+# ============================================================================
+# Bio-Async Orchestrator Unit Tests
+# ============================================================================
+
+# Bio-async orchestrator tests
+add_executable(unit_async_bio_async_orchestrator
+    test_bio_async_orchestrator.cpp
+)
+target_link_libraries(unit_async_bio_async_orchestrator
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(unit_async_bio_async_orchestrator
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_bio_async_orchestrator PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_bio_async_orchestrator
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;orchestrator"
+        TIMEOUT 120
+)

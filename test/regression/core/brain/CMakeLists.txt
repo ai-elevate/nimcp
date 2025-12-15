@@ -81,6 +81,26 @@ add_test(NAME regression_core_brain_memory_tracking_regression
 # add_test(NAME regression_core_brain_bio_async_regression
 #          COMMAND regression_core_brain_bio_async_regression)
 
+# Brain Coordinator Regression Test
+add_executable(regression_core_brain_coordinator_regression
+    test_brain_coordinator_regression.cpp
+)
+target_link_libraries(regression_core_brain_coordinator_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+    )
+target_include_directories(regression_core_brain_coordinator_regression
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME regression_core_brain_coordinator_regression
+         COMMAND regression_core_brain_coordinator_regression)
+set_tests_properties(regression_core_brain_coordinator_regression PROPERTIES LABELS "regression")
+
 # Set test timeouts for long-running regression tests (5 minutes)
 # set_tests_properties(regression_core_brain_bio_async_regression
 #     PROPERTIES TIMEOUT 300)

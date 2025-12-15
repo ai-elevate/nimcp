@@ -1,0 +1,695 @@
+/**
+ * @file nimcp_bio_async_orchestrator.c
+ * @brief Bio-Async Orchestrator implementation
+ * @author NIMCP Development Team
+ * @date 2025-12-15
+ */
+
+#include "async/nimcp_bio_async_orchestrator.h"
+#include "utils/time/nimcp_time.h"
+#include <string.h>
+#include <stdio.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Find module entry by ID
+ * WHY:  Centralize lookup logic
+ * HOW:  Linear search through module array
+ */
+static bio_module_entry_t* find_module(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    if (!orchestrator) return NULL;
+
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].module_id == module_id) {
+            return &orchestrator->modules[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * WHAT: Compute system health score
+ * WHY:  Aggregate module health into single metric
+ * HOW:  Weighted average: healthy=1.0, degraded=0.7, unhealthy=0.3, failed=0.0
+ */
+static float compute_health_score(const bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator || orchestrator->module_count == 0) return 0.0f;
+
+    uint32_t healthy = 0, degraded = 0, unhealthy = 0, failed = 0;
+
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        switch (orchestrator->modules[i].health_status) {
+            case BIO_MODULE_HEALTH_HEALTHY: healthy++; break;
+            case BIO_MODULE_HEALTH_DEGRADED: degraded++; break;
+            case BIO_MODULE_HEALTH_UNHEALTHY: unhealthy++; break;
+            case BIO_MODULE_HEALTH_FAILED: failed++; break;
+            default: break;
+        }
+    }
+
+    float score = (healthy * 1.0f + degraded * 0.7f + unhealthy * 0.3f + failed * 0.0f);
+    return score / (float)orchestrator->module_count;
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+int bio_orchestrator_default_config(bio_orchestrator_config_t* config) {
+    if (!config) return -1;
+
+    memset(config, 0, sizeof(bio_orchestrator_config_t));
+
+    /* Category defaults */
+    for (int i = 0; i < BIO_MODULE_CATEGORY_COUNT; i++) {
+        config->categories[i].enabled = true;
+        config->categories[i].health_check_interval_ms = BIO_ORCHESTRATOR_HEALTH_CHECK_MS;
+        config->categories[i].max_health_failures = 3;
+    }
+
+    /* Global settings */
+    config->max_modules = BIO_ORCHESTRATOR_MAX_MODULES;
+    config->enable_auto_health_check = true;
+    config->global_health_check_ms = BIO_ORCHESTRATOR_HEALTH_CHECK_MS;
+
+    /* Integration */
+    config->enable_bio_async = true;
+    config->enable_brain_immune = false;
+    config->enable_statistics = true;
+    config->enable_logging = true;
+
+    /* Startup */
+    config->enforce_startup_order = true;
+    config->startup_timeout_ms = 10000;
+
+    return 0;
+}
+
+bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_t* config) {
+    bio_async_orchestrator_t* orch = (bio_async_orchestrator_t*)nimcp_calloc(
+        1, sizeof(bio_async_orchestrator_t));
+    if (!orch) {
+        NIMCP_LOGGING_ERROR("Failed to allocate orchestrator");
+        return NULL;
+    }
+
+    /* Apply config */
+    if (config) {
+        orch->config = *config;
+    } else {
+        bio_orchestrator_default_config(&orch->config);
+    }
+
+    /* Allocate module array */
+    orch->module_capacity = orch->config.max_modules;
+    orch->modules = (bio_module_entry_t*)nimcp_calloc(
+        orch->module_capacity, sizeof(bio_module_entry_t));
+    if (!orch->modules) {
+        NIMCP_LOGGING_ERROR("Failed to allocate module array");
+        nimcp_free(orch);
+        return NULL;
+    }
+
+    /* Create mutex */
+    orch->mutex = nimcp_platform_mutex_create();
+    if (!orch->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        nimcp_free(orch->modules);
+        nimcp_free(orch);
+        return NULL;
+    }
+
+    /* Initialize state */
+    orch->state = BIO_ORCHESTRATOR_STOPPED;
+    orch->module_count = 0;
+    orch->start_time = nimcp_time_get_ms();
+    orch->bio_async_connected = false;
+    orch->immune_connected = false;
+    orch->current_startup_phase = 0;
+
+    /* Connect to bio-async if enabled */
+    if (orch->config.enable_bio_async) {
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_BIO_ASYNC_ORCHESTRATOR,
+            .module_name = BIO_ORCHESTRATOR_MODULE_NAME,
+            .inbox_capacity = 32,
+            .user_data = orch
+        };
+
+        orch->bio_context = bio_router_register_module(&info);
+        if (orch->bio_context) {
+            orch->bio_async_connected = true;
+            if (orch->config.enable_logging) {
+                NIMCP_LOGGING_INFO("Bio-async orchestrator registered with router");
+            }
+        }
+    }
+
+    return orch;
+}
+
+void bio_orchestrator_destroy(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return;
+
+    /* Stop if running */
+    if (orchestrator->state == BIO_ORCHESTRATOR_RUNNING) {
+        bio_orchestrator_stop(orchestrator);
+    }
+
+    /* Disconnect from bio-async */
+    if (orchestrator->bio_async_connected && orchestrator->bio_context) {
+        bio_router_unregister_module(orchestrator->bio_context);
+        orchestrator->bio_async_connected = false;
+    }
+
+    /* Free module dependencies */
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].dependencies) {
+            nimcp_free(orchestrator->modules[i].dependencies);
+        }
+    }
+
+    /* Free arrays */
+    nimcp_free(orchestrator->modules);
+
+    /* Destroy mutex */
+    if (orchestrator->mutex) {
+        nimcp_platform_mutex_destroy(orchestrator->mutex);
+    }
+
+    /* Free orchestrator */
+    nimcp_free(orchestrator);
+}
+
+int bio_orchestrator_start(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    if (orchestrator->state == BIO_ORCHESTRATOR_RUNNING) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return 0;  /* Already running */
+    }
+
+    orchestrator->state = BIO_ORCHESTRATOR_RUNNING;
+    orchestrator->start_time = nimcp_time_get_ms();
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Bio-async orchestrator started");
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_stop(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    if (orchestrator->state == BIO_ORCHESTRATOR_STOPPED) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return 0;  /* Already stopped */
+    }
+
+    orchestrator->state = BIO_ORCHESTRATOR_STOPPED;
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Bio-async orchestrator stopped");
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Module Registration Implementation
+ * ============================================================================ */
+
+int bio_orchestrator_register_module(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    const char* name,
+    bio_module_category_t category,
+    bio_module_context_t bio_context,
+    uint32_t startup_phase
+) {
+    if (!orchestrator || !name) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    /* Check capacity */
+    if (orchestrator->module_count >= orchestrator->module_capacity) {
+        NIMCP_LOGGING_ERROR("Module registry full");
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    /* Check if already registered */
+    if (find_module(orchestrator, module_id)) {
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_WARN("Module already registered: %s", name);
+        }
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return 0;  /* Not an error */
+    }
+
+    /* Add module */
+    bio_module_entry_t* entry = &orchestrator->modules[orchestrator->module_count];
+    memset(entry, 0, sizeof(bio_module_entry_t));
+
+    entry->module_id = module_id;
+    entry->module_name = name;
+    entry->category = category;
+    entry->bio_context = bio_context;
+    entry->startup_phase = startup_phase;
+    entry->health_status = BIO_MODULE_HEALTH_UNKNOWN;
+    entry->registered = true;
+    entry->enabled = true;
+    entry->registration_time = nimcp_time_get_ms();
+
+    orchestrator->module_count++;
+    orchestrator->stats.total_modules = orchestrator->module_count;
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Registered module: %s (ID=0x%04X, category=%d, phase=%u)",
+            name, module_id, category, startup_phase);
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_unregister_module(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    /* Find module */
+    int found_idx = -1;
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].module_id == module_id) {
+            found_idx = (int)i;
+            break;
+        }
+    }
+
+    if (found_idx < 0) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    /* Free dependencies */
+    if (orchestrator->modules[found_idx].dependencies) {
+        nimcp_free(orchestrator->modules[found_idx].dependencies);
+    }
+
+    /* Shift remaining modules */
+    if (found_idx < (int)orchestrator->module_count - 1) {
+        memmove(&orchestrator->modules[found_idx],
+                &orchestrator->modules[found_idx + 1],
+                (orchestrator->module_count - found_idx - 1) * sizeof(bio_module_entry_t));
+    }
+
+    orchestrator->module_count--;
+    orchestrator->stats.total_modules = orchestrator->module_count;
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_add_dependency(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    bio_module_id_t depends_on
+) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    bio_module_entry_t* entry = find_module(orchestrator, module_id);
+    if (!entry) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    /* Reallocate dependency array */
+    bio_module_id_t* new_deps = (bio_module_id_t*)nimcp_realloc(
+        entry->dependencies,
+        (entry->dependency_count + 1) * sizeof(bio_module_id_t)
+    );
+    if (!new_deps) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    new_deps[entry->dependency_count] = depends_on;
+    entry->dependencies = new_deps;
+    entry->dependency_count++;
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_set_module_enabled(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    bool enabled
+) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    bio_module_entry_t* entry = find_module(orchestrator, module_id);
+    if (!entry) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    entry->enabled = enabled;
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Startup Sequencing Implementation
+ * ============================================================================ */
+
+int bio_orchestrator_execute_startup(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    if (!orchestrator->config.enforce_startup_order) {
+        /* No ordering enforcement */
+        return 0;
+    }
+
+    /* Execute phases in order */
+    for (uint32_t phase = 0; phase < BIO_STARTUP_PHASE_COUNT; phase++) {
+        uint32_t phase_count = 0;
+
+        for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+            if (orchestrator->modules[i].startup_phase == phase &&
+                orchestrator->modules[i].enabled) {
+                phase_count++;
+            }
+        }
+
+        if (phase_count > 0 && orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_INFO("Startup phase %u: %u modules", phase, phase_count);
+        }
+    }
+
+    return 0;
+}
+
+uint32_t bio_orchestrator_get_phase_modules(
+    const bio_async_orchestrator_t* orchestrator,
+    uint32_t phase,
+    bio_module_id_t* module_ids,
+    uint32_t max_modules
+) {
+    if (!orchestrator || !module_ids || phase >= BIO_STARTUP_PHASE_COUNT) {
+        return 0;
+    }
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < orchestrator->module_count && count < max_modules; i++) {
+        if (orchestrator->modules[i].startup_phase == phase) {
+            module_ids[count++] = orchestrator->modules[i].module_id;
+        }
+    }
+
+    return count;
+}
+
+/* ============================================================================
+ * Health Monitoring Implementation
+ * ============================================================================ */
+
+int bio_orchestrator_health_check_all(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    uint64_t current_time = nimcp_time_get_ms();
+    orchestrator->last_health_check = current_time;
+    orchestrator->stats.total_health_checks++;
+
+    uint32_t healthy_count = 0;
+
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        bio_module_entry_t* entry = &orchestrator->modules[i];
+
+        if (!entry->enabled) continue;
+
+        /* Simple health check: assume healthy if registered */
+        entry->health_status = BIO_MODULE_HEALTH_HEALTHY;
+        entry->last_health_check = current_time;
+        entry->health_check_count++;
+        healthy_count++;
+    }
+
+    orchestrator->stats.healthy_modules = healthy_count;
+    orchestrator->stats.system_health_score = compute_health_score(orchestrator);
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return (int)healthy_count;
+}
+
+int bio_orchestrator_health_check_module(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    bio_module_health_t* health_out
+) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    bio_module_entry_t* entry = find_module(orchestrator, module_id);
+    if (!entry) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    /* Simple check: assume healthy if registered */
+    entry->health_status = BIO_MODULE_HEALTH_HEALTHY;
+    entry->last_health_check = nimcp_time_get_ms();
+    entry->health_check_count++;
+
+    if (health_out) {
+        *health_out = entry->health_status;
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+bio_module_health_t bio_orchestrator_get_module_health(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    if (!orchestrator) return BIO_MODULE_HEALTH_UNKNOWN;
+
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].module_id == module_id) {
+            return orchestrator->modules[i].health_status;
+        }
+    }
+
+    return BIO_MODULE_HEALTH_UNKNOWN;
+}
+
+/* ============================================================================
+ * Discovery Implementation
+ * ============================================================================ */
+
+uint32_t bio_orchestrator_get_all_modules(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t* module_ids,
+    uint32_t max_modules
+) {
+    if (!orchestrator || !module_ids) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < orchestrator->module_count && count < max_modules; i++) {
+        module_ids[count++] = orchestrator->modules[i].module_id;
+    }
+
+    return count;
+}
+
+uint32_t bio_orchestrator_get_modules_by_category(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_category_t category,
+    bio_module_id_t* module_ids,
+    uint32_t max_modules
+) {
+    if (!orchestrator || !module_ids) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < orchestrator->module_count && count < max_modules; i++) {
+        if (orchestrator->modules[i].category == category) {
+            module_ids[count++] = orchestrator->modules[i].module_id;
+        }
+    }
+
+    return count;
+}
+
+const bio_module_entry_t* bio_orchestrator_get_module_info(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    if (!orchestrator) return NULL;
+
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].module_id == module_id) {
+            return &orchestrator->modules[i];
+        }
+    }
+
+    return NULL;
+}
+
+bool bio_orchestrator_is_module_registered(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    return bio_orchestrator_get_module_info(orchestrator, module_id) != NULL;
+}
+
+/* ============================================================================
+ * Integration Implementation
+ * ============================================================================ */
+
+int bio_orchestrator_connect_brain_immune(
+    bio_async_orchestrator_t* orchestrator,
+    void* immune
+) {
+    if (!orchestrator || !immune) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    orchestrator->brain_immune = immune;
+    orchestrator->immune_connected = true;
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Connected to brain immune system");
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_disconnect_brain_immune(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    orchestrator->brain_immune = NULL;
+    orchestrator->immune_connected = false;
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Statistics Implementation
+ * ============================================================================ */
+
+int bio_orchestrator_get_stats(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_orchestrator_stats_t* stats
+) {
+    if (!orchestrator || !stats) return -1;
+
+    *stats = orchestrator->stats;
+
+    /* Update runtime stats */
+    stats->uptime_ms = nimcp_time_get_ms() - orchestrator->start_time;
+
+    /* Count active modules */
+    uint32_t active = 0;
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].enabled) active++;
+    }
+    stats->active_modules = active;
+
+    return 0;
+}
+
+void bio_orchestrator_reset_stats(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    memset(&orchestrator->stats, 0, sizeof(bio_orchestrator_stats_t));
+    orchestrator->stats.total_modules = orchestrator->module_count;
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+}
+
+float bio_orchestrator_get_health_score(const bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return 0.0f;
+    return compute_health_score(orchestrator);
+}
+
+bio_orchestrator_state_t bio_orchestrator_get_state(
+    const bio_async_orchestrator_t* orchestrator
+) {
+    if (!orchestrator) return BIO_ORCHESTRATOR_ERROR;
+    return orchestrator->state;
+}
+
+/* ============================================================================
+ * String Conversion Implementation
+ * ============================================================================ */
+
+const char* bio_module_category_to_string(bio_module_category_t category) {
+    switch (category) {
+        case BIO_MODULE_CATEGORY_CORE: return "core";
+        case BIO_MODULE_CATEGORY_PLASTICITY: return "plasticity";
+        case BIO_MODULE_CATEGORY_PERCEPTION: return "perception";
+        case BIO_MODULE_CATEGORY_COGNITIVE: return "cognitive";
+        case BIO_MODULE_CATEGORY_HIGHLEVEL: return "highlevel";
+        case BIO_MODULE_CATEGORY_IMMUNE: return "immune";
+        case BIO_MODULE_CATEGORY_SWARM: return "swarm";
+        case BIO_MODULE_CATEGORY_SECURITY: return "security";
+        case BIO_MODULE_CATEGORY_MIDDLEWARE: return "middleware";
+        case BIO_MODULE_CATEGORY_GLIAL: return "glial";
+        default: return "unknown";
+    }
+}
+
+const char* bio_orchestrator_state_to_string(bio_orchestrator_state_t state) {
+    switch (state) {
+        case BIO_ORCHESTRATOR_STOPPED: return "stopped";
+        case BIO_ORCHESTRATOR_STARTING: return "starting";
+        case BIO_ORCHESTRATOR_RUNNING: return "running";
+        case BIO_ORCHESTRATOR_PAUSED: return "paused";
+        case BIO_ORCHESTRATOR_STOPPING: return "stopping";
+        case BIO_ORCHESTRATOR_ERROR: return "error";
+        default: return "unknown";
+    }
+}
+
+const char* bio_module_health_to_string(bio_module_health_t health) {
+    switch (health) {
+        case BIO_MODULE_HEALTH_UNKNOWN: return "unknown";
+        case BIO_MODULE_HEALTH_HEALTHY: return "healthy";
+        case BIO_MODULE_HEALTH_DEGRADED: return "degraded";
+        case BIO_MODULE_HEALTH_UNHEALTHY: return "unhealthy";
+        case BIO_MODULE_HEALTH_FAILED: return "failed";
+        default: return "unknown";
+    }
+}

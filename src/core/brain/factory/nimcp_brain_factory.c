@@ -171,6 +171,14 @@ extern void set_error(const char* format, ...);
 #define init_brain_config                           nimcp_brain_factory_init_brain_config
 #define init_brain_stats                            nimcp_brain_factory_init_brain_stats
 
+// Coordinator/Orchestrator subsystem macros
+#define init_bio_async_orchestrator_subsystem       nimcp_brain_factory_init_bio_async_orchestrator_subsystem
+#define init_plasticity_coordinator_subsystem       nimcp_brain_factory_init_plasticity_coordinator_subsystem
+#define init_immune_bridge_coordinator_subsystem    nimcp_brain_factory_init_immune_bridge_coordinator_subsystem
+#define init_cognitive_meta_controller_subsystem    nimcp_brain_factory_init_cognitive_meta_controller_subsystem
+#define init_security_perception_bridge_subsystem   nimcp_brain_factory_init_security_perception_bridge_subsystem
+#define init_swarm_module_registry_subsystem        nimcp_brain_factory_init_swarm_module_registry_subsystem
+
 //=============================================================================
 // Main Factory Functions
 //=============================================================================
@@ -625,6 +633,43 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Initialize FEP orchestrator after immune and bio-async are ready
     // (orchestrator connects to both for unified FEP bridge coordination)
     if (!init_fep_orchestrator_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // COORDINATOR/ORCHESTRATOR SUBSYSTEMS
+    // ========================================================================
+    // These coordinators provide system-wide coordination across NIMCP:
+    // - Bio-Async Orchestrator: Central coordinator for 200+ bio-async modules
+    // - Plasticity Coordinator: Unified manager for all plasticity mechanisms
+    // - Immune Bridge Coordinator: Central registry for 27+ immune bridges
+    // - Cognitive Meta-Controller: Arbitrator for cognitive subsystem resources
+    // - Security-Perception Bridge: Sensory threat analysis and defense
+    // - Swarm Module Registry: Plugin architecture for swarm behaviors
+    //
+    // Initialization order matters due to dependencies:
+    // 1. Bio-Async Orchestrator (foundation for inter-module messaging)
+    // 2. Plasticity Coordinator (depends on bio-async)
+    // 3. Immune Bridge Coordinator (depends on bio-async, brain immune)
+    // 4. Cognitive Meta-Controller (depends on plasticity, working memory, executive)
+    // 5. Security-Perception Bridge (depends on BBB, immune, perception cortices)
+    // 6. Swarm Module Registry (depends on all above, swarm_brain)
+
+    // 1. Bio-Async Orchestrator (foundation for messaging)
+    if (!init_bio_async_orchestrator_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // 2. Plasticity Coordinator (depends on bio-async)
+    if (!init_plasticity_coordinator_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // 3. Immune Bridge Coordinator (depends on bio-async, brain immune)
+    if (!init_immune_bridge_coordinator_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // 4. Cognitive Meta-Controller (depends on plasticity, working memory, executive)
+    if (!init_cognitive_meta_controller_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // 5. Security-Perception Bridge (depends on BBB, immune, perception cortices)
+    if (!init_security_perception_bridge_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // 6. Swarm Module Registry (depends on all above, swarm_brain)
+    if (!init_swarm_module_registry_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // POST-INITIALIZATION

@@ -58,3 +58,22 @@ target_include_directories(unit_core_brain_factory_test_personality
 add_test(NAME unit_core_brain_factory_test_personality
          COMMAND unit_core_brain_factory_test_personality)
 set_tests_properties(unit_core_brain_factory_test_personality PROPERTIES LABELS "unit")
+
+# Test 4: Coordinator init functions (6 coordinators)
+add_executable(unit_core_brain_factory_init_coordinators
+    init/test_brain_init_coordinators.cpp
+)
+target_link_libraries(unit_core_brain_factory_init_coordinators
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_core_brain_factory_init_coordinators
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME unit_core_brain_factory_init_coordinators
+         COMMAND unit_core_brain_factory_init_coordinators)
+set_tests_properties(unit_core_brain_factory_init_coordinators PROPERTIES LABELS "unit")

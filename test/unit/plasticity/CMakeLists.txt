@@ -135,5 +135,28 @@ gtest_discover_tests(unit_plasticity_test_fep_bridges
     TIMEOUT 60
 )
 
+# ============================================================================
+# Plasticity Coordinator Tests
+# ============================================================================
+# WHAT: Unit tests for Plasticity Coordinator module
+# WHY:  Central coordinator managing 8 plasticity mechanisms with conflict resolution
+# HOW:  Test lifecycle, registration, updates, state management, conflict resolution
+# ============================================================================
+
+add_executable(unit_plasticity_test_coordinator test_plasticity_coordinator.cpp)
+target_link_libraries(unit_plasticity_test_coordinator
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_test_coordinator PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_test_coordinator
+    PROPERTIES LABELS "unit;plasticity;coordinator"
+    TIMEOUT 60
+)
+
 # Attention subdirectory (PE tests)
 add_subdirectory(attention)

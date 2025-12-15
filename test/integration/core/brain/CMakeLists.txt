@@ -36,3 +36,18 @@ target_include_directories(integration_brain_persistence_test
 )
 
 gtest_discover_tests(integration_brain_persistence_test)
+
+# Test 3: Brain Coordinator Integration (All 6 coordinators working together)
+add_executable(integration_brain_coordinator_test
+    test_brain_coordinator_integration.cpp
+)
+
+target_link_libraries(integration_brain_coordinator_test
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(integration_brain_coordinator_test
+    PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+)
+
+gtest_discover_tests(integration_brain_coordinator_test)

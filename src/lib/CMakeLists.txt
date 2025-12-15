@@ -58,6 +58,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_structural.c          # Structural subsystems (624 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_security.c            # Security subsystem (318 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c   # FEP Orchestrator subsystem
+    # Coordinator/Orchestrator init functions (brain lifecycle integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_bio_async_orchestrator.c  # Bio-Async Orchestrator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity_coordinator.c  # Plasticity Coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.c  # Immune Bridge Coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.c  # Cognitive Meta-Controller
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_security_perception_bridge.c  # Security-Perception Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_swarm_module_registry.c  # Swarm Module Registry
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -263,6 +270,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_fep_bridge.c  # Brain immune-FEP bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_immune.c  # Ethics-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_bridge_coordinator.c  # Immune Bridge Coordinator - central registry for all immune bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_cognitive_meta_controller.c  # Cognitive Meta-Controller - unified arbitrator for cognitive subsystems
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # DISABLED: depends on brain_region_predictive  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_feature_extractor_immune_bridge.c  # Feature extractor-immune integration
@@ -446,6 +455,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_trace.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_substrate_bridge.c  # Plasticity-substrate integration (STDP/BCM/homeostatic LR modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_coordinator.c  # Plasticity Coordinator - unified manager for all plasticity mechanisms
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
@@ -544,6 +554,7 @@ set(NIMCP_CORE_SOURCES
 
     # Security Immune Integration (Phase BII-S: Security immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_pattern_db_immune_bridge.c  # Pattern DB-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_perception_bridge.c  # Security-Perception Bridge - sensory threat analysis and defense
 
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
@@ -646,6 +657,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_future.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async.c      # Phase BIO-ASYNC: Biologically-inspired async
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_router.c     # Phase BIO-ASYNC: Bio-router message routing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async_orchestrator.c  # Bio-Async Orchestrator - central coordinator for 200+ bio-async modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/immune/nimcp_bio_router_immune_bridge.c  # Bio-router-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_predictive_protocol.c  # Predictive communication protocol
 
@@ -872,6 +884,7 @@ set(NIMCP_CORE_SOURCES
 
     # Logic-Swarm Bridge - Neural Logic Gates for Swarm Intelligence
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_logic_bridge.c   # Logic gate integration with swarm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_module_registry.c  # Swarm Module Registry - plugin architecture for swarm behaviors
 
     # Swarm Infrastructure - Local Brain Instantiation and Protocol Metrics
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_brain_local.c    # Per-agent brain management

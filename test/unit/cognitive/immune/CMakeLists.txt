@@ -396,3 +396,26 @@ target_include_directories(unit_cognitive_immune_persistence
 add_test(NAME unit_cognitive_immune_persistence
          COMMAND unit_cognitive_immune_persistence)
 set_tests_properties(unit_cognitive_immune_persistence PROPERTIES LABELS "unit")
+
+# Immune Bridge Coordinator Unit Tests
+add_executable(unit_cognitive_immune_bridge_coordinator
+    test_immune_bridge_coordinator.cpp
+)
+target_link_libraries(unit_cognitive_immune_bridge_coordinator
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_bridge_coordinator
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/async
+)
+add_test(NAME unit_cognitive_immune_bridge_coordinator
+         COMMAND unit_cognitive_immune_bridge_coordinator)
+set_tests_properties(unit_cognitive_immune_bridge_coordinator PROPERTIES LABELS "unit")

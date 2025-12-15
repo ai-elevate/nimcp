@@ -346,6 +346,42 @@ target_include_directories(unit_security_test_fep_bridges PRIVATE ${CMAKE_SOURCE
 add_test(NAME unit_security_test_fep_bridges COMMAND unit_security_test_fep_bridges)
 set_tests_properties(unit_security_test_fep_bridges PROPERTIES LABELS "unit;security;fep" TIMEOUT 60)
 
+# ============================================================================
+# Security-Perception Bridge Unit Tests
+# ============================================================================
+# WHAT: Unit tests for Security-Perception Bridge (Sensory Threat Defense)
+# WHY:  Verify sensory threat detection, quarantine, signature learning
+# HOW:  Test visual/audio/multimodal analysis, cross-modal consistency
+# ============================================================================
+
+add_executable(unit_security_test_security_perception_bridge
+    test_security_perception_bridge.cpp
+)
+target_link_libraries(unit_security_test_security_perception_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_security_perception_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/perception
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_security_test_security_perception_bridge
+         COMMAND unit_security_test_security_perception_bridge)
+set_tests_properties(unit_security_test_security_perception_bridge PROPERTIES
+    LABELS "unit;security;perception;bridge"
+    TIMEOUT 120
+)
+
 # Security Immune Bridge Tests
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/immune/CMakeLists.txt")
     add_subdirectory(immune)

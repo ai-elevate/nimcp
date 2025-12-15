@@ -75,6 +75,23 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain);
 // FEP Orchestrator (central coordination of all FEP bridges)
 bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t brain);
 
+// === COORDINATOR/ORCHESTRATOR SUBSYSTEMS ===
+// These provide system-wide coordination across NIMCP
+// Initialization order matters due to dependencies:
+// 1. Bio-Async Orchestrator (foundation for inter-module messaging)
+// 2. Plasticity Coordinator (depends on bio-async)
+// 3. Immune Bridge Coordinator (depends on bio-async, brain immune)
+// 4. Cognitive Meta-Controller (depends on plasticity, working memory, executive)
+// 5. Security-Perception Bridge (depends on BBB, immune, perception cortices)
+// 6. Swarm Module Registry (depends on all above, swarm_brain)
+
+bool nimcp_brain_factory_init_bio_async_orchestrator_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_plasticity_coordinator_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_immune_bridge_coordinator_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_cognitive_meta_controller_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_security_perception_bridge_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_swarm_module_registry_subsystem(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

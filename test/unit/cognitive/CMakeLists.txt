@@ -44,6 +44,35 @@ target_include_directories(unit_cognitive_test_bio_async_registration
 )
 gtest_discover_tests(unit_cognitive_test_bio_async_registration)
 
+# Cognitive Meta-Controller Tests
+add_executable(unit_cognitive_test_meta_controller
+    test_cognitive_meta_controller.cpp
+)
+
+target_link_libraries(unit_cognitive_test_meta_controller
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_meta_controller
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_meta_controller PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_meta_controller
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;meta_controller"
+        TIMEOUT 120
+)
+
 # Emotion-Attention Integration Tests
 # DISABLED: Source file nimcp_emotion_attention.c not yet implemented
 message(STATUS "  [SKIP] test_emotion_attention.cpp - source file not implemented")

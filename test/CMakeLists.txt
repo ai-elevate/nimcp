@@ -832,6 +832,28 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/async")
 endif()
 
 # ============================================================================
+# Plasticity Tests
+# ============================================================================
+# WHAT: Tests for plasticity modules (STDP, BCM, homeostatic, dendritic, etc.)
+# WHY:  Verify synaptic plasticity mechanisms and coordinator
+# HOW:  Unit tests for mechanisms, coordinator tests for conflict resolution
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/plasticity")
+    message(STATUS "Adding plasticity unit tests...")
+    add_subdirectory(unit/plasticity)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/plasticity")
+    message(STATUS "Adding plasticity integration tests...")
+    add_subdirectory(integration/plasticity)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/plasticity")
+    message(STATUS "Adding plasticity regression tests...")
+    add_subdirectory(regression/plasticity)
+endif()
+
+# ============================================================================
 # Swarm Intelligence Tests (Phase SWARM-1: Drone Collective Intelligence)
 # ============================================================================
 # WHAT: Tests for swarm brain coordination system

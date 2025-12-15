@@ -93,6 +93,13 @@ add_test_binary(
     unit
 )
 
+# Test 14: Swarm Module Registry
+add_test_binary(
+    test_swarm_module_registry
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_module_registry.cpp
+    unit
+)
+
 # ============================================================================
 # FEP Bridge Tests
 # ============================================================================

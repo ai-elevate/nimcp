@@ -830,6 +830,14 @@ typedef enum {
     /* FEP Orchestrator (0x0F90) */
     BIO_MODULE_FEP_ORCHESTRATOR = 0x0F90,       /**< FEP orchestrator - coordinates all FEP bridges */
 
+    /* System Orchestrators/Coordinators (0x0FA0 - 0x0FAF) */
+    BIO_MODULE_BIO_ASYNC_ORCHESTRATOR = 0x0FA0, /**< Bio-async orchestrator - coordinates 200+ bio-async modules */
+    BIO_MODULE_IMMUNE_COORDINATOR,              /**< Immune bridge coordinator - registry for all immune bridges */
+    BIO_MODULE_PLASTICITY_COORDINATOR,          /**< Plasticity coordinator - unified plasticity management */
+    BIO_MODULE_COGNITIVE_META_CONTROLLER,       /**< Cognitive meta-controller - arbitrates cognitive modules */
+    BIO_MODULE_SWARM_REGISTRY,                  /**< Swarm module registry - plugin architecture for swarm behaviors */
+    BIO_MODULE_SECURITY_PERCEPTION,             /**< Security-perception bridge - sensory threat analysis */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

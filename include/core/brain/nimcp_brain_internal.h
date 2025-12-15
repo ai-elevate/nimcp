@@ -608,6 +608,42 @@ struct brain_struct {
     //
     struct fep_orchestrator* fep_orchestrator;   // FEP bridge coordination layer
     bool fep_orchestrator_enabled;               // FEP orchestrator enabled for this brain
+
+    // === COORDINATOR/ORCHESTRATOR INTEGRATIONS ===
+    //
+    // These coordinators manage system-wide coordination across NIMCP:
+    // - Bio-Async Orchestrator: Central coordinator for 200+ bio-async modules
+    // - Plasticity Coordinator: Unified manager for all plasticity mechanisms
+    // - Immune Bridge Coordinator: Central registry for 27+ immune bridges
+    // - Cognitive Meta-Controller: Arbitrator for cognitive subsystem resources
+    // - Security-Perception Bridge: Sensory threat analysis and defense
+    // - Swarm Module Registry: Plugin architecture for swarm behaviors
+    //
+    // Initialization order (dependencies):
+    // 1. Bio-Async Orchestrator (foundation for messaging)
+    // 2. Plasticity Coordinator (depends on bio-async)
+    // 3. Immune Bridge Coordinator (depends on bio-async, brain immune)
+    // 4. Cognitive Meta-Controller (depends on plasticity, working memory, executive)
+    // 5. Security-Perception Bridge (depends on BBB, immune, perception cortices)
+    // 6. Swarm Module Registry (depends on all above, swarm_brain)
+
+    struct bio_async_orchestrator* bio_async_orchestrator;  // Bio-async module coordination
+    bool bio_async_orchestrator_enabled;                    // Bio-async orchestrator enabled
+
+    struct plasticity_coordinator* plasticity_coordinator;  // Plasticity mechanism coordination
+    bool plasticity_coordinator_enabled;                    // Plasticity coordinator enabled
+
+    struct immune_bridge_coordinator* immune_bridge_coordinator;  // Immune bridge coordination
+    bool immune_bridge_coordinator_enabled;                       // Immune bridge coordinator enabled
+
+    struct cognitive_meta_controller* cognitive_meta_controller;  // Cognitive resource arbitration
+    bool cognitive_meta_controller_enabled;                       // Cognitive meta-controller enabled
+
+    struct security_perception_bridge* security_perception_bridge;  // Sensory threat defense
+    bool security_perception_bridge_enabled;                        // Security-perception bridge enabled
+
+    struct swarm_module_registry* swarm_module_registry;  // Swarm behavior plugin registry
+    bool swarm_module_registry_enabled;                   // Swarm module registry enabled
 };
 
 //=============================================================================
