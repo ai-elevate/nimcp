@@ -2022,3 +2022,67 @@ bool working_memory_signal_stress(
 
     return result == 0;
 }
+
+//=============================================================================
+// UTILITY FUNCTIONS
+//=============================================================================
+
+/**
+ * @brief Check if working memory is empty
+ *
+ * WHAT: Returns true if no items are stored
+ * WHY:  Useful for quick emptiness checks before operations
+ * HOW:  Check current_size == 0
+ *
+ * @param wm Working memory instance
+ * @return true if empty, false if has items or NULL
+ */
+bool working_memory_is_empty(const working_memory_t* wm)
+{
+    if (!wm) {
+        return true;  // NULL is considered empty
+    }
+
+    return wm->current_size == 0;
+}
+
+/**
+ * @brief Get salience value for an item at given index
+ *
+ * WHAT: Retrieve the salience (importance) score for a specific item
+ * WHY:  Allow external modules to query item priorities
+ * HOW:  Direct array access with bounds checking
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param index Item index [0, current_size)
+ * @param salience Output: salience value [0.0, 1.0] (non-NULL)
+ * @return true on success, false on invalid index or NULL params
+ */
+bool working_memory_get_salience(
+    const working_memory_t* wm,
+    uint32_t index,
+    float* salience
+)
+{
+    // Guard: NULL working memory
+    if (!wm) {
+        return false;
+    }
+
+    // Guard: NULL output
+    if (!salience) {
+        return false;
+    }
+
+    // Guard: Invalid index
+    if (index >= wm->current_size) {
+        return false;
+    }
+
+    // Thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    *salience = wm->salience[index];
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    return true;
+}

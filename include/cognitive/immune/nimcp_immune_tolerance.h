@@ -104,7 +104,7 @@ extern "C" {
  * Constants
  * ============================================================================ */
 
-#define TOLERANCE_MAX_SELF_PATTERNS     1024   /**< Max self patterns */
+#define TOLERANCE_MAX_SELF_PATTERNS     2048   /**< Max self patterns */
 #define TOLERANCE_PATTERN_SIZE          64     /**< Self pattern size */
 #define TOLERANCE_DEFAULT_THRESHOLD     0.85f  /**< Default self-recognition threshold */
 #define TOLERANCE_CENTRAL_THRESHOLD     0.90f  /**< Central deletion threshold (high affinity) */

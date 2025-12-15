@@ -543,11 +543,27 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
         return -1;
     }
 
+    /* First present the vaccine epitope as an antigen (low severity for vaccine) */
+    uint32_t antigen_id;
+    int result = brain_immune_present_antigen(system->immune_system,
+                                              ANTIGEN_SOURCE_MANUAL,
+                                              vaccine->epitope,
+                                              vaccine->epitope_len,
+                                              1,  /* Low severity for vaccine */
+                                              0,  /* No specific node */
+                                              &antigen_id);
+    if (result != 0) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_LOGGING_ERROR("Failed to present antigen for vaccine %u", vaccine_id);
+        vaccine->status = VACCINE_STATUS_FAILED;
+        return -1;
+    }
+
     /* Create memory B cell directly (bypassing activation) */
     uint32_t b_cell_id;
-    int result = brain_immune_activate_b_cell(system->immune_system,
-                                             0, /* dummy antigen ID */
-                                             &b_cell_id);
+    result = brain_immune_activate_b_cell(system->immune_system,
+                                          antigen_id,
+                                          &b_cell_id);
 
     if (result != 0) {
         nimcp_mutex_unlock(system->mutex);

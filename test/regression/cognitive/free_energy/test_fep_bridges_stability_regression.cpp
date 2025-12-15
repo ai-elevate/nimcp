@@ -116,7 +116,7 @@ TEST_F(FEPStabilityRegressionTest, ImmuneBridgeStressTest) {
     fep_immune_stats_t stats;
     int ret = fep_immune_bridge_get_stats(bridge, &stats);
     EXPECT_EQ(ret, 0);
-    EXPECT_GT(stats.total_updates, 0);
+    EXPECT_GT(stats.immune_activations, 0);
 
     fep_immune_bridge_destroy(bridge);
 }
@@ -147,20 +147,23 @@ TEST_F(FEPStabilityRegressionTest, ImmuneBridgeRapidConnectionCycles) {
  * ============================================================================ */
 
 TEST_F(FEPStabilityRegressionTest, LearningBridgeConvergenceStability) {
+    const uint32_t STATE_DIM = 8;
+
     fep_learning_config_t config;
     fep_learning_default_config(&config);
-    config.transition_learning_rate = 0.01f;
-    config.likelihood_learning_rate = 0.01f;
+    config.learning_rate = 0.01f;
 
-    fep_learning_system_t* learning = fep_learning_create(&config);
-    ASSERT_NE(learning, nullptr);
+    // Verified API
+    fep_transition_learner_t* trans_learner = fep_transition_learner_create(&config, STATE_DIM);
+    ASSERT_NE(trans_learner, nullptr);
 
-    fep_learning_connect_fep(learning, fep);
+    fep_likelihood_learner_t* like_learner = fep_likelihood_learner_create(&config, OBS_DIM, STATE_DIM);
+    ASSERT_NE(like_learner, nullptr);
 
     // Train over many iterations
     float observations[OBS_DIM];
-    float prev_states[8] = {0.5f, 0.5f, 0.3f, 0.3f, 0.2f, 0.2f, 0.1f, 0.1f};
-    float curr_states[8] = {0.6f, 0.6f, 0.4f, 0.4f, 0.3f, 0.3f, 0.2f, 0.2f};
+    float prev_states[STATE_DIM] = {0.5f, 0.5f, 0.3f, 0.3f, 0.2f, 0.2f, 0.1f, 0.1f};
+    float curr_states[STATE_DIM] = {0.6f, 0.6f, 0.4f, 0.4f, 0.3f, 0.3f, 0.2f, 0.2f};
 
     for (int i = 0; i < OBS_DIM; i++) {
         observations[i] = 0.5f + 0.1f * (i % 3);
@@ -168,45 +171,52 @@ TEST_F(FEPStabilityRegressionTest, LearningBridgeConvergenceStability) {
 
     std::vector<float> loss_history;
     for (int i = 0; i < ITERATIONS; i++) {
-        // Update transition matrix
-        fep_learning_update_transition(learning, curr_states, 8, prev_states, 8);
+        // Update transition matrix (verified API)
+        fep_learn_transition(trans_learner, fep, prev_states, curr_states, STATE_DIM);
 
-        // Update likelihood matrix
-        fep_learning_update_likelihood(learning, observations, OBS_DIM, curr_states, 8);
+        // Update likelihood matrix (verified API)
+        fep_learn_likelihood(like_learner, fep, observations, curr_states, OBS_DIM, STATE_DIM);
 
         // Track loss
-        float loss;
-        int ret = fep_learning_get_loss(learning, &loss);
+        fep_learning_stats_t stats;
+        int ret = fep_likelihood_learning_get_stats(like_learner, &stats);
         EXPECT_EQ(ret, 0);
-        loss_history.push_back(loss);
+        loss_history.push_back(stats.current_loss);
     }
 
     // Loss should generally decrease (may have some noise)
     EXPECT_LT(loss_history.back(), loss_history[10]);
 
-    fep_learning_destroy(learning);
+    fep_likelihood_learner_destroy(like_learner);
+    fep_transition_learner_destroy(trans_learner);
 }
 
 TEST_F(FEPStabilityRegressionTest, LearningBridgeBatchUpdateStability) {
+    const uint32_t STATE_DIM = 8;
+
     fep_learning_config_t config;
     fep_learning_default_config(&config);
 
-    fep_learning_system_t* learning = fep_learning_create(&config);
-    ASSERT_NE(learning, nullptr);
+    fep_likelihood_learner_t* like_learner = fep_likelihood_learner_create(&config, OBS_DIM, STATE_DIM);
+    ASSERT_NE(like_learner, nullptr);
 
-    fep_learning_connect_fep(learning, fep);
+    float observations[OBS_DIM];
+    float states[STATE_DIM];
+    for (int i = 0; i < OBS_DIM; i++) observations[i] = 0.5f;
+    for (uint32_t i = 0; i < STATE_DIM; i++) states[i] = 0.5f;
 
     // Batch updates with various batch sizes
     const int batch_sizes[] = {1, 5, 10, 50, 100};
     for (int batch_size : batch_sizes) {
         for (int iter = 0; iter < 10; iter++) {
-            // Simulate batch update
-            int ret = fep_learning_step_batch(learning, batch_size);
-            EXPECT_EQ(ret, 0);
+            // Simulate batch update by performing batch_size learning steps
+            for (int j = 0; j < batch_size; j++) {
+                fep_learn_likelihood(like_learner, fep, observations, states, OBS_DIM, STATE_DIM);
+            }
         }
     }
 
-    fep_learning_destroy(learning);
+    fep_likelihood_learner_destroy(like_learner);
 }
 
 /* ============================================================================
@@ -220,21 +230,25 @@ TEST_F(FEPStabilityRegressionTest, ContextBridgeRapidSwitchingStability) {
     fep_context_system_t* context = fep_context_create(&config);
     ASSERT_NE(context, nullptr);
 
-    fep_context_connect_fep(context, fep);
+    // Verified API
+    fep_context_connect(context, fep);
 
-    // Add multiple contexts
+    float prior_beliefs[OBS_DIM];
+    for (int j = 0; j < OBS_DIM; j++) prior_beliefs[j] = 1.0f / OBS_DIM;
+
+    // Add multiple contexts (verified API: fep_context_add(sys, name, prior_beliefs, belief_dim, &context_id))
     uint32_t ctx_ids[5];
     for (int i = 0; i < 5; i++) {
         char name[32];
         snprintf(name, sizeof(name), "context_%d", i);
-        int ret = fep_context_add_context(context, name, &ctx_ids[i]);
+        int ret = fep_context_add(context, name, prior_beliefs, OBS_DIM, &ctx_ids[i]);
         EXPECT_EQ(ret, 0);
     }
 
-    // Rapid context switching
+    // Rapid context switching (verified API: fep_context_switch(sys, fep, target_context_id))
     for (int i = 0; i < ITERATIONS; i++) {
         uint32_t target_ctx = ctx_ids[i % 5];
-        int ret = fep_context_switch_to(context, target_ctx);
+        int ret = fep_context_switch(context, fep, target_ctx);
         EXPECT_EQ(ret, 0);
     }
 
@@ -253,12 +267,16 @@ TEST_F(FEPStabilityRegressionTest, ContextBridgeInferenceStability) {
     fep_context_system_t* context = fep_context_create(&config);
     ASSERT_NE(context, nullptr);
 
-    fep_context_connect_fep(context, fep);
+    // Verified API
+    fep_context_connect(context, fep);
 
-    // Add contexts
+    float prior_beliefs[OBS_DIM];
+    for (int j = 0; j < OBS_DIM; j++) prior_beliefs[j] = 1.0f / OBS_DIM;
+
+    // Add contexts (verified API)
     uint32_t ctx1, ctx2;
-    fep_context_add_context(context, "context_1", &ctx1);
-    fep_context_add_context(context, "context_2", &ctx2);
+    fep_context_add(context, "context_1", prior_beliefs, OBS_DIM, &ctx1);
+    fep_context_add(context, "context_2", prior_beliefs, OBS_DIM, &ctx2);
 
     // Repeated context inference
     float observations[OBS_DIM];
@@ -270,7 +288,7 @@ TEST_F(FEPStabilityRegressionTest, ContextBridgeInferenceStability) {
 
         uint32_t inferred_ctx;
         float confidence;
-        int ret = fep_context_infer(context, observations, OBS_DIM, &inferred_ctx, &confidence);
+        int ret = fep_context_infer(context, fep, observations, OBS_DIM, &inferred_ctx, &confidence);
         EXPECT_EQ(ret, 0);
         EXPECT_GE(confidence, 0.0f);
         EXPECT_LE(confidence, 1.0f);
@@ -290,7 +308,8 @@ TEST_F(FEPStabilityRegressionTest, NeuromodBridgeLongRunningStability) {
     fep_neuromod_system_t* neuromod = fep_neuromod_create(&config);
     ASSERT_NE(neuromod, nullptr);
 
-    fep_neuromod_connect_fep(neuromod, fep);
+    // Verified API
+    fep_neuromod_connect(neuromod, fep);
 
     // Long-running modulation simulation
     for (int i = 0; i < ITERATIONS; i++) {
@@ -298,18 +317,18 @@ TEST_F(FEPStabilityRegressionTest, NeuromodBridgeLongRunningStability) {
         int ret = fep_neuromod_update(neuromod, TIMESTEP_MS);
         EXPECT_EQ(ret, 0);
 
-        // Periodically apply modulation
+        // Periodically apply modulation (verified API)
         if (i % 10 == 0) {
-            fep_neuromod_apply_modulation(neuromod);
+            fep_neuromod_apply_to_fep(neuromod, fep);
         }
     }
 
-    // Check modulation levels are in valid ranges
+    // Check modulation levels are in valid ranges (verified: state uses levels[] array)
     fep_neuromod_state_t state;
     int ret = fep_neuromod_get_state(neuromod, &state);
     EXPECT_EQ(ret, 0);
-    EXPECT_GE(state.dopamine_level, 0.0f);
-    EXPECT_LE(state.dopamine_level, 1.0f);
+    EXPECT_GE(state.levels[FEP_NEUROMOD_DA], 0.0f);
+    EXPECT_LE(state.levels[FEP_NEUROMOD_DA], 1.0f);
 
     fep_neuromod_destroy(neuromod);
 }
@@ -321,22 +340,23 @@ TEST_F(FEPStabilityRegressionTest, NeuromodBridgeExtremeModulationStability) {
     fep_neuromod_system_t* neuromod = fep_neuromod_create(&config);
     ASSERT_NE(neuromod, nullptr);
 
-    fep_neuromod_connect_fep(neuromod, fep);
+    // Verified API
+    fep_neuromod_connect(neuromod, fep);
 
     // Test extreme modulation levels
     const float extreme_levels[] = {0.0f, 0.1f, 0.5f, 0.9f, 1.0f};
 
     for (float level : extreme_levels) {
-        // Set dopamine
-        int ret1 = fep_neuromod_set_dopamine(neuromod, level);
+        // Set dopamine (verified API: fep_neuromod_set_level(sys, type, level))
+        int ret1 = fep_neuromod_set_level(neuromod, FEP_NEUROMOD_DA, level);
         EXPECT_EQ(ret1, 0);
 
-        // Set serotonin
-        int ret2 = fep_neuromod_set_serotonin(neuromod, 1.0f - level);
+        // Set serotonin (verified API)
+        int ret2 = fep_neuromod_set_level(neuromod, FEP_NEUROMOD_5HT, 1.0f - level);
         EXPECT_EQ(ret2, 0);
 
-        // Apply modulation
-        int ret3 = fep_neuromod_apply_modulation(neuromod);
+        // Apply modulation (verified API)
+        int ret3 = fep_neuromod_apply_to_fep(neuromod, fep);
         EXPECT_EQ(ret3, 0);
 
         // Update
@@ -357,12 +377,13 @@ TEST_F(FEPStabilityRegressionTest, SleepBridgeCycleStability) {
     fep_sleep_system_t* sleep = fep_sleep_create(&config);
     ASSERT_NE(sleep, nullptr);
 
-    fep_sleep_connect_fep(sleep, fep);
+    // Verified API
+    fep_sleep_connect(sleep, fep);
 
     // Simulate multiple sleep/wake cycles
     for (int cycle = 0; cycle < 10; cycle++) {
-        // Enter sleep
-        int ret1 = fep_sleep_enter_sleep(sleep);
+        // Enter sleep (verified API: fep_sleep_set_stage(sys, stage))
+        int ret1 = fep_sleep_set_stage(sleep, SLEEP_STAGE_N1);
         EXPECT_EQ(ret1, 0);
 
         // Sleep for "some time"
@@ -370,8 +391,8 @@ TEST_F(FEPStabilityRegressionTest, SleepBridgeCycleStability) {
             fep_sleep_update(sleep, TIMESTEP_MS);
         }
 
-        // Wake up
-        int ret2 = fep_sleep_wake_up(sleep);
+        // Wake up (verified API)
+        int ret2 = fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
         EXPECT_EQ(ret2, 0);
 
         // Awake for "some time"
@@ -386,24 +407,23 @@ TEST_F(FEPStabilityRegressionTest, SleepBridgeCycleStability) {
 TEST_F(FEPStabilityRegressionTest, SleepBridgeConsolidationStability) {
     fep_sleep_config_t config;
     fep_sleep_default_config(&config);
-    config.enable_memory_consolidation = true;
+    config.enable_replay_consolidation = true;
 
     fep_sleep_system_t* sleep = fep_sleep_create(&config);
     ASSERT_NE(sleep, nullptr);
 
-    fep_sleep_connect_fep(sleep, fep);
+    // Verified API
+    fep_sleep_connect(sleep, fep);
 
-    // Repeated consolidation cycles
-    fep_sleep_enter_sleep(sleep);
+    // Repeated consolidation cycles (verified: use set_stage for SWS which does consolidation)
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
 
     for (int i = 0; i < ITERATIONS; i++) {
-        int ret = fep_sleep_consolidate_memories(sleep);
-        EXPECT_EQ(ret, 0);
-
+        // SWS stage handles consolidation during update
         fep_sleep_update(sleep, TIMESTEP_MS);
     }
 
-    fep_sleep_wake_up(sleep);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
     fep_sleep_destroy(sleep);
 }
 
@@ -412,20 +432,21 @@ TEST_F(FEPStabilityRegressionTest, SleepBridgeConsolidationStability) {
  * ============================================================================ */
 
 TEST_F(FEPStabilityRegressionTest, MultiBridgeConcurrentOperations) {
+    const uint32_t STATE_DIM = 8;
+
     // Create multiple bridges
     fep_immune_bridge_t* immune_bridge = fep_immune_bridge_create(nullptr);
-    fep_learning_system_t* learning = fep_learning_create(nullptr);
+    fep_likelihood_learner_t* like_learner = fep_likelihood_learner_create(nullptr, OBS_DIM, STATE_DIM);
     fep_neuromod_system_t* neuromod = fep_neuromod_create(nullptr);
 
     ASSERT_NE(immune_bridge, nullptr);
-    ASSERT_NE(learning, nullptr);
+    ASSERT_NE(like_learner, nullptr);
     ASSERT_NE(neuromod, nullptr);
 
-    // Connect all
+    // Connect all (verified API)
     fep_immune_bridge_connect_fep(immune_bridge, fep);
     fep_immune_bridge_connect_immune(immune_bridge, immune);
-    fep_learning_connect_fep(learning, fep);
-    fep_neuromod_connect_fep(neuromod, fep);
+    fep_neuromod_connect(neuromod, fep);
 
     // Concurrent updates
     for (int i = 0; i < 500; i++) {
@@ -433,7 +454,7 @@ TEST_F(FEPStabilityRegressionTest, MultiBridgeConcurrentOperations) {
         fep_neuromod_update(neuromod, TIMESTEP_MS);
 
         if (i % 10 == 0) {
-            fep_neuromod_apply_modulation(neuromod);
+            fep_neuromod_apply_to_fep(neuromod, fep);
         }
     }
 
@@ -446,31 +467,32 @@ TEST_F(FEPStabilityRegressionTest, MultiBridgeConcurrentOperations) {
 
     // Cleanup
     fep_immune_bridge_destroy(immune_bridge);
-    fep_learning_destroy(learning);
+    fep_likelihood_learner_destroy(like_learner);
     fep_neuromod_destroy(neuromod);
 }
 
 TEST_F(FEPStabilityRegressionTest, MultiBridgeMemorySafety) {
+    const uint32_t STATE_DIM = 8;
+
     // Create and destroy bridges repeatedly
     for (int i = 0; i < 100; i++) {
         fep_immune_bridge_t* immune_bridge = fep_immune_bridge_create(nullptr);
-        fep_learning_system_t* learning = fep_learning_create(nullptr);
+        fep_likelihood_learner_t* like_learner = fep_likelihood_learner_create(nullptr, OBS_DIM, STATE_DIM);
         fep_context_system_t* context = fep_context_create(nullptr);
 
         ASSERT_NE(immune_bridge, nullptr);
-        ASSERT_NE(learning, nullptr);
+        ASSERT_NE(like_learner, nullptr);
         ASSERT_NE(context, nullptr);
 
-        // Do some operations
+        // Do some operations (verified API)
         fep_immune_bridge_connect_fep(immune_bridge, fep);
-        fep_learning_connect_fep(learning, fep);
-        fep_context_connect_fep(context, fep);
+        fep_context_connect(context, fep);
 
         fep_immune_bridge_update(immune_bridge, TIMESTEP_MS);
 
         // Cleanup
         fep_immune_bridge_destroy(immune_bridge);
-        fep_learning_destroy(learning);
+        fep_likelihood_learner_destroy(like_learner);
         fep_context_destroy(context);
     }
     // No memory leaks expected

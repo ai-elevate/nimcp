@@ -73,7 +73,7 @@ TEST_F(PredictiveImmuneTest, DefaultConfiguration) {
 }
 
 TEST_F(PredictiveImmuneTest, DefaultConfigNullPointer) {
-    EXPECT_EQ(predictive_immune_default_config(nullptr), NIMCP_ERR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_default_config(nullptr), NIMCP_ERROR_NULL_POINTER);
 }
 
 /* ============================================================================
@@ -111,8 +111,8 @@ TEST_F(PredictiveImmuneTest, StartStop) {
 }
 
 TEST_F(PredictiveImmuneTest, StartStopNullPointer) {
-    EXPECT_EQ(predictive_immune_start(nullptr), NIMCP_ERR_NULL_POINTER);
-    EXPECT_EQ(predictive_immune_stop(nullptr), NIMCP_ERR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_start(nullptr), NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_stop(nullptr), NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(PredictiveImmuneTest, DoubleStart) {
@@ -175,11 +175,11 @@ TEST_F(PredictiveImmuneTest, GetInteroceptiveStateNullPointer) {
     integration = predictive_immune_create(&config, pred_net, immune_sys);
     ASSERT_NE(integration, nullptr);
 
-    EXPECT_EQ(predictive_immune_get_interoceptive_state(nullptr, nullptr), NIMCP_ERR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_get_interoceptive_state(nullptr, nullptr), NIMCP_ERROR_NULL_POINTER);
 
     interoceptive_state_t state;
-    EXPECT_EQ(predictive_immune_get_interoceptive_state(integration, nullptr), NIMCP_ERR_NULL_POINTER);
-    EXPECT_EQ(predictive_immune_get_interoceptive_state(nullptr, &state), NIMCP_ERR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_get_interoceptive_state(integration, nullptr), NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_get_interoceptive_state(nullptr, &state), NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(PredictiveImmuneTest, TriggerSicknessBehavior) {
@@ -236,9 +236,9 @@ TEST_F(PredictiveImmuneTest, ComputeCytokineEffect) {
     integration = predictive_immune_create(&config, pred_net, immune_sys);
     ASSERT_NE(integration, nullptr);
 
-    float cytokine_levels[CYTOKINE_COUNT] = {0};
-    cytokine_levels[CYTOKINE_IL1] = 0.5f;
-    cytokine_levels[CYTOKINE_IL6] = 0.3f;
+    float cytokine_levels[BRAIN_CYTOKINE_COUNT] = {0};
+    cytokine_levels[BRAIN_CYTOKINE_IL1] = 0.5f;
+    cytokine_levels[BRAIN_CYTOKINE_IL6] = 0.3f;
 
     float precision;
     EXPECT_EQ(predictive_immune_compute_cytokine_precision_effect(
@@ -253,9 +253,9 @@ TEST_F(PredictiveImmuneTest, ComputeCytokineEffectIL10Recovery) {
     integration = predictive_immune_create(&config, pred_net, immune_sys);
     ASSERT_NE(integration, nullptr);
 
-    float cytokine_levels[CYTOKINE_COUNT] = {0};
-    cytokine_levels[CYTOKINE_IL1] = 0.3f;
-    cytokine_levels[CYTOKINE_IL10] = 0.5f; /* Anti-inflammatory */
+    float cytokine_levels[BRAIN_CYTOKINE_COUNT] = {0};
+    cytokine_levels[BRAIN_CYTOKINE_IL1] = 0.3f;
+    cytokine_levels[BRAIN_CYTOKINE_IL10] = 0.5f; /* Anti-inflammatory */
 
     float precision;
     EXPECT_EQ(predictive_immune_compute_cytokine_precision_effect(
@@ -354,7 +354,7 @@ TEST_F(PredictiveImmuneTest, UpdateNotRunning) {
     ASSERT_NE(integration, nullptr);
 
     /* Update without starting */
-    EXPECT_EQ(predictive_immune_update(integration, 10.0f), NIMCP_ERR_INVALID_STATE);
+    EXPECT_EQ(predictive_immune_update(integration, 10.0f), NIMCP_ERROR_INVALID_STATE);
 }
 
 TEST_F(PredictiveImmuneTest, GetStats) {
@@ -397,7 +397,7 @@ TEST_F(PredictiveImmuneTest, ConnectRegion) {
     ASSERT_NE(integration, nullptr);
 
     /* Connect region (pass nullptr as we don't have actual region) */
-    EXPECT_EQ(predictive_immune_connect_region(integration, nullptr), NIMCP_ERR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_connect_region(integration, nullptr), NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(PredictiveImmuneTest, DisconnectRegion) {
@@ -405,7 +405,7 @@ TEST_F(PredictiveImmuneTest, DisconnectRegion) {
     ASSERT_NE(integration, nullptr);
 
     /* Disconnect region (pass nullptr as we don't have actual region) */
-    EXPECT_EQ(predictive_immune_disconnect_region(integration, nullptr), NIMCP_ERR_NULL_POINTER);
+    EXPECT_EQ(predictive_immune_disconnect_region(integration, nullptr), NIMCP_ERROR_NULL_POINTER);
 }
 
 /* ============================================================================
@@ -417,8 +417,8 @@ TEST_F(PredictiveImmuneTest, ExtremeCytokineConcentrations) {
     ASSERT_NE(integration, nullptr);
 
     /* Max cytokines */
-    float cytokine_levels[CYTOKINE_COUNT];
-    for (int i = 0; i < CYTOKINE_COUNT; i++) {
+    float cytokine_levels[BRAIN_CYTOKINE_COUNT];
+    for (int i = 0; i < BRAIN_CYTOKINE_COUNT; i++) {
         cytokine_levels[i] = 1.0f;
     }
 
@@ -493,12 +493,12 @@ TEST_F(PredictiveImmuneTest, CytokineStormEffect) {
     ASSERT_NE(integration, nullptr);
 
     /* Simulate cytokine storm */
-    float storm_levels[CYTOKINE_COUNT];
-    storm_levels[CYTOKINE_IL1] = 0.9f;
-    storm_levels[CYTOKINE_IL6] = 0.9f;
+    float storm_levels[BRAIN_CYTOKINE_COUNT];
+    storm_levels[BRAIN_CYTOKINE_IL1] = 0.9f;
+    storm_levels[BRAIN_CYTOKINE_IL6] = 0.9f;
     storm_levels[CYTOKINE_TNF_ALPHA] = 0.9f;
     storm_levels[CYTOKINE_IFN_GAMMA] = 0.8f;
-    storm_levels[CYTOKINE_IL10] = 0.1f; /* Low anti-inflammatory */
+    storm_levels[BRAIN_CYTOKINE_IL10] = 0.1f; /* Low anti-inflammatory */
 
     float precision;
     predictive_immune_compute_cytokine_precision_effect(
@@ -513,8 +513,8 @@ TEST_F(PredictiveImmuneTest, AntiInflammatoryRecovery) {
     ASSERT_NE(integration, nullptr);
 
     /* High anti-inflammatory cytokine */
-    float recovery_levels[CYTOKINE_COUNT] = {0};
-    recovery_levels[CYTOKINE_IL10] = 0.8f;
+    float recovery_levels[BRAIN_CYTOKINE_COUNT] = {0};
+    recovery_levels[BRAIN_CYTOKINE_IL10] = 0.8f;
 
     float precision;
     predictive_immune_compute_cytokine_precision_effect(

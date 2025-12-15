@@ -43,7 +43,7 @@ protected:
 
     emotion_attention_system_t* ea_system = nullptr;
     emotion_tensor_system_t* emotion_tensor = nullptr;
-    multihead_attention_t attention;
+    multihead_attention_t attention = nullptr;
 
     void SetUp() override {
         srand(42);
@@ -53,10 +53,18 @@ protected:
         emotion_tensor_config_t et_config = emotion_tensor_default_config();
         emotion_tensor = emotion_tensor_create(&et_config);
 
-        // Create mock attention system
-        memset(&attention, 0, sizeof(attention));
-        attention.num_heads = 8;
-        attention.head_dim = 64;
+        // Create multihead attention using proper API
+        multihead_attention_config_t attn_config;
+        memset(&attn_config, 0, sizeof(attn_config));
+        attn_config.num_heads = 8;
+        attn_config.input_dim = 512;
+        attn_config.output_dim = 512;
+        attn_config.sequence_length = 128;
+        attn_config.use_thalamic_gate = true;
+        attn_config.use_salience_weighting = false;
+        attn_config.gate_bias = 0.5f;
+        attn_config.use_positional_encoding = false;
+        attention = multihead_attention_create(&attn_config);
     }
 
     void TearDown() override {
@@ -67,6 +75,10 @@ protected:
         if (emotion_tensor) {
             emotion_tensor_destroy(emotion_tensor);
             emotion_tensor = nullptr;
+        }
+        if (attention) {
+            multihead_attention_destroy(attention);
+            attention = nullptr;
         }
     }
 

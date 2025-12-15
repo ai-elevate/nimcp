@@ -122,7 +122,7 @@ TEST_F(ToMImmuneIntegrationTest, IL6ImpairsSocialCognition) {
     tom_connect_immune(tom, immune);
 
     // Release IL-6 (moderate pro-inflammatory)
-    release_cytokine(CYTOKINE_IL6, 0.8f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 0.8f);
 
     // Check impairment increased
     float impairment = tom_get_immune_impairment(tom);
@@ -151,12 +151,12 @@ TEST_F(ToMImmuneIntegrationTest, IL10ReducesImpairment) {
     tom_connect_immune(tom, immune);
 
     // First, create impairment with IL-6
-    release_cytokine(CYTOKINE_IL6, 0.8f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 0.8f);
     float initial_impairment = tom_get_immune_impairment(tom);
     EXPECT_GT(initial_impairment, 0.0f);
 
     // Release IL-10 (anti-inflammatory)
-    release_cytokine(CYTOKINE_IL10, 0.5f);
+    release_cytokine(BRAIN_CYTOKINE_IL10, 0.5f);
 
     // Check impairment reduced
     float reduced_impairment = tom_get_immune_impairment(tom);
@@ -169,8 +169,8 @@ TEST_F(ToMImmuneIntegrationTest, CytokineStormSeverelyImpairaToM) {
     tom_connect_immune(tom, immune);
 
     // Simulate cytokine storm with multiple pro-inflammatory cytokines
-    release_cytokine(CYTOKINE_IL1, 1.0f);
-    release_cytokine(CYTOKINE_IL6, 1.0f);
+    release_cytokine(BRAIN_CYTOKINE_IL1, 1.0f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 1.0f);
     release_cytokine(CYTOKINE_TNF_ALPHA, 1.0f);
 
     // Check severe impairment
@@ -226,7 +226,7 @@ TEST_F(ToMImmuneIntegrationTest, InflammationReducesPerspectiveScore) {
 
     // Create high inflammation
     release_cytokine(CYTOKINE_TNF_ALPHA, 1.0f);
-    release_cytokine(CYTOKINE_IL6, 1.0f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 1.0f);
 
     // Check perspective score reduced
     float reduced_score = tom_get_perspective_score(tom);
@@ -255,7 +255,7 @@ TEST_F(ToMImmuneIntegrationTest, InflammationReducesEmotionConfidence) {
     // Reset and add inflammation
     tom_reset(tom);
     tom_connect_immune(tom, immune);
-    release_cytokine(CYTOKINE_IL6, 1.0f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 1.0f);
 
     // Observe with inflammation
     tom_observe(tom, &obs);
@@ -402,7 +402,7 @@ TEST_F(ToMImmuneIntegrationTest, ImpairedToMLeadsToMoreStress) {
     tom_connect_immune(tom, immune);
 
     // Create inflammation (impairs ToM)
-    release_cytokine(CYTOKINE_IL6, 0.8f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 0.8f);
 
     // Verify impairment
     float impairment = tom_get_immune_impairment(tom);

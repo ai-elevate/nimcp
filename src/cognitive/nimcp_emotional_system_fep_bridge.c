@@ -1,0 +1,356 @@
+/**
+ * @file nimcp_emotional_system_fep_bridge.c
+ * @brief Free Energy Principle - Emotional System Integration Bridge Implementation
+ *
+ * WHAT: Implements bidirectional integration between FEP and unified emotional system
+ * WHY:  Emotions are interoceptive inferences about bodily states - the emotional system
+ *       integrates all emotional subsystems under active inference framework
+ * HOW:  FEP drives emotional state updates; emotions modulate precision and learning
+ *
+ * BIOLOGICAL BASIS:
+ * - Barrett's theory of constructed emotion: Emotions are predictions about body states
+ * - Interoceptive inference: Brain predicts and explains bodily sensations
+ * - Emotional system integrates tagging, recognition, regulation under FEP
+ */
+
+#include "cognitive/nimcp_emotional_system_fep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
+
+#include <string.h>
+#include <math.h>
+
+#define LOG_MODULE "emotional_system_fep_bridge"
+
+/* ============================================================================
+ * Default Configuration
+ * ============================================================================ */
+
+int emotional_system_fep_default_config(emotional_system_fep_config_t* config) {
+    if (!config) return NIMCP_ERROR_NULL_POINTER;
+
+    /* FEP -> Emotional System */
+    config->pe_emotional_state_gain = 1.0f;
+    config->precision_regulation_threshold = 0.7f;
+    config->enable_pe_emotional_update = true;
+    config->enable_precision_regulation = true;
+
+    /* Emotional System -> FEP */
+    config->emotional_state_precision_gain = 1.0f;
+    config->valence_value_modulation = 1.0f;
+    config->enable_emotional_precision = true;
+    config->enable_valence_value = true;
+
+    /* Sensitivity */
+    config->fe_sensitivity = 1.0f;
+    config->emotion_sensitivity = 1.0f;
+
+    return 0;
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+emotional_system_fep_bridge_t* emotional_system_fep_create(
+    const emotional_system_fep_config_t* config
+) {
+    emotional_system_fep_bridge_t* bridge = nimcp_malloc(sizeof(emotional_system_fep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate emotional system FEP bridge");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(emotional_system_fep_bridge_t));
+
+    /* Set configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        emotional_system_fep_default_config(&bridge->config);
+    }
+
+    /* Create mutex */
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize defaults */
+    bridge->emotion_effects.precision_weight = 1.0f;
+    bridge->emotion_effects.value_estimate = 0.0f;
+    bridge->emotion_effects.learning_rate_modifier = 1.0f;
+
+    NIMCP_LOGGING_INFO("Created emotional system FEP bridge");
+    return bridge;
+}
+
+void emotional_system_fep_destroy(emotional_system_fep_bridge_t* bridge) {
+    if (!bridge) return;
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        emotional_system_fep_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Destroyed emotional system FEP bridge");
+}
+
+/* ============================================================================
+ * Connection API
+ * ============================================================================ */
+
+int emotional_system_fep_connect_fep(
+    emotional_system_fep_bridge_t* bridge,
+    fep_system_t* fep
+) {
+    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = fep;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Connected FEP system to emotional system bridge");
+    return 0;
+}
+
+int emotional_system_fep_connect_emotional_system(
+    emotional_system_fep_bridge_t* bridge,
+    emotional_system_t* system
+) {
+    if (!bridge || !system) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->emotional_system = system;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Connected emotional system to FEP bridge");
+    return 0;
+}
+
+int emotional_system_fep_disconnect(emotional_system_fep_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = NULL;
+    bridge->emotional_system = NULL;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Disconnected all systems from emotional system FEP bridge");
+    return 0;
+}
+
+/* ============================================================================
+ * FEP -> Emotional System Direction
+ * ============================================================================ */
+
+int emotional_system_fep_update_from_pe(
+    emotional_system_fep_bridge_t* bridge,
+    float pe_magnitude
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->config.enable_pe_emotional_update) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Prediction error drives emotional state updates
+     * Under Barrett's theory, emotions are constructed from interoceptive predictions
+     * PE magnitude drives arousal; PE sign drives valence
+     */
+    float valence_from_pe = pe_magnitude * bridge->config.pe_emotional_state_gain;
+    float arousal_from_pe = fabsf(pe_magnitude) * bridge->config.pe_emotional_state_gain;
+
+    /* Clamp values */
+    if (valence_from_pe > 1.0f) valence_from_pe = 1.0f;
+    if (valence_from_pe < -1.0f) valence_from_pe = -1.0f;
+    if (arousal_from_pe > 1.0f) arousal_from_pe = 1.0f;
+
+    bridge->fep_effects.valence_from_pe = valence_from_pe;
+    bridge->fep_effects.arousal_from_precision = arousal_from_pe;
+
+    /* Check for regulation trigger */
+    if (fabsf(pe_magnitude) > bridge->config.precision_regulation_threshold) {
+        bridge->fep_effects.regulation_triggered = true;
+        bridge->stats.regulation_events++;
+        NIMCP_LOGGING_INFO("Emotion regulation triggered: PE magnitude = %f", pe_magnitude);
+    } else {
+        bridge->fep_effects.regulation_triggered = false;
+    }
+
+    /* Update state */
+    bridge->state.current_valence = valence_from_pe;
+    bridge->state.current_arousal = arousal_from_pe;
+    bridge->state.emotion_active = (arousal_from_pe > 0.2f);
+
+    /* Update stats */
+    bridge->stats.emotional_update_events++;
+    bridge->stats.avg_valence =
+        (bridge->stats.avg_valence * 0.9f) + (valence_from_pe * 0.1f);
+    bridge->stats.avg_arousal =
+        (bridge->stats.avg_arousal * 0.9f) + (arousal_from_pe * 0.1f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Updated emotional state from PE: valence=%f, arousal=%f",
+                        valence_from_pe, arousal_from_pe);
+    return 0;
+}
+
+int emotional_system_fep_modulate_precision(
+    emotional_system_fep_bridge_t* bridge
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->config.enable_emotional_precision) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Emotional state modulates precision weighting
+     * High arousal -> high precision (attention increase)
+     * Valence modulates value estimates
+     */
+    float arousal = bridge->state.current_arousal;
+    float valence = bridge->state.current_valence;
+
+    /* Precision weight increases with arousal */
+    float precision_weight = 1.0f + (arousal * bridge->config.emotional_state_precision_gain);
+    bridge->emotion_effects.precision_weight = precision_weight;
+
+    /* Value estimate from valence */
+    float value_estimate = valence * bridge->config.valence_value_modulation;
+    bridge->emotion_effects.value_estimate = value_estimate;
+
+    /* Learning rate modulated by emotional intensity */
+    float emotional_intensity = sqrtf(arousal * arousal + valence * valence);
+    if (emotional_intensity > 1.0f) emotional_intensity = 1.0f;
+    float learning_modifier = 1.0f + (emotional_intensity * 0.5f);
+    bridge->emotion_effects.learning_rate_modifier = learning_modifier;
+
+    /* Update precision in state */
+    bridge->state.current_precision = precision_weight;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Modulated precision: weight=%f, value=%f, learning=%f",
+                        precision_weight, value_estimate, learning_modifier);
+    return 0;
+}
+
+/* ============================================================================
+ * Update API
+ * ============================================================================ */
+
+int emotional_system_fep_update(
+    emotional_system_fep_bridge_t* bridge,
+    uint64_t delta_ms
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Modulate precision based on current emotional state */
+    emotional_system_fep_modulate_precision(bridge);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Emotional states decay towards neutral over time */
+    float decay = 0.995f;
+    bridge->state.current_valence *= decay;
+    bridge->state.current_arousal *= decay;
+
+    if (bridge->state.current_arousal < 0.1f) {
+        bridge->state.emotion_active = false;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Query API
+ * ============================================================================ */
+
+int emotional_system_fep_get_state(
+    const emotional_system_fep_bridge_t* bridge,
+    emotional_system_fep_state_t* state
+) {
+    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *state = bridge->state;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int emotional_system_fep_get_stats(
+    const emotional_system_fep_bridge_t* bridge,
+    emotional_system_fep_stats_t* stats
+) {
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Bio-Async Integration
+ * ============================================================================ */
+
+int emotional_system_fep_connect_bio_async(
+    emotional_system_fep_bridge_t* bridge
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_EMOTIONS_BRIDGE,
+        .module_name = "emotional_system_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_WARN("Bio-async router not available");
+    }
+
+    return 0;
+}
+
+int emotional_system_fep_disconnect_bio_async(
+    emotional_system_fep_bridge_t* bridge
+) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->bio_async_enabled) return 0;
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Disconnected from bio-async router");
+
+    return 0;
+}
+
+bool emotional_system_fep_is_bio_async_connected(
+    const emotional_system_fep_bridge_t* bridge
+) {
+    return bridge ? bridge->bio_async_enabled : false;
+}

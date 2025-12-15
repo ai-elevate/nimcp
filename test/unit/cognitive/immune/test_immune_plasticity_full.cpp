@@ -70,7 +70,7 @@ protected:
     /* Helper: Release specific cytokine */
     void release_cytokine(brain_cytokine_type_t type, float concentration) {
         uint32_t cytokine_id;
-        brain_immune_release_cytokine(immune_system, 0, type,
+        brain_immune_release_cytokine(immune_system, type, 0,
                                      concentration, 1000,
                                      &cytokine_id);
     }
@@ -156,7 +156,7 @@ TEST_F(ImmunePlasticityFullTest, IL10Recovery) {
     induce_inflammation(INFLAMMATION_REGIONAL);
 
     /* Release IL-10 */
-    release_cytokine(CYTOKINE_IL10, 0.8f);
+    release_cytokine(BRAIN_CYTOKINE_IL10, 0.8f);
 
     int result = immune_plasticity_compute_modulation(immune_system, &config, &modulation);
     ASSERT_EQ(result, 0);
@@ -182,7 +182,7 @@ TEST_F(ImmunePlasticityFullTest, STPModulation) {
      */
 
     /* Release IL-1β (reduces neurotransmitter release) */
-    release_cytokine(CYTOKINE_IL1, 0.6f);
+    release_cytokine(BRAIN_CYTOKINE_IL1, 0.6f);
 
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
 
@@ -205,7 +205,7 @@ TEST_F(ImmunePlasticityFullTest, STPModulation) {
 
 TEST_F(ImmunePlasticityFullTest, STPStateModulation) {
     /* Test STP state modulation */
-    release_cytokine(CYTOKINE_IL1, 0.5f);
+    release_cytokine(BRAIN_CYTOKINE_IL1, 0.5f);
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
 
     stp_state_t stp_state;
@@ -252,7 +252,7 @@ TEST_F(ImmunePlasticityFullTest, SynapticScalingModulation) {
 
 TEST_F(ImmunePlasticityFullTest, MetaplasticityModulation) {
     /* Test metaplasticity threshold shifting */
-    release_cytokine(CYTOKINE_IL1, 0.7f);
+    release_cytokine(BRAIN_CYTOKINE_IL1, 0.7f);
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
 
     metaplasticity_params_t meta_params;
@@ -280,7 +280,7 @@ TEST_F(ImmunePlasticityFullTest, NMDAModulation) {
      * HOW:  Release IL-1β, modulate NMDA params
      */
 
-    release_cytokine(CYTOKINE_IL1, 0.6f);
+    release_cytokine(BRAIN_CYTOKINE_IL1, 0.6f);
     release_cytokine(CYTOKINE_TNF_ALPHA, 0.5f);
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
 
@@ -468,8 +468,8 @@ TEST_F(ImmunePlasticityFullTest, GlobalPlasticityImpairment) {
 
     /* Induce cytokine storm */
     induce_inflammation(INFLAMMATION_STORM);
-    release_cytokine(CYTOKINE_IL1, 0.9f);
-    release_cytokine(CYTOKINE_IL6, 0.9f);
+    release_cytokine(BRAIN_CYTOKINE_IL1, 0.9f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 0.9f);
     release_cytokine(CYTOKINE_TNF_ALPHA, 0.9f);
 
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
@@ -489,7 +489,7 @@ TEST_F(ImmunePlasticityFullTest, SelectiveCytokineEffects) {
      */
 
     /* Test IL-1β (primarily affects thresholds) */
-    release_cytokine(CYTOKINE_IL1, 0.6f);
+    release_cytokine(BRAIN_CYTOKINE_IL1, 0.6f);
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
     float bcm_thresh_il1 = modulation.bcm_threshold_scale;
     float stp_u_il1 = modulation.stp_u_scale;
@@ -497,7 +497,7 @@ TEST_F(ImmunePlasticityFullTest, SelectiveCytokineEffects) {
     /* Reset and test IL-6 (affects timing windows) */
     brain_immune_destroy(immune_system);
     SetUp();
-    release_cytokine(CYTOKINE_IL6, 0.6f);
+    release_cytokine(BRAIN_CYTOKINE_IL6, 0.6f);
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
     float stdp_tau_il6 = modulation.stdp_tau_plus_scale;
 
@@ -554,7 +554,7 @@ TEST_F(ImmunePlasticityFullTest, NullPointerHandling) {
 
 TEST_F(ImmunePlasticityFullTest, ExtremeCytokineConcentrations) {
     /* Test behavior with extreme cytokine levels */
-    release_cytokine(CYTOKINE_IL1, 100.0f);  /* Way above normal */
+    release_cytokine(BRAIN_CYTOKINE_IL1, 100.0f);  /* Way above normal */
     immune_plasticity_compute_modulation(immune_system, &config, &modulation);
 
     /* All factors should be clamped to valid ranges */

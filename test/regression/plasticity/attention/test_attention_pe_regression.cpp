@@ -54,10 +54,10 @@ protected:
         // WHAT: Initialize bio-async and memory systems
         // WHY:  PE integration requires these systems
         // HOW:  Standard initialization sequence
-        bio_async_init();
-        bio_router_config_t cfg = {0};
+        nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
+        nimcp_bio_async_init(&bio_config);
+        bio_router_config_t cfg = bio_router_default_config();
         bio_router_init(&cfg);
-        nimcp_unified_memory_init();
 
         encoder = nullptr;
     }
@@ -72,8 +72,7 @@ protected:
         }
 
         bio_router_shutdown();
-        bio_async_shutdown();
-        nimcp_unified_memory_shutdown();
+        nimcp_bio_async_shutdown();
     }
 
     // WHAT: Compute variance of a vector
@@ -140,9 +139,6 @@ TEST_F(AttentionPERegressionTest, StabilityUnderRepeatedUse_Sinusoidal) {
             << "Encoding changed at iteration " << i;
 
         // Process bio-async messages periodically
-        if (i % 10 == 0) {
-            bio_router_process_messages();
-        }
     }
 }
 
@@ -186,9 +182,6 @@ TEST_F(AttentionPERegressionTest, StabilityUnderRepeatedUse_RoPE) {
         EXPECT_TRUE(EncodingsMatch(first_key_out.data(), key_out.data(), EMBEDDING_DIM))
             << "Key encoding changed at iteration " << i;
 
-        if (i % 10 == 0) {
-            bio_router_process_messages();
-        }
     }
 }
 
@@ -223,9 +216,6 @@ TEST_F(AttentionPERegressionTest, StabilityUnderRepeatedUse_ALiBi) {
         EXPECT_TRUE(EncodingsMatch(first_bias.data(), current_bias.data(), bias_size))
             << "ALiBi bias changed at iteration " << i;
 
-        if (i % 10 == 0) {
-            bio_router_process_messages();
-        }
     }
 }
 
@@ -254,9 +244,6 @@ TEST_F(AttentionPERegressionTest, MemoryStability_NoLeaks) {
 
         nimcp_pos_encoder_destroy(temp_encoder);
 
-        if (i % 10 == 0) {
-            bio_router_process_messages();
-        }
     }
 
     // AddressSanitizer would catch leaks

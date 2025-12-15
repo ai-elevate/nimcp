@@ -64,7 +64,6 @@ target_link_libraries(unit_middleware_encoding_population_immune
         GTest::GTest
         GTest::Main
         nimcp_middleware
-        nimcp_cognitive_immune
         nimcp
     )
 add_test(NAME unit_middleware_encoding_population_immune

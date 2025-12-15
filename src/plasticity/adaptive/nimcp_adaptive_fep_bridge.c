@@ -1,0 +1,347 @@
+/**
+ * @file nimcp_adaptive_fep_bridge.c
+ * @brief Free Energy Principle - Adaptive Plasticity Integration Bridge Implementation
+ */
+
+#include "plasticity/adaptive/nimcp_adaptive_fep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
+#include <math.h>
+#include <string.h>
+
+#define LOG_MODULE_ADAPTIVE_FEP "ADAPTIVE_FEP_BRIDGE"
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+int adaptive_fep_bridge_default_config(adaptive_fep_config_t* config) {
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config pointer");
+        return -1;
+    }
+
+    config->pe_min_threshold = ADAPTIVE_FEP_PE_MIN_THRESHOLD;
+    config->pe_max_threshold = ADAPTIVE_FEP_PE_MAX_THRESHOLD;
+    config->precision_sensitivity = ADAPTIVE_FEP_PRECISION_SENSITIVITY;
+    config->sparsity_min = ADAPTIVE_FEP_SPARSITY_MIN;
+    config->sparsity_max = ADAPTIVE_FEP_SPARSITY_MAX;
+
+    config->enable_pe_scaling = true;
+    config->enable_precision_sparsity = true;
+    config->enable_complexity_regularization = true;
+    config->enable_sparsity_feedback = true;
+
+    config->pe_sensitivity = 1.0f;
+    config->precision_gain = 1.0f;
+    config->complexity_gain = 0.5f;
+    config->sparsity_feedback_gain = 1.0f;
+
+    return 0;
+}
+
+adaptive_fep_bridge_t* adaptive_fep_bridge_create(const adaptive_fep_config_t* config) {
+    adaptive_fep_bridge_t* bridge = (adaptive_fep_bridge_t*)nimcp_malloc(sizeof(adaptive_fep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(adaptive_fep_bridge_t));
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        adaptive_fep_bridge_default_config(&bridge->config);
+    }
+
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    bridge->effects.effective_sparsity_target = ADAPTIVE_FEP_SPARSITY_BASELINE;
+    bridge->effects.effective_adaptation_rate = 0.01f;
+    bridge->effects.effective_threshold_scaling = 1.0f;
+
+    NIMCP_LOGGING_INFO("Adaptive-FEP bridge created");
+    return bridge;
+}
+
+void adaptive_fep_bridge_destroy(adaptive_fep_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->bio_async_enabled) {
+        adaptive_fep_bridge_disconnect_bio_async(bridge);
+    }
+
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Adaptive-FEP bridge destroyed");
+}
+
+/* ============================================================================
+ * Connection API
+ * ============================================================================ */
+
+int adaptive_fep_bridge_connect_fep(adaptive_fep_bridge_t* bridge, fep_system_t* fep) {
+    if (!bridge || !fep) {
+        NIMCP_LOGGING_ERROR("NULL bridge or FEP system");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = fep;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Connected to FEP system");
+    return 0;
+}
+
+int adaptive_fep_bridge_connect_adaptive(adaptive_fep_bridge_t* bridge,
+                                          adaptive_network_t network) {
+    if (!bridge || !network) {
+        NIMCP_LOGGING_ERROR("Invalid parameters");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->adaptive_network = network;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Connected to adaptive network");
+    return 0;
+}
+
+int adaptive_fep_bridge_disconnect(adaptive_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->fep_system = NULL;
+    bridge->adaptive_network = NULL;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Disconnected systems");
+    return 0;
+}
+
+/* ============================================================================
+ * FEP → Adaptive Direction
+ * ============================================================================ */
+
+float adaptive_fep_apply_pe_scaling(adaptive_fep_bridge_t* bridge, float pe) {
+    if (!bridge) return 1.0f;
+
+    if (!bridge->config.enable_pe_scaling) {
+        return 1.0f;
+    }
+
+    float pe_abs = fabsf(pe);
+    if (pe_abs < bridge->config.pe_min_threshold) {
+        return ADAPTIVE_FEP_ADAPTATION_RATE_MIN;
+    }
+
+    if (pe_abs > bridge->config.pe_max_threshold) {
+        pe_abs = bridge->config.pe_max_threshold;
+    }
+
+    float normalized_pe = (pe_abs - bridge->config.pe_min_threshold) /
+                          (bridge->config.pe_max_threshold - bridge->config.pe_min_threshold);
+
+    float scaling = ADAPTIVE_FEP_ADAPTATION_RATE_MIN +
+                    normalized_pe * (ADAPTIVE_FEP_ADAPTATION_RATE_MAX - ADAPTIVE_FEP_ADAPTATION_RATE_MIN);
+
+    return scaling * bridge->config.pe_sensitivity;
+}
+
+float adaptive_fep_apply_precision_sparsity(adaptive_fep_bridge_t* bridge, float precision) {
+    if (!bridge) return 1.0f;
+
+    if (!bridge->config.enable_precision_sparsity) {
+        return 1.0f;
+    }
+
+    float scaling = powf(precision, bridge->config.precision_sensitivity);
+    scaling *= bridge->config.precision_gain;
+
+    float sparsity_range = bridge->config.sparsity_max - bridge->config.sparsity_min;
+    float sparsity = bridge->config.sparsity_min + scaling * sparsity_range;
+
+    if (sparsity < bridge->config.sparsity_min) {
+        sparsity = bridge->config.sparsity_min;
+    }
+    if (sparsity > bridge->config.sparsity_max) {
+        sparsity = bridge->config.sparsity_max;
+    }
+
+    return sparsity / ADAPTIVE_FEP_SPARSITY_BASELINE;
+}
+
+float adaptive_fep_apply_complexity_regularization(adaptive_fep_bridge_t* bridge,
+                                                    float complexity) {
+    if (!bridge || !bridge->config.enable_complexity_regularization) {
+        return 1.0f;
+    }
+
+    float clamped = fminf(fmaxf(complexity, 0.0f), 10.0f);
+    return 1.0f + clamped * bridge->config.complexity_gain;
+}
+
+float adaptive_fep_get_effective_sparsity(const adaptive_fep_bridge_t* bridge,
+                                           float base_sparsity) {
+    if (!bridge) return base_sparsity;
+    return base_sparsity * bridge->effects.effective_sparsity_target / ADAPTIVE_FEP_SPARSITY_BASELINE;
+}
+
+float adaptive_fep_get_effective_adaptation_rate(const adaptive_fep_bridge_t* bridge,
+                                                  float base_rate) {
+    if (!bridge) return base_rate;
+    return base_rate * bridge->effects.effective_adaptation_rate;
+}
+
+/* ============================================================================
+ * Adaptive → FEP Direction
+ * ============================================================================ */
+
+int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->feedback.measured_sparsity = sparsity;
+
+    if (bridge->config.enable_sparsity_feedback) {
+        bridge->feedback.sparsity_precision_estimate =
+            sparsity * bridge->config.sparsity_feedback_gain;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int adaptive_fep_report_threshold_changes(adaptive_fep_bridge_t* bridge,
+                                           float threshold_delta) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->stats.threshold_updates++;
+    bridge->stats.total_threshold_delta += fabsf(threshold_delta);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+float adaptive_fep_compute_sparsity_precision(const adaptive_fep_bridge_t* bridge) {
+    if (!bridge) return 1.0f;
+
+    float sparsity = bridge->feedback.measured_sparsity;
+    if (sparsity < 0.1f) return 0.1f;
+    if (sparsity > 0.95f) return 2.0f;
+
+    return sparsity * bridge->config.sparsity_feedback_gain;
+}
+
+/* ============================================================================
+ * Update Cycle
+ * ============================================================================ */
+
+int adaptive_fep_bridge_update(adaptive_fep_bridge_t* bridge, uint64_t delta_ms) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (bridge->fep_system && bridge->adaptive_network) {
+        float pe_scaling = adaptive_fep_apply_pe_scaling(bridge, bridge->effects.pe_magnitude);
+        float precision_scaling = adaptive_fep_apply_precision_sparsity(bridge,
+                                                                         bridge->effects.precision_value);
+        float complexity_scaling = adaptive_fep_apply_complexity_regularization(bridge,
+                                                                                bridge->effects.complexity_value);
+
+        bridge->effects.pe_adaptation_scaling = pe_scaling;
+        bridge->effects.precision_sparsity_scaling = precision_scaling;
+        bridge->effects.complexity_threshold_scaling = complexity_scaling;
+
+        bridge->effects.effective_adaptation_rate = pe_scaling;
+        bridge->effects.effective_sparsity_target = ADAPTIVE_FEP_SPARSITY_BASELINE * precision_scaling;
+        bridge->effects.effective_threshold_scaling = complexity_scaling;
+
+        float sparsity = adaptive_network_get_sparsity(bridge->adaptive_network);
+        adaptive_fep_report_sparsity(bridge, sparsity);
+
+        bridge->state.current_sparsity = sparsity;
+
+        bridge->stats.avg_pe_scaling =
+            (bridge->stats.avg_pe_scaling * bridge->stats.total_updates + pe_scaling) /
+            (bridge->stats.total_updates + 1);
+
+        bridge->stats.avg_precision_scaling =
+            (bridge->stats.avg_precision_scaling * bridge->stats.total_updates + precision_scaling) /
+            (bridge->stats.total_updates + 1);
+    }
+
+    bridge->stats.total_updates++;
+    bridge->state.last_update_time = delta_ms;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * State/Stats API
+ * ============================================================================ */
+
+int adaptive_fep_bridge_get_state(const adaptive_fep_bridge_t* bridge,
+                                   adaptive_fep_state_t* state) {
+    if (!bridge || !state) return -1;
+    *state = bridge->state;
+    return 0;
+}
+
+int adaptive_fep_bridge_get_stats(const adaptive_fep_bridge_t* bridge,
+                                   adaptive_fep_stats_t* stats) {
+    if (!bridge || !stats) return -1;
+    *stats = bridge->stats;
+    return 0;
+}
+
+/* ============================================================================
+ * Bio-Async Integration
+ * ============================================================================ */
+
+int adaptive_fep_bridge_connect_bio_async(adaptive_fep_bridge_t* bridge) {
+    if (!bridge || bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_ADAPTIVE_BRIDGE,
+        .module_name = "adaptive_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected to bio-async router");
+    }
+
+    return 0;
+}
+
+int adaptive_fep_bridge_disconnect_bio_async(adaptive_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_enabled) return -1;
+
+    bio_router_unregister_module(bridge->bio_ctx);
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+
+    return 0;
+}
+
+bool adaptive_fep_bridge_is_bio_async_connected(const adaptive_fep_bridge_t* bridge) {
+    return bridge && bridge->bio_async_enabled;
+}

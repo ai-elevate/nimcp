@@ -36,14 +36,8 @@ protected:
 
     void SetUp() override {
         /* WHAT: Create minimal brain for testing */
-        brain_config_t config;
-        memset(&config, 0, sizeof(config));
-        config.num_inputs = 10;
-        config.num_outputs = 5;
-        config.num_hidden = 20;
-        config.learning_rate = 0.01f;
-
-        brain = brain_create(&config);
+        brain = brain_create("introspection_immune_test", BRAIN_SIZE_SMALL,
+                            BRAIN_TASK_CLASSIFICATION, 10, 5);
         ASSERT_NE(brain, nullptr);
 
         /* WHAT: Create introspection context */

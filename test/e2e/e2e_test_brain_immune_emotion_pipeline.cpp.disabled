@@ -173,7 +173,7 @@ TEST_F(BrainImmuneEmotionE2ETest, ThreatToSicknessBehaviorPipeline) {
     uint32_t cytokine_id;
     brain_immune_release_cytokine(
         immune,
-        CYTOKINE_IL6,
+        BRAIN_CYTOKINE_IL6,
         t_cell_id,
         0.7f,  /* concentration */
         0,     /* broadcast */
@@ -335,8 +335,8 @@ TEST_F(BrainImmuneEmotionE2ETest, CompleteImmuneEmotionLifecycle) {
 
     /* Release pro-inflammatory cytokines */
     uint32_t cytokine_il6, cytokine_tnf;
-    brain_immune_release_cytokine(immune, CYTOKINE_IL6, t_helper_id, 0.6f, 0, &cytokine_il6);
-    brain_immune_release_cytokine(immune, CYTOKINE_TNF_ALPHA, t_helper_id, 0.5f, 0, &cytokine_tnf);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, 0, 0.6f, 0, &cytokine_il6);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, 0, 0.5f, 0, &cytokine_tnf);
 
     advance_time(500);
 
@@ -354,7 +354,7 @@ TEST_F(BrainImmuneEmotionE2ETest, CompleteImmuneEmotionLifecycle) {
     /* === PHASE 5: Resolution === */
     /* Release anti-inflammatory IL-10 */
     uint32_t cytokine_il10;
-    brain_immune_release_cytokine(immune, CYTOKINE_IL10, t_helper_id, 0.7f, 0, &cytokine_il10);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL10, 0, 0.7f, 0, &cytokine_il10);
 
     advance_time(1000);
 

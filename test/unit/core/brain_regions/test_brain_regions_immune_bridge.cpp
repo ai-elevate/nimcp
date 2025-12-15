@@ -86,13 +86,13 @@ protected:
     void releaseCytokines(float il1, float il6, float tnf) {
         if (!immune_system) return;
         if (il1 > 0) {
-            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, il1, 0);
+            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, il1, 0);
         }
         if (il6 > 0) {
-            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, il6, 0);
+            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, il6, 0);
         }
         if (tnf > 0) {
-            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, tnf, 0);
+            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, tnf, 0);
         }
     }
 };

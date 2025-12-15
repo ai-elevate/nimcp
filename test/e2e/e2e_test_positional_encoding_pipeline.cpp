@@ -374,6 +374,8 @@ TEST_F(PEPipelineE2ETest, BrainWithPEAttention) {
     tracker.begin_stage("Create Brain Instance", 500);
     nimcp_brain_t brain = nimcp_brain_create(
         "pe_test_brain",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
         SMALL_DIM,  // Input: PE-encoded features
         4           // Output: 4 classes
     );
@@ -454,6 +456,8 @@ TEST_F(PEPipelineE2ETest, CognitivePipelineWithPE) {
     tracker.begin_stage("Create Cognitive Brain", 500);
     nimcp_brain_t brain = nimcp_brain_create(
         "cognitive_pe_brain",
+        NIMCP_BRAIN_MEDIUM,
+        NIMCP_TASK_CLASSIFICATION,
         MEDIUM_DIM,
         MEDIUM_DIM
     );
@@ -543,8 +547,10 @@ TEST_F(PEPipelineE2ETest, SequenceLearningWithPE) {
     tracker.end_stage();
 
     tracker.begin_stage("Train Brain with PE", 3000);
-    brain_t pe_brain = brain_create(
+    nimcp_brain_t pe_brain = nimcp_brain_create(
         "pe_sequence_brain",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
         SMALL_DIM,
         4  // 4 pattern classes
     );
@@ -563,7 +569,7 @@ TEST_F(PEPipelineE2ETest, SequenceLearningWithPE) {
             nimcp_brain_infer(pe_brain, pe_input.data(), SMALL_DIM, output.data(), 4);
 
             // Simplified training step
-            nimcp_train_step_result_t train_result;
+            nimcp_training_result_t train_result;
             nimcp_brain_train_step(pe_brain, pe_input.data(), SMALL_DIM, target.data(), 4, &train_result);
         }
     }
@@ -594,7 +600,7 @@ TEST_F(PEPipelineE2ETest, SequenceLearningWithPE) {
     tracker.end_stage();
 
     tracker.begin_stage("Cleanup", 200);
-    brain_destroy(pe_brain);
+    nimcp_brain_destroy(pe_brain);
     nimcp_pos_encoder_destroy(encoder);
     tracker.end_stage();
 

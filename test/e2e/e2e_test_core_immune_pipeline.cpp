@@ -38,6 +38,7 @@ protected:
     // Bridges
     brain_regions_immune_bridge_t* regions_bridge = nullptr;
     substrate_immune_bridge_t* substrate_bridge = nullptr;
+    uint32_t cytokine_id = 0;
 
     // Test regions
     brain_region_t* hippocampus = nullptr;
@@ -127,14 +128,14 @@ protected:
 
     // Helper: Release cytokine cocktail
     void releaseInflammatoryCytokines(float intensity) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, intensity, 0);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, intensity * 0.9f, 0);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, intensity * 0.7f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, intensity, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, intensity * 0.9f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, intensity * 0.7f, 0);
     }
 
     // Helper: Release anti-inflammatory
     void releaseAntiInflammatory(float intensity) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, intensity, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0, intensity, 0);
     }
 
     // Helper: Get system health summary
@@ -320,7 +321,7 @@ TEST_F(CoreImmunePipelineE2E, RegionSpecificImmuneResponse) {
         regions_bridge, prefrontal->id);
 
     // === Phase 2: IL-6 Release (Hippocampus Sensitive) ===
-    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0.7f, 0);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, 0.7f, 0, &cytokine_id);
 
     for (int i = 0; i < 20; i++) {
         simulateTimeStep(100);
@@ -349,7 +350,7 @@ TEST_F(CoreImmunePipelineE2E, RegionSpecificImmuneResponse) {
         regions_bridge, prefrontal->id);
 
     // Now release IL-1β
-    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0.7f, 0);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 0.7f, 0, &cytokine_id);
 
     for (int i = 0; i < 20; i++) {
         simulateTimeStep(100);
@@ -373,10 +374,10 @@ TEST_F(CoreImmunePipelineE2E, RegionSpecificImmuneResponse) {
 TEST_F(CoreImmunePipelineE2E, CytokineStormAndRecovery) {
     // === Phase 1: Trigger Cytokine Storm ===
     for (int i = 0; i < 10; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 1.0f, 0);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 1.0f, 0);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 1.0f, 0);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IFN_GAMMA, 1.0f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 1.0f, 0, &cytokine_id);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, 1.0f, 0, &cytokine_id);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, 1.0f, 0, &cytokine_id);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IFN_GAMMA, 0, 1.0f, 0, &cytokine_id);
     }
 
     for (int i = 0; i < 20; i++) {
@@ -395,7 +396,7 @@ TEST_F(CoreImmunePipelineE2E, CytokineStormAndRecovery) {
 
     // === Phase 2: Emergency Anti-Inflammatory ===
     for (int i = 0; i < 50; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 1.0f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0, 1.0f, 0, &cytokine_id);
         substrate_immune_apply_il10_recovery(substrate_bridge, 0.8f);
         simulateTimeStep(100);
     }

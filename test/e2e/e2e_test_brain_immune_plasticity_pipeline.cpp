@@ -72,12 +72,12 @@ protected:
         /* Release cytokines */
         uint32_t cytokine_id;
         brain_immune_release_cytokine(
-            immune_system, CYTOKINE_IL1, helper_id, 0.6f, 0, &cytokine_id);
+            immune_system, BRAIN_CYTOKINE_IL1, helper_id, 0.6f, 0, &cytokine_id);
         brain_immune_release_cytokine(
-            immune_system, CYTOKINE_IL6, helper_id, 0.5f, 0, &cytokine_id);
+            immune_system, BRAIN_CYTOKINE_IL6, helper_id, 0.5f, 0, &cytokine_id);
         if (severe) {
             brain_immune_release_cytokine(
-                immune_system, CYTOKINE_TNF_ALPHA, killer_id, 0.7f, 0, &cytokine_id);
+                immune_system, BRAIN_CYTOKINE_TNF, killer_id, 0.7f, 0, &cytokine_id);
         }
 
         /* Create inflammation */
@@ -94,7 +94,7 @@ protected:
         /* Release IL-10 */
         uint32_t cytokine_id;
         brain_immune_release_cytokine(
-            immune_system, CYTOKINE_IL10, 0, 0.8f, 0, &cytokine_id);
+            immune_system, BRAIN_CYTOKINE_IL10, 0, 0.8f, 0, &cytokine_id);
 
         /* Resolve inflammation sites */
         for (size_t i = 0; i < immune_system->inflammation_count; i++) {
@@ -292,9 +292,9 @@ TEST_F(ImmunePlasticityPipelineTest, CumulativeEffectOfMultipleCytokines) {
 
     /* Release multiple cytokines */
     uint32_t cyt_id;
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL1, 0, 0.6f, 0, &cyt_id);
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL6, 0, 0.5f, 0, &cyt_id);
-    brain_immune_release_cytokine(immune_system, CYTOKINE_TNF_ALPHA, 0, 0.7f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 0.6f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, 0.5f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, 0.7f, 0, &cyt_id);
 
     /* Compute modulation */
     immune_plasticity_modulation_t mod;
@@ -321,7 +321,7 @@ TEST_F(ImmunePlasticityPipelineTest, FullPipelineThreatToPlasticityModulation) {
 
     uint32_t antigen_id;
     int result = brain_immune_present_bbb_threat(
-        immune_system, BBB_THREAT_MALICIOUS_INPUT, BBB_SEVERITY_HIGH,
+        immune_system, BBB_THREAT_DATA_TAMPERING, BBB_SEVERITY_HIGH,
         threat_data, 64, &antigen_id);
     ASSERT_EQ(result, 0);
 
@@ -337,9 +337,9 @@ TEST_F(ImmunePlasticityPipelineTest, FullPipelineThreatToPlasticityModulation) {
 
     /* Step 4: Release cytokines */
     uint32_t cyt_id;
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL1, helper_id, 0.7f, 0, &cyt_id);
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL6, helper_id, 0.6f, 0, &cyt_id);
-    brain_immune_release_cytokine(immune_system, CYTOKINE_TNF_ALPHA, killer_id, 0.8f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 0.7f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, 0.6f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, 0.8f, 0, &cyt_id);
 
     /* Step 5: Create inflammation */
     uint32_t site_id;

@@ -261,7 +261,7 @@ TEST_F(ThalamicImmuneTest, SicknessBehaviorRouting) {
     // Should show sickness behavior
     if (state.current_level >= INFLAMMATION_REGIONAL) {
         EXPECT_TRUE(state.sickness_behavior_active);
-        EXPECT_GT(state.social_suppression_level, 0.0f);
+        EXPECT_GT(state.social_priority_penalty, 0.0f);
         EXPECT_LT(state.social_priority_penalty, 1.0f);
     }
 }

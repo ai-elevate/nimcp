@@ -98,9 +98,10 @@ protected:
     }
 
     void releaseCytokines(float il1, float il6, float tnf) {
-        if (il1 > 0) brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, il1, 0);
-        if (il6 > 0) brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, il6, 0);
-        if (tnf > 0) brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, tnf, 0);
+        uint32_t cytokine_id;
+        if (il1 > 0) brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, il1, 0, &cytokine_id);
+        if (il6 > 0) brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, il6, 0, &cytokine_id);
+        if (tnf > 0) brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, tnf, 0, &cytokine_id);
     }
 };
 
@@ -182,7 +183,8 @@ TEST_F(CoreImmuneIntegrationTest, FeverRecoveryWithIL10) {
     float fever_temp = substrate->physical.temperature;
 
     // Release IL-10 (anti-inflammatory)
-    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0.8f, 0);
+    uint32_t il10_id;
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0, 0.8f, 0, &il10_id);
     substrate_immune_apply_il10_recovery(substrate_bridge, 0.8f);
 
     // Temperature should decrease
@@ -370,8 +372,9 @@ TEST_F(CoreImmuneIntegrationTest, FullInflammationRecoveryCycle) {
     EXPECT_GT(inflamed_temp, healthy_temp);
 
     // Phase 3: Recovery with IL-10
+    uint32_t recov_id;
     for (int i = 0; i < 10; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0.5f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0, 0.5f, 0, &recov_id);
         substrate_immune_apply_il10_recovery(substrate_bridge, 0.5f);
         substrate_update(substrate, 100);
     }
@@ -389,7 +392,8 @@ TEST_F(CoreImmuneIntegrationTest, DifferentRegionSensitivities) {
     createBridges();
 
     // IL-6 release (hippocampus is more sensitive)
-    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0.6f, 0);
+    uint32_t il6_id;
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, 0.6f, 0, &il6_id);
     brain_regions_immune_bridge_update(regions_bridge, 100);
 
     brain_region_t* hippocampus = brain_module_get_region_by_type(brain_module, REGION_HIPPOCAMPUS);
@@ -432,11 +436,12 @@ TEST_F(CoreImmuneIntegrationTest, RapidCytokineFluctuations) {
     createBridges();
 
     // Rapid on/off cytokine release
+    uint32_t fluct_id;
     for (int i = 0; i < 20; i++) {
         if (i % 2 == 0) {
             releaseCytokines(0.8f, 0.8f, 0.8f);
         } else {
-            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0.8f, 0);
+            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0, 0.8f, 0, &fluct_id);
         }
 
         brain_regions_immune_bridge_update(regions_bridge, 50);
@@ -452,9 +457,10 @@ TEST_F(CoreImmuneIntegrationTest, ExtremeCytokineStorm) {
     createBridges();
 
     // Simulate cytokine storm
+    uint32_t storm_id;
     for (int i = 0; i < 5; i++) {
         releaseCytokines(1.0f, 1.0f, 1.0f);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IFN_GAMMA, 1.0f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IFN_GAMMA, 0, 1.0f, 0, &storm_id);
     }
 
     for (int i = 0; i < 10; i++) {
@@ -550,8 +556,9 @@ TEST_F(CoreImmuneIntegrationTest, FullInfectionResponseScenario) {
     EXPECT_GT(peak_temp, substrate->physical.temperature - 2.0f);  // Allow tolerance
 
     // === Phase 5: Resolution ===
+    uint32_t resol_id;
     for (int i = 0; i < 10; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0.6f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10, 0, 0.6f, 0, &resol_id);
         substrate_immune_apply_il10_recovery(substrate_bridge, 0.6f);
 
         brain_regions_immune_bridge_update(regions_bridge, 200);

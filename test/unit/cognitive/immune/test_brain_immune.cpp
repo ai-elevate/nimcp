@@ -479,7 +479,7 @@ TEST_F(BrainImmuneTest, ResolveInflammation) {
     // Anti-inflammatory cytokine should be released
     bool found_il10 = false;
     for (size_t i = 0; i < system->cytokine_count; i++) {
-        if (system->cytokines[i].type == CYTOKINE_IL10) {
+        if (system->cytokines[i].type == BRAIN_CYTOKINE_IL10) {
             found_il10 = true;
             break;
         }

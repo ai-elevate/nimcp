@@ -34,6 +34,7 @@ protected:
     brain_immune_system_t* immune_system = nullptr;
     brain_regions_immune_bridge_t* regions_bridge = nullptr;
     substrate_immune_bridge_t* substrate_bridge = nullptr;
+    uint32_t cytokine_id = 0;
 
     void SetUp() override {
         // Create brain module
@@ -92,7 +93,7 @@ TEST_F(CoreImmuneRegressionTest, ATPNeverGoesNegative) {
 
     // Extreme ATP depletion scenario
     for (int i = 0; i < 100; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 1.0f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, 1.0f, 0, &cytokine_id);
         substrate_immune_bridge_update(substrate_bridge, 100);
         substrate_record_spikes(substrate, 10000);
         substrate_update(substrate, 100);
@@ -107,8 +108,8 @@ TEST_F(CoreImmuneRegressionTest, TemperatureNeverExceedsPhysicalLimit) {
 
     // Extreme fever scenario
     for (int i = 0; i < 50; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 1.0f, 0);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 1.0f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 1.0f, 0, &cytokine_id);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, 1.0f, 0, &cytokine_id);
         substrate_immune_bridge_update(substrate_bridge, 100);
 
         // Temperature must stay within physiological bounds
@@ -122,7 +123,7 @@ TEST_F(CoreImmuneRegressionTest, MembraneIntegrityNeverGoesNegative) {
 
     // Extreme damage scenario
     for (int i = 0; i < 100; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 1.0f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, 1.0f, 0, &cytokine_id);
         substrate_immune_apply_damage(substrate_bridge);
 
         EXPECT_GE(substrate->physical.membrane_integrity, 0.0f);
@@ -135,7 +136,7 @@ TEST_F(CoreImmuneRegressionTest, PrecisionWeightsRemainValid) {
 
     // Precision should stay within bounds
     for (int i = 0; i < 20; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0.5f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 0.5f, 0, &cytokine_id);
         substrate_immune_bridge_update(substrate_bridge, 100);
     }
 
@@ -366,7 +367,7 @@ TEST_F(CoreImmuneRegressionTest, MultipleInflammationCycles) {
     for (int cycle = 0; cycle < 5; cycle++) {
         // Inflammation
         for (int i = 0; i < 10; i++) {
-            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0.5f, 0);
+            brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 0.5f, 0, &cytokine_id);
             substrate_immune_bridge_update(substrate_bridge, 100);
         }
 
@@ -403,8 +404,8 @@ TEST_F(CoreImmuneRegressionTest, DisabledFeaturesNoSideEffects) {
 
     // Heavy cytokine release
     for (int i = 0; i < 20; i++) {
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 1.0f, 0);
-        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 1.0f, 0);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 1.0f, 0, &cytokine_id);
+        brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_TNF, 0, 1.0f, 0, &cytokine_id);
         substrate_immune_bridge_update(substrate_bridge, 100);
     }
 
@@ -452,7 +453,7 @@ TEST_F(CoreImmuneRegressionTest, DeterministicBehavior) {
     // First run
     createBridges();
 
-    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0.5f, 0);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 0.5f, 0, &cytokine_id);
     for (int i = 0; i < 10; i++) {
         substrate_immune_bridge_update(substrate_bridge, 100);
         substrate_update(substrate, 100);
@@ -474,7 +475,7 @@ TEST_F(CoreImmuneRegressionTest, DeterministicBehavior) {
     substrate_bridge = substrate_immune_bridge_create(&bridge_cfg, substrate, immune_system);
 
     // Second run (same sequence)
-    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0.5f, 0);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1, 0, 0.5f, 0, &cytokine_id);
     for (int i = 0; i < 10; i++) {
         substrate_immune_bridge_update(substrate_bridge, 100);
         substrate_update(substrate, 100);

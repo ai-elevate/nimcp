@@ -107,8 +107,8 @@ TEST_F(SleepImmuneIntegrationTest, CytokineIncreaseSleepPressure) {
 
     // Release pro-inflammatory cytokines
     uint32_t cytokine_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.8f, 0, &cytokine_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, helper_id, 0.7f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, helper_id, 0.8f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, 0, helper_id, 0.7f, 0, &cytokine_id);
 
     // Apply cytokine effects to sleep
     int result = sleep_immune_apply_cytokine_effects(bridge);
@@ -309,9 +309,9 @@ TEST_F(SleepImmuneIntegrationTest, SicknessSleepBehavior) {
 
     // Release high pro-inflammatory cytokines
     uint32_t cytokine_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.9f, 0, &cytokine_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, helper_id, 0.8f, 0, &cytokine_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, helper_id, 0.7f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, helper_id, 0.9f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, 0, helper_id, 0.8f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, 0, helper_id, 0.7f, 0, &cytokine_id);
 
     // Apply cytokine effects
     sleep_immune_apply_cytokine_effects(bridge);

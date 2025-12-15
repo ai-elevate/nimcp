@@ -60,8 +60,6 @@ target_link_libraries(unit_middleware_routing_thalamic_immune_integration
         GTest::GTest
         GTest::Main
         nimcp_middleware
-        nimcp_cognitive_immune
-        nimcp_middleware_immune
         nimcp
     )
 add_test(NAME unit_middleware_routing_thalamic_immune_integration

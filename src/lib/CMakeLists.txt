@@ -114,7 +114,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_adapter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_language_production_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_immune.c  # Broca's region-immune integration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # Predictive coding brain region extension - DISABLED: needs refactoring
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # DISABLED: needs API updates  # Predictive coding brain region extension - DISABLED: needs refactoring
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
@@ -261,7 +261,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_persistence.c  # Immune memory persistence
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_immune.c  # Ethics-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # DISABLED: depends on brain_region_predictive  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_feature_extractor_immune_bridge.c  # Feature extractor-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_population_coding_immune_bridge.c  # Population coding-immune integration
@@ -343,6 +343,21 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive_fep_bridge.c
+    # Additional Cognitive FEP Bridges (Emotion/Epistemic/Predictive)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_analysis_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotional_tagging/nimcp_emotional_tagging_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/empathetic_response/nimcp_empathetic_response_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/remorse/nimcp_remorse_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_emotional_system_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_fep_bridge.c
+    # Middleware FEP Bridges (Additional)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/buffering/nimcp_circular_buffer_fep_bridge.c
 
     # Plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c

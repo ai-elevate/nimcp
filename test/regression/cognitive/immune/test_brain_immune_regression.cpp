@@ -432,7 +432,7 @@ TEST_F(BrainImmuneRegressionTest, StringConversionsNotNull) {
     EXPECT_NE(brain_immune_phase_to_string(IMMUNE_PHASE_EFFECTOR), nullptr);
     EXPECT_NE(brain_immune_b_cell_state_to_string(B_CELL_NAIVE), nullptr);
     EXPECT_NE(brain_immune_t_cell_type_to_string(T_CELL_KILLER), nullptr);
-    EXPECT_NE(brain_immune_cytokine_to_string(CYTOKINE_IL6), nullptr);
+    EXPECT_NE(brain_immune_cytokine_to_string(BRAIN_CYTOKINE_IL6), nullptr);
     EXPECT_NE(brain_immune_inflammation_to_string(INFLAMMATION_STORM), nullptr);
 }
 

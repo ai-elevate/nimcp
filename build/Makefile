@@ -484,6 +484,19 @@ unit_api_test_api_working_memory/fast:
 .PHONY : unit_api_test_api_working_memory/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_analysis_test_analysis_fep_bridge
+
+# Build rule for target.
+unit_cognitive_analysis_test_analysis_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_analysis_test_analysis_fep_bridge
+.PHONY : unit_cognitive_analysis_test_analysis_fep_bridge
+
+# fast build rule for target.
+unit_cognitive_analysis_test_analysis_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_analysis_test_analysis_fep_bridge.dir/build.make test/CMakeFiles/unit_cognitive_analysis_test_analysis_fep_bridge.dir/build
+.PHONY : unit_cognitive_analysis_test_analysis_fep_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_analysis_test_network_analysis
 
 # Build rule for target.
@@ -6100,19 +6113,6 @@ e2e_test_swarm_consciousness_enhanced_pipeline/fast:
 .PHONY : e2e_test_swarm_consciousness_enhanced_pipeline/fast
 
 #=============================================================================
-# Target rules for targets named e2e_test_fault_tolerance_pipeline
-
-# Build rule for target.
-e2e_test_fault_tolerance_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_fault_tolerance_pipeline
-.PHONY : e2e_test_fault_tolerance_pipeline
-
-# fast build rule for target.
-e2e_test_fault_tolerance_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_fault_tolerance_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_fault_tolerance_pipeline.dir/build
-.PHONY : e2e_test_fault_tolerance_pipeline/fast
-
-#=============================================================================
 # Target rules for targets named e2e_test_brain_immune_pipeline
 
 # Build rule for target.
@@ -6124,19 +6124,6 @@ e2e_test_brain_immune_pipeline: cmake_check_build_system
 e2e_test_brain_immune_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_brain_immune_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_brain_immune_pipeline.dir/build
 .PHONY : e2e_test_brain_immune_pipeline/fast
-
-#=============================================================================
-# Target rules for targets named e2e_test_distributed_immune_response
-
-# Build rule for target.
-e2e_test_distributed_immune_response: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_distributed_immune_response
-.PHONY : e2e_test_distributed_immune_response
-
-# fast build rule for target.
-e2e_test_distributed_immune_response/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_distributed_immune_response.dir/build.make test/e2e/CMakeFiles/e2e_test_distributed_immune_response.dir/build
-.PHONY : e2e_test_distributed_immune_response/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_brain_immune_plasticity_pipeline
@@ -6152,19 +6139,6 @@ e2e_test_brain_immune_plasticity_pipeline/fast:
 .PHONY : e2e_test_brain_immune_plasticity_pipeline/fast
 
 #=============================================================================
-# Target rules for targets named e2e_test_brain_immune_emotion_pipeline
-
-# Build rule for target.
-e2e_test_brain_immune_emotion_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_brain_immune_emotion_pipeline
-.PHONY : e2e_test_brain_immune_emotion_pipeline
-
-# fast build rule for target.
-e2e_test_brain_immune_emotion_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_brain_immune_emotion_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_brain_immune_emotion_pipeline.dir/build
-.PHONY : e2e_test_brain_immune_emotion_pipeline/fast
-
-#=============================================================================
 # Target rules for targets named e2e_test_memory_immune_pipeline
 
 # Build rule for target.
@@ -6176,19 +6150,6 @@ e2e_test_memory_immune_pipeline: cmake_check_build_system
 e2e_test_memory_immune_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_memory_immune_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_memory_immune_pipeline.dir/build
 .PHONY : e2e_test_memory_immune_pipeline/fast
-
-#=============================================================================
-# Target rules for targets named e2e_test_immune_enhancement_pipeline
-
-# Build rule for target.
-e2e_test_immune_enhancement_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_immune_enhancement_pipeline
-.PHONY : e2e_test_immune_enhancement_pipeline
-
-# fast build rule for target.
-e2e_test_immune_enhancement_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_immune_enhancement_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_immune_enhancement_pipeline.dir/build
-.PHONY : e2e_test_immune_enhancement_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_wellbeing_enhanced_pipeline
@@ -6475,32 +6436,6 @@ unit_middleware_immune_pattern_immune: cmake_check_build_system
 unit_middleware_immune_pattern_immune/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_pattern_immune.dir/build.make test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_pattern_immune.dir/build
 .PHONY : unit_middleware_immune_pattern_immune/fast
-
-#=============================================================================
-# Target rules for targets named unit_middleware_immune_routing_immune_integration
-
-# Build rule for target.
-unit_middleware_immune_routing_immune_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_immune_routing_immune_integration
-.PHONY : unit_middleware_immune_routing_immune_integration
-
-# fast build rule for target.
-unit_middleware_immune_routing_immune_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_routing_immune_integration.dir/build.make test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_routing_immune_integration.dir/build
-.PHONY : unit_middleware_immune_routing_immune_integration/fast
-
-#=============================================================================
-# Target rules for targets named unit_middleware_immune_training_immune
-
-# Build rule for target.
-unit_middleware_immune_training_immune: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_immune_training_immune
-.PHONY : unit_middleware_immune_training_immune
-
-# fast build rule for target.
-unit_middleware_immune_training_immune/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_training_immune.dir/build.make test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_training_immune.dir/build
-.PHONY : unit_middleware_immune_training_immune/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration_controller
@@ -7333,19 +7268,6 @@ regression_middleware_test_executive_regression: cmake_check_build_system
 regression_middleware_test_executive_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/middleware/CMakeFiles/regression_middleware_test_executive_regression.dir/build.make test/regression/middleware/CMakeFiles/regression_middleware_test_executive_regression.dir/build
 .PHONY : regression_middleware_test_executive_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_middleware_sequence_pe_test
-
-# Build rule for target.
-regression_middleware_sequence_pe_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_middleware_sequence_pe_test
-.PHONY : regression_middleware_sequence_pe_test
-
-# fast build rule for target.
-regression_middleware_sequence_pe_test/fast:
-	$(MAKE) $(MAKESILENT) -f test/regression/middleware/CMakeFiles/regression_middleware_sequence_pe_test.dir/build.make test/regression/middleware/CMakeFiles/regression_middleware_sequence_pe_test.dir/build
-.PHONY : regression_middleware_sequence_pe_test/fast
 
 #=============================================================================
 # Target rules for targets named regression_middleware_buffering_integration_buffer
@@ -8464,19 +8386,6 @@ unit_cognitive_mental_health_immune_integration: cmake_check_build_system
 unit_cognitive_mental_health_immune_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/mental_health/CMakeFiles/unit_cognitive_mental_health_immune_integration.dir/build.make test/unit/cognitive/mental_health/CMakeFiles/unit_cognitive_mental_health_immune_integration.dir/build
 .PHONY : unit_cognitive_mental_health_immune_integration/fast
-
-#=============================================================================
-# Target rules for targets named unit_cognitive_predictive_immune_integration
-
-# Build rule for target.
-unit_cognitive_predictive_immune_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_immune_integration
-.PHONY : unit_cognitive_predictive_immune_integration
-
-# fast build rule for target.
-unit_cognitive_predictive_immune_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/predictive_immune/CMakeFiles/unit_cognitive_predictive_immune_integration.dir/build.make test/unit/cognitive/predictive_immune/CMakeFiles/unit_cognitive_predictive_immune_integration.dir/build
-.PHONY : unit_cognitive_predictive_immune_integration/fast
 
 #=============================================================================
 # Target rules for targets named unit_fep_learning
@@ -13519,19 +13428,15 @@ help:
 	@echo "... e2e_test_bio_async_pipeline"
 	@echo "... e2e_test_bio_async_plasticity_pipeline"
 	@echo "... e2e_test_bio_async_training_pipeline"
-	@echo "... e2e_test_brain_immune_emotion_pipeline"
 	@echo "... e2e_test_brain_immune_pipeline"
 	@echo "... e2e_test_brain_immune_plasticity_pipeline"
 	@echo "... e2e_test_brain_pipeline"
 	@echo "... e2e_test_cognitive_bio_async"
 	@echo "... e2e_test_cognitive_pipeline"
 	@echo "... e2e_test_core_bio_async"
-	@echo "... e2e_test_distributed_immune_response"
 	@echo "... e2e_test_distributed_pipeline"
 	@echo "... e2e_test_emotion_tensor_pipeline"
-	@echo "... e2e_test_fault_tolerance_pipeline"
 	@echo "... e2e_test_fep_bridges_pipeline"
-	@echo "... e2e_test_immune_enhancement_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
@@ -13830,7 +13735,6 @@ help:
 	@echo "... regression_middleware_routing_attention_gate"
 	@echo "... regression_middleware_routing_routing_table"
 	@echo "... regression_middleware_routing_thalamic_router"
-	@echo "... regression_middleware_sequence_pe_test"
 	@echo "... regression_middleware_test_brain_integration_regression"
 	@echo "... regression_middleware_test_executive_regression"
 	@echo "... regression_middleware_test_signal_filter_regression"
@@ -14029,6 +13933,7 @@ help:
 	@echo "... unit_brain_integration"
 	@echo "... unit_brain_population_coding"
 	@echo "... unit_brain_spike_features"
+	@echo "... unit_cognitive_analysis_test_analysis_fep_bridge"
 	@echo "... unit_cognitive_analysis_test_network_analysis"
 	@echo "... unit_cognitive_analysis_test_network_analyzer_integration"
 	@echo "... unit_cognitive_attention_test_attention_fep_bridge"
@@ -14106,7 +14011,6 @@ help:
 	@echo "... unit_cognitive_mirror_neurons_test_mirror_immune_integration"
 	@echo "... unit_cognitive_mirror_neurons_test_mirror_substrate"
 	@echo "... unit_cognitive_personality_test_personality"
-	@echo "... unit_cognitive_predictive_immune_integration"
 	@echo "... unit_cognitive_predictive_test_predictive"
 	@echo "... unit_cognitive_predictive_test_predictive_coverage"
 	@echo "... unit_cognitive_predictive_test_predictive_real"
@@ -14286,8 +14190,6 @@ help:
 	@echo "... unit_middleware_events_event_types"
 	@echo "... unit_middleware_features_feature_extractor"
 	@echo "... unit_middleware_immune_pattern_immune"
-	@echo "... unit_middleware_immune_routing_immune_integration"
-	@echo "... unit_middleware_immune_training_immune"
 	@echo "... unit_middleware_integration"
 	@echo "... unit_middleware_integration_CMakeFiles_3.28.3_CompilerIdCXX_CMakeCXXCompilerId"
 	@echo "... unit_middleware_integration_CMakeFiles_3.28.3_CompilerIdC_CMakeCCompilerId"

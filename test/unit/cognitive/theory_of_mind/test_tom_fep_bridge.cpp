@@ -214,7 +214,7 @@ TEST_F(TomFepBridgeTest, ModulateEmpathicPrecision) {
     // WHAT: Test precision modulation from inferred emotion
     // WHY:  Emotional states heighten attention
     // HOW:  Modulate precision with emotion
-    tom_emotion_t emotion = TOM_EMOTION_DISTRESS;
+    tom_emotion_t emotion = TOM_EMOTION_ANXIETY;  // Closest to distress
     int ret = tom_fep_modulate_empathic_precision(bridge, emotion);
     EXPECT_EQ(ret, 0);
 }
@@ -223,7 +223,7 @@ TEST_F(TomFepBridgeTest, ModulateEmpathicPrecisionNull) {
     // WHAT: Test null safety for precision modulation
     // WHY:  Prevent crashes
     // HOW:  Pass nullptr
-    tom_emotion_t emotion = TOM_EMOTION_DISTRESS;
+    tom_emotion_t emotion = TOM_EMOTION_ANXIETY;  // Closest to distress
     int ret = tom_fep_modulate_empathic_precision(nullptr, emotion);
     EXPECT_NE(ret, 0);
 }

@@ -339,7 +339,7 @@ TEST_F(CorticalImmuneTest, ApplyCytokineIL1) {
     cortical_immune_register_laminar_structure(cortical_immune, nullptr, region_id);
 
     int result = cortical_immune_apply_cytokine(
-        cortical_immune, region_id, layer, CYTOKINE_IL1, 0.5f);
+        cortical_immune, region_id, layer, BRAIN_CYTOKINE_IL1, 0.5f);
 
     EXPECT_EQ(result, 0);
 
@@ -383,7 +383,7 @@ TEST_F(CorticalImmuneTest, ApplyCytokineIL10) {
 
     /* Apply anti-inflammatory IL-10 */
     cortical_immune_apply_cytokine(
-        cortical_immune, region_id, layer, CYTOKINE_IL10, 0.5f);
+        cortical_immune, region_id, layer, BRAIN_CYTOKINE_IL10, 0.5f);
 
     layer_immune_state_t state_after;
     cortical_immune_get_layer_state(cortical_immune, region_id, layer, &state_after);

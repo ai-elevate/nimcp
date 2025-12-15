@@ -317,8 +317,8 @@ TEST_F(EnhancedWellbeingIntegrationTest, ImmuneWellbeingBidirectional) {
 
     // Release pro-inflammatory cytokines (correct signature with all params)
     uint32_t cytokine_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, helper_id, 0.8f, 0, &cytokine_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, helper_id, 0.7f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, 0, helper_id, 0.8f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, 0, helper_id, 0.7f, 0, &cytokine_id);
 
     // Update immune to process inflammation
     brain_immune_update(immune, 1000);

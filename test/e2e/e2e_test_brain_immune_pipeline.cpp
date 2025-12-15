@@ -713,9 +713,9 @@ TEST_F(BrainImmunePipelineTest, FullImmuneResponse) {
     E2E_STAGE_BEGIN("PHASE 3: Cytokine Cascade", MAX_RESPONSE_TIME_MS);
     // Release pro-inflammatory cytokines
     uint32_t cytokine_id = 0;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.7f, 0, &cytokine_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, helper_id, 0.6f, 0, &cytokine_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IFN_GAMMA, killer_id, 0.8f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 0.7f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, 0, 0.6f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IFN_GAMMA, 0, 0.8f, 0, &cytokine_id);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("PHASE 4: Inflammation Response", MAX_RESPONSE_TIME_MS);
@@ -952,7 +952,7 @@ TEST_F(BrainImmunePipelineTest, LongRunningStability) {
 
         // Small delay
         struct timespec ts = {0, 50000000};  // 50ms
-        nanosleep(&ts, NULL);
+        nanosleep(&ts, nullptr);
     }
     E2E_STAGE_END();
 

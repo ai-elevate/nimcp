@@ -159,13 +159,13 @@ TEST_F(NeuromodImmuneTest, IL10_RestoresSynthesis) {
 
     /* First suppress with IL-6 */
     ASSERT_EQ(neuromod_immune_apply_cytokine_effect(
-        system, CYTOKINE_IL6, 0.5f), 0);
+        system, BRAIN_CYTOKINE_IL6, 0.5f), 0);
     ASSERT_EQ(neuromod_immune_get_cytokine_effects(system, &effects), 0);
     float suppressed_da = effects.dopamine_synthesis_multiplier;
 
     /* Then restore with IL-10 */
     ASSERT_EQ(neuromod_immune_apply_cytokine_effect(
-        system, CYTOKINE_IL10, 0.8f), 0);
+        system, BRAIN_CYTOKINE_IL10, 0.8f), 0);
     ASSERT_EQ(neuromod_immune_get_cytokine_effects(system, &effects), 0);
 
     /* IL-10 should restore toward 1.0 */

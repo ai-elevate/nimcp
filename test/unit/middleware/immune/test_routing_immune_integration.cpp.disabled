@@ -185,7 +185,7 @@ TEST_F(RoutingImmuneTest, InflammationEscalation) {
 
 TEST_F(RoutingImmuneTest, ApplyProInflammatoryCytokineIL1) {
     float concentration = 0.5f;
-    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, CYTOKINE_IL1, concentration));
+    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, BRAIN_CYTOKINE_IL1, concentration));
 
     float modifier = routing_immune_get_cytokine_modifier(bridge);
     EXPECT_GT(modifier, 1.0f);  // Pro-inflammatory boosts attention
@@ -201,7 +201,7 @@ TEST_F(RoutingImmuneTest, ApplyProInflammatoryCytokineTNF) {
 
 TEST_F(RoutingImmuneTest, ApplyAntiInflammatoryCytokineIL10) {
     float concentration = 0.6f;
-    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, CYTOKINE_IL10, concentration));
+    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, BRAIN_CYTOKINE_IL10, concentration));
 
     float modifier = routing_immune_get_cytokine_modifier(bridge);
     EXPECT_LT(modifier, 1.0f);  // Anti-inflammatory calms attention
@@ -209,19 +209,19 @@ TEST_F(RoutingImmuneTest, ApplyAntiInflammatoryCytokineIL10) {
 
 TEST_F(RoutingImmuneTest, CytokineConcentrationScaling) {
     // Low concentration
-    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, CYTOKINE_IL1, 0.2f));
+    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, BRAIN_CYTOKINE_IL1, 0.2f));
     float modifier_low = routing_immune_get_cytokine_modifier(bridge);
 
     // High concentration
-    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, CYTOKINE_IL1, 0.8f));
+    EXPECT_TRUE(routing_immune_apply_cytokine_effect(bridge, BRAIN_CYTOKINE_IL1, 0.8f));
     float modifier_high = routing_immune_get_cytokine_modifier(bridge);
 
     EXPECT_GT(modifier_high, modifier_low);  // Higher concentration = stronger effect
 }
 
 TEST_F(RoutingImmuneTest, InvalidCytokineConcentration) {
-    EXPECT_FALSE(routing_immune_apply_cytokine_effect(bridge, CYTOKINE_IL1, -0.1f));
-    EXPECT_FALSE(routing_immune_apply_cytokine_effect(bridge, CYTOKINE_IL1, 1.5f));
+    EXPECT_FALSE(routing_immune_apply_cytokine_effect(bridge, BRAIN_CYTOKINE_IL1, -0.1f));
+    EXPECT_FALSE(routing_immune_apply_cytokine_effect(bridge, BRAIN_CYTOKINE_IL1, 1.5f));
 }
 
 //=============================================================================
@@ -410,7 +410,7 @@ TEST_F(RoutingImmuneTest, StrategyNames) {
 
 TEST_F(RoutingImmuneTest, NullBridgeHandling) {
     EXPECT_FALSE(routing_immune_apply_inflammation_effect(nullptr, INFLAMMATION_LOCAL));
-    EXPECT_FALSE(routing_immune_apply_cytokine_effect(nullptr, CYTOKINE_IL1, 0.5f));
+    EXPECT_FALSE(routing_immune_apply_cytokine_effect(nullptr, BRAIN_CYTOKINE_IL1, 0.5f));
     EXPECT_FALSE(routing_immune_set_strategy_from_phase(nullptr, IMMUNE_PHASE_SURVEILLANCE));
 
     routing_stats_t stats = {};

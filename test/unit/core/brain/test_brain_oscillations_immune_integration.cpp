@@ -32,8 +32,9 @@ protected:
     brain_immune_system_t* immune;
 
     void SetUp() override {
-        // Create minimal brain (50 neurons, 100 connections)
-        brain = brain_create(50, 100, NEURON_MODEL_HODGKIN_HUXLEY);
+        // Create minimal brain
+        brain = brain_create("oscillation_immune_test", BRAIN_SIZE_SMALL,
+                            BRAIN_TASK_CLASSIFICATION, 50, 10);
         ASSERT_NE(brain, nullptr);
 
         // Create oscillation analyzer (500ms window, 250Hz sampling)

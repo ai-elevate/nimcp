@@ -162,7 +162,7 @@ protected:
         memset(&threat, 0, sizeof(threat));
         threat.id = id;
         threat.type = THREAT_BYZANTINE;
-        threat.severity = SEVERITY_HIGH;
+        threat.severity = SWARM_SEVERITY_HIGH;
         threat.source_drone_id = source_drone;
         threat.confidence = 0.85f;
 

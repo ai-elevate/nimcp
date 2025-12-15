@@ -760,6 +760,51 @@ typedef enum {
     BIO_MODULE_FEP_PREDICTIVE_REGIONS_BRIDGE,   /**< FEP-predictive regions bridge */
     BIO_MODULE_FEP_OSCILLATIONS_BRIDGE,         /**< FEP-oscillations bridge */
 
+    /* FEP Cognitive Bridges - Group 1 (0x0F30 - 0x0F3F) */
+    BIO_MODULE_FEP_WORKING_MEMORY_BRIDGE = 0x0F30, /**< FEP-working memory bridge */
+    BIO_MODULE_FEP_PREDICTIVE_BRIDGE,           /**< FEP-predictive cognitive bridge */
+    BIO_MODULE_FEP_WELLBEING_BRIDGE,            /**< FEP-wellbeing bridge */
+    BIO_MODULE_FEP_SLEEP_WAKE_BRIDGE,           /**< FEP-sleep wake bridge */
+    BIO_MODULE_FEP_META_LEARNING_BRIDGE,        /**< FEP-meta learning bridge */
+    BIO_MODULE_FEP_CONSOLIDATION_BRIDGE,        /**< FEP-consolidation bridge */
+
+    /* FEP Cognitive Bridges - Group 2 Emotions (0x0F40 - 0x0F4F) */
+    BIO_MODULE_FEP_EMOTIONAL_TAGGING_BRIDGE = 0x0F40, /**< FEP-emotional tagging bridge */
+    BIO_MODULE_FEP_EMOTION_RECOGNITION_BRIDGE,  /**< FEP-emotion recognition bridge */
+    BIO_MODULE_FEP_EMOTIONS_BRIDGE,             /**< FEP-emotions bridge */
+    BIO_MODULE_FEP_EMPATHETIC_RESPONSE_BRIDGE,  /**< FEP-empathetic response bridge */
+    BIO_MODULE_FEP_GRIEF_BRIDGE,                /**< FEP-grief bridge */
+    BIO_MODULE_FEP_JOY_BRIDGE,                  /**< FEP-joy bridge */
+    BIO_MODULE_FEP_REMORSE_BRIDGE,              /**< FEP-remorse bridge */
+
+    /* FEP Cognitive Bridges - Group 3 Reasoning (0x0F50 - 0x0F5F) */
+    BIO_MODULE_FEP_ANALYSIS_BRIDGE = 0x0F50,    /**< FEP-analysis bridge */
+    BIO_MODULE_FEP_EPISTEMIC_BRIDGE,            /**< FEP-epistemic bridge */
+    BIO_MODULE_FEP_EXPLANATIONS_BRIDGE,         /**< FEP-explanations bridge */
+    BIO_MODULE_FEP_LOGIC_BRIDGE,                /**< FEP-logic bridge */
+    BIO_MODULE_FEP_PERSONALITY_BRIDGE,          /**< FEP-personality bridge */
+    BIO_MODULE_FEP_SELF_AWARENESS_BRIDGE,       /**< FEP-self awareness bridge */
+    BIO_MODULE_FEP_SHADOW_BRIDGE,               /**< FEP-shadow bridge */
+    BIO_MODULE_FEP_SOCIAL_BRIDGE,               /**< FEP-social bridge */
+
+    /* FEP Plasticity Bridges (0x0F60 - 0x0F6F) */
+    BIO_MODULE_FEP_ADAPTIVE_BRIDGE = 0x0F60,    /**< FEP-adaptive plasticity bridge */
+    BIO_MODULE_FEP_ATTENTION_PLASTICITY_BRIDGE, /**< FEP-attention plasticity bridge */
+    BIO_MODULE_FEP_NEUROMODULATORS_BRIDGE,      /**< FEP-neuromodulators bridge */
+    BIO_MODULE_FEP_NOISE_BRIDGE,                /**< FEP-noise bridge */
+    BIO_MODULE_FEP_PREDICTIVE_PLASTICITY_BRIDGE, /**< FEP-predictive plasticity bridge */
+    BIO_MODULE_FEP_STP_BRIDGE,                  /**< FEP-STP bridge */
+
+    /* FEP Middleware Bridges (0x0F70 - 0x0F7F) */
+    BIO_MODULE_FEP_BUFFERING_BRIDGE = 0x0F70,   /**< FEP-buffering bridge */
+    BIO_MODULE_FEP_ENCODING_BRIDGE,             /**< FEP-encoding bridge */
+    BIO_MODULE_FEP_EVENTS_BRIDGE,               /**< FEP-events bridge */
+    BIO_MODULE_FEP_INTEGRATION_BRIDGE,          /**< FEP-integration bridge */
+    BIO_MODULE_FEP_MIDDLEWARE_MEMORY_BRIDGE,    /**< FEP-middleware memory bridge */
+    BIO_MODULE_FEP_NORMALIZATION_BRIDGE,        /**< FEP-normalization bridge */
+    BIO_MODULE_FEP_PIPELINE_BRIDGE,             /**< FEP-pipeline bridge */
+    BIO_MODULE_FEP_TRAINING_BRIDGE,             /**< FEP-training bridge */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

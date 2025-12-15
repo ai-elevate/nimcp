@@ -190,19 +190,23 @@ TEST_F(FEPStateRegressionTest, ImmuneBridgeInflammationLevelConsistency) {
  * ============================================================================ */
 
 TEST_F(FEPStateRegressionTest, LearningBridgeLossMonotonicity) {
+    const uint32_t STATE_DIM = 8;
+
     fep_learning_config_t config;
     fep_learning_default_config(&config);
-    config.transition_learning_rate = 0.01f;
-    config.likelihood_learning_rate = 0.01f;
+    config.learning_rate = 0.01f;
 
-    fep_learning_system_t* learning = fep_learning_create(&config);
-    ASSERT_NE(learning, nullptr);
+    // Create transition learner (verified API: fep_transition_learner_create(config, state_dim))
+    fep_transition_learner_t* trans_learner = fep_transition_learner_create(&config, STATE_DIM);
+    ASSERT_NE(trans_learner, nullptr);
 
-    fep_learning_connect_fep(learning, fep);
+    // Create likelihood learner (verified API: fep_likelihood_learner_create(config, obs_dim, state_dim))
+    fep_likelihood_learner_t* like_learner = fep_likelihood_learner_create(&config, OBS_DIM, STATE_DIM);
+    ASSERT_NE(like_learner, nullptr);
 
     float observations[OBS_DIM];
-    float prev_states[8] = {0.5f, 0.5f, 0.3f, 0.3f, 0.2f, 0.2f, 0.1f, 0.1f};
-    float curr_states[8] = {0.6f, 0.6f, 0.4f, 0.4f, 0.3f, 0.3f, 0.2f, 0.2f};
+    float prev_states[STATE_DIM] = {0.5f, 0.5f, 0.3f, 0.3f, 0.2f, 0.2f, 0.1f, 0.1f};
+    float curr_states[STATE_DIM] = {0.6f, 0.6f, 0.4f, 0.4f, 0.3f, 0.3f, 0.2f, 0.2f};
 
     for (int i = 0; i < OBS_DIM; i++) {
         observations[i] = 0.5f + 0.1f * (i % 3);
@@ -212,13 +216,17 @@ TEST_F(FEPStateRegressionTest, LearningBridgeLossMonotonicity) {
 
     // Train and track loss
     for (int i = 0; i < 500; i++) {
-        fep_learning_update_transition(learning, curr_states, 8, prev_states, 8);
-        fep_learning_update_likelihood(learning, observations, OBS_DIM, curr_states, 8);
+        // Verified API: fep_learn_transition(learner, sys, state_t, state_t1, dim)
+        fep_learn_transition(trans_learner, fep, prev_states, curr_states, STATE_DIM);
+        // Verified API: fep_learn_likelihood(learner, sys, observation, state, obs_dim)
+        fep_learn_likelihood(like_learner, fep, observations, curr_states, OBS_DIM, STATE_DIM);
 
-        float loss;
-        int ret = fep_learning_get_loss(learning, &loss);
+        // Get stats to check loss
+        fep_learning_stats_t stats;
+        int ret = fep_likelihood_learning_get_stats(like_learner, &stats);
         ASSERT_EQ(ret, 0);
 
+        float loss = stats.current_loss;
         EXPECT_TRUE(in_range(loss, 0.0f, 1000.0f)) << "Iteration " << i << ": loss=" << loss;
         loss_history.push_back(loss);
     }
@@ -235,59 +243,70 @@ TEST_F(FEPStateRegressionTest, LearningBridgeLossMonotonicity) {
 
     EXPECT_LT(avg_late, avg_early) << "Loss should decrease with training";
 
-    fep_learning_destroy(learning);
+    fep_likelihood_learner_destroy(like_learner);
+    fep_transition_learner_destroy(trans_learner);
 }
 
 TEST_F(FEPStateRegressionTest, LearningBridgeGradientNormRegression) {
-    fep_learning_system_t* learning = fep_learning_create(nullptr);
-    ASSERT_NE(learning, nullptr);
+    const uint32_t STATE_DIM = 8;
 
-    fep_learning_connect_fep(learning, fep);
+    // Create likelihood learner (verified API)
+    fep_likelihood_learner_t* like_learner = fep_likelihood_learner_create(nullptr, OBS_DIM, STATE_DIM);
+    ASSERT_NE(like_learner, nullptr);
 
     float observations[OBS_DIM];
-    float states[8];
+    float states[STATE_DIM];
     for (int i = 0; i < OBS_DIM; i++) observations[i] = 0.5f;
-    for (int i = 0; i < 8; i++) states[i] = 0.5f;
+    for (uint32_t i = 0; i < STATE_DIM; i++) states[i] = 0.5f;
 
     // Gradient norm should remain finite
     for (int i = 0; i < ITERATIONS; i++) {
-        fep_learning_update_likelihood(learning, observations, OBS_DIM, states, 8);
+        // Verified API: fep_learn_likelihood(learner, sys, observation, state, obs_dim)
+        fep_learn_likelihood(like_learner, fep, observations, states, OBS_DIM, STATE_DIM);
 
-        float grad_norm;
-        int ret = fep_learning_get_gradient_norm(learning, &grad_norm);
+        // Get stats to check gradient norm
+        fep_learning_stats_t stats;
+        int ret = fep_likelihood_learning_get_stats(like_learner, &stats);
         ASSERT_EQ(ret, 0);
 
+        float grad_norm = stats.current_grad_norm;
         EXPECT_FALSE(std::isnan(grad_norm)) << "Iteration " << i;
         EXPECT_FALSE(std::isinf(grad_norm)) << "Iteration " << i;
         EXPECT_GE(grad_norm, 0.0f) << "Iteration " << i;
         EXPECT_LT(grad_norm, 1000.0f) << "Iteration " << i; // Reasonable upper bound
     }
 
-    fep_learning_destroy(learning);
+    fep_likelihood_learner_destroy(like_learner);
 }
 
 TEST_F(FEPStateRegressionTest, LearningBridgeConvergenceDetection) {
+    const uint32_t STATE_DIM = 8;
+
     fep_learning_config_t config;
     fep_learning_default_config(&config);
     config.convergence_threshold = 0.01f;
 
-    fep_learning_system_t* learning = fep_learning_create(&config);
-    ASSERT_NE(learning, nullptr);
-
-    fep_learning_connect_fep(learning, fep);
+    // Create likelihood learner (verified API)
+    fep_likelihood_learner_t* like_learner = fep_likelihood_learner_create(&config, OBS_DIM, STATE_DIM);
+    ASSERT_NE(like_learner, nullptr);
 
     float observations[OBS_DIM];
-    float states[8];
+    float states[STATE_DIM];
     for (int i = 0; i < OBS_DIM; i++) observations[i] = 0.5f;
-    for (int i = 0; i < 8; i++) states[i] = 0.5f;
+    for (uint32_t i = 0; i < STATE_DIM; i++) states[i] = 0.5f;
 
     bool converged = false;
     int convergence_iter = -1;
 
     for (int i = 0; i < 1000; i++) {
-        fep_learning_update_likelihood(learning, observations, OBS_DIM, states, 8);
+        // Verified API: fep_learn_likelihood(learner, sys, observation, state, obs_dim)
+        fep_learn_likelihood(like_learner, fep, observations, states, OBS_DIM, STATE_DIM);
 
-        bool is_converged = fep_learning_has_converged(learning);
+        // Check convergence via stats.state
+        fep_learning_stats_t stats;
+        fep_likelihood_learning_get_stats(like_learner, &stats);
+        bool is_converged = (stats.state == FEP_LEARNING_CONVERGED);
+
         if (is_converged && !converged) {
             converged = true;
             convergence_iter = i;
@@ -300,7 +319,7 @@ TEST_F(FEPStateRegressionTest, LearningBridgeConvergenceDetection) {
         }
     }
 
-    fep_learning_destroy(learning);
+    fep_likelihood_learner_destroy(like_learner);
 }
 
 /* ============================================================================
@@ -311,13 +330,17 @@ TEST_F(FEPStateRegressionTest, ContextBridgeActivationRangeRegression) {
     fep_context_system_t* context = fep_context_create(nullptr);
     ASSERT_NE(context, nullptr);
 
-    fep_context_connect_fep(context, fep);
+    fep_context_connect(context, fep);
 
     uint32_t ctx_ids[5];
+    float prior_beliefs[OBS_DIM];
+    for (int j = 0; j < OBS_DIM; j++) prior_beliefs[j] = 1.0f / OBS_DIM;
+
     for (int i = 0; i < 5; i++) {
         char name[32];
         snprintf(name, sizeof(name), "context_%d", i);
-        int ret = fep_context_add_context(context, name, &ctx_ids[i]);
+        // Verified API: fep_context_add(sys, name, prior_beliefs, belief_dim, &context_id)
+        int ret = fep_context_add(context, name, prior_beliefs, OBS_DIM, &ctx_ids[i]);
         ASSERT_EQ(ret, 0);
     }
 
@@ -331,21 +354,21 @@ TEST_F(FEPStateRegressionTest, ContextBridgeActivationRangeRegression) {
 
         uint32_t inferred_ctx;
         float confidence;
-        int ret = fep_context_infer(context, observations, OBS_DIM, &inferred_ctx, &confidence);
+        int ret = fep_context_infer(context, fep, observations, OBS_DIM, &inferred_ctx, &confidence);
         ASSERT_EQ(ret, 0);
 
         EXPECT_TRUE(in_range(confidence, 0.0f, 1.0f))
             << "Iteration " << i << ": confidence=" << confidence;
 
-        // Get activation for all contexts
+        // Verify inferred context is one of the valid IDs
+        bool valid_ctx = false;
         for (int j = 0; j < 5; j++) {
-            float activation;
-            ret = fep_context_get_activation(context, ctx_ids[j], &activation);
-            if (ret == 0) {
-                EXPECT_TRUE(in_range(activation, 0.0f, 1.0f))
-                    << "Iteration " << i << ", context " << j << ": activation=" << activation;
+            if (inferred_ctx == ctx_ids[j]) {
+                valid_ctx = true;
+                break;
             }
         }
+        EXPECT_TRUE(valid_ctx) << "Iteration " << i << ": inferred invalid context";
     }
 
     fep_context_destroy(context);
@@ -355,16 +378,21 @@ TEST_F(FEPStateRegressionTest, ContextBridgeSwitchConsistency) {
     fep_context_system_t* context = fep_context_create(nullptr);
     ASSERT_NE(context, nullptr);
 
-    fep_context_connect_fep(context, fep);
+    fep_context_connect(context, fep);
 
     uint32_t ctx1, ctx2;
-    fep_context_add_context(context, "context_1", &ctx1);
-    fep_context_add_context(context, "context_2", &ctx2);
+    float prior_beliefs[OBS_DIM];
+    for (int j = 0; j < OBS_DIM; j++) prior_beliefs[j] = 1.0f / OBS_DIM;
+
+    // Verified API: fep_context_add(sys, name, prior_beliefs, belief_dim, &context_id)
+    fep_context_add(context, "context_1", prior_beliefs, OBS_DIM, &ctx1);
+    fep_context_add(context, "context_2", prior_beliefs, OBS_DIM, &ctx2);
 
     // After explicit switch, active context should match
     for (int i = 0; i < 100; i++) {
         uint32_t target = (i % 2 == 0) ? ctx1 : ctx2;
-        int ret = fep_context_switch_to(context, target);
+        // Verified API: fep_context_switch(sys, fep, target_context_id)
+        int ret = fep_context_switch(context, fep, target);
         ASSERT_EQ(ret, 0);
 
         uint32_t active;
@@ -385,7 +413,7 @@ TEST_F(FEPStateRegressionTest, NeuromodBridgeLevelRangeRegression) {
     fep_neuromod_system_t* neuromod = fep_neuromod_create(nullptr);
     ASSERT_NE(neuromod, nullptr);
 
-    fep_neuromod_connect_fep(neuromod, fep);
+    fep_neuromod_connect(neuromod, fep);
 
     // Verify all neuromodulator levels stay in [0, 1]
     for (int i = 0; i < ITERATIONS; i++) {
@@ -395,17 +423,18 @@ TEST_F(FEPStateRegressionTest, NeuromodBridgeLevelRangeRegression) {
         int ret = fep_neuromod_get_state(neuromod, &state);
         ASSERT_EQ(ret, 0);
 
-        EXPECT_TRUE(in_range(state.dopamine_level, 0.0f, 1.0f))
-            << "Iteration " << i << ": dopamine=" << state.dopamine_level;
+        // State uses levels[FEP_NEUROMOD_*] array
+        EXPECT_TRUE(in_range(state.levels[FEP_NEUROMOD_DA], 0.0f, 1.0f))
+            << "Iteration " << i << ": dopamine=" << state.levels[FEP_NEUROMOD_DA];
 
-        EXPECT_TRUE(in_range(state.serotonin_level, 0.0f, 1.0f))
-            << "Iteration " << i << ": serotonin=" << state.serotonin_level;
+        EXPECT_TRUE(in_range(state.levels[FEP_NEUROMOD_5HT], 0.0f, 1.0f))
+            << "Iteration " << i << ": serotonin=" << state.levels[FEP_NEUROMOD_5HT];
 
-        EXPECT_TRUE(in_range(state.norepinephrine_level, 0.0f, 1.0f))
-            << "Iteration " << i << ": norepinephrine=" << state.norepinephrine_level;
+        EXPECT_TRUE(in_range(state.levels[FEP_NEUROMOD_NE], 0.0f, 1.0f))
+            << "Iteration " << i << ": norepinephrine=" << state.levels[FEP_NEUROMOD_NE];
 
-        EXPECT_TRUE(in_range(state.acetylcholine_level, 0.0f, 1.0f))
-            << "Iteration " << i << ": acetylcholine=" << state.acetylcholine_level;
+        EXPECT_TRUE(in_range(state.levels[FEP_NEUROMOD_ACH], 0.0f, 1.0f))
+            << "Iteration " << i << ": acetylcholine=" << state.levels[FEP_NEUROMOD_ACH];
     }
 
     fep_neuromod_destroy(neuromod);
@@ -415,13 +444,13 @@ TEST_F(FEPStateRegressionTest, NeuromodBridgeSetLevelConsistency) {
     fep_neuromod_system_t* neuromod = fep_neuromod_create(nullptr);
     ASSERT_NE(neuromod, nullptr);
 
-    fep_neuromod_connect_fep(neuromod, fep);
+    fep_neuromod_connect(neuromod, fep);
 
     const float test_levels[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
 
     for (float level : test_levels) {
-        // Set dopamine
-        int ret1 = fep_neuromod_set_dopamine(neuromod, level);
+        // Set dopamine using verified API
+        int ret1 = fep_neuromod_set_level(neuromod, FEP_NEUROMOD_DA, level);
         ASSERT_EQ(ret1, 0);
 
         // Verify it was set correctly
@@ -429,8 +458,8 @@ TEST_F(FEPStateRegressionTest, NeuromodBridgeSetLevelConsistency) {
         int ret2 = fep_neuromod_get_state(neuromod, &state);
         ASSERT_EQ(ret2, 0);
 
-        EXPECT_NEAR(state.dopamine_level, level, 0.01f)
-            << "Set level=" << level << " but got " << state.dopamine_level;
+        EXPECT_NEAR(state.levels[FEP_NEUROMOD_DA], level, 0.01f)
+            << "Set level=" << level << " but got " << state.levels[FEP_NEUROMOD_DA];
     }
 
     fep_neuromod_destroy(neuromod);
@@ -444,17 +473,17 @@ TEST_F(FEPStateRegressionTest, SleepBridgeStateTransitionConsistency) {
     fep_sleep_system_t* sleep = fep_sleep_create(nullptr);
     ASSERT_NE(sleep, nullptr);
 
-    fep_sleep_connect_fep(sleep, fep);
+    fep_sleep_connect(sleep, fep);
 
     // Test state transitions are consistent
     for (int cycle = 0; cycle < 10; cycle++) {
-        // Enter sleep
-        int ret1 = fep_sleep_enter_sleep(sleep);
+        // Enter sleep using verified API
+        int ret1 = fep_sleep_set_stage(sleep, SLEEP_STAGE_N1);
         ASSERT_EQ(ret1, 0);
 
         fep_sleep_state_t state1;
         fep_sleep_get_state(sleep, &state1);
-        EXPECT_TRUE(state1.is_asleep);
+        EXPECT_NE(state1.current_stage, SLEEP_STAGE_WAKE);
 
         // Update in sleep
         for (int i = 0; i < 50; i++) {
@@ -462,16 +491,16 @@ TEST_F(FEPStateRegressionTest, SleepBridgeStateTransitionConsistency) {
 
             fep_sleep_state_t state;
             fep_sleep_get_state(sleep, &state);
-            EXPECT_TRUE(state.is_asleep) << "Cycle " << cycle << ", update " << i;
+            EXPECT_NE(state.current_stage, SLEEP_STAGE_WAKE) << "Cycle " << cycle << ", update " << i;
         }
 
-        // Wake up
-        int ret2 = fep_sleep_wake_up(sleep);
+        // Wake up using verified API
+        int ret2 = fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
         ASSERT_EQ(ret2, 0);
 
         fep_sleep_state_t state2;
         fep_sleep_get_state(sleep, &state2);
-        EXPECT_FALSE(state2.is_asleep);
+        EXPECT_EQ(state2.current_stage, SLEEP_STAGE_WAKE);
 
         // Update while awake
         for (int i = 0; i < 50; i++) {
@@ -479,7 +508,7 @@ TEST_F(FEPStateRegressionTest, SleepBridgeStateTransitionConsistency) {
 
             fep_sleep_state_t state;
             fep_sleep_get_state(sleep, &state);
-            EXPECT_FALSE(state.is_asleep) << "Cycle " << cycle << ", update " << i;
+            EXPECT_EQ(state.current_stage, SLEEP_STAGE_WAKE) << "Cycle " << cycle << ", update " << i;
         }
     }
 
@@ -490,9 +519,9 @@ TEST_F(FEPStateRegressionTest, SleepBridgeTimeAccumulation) {
     fep_sleep_system_t* sleep = fep_sleep_create(nullptr);
     ASSERT_NE(sleep, nullptr);
 
-    fep_sleep_connect_fep(sleep, fep);
+    fep_sleep_connect(sleep, fep);
 
-    fep_sleep_enter_sleep(sleep);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
 
     uint64_t expected_time = 0;
 
@@ -505,7 +534,7 @@ TEST_F(FEPStateRegressionTest, SleepBridgeTimeAccumulation) {
         fep_sleep_get_state(sleep, &state);
 
         // Allow small tolerance for floating point
-        EXPECT_NEAR(state.time_asleep_ms, expected_time, TIMESTEP_MS)
+        EXPECT_NEAR(state.total_sleep_ms, expected_time, TIMESTEP_MS)
             << "Iteration " << i;
     }
 
@@ -523,7 +552,7 @@ TEST_F(FEPStateRegressionTest, CuriosityBridgeNoveltyRangeRegression) {
     fep_curiosity_system_t* curiosity = fep_curiosity_create(&config);
     ASSERT_NE(curiosity, nullptr);
 
-    fep_curiosity_connect_fep(curiosity, fep);
+    fep_curiosity_connect(curiosity, fep);
 
     float observations[OBS_DIM];
 
@@ -533,9 +562,8 @@ TEST_F(FEPStateRegressionTest, CuriosityBridgeNoveltyRangeRegression) {
             observations[j] = 0.5f + 0.3f * sinf(i * 0.01f + j);
         }
 
-        float novelty;
-        int ret = fep_curiosity_compute_novelty(curiosity, observations, OBS_DIM, &novelty);
-        ASSERT_EQ(ret, 0);
+        // fep_compute_novelty returns float directly
+        float novelty = fep_compute_novelty(curiosity, observations, OBS_DIM);
 
         EXPECT_TRUE(in_range(novelty, 0.0f, 1.0f))
             << "Iteration " << i << ": novelty=" << novelty;
@@ -551,18 +579,24 @@ TEST_F(FEPStateRegressionTest, CuriosityBridgeIntrinsicMotivationRegression) {
     fep_curiosity_system_t* curiosity = fep_curiosity_create(&config);
     ASSERT_NE(curiosity, nullptr);
 
-    fep_curiosity_connect_fep(curiosity, fep);
+    fep_curiosity_connect(curiosity, fep);
 
-    // Intrinsic motivation should stay in valid range
+    float observations[OBS_DIM];
+
+    // Intrinsic motivation (exploration drive) should stay in valid range
     for (int i = 0; i < ITERATIONS; i++) {
-        fep_curiosity_update(curiosity, TIMESTEP_MS);
+        // Generate observations and record them
+        for (int j = 0; j < OBS_DIM; j++) {
+            observations[j] = 0.5f + 0.3f * sinf(i * 0.01f + j);
+        }
+        fep_curiosity_record_observation(curiosity, observations, OBS_DIM);
 
-        float motivation;
-        int ret = fep_curiosity_get_intrinsic_motivation(curiosity, &motivation);
+        fep_curiosity_state_t state;
+        int ret = fep_curiosity_get_state(curiosity, &state);
         ASSERT_EQ(ret, 0);
 
-        EXPECT_TRUE(in_range(motivation, 0.0f, 10.0f))
-            << "Iteration " << i << ": motivation=" << motivation;
+        EXPECT_TRUE(in_range(state.exploration_drive, 0.0f, 1.0f))
+            << "Iteration " << i << ": exploration_drive=" << state.exploration_drive;
     }
 
     fep_curiosity_destroy(curiosity);
@@ -579,19 +613,24 @@ TEST_F(FEPStateRegressionTest, EvidenceBridgeValueRangeRegression) {
     fep_evidence_system_t* evidence = fep_evidence_create(&config);
     ASSERT_NE(evidence, nullptr);
 
-    fep_evidence_connect_fep(evidence, fep);
+    fep_evidence_connect(evidence, fep);
+
+    float observations[OBS_DIM];
 
     // Evidence values should be finite
     for (int i = 0; i < ITERATIONS; i++) {
-        fep_evidence_update(evidence, TIMESTEP_MS);
+        // Generate observations
+        for (int j = 0; j < OBS_DIM; j++) {
+            observations[j] = 0.5f + 0.3f * sinf(i * 0.01f + j);
+        }
 
-        float evidence_val;
-        int ret = fep_evidence_compute(evidence, &evidence_val);
+        fep_evidence_result_t result;
+        int ret = fep_compute_log_evidence(evidence, fep, observations, 1, OBS_DIM, &result);
         ASSERT_EQ(ret, 0);
 
-        EXPECT_FALSE(std::isnan(evidence_val)) << "Iteration " << i;
-        EXPECT_FALSE(std::isinf(evidence_val)) << "Iteration " << i;
-        EXPECT_GT(evidence_val, -1000.0f) << "Iteration " << i; // Reasonable lower bound
+        EXPECT_FALSE(std::isnan(result.log_evidence)) << "Iteration " << i;
+        EXPECT_FALSE(std::isinf(result.log_evidence)) << "Iteration " << i;
+        EXPECT_GT(result.log_evidence, -1000.0f) << "Iteration " << i; // Reasonable lower bound
     }
 
     fep_evidence_destroy(evidence);

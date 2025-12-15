@@ -370,7 +370,7 @@ TEST_F(AutobiographicalImmuneTest, SicknessBehaviorMemoryImpairment) {
 
     // Raise cytokines
     uint32_t cytokine_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 1, 0.9f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 1, 0.9f, 0, &cytokine_id);
 
     // Apply effects
     autobio_immune_apply_cytokine_encoding_effects(bridge);
@@ -404,14 +404,14 @@ TEST_F(AutobiographicalImmuneTest, BridgeUpdateCycle) {
 TEST_F(AutobiographicalImmuneTest, AntiInflammatoryRecovery) {
     // First impair with pro-inflammatory cytokines
     uint32_t il1_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 1, 0.8f, 0, &il1_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 1, 0.8f, 0, &il1_id);
     autobio_immune_apply_cytokine_encoding_effects(bridge);
 
     float impaired_encoding = autobio_immune_get_encoding_efficiency(bridge);
 
     // Release anti-inflammatory IL-10
     uint32_t il10_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL10, 1, 0.7f, 0, &il10_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL10, 0, 1, 0.7f, 0, &il10_id);
     autobio_immune_apply_cytokine_encoding_effects(bridge);
 
     float recovered_encoding = autobio_immune_get_encoding_efficiency(bridge);

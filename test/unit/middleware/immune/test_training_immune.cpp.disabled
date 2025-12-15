@@ -26,7 +26,7 @@ protected:
     brain_immune_system_t* brain_immune;
 
     void SetUp() override {
-        nimcp_init_memory();
+        nimcp_memory_init();
 
         /* Create brain immune system */
         brain_immune_config_t bi_config;
@@ -55,7 +55,7 @@ protected:
             brain_immune = nullptr;
         }
 
-        nimcp_cleanup_memory();
+        /* memory cleanup not needed */
     }
 };
 

@@ -393,7 +393,7 @@ int trained_immunity_train(
 ) {
     if (!system) return -1;
     if (stimulus_type >= TRAINED_STIMULUS_COUNT) return -1;
-    if (intensity < 0.0f || intensity > 1.0f) return -1;
+    if (intensity <= 0.0f || intensity > 1.0f) return -1;  /* Reject zero intensity */
 
     /* Check minimum threshold */
     if (intensity < system->config.min_training_threshold) {

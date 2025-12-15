@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstring>
 
 extern "C" {
 #include "cognitive/curiosity/nimcp_curiosity.h"
@@ -20,13 +21,15 @@ extern "C" {
 
 class CuriosityImmuneIntegrationTest : public ::testing::Test {
 protected:
-    brain_t brain;
-    curiosity_engine_t curiosity;
-    brain_immune_system_t* immune;
+    brain_t brain = nullptr;
+    curiosity_engine_t curiosity = nullptr;
+    brain_immune_system_t* immune = nullptr;
+    curiosity_immune_bridge_t* bridge = nullptr;
 
     void SetUp() override {
-        /* Create parent brain */
-        brain = brain_create(10);
+        /* Create parent brain with proper signature */
+        brain = brain_create("test_curiosity", BRAIN_SIZE_SMALL,
+                            BRAIN_TASK_CLASSIFICATION, 10, 2);
         ASSERT_NE(brain, nullptr);
 
         /* Create curiosity engine */
@@ -40,18 +43,31 @@ protected:
         ASSERT_NE(immune, nullptr);
 
         brain_immune_start(immune);
+
+        /* Create bridge directly (avoids needing to access opaque curiosity struct) */
+        curiosity_immune_config_t bridge_config;
+        curiosity_immune_default_config(&bridge_config);
+        bridge = curiosity_immune_bridge_create(&bridge_config, immune, curiosity);
+        ASSERT_NE(bridge, nullptr);
     }
 
     void TearDown() override {
+        if (bridge) {
+            curiosity_immune_bridge_destroy(bridge);
+            bridge = nullptr;
+        }
         if (curiosity) {
             curiosity_engine_destroy(curiosity);
+            curiosity = nullptr;
         }
         if (immune) {
             brain_immune_stop(immune);
             brain_immune_destroy(immune);
+            immune = nullptr;
         }
         if (brain) {
             brain_destroy(brain);
+            brain = nullptr;
         }
     }
 };
@@ -109,10 +125,6 @@ TEST_F(CuriosityImmuneIntegrationTest, DisconnectImmune_NotConnected) {
 
 TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_CytokineSuppression) {
     /* WHAT: Test cytokine release suppresses curiosity */
-    curiosity_connect_immune(curiosity, immune);
-
-    /* Get baseline curiosity */
-    float baseline = curiosity_get_drive(curiosity);
 
     /* Present antigen to trigger immune response */
     uint32_t antigen_id;
@@ -127,25 +139,22 @@ TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_CytokineSuppression) {
 
     /* Release pro-inflammatory cytokine (IL-1) */
     uint32_t cytokine_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.8f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 0.8f, 0, &cytokine_id);
 
-    /* Simulate cytokine callback (in real system, this is automatic) */
-    const brain_cytokine_t* cytokine = &immune->cytokines[0];
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
-    curiosity_immune_on_cytokine_release(bridge, cytokine);
+    /* Simulate cytokine callback using immune struct's cytokines array */
+    curiosity_immune_on_cytokine_release(bridge, &immune->cytokines[0]);
 
     /* Update bridge to apply suppression */
     curiosity_immune_bridge_update(bridge, 100);
 
     /* Verify curiosity is suppressed */
-    float suppression = curiosity_get_immune_suppression(curiosity);
+    float suppression = curiosity_immune_get_suppression_factor(bridge);
     EXPECT_LT(suppression, 1.0f) << "Cytokine should suppress curiosity";
     EXPECT_GT(suppression, 0.0f) << "Suppression should not be complete";
 }
 
 TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_InflammationSuppression) {
     /* WHAT: Test inflammation suppresses curiosity */
-    curiosity_connect_immune(curiosity, immune);
 
     /* Create inflammation site */
     uint32_t antigen_id;
@@ -164,20 +173,18 @@ TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_InflammationSuppression)
     EXPECT_GE(immune->inflammation_sites[0].level, INFLAMMATION_SYSTEMIC);
 
     /* Simulate inflammation callback */
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
     curiosity_immune_on_inflammation(bridge, &immune->inflammation_sites[0]);
 
     /* Update bridge */
     curiosity_immune_bridge_update(bridge, 100);
 
     /* Verify strong suppression from systemic inflammation */
-    float suppression = curiosity_get_immune_suppression(curiosity);
+    float suppression = curiosity_immune_get_suppression_factor(bridge);
     EXPECT_LT(suppression, 0.7f) << "Systemic inflammation should strongly suppress";
 }
 
 TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_Recovery) {
     /* WHAT: Test IL-10 aids curiosity recovery */
-    curiosity_connect_immune(curiosity, immune);
 
     /* First, induce sickness */
     uint32_t antigen_id, helper_id, cytokine_id;
@@ -185,17 +192,16 @@ TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_Recovery) {
     brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL,
                                   epitope, sizeof(epitope), 7, 1, &antigen_id);
     brain_immune_activate_helper_t(immune, antigen_id, &helper_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.9f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 0.9f, 0, &cytokine_id);
 
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
     curiosity_immune_on_cytokine_release(bridge, &immune->cytokines[0]);
     curiosity_immune_bridge_update(bridge, 100);
 
-    float suppressed_level = curiosity_get_immune_suppression(curiosity);
+    float suppressed_level = curiosity_immune_get_suppression_factor(bridge);
 
     /* Now release IL-10 (anti-inflammatory) */
     uint32_t il10_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL10, helper_id, 0.8f, 0, &il10_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL10, 0, 0.8f, 0, &il10_id);
 
     /* IL-10 should be anti-inflammatory */
     immune->cytokines[1].pro_inflammatory = false;
@@ -204,14 +210,12 @@ TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_Recovery) {
     curiosity_immune_bridge_update(bridge, 100);
 
     /* Verify recovery (suppression should be less) */
-    float recovered_level = curiosity_get_immune_suppression(curiosity);
+    float recovered_level = curiosity_immune_get_suppression_factor(bridge);
     EXPECT_GT(recovered_level, suppressed_level) << "IL-10 should aid recovery";
 }
 
 TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_ComputeSicknessLevel) {
     /* WHAT: Test sickness level computation from cytokines */
-    curiosity_connect_immune(curiosity, immune);
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
 
     /* Initially no sickness */
     float sickness = curiosity_immune_compute_sickness_level(bridge);
@@ -225,9 +229,9 @@ TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_ComputeSicknessLevel) {
                                   epitope, sizeof(epitope), 5, 1, &antigen_id);
     brain_immune_activate_helper_t(immune, antigen_id, &helper_id);
 
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.6f, 0, &cyt_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, helper_id, 0.5f, 0, &cyt_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, helper_id, 0.4f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 0.6f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, 0, 0.5f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, 0, 0.4f, 0, &cyt_id);
 
     /* Recompute sickness */
     sickness = curiosity_immune_compute_sickness_level(bridge);
@@ -241,41 +245,35 @@ TEST_F(CuriosityImmuneIntegrationTest, SicknessBehavior_ComputeSicknessLevel) {
 
 TEST_F(CuriosityImmuneIntegrationTest, NoveltyVigilance_HighCuriosityTriggers) {
     /* WHAT: Test high curiosity drive triggers immune vigilance */
-    curiosity_connect_immune(curiosity, immune);
 
     /* Set high curiosity baseline (simulating high novelty) */
     curiosity_set_baseline(curiosity, 0.85f);
 
     /* Update bridge to detect high curiosity */
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
     curiosity_immune_bridge_update(bridge, 100);
 
     /* Verify vigilance boost is active */
-    float vigilance = curiosity_get_novelty_vigilance_boost(curiosity);
+    float vigilance = curiosity_immune_get_vigilance_boost(bridge);
     EXPECT_GT(vigilance, 1.0f) << "High curiosity should boost immune vigilance";
     EXPECT_LE(vigilance, 1.5f) << "Vigilance boost should be capped";
 }
 
 TEST_F(CuriosityImmuneIntegrationTest, NoveltyVigilance_LowCuriosityNoBoost) {
     /* WHAT: Test low curiosity doesn't trigger vigilance */
-    curiosity_connect_immune(curiosity, immune);
 
     /* Set low curiosity */
     curiosity_set_baseline(curiosity, 0.2f);
 
     /* Update bridge */
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
     curiosity_immune_bridge_update(bridge, 100);
 
     /* Verify no vigilance boost */
-    float vigilance = curiosity_get_novelty_vigilance_boost(curiosity);
+    float vigilance = curiosity_immune_get_vigilance_boost(bridge);
     EXPECT_FLOAT_EQ(vigilance, 1.0f) << "Low curiosity should not boost vigilance";
 }
 
 TEST_F(CuriosityImmuneIntegrationTest, NoveltyVigilance_KnowledgeGapTrigger) {
     /* WHAT: Test knowledge gap triggers immune vigilance */
-    curiosity_connect_immune(curiosity, immune);
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
 
     /* Create large knowledge gap */
     knowledge_gap_t gap;
@@ -296,8 +294,6 @@ TEST_F(CuriosityImmuneIntegrationTest, NoveltyVigilance_KnowledgeGapTrigger) {
 
 TEST_F(CuriosityImmuneIntegrationTest, NoveltyVigilance_SmallGapNoTrigger) {
     /* WHAT: Test small knowledge gap doesn't trigger vigilance */
-    curiosity_connect_immune(curiosity, immune);
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
 
     /* Create small knowledge gap */
     knowledge_gap_t gap;
@@ -341,10 +337,10 @@ TEST_F(CuriosityImmuneIntegrationTest, Config_CustomSensitivity) {
     config.cytokine_sensitivity = 2.0f;
 
     /* Create bridge with custom config */
-    curiosity_immune_bridge_t* bridge = curiosity_immune_bridge_create(
+    curiosity_immune_bridge_t* custom_bridge = curiosity_immune_bridge_create(
         &config, immune, curiosity
     );
-    ASSERT_NE(bridge, nullptr);
+    ASSERT_NE(custom_bridge, nullptr);
 
     /* Release cytokine */
     uint32_t antigen_id, helper_id, cyt_id;
@@ -352,15 +348,15 @@ TEST_F(CuriosityImmuneIntegrationTest, Config_CustomSensitivity) {
     brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL,
                                   epitope, sizeof(epitope), 5, 1, &antigen_id);
     brain_immune_activate_helper_t(immune, antigen_id, &helper_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.5f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 0.5f, 0, &cyt_id);
 
-    curiosity_immune_on_cytokine_release(bridge, &immune->cytokines[0]);
+    curiosity_immune_on_cytokine_release(custom_bridge, &immune->cytokines[0]);
 
     /* With 2x sensitivity, effect should be stronger */
-    float sickness = curiosity_immune_get_sickness_level(bridge);
+    float sickness = curiosity_immune_get_sickness_level(custom_bridge);
     EXPECT_GT(sickness, 0.0f) << "Custom sensitivity should amplify effect";
 
-    curiosity_immune_bridge_destroy(bridge);
+    curiosity_immune_bridge_destroy(custom_bridge);
 }
 
 //=============================================================================
@@ -377,8 +373,6 @@ TEST_F(CuriosityImmuneIntegrationTest, EdgeCase_NullBridgeOperations) {
 
 TEST_F(CuriosityImmuneIntegrationTest, EdgeCase_MaximumSuppression) {
     /* WHAT: Test maximum suppression during cytokine storm */
-    curiosity_connect_immune(curiosity, immune);
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
 
     /* Create cytokine storm (many high-concentration cytokines) */
     uint32_t antigen_id, helper_id, cyt_id;
@@ -389,9 +383,9 @@ TEST_F(CuriosityImmuneIntegrationTest, EdgeCase_MaximumSuppression) {
 
     /* Release many cytokines at high concentration */
     for (int i = 0; i < 5; i++) {
-        brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 1.0f, 0, &cyt_id);
-        brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, helper_id, 1.0f, 0, &cyt_id);
-        brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, helper_id, 1.0f, 0, &cyt_id);
+        brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 1.0f, 0, &cyt_id);
+        brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, 0, 1.0f, 0, &cyt_id);
+        brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, 0, 1.0f, 0, &cyt_id);
     }
 
     /* Trigger callbacks */
@@ -409,14 +403,12 @@ TEST_F(CuriosityImmuneIntegrationTest, EdgeCase_MaximumSuppression) {
 
 TEST_F(CuriosityImmuneIntegrationTest, Integration_BidirectionalCoupling) {
     /* WHAT: Test bidirectional effects work together */
-    curiosity_connect_immune(curiosity, immune);
-    curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)curiosity->immune_bridge;
 
     /* Start with high curiosity (triggers vigilance) */
     curiosity_set_baseline(curiosity, 0.9f);
     curiosity_immune_bridge_update(bridge, 100);
 
-    float initial_vigilance = curiosity_immune_get_vigilance_boost(curiosity);
+    float initial_vigilance = curiosity_immune_get_vigilance_boost(bridge);
     EXPECT_GT(initial_vigilance, 1.0f) << "High curiosity should boost vigilance";
 
     /* Then trigger immune response (should suppress curiosity) */
@@ -425,7 +417,7 @@ TEST_F(CuriosityImmuneIntegrationTest, Integration_BidirectionalCoupling) {
     brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL,
                                   epitope, sizeof(epitope), 8, 1, &antigen_id);
     brain_immune_activate_helper_t(immune, antigen_id, &helper_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, helper_id, 0.7f, 0, &cyt_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL1, 0, 0.7f, 0, &cyt_id);
 
     curiosity_immune_on_cytokine_release(bridge, &immune->cytokines[0]);
     curiosity_immune_bridge_update(bridge, 100);
@@ -434,7 +426,7 @@ TEST_F(CuriosityImmuneIntegrationTest, Integration_BidirectionalCoupling) {
     EXPECT_LT(suppression, 1.0f) << "Cytokine should suppress curiosity";
 
     /* Verify both effects are present */
-    float final_vigilance = curiosity_immune_get_vigilance_boost(curiosity);
+    float final_vigilance = curiosity_immune_get_vigilance_boost(bridge);
     EXPECT_GT(final_vigilance, 0.0f) << "Vigilance should still exist";
 }
 
@@ -444,6 +436,5 @@ TEST_F(CuriosityImmuneIntegrationTest, Integration_BidirectionalCoupling) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    nimcp_log_set_level(NIMCP_LOG_WARN);  /* Reduce test noise */
     return RUN_ALL_TESTS();
 }

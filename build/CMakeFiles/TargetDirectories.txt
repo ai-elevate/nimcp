@@ -64,6 +64,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_api_test_api_resizing.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_api_test_api_version.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_api_test_api_working_memory.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_analysis_fep_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_network_analysis.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_network_analyzer_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_attention_test_attention_fep_bridge.dir
@@ -503,13 +504,9 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_introspection_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_consciousness_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_consciousness_enhanced_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_fault_tolerance_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_immune_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_distributed_immune_response.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_immune_plasticity_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_immune_emotion_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_memory_immune_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_immune_enhancement_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_wellbeing_enhanced_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_fep_bridges_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
@@ -581,8 +578,6 @@
 /home/bbrelin/nimcp/build/test/unit/middleware/features/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/features/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_pattern_immune.dir
-/home/bbrelin/nimcp/build/test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_routing_immune_integration.dir
-/home/bbrelin/nimcp/build/test/unit/middleware/immune/CMakeFiles/unit_middleware_immune_training_immune.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/immune/CMakeFiles/rebuild_cache.dir
@@ -717,7 +712,6 @@
 /home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/regression_middleware_test_signal_filter_regression.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/regression_middleware_test_brain_integration_regression.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/regression_middleware_test_executive_regression.dir
-/home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/regression_middleware_sequence_pe_test.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/rebuild_cache.dir
@@ -972,7 +966,6 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/mental_health/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mental_health/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mental_health/CMakeFiles/install/strip.dir
-/home/bbrelin/nimcp/build/test/unit/cognitive/predictive_immune/CMakeFiles/unit_cognitive_predictive_immune_integration.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/predictive_immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/predictive_immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/predictive_immune/CMakeFiles/rebuild_cache.dir

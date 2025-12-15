@@ -28,10 +28,8 @@ protected:
 
     void SetUp() override {
         /* Create brain */
-        brain_config_t brain_cfg;
-        brain_default_config(&brain_cfg);
-        brain_cfg.num_neurons = 1000;
-        brain = brain_create(&brain_cfg);
+        brain = brain_create("oscillations_immune_full_test", BRAIN_SIZE_SMALL,
+                            BRAIN_TASK_CLASSIFICATION, 100, 10);
         ASSERT_NE(brain, (brain_t)0);
 
         /* Create oscillation analyzer */

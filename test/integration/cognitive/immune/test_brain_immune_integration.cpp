@@ -306,13 +306,13 @@ TEST_F(BrainImmuneIntegrationTest, InflammationEscalationCycle) {
 TEST_F(BrainImmuneIntegrationTest, CytokineSignalingCascade) {
     // Release pro-inflammatory cytokine
     uint32_t cytokine_id;
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL1,
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL1,
                                    0, 0.5f, 0, &cytokine_id);
 
     EXPECT_EQ(immune_system->cytokine_count, 1u);
 
     // Escalate with more cytokines
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL6,
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6,
                                    0, 0.6f, 0, &cytokine_id);
     brain_immune_release_cytokine(immune_system, CYTOKINE_TNF_ALPHA,
                                    0, 0.7f, 0, &cytokine_id);
@@ -320,13 +320,13 @@ TEST_F(BrainImmuneIntegrationTest, CytokineSignalingCascade) {
     EXPECT_EQ(immune_system->cytokine_count, 3u);
 
     // Release anti-inflammatory to resolve
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL10,
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL10,
                                    0, 0.8f, 0, &cytokine_id);
 
     // Verify anti-inflammatory was added
     bool found_il10 = false;
     for (size_t i = 0; i < immune_system->cytokine_count; i++) {
-        if (immune_system->cytokines[i].type == CYTOKINE_IL10) {
+        if (immune_system->cytokines[i].type == BRAIN_CYTOKINE_IL10) {
             found_il10 = true;
             EXPECT_FALSE(immune_system->cytokines[i].pro_inflammatory);
             break;
@@ -472,7 +472,7 @@ TEST_F(BrainImmuneIntegrationTest, StatsAreAccurate) {
     brain_immune_neutralize(immune_system, ag1, ab);
 
     uint32_t cytokine;
-    brain_immune_release_cytokine(immune_system, CYTOKINE_IL6, 0, 0.5f, 0, &cytokine);
+    brain_immune_release_cytokine(immune_system, BRAIN_CYTOKINE_IL6, 0, 0.5f, 0, &cytokine);
 
     uint32_t site;
     brain_immune_initiate_inflammation(immune_system, 1, ag2, &site);
@@ -503,7 +503,7 @@ TEST_F(BrainImmuneIntegrationTest, StatsAreAccurate) {
  */
 TEST(BrainFactoryImmuneTest, ImmuneSubsystemInitialization) {
     // Create brain config with immune enabled
-    brain_config_t config = {0};
+    brain_config_t config = {};
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -562,7 +562,7 @@ TEST(BrainFactoryImmuneTest, ImmuneSubsystemInitialization) {
  * HOW:  Create brain without immune, verify null
  */
 TEST(BrainFactoryImmuneTest, ImmuneDisabledByDefault) {
-    brain_config_t config = {0};
+    brain_config_t config = {};
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -589,7 +589,7 @@ TEST(BrainFactoryImmuneTest, ImmuneDisabledByDefault) {
  * HOW:  Set custom thresholds, verify they're used
  */
 TEST(BrainFactoryImmuneTest, CustomImmuneConfiguration) {
-    brain_config_t config = {0};
+    brain_config_t config = {};
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 20;

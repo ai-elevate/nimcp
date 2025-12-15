@@ -36,6 +36,13 @@ make <test_target> -j4            # Build specific test
 - **Biological basis**: Document neural/cognitive grounding
 - **Memory safety**: Use nimcp_malloc/nimcp_free, proper cleanup
 
+## Critical API Usage Rule
+**NEVER make assumptions about API methods.** Always verify function signatures by reading the actual header files before writing test code or implementations. This includes:
+- Function parameter count and types
+- Parameter order
+- Return types and output parameters
+- Enum/constant names
+
 ## Key API Patterns
 
 ### Tensor Library (`include/utils/tensor/nimcp_tensor.h`)

@@ -385,7 +385,7 @@ TEST_F(WorkingMemoryImmuneTest, DecayRemovalSignalsIL1) {
     brain_immune_get_stats(immune, &stats_before);
 
     // Wait for decay
-    uint64_t start_time = nimcp_time_now_ms();
+    uint64_t start_time = nimcp_time_get_ms();
     working_memory_decay(wm, start_time + 2000);  // 2 seconds later
 
     brain_immune_stats_t stats_after;

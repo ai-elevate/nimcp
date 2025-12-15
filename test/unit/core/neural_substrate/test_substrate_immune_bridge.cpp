@@ -70,7 +70,7 @@ protected:
     }
 
     // Helper to release cytokines
-    // API: brain_immune_release_cytokine(system, type, source_cell, concentration, target_region, &cytokine_id)
+    // API: brain_immune_release_cytokine(system, type, 0, source_cell, concentration, target_region, &cytokine_id)
     void releaseCytokines(float il1, float il6, float tnf, float ifn = 0.0f) {
         if (!immune_system) return;
         uint32_t cytokine_id;

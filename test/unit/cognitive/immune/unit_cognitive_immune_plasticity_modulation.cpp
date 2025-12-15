@@ -110,7 +110,7 @@ TEST_F(ImmunePlasticityTest, GetCytokineConcentrationEmpty) {
      * WHY:  Baseline should be zero
      */
     float conc = immune_plasticity_get_cytokine_concentration(
-        immune_system, CYTOKINE_IL1);
+        immune_system, BRAIN_CYTOKINE_IL1);
     EXPECT_FLOAT_EQ(conc, 0.0f);
 }
 
@@ -118,10 +118,10 @@ TEST_F(ImmunePlasticityTest, GetCytokineConcentrationSingle) {
     /* WHAT: Verify single cytokine concentration
      * WHY:  Should return exact value
      */
-    add_cytokine(CYTOKINE_IL1, 0.5f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.5f);
 
     float conc = immune_plasticity_get_cytokine_concentration(
-        immune_system, CYTOKINE_IL1);
+        immune_system, BRAIN_CYTOKINE_IL1);
     EXPECT_FLOAT_EQ(conc, 0.5f);
 }
 
@@ -129,11 +129,11 @@ TEST_F(ImmunePlasticityTest, GetCytokineConcentrationMultiple) {
     /* WHAT: Sum multiple cytokines of same type
      * WHY:  Multiple releases accumulate
      */
-    add_cytokine(CYTOKINE_IL6, 0.3f);
-    add_cytokine(CYTOKINE_IL6, 0.4f);
+    add_cytokine(BRAIN_CYTOKINE_IL6, 0.3f);
+    add_cytokine(BRAIN_CYTOKINE_IL6, 0.4f);
 
     float conc = immune_plasticity_get_cytokine_concentration(
-        immune_system, CYTOKINE_IL6);
+        immune_system, BRAIN_CYTOKINE_IL6);
     EXPECT_FLOAT_EQ(conc, 0.7f);
 }
 
@@ -153,13 +153,13 @@ TEST_F(ImmunePlasticityTest, GetCytokineConcentrationTypeSpecific) {
     /* WHAT: Verify only matching types are summed
      * WHY:  Different cytokines have different effects
      */
-    add_cytokine(CYTOKINE_IL1, 0.5f);
-    add_cytokine(CYTOKINE_IL6, 0.3f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.5f);
+    add_cytokine(BRAIN_CYTOKINE_IL6, 0.3f);
 
     float il1 = immune_plasticity_get_cytokine_concentration(
-        immune_system, CYTOKINE_IL1);
+        immune_system, BRAIN_CYTOKINE_IL1);
     float il6 = immune_plasticity_get_cytokine_concentration(
-        immune_system, CYTOKINE_IL6);
+        immune_system, BRAIN_CYTOKINE_IL6);
 
     EXPECT_FLOAT_EQ(il1, 0.5f);
     EXPECT_FLOAT_EQ(il6, 0.3f);
@@ -225,7 +225,7 @@ TEST_F(ImmunePlasticityTest, ComputeModulationIL1Effect) {
     /* WHAT: IL-1β elevates BCM threshold
      * WHY:  Pro-inflammatory cytokine impairs LTP
      */
-    add_cytokine(CYTOKINE_IL1, 0.5f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.5f);
 
     immune_plasticity_modulation_t mod;
     immune_plasticity_compute_modulation(immune_system, &config, &mod);
@@ -238,7 +238,7 @@ TEST_F(ImmunePlasticityTest, ComputeModulationIL6Effect) {
     /* WHAT: IL-6 narrows STDP timing windows
      * WHY:  Acute phase response affects timing precision
      */
-    add_cytokine(CYTOKINE_IL6, 0.6f);
+    add_cytokine(BRAIN_CYTOKINE_IL6, 0.6f);
 
     immune_plasticity_modulation_t mod;
     immune_plasticity_compute_modulation(immune_system, &config, &mod);
@@ -266,8 +266,8 @@ TEST_F(ImmunePlasticityTest, ComputeModulationIL10Recovery) {
     /* WHAT: IL-10 partially restores plasticity
      * WHY:  Anti-inflammatory cytokine promotes recovery
      */
-    add_cytokine(CYTOKINE_IL1, 0.8f);  /* Suppress plasticity */
-    add_cytokine(CYTOKINE_IL10, 0.5f); /* Restore partially */
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.8f);  /* Suppress plasticity */
+    add_cytokine(BRAIN_CYTOKINE_IL10, 0.5f); /* Restore partially */
 
     immune_plasticity_modulation_t mod;
     immune_plasticity_compute_modulation(immune_system, &config, &mod);
@@ -327,7 +327,7 @@ TEST_F(ImmunePlasticityTest, BCMThresholdElevation) {
     /* WHAT: IL-1β elevates BCM threshold
      * WHY:  Makes LTP harder to induce
      */
-    add_cytokine(CYTOKINE_IL1, 0.6f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.6f);
 
     bcm_params_t params = bcm_params_cortical();
     float original_thresh = params.min_threshold;
@@ -364,7 +364,7 @@ TEST_F(ImmunePlasticityTest, BCMDirectThresholdModulation) {
     bcm_synapse_t synapse = bcm_synapse_init(0.5f, 0.1f);
     float original_thresh = synapse.threshold;
 
-    add_cytokine(CYTOKINE_IL1, 0.5f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.5f);
 
     immune_plasticity_modulation_t mod;
     immune_plasticity_compute_modulation(immune_system, &config, &mod);
@@ -399,7 +399,7 @@ TEST_F(ImmunePlasticityTest, STDPTimingWindowNarrowing) {
     /* WHAT: IL-6 narrows STDP timing windows
      * WHY:  More precise timing required during inflammation
      */
-    add_cytokine(CYTOKINE_IL6, 0.7f);
+    add_cytokine(BRAIN_CYTOKINE_IL6, 0.7f);
 
     stdp_config_t stdp_config = stdp_config_default();
     float original_tau = stdp_config.tau_plus;
@@ -436,7 +436,7 @@ TEST_F(ImmunePlasticityTest, STDPDirectTimingModulation) {
     stdp_synapse_init(&synapse);
     float original_tau_plus = synapse.tau_plus;
 
-    add_cytokine(CYTOKINE_IL6, 0.5f);
+    add_cytokine(BRAIN_CYTOKINE_IL6, 0.5f);
 
     immune_plasticity_modulation_t mod;
     immune_plasticity_compute_modulation(immune_system, &config, &mod);
@@ -511,7 +511,7 @@ TEST_F(ImmunePlasticityTest, StatisticsTracking) {
     bcm_params_t bcm_p = bcm_params_cortical();
     stdp_config_t stdp_c = stdp_config_default();
 
-    add_cytokine(CYTOKINE_IL1, 0.5f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.5f);
 
     immune_plasticity_modulation_t mod;
     immune_plasticity_compute_modulation(immune_system, &config, &mod);
@@ -566,7 +566,7 @@ TEST_F(ImmunePlasticityTest, ImpairedDetectionSevere) {
      * WHY:  Cytokine storm suppresses plasticity
      */
     create_inflammation(INFLAMMATION_STORM);
-    add_cytokine(CYTOKINE_IL1, 0.9f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.9f);
     add_cytokine(CYTOKINE_TNF_ALPHA, 0.9f);
 
     immune_plasticity_modulation_t mod;
@@ -584,7 +584,7 @@ TEST_F(ImmunePlasticityTest, ModulationToString) {
     /* WHAT: Format modulation as human-readable string
      * WHY:  Debugging and logging
      */
-    add_cytokine(CYTOKINE_IL1, 0.5f);
+    add_cytokine(BRAIN_CYTOKINE_IL1, 0.5f);
 
     immune_plasticity_modulation_t mod;
     immune_plasticity_compute_modulation(immune_system, &config, &mod);

@@ -115,6 +115,9 @@ protected:
     }
 };
 
+/* Static member definition */
+const size_t NormalizationImmuneTest::NUM_CHANNELS;
+
 /* ============================================================================
  * Lifecycle Tests
  * ============================================================================ */

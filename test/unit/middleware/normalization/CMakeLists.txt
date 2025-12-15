@@ -75,7 +75,6 @@ target_link_libraries(unit_middleware_normalization_immune
         GTest::Main
         nimcp_middleware
         nimcp
-        nimcp_cognitive
     )
 add_test(NAME unit_middleware_normalization_immune
          COMMAND unit_middleware_normalization_immune)
