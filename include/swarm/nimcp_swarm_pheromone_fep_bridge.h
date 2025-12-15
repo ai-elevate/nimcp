@@ -66,7 +66,7 @@ typedef struct {
 typedef struct {
     swarm_pheromone_fep_config_t config;
     fep_system_t* fep_system;
-    swarm_pheromone_ctx_t* pheromone_ctx;
+    void* pheromone_ctx;
     swarm_pheromone_fep_effects_t fep_effects;
     fep_swarm_pheromone_effects_t pheromone_effects;
     swarm_pheromone_fep_state_t state;
@@ -77,7 +77,7 @@ typedef struct {
 } swarm_pheromone_fep_bridge_t;
 
 void swarm_pheromone_fep_default_config(swarm_pheromone_fep_config_t* config);
-swarm_pheromone_fep_bridge_t* swarm_pheromone_fep_create(const swarm_pheromone_fep_config_t* config, swarm_pheromone_ctx_t* pheromone_ctx, fep_system_t* fep_system);
+swarm_pheromone_fep_bridge_t* swarm_pheromone_fep_create(const swarm_pheromone_fep_config_t* config, void* pheromone_ctx, fep_system_t* fep_system);
 void swarm_pheromone_fep_destroy(swarm_pheromone_fep_bridge_t* bridge);
 int swarm_pheromone_fep_update(swarm_pheromone_fep_bridge_t* bridge);
 int swarm_pheromone_fep_apply_modulation(swarm_pheromone_fep_bridge_t* bridge);

@@ -5,6 +5,7 @@
 
 #include "swarm/nimcp_swarm_consciousness_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -58,10 +59,24 @@ int swarm_consciousness_fep_update(swarm_consciousness_fep_bridge_t* bridge) {
 
     nimcp_platform_mutex_lock(bridge->mutex);
 
-    swarm_consciousness_state_t cons_state;
-    swarm_consciousness_get_state(bridge->consciousness_ctx, &cons_state);
-    float phi = swarm_consciousness_get_phi(bridge->consciousness_ctx);
+    // Get FEP state
     float free_energy = fep_get_free_energy(bridge->fep_system);
+
+    // Derive consciousness metrics from FEP state (inverse relationship)
+    // High FE = low phi (fragmented), Low FE = high phi (integrated)
+    float phi = fmaxf(0.0f, 1.0f - free_energy * 0.2f);
+
+    // Classify consciousness state based on derived phi
+    swarm_consciousness_state_t cons_state;
+    if (phi < 0.2f) {
+        cons_state = SWARM_CONSCIOUSNESS_DORMANT;
+    } else if (phi < 0.5f) {
+        cons_state = SWARM_CONSCIOUSNESS_EMERGING;
+    } else if (phi < 0.8f) {
+        cons_state = SWARM_CONSCIOUSNESS_UNIFIED;
+    } else {
+        cons_state = SWARM_CONSCIOUSNESS_TRANSCENDENT;
+    }
 
     // FEP effects on consciousness: high FE → reduce phi
     bridge->fep_effects.phi_modulation = -tanhf(free_energy * 0.3f);
@@ -71,7 +86,7 @@ int swarm_consciousness_fep_update(swarm_consciousness_fep_bridge_t* bridge) {
 
     // Consciousness effects on FEP: high phi → high precision
     bridge->consciousness_effects.precision_from_phi = 0.5f + phi * 1.5f;
-    bridge->consciousness_effects.learning_rate_from_consciousness = 0.8f + (cons_state == SWARM_CONSCIOUS ? 0.4f : 0.0f);
+    bridge->consciousness_effects.learning_rate_from_consciousness = 0.8f + (cons_state == SWARM_CONSCIOUSNESS_UNIFIED ? 0.4f : 0.0f);
     bridge->consciousness_effects.integration_weight = phi;
     bridge->consciousness_effects.consciousness_prior = cons_state;
 
@@ -82,7 +97,6 @@ int swarm_consciousness_fep_update(swarm_consciousness_fep_bridge_t* bridge) {
         bridge->state.last_consciousness_state = cons_state;
         bridge->stats.emergence_events++;
     }
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
 
     bridge->stats.total_updates++;
     bridge->stats.avg_phi = (bridge->stats.avg_phi * (bridge->stats.total_updates - 1) + phi) / bridge->stats.total_updates;

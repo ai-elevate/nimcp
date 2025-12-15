@@ -8,6 +8,7 @@
 
 #include "async/nimcp_biological_timescales_fep_bridge.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -239,7 +240,7 @@ int biological_timescales_fep_observe_timing(
 
     /* Update state */
     bridge->state.last_interval_ms = interval_ms;
-    bridge->state.last_event_time_us = nimcp_platform_get_time_us();
+    bridge->state.last_event_time_us = nimcp_platform_time_monotonic_us();
     if (band != bridge->state.current_band) {
         bridge->stats.band_switches++;
         bridge->state.current_band = band;

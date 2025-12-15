@@ -555,6 +555,13 @@ typedef enum {
     BIO_MODULE_SECURITY_AUDIT,
     BIO_MODULE_METRICS,                  /**< Metrics collection module */
 
+    /* Security FEP Bridges (0x0620 - 0x062F) */
+    BIO_MODULE_SECURITY_ANOMALY_FEP = 0x0620,    /**< Security anomaly detector FEP bridge */
+    BIO_MODULE_SECURITY_PATTERN_FEP,             /**< Security pattern DB FEP bridge */
+    BIO_MODULE_SECURITY_BBB_FEP,                 /**< Security BBB FEP bridge */
+    BIO_MODULE_SECURITY_RATE_LIMITER_FEP,        /**< Security rate limiter FEP bridge */
+    BIO_MODULE_SECURITY_CORE_FEP,                /**< Security core FEP bridge */
+
     /* System submodules (0x0608-0x061F) */
     BIO_MODULE_SYSTEM_FAILURE_PREDICTION = 0x0608,
     BIO_MODULE_SYSTEM_GPU_NEURON,
@@ -767,6 +774,7 @@ typedef enum {
     BIO_MODULE_FEP_SLEEP_WAKE_BRIDGE,           /**< FEP-sleep wake bridge */
     BIO_MODULE_FEP_META_LEARNING_BRIDGE,        /**< FEP-meta learning bridge */
     BIO_MODULE_FEP_CONSOLIDATION_BRIDGE,        /**< FEP-consolidation bridge */
+    BIO_MODULE_FEP_HIERARCHICAL_BRIDGE,         /**< FEP-hierarchical cognitive bridge */
 
     /* FEP Cognitive Bridges - Group 2 Emotions (0x0F40 - 0x0F4F) */
     BIO_MODULE_FEP_EMOTIONAL_TAGGING_BRIDGE = 0x0F40, /**< FEP-emotional tagging bridge */
@@ -804,6 +812,23 @@ typedef enum {
     BIO_MODULE_FEP_NORMALIZATION_BRIDGE,        /**< FEP-normalization bridge */
     BIO_MODULE_FEP_PIPELINE_BRIDGE,             /**< FEP-pipeline bridge */
     BIO_MODULE_FEP_TRAINING_BRIDGE,             /**< FEP-training bridge */
+
+    /* FEP Swarm Bridges (0x0F80 - 0x0F8F) */
+    BIO_MODULE_FEP_SWARM_BRAIN = 0x0F80,        /**< FEP-swarm brain bridge */
+    BIO_MODULE_FEP_SWARM_CONSCIOUSNESS,         /**< FEP-swarm consciousness bridge */
+    BIO_MODULE_FEP_COLLECTIVE_WORKSPACE,        /**< FEP-collective workspace bridge */
+    BIO_MODULE_FEP_EMOTIONAL_CONTAGION,         /**< FEP-emotional contagion bridge */
+    BIO_MODULE_FEP_SWARM_CONSENSUS,             /**< FEP-swarm consensus bridge */
+    BIO_MODULE_FEP_SWARM_EMERGENCE,             /**< FEP-swarm emergence bridge */
+    BIO_MODULE_FEP_SWARM_FLOCKING,              /**< FEP-swarm flocking bridge */
+    BIO_MODULE_FEP_SWARM_IMMUNE,                /**< FEP-swarm immune bridge */
+    BIO_MODULE_FEP_SWARM_MEMORY,                /**< FEP-swarm memory bridge */
+    BIO_MODULE_FEP_SWARM_PHEROMONE,             /**< FEP-swarm pheromone bridge */
+    BIO_MODULE_FEP_SWARM_QUORUM,                /**< FEP-swarm quorum bridge */
+    BIO_MODULE_FEP_SWARM_SIGNAL,                /**< FEP-swarm signal bridge */
+
+    /* FEP Orchestrator (0x0F90) */
+    BIO_MODULE_FEP_ORCHESTRATOR = 0x0F90,       /**< FEP orchestrator - coordinates all FEP bridges */
 
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */

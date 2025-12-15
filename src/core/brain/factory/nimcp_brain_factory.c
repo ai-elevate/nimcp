@@ -167,6 +167,7 @@ extern void set_error(const char* format, ...);
 #define init_dendritic_computation_subsystem        nimcp_brain_factory_init_dendritic_computation_subsystem
 #define init_biological_predictive_subsystem        nimcp_brain_factory_init_biological_predictive_subsystem
 #define init_training_subsystem                     nimcp_brain_factory_init_training_subsystem
+#define init_fep_orchestrator_subsystem             nimcp_brain_factory_init_fep_orchestrator_subsystem
 #define init_brain_config                           nimcp_brain_factory_init_brain_config
 #define init_brain_stats                            nimcp_brain_factory_init_brain_stats
 
@@ -616,6 +617,14 @@ brain_t brain_create_custom(const brain_config_t* config)
             brain->bio_async_enabled = true;
         }
     }
+
+    // ========================================================================
+    // FEP ORCHESTRATOR (CENTRAL FEP BRIDGE COORDINATION)
+    // ========================================================================
+
+    // Initialize FEP orchestrator after immune and bio-async are ready
+    // (orchestrator connects to both for unified FEP bridge coordination)
+    if (!init_fep_orchestrator_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // POST-INITIALIZATION

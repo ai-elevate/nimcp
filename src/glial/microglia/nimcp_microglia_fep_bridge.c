@@ -83,7 +83,7 @@ int microglia_fep_update_fep_to_microglia(microglia_fep_bridge_t* bridge) {
     // Complement tagging strength inversely related to precision
     float precision_estimate = 1.0f / (1.0f + free_energy);
     bridge->fep_effects.complement_tag_strength =
-        bridge->config->complement_precision_factor * (1.0f - precision_estimate);
+        bridge->config.complement_precision_factor * (1.0f - precision_estimate);
 
     // Cytokine release when prediction errors high
     bridge->fep_effects.cytokine_release_factor =

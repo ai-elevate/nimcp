@@ -5,8 +5,8 @@
  * @date 2025-12-15
  */
 
-#include
-#include "utils/error/nimcp_error_codes.h" "cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.h"
+#include "cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"

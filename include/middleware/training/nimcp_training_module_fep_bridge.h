@@ -48,6 +48,7 @@
 #include "middleware/training/nimcp_training_module.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"

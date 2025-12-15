@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_swarm_flocking_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -40,7 +41,8 @@ int swarm_flocking_fep_update(swarm_flocking_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     nimcp_platform_mutex_lock(bridge->mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
-    float precision = fep_get_precision(bridge->fep_system);
+    // Compute precision as inverse of free energy (high FE = low precision)
+    float precision = 1.0f / (1.0f + fe);
     nimcp_flocking_stats_t flock_stats;
     nimcp_flocking_get_stats(bridge->flocking_engine, &flock_stats);
     bridge->fep_effects.separation_adjustment = fe * 0.1f - 0.05f;
@@ -52,7 +54,7 @@ int swarm_flocking_fep_update(swarm_flocking_fep_bridge_t* bridge) {
     bridge->flocking_effects.formation_confidence = flock_stats.formation_quality;
     bridge->state.last_alignment_metric = flock_stats.alignment_metric;
     bridge->state.last_cohesion_metric = flock_stats.cohesion_metric;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_alignment_fe = (bridge->stats.avg_alignment_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     bridge->stats.avg_formation_quality = (bridge->stats.avg_formation_quality * (bridge->stats.total_updates - 1) + flock_stats.formation_quality) / bridge->stats.total_updates;

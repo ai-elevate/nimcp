@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_collective_workspace_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -40,7 +41,8 @@ int collective_workspace_fep_update(collective_workspace_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     nimcp_platform_mutex_lock(bridge->mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
-    float precision = fep_get_precision(bridge->fep_system);
+    // Compute precision as inverse of free energy (high FE = low precision)
+    float precision = 1.0f / (1.0f + fe);
     float coherence = collective_workspace_get_coherence(bridge->workspace);
     uint32_t item_count = collective_workspace_get_item_count(bridge->workspace);
     float avg_salience = (item_count > 0) ? 0.7f : 0.0f;
@@ -51,7 +53,7 @@ int collective_workspace_fep_update(collective_workspace_fep_bridge_t* bridge) {
     bridge->workspace_effects.attention_from_salience = avg_salience;
     bridge->workspace_effects.collective_focus_strength = coherence * avg_salience;
     bridge->state.last_coherence = coherence;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_workspace_fe = (bridge->stats.avg_workspace_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     nimcp_platform_mutex_unlock(bridge->mutex);

@@ -175,3 +175,22 @@ target_compile_definitions(unit_fep_sleep PRIVATE NIMCP_TESTING)
 gtest_discover_tests(unit_fep_sleep
     PROPERTIES LABELS "unit;cognitive;free_energy;sleep"
 )
+
+# Unit test for FEP Orchestrator
+add_executable(unit_fep_orchestrator test_fep_orchestrator.cpp)
+target_link_libraries(unit_fep_orchestrator PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+target_include_directories(unit_fep_orchestrator PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_fep_orchestrator PRIVATE cxx_std_17)
+target_compile_definitions(unit_fep_orchestrator PRIVATE NIMCP_TESTING)
+gtest_discover_tests(unit_fep_orchestrator
+    PROPERTIES LABELS "unit;cognitive;free_energy;orchestrator"
+)

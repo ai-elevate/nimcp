@@ -351,6 +351,12 @@ add_e2e_test(e2e_test_fep_bridges_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_fep_bridges_pipeline.cpp
 )
 
+# FEP Orchestrator Pipeline E2E Test (Central FEP Bridge Coordination)
+add_e2e_test(e2e_test_fep_orchestrator_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_fep_orchestrator_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

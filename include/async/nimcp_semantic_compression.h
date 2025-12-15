@@ -163,7 +163,7 @@ typedef struct {
     uint32_t min_primitive_usage;       /**< Min usage before pruning */
 
     bool bio_async_enabled;             /**< Enable bio-async integration */
-    nimcp_bio_channel_t bio_channel;    /**< Bio-async channel to use */
+    nimcp_bio_channel_type_t bio_channel; /**< Bio-async channel to use */
 } nimcp_compression_config_t;
 
 /**

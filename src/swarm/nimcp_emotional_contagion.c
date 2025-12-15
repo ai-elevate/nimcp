@@ -1327,3 +1327,34 @@ nimcp_result_t emotional_contagion_broadcast_collective(
 
     return NIMCP_SUCCESS;
 }
+
+/* ============================================================================
+ * Coherence Measurement
+ * ============================================================================ */
+
+/**
+ * @brief Get emotional coherence of the swarm
+ *
+ * WHAT: Measures alignment of emotional states across agents
+ * WHY:  Coherence indicates emergent collective emotional state
+ * HOW:  Compute variance-based coherence metric from agent emotions
+ *
+ * @param ec Emotional contagion system
+ * @param coherence Output coherence value (0.0 = chaotic, 1.0 = fully aligned)
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t emotional_contagion_get_coherence(
+    emotional_contagion_t* ec,
+    float* coherence
+) {
+    if (!ec || !coherence) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_platform_mutex_lock(&ec->mutex);
+
+    /* Use pre-computed collective state coherence */
+    *coherence = ec->collective.emotional_coherence;
+
+    nimcp_platform_mutex_unlock(&ec->mutex);
+
+    return NIMCP_SUCCESS;
+}

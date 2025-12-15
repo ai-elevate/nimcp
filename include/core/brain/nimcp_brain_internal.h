@@ -152,6 +152,9 @@
 // Brain Immune System Integration
 #include "cognitive/immune/nimcp_brain_immune.h"
 
+// FEP Orchestrator Integration
+#include "cognitive/free_energy/nimcp_fep_orchestrator.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -593,6 +596,18 @@ struct brain_struct {
     //
     brain_immune_system_t* immune_system;        // Brain immune coordination layer
     bool immune_enabled;                         // Immune system enabled for this brain
+
+    // === FEP ORCHESTRATOR INTEGRATION ===
+    //
+    // FEP Orchestrator provides unified coordination of all FEP bridges:
+    // - Manages 93+ FEP bridges across 9 categories
+    // - Category-based update intervals (biologically-plausible timescales)
+    // - Bio-async integration for inter-bridge messaging
+    // - Brain immune integration for precision modulation
+    // - Centralized statistics and monitoring
+    //
+    struct fep_orchestrator* fep_orchestrator;   // FEP bridge coordination layer
+    bool fep_orchestrator_enabled;               // FEP orchestrator enabled for this brain
 };
 
 //=============================================================================

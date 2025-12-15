@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_swarm_emergence_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -54,7 +55,7 @@ int swarm_emergence_fep_update(swarm_emergence_fep_bridge_t* bridge) {
         bridge->stats.emergence_events++;
     }
     bridge->state.last_coherence = coherence;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_tier_fe = (bridge->stats.avg_tier_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     nimcp_platform_mutex_unlock(bridge->mutex);

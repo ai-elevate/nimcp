@@ -659,6 +659,14 @@ void brain_destroy(brain_t brain)
         brain->immune_enabled = false;
     }
 
+    // Cleanup FEP orchestrator
+    if (brain->fep_orchestrator) {
+        fep_orchestrator_stop(brain->fep_orchestrator);
+        fep_orchestrator_destroy(brain->fep_orchestrator);
+        brain->fep_orchestrator = NULL;
+        brain->fep_orchestrator_enabled = false;
+    }
+
     // Cleanup cache
     clear_cache(brain);
     nimcp_platform_mutex_destroy(&brain->cache_mutex);

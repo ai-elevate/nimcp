@@ -4,6 +4,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_column_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include <string.h>

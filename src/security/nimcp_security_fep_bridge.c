@@ -175,7 +175,7 @@ int security_fep_get_stats(const security_fep_bridge_t* bridge,
 int security_fep_connect_bio_async(security_fep_bridge_t* bridge) {
     if (!bridge || bridge->bio_async_enabled) return 0;
     bio_module_info_t info = {
-        .module_id = BIO_MODULE_SECURITY_FEP,
+        .module_id = BIO_MODULE_SECURITY_CORE_FEP,
         .module_name = "security_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge

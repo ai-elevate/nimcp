@@ -68,7 +68,7 @@ typedef struct {
 typedef struct {
     swarm_memory_fep_config_t config;
     fep_system_t* fep_system;
-    swarm_memory_ctx_t* memory_ctx;
+    void* memory_ctx;
     swarm_memory_fep_effects_t fep_effects;
     fep_swarm_memory_effects_t memory_effects;
     swarm_memory_fep_state_t state;
@@ -81,7 +81,7 @@ typedef struct {
 void swarm_memory_fep_default_config(swarm_memory_fep_config_t* config);
 swarm_memory_fep_bridge_t* swarm_memory_fep_create(
     const swarm_memory_fep_config_t* config,
-    swarm_memory_ctx_t* memory_ctx,
+    void* memory_ctx,
     fep_system_t* fep_system
 );
 void swarm_memory_fep_destroy(swarm_memory_fep_bridge_t* bridge);

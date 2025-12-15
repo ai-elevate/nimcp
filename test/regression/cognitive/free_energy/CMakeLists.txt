@@ -10,6 +10,7 @@ add_executable(regression_fep_bridges
     test_fep_bridges_stability_regression.cpp
     test_fep_bridges_performance_regression.cpp
     test_fep_bridges_state_regression.cpp
+    test_fep_orchestrator_regression.cpp
 )
 target_link_libraries(regression_fep_bridges PRIVATE
     nimcp

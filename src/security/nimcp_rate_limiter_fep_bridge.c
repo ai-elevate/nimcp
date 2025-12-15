@@ -324,7 +324,7 @@ int rate_fep_connect_bio_async(rate_fep_bridge_t* bridge) {
     }
 
     bio_module_info_t info = {
-        .module_id = BIO_MODULE_SECURITY_RATE_FEP,
+        .module_id = BIO_MODULE_SECURITY_RATE_LIMITER_FEP,
         .module_name = "rate_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge

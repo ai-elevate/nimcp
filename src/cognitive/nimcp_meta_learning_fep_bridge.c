@@ -3,8 +3,8 @@
  * @brief Free Energy Principle - Meta-Learning Integration Bridge Implementation
  */
 
-#include
-#include "utils/error/nimcp_error_codes.h" "cognitive/nimcp_meta_learning_fep_bridge.h"
+#include "cognitive/nimcp_meta_learning_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"

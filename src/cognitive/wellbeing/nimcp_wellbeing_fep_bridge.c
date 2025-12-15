@@ -5,8 +5,8 @@
  * @date 2025-12-15
  */
 
-#include
-#include "utils/error/nimcp_error_codes.h" "cognitive/wellbeing/nimcp_wellbeing_fep_bridge.h"
+#include "cognitive/wellbeing/nimcp_wellbeing_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"

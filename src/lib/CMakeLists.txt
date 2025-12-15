@@ -57,6 +57,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_monitoring.c          # Monitoring subsystems (476 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_structural.c          # Structural subsystems (624 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_security.c            # Security subsystem (318 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c   # FEP Orchestrator subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -259,6 +260,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_vaccine.c  # Vaccine pre-training system
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_mucosal_immunity.c  # Mucosal barrier immunity
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_persistence.c  # Immune memory persistence
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_fep_bridge.c  # Brain immune-FEP bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_immune.c  # Ethics-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # DISABLED: depends on brain_region_predictive  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
@@ -307,6 +309,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_evidence.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_context.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_sleep.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_orchestrator.c  # FEP Orchestrator - coordinates all FEP bridges
 
     # FEP Module Bridges - Bidirectional integration with FEP system
     # Cognitive FEP Bridges
@@ -358,6 +361,62 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_fep_bridge.c
     # Middleware FEP Bridges (Additional)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/buffering/nimcp_circular_buffer_fep_bridge.c
+
+    # FEP Module Bridges - Phase 2: Extended Integration (Dec 2025)
+    # Async FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_router_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_biological_timescales_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_predictive_protocol_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_semantic_compression_fep_bridge.c
+    # Cognitive FEP Bridges (Extended)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_hierarchical_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_meta_learning_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_personality_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness_extended/nimcp_self_awareness_extended_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow_emotions/nimcp_shadow_emotions_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_fep_bridge.c
+    # Core FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column_fep_bridge.c
+    # Glial FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/microglia/nimcp_microglia_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/oligodendrocytes/nimcp_oligodendrocytes_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/myelin_sheath/nimcp_myelin_sheath_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/integration/nimcp_glial_integration_fep_bridge.c
+    # Middleware FEP Bridges (Extended)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_module_fep_bridge.c
+    # Plasticity FEP Bridges (Extended)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_second_messengers_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/predictive/nimcp_predictive_coding_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp_fep_bridge.c
+    # Security FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_anomaly_detector_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_blood_brain_barrier_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pattern_db_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_rate_limiter_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_fep_bridge.c
+    # Swarm FEP Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_collective_workspace_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_emotional_contagion_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_brain_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consciousness_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consensus_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_emergence_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_flocking_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_immune_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_memory_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_pheromone_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_quorum_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_signal_fep_bridge.c
 
     # Plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c

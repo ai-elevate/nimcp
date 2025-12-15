@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_swarm_quorum_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -40,7 +41,8 @@ int swarm_quorum_fep_update(swarm_quorum_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     nimcp_platform_mutex_lock(bridge->mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
-    float precision = fep_get_precision(bridge->fep_system);
+    // Compute precision as inverse of free energy (high FE = low precision)
+    float precision = 1.0f / (1.0f + fe);
     float consensus_strength = nimcp_quorum_get_consensus_strength(bridge->quorum_system);
     bridge->fep_effects.signal_amplification = precision * bridge->config.signal_evidence_weight;
     bridge->fep_effects.threshold_adjustment = (fe > bridge->config.threshold_certainty_level) ? 0.1f : -0.05f;
@@ -49,7 +51,7 @@ int swarm_quorum_fep_update(swarm_quorum_fep_bridge_t* bridge) {
     bridge->quorum_effects.belief_strength_from_commitment = consensus_strength;
     bridge->quorum_effects.quorum_state = (consensus_strength > 0.7f) ? 1 : 0;
     bridge->state.last_quorum_fe = fe;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_quorum_fe = (bridge->stats.avg_quorum_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     nimcp_platform_mutex_unlock(bridge->mutex);

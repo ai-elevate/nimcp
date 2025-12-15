@@ -456,18 +456,31 @@ TEST_F(SleepWakeFepBridgeTest, BioAsync) {
 class BrainImmuneFepBridgeTest : public CognitiveFepBridgesTestBase {
 protected:
     brain_immune_fep_bridge_t* bridge = nullptr;
+    brain_immune_system_t* immune = nullptr;
 
     void SetUp() override {
         CognitiveFepBridgesTestBase::SetUp();
+
+        /* Create brain immune system */
+        brain_immune_config_t immune_config;
+        brain_immune_default_config(&immune_config);
+        immune = brain_immune_create(&immune_config);
+        ASSERT_NE(immune, nullptr);
+
+        /* Create FEP bridge */
         brain_immune_fep_config_t config;
-        brain_immune_fep_bridge_default_config(&config);
-        bridge = brain_immune_fep_bridge_create(&config);
+        brain_immune_fep_default_config(&config);
+        bridge = brain_immune_fep_create(&config, immune, fep);
     }
 
     void TearDown() override {
         if (bridge) {
-            brain_immune_fep_bridge_destroy(bridge);
+            brain_immune_fep_destroy(bridge);
             bridge = nullptr;
+        }
+        if (immune) {
+            brain_immune_destroy(immune);
+            immune = nullptr;
         }
         CognitiveFepBridgesTestBase::TearDown();
     }
@@ -479,34 +492,65 @@ TEST_F(BrainImmuneFepBridgeTest, CreateDestroy) {
 
 TEST_F(BrainImmuneFepBridgeTest, DefaultConfig) {
     brain_immune_fep_config_t config;
-    int ret = brain_immune_fep_bridge_default_config(&config);
+    int ret = brain_immune_fep_default_config(&config);
     EXPECT_EQ(ret, 0);
+    EXPECT_TRUE(config.enable_precision_modulation);
+    EXPECT_TRUE(config.enable_inflammation_errors);
+    EXPECT_TRUE(config.enable_fep_guided_responses);
 }
 
 TEST_F(BrainImmuneFepBridgeTest, DefaultConfigNull) {
-    EXPECT_NE(brain_immune_fep_bridge_default_config(nullptr), 0);
+    EXPECT_NE(brain_immune_fep_default_config(nullptr), 0);
+}
+
+TEST_F(BrainImmuneFepBridgeTest, CreateWithNullImmune) {
+    brain_immune_fep_config_t config;
+    brain_immune_fep_default_config(&config);
+    brain_immune_fep_bridge_t* br = brain_immune_fep_create(&config, nullptr, fep);
+    EXPECT_EQ(br, nullptr);
+}
+
+TEST_F(BrainImmuneFepBridgeTest, CreateWithNullFep) {
+    brain_immune_fep_config_t config;
+    brain_immune_fep_default_config(&config);
+    brain_immune_fep_bridge_t* br = brain_immune_fep_create(&config, immune, nullptr);
+    EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(BrainImmuneFepBridgeTest, DestroyNull) {
-    brain_immune_fep_bridge_destroy(nullptr);
-}
-
-TEST_F(BrainImmuneFepBridgeTest, ConnectFep) {
-    int ret = brain_immune_fep_bridge_connect_fep(bridge, fep);
-    EXPECT_EQ(ret, 0);
+    brain_immune_fep_destroy(nullptr);
 }
 
 TEST_F(BrainImmuneFepBridgeTest, Update) {
-    brain_immune_fep_bridge_connect_fep(bridge, fep);
-    int ret = brain_immune_fep_bridge_update(bridge);
+    int ret = brain_immune_fep_update(bridge);
     EXPECT_EQ(ret, 0);
 }
 
+TEST_F(BrainImmuneFepBridgeTest, GetPrecisionModulation) {
+    brain_immune_fep_update(bridge);
+    float precision = brain_immune_fep_get_precision_modulation(bridge);
+    EXPECT_GT(precision, 0.0f);
+}
+
+TEST_F(BrainImmuneFepBridgeTest, GetPredictionError) {
+    brain_immune_fep_update(bridge);
+    float error = brain_immune_fep_get_prediction_error(bridge);
+    EXPECT_GE(error, 0.0f);
+}
+
+TEST_F(BrainImmuneFepBridgeTest, GetStats) {
+    brain_immune_fep_update(bridge);
+    brain_immune_fep_stats_t stats;
+    int ret = brain_immune_fep_get_stats(bridge, &stats);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(stats.total_updates, 1);
+}
+
 TEST_F(BrainImmuneFepBridgeTest, BioAsync) {
-    EXPECT_FALSE(brain_immune_fep_bridge_is_bio_async_connected(bridge));
-    brain_immune_fep_bridge_connect_bio_async(bridge);
-    EXPECT_TRUE(brain_immune_fep_bridge_is_bio_async_connected(bridge));
-    brain_immune_fep_bridge_disconnect_bio_async(bridge);
-    EXPECT_FALSE(brain_immune_fep_bridge_is_bio_async_connected(bridge));
+    EXPECT_FALSE(brain_immune_fep_is_bio_async_connected(bridge));
+    brain_immune_fep_connect_bio_async(bridge);
+    EXPECT_TRUE(brain_immune_fep_is_bio_async_connected(bridge));
+    brain_immune_fep_disconnect_bio_async(bridge);
+    EXPECT_FALSE(brain_immune_fep_is_bio_async_connected(bridge));
 }
 

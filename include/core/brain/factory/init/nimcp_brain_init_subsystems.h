@@ -72,6 +72,9 @@ bool nimcp_brain_factory_init_axon_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain);
 
+// FEP Orchestrator (central coordination of all FEP bridges)
+bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

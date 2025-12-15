@@ -3,8 +3,8 @@
  * @brief Second Messengers FEP Bridge Implementation
  */
 
-#include
-#include "utils/error/nimcp_error_codes.h" "plasticity/nimcp_second_messengers_fep_bridge.h"
+#include "plasticity/nimcp_second_messengers_fep_bridge.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"

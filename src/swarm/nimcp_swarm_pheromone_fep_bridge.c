@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_swarm_pheromone_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -15,7 +16,7 @@ void swarm_pheromone_fep_default_config(swarm_pheromone_fep_config_t* config) {
     config->enable_fe_gradient_descent = true;
 }
 
-swarm_pheromone_fep_bridge_t* swarm_pheromone_fep_create(const swarm_pheromone_fep_config_t* config, swarm_pheromone_ctx_t* pheromone_ctx, fep_system_t* fep_system) {
+swarm_pheromone_fep_bridge_t* swarm_pheromone_fep_create(const swarm_pheromone_fep_config_t* config, void* pheromone_ctx, fep_system_t* fep_system) {
     if (!pheromone_ctx || !fep_system) return NULL;
     swarm_pheromone_fep_bridge_t* bridge = (swarm_pheromone_fep_bridge_t*)nimcp_malloc(sizeof(swarm_pheromone_fep_bridge_t));
     if (!bridge) return NULL;
@@ -40,7 +41,8 @@ int swarm_pheromone_fep_update(swarm_pheromone_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     nimcp_platform_mutex_lock(bridge->mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
-    float precision = fep_get_precision(bridge->fep_system);
+    // Compute precision as inverse of free energy (high FE = low precision)
+    float precision = 1.0f / (1.0f + fe);
     bridge->fep_effects.deposition_rate = precision * bridge->config.trail_strength_gain;
     bridge->fep_effects.evaporation_adjustment = 1.0f + fe * bridge->config.evaporation_fe_coupling;
     bridge->fep_effects.gradient_following_bias = fmaxf(0.5f, 1.0f - fe * 0.2f);
@@ -49,7 +51,7 @@ int swarm_pheromone_fep_update(swarm_pheromone_fep_bridge_t* bridge) {
     bridge->pheromone_effects.action_bias_from_trail = bridge->fep_effects.gradient_following_bias;
     bridge->pheromone_effects.uncertainty_from_evaporation = fe * 0.3f;
     bridge->state.last_gradient_magnitude = gradient_mag;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_gradient_fe = (bridge->stats.avg_gradient_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     nimcp_platform_mutex_unlock(bridge->mutex);

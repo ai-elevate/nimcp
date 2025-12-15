@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_swarm_signal_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -15,7 +16,7 @@ void swarm_signal_fep_default_config(swarm_signal_fep_config_t* config) {
     config->enable_precision_routing = true;
 }
 
-swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config_t* config, swarm_signal_ctx_t* signal_ctx, fep_system_t* fep_system) {
+swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config_t* config, void* signal_ctx, fep_system_t* fep_system) {
     if (!signal_ctx || !fep_system) return NULL;
     swarm_signal_fep_bridge_t* bridge = (swarm_signal_fep_bridge_t*)nimcp_malloc(sizeof(swarm_signal_fep_bridge_t));
     if (!bridge) return NULL;
@@ -40,14 +41,15 @@ int swarm_signal_fep_update(swarm_signal_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     nimcp_platform_mutex_lock(bridge->mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
-    float precision = fep_get_precision(bridge->fep_system);
+    // Compute precision as inverse of free energy (high FE = low precision)
+    float precision = 1.0f / (1.0f + fe);
     bridge->fep_effects.signal_amplification = precision * bridge->config.signal_precision_weight;
     bridge->fep_effects.routing_confidence = fmaxf(0.3f, 1.0f - fe * 0.3f);
     bridge->fep_effects.propagation_rate = fmaxf(0.5f, 1.0f - fe * bridge->config.propagation_decay_rate);
     bridge->signal_effects.precision_from_signal = 0.5f + bridge->fep_effects.signal_amplification * 0.5f;
     bridge->signal_effects.belief_update_from_signal = bridge->fep_effects.routing_confidence;
     bridge->state.last_signal_fe = fe;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_signal_fe = (bridge->stats.avg_signal_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     nimcp_platform_mutex_unlock(bridge->mutex);

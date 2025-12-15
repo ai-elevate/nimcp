@@ -204,14 +204,17 @@ int fep_immune_report_prediction_failure(
             uint32_t antigen_id;
             brain_immune_present_antigen(bridge->immune_system,
                 ANTIGEN_SOURCE_MANUAL, pattern, 8, 10, 0, &antigen_id);
+            bridge->stats.immune_activations++;
         }
         bridge->stats.prediction_failures++;
     } else if (scaled_magnitude >= FEP_IMMUNE_PE_THRESHOLD_HIGH) {
         /* High: Strong immune response */
         bridge->stats.prediction_failures++;
+        bridge->stats.immune_activations++;
     } else if (scaled_magnitude >= FEP_IMMUNE_PE_THRESHOLD_MEDIUM) {
         /* Medium: Moderate response */
         bridge->stats.model_violations++;
+        bridge->stats.immune_activations++;
     }
 
     bridge->state.prediction_failures_reported++;
@@ -462,7 +465,8 @@ int fep_immune_bridge_update(
     /* 1. Update cytokine effects (inlined to avoid deadlock) */
     if (bridge->immune_system) {
         float sensitivity = bridge->config.cytokine_sensitivity;
-        float base_level = bridge->state.inflammation_level;
+        /* Normalize inflammation level to 0.0-1.0 range */
+        float base_level = (float)bridge->state.inflammation_level / (float)INFLAMMATION_STORM;
 
         bridge->cytokine_effects.il6_precision_reduction =
             CYTOKINE_IL6_PRECISION_IMPACT * base_level * sensitivity;
@@ -525,7 +529,8 @@ int fep_immune_bridge_update(
                 fep->levels[l].errors.precision[i] *= precision_factor;
             }
         }
-        bridge->state.current_inflammation = precision_factor;
+        /* current_inflammation is the inverse of precision (high precision = low inflammation) */
+        bridge->state.current_inflammation = 1.0f - precision_factor;
     }
 
     /* 3. Check FEP state for immune triggers */

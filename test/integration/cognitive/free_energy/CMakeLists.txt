@@ -20,6 +20,7 @@ add_executable(integration_fep_enhanced
     test_fep_perception_bridges_integration.cpp
     test_fep_plasticity_bridges_integration.cpp
     test_fep_bridges_full_pipeline_integration.cpp
+    test_fep_orchestrator_integration.cpp
 )
 target_link_libraries(integration_fep_enhanced PRIVATE
     nimcp

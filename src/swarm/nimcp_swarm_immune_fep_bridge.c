@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_swarm_immune_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -15,7 +16,7 @@ void swarm_immune_fep_default_config(swarm_immune_fep_config_t* config) {
     config->enable_adaptive_response = true;
 }
 
-swarm_immune_fep_bridge_t* swarm_immune_fep_create(const swarm_immune_fep_config_t* config, swarm_immune_t* immune_system, fep_system_t* fep_system) {
+swarm_immune_fep_bridge_t* swarm_immune_fep_create(const swarm_immune_fep_config_t* config, void* immune_system, fep_system_t* fep_system) {
     if (!immune_system || !fep_system) return NULL;
     swarm_immune_fep_bridge_t* bridge = (swarm_immune_fep_bridge_t*)nimcp_malloc(sizeof(swarm_immune_fep_bridge_t));
     if (!bridge) return NULL;
@@ -47,7 +48,7 @@ int swarm_immune_fep_update(swarm_immune_fep_bridge_t* bridge) {
     bridge->immune_effects.action_bias_from_immune = bridge->fep_effects.response_urgency;
     bridge->immune_effects.learning_suppression = bridge->fep_effects.inflammation_level;
     bridge->state.last_threat_fe = fe;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_threat_fe = (bridge->stats.avg_threat_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     nimcp_platform_mutex_unlock(bridge->mutex);

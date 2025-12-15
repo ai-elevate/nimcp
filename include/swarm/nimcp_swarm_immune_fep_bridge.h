@@ -67,7 +67,7 @@ typedef struct {
 typedef struct {
     swarm_immune_fep_config_t config;
     fep_system_t* fep_system;
-    swarm_immune_t* immune_system;
+    void* immune_system;
     swarm_immune_fep_effects_t fep_effects;
     fep_swarm_immune_effects_t immune_effects;
     swarm_immune_fep_state_t state;
@@ -78,7 +78,7 @@ typedef struct {
 } swarm_immune_fep_bridge_t;
 
 void swarm_immune_fep_default_config(swarm_immune_fep_config_t* config);
-swarm_immune_fep_bridge_t* swarm_immune_fep_create(const swarm_immune_fep_config_t* config, swarm_immune_t* immune_system, fep_system_t* fep_system);
+swarm_immune_fep_bridge_t* swarm_immune_fep_create(const swarm_immune_fep_config_t* config, void* immune_system, fep_system_t* fep_system);
 void swarm_immune_fep_destroy(swarm_immune_fep_bridge_t* bridge);
 int swarm_immune_fep_update(swarm_immune_fep_bridge_t* bridge);
 int swarm_immune_fep_apply_modulation(swarm_immune_fep_bridge_t* bridge);

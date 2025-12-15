@@ -61,7 +61,8 @@
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
-#include "async/bio/nimcp_bio_messages.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 
 #ifdef __cplusplus
 extern "C" {

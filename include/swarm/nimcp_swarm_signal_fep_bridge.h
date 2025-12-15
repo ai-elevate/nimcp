@@ -66,7 +66,7 @@ typedef struct {
 typedef struct {
     swarm_signal_fep_config_t config;
     fep_system_t* fep_system;
-    swarm_signal_ctx_t* signal_ctx;
+    void* signal_ctx;
     swarm_signal_fep_effects_t fep_effects;
     fep_swarm_signal_effects_t signal_effects;
     swarm_signal_fep_state_t state;
@@ -77,7 +77,7 @@ typedef struct {
 } swarm_signal_fep_bridge_t;
 
 void swarm_signal_fep_default_config(swarm_signal_fep_config_t* config);
-swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config_t* config, swarm_signal_ctx_t* signal_ctx, fep_system_t* fep_system);
+swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config_t* config, void* signal_ctx, fep_system_t* fep_system);
 void swarm_signal_fep_destroy(swarm_signal_fep_bridge_t* bridge);
 int swarm_signal_fep_update(swarm_signal_fep_bridge_t* bridge);
 int swarm_signal_fep_apply_modulation(swarm_signal_fep_bridge_t* bridge);

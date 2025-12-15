@@ -98,7 +98,7 @@ int myelin_sheath_fep_update_myelin_to_fep(myelin_sheath_fep_bridge_t* bridge) {
 
     // Velocity precision contribution
     bridge->myelin_effects.velocity_precision_contribution =
-        stats.avg_conduction_velocity * bridge->config.velocity_precision_factor / 100.0f;
+        stats.mean_velocity_ratio * bridge->config.velocity_precision_factor;
 
     // Integrity affects uncertainty
     bridge->myelin_effects.integrity_uncertainty =

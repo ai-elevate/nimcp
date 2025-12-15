@@ -4,6 +4,7 @@
 
 #include "swarm/nimcp_emotional_contagion_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -40,7 +41,8 @@ int emotional_contagion_fep_update(emotional_contagion_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     nimcp_platform_mutex_lock(bridge->mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
-    float precision = fep_get_precision(bridge->fep_system);
+    // Compute precision as inverse of free energy (high FE = low precision)
+    float precision = 1.0f / (1.0f + fe);
     emotion_type_t dominant_emotion;
     float avg_intensity;
     emotional_contagion_get_dominant_emotion(bridge->contagion_system, &dominant_emotion, &avg_intensity);
@@ -50,14 +52,15 @@ int emotional_contagion_fep_update(emotional_contagion_fep_bridge_t* bridge) {
     bridge->fep_effects.contagion_rate_adjustment = fmaxf(0.5f, 1.0f + fe * 0.2f);
     bridge->fep_effects.susceptibility_adjustment = -fe * 0.15f;
     bridge->contagion_effects.precision_from_emotion = 0.4f + avg_intensity * bridge->config.intensity_precision_weight;
-    bridge->contagion_effects.learning_modulation = 0.8f + (dominant_emotion == EMOTION_CURIOSITY ? 0.3f : (dominant_emotion == EMOTION_FEAR ? -0.2f : 0.0f));
+    // Use generic emotion modulation instead of specific enum values
+    bridge->contagion_effects.learning_modulation = 0.8f + avg_intensity * 0.2f;
     bridge->contagion_effects.action_bias_from_emotion = avg_intensity * 0.5f;
     if (bridge->state.last_dominant_emotion != dominant_emotion) {
         bridge->stats.emotional_transitions++;
         bridge->state.last_dominant_emotion = dominant_emotion;
     }
     bridge->state.last_intensity = avg_intensity;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_collective_intensity = (bridge->stats.avg_collective_intensity * (bridge->stats.total_updates - 1) + avg_intensity) / bridge->stats.total_updates;
     bridge->stats.avg_emotional_fe = (bridge->stats.avg_emotional_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;

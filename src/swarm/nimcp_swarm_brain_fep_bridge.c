@@ -8,6 +8,7 @@
 
 #include "swarm/nimcp_swarm_brain_fep_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -75,7 +76,7 @@ swarm_brain_fep_bridge_t* swarm_brain_fep_create(
         return NULL;
     }
 
-    bridge->state.last_tier = SWARM_TIER_INDIVIDUAL;
+    bridge->state.last_tier = SWARM_TIER_0_DISCONNECTED;
 
     NIMCP_LOGGING_INFO("Swarm brain FEP bridge created");
     return bridge;
@@ -115,16 +116,18 @@ int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
 
     nimcp_platform_mutex_lock(bridge->mutex);
 
-    // Get swarm brain state
-    swarm_brain_state_t swarm_state;
-    if (swarm_brain_get_state(bridge->swarm_brain, &swarm_state) != 0) {
+    // Get swarm brain stats
+    swarm_stats_t swarm_stats;
+    if (!swarm_brain_get_stats(bridge->swarm_brain, &swarm_stats)) {
         nimcp_platform_mutex_unlock(bridge->mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
+    // Get current emergence tier
+    swarm_emergence_tier_t current_tier = swarm_brain_get_emergence_tier(bridge->swarm_brain);
+
     // Get FEP state
     float free_energy = fep_get_free_energy(bridge->fep_system);
-    float precision = fep_get_precision(bridge->fep_system);
 
     // Compute FEP effects on swarm brain
     // High free energy → Increase exploration, adjust coordination
@@ -135,20 +138,20 @@ int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
 
     // Compute swarm brain effects on FEP
     // High coherence → High precision
-    bridge->swarm_effects.precision_modulation = 0.5f + (swarm_state.collective_coherence * 1.5f);
-    bridge->swarm_effects.learning_rate_modulation = 0.7f + (swarm_state.connected_drones / 32.0f) * 0.8f;
-    bridge->swarm_effects.hierarchy_depth = (uint32_t)swarm_state.current_tier + 1;
-    bridge->swarm_effects.collective_confidence = swarm_state.collective_coherence;
+    bridge->swarm_effects.precision_modulation = 0.5f + (swarm_stats.workspace_coherence * 1.5f);
+    bridge->swarm_effects.learning_rate_modulation = 0.7f + (swarm_stats.peers_connected / 32.0f) * 0.8f;
+    bridge->swarm_effects.hierarchy_depth = (uint32_t)current_tier + 1;
+    bridge->swarm_effects.collective_confidence = swarm_stats.workspace_coherence;
 
     // Update state tracking
     bridge->state.last_collective_free_energy = free_energy;
-    bridge->state.last_coherence = swarm_state.collective_coherence;
-    if (bridge->state.last_tier != swarm_state.current_tier) {
+    bridge->state.last_coherence = swarm_stats.workspace_coherence;
+    if (bridge->state.last_tier != (uint32_t)current_tier) {
         bridge->stats.tier_changes++;
-        bridge->state.last_tier = swarm_state.current_tier;
+        bridge->state.last_tier = (uint32_t)current_tier;
     }
     bridge->state.update_count++;
-    bridge->state.last_update_time = nimcp_platform_get_time_ns();
+    bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
 
     // Update statistics
     bridge->stats.total_updates++;
@@ -200,9 +203,9 @@ float swarm_brain_fep_compute_collective_fe(swarm_brain_fep_bridge_t* bridge) {
     float collective_fe = fep_get_free_energy(bridge->fep_system);
 
     // Weight by coherence (high coherence → lower collective FE)
-    swarm_brain_state_t state;
-    if (swarm_brain_get_state(bridge->swarm_brain, &state) == 0) {
-        collective_fe *= (1.0f - state.collective_coherence * 0.3f);
+    swarm_stats_t stats;
+    if (swarm_brain_get_stats(bridge->swarm_brain, &stats)) {
+        collective_fe *= (1.0f - stats.workspace_coherence * 0.3f);
     }
 
     nimcp_platform_mutex_unlock(bridge->mutex);
@@ -224,13 +227,8 @@ int swarm_brain_fep_process_collective_observation(
     nimcp_platform_mutex_lock(bridge->mutex);
 
     // Process observation through FEP system
-    // This would call FEP API to update beliefs
-    fep_observation_t obs;
-    obs.data = (float*)observation;
-    obs.dim = observation_dim;
-    obs.precision = bridge->swarm_effects.precision_modulation;
-
-    int result = fep_process_observation(bridge->fep_system, &obs);
+    // fep_process_observation takes (fep_system, float*, dim)
+    int result = fep_process_observation(bridge->fep_system, (float*)observation, observation_dim);
 
     nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
