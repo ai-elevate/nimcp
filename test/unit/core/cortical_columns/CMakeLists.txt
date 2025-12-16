@@ -162,3 +162,317 @@ set_tests_properties(test_cortical_immune
         TIMEOUT 120
         LABELS "unit;core;cortical_columns;immune"
 )
+
+# ============================================================================
+# Cortical Column Enhancement Tests
+# ============================================================================
+
+# Test executable for cortical attention gain
+add_executable(test_cortical_attention_gain
+    test_cortical_attention_gain.cpp
+)
+
+target_link_libraries(test_cortical_attention_gain
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_attention_gain PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_attention_gain
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_attention_gain
+         COMMAND test_cortical_attention_gain)
+
+set_tests_properties(test_cortical_attention_gain
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;attention_gain"
+)
+
+# Test executable for cortical predictive coding
+add_executable(test_cortical_predictive_coding
+    test_cortical_predictive_coding.cpp
+)
+
+target_link_libraries(test_cortical_predictive_coding
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_predictive_coding PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_predictive_coding
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_predictive_coding
+         COMMAND test_cortical_predictive_coding)
+
+set_tests_properties(test_cortical_predictive_coding
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;predictive_coding"
+)
+
+# Test executable for cortical sparse coding
+add_executable(test_cortical_sparse_coding
+    test_cortical_sparse_coding.cpp
+)
+
+target_link_libraries(test_cortical_sparse_coding
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_sparse_coding PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_sparse_coding
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_sparse_coding
+         COMMAND test_cortical_sparse_coding)
+
+set_tests_properties(test_cortical_sparse_coding
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;sparse_coding"
+)
+
+# Test executable for cortical temporal
+add_executable(test_cortical_temporal
+    test_cortical_temporal.cpp
+)
+
+target_link_libraries(test_cortical_temporal
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_temporal PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_temporal
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_temporal
+         COMMAND test_cortical_temporal)
+
+set_tests_properties(test_cortical_temporal
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;temporal"
+)
+
+# Test executable for cortical hierarchy
+add_executable(test_cortical_hierarchy
+    test_cortical_hierarchy.cpp
+)
+
+target_link_libraries(test_cortical_hierarchy
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_hierarchy PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_hierarchy
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_hierarchy
+         COMMAND test_cortical_hierarchy)
+
+set_tests_properties(test_cortical_hierarchy
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;hierarchy"
+)
+
+# Test executable for cortical neuromodulation
+add_executable(test_cortical_neuromodulation
+    test_cortical_neuromodulation.cpp
+)
+
+target_link_libraries(test_cortical_neuromodulation
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_neuromodulation PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_neuromodulation
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_neuromodulation
+         COMMAND test_cortical_neuromodulation)
+
+set_tests_properties(test_cortical_neuromodulation
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;neuromodulation"
+)
+
+# Test executable for cortical oscillations integration
+add_executable(test_cortical_oscillations_integration
+    test_cortical_oscillations_integration.cpp
+)
+
+target_link_libraries(test_cortical_oscillations_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_oscillations_integration PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_oscillations_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_oscillations_integration
+         COMMAND test_cortical_oscillations_integration)
+
+set_tests_properties(test_cortical_oscillations_integration
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;oscillations_integration"
+)
+
+# Test executable for cortical plasticity bridge
+add_executable(test_cortical_plasticity_bridge
+    test_cortical_plasticity_bridge.cpp
+)
+
+target_link_libraries(test_cortical_plasticity_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_plasticity_bridge PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_plasticity_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_plasticity_bridge
+         COMMAND test_cortical_plasticity_bridge)
+
+set_tests_properties(test_cortical_plasticity_bridge
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;plasticity_bridge"
+)
+
+# Test executable for cortical dendritic
+add_executable(test_cortical_dendritic
+    test_cortical_dendritic.cpp
+)
+
+target_link_libraries(test_cortical_dendritic
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_dendritic PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_dendritic
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_dendritic
+         COMMAND test_cortical_dendritic)
+
+set_tests_properties(test_cortical_dendritic
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;dendritic"
+)
+
+# Test executable for cortical surround
+add_executable(test_cortical_surround
+    test_cortical_surround.cpp
+)
+
+target_link_libraries(test_cortical_surround
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_cortical_surround PRIVATE cxx_std_17)
+
+target_include_directories(test_cortical_surround
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_cortical_surround
+         COMMAND test_cortical_surround)
+
+set_tests_properties(test_cortical_surround
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;surround"
+)

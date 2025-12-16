@@ -362,6 +362,16 @@ typedef enum {
     BIO_MODULE_CORTICAL_HYPERCOLUMNS,
     BIO_MODULE_CORTICAL_ORIENTATION,
     BIO_MODULE_CORTICAL_TOPOGRAPHIC,
+    BIO_MODULE_CORTICAL_PREDICTIVE = 0x0145,   /**< Predictive coding hierarchy */
+    BIO_MODULE_CORTICAL_OSCILLATIONS_INTEGRATION, /**< Cortical oscillation integration */
+    BIO_MODULE_CORTICAL_ATTENTION_GAIN,        /**< Attention-modulated gain control */
+    BIO_MODULE_CORTICAL_SURROUND,              /**< Surround suppression & contextual modulation */
+    BIO_MODULE_CORTICAL_SPARSE,                /**< Sparse distributed representations */
+    BIO_MODULE_CORTICAL_HIERARCHY,             /**< Cortical hierarchy & area connectivity */
+    BIO_MODULE_CORTICAL_TEMPORAL,              /**< Temporal dynamics & sequence processing */
+    BIO_MODULE_CORTICAL_PLASTICITY,            /**< Plasticity coordinator integration */
+    BIO_MODULE_CORTICAL_DENDRITIC,             /**< Dendritic computation */
+    BIO_MODULE_CORTICAL_NEUROMOD,              /**< Neuromodulatory effects */
 
     /* Topology submodules (0x0150-0x015F) */
     BIO_MODULE_TOPOLOGY_COMMUNITY = 0x0150,

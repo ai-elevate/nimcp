@@ -1587,6 +1587,16 @@
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_column.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_layers.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_immune.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_attention_gain.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_predictive_coding.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_sparse_coding.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_temporal.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_hierarchy.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_neuromodulation.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_oscillations_integration.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_plasticity_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_dendritic.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_surround.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/rebuild_cache.dir

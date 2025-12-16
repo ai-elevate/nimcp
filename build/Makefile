@@ -11001,6 +11001,136 @@ test_cortical_immune/fast:
 .PHONY : test_cortical_immune/fast
 
 #=============================================================================
+# Target rules for targets named test_cortical_attention_gain
+
+# Build rule for target.
+test_cortical_attention_gain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_attention_gain
+.PHONY : test_cortical_attention_gain
+
+# fast build rule for target.
+test_cortical_attention_gain/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_attention_gain.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_attention_gain.dir/build
+.PHONY : test_cortical_attention_gain/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_predictive_coding
+
+# Build rule for target.
+test_cortical_predictive_coding: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_predictive_coding
+.PHONY : test_cortical_predictive_coding
+
+# fast build rule for target.
+test_cortical_predictive_coding/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_predictive_coding.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_predictive_coding.dir/build
+.PHONY : test_cortical_predictive_coding/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_sparse_coding
+
+# Build rule for target.
+test_cortical_sparse_coding: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_sparse_coding
+.PHONY : test_cortical_sparse_coding
+
+# fast build rule for target.
+test_cortical_sparse_coding/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_sparse_coding.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_sparse_coding.dir/build
+.PHONY : test_cortical_sparse_coding/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_temporal
+
+# Build rule for target.
+test_cortical_temporal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_temporal
+.PHONY : test_cortical_temporal
+
+# fast build rule for target.
+test_cortical_temporal/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_temporal.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_temporal.dir/build
+.PHONY : test_cortical_temporal/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_hierarchy
+
+# Build rule for target.
+test_cortical_hierarchy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_hierarchy
+.PHONY : test_cortical_hierarchy
+
+# fast build rule for target.
+test_cortical_hierarchy/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_hierarchy.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_hierarchy.dir/build
+.PHONY : test_cortical_hierarchy/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_neuromodulation
+
+# Build rule for target.
+test_cortical_neuromodulation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_neuromodulation
+.PHONY : test_cortical_neuromodulation
+
+# fast build rule for target.
+test_cortical_neuromodulation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_neuromodulation.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_neuromodulation.dir/build
+.PHONY : test_cortical_neuromodulation/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_oscillations_integration
+
+# Build rule for target.
+test_cortical_oscillations_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_oscillations_integration
+.PHONY : test_cortical_oscillations_integration
+
+# fast build rule for target.
+test_cortical_oscillations_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_oscillations_integration.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_oscillations_integration.dir/build
+.PHONY : test_cortical_oscillations_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_plasticity_bridge
+
+# Build rule for target.
+test_cortical_plasticity_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_plasticity_bridge
+.PHONY : test_cortical_plasticity_bridge
+
+# fast build rule for target.
+test_cortical_plasticity_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_plasticity_bridge.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_plasticity_bridge.dir/build
+.PHONY : test_cortical_plasticity_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_dendritic
+
+# Build rule for target.
+test_cortical_dendritic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_dendritic
+.PHONY : test_cortical_dendritic
+
+# fast build rule for target.
+test_cortical_dendritic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_dendritic.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_dendritic.dir/build
+.PHONY : test_cortical_dendritic/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_surround
+
+# Build rule for target.
+test_cortical_surround: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_surround
+.PHONY : test_cortical_surround
+
+# fast build rule for target.
+test_cortical_surround/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_surround.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_surround.dir/build
+.PHONY : test_cortical_surround/fast
+
+#=============================================================================
 # Target rules for targets named integration_cortical_columns_brain
 
 # Build rule for target.
@@ -14363,9 +14493,19 @@ help:
 	@echo "... test_brain_reasoning_api"
 	@echo "... test_brain_swarm_immune_integration"
 	@echo "... test_collective_workspace"
+	@echo "... test_cortical_attention_gain"
 	@echo "... test_cortical_column"
+	@echo "... test_cortical_dendritic"
+	@echo "... test_cortical_hierarchy"
 	@echo "... test_cortical_immune"
 	@echo "... test_cortical_layers"
+	@echo "... test_cortical_neuromodulation"
+	@echo "... test_cortical_oscillations_integration"
+	@echo "... test_cortical_plasticity_bridge"
+	@echo "... test_cortical_predictive_coding"
+	@echo "... test_cortical_sparse_coding"
+	@echo "... test_cortical_surround"
+	@echo "... test_cortical_temporal"
 	@echo "... test_dendritic_bioasync"
 	@echo "... test_end_to_end_reasoning"
 	@echo "... test_forward_chaining"

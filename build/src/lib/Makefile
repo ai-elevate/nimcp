@@ -5993,6 +5993,30 @@ __/core/cortical_columns/nimcp_columnar_connectivity.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_columnar_connectivity.c.s
 .PHONY : __/core/cortical_columns/nimcp_columnar_connectivity.c.s
 
+__/core/cortical_columns/nimcp_cortical_attention_gain.o: __/core/cortical_columns/nimcp_cortical_attention_gain.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_attention_gain.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_attention_gain.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_attention_gain.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_attention_gain.c.o
+
+__/core/cortical_columns/nimcp_cortical_attention_gain.i: __/core/cortical_columns/nimcp_cortical_attention_gain.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_attention_gain.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_attention_gain.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_attention_gain.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_attention_gain.c.i
+
+__/core/cortical_columns/nimcp_cortical_attention_gain.s: __/core/cortical_columns/nimcp_cortical_attention_gain.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_attention_gain.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_attention_gain.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_attention_gain.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_attention_gain.c.s
+
 __/core/cortical_columns/nimcp_cortical_column.o: __/core/cortical_columns/nimcp_cortical_column.c.o
 .PHONY : __/core/cortical_columns/nimcp_cortical_column.o
 
@@ -6041,6 +6065,54 @@ __/core/cortical_columns/nimcp_cortical_column_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_column_fep_bridge.c.s
 .PHONY : __/core/cortical_columns/nimcp_cortical_column_fep_bridge.c.s
 
+__/core/cortical_columns/nimcp_cortical_dendritic.o: __/core/cortical_columns/nimcp_cortical_dendritic.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_dendritic.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_dendritic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_dendritic.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_dendritic.c.o
+
+__/core/cortical_columns/nimcp_cortical_dendritic.i: __/core/cortical_columns/nimcp_cortical_dendritic.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_dendritic.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_dendritic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_dendritic.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_dendritic.c.i
+
+__/core/cortical_columns/nimcp_cortical_dendritic.s: __/core/cortical_columns/nimcp_cortical_dendritic.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_dendritic.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_dendritic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_dendritic.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_dendritic.c.s
+
+__/core/cortical_columns/nimcp_cortical_hierarchy.o: __/core/cortical_columns/nimcp_cortical_hierarchy.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_hierarchy.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_hierarchy.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_hierarchy.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_hierarchy.c.o
+
+__/core/cortical_columns/nimcp_cortical_hierarchy.i: __/core/cortical_columns/nimcp_cortical_hierarchy.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_hierarchy.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_hierarchy.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_hierarchy.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_hierarchy.c.i
+
+__/core/cortical_columns/nimcp_cortical_hierarchy.s: __/core/cortical_columns/nimcp_cortical_hierarchy.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_hierarchy.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_hierarchy.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_hierarchy.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_hierarchy.c.s
+
 __/core/cortical_columns/nimcp_cortical_immune.o: __/core/cortical_columns/nimcp_cortical_immune.c.o
 .PHONY : __/core/cortical_columns/nimcp_cortical_immune.o
 
@@ -6088,6 +6160,174 @@ __/core/cortical_columns/nimcp_cortical_layers.s: __/core/cortical_columns/nimcp
 __/core/cortical_columns/nimcp_cortical_layers.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_layers.c.s
 .PHONY : __/core/cortical_columns/nimcp_cortical_layers.c.s
+
+__/core/cortical_columns/nimcp_cortical_neuromodulation.o: __/core/cortical_columns/nimcp_cortical_neuromodulation.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_neuromodulation.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_neuromodulation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_neuromodulation.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_neuromodulation.c.o
+
+__/core/cortical_columns/nimcp_cortical_neuromodulation.i: __/core/cortical_columns/nimcp_cortical_neuromodulation.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_neuromodulation.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_neuromodulation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_neuromodulation.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_neuromodulation.c.i
+
+__/core/cortical_columns/nimcp_cortical_neuromodulation.s: __/core/cortical_columns/nimcp_cortical_neuromodulation.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_neuromodulation.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_neuromodulation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_neuromodulation.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_neuromodulation.c.s
+
+__/core/cortical_columns/nimcp_cortical_oscillations_integration.o: __/core/cortical_columns/nimcp_cortical_oscillations_integration.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_oscillations_integration.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_oscillations_integration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_oscillations_integration.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_oscillations_integration.c.o
+
+__/core/cortical_columns/nimcp_cortical_oscillations_integration.i: __/core/cortical_columns/nimcp_cortical_oscillations_integration.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_oscillations_integration.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_oscillations_integration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_oscillations_integration.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_oscillations_integration.c.i
+
+__/core/cortical_columns/nimcp_cortical_oscillations_integration.s: __/core/cortical_columns/nimcp_cortical_oscillations_integration.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_oscillations_integration.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_oscillations_integration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_oscillations_integration.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_oscillations_integration.c.s
+
+__/core/cortical_columns/nimcp_cortical_plasticity_bridge.o: __/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_plasticity_bridge.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.o
+
+__/core/cortical_columns/nimcp_cortical_plasticity_bridge.i: __/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_plasticity_bridge.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.i
+
+__/core/cortical_columns/nimcp_cortical_plasticity_bridge.s: __/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_plasticity_bridge.c.s
+
+__/core/cortical_columns/nimcp_cortical_predictive_coding.o: __/core/cortical_columns/nimcp_cortical_predictive_coding.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_predictive_coding.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_predictive_coding.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_predictive_coding.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_predictive_coding.c.o
+
+__/core/cortical_columns/nimcp_cortical_predictive_coding.i: __/core/cortical_columns/nimcp_cortical_predictive_coding.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_predictive_coding.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_predictive_coding.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_predictive_coding.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_predictive_coding.c.i
+
+__/core/cortical_columns/nimcp_cortical_predictive_coding.s: __/core/cortical_columns/nimcp_cortical_predictive_coding.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_predictive_coding.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_predictive_coding.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_predictive_coding.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_predictive_coding.c.s
+
+__/core/cortical_columns/nimcp_cortical_sparse_coding.o: __/core/cortical_columns/nimcp_cortical_sparse_coding.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_sparse_coding.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_sparse_coding.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_sparse_coding.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_sparse_coding.c.o
+
+__/core/cortical_columns/nimcp_cortical_sparse_coding.i: __/core/cortical_columns/nimcp_cortical_sparse_coding.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_sparse_coding.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_sparse_coding.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_sparse_coding.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_sparse_coding.c.i
+
+__/core/cortical_columns/nimcp_cortical_sparse_coding.s: __/core/cortical_columns/nimcp_cortical_sparse_coding.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_sparse_coding.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_sparse_coding.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_sparse_coding.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_sparse_coding.c.s
+
+__/core/cortical_columns/nimcp_cortical_surround.o: __/core/cortical_columns/nimcp_cortical_surround.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_surround.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_surround.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_surround.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_surround.c.o
+
+__/core/cortical_columns/nimcp_cortical_surround.i: __/core/cortical_columns/nimcp_cortical_surround.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_surround.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_surround.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_surround.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_surround.c.i
+
+__/core/cortical_columns/nimcp_cortical_surround.s: __/core/cortical_columns/nimcp_cortical_surround.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_surround.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_surround.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_surround.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_surround.c.s
+
+__/core/cortical_columns/nimcp_cortical_temporal.o: __/core/cortical_columns/nimcp_cortical_temporal.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_temporal.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_temporal.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_temporal.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_temporal.c.o
+
+__/core/cortical_columns/nimcp_cortical_temporal.i: __/core/cortical_columns/nimcp_cortical_temporal.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_temporal.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_temporal.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_temporal.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_temporal.c.i
+
+__/core/cortical_columns/nimcp_cortical_temporal.s: __/core/cortical_columns/nimcp_cortical_temporal.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_temporal.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_temporal.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_temporal.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_temporal.c.s
 
 __/core/cortical_columns/nimcp_feature_hypercolumns.o: __/core/cortical_columns/nimcp_feature_hypercolumns.c.o
 .PHONY : __/core/cortical_columns/nimcp_feature_hypercolumns.o
@@ -15973,18 +16213,48 @@ help:
 	@echo "... __/core/cortical_columns/nimcp_columnar_connectivity.o"
 	@echo "... __/core/cortical_columns/nimcp_columnar_connectivity.i"
 	@echo "... __/core/cortical_columns/nimcp_columnar_connectivity.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_attention_gain.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_attention_gain.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_attention_gain.s"
 	@echo "... __/core/cortical_columns/nimcp_cortical_column.o"
 	@echo "... __/core/cortical_columns/nimcp_cortical_column.i"
 	@echo "... __/core/cortical_columns/nimcp_cortical_column.s"
 	@echo "... __/core/cortical_columns/nimcp_cortical_column_fep_bridge.o"
 	@echo "... __/core/cortical_columns/nimcp_cortical_column_fep_bridge.i"
 	@echo "... __/core/cortical_columns/nimcp_cortical_column_fep_bridge.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_dendritic.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_dendritic.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_dendritic.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_hierarchy.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_hierarchy.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_hierarchy.s"
 	@echo "... __/core/cortical_columns/nimcp_cortical_immune.o"
 	@echo "... __/core/cortical_columns/nimcp_cortical_immune.i"
 	@echo "... __/core/cortical_columns/nimcp_cortical_immune.s"
 	@echo "... __/core/cortical_columns/nimcp_cortical_layers.o"
 	@echo "... __/core/cortical_columns/nimcp_cortical_layers.i"
 	@echo "... __/core/cortical_columns/nimcp_cortical_layers.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_neuromodulation.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_neuromodulation.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_neuromodulation.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_oscillations_integration.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_oscillations_integration.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_oscillations_integration.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_plasticity_bridge.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_plasticity_bridge.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_plasticity_bridge.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_predictive_coding.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_predictive_coding.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_predictive_coding.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_sparse_coding.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_sparse_coding.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_sparse_coding.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_surround.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_surround.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_surround.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_temporal.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_temporal.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_temporal.s"
 	@echo "... __/core/cortical_columns/nimcp_feature_hypercolumns.o"
 	@echo "... __/core/cortical_columns/nimcp_feature_hypercolumns.i"
 	@echo "... __/core/cortical_columns/nimcp_feature_hypercolumns.s"

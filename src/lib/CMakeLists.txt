@@ -112,8 +112,18 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_columnar_connectivity.c # Canonical microcircuit connectivity
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_topographic_maps.c      # Retinotopic, tonotopic, somatotopic maps
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_orientation_columns.c   # V1 orientation selectivity (Gabor)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_surround.c     # Surround suppression & contextual modulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_feature_hypercolumns.c  # Feature dimension coverage
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_dendritic.c    # Dendritic computation (apical/basal, Ca spikes, burst coding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_immune.c  # Cortical columns-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_predictive_coding.c  # Predictive coding hierarchy
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_attention_gain.c    # Attention-modulated gain control
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_temporal.c  # Temporal dynamics & sequence processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_hierarchy.c    # Multi-area hierarchy & connectivity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_sparse_coding.c   # Sparse distributed representations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_neuromodulation.c # Neuromodulatory effects on columns
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_oscillations_integration.c  # Oscillation integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_plasticity_bridge.c  # Plasticity coordinator integration
 
     # Broca's region sub-modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_syntax_processor.c
