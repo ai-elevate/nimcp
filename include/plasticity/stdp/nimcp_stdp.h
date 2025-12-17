@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "cognitive/nimcp_sleep_wake.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +58,9 @@ typedef struct {
     bool enable_da_modulation;  /* Use dopamine modulation (default: true) */
     float da_modulation_gain;   /* DA concentration → LR scaling (default: 100.0) */
     float burst_amplification;  /* LR multiplier during bursts (default: 3.0) */
+
+    /* Sleep state modulation */
+    sleep_state_t current_sleep_state;  /* Current sleep/wake state */
 
     /* Statistics */
     uint64_t num_potentiation_events;
@@ -201,6 +205,17 @@ float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
  */
 float stdp_get_da_modulation_factor(const stdp_synapse_t* synapse,
                                      neuromodulator_system_t neuromod);
+
+/**
+ * Set sleep state for STDP synapse
+ *
+ * Updates the sleep state which will be used to modulate learning rate,
+ * LTP/LTD ratio, and timing windows on next spike.
+ *
+ * @param synapse Synapse to update
+ * @param state New sleep state
+ */
+void stdp_set_sleep_state(stdp_synapse_t* synapse, sleep_state_t state);
 
 /**
  * Reset STDP synapse (clear traces and statistics)

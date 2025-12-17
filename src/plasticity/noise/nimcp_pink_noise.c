@@ -2,7 +2,7 @@
 // nimcp_pink_noise.c - 1/f Pink Noise Generator Implementation
 //=============================================================================
 
-#include "nimcp_pink_noise.h"
+#include "plasticity/noise/nimcp_pink_noise.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"

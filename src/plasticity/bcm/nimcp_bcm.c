@@ -25,7 +25,8 @@
  * - TDD verified
  */
 
-#include "nimcp_bcm.h"
+#include "plasticity/bcm/nimcp_bcm.h"
+#include "plasticity/bcm/nimcp_bcm_sleep_bridge.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
@@ -123,6 +124,11 @@ bcm_synapse_t bcm_synapse_init(float initial_weight, float initial_threshold) {
      */
     synapse.eligibility = 0.0F;
 
+    /* WHAT: Initialize sleep state to awake
+     * WHY:  Default to normal (awake) learning dynamics
+     */
+    synapse.current_sleep_state = SLEEP_STATE_AWAKE;
+
     /* WHAT: Initialize spinlock for thread-safe updates
      * WHY:  Allow concurrent access when synapse is shared across threads
      * WHEN NEEDED: Only if multiple threads update same synapse (rare)
@@ -158,11 +164,16 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
      */
     nimcp_spinlock_lock(&synapse->lock);
 
+    /* WHAT: Get sleep modulation factor for threshold
+     * WHY:  Sleep state modulates threshold (e.g., NREM raises it for LTD bias)
+     */
+    float theta_factor = bcm_sleep_theta_for_state(synapse->current_sleep_state);
+
     /* WHAT: Compute target threshold (post-synaptic activity squared)
      * WHY:  Biological BCM uses quadratic dependence on activity
      * RATIONALE: E[post²] sets crossover point between LTP and LTD
      */
-    float target_threshold = post_activity * post_activity;
+    float target_threshold = post_activity * post_activity * theta_factor;
 
     /* WHAT: Compute time constant for exponential decay
      * WHY:  Convert dt from ms to decay fraction
@@ -222,18 +233,23 @@ void bcm_apply_rule(bcm_synapse_t* synapse, float pre_activity, float post_activ
      */
     nimcp_spinlock_lock(&synapse->lock);
 
+    /* WHAT: Get sleep modulation factor for learning rate
+     * WHY:  Sleep state modulates learning rate (e.g., reduced during sleep)
+     */
+    float lr_factor = bcm_sleep_lr_for_state(synapse->current_sleep_state);
+
     /* WHAT: Compute BCM plasticity factor φ(post, θ)
      * WHY:  Determines direction and magnitude of weight change
      * FORMULA: φ = post × (post - θ)
      */
     float plasticity_factor = bcm_plasticity_factor(post_activity, synapse->threshold);
 
-    /* WHAT: Compute weight change
-     * WHY:  BCM rule with Hebbian pre-synaptic gating
-     * FORMULA: Δw = η × φ(post, θ) × pre × dt
+    /* WHAT: Compute weight change with sleep modulation
+     * WHY:  BCM rule with Hebbian pre-synaptic gating and sleep modulation
+     * FORMULA: Δw = η × lr_factor × φ(post, θ) × pre × dt
      * NOTE: dt scaling makes rule time-step independent
      */
-    float delta_w = params->learning_rate * plasticity_factor * pre_activity * dt;
+    float delta_w = params->learning_rate * lr_factor * plasticity_factor * pre_activity * dt;
 
     /* WHAT: Apply weight update
      * WHY:  Integrate weight change into current weight
@@ -284,17 +300,22 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
      */
     float modulation = clamp_f(neuromodulator_level, 0.0F, 1.0F);
 
+    /* WHAT: Get sleep modulation factor for learning rate
+     * WHY:  Sleep state modulates learning rate (e.g., reduced during sleep)
+     */
+    float lr_factor = bcm_sleep_lr_for_state(synapse->current_sleep_state);
+
     /* WHAT: Compute BCM plasticity factor
      * WHY:  Same as standard BCM rule
      */
     float plasticity_factor = bcm_plasticity_factor(post_activity, synapse->threshold);
 
-    /* WHAT: Compute modulated weight change
-     * WHY:  Neuromodulator scales learning rate
-     * FORMULA: Δw = η × modulation × φ(post, θ) × pre × dt
-     * BIOLOGICAL: DA concentration scales plasticity magnitude
+    /* WHAT: Compute modulated weight change with sleep modulation
+     * WHY:  Neuromodulator and sleep both scale learning rate
+     * FORMULA: Δw = η × lr_factor × modulation × φ(post, θ) × pre × dt
+     * BIOLOGICAL: DA concentration and sleep state both scale plasticity magnitude
      */
-    float delta_w = params->learning_rate * modulation * plasticity_factor * pre_activity * dt;
+    float delta_w = params->learning_rate * lr_factor * modulation * plasticity_factor * pre_activity * dt;
 
     /* WHAT: Apply weight update with clamping
      * WHY:  Same as standard BCM, but modulated magnitude
@@ -506,4 +527,17 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
     stats->total_updates = num_synapses;
 
     return true;
+}
+
+//=============================================================================
+// Sleep Integration
+//=============================================================================
+
+void bcm_set_sleep_state(bcm_synapse_t* synapse, sleep_state_t state) {
+    /* WHAT: Update sleep state for synapse
+     * WHY:  Sleep state modulates threshold and learning rate
+     * HOW:  Set current_sleep_state field, will be applied during next update
+     */
+    if (!synapse) return;
+    synapse->current_sleep_state = state;
 }

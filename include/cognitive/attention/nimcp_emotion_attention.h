@@ -44,6 +44,7 @@
 #include "cognitive/nimcp_emotion_tensor.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
+#include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
 
 #ifdef __cplusplus
 extern "C" {
@@ -285,6 +286,48 @@ bool emotion_attention_register_bio_async(emotion_attention_system_t* system);
  * THREAD_SAFETY: Thread-safe
  */
 void emotion_attention_unregister_bio_async(emotion_attention_system_t* system);
+
+//=============================================================================
+// Sleep State Integration API
+//=============================================================================
+
+/**
+ * @brief Set sleep state for attention modulation
+ *
+ * WHAT: Update current sleep state to modulate attention capacity and vigilance
+ * WHY:  Sleep state affects attention performance (biological)
+ * HOW:  Store state, modulation applied in emotion_attention_modulate()
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Full attention capacity (1.0), normal vigilance (1.0)
+ * - DROWSY: Reduced capacity (0.6), lower vigilance (0.5)
+ * - LIGHT_NREM: Minimal capacity (0.1), minimal vigilance (0.0)
+ * - DEEP_NREM: Offline (0.0), no vigilance (0.0)
+ * - REM: Internal only (0.3), low vigilance (0.2)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD_SAFETY: Thread-safe
+ *
+ * @param system Emotion-attention system (non-NULL)
+ * @param state New sleep state
+ * @return true on success, false on NULL pointer
+ */
+bool emotion_attention_set_sleep_state(emotion_attention_system_t* system, sleep_state_t state);
+
+/**
+ * @brief Get current sleep state
+ *
+ * WHAT: Query current sleep/wake state
+ * WHY:  Check what modulation is being applied
+ * HOW:  Return current_sleep_state field
+ *
+ * COMPLEXITY: O(1)
+ * THREAD_SAFETY: Thread-safe
+ *
+ * @param system Emotion-attention system (non-NULL)
+ * @return Current sleep state, or SLEEP_STATE_AWAKE if NULL
+ */
+sleep_state_t emotion_attention_get_sleep_state(const emotion_attention_system_t* system);
 
 //=============================================================================
 // Positional Encoding Integration API

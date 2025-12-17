@@ -16,7 +16,65 @@ struct stdp_sleep_bridge_struct {
     sleep_system_t sleep_system;
     stdp_sleep_effects_t effects;
     nimcp_mutex_t* mutex;
+    bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+/* Forward declarations */
+static void stdp_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update STDP parameters for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - STDP learning rates vary dramatically with sleep state
+ * - During deep NREM, consolidation occurs via replay
+ * - REM enables creative learning with increased LTP bias
+ */
+static void stdp_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    stdp_sleep_bridge_t bridge = (stdp_sleep_bridge_t)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("STDP bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    if (bridge->config.enable_lr_modulation) {
+        float lr_base = stdp_sleep_get_lr_factor(new_state);
+        bridge->effects.learning_rate_factor =
+            1.0f + (lr_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_ratio_modulation) {
+        float ratio_base = stdp_sleep_get_ratio_factor(new_state);
+        bridge->effects.ltp_ltd_ratio =
+            1.0f + (ratio_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_window_modulation) {
+        float tau_base = stdp_sleep_get_tau_factor(new_state);
+        bridge->effects.tau_factor =
+            1.0f + (tau_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    bridge->effects.plasticity_enabled = (new_state != SLEEP_STATE_DEEP_NREM) ||
+                                          bridge->effects.learning_rate_factor > 0.1f;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("STDP modulated: lr=%.2f, ratio=%.2f, tau=%.2f",
+                        bridge->effects.learning_rate_factor,
+                        bridge->effects.ltp_ltd_ratio,
+                        bridge->effects.tau_factor);
+}
 
 int stdp_sleep_default_config(stdp_sleep_config_t* config) {
     if (!config) return -1;
@@ -60,12 +118,41 @@ stdp_sleep_bridge_t stdp_sleep_bridge_create(
         return NULL;
     }
 
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep_system,
+        stdp_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for STDP bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep_system);
+    stdp_on_sleep_state_change(initial_state, bridge);
+
     NIMCP_LOGGING_INFO("STDP-sleep bridge created");
     return bridge;
 }
 
 void stdp_sleep_bridge_destroy(stdp_sleep_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            stdp_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for STDP bridge");
+        }
+    }
+
     if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }

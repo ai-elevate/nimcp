@@ -22,6 +22,8 @@
 
 #include "cognitive/nimcp_executive.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/nimcp_sleep_wake.h"
+#include "cognitive/executive/nimcp_executive_sleep_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -115,6 +117,9 @@ struct executive_controller {
     bool immune_integration_enabled;        /**< Immune integration active */
     float last_inflammation_level;          /**< Cached inflammation level */
     uint64_t last_immune_check_ms;          /**< Last time immune state checked */
+
+    // Sleep integration
+    sleep_state_t current_sleep_state;      /**< Current sleep state for modulation */
 };
 
 //=============================================================================
@@ -476,14 +481,15 @@ static task_descriptor_t* get_highest_priority_task(executive_controller_t* exec
 }
 
 /**
- * @brief Compute dopamine-modulated task switch cost
+ * @brief Compute dopamine and sleep-modulated task switch cost
  *
- * WHAT: Adjust switch cost based on dopamine level
- * WHY:  Dopamine affects cognitive flexibility and switch cost
- * HOW:  Read DA, modulate base cost, clamp to reasonable range
+ * WHAT: Adjust switch cost based on dopamine level and sleep state
+ * WHY:  Both dopamine and sleep affect cognitive flexibility and switch cost
+ * HOW:  Read DA, apply sleep modulation, combine multiplicatively
  *
  * BIOLOGY: High DA → easier switching (lower cost)
  *          Low DA → harder switching (higher cost, perseveration)
+ *          Sleep deprivation → increased switch cost
  *
  * COMPLEXITY: O(1)
  *
@@ -494,25 +500,33 @@ static task_descriptor_t* get_highest_priority_task(executive_controller_t* exec
 static float compute_modulated_switch_cost(executive_controller_t* exec,
                                            float base_cost)
 {
-    // Guard: Early return if no brain
-    if (!exec || !exec->brain) {
+    // Guard: Early return if no exec
+    if (!exec) {
         return base_cost;
     }
 
-    neuromodulator_system_t neuromod = brain_get_neuromodulator_system(exec->brain);
-    if (!neuromod) {
-        return base_cost;
+    float cost = base_cost;
+
+    // Apply dopamine modulation if brain is available
+    if (exec->brain) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(exec->brain);
+        if (neuromod) {
+            // Read dopamine level
+            float da = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+
+            // DA range [0.3, 0.7], map to cost multiplier [1.4, 0.6]
+            // High DA (0.7) → 0.6× cost (flexible, easy switching)
+            // Low DA (0.3) → 1.4× cost (rigid, perseverative)
+            float da_multiplier = 1.4F - (da - 0.3F) * 2.0F;
+            cost *= da_multiplier;
+        }
     }
 
-    // Read dopamine level
-    float da = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+    // Apply sleep modulation
+    float sleep_cost_factor = executive_sleep_switch_cost_for_state(exec->current_sleep_state);
+    cost *= sleep_cost_factor;
 
-    // DA range [0.3, 0.7], map to cost multiplier [1.4, 0.6]
-    // High DA (0.7) → 0.6× cost (flexible, easy switching)
-    // Low DA (0.3) → 1.4× cost (rigid, perseverative)
-    float multiplier = 1.4F - (da - 0.3F) * 2.0F;
-
-    return base_cost * multiplier;
+    return cost;
 }
 
 //=============================================================================
@@ -627,6 +641,11 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     exec->immune_integration_enabled = false;
     exec->last_inflammation_level = 0.0F;
     exec->last_immune_check_ms = 0;
+
+    // =========================================================================
+    // SLEEP INTEGRATION: Initialize sleep state
+    // =========================================================================
+    exec->current_sleep_state = SLEEP_STATE_AWAKE;
 
     // =========================================================================
     // BIO-ASYNC: Register with bio-router
@@ -1030,8 +1049,13 @@ bool executive_should_inhibit(executive_controller_t* exec, float response_salie
 
     exec->total_decisions++;
 
-    // Inhibit if salience exceeds threshold
-    bool inhibit = response_salience >= exec->config.inhibition_threshold;
+    // Apply sleep modulation to inhibition threshold
+    float base_threshold = exec->config.inhibition_threshold;
+    float sleep_factor = executive_sleep_inhibition_for_state(exec->current_sleep_state);
+    float modulated_threshold = base_threshold / fmaxf(sleep_factor, 0.01F);  // Avoid division by zero
+
+    // Inhibit if salience exceeds modulated threshold
+    bool inhibit = response_salience >= modulated_threshold;
 
     if (inhibit) {
         exec->stats.inhibitions++;
@@ -1867,4 +1891,36 @@ float executive_get_immune_adjusted_inhibition(executive_controller_t* exec)
 
     // Clamp to [0, 1]
     return fminf(adjusted, 1.0F);
+}
+
+//=============================================================================
+// Sleep Integration Functions
+//=============================================================================
+
+/**
+ * @brief Set current sleep state for executive modulation
+ *
+ * WHAT: Update sleep state and log the change
+ * WHY:  Executive function is highly sensitive to sleep state
+ * HOW:  Store state for use by other executive functions
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Full executive control
+ * - DROWSY: Impaired inhibition (0.6x), reduced flexibility (0.5x)
+ * - LIGHT_NREM: Minimal inhibition (0.1x), switch cost 10x higher
+ * - DEEP_NREM: Executive offline (0.0x inhibition)
+ * - REM: Reduced control (0.3x inhibition), explains dream bizarreness
+ *
+ * COMPLEXITY: O(1)
+ */
+void executive_set_sleep_state(executive_controller_t* exec, sleep_state_t state)
+{
+    // Guard: NULL check
+    if (!exec) {
+        return;
+    }
+
+    exec->current_sleep_state = state;
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Sleep state updated to %d", state);
 }

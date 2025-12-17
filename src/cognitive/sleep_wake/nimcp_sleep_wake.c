@@ -49,6 +49,17 @@
  * ======================================================================== */
 
 /**
+ * WHAT: State change callback entry
+ * WHY:  Track registered callbacks for state change notifications
+ * HOW:  Linked list of callback + user_data pairs
+ */
+typedef struct sleep_callback_entry {
+    sleep_state_callback_t callback;
+    void* user_data;
+    struct sleep_callback_entry* next;
+} sleep_callback_entry_t;
+
+/**
  * WHAT: Internal sleep system structure
  * WHY:  Encapsulate implementation details (Pimpl idiom)
  * HOW:  Track state, pressure, statistics
@@ -73,6 +84,9 @@ struct sleep_system_struct {
     float consolidation_efficiency;
     float energy_savings;
 
+    // State change notifications
+    sleep_callback_entry_t* callbacks;  /**< Linked list of state change callbacks */
+
     // Thread safety
     nimcp_mutex_t lock;
 
@@ -92,6 +106,7 @@ static void sleep_stage_drowsy(sleep_system_t sleep);
 static void sleep_stage_light_nrem(sleep_system_t sleep);
 static void sleep_stage_deep_nrem(sleep_system_t sleep);
 static void sleep_stage_rem(sleep_system_t sleep);
+static void sleep_notify_state_change(sleep_system_t sleep, sleep_state_t new_state);
 
 /* ========================================================================
  * LIFECYCLE FUNCTIONS
@@ -174,7 +189,9 @@ sleep_system_t sleep_system_create(const sleep_config_t* config)
     /* WHAT: Initialize thread safety */
     nimcp_mutex_init(&sleep->lock, NULL);
 
-    
+    /* WHAT: Initialize callback list */
+    sleep->callbacks = NULL;
+
     // Bio-async registration
     sleep->bio_ctx = NULL;
     sleep->bio_async_enabled = false;
@@ -204,6 +221,16 @@ void sleep_system_destroy(sleep_system_t sleep)
     LOG_DEBUG("Destroying module");
     if (sleep == NULL) {
         return;
+    }
+
+    /* WHAT: Free callback list */
+    /* WHY:  Prevent memory leaks */
+    /* HOW:  Walk linked list and free each entry */
+    sleep_callback_entry_t* current = sleep->callbacks;
+    while (current != NULL) {
+        sleep_callback_entry_t* next = current->next;
+        nimcp_free(current);
+        current = next;
     }
 
     nimcp_mutex_destroy(&sleep->lock);
@@ -354,7 +381,7 @@ sleep_state_t sleep_get_current_state(const sleep_system_t sleep)
 /**
  * WHAT: Enter specific sleep state
  * WHY:  Transition between sleep stages
- * HOW:  Set state, record timestamp
+ * HOW:  Set state, record timestamp, notify observers
  */
 bool sleep_enter_state(sleep_system_t sleep, sleep_state_t state)
 {
@@ -380,13 +407,18 @@ bool sleep_enter_state(sleep_system_t sleep, sleep_state_t state)
 
     nimcp_mutex_unlock(&sleep->lock);
 
+    /* WHAT: Notify all registered callbacks of state change */
+    /* WHY:  Allow modules to react immediately to sleep state changes */
+    /* HOW:  Call helper function to invoke all callbacks */
+    sleep_notify_state_change(sleep, state);
+
     return true;
 }
 
 /**
  * WHAT: Wake brain from sleep
  * WHY:  Return to active processing mode
- * HOW:  Set state to awake, reset pressure
+ * HOW:  Set state to awake, reset pressure, notify observers
  */
 bool sleep_wake_up(sleep_system_t sleep)
 {
@@ -405,6 +437,9 @@ bool sleep_wake_up(sleep_system_t sleep)
     sleep->state_entered_at = nimcp_time_monotonic_ms();
 
     nimcp_mutex_unlock(&sleep->lock);
+
+    /* WHAT: Notify callbacks of wake state */
+    sleep_notify_state_change(sleep, SLEEP_STATE_AWAKE);
 
     return true;
 }
@@ -774,4 +809,141 @@ void sleep_set_brain_reference(sleep_system_t sleep, void* brain)
     nimcp_mutex_lock(&sleep->lock);
     sleep->brain_ref = brain;
     nimcp_mutex_unlock(&sleep->lock);
+}
+
+/* ========================================================================
+ * STATE CHANGE NOTIFICATION IMPLEMENTATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Notify all registered callbacks of state change
+ * WHY:  Broadcast state changes to all observing modules
+ * HOW:  Walk callback list and invoke each callback
+ *
+ * SAFETY: Callbacks are invoked WITHOUT holding the lock to prevent deadlock
+ *         if callbacks try to call back into the sleep system
+ */
+static void sleep_notify_state_change(sleep_system_t sleep, sleep_state_t new_state)
+{
+    /* Guard clause: Validate input */
+    if (sleep == NULL) {
+        return;
+    }
+
+    /* WHAT: Build temporary copy of callback list */
+    /* WHY:  Prevent holding lock during callback execution (deadlock risk) */
+    /* HOW:  Walk list with lock, copy to array, invoke without lock */
+
+    #define MAX_CALLBACKS 32
+    sleep_state_callback_t callbacks[MAX_CALLBACKS];
+    void* user_data[MAX_CALLBACKS];
+    uint32_t callback_count = 0;
+
+    nimcp_mutex_lock(&sleep->lock);
+
+    /* WHAT: Copy callbacks to temporary array */
+    sleep_callback_entry_t* current = sleep->callbacks;
+    while (current != NULL && callback_count < MAX_CALLBACKS) {
+        callbacks[callback_count] = current->callback;
+        user_data[callback_count] = current->user_data;
+        callback_count++;
+        current = current->next;
+    }
+
+    nimcp_mutex_unlock(&sleep->lock);
+
+    /* WHAT: Invoke callbacks without holding lock */
+    /* WHY:  Prevent deadlock if callbacks call sleep system functions */
+    for (uint32_t i = 0; i < callback_count; i++) {
+        if (callbacks[i] != NULL) {
+            callbacks[i](new_state, user_data[i]);
+        }
+    }
+}
+
+/**
+ * WHAT: Register callback for sleep state changes
+ * WHY:  Allow modules to react immediately when sleep state changes
+ * HOW:  Add callback to linked list of observers
+ */
+bool sleep_register_state_callback(sleep_system_t sleep,
+                                    sleep_state_callback_t callback,
+                                    void* user_data)
+{
+    /* Guard clause: Validate inputs */
+    if (sleep == NULL || callback == NULL) {
+        return false;
+    }
+
+    /* WHAT: Allocate callback entry */
+    sleep_callback_entry_t* entry =
+        (sleep_callback_entry_t*)nimcp_malloc(sizeof(sleep_callback_entry_t));
+    if (entry == NULL) {
+        NIMCP_LOGGING_ERROR("Failed to allocate callback entry");
+        return false;
+    }
+
+    /* WHAT: Initialize entry */
+    entry->callback = callback;
+    entry->user_data = user_data;
+    entry->next = NULL;
+
+    /* WHAT: Add to linked list (prepend for O(1)) */
+    nimcp_mutex_lock(&sleep->lock);
+    entry->next = sleep->callbacks;
+    sleep->callbacks = entry;
+    nimcp_mutex_unlock(&sleep->lock);
+
+    NIMCP_LOGGING_DEBUG("Registered sleep state callback");
+    return true;
+}
+
+/**
+ * WHAT: Unregister sleep state change callback
+ * WHY:  Remove callback when module is destroyed
+ * HOW:  Find and remove from linked list
+ */
+bool sleep_unregister_state_callback(sleep_system_t sleep,
+                                      sleep_state_callback_t callback,
+                                      void* user_data)
+{
+    /* Guard clause: Validate inputs */
+    if (sleep == NULL || callback == NULL) {
+        return false;
+    }
+
+    bool found = false;
+
+    nimcp_mutex_lock(&sleep->lock);
+
+    /* WHAT: Find and remove matching callback */
+    /* WHY:  Clean up when module is destroyed */
+    /* HOW:  Walk linked list, remove matching entry */
+
+    sleep_callback_entry_t** current = &sleep->callbacks;
+    while (*current != NULL) {
+        sleep_callback_entry_t* entry = *current;
+
+        /* WHAT: Match both callback and user_data */
+        /* WHY:  Same callback might be registered with different contexts */
+        if (entry->callback == callback && entry->user_data == user_data) {
+            /* Remove from list */
+            *current = entry->next;
+            nimcp_free(entry);
+            found = true;
+            break;
+        }
+
+        current = &entry->next;
+    }
+
+    nimcp_mutex_unlock(&sleep->lock);
+
+    if (found) {
+        NIMCP_LOGGING_DEBUG("Unregistered sleep state callback");
+    } else {
+        NIMCP_LOGGING_WARN("Callback not found in registration list");
+    }
+
+    return found;
 }

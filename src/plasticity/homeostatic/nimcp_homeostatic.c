@@ -26,7 +26,9 @@
  * - Thread-safe where noted
  */
 
-#include "nimcp_homeostatic.h"
+#include "plasticity/homeostatic/nimcp_homeostatic.h"
+#include "plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.h"
+#include "cognitive/nimcp_sleep_wake.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"
@@ -70,6 +72,9 @@ struct homeostatic_controller_struct {
     /* Timing */
     float time_since_update;
     uint64_t total_time_us;
+
+    /* Sleep integration */
+    sleep_state_t current_sleep_state;
 };
 
 //=============================================================================
@@ -617,6 +622,9 @@ homeostatic_controller_t homeostatic_controller_create(
     /* Initialize statistics */
     memset(&ctrl->stats, 0, sizeof(homeostatic_stats_t));
 
+    /* Initialize sleep state to awake */
+    ctrl->current_sleep_state = SLEEP_STATE_AWAKE;
+
     NIMCP_LOGGING_INFO("Created homeostatic controller: neurons=%u, scaling=%d, ip=%d, meta=%d",
                        num_neurons,
                        config->enable_synaptic_scaling,
@@ -684,20 +692,32 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
             ss->average_rate += decay * (rate - ss->average_rate);
             ss->average_rate = fmaxf(0.0F, fminf(ss->average_rate, 1000.0F));
 
-            /* Check stability (within 20% of target) */
-            float ratio = ss->average_rate / controller->config.scaling_params.target_rate;
+            /* Apply sleep state modulation to target rate (Tononi's SHY) */
+            float sleep_target_modifier = homeostatic_sleep_target_for_state(controller->current_sleep_state);
+            float modulated_target = controller->config.scaling_params.target_rate * sleep_target_modifier;
+
+            /* Check stability (within 20% of modulated target) */
+            float ratio = ss->average_rate / modulated_target;
             ss->is_stable = (ratio >= 0.8F && ratio <= 1.2F);
 
-            /* Compute and apply scaling factor */
-            float factor = synaptic_scaling_compute_factor(ss, &controller->config.scaling_params);
-            ss->scaling_factor = factor;
-            sum_factor += factor;
+            /* Compute scaling factor with modulated target */
+            float base_factor = safe_divide(modulated_target, ss->average_rate);
+            float factor = powf(base_factor, controller->config.scaling_params.scaling_exponent);
+            factor = clamp_f(factor, controller->config.scaling_params.min_scaling_factor,
+                           controller->config.scaling_params.max_scaling_factor);
+
+            /* Apply sleep state modulation (Tononi's SHY) */
+            float sleep_scaling_rate = homeostatic_sleep_scaling_for_state(controller->current_sleep_state);
+            float modulated_factor = 1.0F + (factor - 1.0F) * sleep_scaling_rate;
+
+            ss->scaling_factor = modulated_factor;
+            sum_factor += modulated_factor;
 
             /* Apply scaling to this neuron's weights */
             if (weights && num_synapses_per_neuron > 0) {
                 float* neuron_weights = weights + (n * num_synapses_per_neuron);
                 synaptic_scaling_apply_soft_bounds(neuron_weights, num_synapses_per_neuron,
-                                                   factor, 0.3F);
+                                                   modulated_factor, 0.3F);
                 controller->stats.scaling_events++;
             }
 
@@ -793,4 +813,31 @@ void homeostatic_controller_reset(homeostatic_controller_t controller) {
     /* Reset statistics */
     memset(&controller->stats, 0, sizeof(homeostatic_stats_t));
     controller->time_since_update = 0.0F;
+}
+
+bool homeostatic_controller_set_sleep_state(homeostatic_controller_t controller,
+                                             sleep_state_t sleep_state) {
+    /* WHAT: Set current sleep state for homeostatic modulation
+     * WHY:  Sleep state controls when and how much synaptic scaling occurs
+     * HOW:  Store state, used in next update to apply sleep-based modulation
+     *
+     * BIOLOGICAL: Tononi's Synaptic Homeostasis Hypothesis - sleep is primary time for scaling
+     */
+
+    /* Guard: Validate input */
+    if (!controller) return false;
+
+    controller->current_sleep_state = sleep_state;
+    return true;
+}
+
+sleep_state_t homeostatic_controller_get_sleep_state(homeostatic_controller_t controller) {
+    /* WHAT: Get current sleep state
+     * WHY:  Query what modulation is being applied
+     */
+
+    /* Guard: Validate input */
+    if (!controller) return SLEEP_STATE_AWAKE;
+
+    return controller->current_sleep_state;
 }

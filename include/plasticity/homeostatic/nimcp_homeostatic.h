@@ -43,6 +43,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "cognitive/nimcp_sleep_wake.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -599,6 +600,33 @@ bool homeostatic_controller_is_stable(homeostatic_controller_t controller);
  * @param controller Controller handle
  */
 void homeostatic_controller_reset(homeostatic_controller_t controller);
+
+/**
+ * @brief Set current sleep state for homeostatic modulation
+ *
+ * WHAT: Update the sleep state that modulates homeostatic plasticity
+ * WHY:  Sleep state controls when and how much synaptic scaling occurs
+ * HOW:  Store state, used in next update to apply sleep-based modulation
+ *
+ * BIOLOGICAL: Tononi's Synaptic Homeostasis Hypothesis - sleep is primary time for scaling
+ *
+ * @param controller Controller handle
+ * @param sleep_state Current sleep state
+ * @return true on success
+ */
+bool homeostatic_controller_set_sleep_state(homeostatic_controller_t controller,
+                                             sleep_state_t sleep_state);
+
+/**
+ * @brief Get current sleep state
+ *
+ * WHAT: Query the current sleep state affecting homeostasis
+ * WHY:  Check what modulation is being applied
+ *
+ * @param controller Controller handle
+ * @return Current sleep state
+ */
+sleep_state_t homeostatic_controller_get_sleep_state(homeostatic_controller_t controller);
 
 //=============================================================================
 // Module Management

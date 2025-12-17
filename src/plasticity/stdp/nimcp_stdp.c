@@ -6,7 +6,8 @@
  * Date: 2025-11-12
  */
 
-#include "plasticity/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
 #include "async/nimcp_bio_async.h"
@@ -71,6 +72,8 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
     synapse->da_modulation_gain = config->da_modulation_gain;
     synapse->burst_amplification = config->burst_amplification;
 
+    synapse->current_sleep_state = SLEEP_STATE_AWAKE;  /* Default to awake */
+
     synapse->pre_trace = 0.0F;
     synapse->post_trace = 0.0F;
 
@@ -97,8 +100,14 @@ void stdp_update_traces(stdp_synapse_t* synapse, float dt) {
 float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     (void)current_time;  /* Unused - kept for API consistency */
 
+    /* Get sleep modulation factors */
+    float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
+    float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
+
     /* LTD: post trace indicates recent postsynaptic spike */
-    float weight_change = -synapse->a_minus * synapse->learning_rate * synapse->post_trace;
+    /* Apply sleep modulation: LR factor and ratio factor (ratio affects A-) */
+    float modulated_a_minus = synapse->a_minus / ratio_factor;  /* Lower ratio = higher A- */
+    float weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
 
     if (weight_change < 0.0F) {
         synapse->num_depression_events++;
@@ -119,8 +128,14 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
 float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     (void)current_time;  /* Unused - kept for API consistency */
 
+    /* Get sleep modulation factors */
+    float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
+    float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
+
     /* LTP: pre trace indicates recent presynaptic spike */
-    float weight_change = synapse->a_plus * synapse->learning_rate * synapse->pre_trace;
+    /* Apply sleep modulation: LR factor and ratio factor (ratio affects A+) */
+    float modulated_a_plus = synapse->a_plus * ratio_factor;  /* Higher ratio = higher A+ */
+    float weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
 
     if (weight_change > 0.0F) {
         synapse->num_potentiation_events++;
@@ -196,8 +211,13 @@ float stdp_pre_spike_modulated(stdp_synapse_t* synapse,
                                 neuromodulator_system_t neuromod) {
     (void)current_time;  /* Unused - kept for API consistency */
 
-    /* Compute base weight change (LTD from post trace) */
-    float base_weight_change = -synapse->a_minus * synapse->learning_rate * synapse->post_trace;
+    /* Get sleep modulation factors */
+    float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
+    float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
+
+    /* Compute base weight change (LTD from post trace) with sleep modulation */
+    float modulated_a_minus = synapse->a_minus / ratio_factor;
+    float base_weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
 
     /* Apply dopamine modulation */
     float modulated_weight_change = stdp_apply_modulated_weight_change(
@@ -214,8 +234,13 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
                                  neuromodulator_system_t neuromod) {
     (void)current_time;  /* Unused - kept for API consistency */
 
-    /* Compute base weight change (LTP from pre trace) */
-    float base_weight_change = synapse->a_plus * synapse->learning_rate * synapse->pre_trace;
+    /* Get sleep modulation factors */
+    float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
+    float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
+
+    /* Compute base weight change (LTP from pre trace) with sleep modulation */
+    float modulated_a_plus = synapse->a_plus * ratio_factor;
+    float base_weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
 
     /* Apply dopamine modulation */
     float modulated_weight_change = stdp_apply_modulated_weight_change(
@@ -230,6 +255,15 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
 /* ============================================================================
  * Utilities
  * ============================================================================ */
+
+void stdp_set_sleep_state(stdp_synapse_t* synapse, sleep_state_t state) {
+    /* WHAT: Update sleep state for synapse
+     * WHY:  Sleep state modulates learning rate, LTP/LTD ratio, timing windows
+     * HOW:  Set current_sleep_state field, will be queried during next spike
+     */
+    if (!synapse) return;
+    synapse->current_sleep_state = state;
+}
 
 void stdp_synapse_reset(stdp_synapse_t* synapse) {
     synapse->pre_trace = 0.0F;

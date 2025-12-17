@@ -19,6 +19,8 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain.h"
+#include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
+#include "cognitive/attention/nimcp_attention_sleep_bridge.h"  // Sleep bridge for modulation
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -63,6 +65,9 @@ struct emotion_attention_system {
 
     /* Brain reference for medulla integration */
     void* brain_ref;  /**< brain_t reference for medulla arousal baseline */
+
+    /* Sleep state integration */
+    sleep_state_t current_sleep_state;  /**< Current sleep/wake state for modulation */
 
     pthread_rwlock_t lock;
     bool initialized;
@@ -305,6 +310,9 @@ emotion_attention_system_t* emotion_attention_create(
     system->bio_async_registered = false;
     system->brain_ref = NULL;
 
+    /* WHAT: Initialize sleep state (default: awake) */
+    system->current_sleep_state = SLEEP_STATE_AWAKE;
+
     EA_LOG_INFO("Emotion-attention system created");
     return system;
 }
@@ -370,18 +378,27 @@ bool emotion_attention_modulate(emotion_attention_system_t* system) {
 
     pthread_rwlock_rdlock(&system->lock);
 
+    /* WHAT: Get sleep-modulated capacity and vigilance factors */
+    float sleep_capacity = attention_sleep_capacity_for_state(system->current_sleep_state);
+    float sleep_vigilance = attention_sleep_vigilance_for_state(system->current_sleep_state);
+
     /* WHAT: Apply emotional gating if enabled */
     if (system->config.enable_emotion_gating) {
         /* WHAT: High arousal emotions gate attention more strongly */
-        float gate_signal = 0.5F + (system->current_arousal * 0.5F);
-        multihead_attention_set_gate(system->attention, gate_signal);
+        /* WHY:  Combined with sleep vigilance for realistic modulation */
+        float base_gate = 0.5F + (system->current_arousal * 0.5F);
+        float modulated_gate = base_gate * sleep_vigilance;
+        multihead_attention_set_gate(system->attention, modulated_gate);
         system->stats.emotional_gating_events++;
     }
 
     pthread_rwlock_unlock(&system->lock);
 
-    EA_LOG_DEBUG("Applied emotion modulation: gate=%.3f width=%.3f",
-                 0.5F + (system->current_arousal * 0.5F), system->current_attention_width);
+    EA_LOG_DEBUG("Applied emotion+sleep modulation: gate=%.3f width=%.3f capacity=%.3f vigilance=%.3f",
+                 (0.5F + (system->current_arousal * 0.5F)) * sleep_vigilance,
+                 system->current_attention_width,
+                 sleep_capacity,
+                 sleep_vigilance);
 
     return true;
 }
@@ -435,6 +452,63 @@ float emotion_attention_get_width(const emotion_attention_system_t* system) {
     pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
 
     return width;
+}
+
+//=============================================================================
+// Sleep State Integration Implementation
+//=============================================================================
+
+/**
+ * @brief Set sleep state for attention modulation
+ *
+ * WHAT: Update current sleep state to modulate attention capacity and vigilance
+ * WHY:  Sleep state affects attention performance (biological)
+ * HOW:  Store state, modulation applied in emotion_attention_modulate()
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Full attention capacity, normal vigilance
+ * - DROWSY: Reduced capacity (attention lapses), lower vigilance
+ * - NREM: Minimal external attention (offline processing)
+ * - REM: Internal attention only (dream focus)
+ *
+ * @param system Emotion-attention system (non-NULL)
+ * @param state New sleep state
+ * @return true on success, false on NULL pointer
+ */
+bool emotion_attention_set_sleep_state(emotion_attention_system_t* system, sleep_state_t state) {
+    if (!system) {
+        EA_LOG_ERROR("NULL system pointer");
+        return false;
+    }
+
+    pthread_rwlock_wrlock(&system->lock);
+    system->current_sleep_state = state;
+    pthread_rwlock_unlock(&system->lock);
+
+    EA_LOG_DEBUG("Attention sleep state changed to %d", state);
+    return true;
+}
+
+/**
+ * @brief Get current sleep state
+ *
+ * WHAT: Query current sleep/wake state
+ * WHY:  Check what modulation is being applied
+ * HOW:  Return current_sleep_state field
+ *
+ * @param system Emotion-attention system (non-NULL)
+ * @return Current sleep state, or SLEEP_STATE_AWAKE if NULL
+ */
+sleep_state_t emotion_attention_get_sleep_state(const emotion_attention_system_t* system) {
+    if (!system) {
+        return SLEEP_STATE_AWAKE;
+    }
+
+    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    sleep_state_t state = system->current_sleep_state;
+    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+
+    return state;
 }
 
 //=============================================================================

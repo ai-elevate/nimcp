@@ -16,7 +16,59 @@ struct bcm_sleep_bridge_struct {
     sleep_system_t sleep_system;
     bcm_sleep_effects_t effects;
     nimcp_mutex_t* mutex;
+    bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+/* Forward declarations */
+static void bcm_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update BCM sliding threshold for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - BCM theta threshold modulates LTP/LTD balance
+ * - During sleep, elevated theta favors LTD (synaptic downscaling)
+ * - Deep NREM is critical for synaptic homeostasis
+ */
+static void bcm_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    bcm_sleep_bridge_t bridge = (bcm_sleep_bridge_t)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("BCM bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    if (bridge->config.enable_theta_modulation) {
+        float theta_base = bcm_sleep_theta_for_state(new_state);
+        bridge->effects.theta_factor =
+            1.0f + (theta_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_lr_modulation) {
+        float lr_base = bcm_sleep_lr_for_state(new_state);
+        bridge->effects.learning_rate_factor =
+            1.0f + (lr_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    /* Elevated theta favors LTD (activity must exceed higher threshold for LTP) */
+    bridge->effects.favors_ltd = (bridge->effects.theta_factor > 1.0f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("BCM modulated: theta=%.2f, lr=%.2f, favors_ltd=%d",
+                        bridge->effects.theta_factor,
+                        bridge->effects.learning_rate_factor,
+                        bridge->effects.favors_ltd);
+}
 
 int bcm_sleep_default_config(bcm_sleep_config_t* config) {
     if (!config) return -1;
@@ -58,12 +110,41 @@ bcm_sleep_bridge_t bcm_sleep_bridge_create(
         return NULL;
     }
 
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep_system,
+        bcm_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for BCM bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep_system);
+    bcm_on_sleep_state_change(initial_state, bridge);
+
     NIMCP_LOGGING_INFO("BCM-sleep bridge created");
     return bridge;
 }
 
 void bcm_sleep_bridge_destroy(bcm_sleep_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            bcm_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for BCM bridge");
+        }
+    }
+
     if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }

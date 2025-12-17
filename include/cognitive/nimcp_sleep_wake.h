@@ -117,6 +117,16 @@ typedef struct {
  */
 typedef struct sleep_system_struct* sleep_system_t;
 
+/**
+ * WHAT: Callback function type for sleep state change notifications
+ * WHY:  Allow modules to react immediately to state changes
+ * HOW:  Callback receives new state and user data
+ *
+ * @param new_state The sleep state being entered
+ * @param user_data User-provided context pointer
+ */
+typedef void (*sleep_state_callback_t)(sleep_state_t new_state, void* user_data);
+
 /* ========================================================================
  * LIFECYCLE FUNCTIONS
  * ======================================================================== */
@@ -333,6 +343,49 @@ void sleep_reset_statistics(sleep_system_t sleep);
  * THREAD-SAFE: Yes
  */
 void sleep_set_brain_reference(sleep_system_t sleep, void* brain);
+
+/* ========================================================================
+ * STATE CHANGE NOTIFICATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Register callback for sleep state changes
+ * WHY:  Allow modules to react immediately when sleep state changes
+ * HOW:  Add callback to observer list, called on every state transition
+ *
+ * USAGE:
+ * - Modules register their callback during initialization
+ * - Callback receives new state and can update module parameters
+ * - Multiple modules can register callbacks independently
+ *
+ * @param sleep Sleep system
+ * @param callback Function to call on state changes
+ * @param user_data Context pointer passed to callback
+ * @return true on success, false if registration fails
+ *
+ * COMPLEXITY: O(1) amortized
+ * THREAD-SAFE: Yes
+ */
+bool sleep_register_state_callback(sleep_system_t sleep,
+                                    sleep_state_callback_t callback,
+                                    void* user_data);
+
+/**
+ * WHAT: Unregister sleep state change callback
+ * WHY:  Remove callback when module is destroyed
+ * HOW:  Find and remove callback from observer list
+ *
+ * @param sleep Sleep system
+ * @param callback Function to unregister
+ * @param user_data Context pointer (must match registration)
+ * @return true if callback was found and removed
+ *
+ * COMPLEXITY: O(n) where n = number of callbacks
+ * THREAD-SAFE: Yes
+ */
+bool sleep_unregister_state_callback(sleep_system_t sleep,
+                                      sleep_state_callback_t callback,
+                                      void* user_data);
 
 #ifdef __cplusplus
 }

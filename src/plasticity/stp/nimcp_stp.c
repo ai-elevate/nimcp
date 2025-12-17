@@ -35,7 +35,7 @@
  * @date 2025-11-06
  */
 
-#include "nimcp_stp.h"
+#include "plasticity/stp/nimcp_stp.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"

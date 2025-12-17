@@ -46,6 +46,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "cognitive/nimcp_sleep_wake.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,6 +81,8 @@ typedef struct {
     float threshold;          /**< Sliding modification threshold θ */
     float avg_post_activity;  /**< Running average of post-synaptic activity */
     float eligibility;        /**< Eligibility trace for delayed reward */
+
+    sleep_state_t current_sleep_state;  /**< Current sleep/wake state */
 
     nimcp_platform_mutex_t lock;    /**< Platform mutex for thread-safe updates (only if synapse is shared) */
 } bcm_synapse_t;
@@ -252,6 +255,18 @@ bcm_params_t bcm_params_mature(void);
  */
 bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
                       bcm_stats_t* stats);
+
+/**
+ * @brief Set sleep state for BCM synapse
+ *
+ * WHAT: Update sleep state for synapse
+ * WHY:  Sleep state modulates threshold and learning rate
+ * HOW:  Set current_sleep_state field, will be applied during next update
+ *
+ * @param synapse BCM synapse to update
+ * @param state New sleep state
+ */
+void bcm_set_sleep_state(bcm_synapse_t* synapse, sleep_state_t state);
 
 //=============================================================================
 // Module Management

@@ -24,7 +24,7 @@
  * - Precision-weighted prediction errors
  */
 
-#include "nimcp_predictive_coding.h"
+#include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"

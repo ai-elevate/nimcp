@@ -13,7 +13,7 @@
  * @author NIMCP Security Team
  */
 
-#include "nimcp_security_math.h"
+#include "security/nimcp_security_math.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 

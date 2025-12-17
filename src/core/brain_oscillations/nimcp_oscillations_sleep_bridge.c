@@ -18,7 +18,70 @@ struct oscillations_sleep_bridge_struct {
     sleep_system_t sleep_system;
     oscillations_sleep_effects_t effects;
     nimcp_mutex_t* mutex;
+    bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+/* Forward declarations */
+static void oscillations_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update oscillation parameters for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - Oscillations ARE sleep states (delta=deep, theta=REM/light, alpha=drowsy)
+ * - This is the most fundamental sleep integration
+ * - Sleep spindles and ripples for memory consolidation
+ */
+static void oscillations_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    oscillations_sleep_bridge_t bridge = (oscillations_sleep_bridge_t)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("Oscillations bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    if (bridge->config.enable_frequency_modulation) {
+        bridge->effects.dominant_frequency = oscillations_sleep_freq_for_state(new_state);
+        bridge->effects.dominant_band = oscillations_sleep_band_for_state(new_state);
+    }
+
+    if (bridge->config.enable_power_modulation) {
+        /* Set band power distribution based on sleep state */
+        bridge->effects.delta_power = (new_state == SLEEP_STATE_DEEP_NREM) ? 0.8f :
+                                      (new_state == SLEEP_STATE_LIGHT_NREM) ? 0.3f : 0.1f;
+        bridge->effects.theta_power = (new_state == SLEEP_STATE_REM ||
+                                       new_state == SLEEP_STATE_LIGHT_NREM) ? 0.6f :
+                                      (new_state == SLEEP_STATE_DROWSY) ? 0.3f : 0.2f;
+        bridge->effects.alpha_power = (new_state == SLEEP_STATE_DROWSY) ? 0.7f :
+                                      (new_state == SLEEP_STATE_AWAKE) ? 0.3f : 0.1f;
+        bridge->effects.beta_power = (new_state == SLEEP_STATE_AWAKE) ? 0.6f :
+                                     (new_state == SLEEP_STATE_DROWSY) ? 0.3f : 0.1f;
+        bridge->effects.gamma_power = (new_state == SLEEP_STATE_AWAKE) ? 0.5f : 0.1f;
+    }
+
+    if (bridge->config.enable_spindle_generation) {
+        bridge->effects.spindle_activity = oscillations_sleep_spindle_for_state(new_state);
+        /* Sharp wave ripples during NREM for memory replay */
+        bridge->effects.ripple_activity = (new_state == SLEEP_STATE_DEEP_NREM) ? 0.7f :
+                                          (new_state == SLEEP_STATE_LIGHT_NREM) ? 0.4f : 0.0f;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Oscillations modulated: freq=%.1fHz, band=%d, spindle=%.2f",
+                        bridge->effects.dominant_frequency,
+                        bridge->effects.dominant_band,
+                        bridge->effects.spindle_activity);
+}
 
 int oscillations_sleep_default_config(oscillations_sleep_config_t* config) {
     if (!config) return -1;
@@ -54,12 +117,41 @@ oscillations_sleep_bridge_t oscillations_sleep_bridge_create(
     bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
 
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep,
+        oscillations_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for oscillations bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep);
+    oscillations_on_sleep_state_change(initial_state, bridge);
+
     NIMCP_LOGGING_INFO("Oscillations-sleep bridge created");
     return bridge;
 }
 
 void oscillations_sleep_bridge_destroy(oscillations_sleep_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            oscillations_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for oscillations bridge");
+        }
+    }
+
     if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }

@@ -19,7 +19,7 @@
  *       - Flyweight: Shared pattern definitions
  */
 
-#include "nimcp_security.h"
+#include "security/nimcp_security.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"

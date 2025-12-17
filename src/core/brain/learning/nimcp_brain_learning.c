@@ -28,7 +28,7 @@
  * @version 1.0
  */
 
-#include "nimcp_brain_learning.h"
+#include "core/brain/learning/nimcp_brain_learning.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include <math.h>

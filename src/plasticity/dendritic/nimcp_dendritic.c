@@ -24,7 +24,7 @@
  * - Compartmental modeling from Rall 1964
  */
 
-#include "nimcp_dendritic.h"
+#include "plasticity/dendritic/nimcp_dendritic.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"

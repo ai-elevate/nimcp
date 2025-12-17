@@ -16,7 +16,60 @@ struct working_memory_sleep_bridge_struct {
     sleep_system_t sleep_system;
     working_memory_sleep_effects_t effects;
     nimcp_mutex_t* mutex;
+    bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+/* Forward declarations */
+static void working_memory_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update WM parameters for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - WM capacity drops sharply with drowsiness (prefrontal hypofunction)
+ * - Deep NREM enables consolidation to long-term memory
+ * - Sleep deprivation severely impairs working memory span
+ */
+static void working_memory_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    working_memory_sleep_bridge_t bridge = (working_memory_sleep_bridge_t)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("Working memory bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    if (bridge->config.enable_capacity_modulation) {
+        bridge->effects.capacity_factor = working_memory_sleep_capacity_for_state(new_state);
+    }
+
+    if (bridge->config.enable_decay_modulation) {
+        bridge->effects.decay_rate_factor = working_memory_sleep_decay_for_state(new_state);
+    }
+
+    /* Rehearsal efficiency drops with drowsiness */
+    bridge->effects.rehearsal_efficiency = (new_state == SLEEP_STATE_AWAKE) ? 1.0f :
+                                           (new_state == SLEEP_STATE_DROWSY) ? 0.5f : 0.0f;
+
+    bridge->effects.wm_offline = (new_state == SLEEP_STATE_DEEP_NREM);
+    bridge->effects.consolidation_active = (new_state == SLEEP_STATE_DEEP_NREM ||
+                                            new_state == SLEEP_STATE_LIGHT_NREM);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("WM modulated: capacity=%.2f, decay=%.2f, offline=%d",
+                        bridge->effects.capacity_factor,
+                        bridge->effects.decay_rate_factor,
+                        bridge->effects.wm_offline);
+}
 
 int working_memory_sleep_default_config(working_memory_sleep_config_t* config) {
     if (!config) return -1;
@@ -53,12 +106,41 @@ working_memory_sleep_bridge_t working_memory_sleep_bridge_create(
     bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
 
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep,
+        working_memory_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for working memory bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep);
+    working_memory_on_sleep_state_change(initial_state, bridge);
+
     NIMCP_LOGGING_INFO("Working memory-sleep bridge created");
     return bridge;
 }
 
 void working_memory_sleep_bridge_destroy(working_memory_sleep_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            working_memory_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for working memory bridge");
+        }
+    }
+
     if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }

@@ -15,6 +15,8 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/nimcp_sleep_wake.h"
+#include "core/brain_oscillations/nimcp_oscillations_sleep_bridge.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -106,6 +108,9 @@ struct brain_oscillation_analyzer_struct {
     immune_oscillation_effects_t active_effects;  /**< Current immune effects */
     oscillation_abnormality_t last_abnormality;   /**< Last abnormality detection */
     uint32_t consecutive_abnormal_count;   /**< Consecutive abnormal readings */
+
+    // Sleep integration
+    sleep_state_t current_sleep_state;     /**< Current sleep state for modulation */
 };
 
 //=============================================================================
@@ -247,6 +252,9 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     analyzer->samples_recorded = 0;
     analyzer->last_state = COGNITIVE_STATE_UNKNOWN;
     analyzer->last_confidence = 0.0F;
+
+    // Initialize sleep state
+    analyzer->current_sleep_state = SLEEP_STATE_AWAKE;
 
     return analyzer;
 }
@@ -430,11 +438,18 @@ bool brain_oscillation_get_wave_power(
                               wave_power->beta_power +
                               wave_power->gamma_power;
 
-    // Find dominant frequency
-    wave_power->dominant_freq = fft_dominant_frequency(
+    // Find dominant frequency (raw from FFT)
+    float raw_dominant_freq = fft_dominant_frequency(
         analyzer->power_spectrum, analyzer->spectrum_size, sampling_rate);
 
-    // Determine dominant band
+    // Apply sleep modulation to dominant frequency
+    float sleep_freq = oscillations_sleep_freq_for_state(analyzer->current_sleep_state);
+    oscillation_band_t sleep_band = oscillations_sleep_band_for_state(analyzer->current_sleep_state);
+
+    // Blend raw frequency with sleep-expected frequency (80% sleep, 20% raw for variability)
+    wave_power->dominant_freq = sleep_freq * 0.8F + raw_dominant_freq * 0.2F;
+
+    // Determine dominant band (biased by sleep state)
     float max_power = wave_power->delta_power;
     wave_power->dominant_band = BRAIN_WAVE_DELTA;
 
@@ -453,6 +468,9 @@ bool brain_oscillation_get_wave_power(
     if (wave_power->gamma_power > max_power) {
         wave_power->dominant_band = BRAIN_WAVE_GAMMA;
     }
+
+    // Override dominant band if sleep state strongly dictates it
+    wave_power->dominant_band = sleep_band;
 
     // Cache results
     analyzer->last_wave_power = *wave_power;
@@ -1821,4 +1839,36 @@ bool brain_oscillation_notify_immune_abnormality(
         antigen_id, severity, abnormality->abnormality_score);
 
     return true;
+}
+
+//=============================================================================
+// Sleep Integration Functions
+//=============================================================================
+
+/**
+ * WHAT: Set current sleep state for oscillation modulation
+ * WHY:  Sleep state directly determines brain oscillation patterns
+ * HOW:  Store state for use during analysis
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Beta/Gamma (13-100 Hz) - active processing
+ * - DROWSY: Alpha (8-13 Hz) - relaxed wakefulness
+ * - LIGHT_NREM: Theta (4-8 Hz) + sleep spindles (12-14 Hz)
+ * - DEEP_NREM: Delta (0.5-4 Hz) - slow wave sleep, consolidation
+ * - REM: Theta + desynchronized - dream state
+ *
+ * COMPLEXITY: O(1)
+ */
+void brain_oscillation_set_sleep_state(
+    brain_oscillation_analyzer_t* analyzer,
+    sleep_state_t state)
+{
+    // Guard: NULL check
+    if (!analyzer) {
+        return;
+    }
+
+    analyzer->current_sleep_state = state;
+
+    LOG_DEBUG(LOG_MODULE, "Sleep state updated to %d", state);
 }

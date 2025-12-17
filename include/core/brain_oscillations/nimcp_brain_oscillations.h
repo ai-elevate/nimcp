@@ -37,6 +37,7 @@
 
 #include "core/brain/nimcp_brain.h"
 #include "utils/spectral/nimcp_fft.h"
+#include "cognitive/nimcp_sleep_wake.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -617,6 +618,33 @@ const char* brain_oscillation_state_to_string(cognitive_state_t state);
  * - Gamma (30 Hz): 100ms minimum
  */
 uint32_t brain_oscillation_recommended_window(brain_wave_band_t band);
+
+//=============================================================================
+// Sleep Integration
+//=============================================================================
+
+/**
+ * WHAT: Set current sleep state for oscillation modulation
+ * WHY:  Sleep state directly determines brain oscillation patterns
+ * HOW:  Store state, apply frequency/band modulation
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Beta/Gamma (13-100 Hz)
+ * - DROWSY: Alpha (8-13 Hz)
+ * - LIGHT_NREM: Theta (4-8 Hz) + sleep spindles (12-14 Hz)
+ * - DEEP_NREM: Delta (0.5-4 Hz) - slow wave sleep
+ * - REM: Theta + desynchronized
+ *
+ * @param analyzer Oscillation analyzer
+ * @param state Current sleep state
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void brain_oscillation_set_sleep_state(
+    brain_oscillation_analyzer_t* analyzer,
+    sleep_state_t state
+);
 
 #ifdef __cplusplus
 }

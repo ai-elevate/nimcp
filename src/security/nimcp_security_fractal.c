@@ -14,7 +14,7 @@
  * Part of Phase SC-1: Security Coverage Framework (Tier 0.7)
  */
 
-#include "nimcp_security_fractal.h"
+#include "security/nimcp_security_fractal.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 

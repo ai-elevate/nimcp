@@ -33,6 +33,8 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace integration
 #include "cognitive/immune/nimcp_brain_immune.h"  // Brain immune integration (cytokine enums)
+#include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
+#include "cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"  // Sleep bridge for modulation
 
 #include "nimcp.h"  // For error codes
 #include "async/nimcp_bio_async.h"
@@ -132,6 +134,9 @@ struct working_memory {
     bool immune_integration_enabled;         // Immune integration active
     uint32_t inflammation_capacity_penalty;  // Capacity reduction from inflammation
     float last_stress_signal_time_ms;        // Last stress cytokine release time
+
+    // Sleep state integration
+    sleep_state_t current_sleep_state;       // Current sleep/wake state for modulation
 };
 
 //=============================================================================
@@ -623,6 +628,9 @@ working_memory_t* working_memory_create_custom(
     wm->enable_positional_encoding = config->enable_positional_encoding;
     wm->pe_type = config->pe_type;
     wm->pe_embedding_dim = config->pe_embedding_dim;
+
+    // Initialize sleep state (default: awake)
+    wm->current_sleep_state = SLEEP_STATE_AWAKE;
 
     if (wm->enable_positional_encoding) {
         // Create positional encoder configuration
@@ -1225,6 +1233,9 @@ uint32_t working_memory_decay(
 
     uint32_t removed_count = 0;
 
+    // Get sleep-modulated decay rate
+    float decay_rate_modulation = working_memory_sleep_decay_for_state(wm->current_sleep_state);
+
     // Iterate backwards to safely remove items
     for (int i = (int)wm->current_size - 1; i >= 0; i--) {
         // Skip if attention-refreshed
@@ -1236,8 +1247,8 @@ uint32_t working_memory_decay(
         // Calculate time elapsed
         uint64_t elapsed_ms = current_time_ms - wm->timestamps[i];
 
-        // Apply exponential decay: s_new = s_old × exp(-t/τ)
-        float decay_factor = expf(-(float)elapsed_ms / wm->decay_tau_ms);
+        // Apply exponential decay with sleep-modulated rate: s_new = s_old × exp(-t×decay_rate/τ)
+        float decay_factor = expf(-(float)elapsed_ms * decay_rate_modulation / wm->decay_tau_ms);
         wm->salience[i] *= decay_factor;
 
         // Remove if below threshold
@@ -1948,23 +1959,33 @@ void working_memory_disconnect_immune(working_memory_t* wm)
 
 uint32_t working_memory_get_effective_capacity(const working_memory_t* wm)
 {
-    // WHAT: Get current capacity after inflammation penalty
+    // WHAT: Get current capacity after inflammation and sleep penalties
     // WHY:  Check available slots for new items
-    // HOW:  base_capacity - penalty, minimum 3
+    // HOW:  base_capacity × sleep_factor - inflammation_penalty, minimum 3
 
     if (!wm) {
         return 0;
     }
 
-    if (!wm->immune_integration_enabled) {
-        return wm->capacity;
+    // Start with base capacity
+    float effective = (float)wm->capacity;
+
+    // Apply sleep state modulation
+    float sleep_capacity_factor = working_memory_sleep_capacity_for_state(wm->current_sleep_state);
+    effective *= sleep_capacity_factor;
+
+    // Apply inflammation penalty
+    if (wm->immune_integration_enabled) {
+        effective -= (float)wm->inflammation_capacity_penalty;
     }
 
-    uint32_t effective = wm->capacity > wm->inflammation_capacity_penalty
-        ? wm->capacity - wm->inflammation_capacity_penalty
-        : 3;  // Minimum 3 items
+    // Floor to integer, minimum 3 items
+    uint32_t final_capacity = (uint32_t)effective;
+    if (final_capacity < 3) {
+        final_capacity = 3;
+    }
 
-    return effective;
+    return final_capacity;
 }
 
 bool working_memory_is_immune_impaired(const working_memory_t* wm)
@@ -2021,6 +2042,65 @@ bool working_memory_signal_stress(
     nimcp_platform_mutex_unlock(&wm->mutex);
 
     return result == 0;
+}
+
+//=============================================================================
+// SLEEP STATE INTEGRATION
+//=============================================================================
+
+/**
+ * @brief Set sleep state for working memory modulation
+ *
+ * WHAT: Update current sleep state to modulate WM capacity and decay
+ * WHY:  Sleep state affects working memory performance (biological)
+ * HOW:  Store state, apply modulation factors from sleep bridge
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Full WM capacity (~7±2 items), normal decay
+ * - DROWSY: Reduced capacity (~5 items), faster decay
+ * - NREM: Minimal capacity (offline processing)
+ * - REM: Limited capacity (dream narrative)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param state New sleep state
+ * @return true on success, false on NULL pointer
+ */
+bool working_memory_set_sleep_state(working_memory_t* wm, sleep_state_t state)
+{
+    if (!wm) {
+        set_error("NULL working_memory_t");
+        return false;
+    }
+
+    nimcp_platform_mutex_lock(&wm->mutex);
+    wm->current_sleep_state = state;
+    nimcp_platform_mutex_unlock(&wm->mutex);
+
+    LOG_DEBUG("WM sleep state changed to %d", state);
+    return true;
+}
+
+/**
+ * @brief Get current sleep state
+ *
+ * WHAT: Query current sleep/wake state
+ * WHY:  Check what modulation is being applied
+ * HOW:  Return current_sleep_state field
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return Current sleep state, or SLEEP_STATE_AWAKE if NULL
+ */
+sleep_state_t working_memory_get_sleep_state(const working_memory_t* wm)
+{
+    if (!wm) {
+        return SLEEP_STATE_AWAKE;
+    }
+
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    sleep_state_t state = wm->current_sleep_state;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    return state;
 }
 
 //=============================================================================

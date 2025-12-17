@@ -16,7 +16,59 @@ struct executive_sleep_bridge_struct {
     sleep_system_t sleep_system;
     executive_sleep_effects_t effects;
     nimcp_mutex_t* mutex;
+    bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+/* Forward declarations */
+static void executive_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update executive function parameters for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - Prefrontal cortex is highly sensitive to sleep deprivation
+ * - Inhibitory control degrades first with sleep pressure
+ * - Cognitive flexibility suffers during drowsiness
+ */
+static void executive_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    executive_sleep_bridge_t bridge = (executive_sleep_bridge_t)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("Executive bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    if (bridge->config.enable_inhibition_modulation) {
+        bridge->effects.inhibition_factor = executive_sleep_inhibition_for_state(new_state);
+    }
+
+    if (bridge->config.enable_flexibility_modulation) {
+        bridge->effects.flexibility_factor = executive_sleep_flexibility_for_state(new_state);
+    }
+
+    if (bridge->config.enable_switch_cost_modulation) {
+        bridge->effects.switch_cost_factor = executive_sleep_switch_cost_for_state(new_state);
+    }
+
+    bridge->effects.executive_offline = (new_state == SLEEP_STATE_DEEP_NREM ||
+                                         new_state == SLEEP_STATE_LIGHT_NREM);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Executive modulated: inhibition=%.2f, flexibility=%.2f, offline=%d",
+                        bridge->effects.inhibition_factor,
+                        bridge->effects.flexibility_factor,
+                        bridge->effects.executive_offline);
+}
 
 int executive_sleep_default_config(executive_sleep_config_t* config) {
     if (!config) return -1;
@@ -52,12 +104,41 @@ executive_sleep_bridge_t executive_sleep_bridge_create(
     bridge->mutex = nimcp_platform_mutex_create();
     if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
 
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep,
+        executive_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for executive bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep);
+    executive_on_sleep_state_change(initial_state, bridge);
+
     NIMCP_LOGGING_INFO("Executive-sleep bridge created");
     return bridge;
 }
 
 void executive_sleep_bridge_destroy(executive_sleep_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            executive_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for executive bridge");
+        }
+    }
+
     if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }

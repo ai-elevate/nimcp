@@ -46,11 +46,13 @@
  * @date 2025-11-01
  */
 
-#include "nimcp_neuromodulators.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"       // Phase C2.2 Enhancement #2
 #include "plasticity/neuromodulators/nimcp_receptor_subtypes.h"  // Phase C2.2 Enhancement #1
 #include "plasticity/neuromodulators/nimcp_vesicle_packaging.h"  // Phase C2.3 Enhancement #3
 #include "plasticity/neuromodulators/nimcp_metabolic_pathways.h" // Phase C2.4 Enhancement #4
+#include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"  // Sleep integration
+#include "cognitive/nimcp_sleep_wake.h"                          // Sleep state
 #include "cognitive/nimcp_grief_and_loss.h"                      // Phase E1: Grief and Loss Understanding
 #include "cognitive/nimcp_joy_euphoria.h"                        // Phase E2: Joy and Euphoria System Integration
 #include "cognitive/nimcp_love_loyalty_friendship.h"             // Phase E4: Love, Loyalty, Friendship System Integration
@@ -242,6 +244,14 @@ struct neuromodulator_system_struct {
      * PROTECTED BY: rwlock (write)
      */
     uint64_t last_update_time;
+
+    /* WHAT: Current sleep state for neuromodulator modulation
+     * WHY:  Sleep states fundamentally alter neuromodulator profiles
+     * HOW:  Sleep state modulates baseline concentrations and release dynamics
+     * BIOLOGICAL: ACh, NE, 5-HT, DA all vary dramatically across sleep stages
+     * PROTECTED BY: rwlock (read/write)
+     */
+    sleep_state_t current_sleep_state;
 
     // ===========================================================================
     // PHASE C2.2 ENHANCEMENTS: Phasic-Tonic Dynamics + Receptor Subtypes
@@ -648,6 +658,9 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
     system->brain_ref = NULL;
     system->use_medulla_integration = false;
 
+    // Sleep integration: Initialize to awake state
+    system->current_sleep_state = SLEEP_STATE_AWAKE;
+
     return system;
 }
 
@@ -904,10 +917,29 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
          * WHY:  For compatibility or when enhanced dynamics not needed
          * HOW:  Original behavior preserved
          */
+
+        /* Apply sleep state modulation to neuromodulator baselines */
+        float ach_factor = neuromod_sleep_get_ach_factor(system->current_sleep_state);
+        float ne_factor = neuromod_sleep_get_ne_factor(system->current_sleep_state);
+        float da_factor = neuromod_sleep_get_da_factor(system->current_sleep_state);
+        float serotonin_factor = neuromod_sleep_get_serotonin_factor(system->current_sleep_state);
+
         for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
+            /* Modulate baseline based on sleep state */
+            float modulated_baseline = system->baselines[i];
+            if (i == NEUROMOD_ACETYLCHOLINE) {
+                modulated_baseline *= ach_factor;
+            } else if (i == NEUROMOD_NOREPINEPHRINE) {
+                modulated_baseline *= ne_factor;
+            } else if (i == NEUROMOD_DOPAMINE) {
+                modulated_baseline *= da_factor;
+            } else if (i == NEUROMOD_SEROTONIN) {
+                modulated_baseline *= serotonin_factor;
+            }
+
             float new_concentration = exponential_decay(
                 system->concentrations[i],
-                system->baselines[i],
+                modulated_baseline,
                 dt,
                 system->decay_times[i]
             );
@@ -1706,4 +1738,48 @@ bool neuromodulator_reset(neuromodulator_system_t system) {
     memcpy(system->concentrations, system->baselines, sizeof(system->concentrations));
 
     return true;
+}
+
+//=============================================================================
+// Sleep Integration Functions
+//=============================================================================
+
+bool neuromodulator_set_sleep_state(neuromodulator_system_t system,
+                                    sleep_state_t sleep_state) {
+    /* WHAT: Set current sleep state for neuromodulator modulation
+     * WHY:  Sleep states fundamentally alter neuromodulator release and decay
+     * HOW:  Store state, used in next update to apply sleep-based modulation
+     *
+     * BIOLOGICAL: ACh, NE, 5-HT, DA all vary dramatically across sleep stages
+     */
+
+    /* Guard: Validate input */
+    if (!system) return false;
+
+    /* Acquire write lock for state modification */
+    nimcp_platform_rwlock_wrlock(&system->rwlock);
+
+    system->current_sleep_state = sleep_state;
+
+    nimcp_platform_rwlock_unlock(&system->rwlock);
+
+    return true;
+}
+
+sleep_state_t neuromodulator_get_sleep_state(neuromodulator_system_t system) {
+    /* WHAT: Get current sleep state
+     * WHY:  Query what modulation is being applied
+     */
+
+    /* Guard: Validate input */
+    if (!system) return SLEEP_STATE_AWAKE;
+
+    /* Acquire read lock for state query */
+    nimcp_platform_rwlock_rdlock(&system->rwlock);
+
+    sleep_state_t state = system->current_sleep_state;
+
+    nimcp_platform_rwlock_unlock(&system->rwlock);
+
+    return state;
 }

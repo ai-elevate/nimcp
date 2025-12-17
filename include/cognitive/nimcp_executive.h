@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>  // For FILE
+#include "cognitive/nimcp_sleep_wake.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -730,6 +731,31 @@ float executive_get_immune_adjusted_switch_cost(executive_controller_t* exec);
  * THREAD-SAFE: Yes
  */
 float executive_get_immune_adjusted_inhibition(executive_controller_t* exec);
+
+//=============================================================================
+// Sleep Integration
+//=============================================================================
+
+/**
+ * @brief Set current sleep state for executive modulation
+ *
+ * WHAT: Update sleep state and apply modulation factors
+ * WHY:  Executive function is highly sensitive to sleep state
+ * HOW:  Store state, modulate inhibition/flexibility/switch cost
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Full executive control
+ * - DROWSY: Impaired inhibition, reduced flexibility
+ * - NREM: Executive functions offline (PFC recovery)
+ * - REM: Reduced executive control (dream bizarreness)
+ *
+ * @param exec Executive controller
+ * @param state Current sleep state
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void executive_set_sleep_state(executive_controller_t* exec, sleep_state_t state);
 
 #ifdef __cplusplus
 }

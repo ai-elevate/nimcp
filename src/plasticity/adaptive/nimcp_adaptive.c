@@ -30,7 +30,7 @@
 // - Label map always synchronized with label count
 //=============================================================================
 
-#include "nimcp_adaptive.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

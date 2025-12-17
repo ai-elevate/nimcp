@@ -54,6 +54,8 @@
 extern "C" {
 #endif
 
+/* Sleep state type defined in cognitive/nimcp_sleep_wake.h (already included via neuralnet.h → bcm.h) */
+
 //=============================================================================
 // Neurotransmitter Types
 //=============================================================================
@@ -528,6 +530,37 @@ bool neuromodulator_get_stats(neuromodulator_system_t system, neuromodulator_sta
  * @return true on success
  */
 bool neuromodulator_reset(neuromodulator_system_t system);
+
+//=============================================================================
+// Sleep Integration
+//=============================================================================
+
+/**
+ * @brief Set current sleep state for neuromodulator modulation
+ *
+ * WHAT: Update the sleep state that modulates neuromodulator profiles
+ * WHY:  Sleep states fundamentally alter neuromodulator release and decay
+ * HOW:  Store state, used in next update to apply sleep-based modulation
+ *
+ * BIOLOGICAL: ACh, NE, 5-HT, DA all vary dramatically across sleep stages
+ *
+ * @param system Neuromodulator system
+ * @param sleep_state Current sleep state
+ * @return true on success
+ */
+bool neuromodulator_set_sleep_state(neuromodulator_system_t system,
+                                    sleep_state_t sleep_state);
+
+/**
+ * @brief Get current sleep state
+ *
+ * WHAT: Query the current sleep state affecting neuromodulators
+ * WHY:  Check what modulation is being applied
+ *
+ * @param system Neuromodulator system
+ * @return Current sleep state
+ */
+sleep_state_t neuromodulator_get_sleep_state(neuromodulator_system_t system);
 
 #ifdef __cplusplus
 }

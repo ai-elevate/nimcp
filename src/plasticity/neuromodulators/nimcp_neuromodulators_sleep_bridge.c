@@ -28,7 +28,70 @@ struct neuromod_sleep_bridge_struct {
     sleep_system_t sleep_system;             /**< Connected sleep system */
     neuromod_sleep_effects_t effects;        /**< Current computed effects */
     nimcp_mutex_t* mutex;                    /**< Thread safety */
+    bool callback_registered;  /**< Track if callback is registered for cleanup */
 };
+
+/* Forward declarations */
+static void neuromod_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update neuromodulator profiles for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - Neuromodulators define sleep stages as much as oscillations do
+ * - ACh high in waking and REM, low in NREM
+ * - NE/5-HT drop during REM (locus coeruleus/raphe silent)
+ * - Sleep-dependent neuromodulator shifts enable memory consolidation
+ */
+static void neuromod_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    neuromod_sleep_bridge_t bridge = (neuromod_sleep_bridge_t)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("Neuromodulator bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    /* Compute state-based modulation factors */
+    if (bridge->config.enable_sleep_state_modulation) {
+        float ach_base = neuromod_sleep_get_ach_factor(new_state);
+        float ne_base = neuromod_sleep_get_ne_factor(new_state);
+        float da_base = neuromod_sleep_get_da_factor(new_state);
+        float serotonin_base = neuromod_sleep_get_serotonin_factor(new_state);
+
+        /* Apply modulation strengths (blend toward 1.0) */
+        bridge->effects.ach_factor = 1.0f + (ach_base - 1.0f) * bridge->config.ach_modulation_strength;
+        bridge->effects.ne_factor = 1.0f + (ne_base - 1.0f) * bridge->config.ne_modulation_strength;
+        bridge->effects.da_factor = 1.0f + (da_base - 1.0f) * bridge->config.da_modulation_strength;
+        bridge->effects.serotonin_factor = 1.0f + (serotonin_base - 1.0f) * bridge->config.serotonin_modulation_strength;
+    }
+
+    /* Compute derived effects */
+    bridge->effects.learning_rate_modifier =
+        (bridge->effects.ach_factor * 0.4f) +
+        (bridge->effects.da_factor * 0.3f) +
+        (bridge->effects.ne_factor * 0.3f);
+
+    bridge->effects.attention_modifier =
+        (bridge->effects.ach_factor * 0.6f) +
+        (bridge->effects.ne_factor * 0.4f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Neuromod modulated: ACh=%.2f, NE=%.2f, DA=%.2f, 5HT=%.2f",
+                        bridge->effects.ach_factor,
+                        bridge->effects.ne_factor,
+                        bridge->effects.da_factor,
+                        bridge->effects.serotonin_factor);
+}
 
 /* ============================================================================
  * Lifecycle Functions
@@ -120,6 +183,22 @@ neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
         return NULL;
     }
 
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep_system,
+        neuromod_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for neuromodulator bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep_system);
+    neuromod_on_sleep_state_change(initial_state, bridge);
+
     NIMCP_LOGGING_INFO("Sleep-neuromodulator bridge created successfully");
     return bridge;
 }
@@ -132,6 +211,18 @@ neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
 void neuromod_sleep_bridge_destroy(neuromod_sleep_bridge_t bridge) {
     if (!bridge) {
         return;
+    }
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            neuromod_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for neuromodulator bridge");
+        }
     }
 
     if (bridge->mutex) {

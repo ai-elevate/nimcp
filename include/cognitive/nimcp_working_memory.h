@@ -76,6 +76,7 @@
 #include <stddef.h>
 #include "cognitive/nimcp_emotional_tagging.h"  // Phase 10.3: Emotional tagging
 #include "utils/encoding/nimcp_positional_encoding.h"  // Positional encoding for serial position
+#include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
 
 /* Forward declaration for brain immune integration */
 struct brain_immune_system;
@@ -806,6 +807,46 @@ bool working_memory_is_full(const working_memory_t* wm);
  * @return true if current_size == 0
  */
 bool working_memory_is_empty(const working_memory_t* wm);
+
+//=============================================================================
+// Sleep State Integration
+//=============================================================================
+
+/**
+ * @brief Set sleep state for working memory modulation
+ *
+ * WHAT: Update current sleep state to modulate WM capacity and decay
+ * WHY:  Sleep state affects working memory performance (biological)
+ * HOW:  Store state, apply modulation from sleep bridge
+ *
+ * BIOLOGICAL BASIS:
+ * - AWAKE: Full WM capacity (~7±2 items), normal decay
+ * - DROWSY: Reduced capacity (~5 items), faster decay (1.5x)
+ * - LIGHT_NREM: Minimal capacity (~2 items), faster decay (2x)
+ * - DEEP_NREM: Offline (0 items), no decay (consolidation)
+ * - REM: Limited capacity (~3 items), moderate decay (1.2x)
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param state New sleep state
+ * @return true on success, false on NULL pointer
+ */
+bool working_memory_set_sleep_state(working_memory_t* wm, sleep_state_t state);
+
+/**
+ * @brief Get current sleep state
+ *
+ * WHAT: Query current sleep/wake state
+ * WHY:  Check what modulation is being applied
+ * HOW:  Return current_sleep_state field
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return Current sleep state, or SLEEP_STATE_AWAKE if NULL
+ */
+sleep_state_t working_memory_get_sleep_state(const working_memory_t* wm);
 
 //=============================================================================
 // Positional Encoding Functions

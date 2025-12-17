@@ -13,8 +13,8 @@
  * Part of Phase SC-1: Security Coverage Framework (Tier 0.7)
  */
 
-#include "nimcp_capability.h"
-#include "nimcp_security.h"
+#include "security/nimcp_capability.h"
+#include "security/nimcp_security.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
