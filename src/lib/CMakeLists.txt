@@ -468,6 +468,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_substrate_bridge.c  # Plasticity-substrate integration (STDP/BCM/homeostatic LR modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_coordinator.c  # Plasticity Coordinator - unified manager for all plasticity mechanisms
 
+    # Sleep-Wake Integration Bridges (Phase 1.1: Sleep-Module Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c  # Neuromodulators-sleep integration (ACh/NE/DA/5-HT state modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_sleep_bridge.c  # STDP-sleep integration (LTP/LTD ratio, timing window)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_sleep_bridge.c  # BCM-sleep integration (sliding threshold modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c  # Homeostatic-sleep integration (Tononi SHY: downscaling in NREM)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_sleep_bridge.c  # Attention-sleep integration (capacity, vigilance)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_sleep_bridge.c  # Working memory-sleep integration (capacity, decay)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_sleep_bridge.c  # Executive function-sleep integration (inhibition, flexibility)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_oscillations_sleep_bridge.c  # Oscillations-sleep integration (band power, spindles)
+
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocyte_calcium.c

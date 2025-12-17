@@ -1,0 +1,466 @@
+/**
+ * @file nimcp_neuromodulators_sleep_bridge.c
+ * @brief Sleep-Neuromodulator Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-17
+ *
+ * WHAT: Implementation of bidirectional sleep-neuromodulator integration
+ * WHY:  Sleep states fundamentally alter neuromodulator profiles
+ * HOW:  Query sleep state, compute modulation factors, apply to neuromodulators
+ *
+ * @author NIMCP Development Team
+ */
+
+#include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <math.h>
+#include <string.h>
+
+/* ============================================================================
+ * Internal Structure
+ * ============================================================================ */
+
+struct neuromod_sleep_bridge_struct {
+    neuromodulators_sleep_config_t config;  /**< Configuration */
+    neuromodulator_system_t neuromod_system; /**< Connected neuromod system */
+    sleep_system_t sleep_system;             /**< Connected sleep system */
+    neuromod_sleep_effects_t effects;        /**< Current computed effects */
+    nimcp_mutex_t* mutex;                    /**< Thread safety */
+};
+
+/* ============================================================================
+ * Lifecycle Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Get default sleep-neuromodulator bridge configuration
+ * WHY:  Provide sensible defaults based on biological evidence
+ * HOW:  Set evidence-based parameters from sleep neuroscience research
+ */
+int neuromod_sleep_default_config(neuromodulators_sleep_config_t* config) {
+    if (!config) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_default_config: NULL config");
+        return -1;
+    }
+
+    config->enable_sleep_state_modulation = true;
+    config->enable_pressure_effects = true;
+    config->enable_neuromod_sleep_effects = true;
+
+    config->ach_modulation_strength = 1.0f;
+    config->ne_modulation_strength = 1.0f;
+    config->da_modulation_strength = 0.8f;  /* DA changes less dramatic */
+    config->serotonin_modulation_strength = 1.0f;
+
+    config->pressure_sensitivity = 1.0f;
+
+    return 0;
+}
+
+/**
+ * WHAT: Create sleep-neuromodulator bridge
+ * WHY:  Initialize integration between sleep and neuromodulator systems
+ * HOW:  Allocate structure, store references, create mutex
+ */
+neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
+    const neuromodulators_sleep_config_t* config,
+    neuromodulator_system_t neuromod_system,
+    sleep_system_t sleep_system)
+{
+    if (!neuromod_system) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: NULL neuromod_system");
+        return NULL;
+    }
+
+    if (!sleep_system) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: NULL sleep_system");
+        return NULL;
+    }
+
+    struct neuromod_sleep_bridge_struct* bridge =
+        (struct neuromod_sleep_bridge_struct*)nimcp_malloc(
+            sizeof(struct neuromod_sleep_bridge_struct));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: allocation failed");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(struct neuromod_sleep_bridge_struct));
+
+    /* Apply configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        neuromod_sleep_default_config(&bridge->config);
+    }
+
+    bridge->neuromod_system = neuromod_system;
+    bridge->sleep_system = sleep_system;
+
+    /* Initialize effects to awake baseline */
+    bridge->effects.ach_factor = 1.0f;
+    bridge->effects.ne_factor = 1.0f;
+    bridge->effects.da_factor = 1.0f;
+    bridge->effects.serotonin_factor = 1.0f;
+    bridge->effects.ne_release_sensitivity = 1.0f;
+    bridge->effects.ach_release_sensitivity = 1.0f;
+    bridge->effects.current_state = SLEEP_STATE_AWAKE;
+    bridge->effects.sleep_pressure = 0.0f;
+    bridge->effects.learning_rate_modifier = 1.0f;
+    bridge->effects.attention_modifier = 1.0f;
+    bridge->effects.sleep_inhibited = false;
+
+    /* Create mutex */
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: mutex creation failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO("Sleep-neuromodulator bridge created successfully");
+    return bridge;
+}
+
+/**
+ * WHAT: Destroy sleep-neuromodulator bridge
+ * WHY:  Clean up resources, prevent memory leaks
+ * HOW:  Free mutex, free structure (doesn't destroy connected systems)
+ */
+void neuromod_sleep_bridge_destroy(neuromod_sleep_bridge_t bridge) {
+    if (!bridge) {
+        return;
+    }
+
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Sleep-neuromodulator bridge destroyed");
+}
+
+/* ============================================================================
+ * Update Functions (SLEEP → NEUROMODULATORS)
+ * ============================================================================ */
+
+/**
+ * WHAT: Update neuromodulator effects from sleep system state
+ * WHY:  Compute how current sleep state affects neuromodulator profiles
+ * HOW:  Query sleep state and pressure, compute modulation factors
+ */
+int neuromod_sleep_update(neuromod_sleep_bridge_t bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_update: NULL bridge");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get sleep state */
+    sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
+    float pressure = sleep_get_pressure(bridge->sleep_system);
+
+    bridge->effects.current_state = state;
+    bridge->effects.sleep_pressure = pressure;
+
+    /* Compute state-based modulation factors */
+    if (bridge->config.enable_sleep_state_modulation) {
+        float ach_base = neuromod_sleep_get_ach_factor(state);
+        float ne_base = neuromod_sleep_get_ne_factor(state);
+        float da_base = neuromod_sleep_get_da_factor(state);
+        float serotonin_base = neuromod_sleep_get_serotonin_factor(state);
+
+        /* Apply modulation strengths (blend toward 1.0) */
+        bridge->effects.ach_factor = 1.0f + (ach_base - 1.0f) * bridge->config.ach_modulation_strength;
+        bridge->effects.ne_factor = 1.0f + (ne_base - 1.0f) * bridge->config.ne_modulation_strength;
+        bridge->effects.da_factor = 1.0f + (da_base - 1.0f) * bridge->config.da_modulation_strength;
+        bridge->effects.serotonin_factor = 1.0f + (serotonin_base - 1.0f) * bridge->config.serotonin_modulation_strength;
+    }
+
+    /* Compute release sensitivity from sleep pressure */
+    if (bridge->config.enable_pressure_effects) {
+        bridge->effects.ne_release_sensitivity = neuromod_sleep_compute_release_sensitivity(
+            pressure, SLEEP_PRESSURE_THRESHOLD, SLEEP_PRESSURE_NE_SUPPRESSION);
+        bridge->effects.ach_release_sensitivity = neuromod_sleep_compute_release_sensitivity(
+            pressure, SLEEP_PRESSURE_THRESHOLD, SLEEP_PRESSURE_ACH_SUPPRESSION);
+    }
+
+    /* Check for sleep inhibition from high neuromodulators */
+    if (bridge->config.enable_neuromod_sleep_effects) {
+        float ne_level = neuromodulator_get_level(bridge->neuromod_system, NEUROMOD_NOREPINEPHRINE);
+        float ach_level = neuromodulator_get_level(bridge->neuromod_system, NEUROMOD_ACETYLCHOLINE);
+        bridge->effects.sleep_inhibited = (ne_level > NEUROMOD_NE_SLEEP_INHIBIT) ||
+                                          (ach_level > NEUROMOD_ACH_REM_TRIGGER && state != SLEEP_STATE_AWAKE);
+    }
+
+    /* Compute derived effects */
+    /* Learning rate: low during sleep (except encoding in REM) */
+    bridge->effects.learning_rate_modifier =
+        (bridge->effects.ach_factor * 0.4f) +
+        (bridge->effects.da_factor * 0.3f) +
+        (bridge->effects.ne_factor * 0.3f);
+
+    /* Attention: mainly ACh and NE */
+    bridge->effects.attention_modifier =
+        (bridge->effects.ach_factor * 0.6f) +
+        (bridge->effects.ne_factor * 0.4f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Neuromod sleep effects updated: state=%d, pressure=%.2f, "
+                       "ACh=%.2f, NE=%.2f, DA=%.2f, 5HT=%.2f",
+                       state, pressure,
+                       bridge->effects.ach_factor,
+                       bridge->effects.ne_factor,
+                       bridge->effects.da_factor,
+                       bridge->effects.serotonin_factor);
+
+    return 0;
+}
+
+/**
+ * WHAT: Apply sleep-modulated neuromodulator levels
+ * WHY:  Actually modify neuromodulator system based on sleep state
+ * HOW:  Set neuromodulator levels using computed factors
+ */
+int neuromod_sleep_apply_modulation(neuromod_sleep_bridge_t bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_apply_modulation: NULL bridge");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get current baseline levels */
+    neuromodulator_pool_t pool;
+    if (!neuromodulator_get_levels(bridge->neuromod_system, &pool)) {
+        nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_LOGGING_WARN("neuromod_sleep_apply_modulation: failed to get levels");
+        return -1;
+    }
+
+    /* Apply modulation factors to each neuromodulator */
+    /* Note: We modulate the levels, not override them completely */
+    /* This preserves event-driven changes while applying sleep modulation */
+    float modulated_ach = pool.acetylcholine * bridge->effects.ach_factor;
+    float modulated_ne = pool.norepinephrine * bridge->effects.ne_factor;
+    float modulated_da = pool.dopamine * bridge->effects.da_factor;
+    float modulated_5ht = pool.serotonin * bridge->effects.serotonin_factor;
+
+    /* Clamp to valid range */
+    modulated_ach = fminf(fmaxf(modulated_ach, 0.0f), 1.0f);
+    modulated_ne = fminf(fmaxf(modulated_ne, 0.0f), 1.0f);
+    modulated_da = fminf(fmaxf(modulated_da, 0.0f), 1.0f);
+    modulated_5ht = fminf(fmaxf(modulated_5ht, 0.0f), 1.0f);
+
+    /* Set modulated levels */
+    neuromodulator_set_level(bridge->neuromod_system, NEUROMOD_ACETYLCHOLINE, modulated_ach);
+    neuromodulator_set_level(bridge->neuromod_system, NEUROMOD_NOREPINEPHRINE, modulated_ne);
+    neuromodulator_set_level(bridge->neuromod_system, NEUROMOD_DOPAMINE, modulated_da);
+    neuromodulator_set_level(bridge->neuromod_system, NEUROMOD_SEROTONIN, modulated_5ht);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Query Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Get current sleep effects on neuromodulators
+ * WHY:  Query integrated sleep-neuromodulator state
+ * HOW:  Copy neuromod_sleep_effects_t from bridge
+ */
+int neuromod_sleep_get_effects(
+    const neuromod_sleep_bridge_t bridge,
+    neuromod_sleep_effects_t* effects)
+{
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_get_effects: NULL bridge");
+        return -1;
+    }
+
+    if (!effects) {
+        NIMCP_LOGGING_ERROR("neuromod_sleep_get_effects: NULL effects");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    *effects = bridge->effects;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/**
+ * WHAT: Get modulation factor for specific neuromodulator
+ * WHY:  Query single neuromodulator's sleep modulation
+ * HOW:  Look up from current effects structure
+ */
+float neuromod_sleep_get_factor(
+    const neuromod_sleep_bridge_t bridge,
+    neuromodulator_type_t type)
+{
+    if (!bridge) {
+        return 1.0f;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    float factor = 1.0f;
+
+    switch (type) {
+        case NEUROMOD_ACETYLCHOLINE:
+            factor = bridge->effects.ach_factor;
+            break;
+        case NEUROMOD_NOREPINEPHRINE:
+            factor = bridge->effects.ne_factor;
+            break;
+        case NEUROMOD_DOPAMINE:
+            factor = bridge->effects.da_factor;
+            break;
+        case NEUROMOD_SEROTONIN:
+            factor = bridge->effects.serotonin_factor;
+            break;
+        default:
+            factor = 1.0f;  /* No sleep modulation for GABA/GLU */
+            break;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return factor;
+}
+
+/**
+ * WHAT: Check if high neuromodulators are inhibiting sleep
+ * WHY:  Detect stress-induced insomnia conditions
+ * HOW:  Return cached inhibition flag
+ */
+bool neuromod_sleep_is_inhibited(const neuromod_sleep_bridge_t bridge) {
+    if (!bridge) {
+        return false;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool inhibited = bridge->effects.sleep_inhibited;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return inhibited;
+}
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Get acetylcholine factor for sleep state
+ * WHY:  ACh varies dramatically across sleep stages
+ * HOW:  Return predefined factor for each state
+ */
+float neuromod_sleep_get_ach_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:
+            return SLEEP_NEUROMOD_ACH_AWAKE;
+        case SLEEP_STATE_DROWSY:
+            return SLEEP_NEUROMOD_ACH_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+            return SLEEP_NEUROMOD_ACH_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:
+            return SLEEP_NEUROMOD_ACH_DEEP_NREM;
+        case SLEEP_STATE_REM:
+            return SLEEP_NEUROMOD_ACH_REM;
+        default:
+            return SLEEP_NEUROMOD_ACH_AWAKE;
+    }
+}
+
+/**
+ * WHAT: Get norepinephrine factor for sleep state
+ * WHY:  NE drops dramatically during sleep, especially REM
+ * HOW:  Return predefined factor for each state
+ */
+float neuromod_sleep_get_ne_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:
+            return SLEEP_NEUROMOD_NE_AWAKE;
+        case SLEEP_STATE_DROWSY:
+            return SLEEP_NEUROMOD_NE_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+            return SLEEP_NEUROMOD_NE_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:
+            return SLEEP_NEUROMOD_NE_DEEP_NREM;
+        case SLEEP_STATE_REM:
+            return SLEEP_NEUROMOD_NE_REM;
+        default:
+            return SLEEP_NEUROMOD_NE_AWAKE;
+    }
+}
+
+/**
+ * WHAT: Get dopamine factor for sleep state
+ * WHY:  DA shows moderate changes during sleep
+ * HOW:  Return predefined factor for each state
+ */
+float neuromod_sleep_get_da_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:
+            return SLEEP_NEUROMOD_DA_AWAKE;
+        case SLEEP_STATE_DROWSY:
+            return SLEEP_NEUROMOD_DA_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+            return SLEEP_NEUROMOD_DA_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:
+            return SLEEP_NEUROMOD_DA_DEEP_NREM;
+        case SLEEP_STATE_REM:
+            return SLEEP_NEUROMOD_DA_REM;
+        default:
+            return SLEEP_NEUROMOD_DA_AWAKE;
+    }
+}
+
+/**
+ * WHAT: Get serotonin factor for sleep state
+ * WHY:  5-HT drops during REM (raphe silent)
+ * HOW:  Return predefined factor for each state
+ */
+float neuromod_sleep_get_serotonin_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:
+            return SLEEP_NEUROMOD_5HT_AWAKE;
+        case SLEEP_STATE_DROWSY:
+            return SLEEP_NEUROMOD_5HT_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+            return SLEEP_NEUROMOD_5HT_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:
+            return SLEEP_NEUROMOD_5HT_DEEP_NREM;
+        case SLEEP_STATE_REM:
+            return SLEEP_NEUROMOD_5HT_REM;
+        default:
+            return SLEEP_NEUROMOD_5HT_AWAKE;
+    }
+}
+
+/**
+ * WHAT: Compute release sensitivity modifier from sleep pressure
+ * WHY:  High sleep pressure suppresses arousal neuromodulator responses
+ * HOW:  Reduce sensitivity when pressure > threshold
+ */
+float neuromod_sleep_compute_release_sensitivity(
+    float pressure,
+    float threshold,
+    float suppression)
+{
+    if (pressure < threshold) {
+        return 1.0f;
+    }
+
+    /* Linear reduction from 1.0 to (1.0 - suppression) */
+    float excess = (pressure - threshold) / (1.0f - threshold + 1e-6f);
+    float sensitivity = 1.0f - (suppression * excess);
+
+    return fmaxf(sensitivity, 1.0f - suppression);
+}

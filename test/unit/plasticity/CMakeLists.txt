@@ -160,3 +160,55 @@ gtest_discover_tests(unit_plasticity_test_coordinator
 
 # Attention subdirectory (PE tests)
 add_subdirectory(attention)
+
+# ============================================================================
+# Sleep Bridge Integration Tests
+# ============================================================================
+# WHAT: Unit tests for Sleep-Plasticity integration bridges
+# WHY:  Ensure plasticity mechanisms correctly modulate based on sleep state
+# HOW:  Test helper functions, default config, biological validity
+# ============================================================================
+
+# Neuromodulators Sleep Bridge Tests
+add_executable(unit_plasticity_neuromodulators_sleep_bridge
+    neuromodulators/sleep/test_neuromodulators_sleep_bridge.cpp
+)
+target_link_libraries(unit_plasticity_neuromodulators_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_neuromodulators_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_neuromodulators_sleep_bridge
+    PROPERTIES LABELS "unit;plasticity;neuromodulators;sleep")
+
+# STDP Sleep Bridge Tests
+add_executable(unit_plasticity_stdp_sleep_bridge
+    stdp/sleep/test_stdp_sleep_bridge.cpp
+)
+target_link_libraries(unit_plasticity_stdp_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_stdp_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_stdp_sleep_bridge
+    PROPERTIES LABELS "unit;plasticity;stdp;sleep")
+
+# BCM Sleep Bridge Tests
+add_executable(unit_plasticity_bcm_sleep_bridge
+    bcm/sleep/test_bcm_sleep_bridge.cpp
+)
+target_link_libraries(unit_plasticity_bcm_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_bcm_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_bcm_sleep_bridge
+    PROPERTIES LABELS "unit;plasticity;bcm;sleep")
+
+# Homeostatic Sleep Bridge Tests
+add_executable(unit_plasticity_homeostatic_sleep_bridge
+    homeostatic/sleep/test_homeostatic_sleep_bridge.cpp
+)
+target_link_libraries(unit_plasticity_homeostatic_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_homeostatic_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_homeostatic_sleep_bridge
+    PROPERTIES LABELS "unit;plasticity;homeostatic;sleep")

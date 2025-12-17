@@ -579,6 +579,109 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/oscillations")
 endif()
 
 # ============================================================================
+# Oscillations Sleep Bridge Tests (Phase 1.1: Sleep Integration)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain_oscillations/sleep")
+    message(STATUS "Adding oscillations sleep bridge tests...")
+    add_executable(unit_core_oscillations_sleep_bridge
+        unit/core/brain_oscillations/sleep/test_oscillations_sleep_bridge.cpp
+    )
+    target_link_libraries(unit_core_oscillations_sleep_bridge
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(unit_core_oscillations_sleep_bridge PRIVATE cxx_std_17)
+    gtest_discover_tests(unit_core_oscillations_sleep_bridge
+        PROPERTIES LABELS "unit;core;oscillations;sleep")
+endif()
+
+# ============================================================================
+# Sleep Bridge Integration Tests (Phase 1.1: Sleep Integration)
+# ============================================================================
+# WHAT: Test all sleep bridges coordinating together
+# WHY:  Verify plasticity and cognitive systems integrate correctly during sleep
+# HOW:  Simulate sleep cycles with all bridges active
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/plasticity/sleep")
+    message(STATUS "Adding plasticity sleep bridge integration tests...")
+    add_executable(integration_plasticity_sleep_bridge
+        integration/plasticity/sleep/test_plasticity_sleep_integration.cpp
+    )
+    target_link_libraries(integration_plasticity_sleep_bridge
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(integration_plasticity_sleep_bridge PRIVATE cxx_std_17)
+    gtest_discover_tests(integration_plasticity_sleep_bridge
+        PROPERTIES LABELS "integration;plasticity;sleep")
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/sleep")
+    message(STATUS "Adding cognitive sleep bridge integration tests...")
+    add_executable(integration_cognitive_sleep_bridge
+        integration/cognitive/sleep/test_cognitive_sleep_integration.cpp
+    )
+    target_link_libraries(integration_cognitive_sleep_bridge
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(integration_cognitive_sleep_bridge PRIVATE cxx_std_17)
+    gtest_discover_tests(integration_cognitive_sleep_bridge
+        PROPERTIES LABELS "integration;cognitive;sleep")
+endif()
+
+# ============================================================================
+# Sleep Bridge Regression Tests (Phase 1.1: Sleep Integration)
+# ============================================================================
+# WHAT: Exact value regression tests for sleep bridges
+# WHY:  Prevent accidental changes to biologically-tuned parameters
+# HOW:  Test exact values, boundary conditions, and monotonicity
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/plasticity/sleep")
+    message(STATUS "Adding plasticity sleep bridge regression tests...")
+    add_executable(regression_plasticity_sleep_bridge
+        regression/plasticity/sleep/test_plasticity_sleep_regression.cpp
+    )
+    target_link_libraries(regression_plasticity_sleep_bridge
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(regression_plasticity_sleep_bridge PRIVATE cxx_std_17)
+    gtest_discover_tests(regression_plasticity_sleep_bridge
+        PROPERTIES LABELS "regression;plasticity;sleep")
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/sleep")
+    message(STATUS "Adding cognitive sleep bridge regression tests...")
+    add_executable(regression_cognitive_sleep_bridge
+        regression/cognitive/sleep/test_cognitive_sleep_regression.cpp
+    )
+    target_link_libraries(regression_cognitive_sleep_bridge
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(regression_cognitive_sleep_bridge PRIVATE cxx_std_17)
+    gtest_discover_tests(regression_cognitive_sleep_bridge
+        PROPERTIES LABELS "regression;cognitive;sleep")
+endif()
+
+# ============================================================================
+# Sleep Bridge E2E Pipeline Tests (Phase 1.1: Sleep Integration)
+# ============================================================================
+# WHAT: End-to-end tests for complete sleep bridge pipeline
+# WHY:  Verify all 8 sleep bridges work together through realistic sleep cycles
+# HOW:  Simulate full night sleep with all bridges active
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/e2e_test_sleep_bridge_pipeline.cpp")
+    message(STATUS "Adding sleep bridge e2e pipeline tests...")
+    add_executable(e2e_test_sleep_bridge_pipeline
+        e2e/e2e_test_sleep_bridge_pipeline.cpp
+    )
+    target_link_libraries(e2e_test_sleep_bridge_pipeline
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(e2e_test_sleep_bridge_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_sleep_bridge_pipeline
+        PROPERTIES LABELS "e2e;sleep;pipeline")
+endif()
+
+# ============================================================================
 # Brain Regions Tests (Broca's Area + Immune Integration)
 # ============================================================================
 

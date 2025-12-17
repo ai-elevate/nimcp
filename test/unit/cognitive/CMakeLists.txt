@@ -254,3 +254,44 @@ gtest_discover_tests(unit_cognitive_test_fep_bridges
         LABELS "unit;cognitive;fep;bridge"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Sleep Bridge Integration Tests
+# ============================================================================
+# WHAT: Unit tests for Sleep-Cognitive integration bridges
+# WHY:  Ensure cognitive functions correctly modulate based on sleep state
+# HOW:  Test helper functions, default config, biological validity
+# ============================================================================
+
+# Attention Sleep Bridge Tests
+add_executable(unit_cognitive_attention_sleep_bridge
+    attention/sleep/test_attention_sleep_bridge.cpp
+)
+target_link_libraries(unit_cognitive_attention_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_cognitive_attention_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_attention_sleep_bridge
+    PROPERTIES LABELS "unit;cognitive;attention;sleep")
+
+# Working Memory Sleep Bridge Tests
+add_executable(unit_cognitive_working_memory_sleep_bridge
+    working_memory/sleep/test_working_memory_sleep_bridge.cpp
+)
+target_link_libraries(unit_cognitive_working_memory_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_cognitive_working_memory_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_working_memory_sleep_bridge
+    PROPERTIES LABELS "unit;cognitive;working_memory;sleep")
+
+# Executive Sleep Bridge Tests
+add_executable(unit_cognitive_executive_sleep_bridge
+    executive/sleep/test_executive_sleep_bridge.cpp
+)
+target_link_libraries(unit_cognitive_executive_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_cognitive_executive_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_executive_sleep_bridge
+    PROPERTIES LABELS "unit;cognitive;executive;sleep")

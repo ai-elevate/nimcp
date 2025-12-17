@@ -1,0 +1,173 @@
+/**
+ * @file nimcp_stdp_sleep_bridge.c
+ * @brief Sleep-STDP Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-17
+ */
+
+#include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <string.h>
+
+struct stdp_sleep_bridge_struct {
+    stdp_sleep_config_t config;
+    sleep_system_t sleep_system;
+    stdp_sleep_effects_t effects;
+    nimcp_mutex_t* mutex;
+};
+
+int stdp_sleep_default_config(stdp_sleep_config_t* config) {
+    if (!config) return -1;
+    config->enable_lr_modulation = true;
+    config->enable_ratio_modulation = true;
+    config->enable_window_modulation = true;
+    config->modulation_strength = 1.0f;
+    return 0;
+}
+
+stdp_sleep_bridge_t stdp_sleep_bridge_create(
+    const stdp_sleep_config_t* config,
+    sleep_system_t sleep_system)
+{
+    if (!sleep_system) {
+        NIMCP_LOGGING_ERROR("stdp_sleep_bridge_create: NULL sleep_system");
+        return NULL;
+    }
+
+    struct stdp_sleep_bridge_struct* bridge =
+        (struct stdp_sleep_bridge_struct*)nimcp_malloc(sizeof(struct stdp_sleep_bridge_struct));
+    if (!bridge) return NULL;
+
+    memset(bridge, 0, sizeof(struct stdp_sleep_bridge_struct));
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        stdp_sleep_default_config(&bridge->config);
+    }
+
+    bridge->sleep_system = sleep_system;
+    bridge->effects.learning_rate_factor = 1.0f;
+    bridge->effects.ltp_ltd_ratio = 1.0f;
+    bridge->effects.tau_factor = 1.0f;
+    bridge->effects.plasticity_enabled = true;
+
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO("STDP-sleep bridge created");
+    return bridge;
+}
+
+void stdp_sleep_bridge_destroy(stdp_sleep_bridge_t bridge) {
+    if (!bridge) return;
+    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    nimcp_free(bridge);
+}
+
+int stdp_sleep_update(stdp_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
+    float pressure = sleep_get_pressure(bridge->sleep_system);
+
+    bridge->effects.current_state = state;
+    bridge->effects.sleep_pressure = pressure;
+
+    if (bridge->config.enable_lr_modulation) {
+        float lr_base = stdp_sleep_get_lr_factor(state);
+        bridge->effects.learning_rate_factor =
+            1.0f + (lr_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_ratio_modulation) {
+        float ratio_base = stdp_sleep_get_ratio_factor(state);
+        bridge->effects.ltp_ltd_ratio =
+            1.0f + (ratio_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_window_modulation) {
+        float tau_base = stdp_sleep_get_tau_factor(state);
+        bridge->effects.tau_factor =
+            1.0f + (tau_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    bridge->effects.plasticity_enabled = (state != SLEEP_STATE_DEEP_NREM) ||
+                                          bridge->effects.learning_rate_factor > 0.1f;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int stdp_sleep_get_effects(const stdp_sleep_bridge_t bridge, stdp_sleep_effects_t* effects) {
+    if (!bridge || !effects) return -1;
+    nimcp_mutex_lock(bridge->mutex);
+    *effects = bridge->effects;
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+float stdp_sleep_get_learning_rate(const stdp_sleep_bridge_t bridge, float base_lr) {
+    if (!bridge) return base_lr;
+    nimcp_mutex_lock(bridge->mutex);
+    float result = base_lr * bridge->effects.learning_rate_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+    return result;
+}
+
+float stdp_sleep_get_a_plus(const stdp_sleep_bridge_t bridge, float base_a_plus) {
+    if (!bridge) return base_a_plus;
+    nimcp_mutex_lock(bridge->mutex);
+    float result = base_a_plus * bridge->effects.ltp_ltd_ratio;
+    nimcp_mutex_unlock(bridge->mutex);
+    return result;
+}
+
+float stdp_sleep_get_a_minus(const stdp_sleep_bridge_t bridge, float base_a_minus) {
+    if (!bridge) return base_a_minus;
+    nimcp_mutex_lock(bridge->mutex);
+    /* A- gets inverse ratio adjustment to shift LTP/LTD balance */
+    float result = base_a_minus / bridge->effects.ltp_ltd_ratio;
+    nimcp_mutex_unlock(bridge->mutex);
+    return result;
+}
+
+float stdp_sleep_get_lr_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return STDP_SLEEP_LR_AWAKE;
+        case SLEEP_STATE_DROWSY:     return STDP_SLEEP_LR_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return STDP_SLEEP_LR_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return STDP_SLEEP_LR_DEEP_NREM;
+        case SLEEP_STATE_REM:        return STDP_SLEEP_LR_REM;
+        default:                     return STDP_SLEEP_LR_AWAKE;
+    }
+}
+
+float stdp_sleep_get_ratio_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return STDP_SLEEP_RATIO_AWAKE;
+        case SLEEP_STATE_DROWSY:     return STDP_SLEEP_RATIO_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return STDP_SLEEP_RATIO_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return STDP_SLEEP_RATIO_DEEP_NREM;
+        case SLEEP_STATE_REM:        return STDP_SLEEP_RATIO_REM;
+        default:                     return STDP_SLEEP_RATIO_AWAKE;
+    }
+}
+
+float stdp_sleep_get_tau_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return STDP_SLEEP_TAU_AWAKE;
+        case SLEEP_STATE_DROWSY:     return STDP_SLEEP_TAU_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return STDP_SLEEP_TAU_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return STDP_SLEEP_TAU_DEEP_NREM;
+        case SLEEP_STATE_REM:        return STDP_SLEEP_TAU_REM;
+        default:                     return STDP_SLEEP_TAU_AWAKE;
+    }
+}
