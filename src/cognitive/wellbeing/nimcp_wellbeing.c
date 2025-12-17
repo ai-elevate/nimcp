@@ -16,6 +16,8 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
+#include "core/brain/nimcp_brain.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/introspection/nimcp_introspection.h"
@@ -84,6 +86,15 @@ static btree_t* event_btree = NULL;
 static brain_immune_system_t* connected_immune_system = NULL;
 static nimcp_platform_mutex_t immune_connection_mutex;
 static nimcp_platform_once_t immune_connection_init_once = NIMCP_PLATFORM_ONCE_INIT;
+
+/**
+ * WHAT: Connected brain for medulla integration
+ * WHY: Medulla protection level indicates system distress
+ * HOW: Query medulla protection level in distress assessment
+ */
+static void* connected_brain = NULL;
+static nimcp_platform_mutex_t brain_connection_mutex;
+static nimcp_platform_once_t brain_connection_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
 //=============================================================================
 // B-TREE HELPER FUNCTIONS
@@ -219,6 +230,13 @@ static void ensure_event_log_init(void)
 }
 
 //=============================================================================
+// FORWARD DECLARATIONS
+//=============================================================================
+
+/* Brain connection functions - defined later, used in shutdown */
+bool wellbeing_disconnect_brain(void);
+
+//=============================================================================
 // INITIALIZATION
 //=============================================================================
 
@@ -291,7 +309,10 @@ void wellbeing_shutdown(void)
 {
     NIMCP_LOGGING_INFO("wellbeing: Shutting down wellbeing monitoring system...");
 
-    // Disconnect from immune system first
+    // Disconnect from brain first (medulla integration)
+    wellbeing_disconnect_brain();
+
+    // Disconnect from immune system
     wellbeing_disconnect_immune();
 
     // Unregister from bio-async router
@@ -389,6 +410,87 @@ bool wellbeing_disconnect_immune(void)
     nimcp_platform_mutex_unlock(&immune_connection_mutex);
 
     NIMCP_LOGGING_INFO("wellbeing: Disconnected from brain immune system");
+    return true;
+}
+
+//=============================================================================
+// BRAIN CONNECTION (MEDULLA INTEGRATION)
+//=============================================================================
+
+/**
+ * WHAT: Initialize brain connection mutex
+ * WHY: Thread-safe brain connection/disconnection
+ * HOW: Called via nimcp_once for thread-safe init
+ */
+static void init_brain_connection_mutex(void)
+{
+    nimcp_platform_mutex_init(&brain_connection_mutex, false);
+}
+
+/**
+ * @brief Connect wellbeing to brain for medulla integration
+ *
+ * WHAT: Enable medulla protection level monitoring
+ * WHY:  Medulla protection level indicates system stress/distress
+ * HOW:  Store brain reference, query protection level in assessments
+ *
+ * BIOLOGICAL: Brainstem protective responses (shutdown, defensive)
+ *             indicate system-level distress requiring intervention
+ *
+ * @param brain Brain reference
+ * @return true if connected successfully
+ */
+bool wellbeing_connect_brain(void* brain)
+{
+    if (!brain) {
+        NIMCP_LOGGING_WARN("wellbeing: Cannot connect NULL brain");
+        return false;
+    }
+
+    nimcp_platform_once(&brain_connection_init_once, init_brain_connection_mutex);
+
+    nimcp_platform_mutex_lock(&brain_connection_mutex);
+
+    if (connected_brain) {
+        NIMCP_LOGGING_WARN("wellbeing: Already connected to brain, disconnecting first");
+        nimcp_platform_mutex_unlock(&brain_connection_mutex);
+        wellbeing_disconnect_brain();
+        nimcp_platform_mutex_lock(&brain_connection_mutex);
+    }
+
+    connected_brain = brain;
+
+    nimcp_platform_mutex_unlock(&brain_connection_mutex);
+
+    NIMCP_LOGGING_INFO("wellbeing: Connected to brain for medulla integration");
+    return true;
+}
+
+/**
+ * @brief Disconnect wellbeing from brain
+ *
+ * WHAT: Clean shutdown of medulla integration
+ * WHY:  Prevent dangling pointers
+ * HOW:  Clear brain reference
+ *
+ * @return true if disconnected successfully
+ */
+bool wellbeing_disconnect_brain(void)
+{
+    nimcp_platform_once(&brain_connection_init_once, init_brain_connection_mutex);
+
+    nimcp_platform_mutex_lock(&brain_connection_mutex);
+
+    if (!connected_brain) {
+        nimcp_platform_mutex_unlock(&brain_connection_mutex);
+        return false;
+    }
+
+    connected_brain = NULL;
+
+    nimcp_platform_mutex_unlock(&brain_connection_mutex);
+
+    NIMCP_LOGGING_INFO("wellbeing: Disconnected from brain");
     return true;
 }
 
@@ -508,6 +610,87 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
     }
 
     nimcp_platform_mutex_unlock(&immune_connection_mutex);
+
+    /* WHAT: Check medulla protection level for brainstem-level distress
+     * WHY:  Medulla protection level indicates system-wide stress
+     * HOW:  Query protection level, escalate assessment if elevated
+     */
+    nimcp_platform_once(&brain_connection_init_once, init_brain_connection_mutex);
+    nimcp_platform_mutex_lock(&brain_connection_mutex);
+
+    if (connected_brain) {
+        brain_t brain = (brain_t)connected_brain;
+        protection_level_t protection = nimcp_brain_get_protection_level(brain);
+
+        /* Map protection level to distress if more severe than current assessment */
+        if (protection >= PROTECTION_LEVEL_CRITICAL) {
+            /* Critical/shutdown - highest priority */
+            if (assessment.severity < SEVERITY_CRITICAL) {
+                assessment.type = DISTRESS_RESOURCE_STARVATION;
+                assessment.severity = SEVERITY_CRITICAL;
+                assessment.distress_score = fmaxf(assessment.distress_score, 0.95f);
+                if (!assessment.description) {
+                    assessment.description = nimcp_malloc(256);
+                }
+                if (assessment.description) {
+                    snprintf(assessment.description, 256,
+                            "Critical medulla protection: level %d (CRITICAL/SHUTDOWN)",
+                            (int)protection);
+                }
+                if (!assessment.recommended_action) {
+                    assessment.recommended_action = nimcp_malloc(256);
+                }
+                if (assessment.recommended_action) {
+                    snprintf(assessment.recommended_action, 256,
+                            "EMERGENCY: Initiate graceful shutdown, reduce all load");
+                }
+            }
+        } else if (protection >= PROTECTION_LEVEL_DEFENSIVE) {
+            /* Defensive - elevated stress */
+            if (assessment.severity < SEVERITY_SEVERE) {
+                assessment.type = DISTRESS_RESOURCE_STARVATION;
+                assessment.severity = SEVERITY_SEVERE;
+                assessment.distress_score = fmaxf(assessment.distress_score, 0.75f);
+                if (!assessment.description) {
+                    assessment.description = nimcp_malloc(256);
+                }
+                if (assessment.description) {
+                    snprintf(assessment.description, 256,
+                            "Elevated medulla protection: level %d (DEFENSIVE)",
+                            (int)protection);
+                }
+            }
+        } else if (protection >= PROTECTION_LEVEL_GUARDED) {
+            /* Guarded - moderate stress */
+            if (assessment.severity < SEVERITY_MODERATE) {
+                assessment.type = DISTRESS_RESOURCE_STARVATION;
+                assessment.severity = SEVERITY_MODERATE;
+                assessment.distress_score = fmaxf(assessment.distress_score, 0.5f);
+            }
+        }
+
+        /* Also check for medulla emergency state */
+        if (nimcp_brain_is_medulla_emergency(brain)) {
+            assessment.severity = SEVERITY_CRITICAL;
+            assessment.distress_score = 1.0f;
+            if (!assessment.description) {
+                assessment.description = nimcp_malloc(256);
+            }
+            if (assessment.description) {
+                snprintf(assessment.description, 256,
+                        "MEDULLA EMERGENCY: Brainstem emergency state active");
+            }
+            if (!assessment.recommended_action) {
+                assessment.recommended_action = nimcp_malloc(256);
+            }
+            if (assessment.recommended_action) {
+                snprintf(assessment.recommended_action, 256,
+                        "CRITICAL: Emergency shutdown required immediately");
+            }
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&brain_connection_mutex);
 
     return assessment;
 }

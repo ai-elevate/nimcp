@@ -20,6 +20,8 @@
 #include "cognitive/nimcp_sleep_wake.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
+#include "core/brain/nimcp_brain.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -230,8 +232,26 @@ void sleep_accumulate_pressure(sleep_system_t sleep, uint32_t learning_steps)
 
     nimcp_mutex_lock(&sleep->lock);
 
-    /* WHAT: Accumulate pressure proportional to learning */
-    float increment = learning_steps * sleep->config.adenosine_accumulation_rate;
+    /* WHAT: Get arousal modulation from medulla if available */
+    /* WHY:  High arousal (stress, alertness) reduces sleep pressure buildup */
+    /* HOW:  Query medulla arousal and scale accumulation rate inversely */
+    float arousal_modifier = 1.0f;
+    if (sleep->brain_ref) {
+        brain_t brain = (brain_t)sleep->brain_ref;
+        float arousal = nimcp_brain_get_arousal_level(brain);
+
+        /* High arousal (>0.7) reduces pressure accumulation (adrenaline effect) */
+        /* Low arousal (<0.3) increases pressure accumulation (fatigue) */
+        if (arousal > 0.7f) {
+            arousal_modifier = 0.5f + (1.0f - arousal);  /* 0.5-0.8 range */
+        } else if (arousal < 0.3f) {
+            arousal_modifier = 1.2f + (0.3f - arousal);  /* 1.2-1.5 range */
+        }
+        /* Neutral arousal (0.3-0.7) = normal rate */
+    }
+
+    /* WHAT: Accumulate pressure proportional to learning, modulated by arousal */
+    float increment = learning_steps * sleep->config.adenosine_accumulation_rate * arousal_modifier;
     sleep->sleep_pressure += increment;
 
     /* WHAT: Clamp to [0, 1] range */
@@ -273,10 +293,44 @@ bool sleep_is_needed(const sleep_system_t sleep)
         return false;
     }
 
-    /* WHAT: Check if pressure exceeds threshold */
+    /* WHAT: Get circadian modulation from medulla if available */
+    /* WHY:  Circadian phase affects sleep propensity (night = more sleepy) */
+    /* HOW:  Query medulla circadian phase and adjust threshold accordingly */
+    float threshold_modifier = 1.0f;
+    if (sleep->brain_ref) {
+        brain_t brain = (brain_t)sleep->brain_ref;
+        circadian_phase_t phase = nimcp_brain_get_circadian_phase(brain);
+
+        /* Night phases lower the threshold (easier to trigger sleep) */
+        switch (phase) {
+            case CIRCADIAN_PHASE_NIGHT:
+            case CIRCADIAN_PHASE_DEEP_NIGHT:
+                threshold_modifier = 0.7f;  /* 30% lower threshold at night */
+                break;
+            case CIRCADIAN_PHASE_LATE_EVENING:
+            case CIRCADIAN_PHASE_PRE_DAWN:
+                threshold_modifier = 0.85f; /* 15% lower at evening/pre-dawn */
+                break;
+            case CIRCADIAN_PHASE_MORNING:
+            case CIRCADIAN_PHASE_EARLY_MORNING:
+                threshold_modifier = 1.2f;  /* 20% higher in morning (harder to sleep) */
+                break;
+            case CIRCADIAN_PHASE_AFTERNOON:
+                threshold_modifier = 1.0f;  /* Neutral in afternoon */
+                break;
+            case CIRCADIAN_PHASE_EVENING:
+                threshold_modifier = 0.95f; /* Slightly lower in evening */
+                break;
+            default:
+                threshold_modifier = 1.0f;
+                break;
+        }
+    }
+
+    /* WHAT: Check if pressure exceeds circadian-adjusted threshold */
     /* WHY:  Threshold indicates when sleep is biologically necessary */
-    /* HOW:  Simple comparison */
-    return sleep->sleep_pressure >= sleep->config.sleep_pressure_threshold;
+    float adjusted_threshold = sleep->config.sleep_pressure_threshold * threshold_modifier;
+    return sleep->sleep_pressure >= adjusted_threshold;
 }
 
 /* ========================================================================

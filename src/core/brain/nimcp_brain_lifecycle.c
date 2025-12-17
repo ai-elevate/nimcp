@@ -46,6 +46,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/ethics/nimcp_core_directives.h"
+#include "core/medulla/nimcp_medulla.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 
 /* Coordinator/Orchestrator headers for cleanup */
@@ -757,6 +758,22 @@ void brain_destroy(brain_t brain)
         brain->directive_immune_bridge = NULL;  // Managed internally by directives
         brain->directive_fep_bridge = NULL;     // Managed internally by directives
         brain->core_directives_enabled = false;
+    }
+
+    // -2. Cleanup Medulla Oblongata (brainstem autonomic regulation)
+    // Medulla is destroyed late - it provides foundational regulation
+    if (brain->medulla) {
+        // Disconnect bio-async if connected
+        if (medulla_is_bio_async_connected(brain->medulla)) {
+            medulla_disconnect_bio_async(brain->medulla);
+        }
+
+        // Stop and destroy medulla
+        medulla_stop(brain->medulla);
+        medulla_destroy(brain->medulla);
+        brain->medulla = NULL;
+        brain->medulla_enabled = false;
+        brain->last_medulla_update_us = 0;
     }
 
     // Cleanup cache

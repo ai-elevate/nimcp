@@ -180,6 +180,9 @@ extern void set_error(const char* format, ...);
 #define init_security_perception_bridge_subsystem   nimcp_brain_factory_init_security_perception_bridge_subsystem
 #define init_swarm_module_registry_subsystem        nimcp_brain_factory_init_swarm_module_registry_subsystem
 
+// Medulla Oblongata subsystem macro (brainstem autonomic regulation)
+#define init_medulla_subsystem                      nimcp_brain_factory_init_medulla_subsystem
+
 //=============================================================================
 // Main Factory Functions
 //=============================================================================
@@ -634,6 +637,18 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Initialize FEP orchestrator after immune and bio-async are ready
     // (orchestrator connects to both for unified FEP bridge coordination)
     if (!init_fep_orchestrator_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // MEDULLA OBLONGATA (BRAINSTEM AUTONOMIC REGULATION)
+    // ========================================================================
+
+    // Initialize medulla early - it provides foundational autonomic regulation
+    // The medulla operates at the lowest level of the brain hierarchy:
+    // - Arousal State: Global activation level for all higher functions
+    // - Protective Cutoff: Emergency shutdown capability
+    // - Circadian Rhythm: 24-hour biological clock simulation
+    // - Brainstem Coupling: Coordination with other brainstem nuclei
+    if (!init_medulla_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // CORE DIRECTIVES (ETHICAL FOUNDATION)

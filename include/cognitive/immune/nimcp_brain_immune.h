@@ -440,6 +440,16 @@ typedef struct {
     uint64_t bbb_threats_processed;
     uint64_t bft_byzantines_handled;
     uint64_t swarm_alerts_processed;
+
+    /* Cytokine levels (0.0-1.0 concentration) - for medulla/autonomic integration */
+    float cytokine_il1;                    /**< IL-1β pro-inflammatory level */
+    float cytokine_il6;                    /**< IL-6 pro-inflammatory level */
+    float cytokine_il10;                   /**< IL-10 anti-inflammatory level */
+    float cytokine_tnf;                    /**< TNF-α pro-inflammatory level */
+    float cytokine_ifn_gamma;              /**< IFN-γ antiviral level */
+
+    /* Inflammation state */
+    brain_inflammation_level_t inflammation_level; /**< Current inflammation level */
 } brain_immune_stats_t;
 
 /* ============================================================================

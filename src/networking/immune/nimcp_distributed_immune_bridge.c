@@ -201,14 +201,12 @@ int distributed_immune_apply_cytokine_effects(distributed_immune_bridge_t* bridg
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
 
-    /* Map inflammation to proxy cytokine levels */
-    float inflammation_proxy = stats.inflammation_sites > 0 ? 0.5f : 0.0f;
-
-    bridge->cytokine_effects.il1_level = inflammation_proxy * 0.7f;
-    bridge->cytokine_effects.il6_level = inflammation_proxy * 0.5f;
-    bridge->cytokine_effects.tnf_level = inflammation_proxy * 0.8f;
-    bridge->cytokine_effects.ifn_gamma_level = inflammation_proxy * 0.6f;
-    bridge->cytokine_effects.il10_level = (1.0f - inflammation_proxy) * 0.4f;
+    /* Use actual cytokine levels from immune stats */
+    bridge->cytokine_effects.il1_level = stats.cytokine_il1;
+    bridge->cytokine_effects.il6_level = stats.cytokine_il6;
+    bridge->cytokine_effects.tnf_level = stats.cytokine_tnf;
+    bridge->cytokine_effects.ifn_gamma_level = stats.cytokine_ifn_gamma;
+    bridge->cytokine_effects.il10_level = stats.cytokine_il10;
 
     /* Compute network effects */
     bridge->cytokine_effects.heartbeat_rate_multiplier =
@@ -244,15 +242,8 @@ int distributed_immune_apply_inflammation_effects(distributed_immune_bridge_t* b
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
 
-    /* Determine inflammation level */
-    brain_inflammation_level_t level = INFLAMMATION_NONE;
-    if (stats.inflammation_sites > 0) {
-        if (stats.inflammation_sites >= 4) level = INFLAMMATION_STORM;
-        else if (stats.inflammation_sites >= 3) level = INFLAMMATION_SYSTEMIC;
-        else if (stats.inflammation_sites >= 2) level = INFLAMMATION_REGIONAL;
-        else level = INFLAMMATION_LOCAL;
-    }
-
+    /* Use inflammation level from immune stats */
+    brain_inflammation_level_t level = stats.inflammation_level;
     bridge->inflammation_state.current_level = level;
     bridge->inflammation_state.broadcast_rate_factor = get_inflammation_broadcast_factor(level);
     bridge->inflammation_state.peer_filtering_enabled = (level >= INFLAMMATION_REGIONAL);

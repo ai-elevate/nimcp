@@ -310,11 +310,8 @@ int fep_immune_apply_inflammation_effects(fep_immune_bridge_t* bridge) {
     if (bridge->immune_system) {
         brain_immune_stats_t stats;
         if (brain_immune_get_stats(bridge->immune_system, &stats) == 0) {
-            /* Derive inflammation level from number of inflammation sites */
-            if (stats.inflammation_sites >= 4) level = INFLAMMATION_STORM;
-            else if (stats.inflammation_sites >= 3) level = INFLAMMATION_SYSTEMIC;
-            else if (stats.inflammation_sites >= 2) level = INFLAMMATION_REGIONAL;
-            else if (stats.inflammation_sites >= 1) level = INFLAMMATION_LOCAL;
+            /* Use inflammation level directly from stats */
+            level = stats.inflammation_level;
         }
     }
 
@@ -508,10 +505,8 @@ int fep_immune_bridge_update(
         if (bridge->immune_system) {
             brain_immune_stats_t stats;
             if (brain_immune_get_stats(bridge->immune_system, &stats) == 0) {
-                if (stats.inflammation_sites >= 4) level = INFLAMMATION_STORM;
-                else if (stats.inflammation_sites >= 3) level = INFLAMMATION_SYSTEMIC;
-                else if (stats.inflammation_sites >= 2) level = INFLAMMATION_REGIONAL;
-                else if (stats.inflammation_sites >= 1) level = INFLAMMATION_LOCAL;
+                /* Use inflammation level directly from stats */
+                level = stats.inflammation_level;
             }
         }
         bridge->state.inflammation_level = level;

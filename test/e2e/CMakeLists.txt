@@ -369,6 +369,12 @@ add_e2e_test(e2e_test_core_directives_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_core_directives_pipeline.cpp
 )
 
+# Medulla Oblongata Pipeline E2E Test (Brainstem Autonomic Regulation)
+add_e2e_test(e2e_test_medulla_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_medulla_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

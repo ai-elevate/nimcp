@@ -1,4 +1,19 @@
 {"type":"_aim","source":"mcp-knowledge-graph"}
 {"type":"entity","name":"NIMCP_Brain_Immune_System","entityType":"software_module","observations":["Biologically-inspired immune coordination layer (B cells, T cells, antibodies, cytokines)","Added bio-async integration to 24+ immune bridge modules (Dec 2024)","Added BIO_MODULE_* definitions for all immune bridges (0x0D00 - 0x0DFF range)","Fixed logging macros from nimcp_log to NIMCP_LOGGING_* and LOG_MODULE_*","Fixed time function calls to nimcp_time_get_ms/us","All 47 brain immune unit tests passing","Integration with BBB, BFT, swarm immune subsystems"]}
 {"type":"entity","name":"NIMCP_Bio_Async_Integration","entityType":"architecture_pattern","observations":["Bio-async router provides inter-module messaging","Each immune bridge registers with bio_router_register_module()","Uses BIO_MODULE_* identifiers from nimcp_bio_messages.h","Standard API: connect_bio_async, disconnect_bio_async, is_bio_async_connected","Struct fields: bio_module_context_t bio_ctx, bool bio_async_enabled"]}
+{"type":"entity","name":"NIMCP_Phase_1_1_Medulla","entityType":"development_phase","observations":["Implemented Dec 2025","5 modules: arousal_state, protective_cutoff, brainstem_coupling, circadian, medulla orchestrator","~5981 lines of production code","Bio-async integration for all modules","Models brainstem autonomic functions"]}
+{"type":"entity","name":"nimcp_arousal_state","entityType":"module","observations":["Models reticular activating system (RAS)","9 arousal states from COMA to PANIC","Hysteresis prevents oscillation","Rate-limiting for smooth transitions"]}
+{"type":"entity","name":"nimcp_circadian","entityType":"module","observations":["Models suprachiasmatic nucleus (SCN)","8 circadian phases (3 hours each)","Two-process sleep model (Process S + Process C)","Zeitgeber entrainment (light, activity, social)"]}
+{"type":"entity","name":"nimcp_protective_cutoff","entityType":"module","observations":["Models vasovagal/pain withdrawal reflexes","6 protection levels from NORMAL to EMERGENCY_SHUTDOWN","8 threat types with weighted assessment","Capability matrix restricts operations per level"]}
+{"type":"entity","name":"nimcp_brainstem_coupling","entityType":"module","observations":["Models ascending reticular activating system (ARAS)","Bottom-up: arousal, threat, metabolic, circadian signals","Top-down: attention modulation, executive override, voluntary control","Biological latencies: threat 35ms, arousal 75ms, metabolic 1000ms, circadian 30000ms"]}
+{"type":"entity","name":"nimcp_medulla_orchestrator","entityType":"module","observations":["Main coordination module for medulla subsystem","Integrates: health_monitor, recovery, sleep-wake, neuromodulators","Coordination pipeline: circadian -> protection -> arousal -> neuromod -> sleep-wake","Emergency shutdown triggers automatic recovery"]}
 {"type":"relation","from":"NIMCP_Brain_Immune_System","to":"NIMCP_Bio_Async_Integration","relationType":"uses"}
+{"type":"relation","from":"NIMCP_Phase_1_1_Medulla","to":"nimcp_arousal_state","relationType":"contains"}
+{"type":"relation","from":"NIMCP_Phase_1_1_Medulla","to":"nimcp_protective_cutoff","relationType":"contains"}
+{"type":"relation","from":"NIMCP_Phase_1_1_Medulla","to":"nimcp_brainstem_coupling","relationType":"contains"}
+{"type":"relation","from":"NIMCP_Phase_1_1_Medulla","to":"nimcp_circadian","relationType":"contains"}
+{"type":"relation","from":"NIMCP_Phase_1_1_Medulla","to":"nimcp_medulla_orchestrator","relationType":"contains"}
+{"type":"relation","from":"nimcp_medulla_orchestrator","to":"nimcp_arousal_state","relationType":"coordinates"}
+{"type":"relation","from":"nimcp_medulla_orchestrator","to":"nimcp_protective_cutoff","relationType":"coordinates"}
+{"type":"relation","from":"nimcp_medulla_orchestrator","to":"nimcp_circadian","relationType":"coordinates"}
+{"type":"relation","from":"nimcp_circadian","to":"nimcp_arousal_state","relationType":"modulates"}

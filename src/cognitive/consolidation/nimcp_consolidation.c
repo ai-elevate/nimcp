@@ -33,6 +33,8 @@
 #include "cognitive/consolidation/nimcp_consolidation.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
+#include "core/brain/nimcp_brain.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include <math.h>
@@ -244,6 +246,33 @@ static bool perform_consolidation(brain_t brain, const consolidation_config_t* c
     if (brain == NULL || config == NULL || stats == NULL) {
         return false;
     }
+
+    /* WHAT: Get circadian phase for consolidation efficiency modulation
+     * WHY:  Consolidation is most effective during deep sleep phases
+     * HOW:  Query medulla circadian phase, scale consolidation intensity
+     */
+    float circadian_efficiency = 1.0f;  /* Default: normal efficiency */
+    circadian_phase_t phase = nimcp_brain_get_circadian_phase(brain);
+    switch (phase) {
+        case CIRCADIAN_PHASE_DEEP_NIGHT:
+            circadian_efficiency = 1.5f;  /* 50% boost during deep sleep */
+            break;
+        case CIRCADIAN_PHASE_NIGHT:
+        case CIRCADIAN_PHASE_PRE_DAWN:
+            circadian_efficiency = 1.3f;  /* 30% boost during light sleep */
+            break;
+        case CIRCADIAN_PHASE_LATE_EVENING:
+            circadian_efficiency = 1.1f;  /* Slight boost in drowsy period */
+            break;
+        case CIRCADIAN_PHASE_MORNING:
+        case CIRCADIAN_PHASE_EARLY_MORNING:
+            circadian_efficiency = 0.8f;  /* Reduced during active waking */
+            break;
+        default:
+            circadian_efficiency = 1.0f;  /* Normal during day */
+            break;
+    }
+    (void)circadian_efficiency;  /* Used in future enhanced consolidation */
 
     /* WHAT: Execute consolidation cycles */
     for (uint32_t cycle = 0; cycle < config->consolidation_cycles; cycle++) {

@@ -17,6 +17,8 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
+#include "core/brain/nimcp_brain.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -58,6 +60,9 @@ struct emotion_attention_system {
     /* Bio-async integration */
     bio_module_context_t bio_ctx;
     bool bio_async_registered;
+
+    /* Brain reference for medulla integration */
+    void* brain_ref;  /**< brain_t reference for medulla arousal baseline */
 
     pthread_rwlock_t lock;
     bool initialized;
@@ -160,14 +165,28 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
 
     pthread_rwlock_wrlock(&system->lock);
 
-    /* WHAT: Update cached emotion state */
-    system->current_arousal = msg->arousal;
+    /* WHAT: Get medulla arousal baseline if available */
+    /* WHY:  Medulla provides physiological arousal (stress, alertness) */
+    /* HOW:  Combine medulla baseline with emotional arousal for total arousal */
+    float medulla_arousal = 0.5f;  /* Default neutral */
+    if (system->brain_ref) {
+        brain_t brain = (brain_t)system->brain_ref;
+        medulla_arousal = nimcp_brain_get_arousal_level(brain);
+    }
+
+    /* WHAT: Combine medulla (physiological) and emotional arousal */
+    /* WHY:  Total arousal = baseline physiology + emotional state */
+    /* HOW:  Weighted average: 30% medulla baseline, 70% emotional arousal */
+    float combined_arousal = (medulla_arousal * 0.3f) + (msg->arousal * 0.7f);
+
+    /* WHAT: Update cached emotion state with combined arousal */
+    system->current_arousal = combined_arousal;
     system->current_valence = msg->valence;
     system->dominant_emotion = (emotion_primary_t)msg->primary_emotion;
 
-    /* WHAT: Recompute attention width */
+    /* WHAT: Recompute attention width using combined arousal */
     system->current_attention_width = compute_attention_width(
-        msg->arousal, msg->valence, &system->config
+        combined_arousal, msg->valence, &system->config
     );
 
     /* WHAT: Update statistics */
@@ -284,9 +303,34 @@ emotion_attention_system_t* emotion_attention_create(
 
     system->initialized = true;
     system->bio_async_registered = false;
+    system->brain_ref = NULL;
 
     EA_LOG_INFO("Emotion-attention system created");
     return system;
+}
+
+/**
+ * @brief Connect brain reference for medulla integration
+ *
+ * WHAT: Store brain reference for medulla arousal queries
+ * WHY:  Medulla provides physiological arousal baseline
+ * HOW:  Store reference, query arousal in emotion updates
+ *
+ * @param system Emotion-attention system
+ * @param brain Brain reference (void* to avoid circular dependency)
+ * @return true on success
+ */
+bool emotion_attention_connect_brain(emotion_attention_system_t* system, void* brain) {
+    if (!system) {
+        return false;
+    }
+
+    pthread_rwlock_wrlock(&system->lock);
+    system->brain_ref = brain;
+    pthread_rwlock_unlock(&system->lock);
+
+    EA_LOG_INFO("Connected to brain for medulla integration");
+    return true;
 }
 
 void emotion_attention_destroy(emotion_attention_system_t* system) {

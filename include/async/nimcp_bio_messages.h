@@ -876,6 +876,13 @@ typedef enum {
     BIO_MODULE_DIRECTIVE_IMMUNE_BRIDGE,         /**< Core directives-immune bridge */
     BIO_MODULE_DIRECTIVE_FEP_BRIDGE,            /**< Core directives-FEP bridge */
 
+    /* Medulla Oblongata modules (0x1100 - 0x11FF) - Brainstem vital functions */
+    BIO_MODULE_MEDULLA = 0x1100,                /**< Medulla orchestrator - vital function coordination */
+    BIO_MODULE_AROUSAL_STATE,                   /**< Arousal state management (RAS) */
+    BIO_MODULE_PROTECTIVE_CUTOFF,               /**< Emergency protective shutdown */
+    BIO_MODULE_BRAINSTEM_COUPLING,              /**< Brainstem-cortex bidirectional coupling */
+    BIO_MODULE_CIRCADIAN,                       /**< Circadian rhythm modulation (SCN model) */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

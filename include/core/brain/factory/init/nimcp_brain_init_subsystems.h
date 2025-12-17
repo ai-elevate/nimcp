@@ -95,6 +95,11 @@ bool nimcp_brain_factory_init_cognitive_meta_controller_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_security_perception_bridge_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_swarm_module_registry_subsystem(brain_t brain);
 
+// === MEDULLA OBLONGATA SUBSYSTEM ===
+// Brainstem autonomic regulation (arousal, protection, circadian, coupling)
+// Must be initialized early - provides foundational regulation
+bool nimcp_brain_factory_init_medulla_subsystem(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

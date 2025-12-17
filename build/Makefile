@@ -6230,6 +6230,19 @@ e2e_test_core_directives_pipeline/fast:
 .PHONY : e2e_test_core_directives_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_medulla_pipeline
+
+# Build rule for target.
+e2e_test_medulla_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_medulla_pipeline
+.PHONY : e2e_test_medulla_pipeline
+
+# fast build rule for target.
+e2e_test_medulla_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_medulla_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_medulla_pipeline.dir/build
+.PHONY : e2e_test_medulla_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -7762,6 +7775,123 @@ regression_core_directives: cmake_check_build_system
 regression_core_directives/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/directives/CMakeFiles/regression_core_directives.dir/build.make test/regression/core/directives/CMakeFiles/regression_core_directives.dir/build
 .PHONY : regression_core_directives/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_medulla_arousal_state
+
+# Build rule for target.
+unit_core_medulla_arousal_state: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_arousal_state
+.PHONY : unit_core_medulla_arousal_state
+
+# fast build rule for target.
+unit_core_medulla_arousal_state/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_arousal_state.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_arousal_state.dir/build
+.PHONY : unit_core_medulla_arousal_state/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_medulla_protective_cutoff
+
+# Build rule for target.
+unit_core_medulla_protective_cutoff: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_protective_cutoff
+.PHONY : unit_core_medulla_protective_cutoff
+
+# fast build rule for target.
+unit_core_medulla_protective_cutoff/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_protective_cutoff.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_protective_cutoff.dir/build
+.PHONY : unit_core_medulla_protective_cutoff/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_medulla_circadian
+
+# Build rule for target.
+unit_core_medulla_circadian: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_circadian
+.PHONY : unit_core_medulla_circadian
+
+# fast build rule for target.
+unit_core_medulla_circadian/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_circadian.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_circadian.dir/build
+.PHONY : unit_core_medulla_circadian/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_medulla_brainstem_coupling
+
+# Build rule for target.
+unit_core_medulla_brainstem_coupling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_brainstem_coupling
+.PHONY : unit_core_medulla_brainstem_coupling
+
+# fast build rule for target.
+unit_core_medulla_brainstem_coupling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_brainstem_coupling.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_brainstem_coupling.dir/build
+.PHONY : unit_core_medulla_brainstem_coupling/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_medulla_orchestrator
+
+# Build rule for target.
+unit_core_medulla_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_orchestrator
+.PHONY : unit_core_medulla_orchestrator
+
+# fast build rule for target.
+unit_core_medulla_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_orchestrator.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_orchestrator.dir/build
+.PHONY : unit_core_medulla_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_medulla_brain_integration
+
+# Build rule for target.
+unit_core_medulla_brain_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_brain_integration
+.PHONY : unit_core_medulla_brain_integration
+
+# fast build rule for target.
+unit_core_medulla_brain_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_brain_integration.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_brain_integration.dir/build
+.PHONY : unit_core_medulla_brain_integration/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_medulla_immune_bridge
+
+# Build rule for target.
+unit_core_medulla_immune_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_immune_bridge
+.PHONY : unit_core_medulla_immune_bridge
+
+# fast build rule for target.
+unit_core_medulla_immune_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_immune_bridge.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_immune_bridge.dir/build
+.PHONY : unit_core_medulla_immune_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_medulla
+
+# Build rule for target.
+integration_core_medulla: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_medulla
+.PHONY : integration_core_medulla
+
+# fast build rule for target.
+integration_core_medulla/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/medulla/CMakeFiles/integration_core_medulla.dir/build.make test/integration/core/medulla/CMakeFiles/integration_core_medulla.dir/build
+.PHONY : integration_core_medulla/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_medulla
+
+# Build rule for target.
+regression_core_medulla: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_medulla
+.PHONY : regression_core_medulla
+
+# fast build rule for target.
+regression_core_medulla/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/medulla/CMakeFiles/regression_core_medulla.dir/build.make test/regression/core/medulla/CMakeFiles/regression_core_medulla.dir/build
+.PHONY : regression_core_medulla/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_fault_tolerance_emotional_tagging
@@ -14143,6 +14273,7 @@ help:
 	@echo "... e2e_test_fep_bridges_pipeline"
 	@echo "... e2e_test_fep_orchestrator_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
+	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
 	@echo "... e2e_test_nlp_neural_distributed"
@@ -14232,6 +14363,7 @@ help:
 	@echo "... integration_core_integration_test_pink_noise_integration"
 	@echo "... integration_core_integration_test_vesicle_packaging_integration"
 	@echo "... integration_core_integration_test_wm_transfer_integration"
+	@echo "... integration_core_medulla"
 	@echo "... integration_core_neuralnet_homeostasis_immune"
 	@echo "... integration_core_neuron_models_test_cognitive_neuron_integration"
 	@echo "... integration_core_synapse_compute_test_three_factor_network_learning"
@@ -14395,6 +14527,7 @@ help:
 	@echo "... regression_core_dendrite_performance"
 	@echo "... regression_core_directives"
 	@echo "... regression_core_integration_test_integration_regression"
+	@echo "... regression_core_medulla"
 	@echo "... regression_core_neuron_types_regression"
 	@echo "... regression_core_synapse_compute_test_three_factor_backward_compat"
 	@echo "... regression_core_test_core_immune_regression"
@@ -14855,6 +14988,13 @@ help:
 	@echo "... unit_core_dendrite_test_dendrite"
 	@echo "... unit_core_directives_action_history"
 	@echo "... unit_core_integration_test_numerical_integration"
+	@echo "... unit_core_medulla_arousal_state"
+	@echo "... unit_core_medulla_brain_integration"
+	@echo "... unit_core_medulla_brainstem_coupling"
+	@echo "... unit_core_medulla_circadian"
+	@echo "... unit_core_medulla_immune_bridge"
+	@echo "... unit_core_medulla_orchestrator"
+	@echo "... unit_core_medulla_protective_cutoff"
 	@echo "... unit_core_neural_substrate_test_neural_substrate"
 	@echo "... unit_core_neural_substrate_test_substrate_immune_bridge"
 	@echo "... unit_core_neuron_models_test_neuron_model_coverage"

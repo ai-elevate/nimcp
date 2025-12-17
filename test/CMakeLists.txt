@@ -309,6 +309,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/directives")
 endif()
 
 # ============================================================================
+# Medulla Oblongata Tests (Phase 1.1)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/medulla")
+    message(STATUS "Adding medulla unit tests...")
+    add_subdirectory(unit/core/medulla)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/medulla")
+    message(STATUS "Adding medulla integration tests...")
+    add_subdirectory(integration/core/medulla)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/medulla")
+    message(STATUS "Adding medulla regression tests...")
+    add_subdirectory(regression/core/medulla)
+endif()
+
+# ============================================================================
 # Cognitive Fault Tolerance Tests
 # ============================================================================
 

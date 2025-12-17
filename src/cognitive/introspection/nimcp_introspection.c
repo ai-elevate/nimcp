@@ -30,6 +30,7 @@
 #include "cognitive/introspection/nimcp_ensemble_uncertainty.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 
 #include <math.h>
 #include <stdlib.h>

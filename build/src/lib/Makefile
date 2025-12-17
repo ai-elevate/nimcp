@@ -4817,6 +4817,30 @@ __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_medulla.o: __/core/brain/factory/init/nimcp_brain_init_medulla.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_medulla.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_medulla.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_medulla.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_medulla.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_medulla.i: __/core/brain/factory/init/nimcp_brain_init_medulla.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_medulla.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_medulla.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_medulla.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_medulla.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_medulla.s: __/core/brain/factory/init/nimcp_brain_init_medulla.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_medulla.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_medulla.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_medulla.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_medulla.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_memory.o: __/core/brain/factory/init/nimcp_brain_init_memory.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_memory.o
 
@@ -6880,6 +6904,150 @@ __/core/logic/nimcp_neural_logic_neuromodulation.s: __/core/logic/nimcp_neural_l
 __/core/logic/nimcp_neural_logic_neuromodulation.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/logic/nimcp_neural_logic_neuromodulation.c.s
 .PHONY : __/core/logic/nimcp_neural_logic_neuromodulation.c.s
+
+__/core/medulla/nimcp_arousal_state.o: __/core/medulla/nimcp_arousal_state.c.o
+.PHONY : __/core/medulla/nimcp_arousal_state.o
+
+# target to build an object file
+__/core/medulla/nimcp_arousal_state.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_arousal_state.c.o
+.PHONY : __/core/medulla/nimcp_arousal_state.c.o
+
+__/core/medulla/nimcp_arousal_state.i: __/core/medulla/nimcp_arousal_state.c.i
+.PHONY : __/core/medulla/nimcp_arousal_state.i
+
+# target to preprocess a source file
+__/core/medulla/nimcp_arousal_state.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_arousal_state.c.i
+.PHONY : __/core/medulla/nimcp_arousal_state.c.i
+
+__/core/medulla/nimcp_arousal_state.s: __/core/medulla/nimcp_arousal_state.c.s
+.PHONY : __/core/medulla/nimcp_arousal_state.s
+
+# target to generate assembly for a file
+__/core/medulla/nimcp_arousal_state.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_arousal_state.c.s
+.PHONY : __/core/medulla/nimcp_arousal_state.c.s
+
+__/core/medulla/nimcp_brainstem_coupling.o: __/core/medulla/nimcp_brainstem_coupling.c.o
+.PHONY : __/core/medulla/nimcp_brainstem_coupling.o
+
+# target to build an object file
+__/core/medulla/nimcp_brainstem_coupling.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_brainstem_coupling.c.o
+.PHONY : __/core/medulla/nimcp_brainstem_coupling.c.o
+
+__/core/medulla/nimcp_brainstem_coupling.i: __/core/medulla/nimcp_brainstem_coupling.c.i
+.PHONY : __/core/medulla/nimcp_brainstem_coupling.i
+
+# target to preprocess a source file
+__/core/medulla/nimcp_brainstem_coupling.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_brainstem_coupling.c.i
+.PHONY : __/core/medulla/nimcp_brainstem_coupling.c.i
+
+__/core/medulla/nimcp_brainstem_coupling.s: __/core/medulla/nimcp_brainstem_coupling.c.s
+.PHONY : __/core/medulla/nimcp_brainstem_coupling.s
+
+# target to generate assembly for a file
+__/core/medulla/nimcp_brainstem_coupling.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_brainstem_coupling.c.s
+.PHONY : __/core/medulla/nimcp_brainstem_coupling.c.s
+
+__/core/medulla/nimcp_circadian.o: __/core/medulla/nimcp_circadian.c.o
+.PHONY : __/core/medulla/nimcp_circadian.o
+
+# target to build an object file
+__/core/medulla/nimcp_circadian.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_circadian.c.o
+.PHONY : __/core/medulla/nimcp_circadian.c.o
+
+__/core/medulla/nimcp_circadian.i: __/core/medulla/nimcp_circadian.c.i
+.PHONY : __/core/medulla/nimcp_circadian.i
+
+# target to preprocess a source file
+__/core/medulla/nimcp_circadian.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_circadian.c.i
+.PHONY : __/core/medulla/nimcp_circadian.c.i
+
+__/core/medulla/nimcp_circadian.s: __/core/medulla/nimcp_circadian.c.s
+.PHONY : __/core/medulla/nimcp_circadian.s
+
+# target to generate assembly for a file
+__/core/medulla/nimcp_circadian.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_circadian.c.s
+.PHONY : __/core/medulla/nimcp_circadian.c.s
+
+__/core/medulla/nimcp_medulla.o: __/core/medulla/nimcp_medulla.c.o
+.PHONY : __/core/medulla/nimcp_medulla.o
+
+# target to build an object file
+__/core/medulla/nimcp_medulla.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla.c.o
+.PHONY : __/core/medulla/nimcp_medulla.c.o
+
+__/core/medulla/nimcp_medulla.i: __/core/medulla/nimcp_medulla.c.i
+.PHONY : __/core/medulla/nimcp_medulla.i
+
+# target to preprocess a source file
+__/core/medulla/nimcp_medulla.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla.c.i
+.PHONY : __/core/medulla/nimcp_medulla.c.i
+
+__/core/medulla/nimcp_medulla.s: __/core/medulla/nimcp_medulla.c.s
+.PHONY : __/core/medulla/nimcp_medulla.s
+
+# target to generate assembly for a file
+__/core/medulla/nimcp_medulla.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla.c.s
+.PHONY : __/core/medulla/nimcp_medulla.c.s
+
+__/core/medulla/nimcp_medulla_immune_bridge.o: __/core/medulla/nimcp_medulla_immune_bridge.c.o
+.PHONY : __/core/medulla/nimcp_medulla_immune_bridge.o
+
+# target to build an object file
+__/core/medulla/nimcp_medulla_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla_immune_bridge.c.o
+.PHONY : __/core/medulla/nimcp_medulla_immune_bridge.c.o
+
+__/core/medulla/nimcp_medulla_immune_bridge.i: __/core/medulla/nimcp_medulla_immune_bridge.c.i
+.PHONY : __/core/medulla/nimcp_medulla_immune_bridge.i
+
+# target to preprocess a source file
+__/core/medulla/nimcp_medulla_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla_immune_bridge.c.i
+.PHONY : __/core/medulla/nimcp_medulla_immune_bridge.c.i
+
+__/core/medulla/nimcp_medulla_immune_bridge.s: __/core/medulla/nimcp_medulla_immune_bridge.c.s
+.PHONY : __/core/medulla/nimcp_medulla_immune_bridge.s
+
+# target to generate assembly for a file
+__/core/medulla/nimcp_medulla_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_medulla_immune_bridge.c.s
+.PHONY : __/core/medulla/nimcp_medulla_immune_bridge.c.s
+
+__/core/medulla/nimcp_protective_cutoff.o: __/core/medulla/nimcp_protective_cutoff.c.o
+.PHONY : __/core/medulla/nimcp_protective_cutoff.o
+
+# target to build an object file
+__/core/medulla/nimcp_protective_cutoff.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_protective_cutoff.c.o
+.PHONY : __/core/medulla/nimcp_protective_cutoff.c.o
+
+__/core/medulla/nimcp_protective_cutoff.i: __/core/medulla/nimcp_protective_cutoff.c.i
+.PHONY : __/core/medulla/nimcp_protective_cutoff.i
+
+# target to preprocess a source file
+__/core/medulla/nimcp_protective_cutoff.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_protective_cutoff.c.i
+.PHONY : __/core/medulla/nimcp_protective_cutoff.c.i
+
+__/core/medulla/nimcp_protective_cutoff.s: __/core/medulla/nimcp_protective_cutoff.c.s
+.PHONY : __/core/medulla/nimcp_protective_cutoff.s
+
+# target to generate assembly for a file
+__/core/medulla/nimcp_protective_cutoff.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/medulla/nimcp_protective_cutoff.c.s
+.PHONY : __/core/medulla/nimcp_protective_cutoff.c.s
 
 __/core/neural_substrate/nimcp_neural_substrate.o: __/core/neural_substrate/nimcp_neural_substrate.c.o
 .PHONY : __/core/neural_substrate/nimcp_neural_substrate.o
@@ -16330,6 +16498,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_medulla.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_medulla.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_medulla.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_memory.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_memory.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_memory.s"
@@ -16588,6 +16759,24 @@ help:
 	@echo "... __/core/logic/nimcp_neural_logic_neuromodulation.o"
 	@echo "... __/core/logic/nimcp_neural_logic_neuromodulation.i"
 	@echo "... __/core/logic/nimcp_neural_logic_neuromodulation.s"
+	@echo "... __/core/medulla/nimcp_arousal_state.o"
+	@echo "... __/core/medulla/nimcp_arousal_state.i"
+	@echo "... __/core/medulla/nimcp_arousal_state.s"
+	@echo "... __/core/medulla/nimcp_brainstem_coupling.o"
+	@echo "... __/core/medulla/nimcp_brainstem_coupling.i"
+	@echo "... __/core/medulla/nimcp_brainstem_coupling.s"
+	@echo "... __/core/medulla/nimcp_circadian.o"
+	@echo "... __/core/medulla/nimcp_circadian.i"
+	@echo "... __/core/medulla/nimcp_circadian.s"
+	@echo "... __/core/medulla/nimcp_medulla.o"
+	@echo "... __/core/medulla/nimcp_medulla.i"
+	@echo "... __/core/medulla/nimcp_medulla.s"
+	@echo "... __/core/medulla/nimcp_medulla_immune_bridge.o"
+	@echo "... __/core/medulla/nimcp_medulla_immune_bridge.i"
+	@echo "... __/core/medulla/nimcp_medulla_immune_bridge.s"
+	@echo "... __/core/medulla/nimcp_protective_cutoff.o"
+	@echo "... __/core/medulla/nimcp_protective_cutoff.i"
+	@echo "... __/core/medulla/nimcp_protective_cutoff.s"
 	@echo "... __/core/neural_substrate/nimcp_neural_substrate.o"
 	@echo "... __/core/neural_substrate/nimcp_neural_substrate.i"
 	@echo "... __/core/neural_substrate/nimcp_neural_substrate.s"

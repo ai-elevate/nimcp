@@ -69,6 +69,19 @@
 #define LOG_MODULE "plasticity_neuromodulators"
 
 //=============================================================================
+// Medulla Integration: Forward Declarations
+//=============================================================================
+
+/* Forward declare brain type to avoid include conflicts with brain_region_t */
+#ifndef BRAIN_T_DEFINED
+#define BRAIN_T_DEFINED
+typedef struct brain_struct* brain_t;
+#endif
+
+/* Forward declare medulla function - implemented in nimcp_brain_init_medulla.c */
+float nimcp_brain_get_arousal_level(brain_t brain);
+
+//=============================================================================
 // Constants for Performance and Biological Realism
 //=============================================================================
 
@@ -329,6 +342,15 @@ struct neuromodulator_system_struct {
      */
     social_bond_system_t* social_system;
     bool use_social_integration;
+
+    /* WHAT: Brain reference for medulla integration
+     * WHY:  Medulla arousal modulates norepinephrine (stress response)
+     * HOW:  Query medulla arousal, adjust NE release accordingly
+     * BIOLOGICAL: Locus coeruleus NE release scales with brainstem arousal
+     * PROTECTED BY: rwlock (read/write)
+     */
+    void* brain_ref;
+    bool use_medulla_integration;
 };
 
 //=============================================================================
@@ -622,6 +644,10 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
     system->social_system = social_bond_system_create();
     system->use_social_integration = (system->social_system != NULL);
 
+    // Medulla integration: Initialize brain reference (connected externally)
+    system->brain_ref = NULL;
+    system->use_medulla_integration = false;
+
     return system;
 }
 
@@ -678,6 +704,33 @@ void neuromodulator_system_destroy(neuromodulator_system_t system) {
      */
     memset(system, 0, sizeof(struct neuromodulator_system_struct));
     nimcp_free(system);
+}
+
+/**
+ * @brief Connect brain reference for medulla integration
+ *
+ * WHAT: Store brain reference for medulla arousal queries
+ * WHY:  Medulla arousal modulates norepinephrine release
+ * HOW:  Store reference, enable medulla integration
+ *
+ * BIOLOGICAL: Locus coeruleus NE release scales with brainstem arousal
+ *
+ * @param system Neuromodulator system
+ * @param brain Brain reference
+ * @return true on success
+ */
+bool neuromodulator_connect_brain(neuromodulator_system_t system, void* brain) {
+    if (!system) {
+        return false;
+    }
+
+    nimcp_platform_rwlock_wrlock(&system->rwlock);
+    system->brain_ref = brain;
+    system->use_medulla_integration = (brain != NULL);
+    nimcp_platform_rwlock_wrunlock(&system->rwlock);
+
+    NIMCP_LOGGING_INFO("Neuromodulators connected to brain for medulla integration");
+    return true;
 }
 
 //=============================================================================
@@ -1260,7 +1313,20 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
                                         &grief_norepinephrine_factor);
     }
 
-    float ne_release = system->threat_norepinephrine_gain * arousal_signal * grief_norepinephrine_factor;
+    /* WHAT: Apply medulla arousal modulation
+     * WHY:  Locus coeruleus NE release scales with brainstem arousal
+     * HOW:  Query medulla arousal, multiply into release gain
+     * BIOLOGICAL: High medulla arousal = heightened stress response
+     */
+    float medulla_arousal_factor = 1.0F;
+    if (system->use_medulla_integration && system->brain_ref) {
+        brain_t brain = (brain_t)system->brain_ref;
+        float medulla_arousal = nimcp_brain_get_arousal_level(brain);
+        /* Scale: arousal 0.5 (neutral) = 1.0x, arousal 1.0 = 1.5x, arousal 0.0 = 0.5x */
+        medulla_arousal_factor = 0.5f + medulla_arousal;
+    }
+
+    float ne_release = system->threat_norepinephrine_gain * arousal_signal * grief_norepinephrine_factor * medulla_arousal_factor;
 
     float new_ne = system->concentrations[NEUROMOD_NOREPINEPHRINE] + ne_release;
     system->concentrations[NEUROMOD_NOREPINEPHRINE] = clamp(new_ne,

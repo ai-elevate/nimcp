@@ -179,14 +179,8 @@ int execution_immune_apply_cytokine_effects(execution_immune_bridge_t* bridge) {
 
     memset(&bridge->cytokine_effects, 0, sizeof(execution_cytokine_effects_t));
 
-    /* Determine inflammation level */
-    brain_inflammation_level_t level = INFLAMMATION_NONE;
-    if (stats.inflammation_sites > 0) {
-        if (stats.inflammation_sites >= 4) level = INFLAMMATION_STORM;
-        else if (stats.inflammation_sites >= 3) level = INFLAMMATION_SYSTEMIC;
-        else if (stats.inflammation_sites >= 2) level = INFLAMMATION_REGIONAL;
-        else level = INFLAMMATION_LOCAL;
-    }
+    /* Use inflammation level from immune stats */
+    brain_inflammation_level_t level = stats.inflammation_level;
 
     /* Set mode preference */
     bridge->cytokine_effects.preferred_mode = get_inflammation_mode_preference(level);

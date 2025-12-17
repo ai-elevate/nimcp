@@ -21,6 +21,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/ethics/nimcp_ethics.h"
@@ -126,6 +127,10 @@ struct mental_health_monitor {
     // Brain immune integration
     brain_immune_system_t* immune_system;  /**< Brain immune system (if connected) */
     bool immune_connected;                 /**< Immune system connected */
+
+    // Medulla integration (brainstem signals)
+    void* brain_ref;                       /**< Brain reference for medulla queries */
+    bool medulla_connected;                /**< Medulla integration enabled */
 };
 
 // =============================================================================
@@ -305,6 +310,10 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
     // Initialize immune integration
     monitor->immune_system = NULL;
     monitor->immune_connected = false;
+
+    // Initialize medulla integration
+    monitor->brain_ref = NULL;
+    monitor->medulla_connected = false;
 
     // Initialize all scores to zero
     memset(monitor->disorder_scores, 0, sizeof(monitor->disorder_scores));
@@ -1417,6 +1426,41 @@ bool mental_health_connect_immune(mental_health_monitor_t* monitor,
     monitor->immune_connected = true;
 
     LOG_INFO("Mental health monitor connected to brain immune system");
+
+    return true;
+}
+
+/**
+ * @brief Connect mental health monitor to brain for medulla integration
+ *
+ * WHAT: Enable medulla arousal/protection level monitoring
+ * WHY:  Brainstem signals inform disorder detection (arousal, stress)
+ * HOW:  Store brain reference, enable medulla queries in detection
+ *
+ * BIOLOGICAL: Medulla arousal affects anxiety/depression detection
+ * - High sustained arousal + fear → anxiety markers
+ * - Low arousal + anhedonia → depression markers
+ *
+ * @param monitor Mental health monitor (non-NULL)
+ * @param brain Brain reference (non-NULL)
+ * @return true on success, false on error
+ */
+bool mental_health_connect_brain(mental_health_monitor_t* monitor, void* brain)
+{
+    if (!monitor) {
+        set_error("NULL monitor in mental_health_connect_brain");
+        return false;
+    }
+
+    if (!brain) {
+        set_error("NULL brain in mental_health_connect_brain");
+        return false;
+    }
+
+    monitor->brain_ref = brain;
+    monitor->medulla_connected = true;
+
+    LOG_INFO("Mental health monitor connected to brain for medulla integration");
 
     return true;
 }

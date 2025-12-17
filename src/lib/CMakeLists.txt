@@ -930,6 +930,17 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_core_directives.c          # Main orchestrator (all actions pass through)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_core_directives_immune_bridge.c  # Immune system integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_core_directives_fep_bridge.c     # FEP integration
+
+    # Medulla Oblongata - Autonomic Regulation (Phase 1.1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_arousal_state.c           # Arousal state management with hysteresis
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_protective_cutoff.c       # Multi-tier emergency shutdown
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_brainstem_coupling.c      # Bidirectional cortex communication
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_circadian.c               # Circadian rhythm modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla.c                 # Main orchestrator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla_immune_bridge.c   # Medulla-immune integration bridge
+
+    # Brain factory medulla initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_medulla.c  # Medulla subsystem init
 )
 
 # Core library

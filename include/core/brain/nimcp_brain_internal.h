@@ -158,6 +158,9 @@
 // Core Directives Integration (Ethical Foundation)
 #include "cognitive/ethics/nimcp_core_directives.h"
 
+// Medulla Oblongata Integration (Brainstem Autonomic Regulation)
+#include "core/medulla/nimcp_medulla.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -665,6 +668,26 @@ struct brain_struct {
 
     struct swarm_module_registry* swarm_module_registry;  // Swarm behavior plugin registry
     bool swarm_module_registry_enabled;                   // Swarm module registry enabled
+
+    // === MEDULLA OBLONGATA INTEGRATION (BRAINSTEM AUTONOMIC REGULATION) ===
+    //
+    // The Medulla Oblongata provides foundational autonomic regulation:
+    // - Arousal State: Global activation level (alertness, attention readiness)
+    // - Protective Cutoff: Emergency shutdown for system protection
+    // - Circadian Rhythm: 24-hour biological clock simulation
+    // - Brainstem Coupling: Coordination with other brainstem nuclei
+    //
+    // The medulla operates at the lowest level of the brain hierarchy,
+    // providing continuous background regulation that affects all higher
+    // cognitive functions. It integrates with:
+    // - Immune System: Inflammation affects arousal, protection triggers
+    // - Sleep/Wake: Circadian phase modulates sleep pressure
+    // - Neuromodulators: Arousal state influences catecholamine release
+    // - Bio-Async: Publishes state changes for system-wide coordination
+    //
+    medulla_t medulla;                                    // Medulla oblongata brainstem regulator
+    bool medulla_enabled;                                 // Medulla enabled for this brain
+    uint64_t last_medulla_update_us;                      // Last medulla update timestamp
 };
 
 //=============================================================================

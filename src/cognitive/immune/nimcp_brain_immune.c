@@ -2078,6 +2078,59 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
 
     nimcp_mutex_lock(system->mutex);
     *stats = system->stats;
+
+    /* Compute cytokine levels from active cytokines */
+    stats->cytokine_il1 = 0.0f;
+    stats->cytokine_il6 = 0.0f;
+    stats->cytokine_il10 = 0.0f;
+    stats->cytokine_tnf = 0.0f;
+    stats->cytokine_ifn_gamma = 0.0f;
+
+    for (size_t i = 0; i < system->cytokine_count; i++) {
+        const brain_cytokine_t* cyt = &system->cytokines[i];
+        if (!cyt->delivered) continue;  /* Only count active cytokines */
+
+        switch (cyt->type) {
+            case BRAIN_CYTOKINE_IL1:
+                stats->cytokine_il1 += cyt->concentration;
+                break;
+            case BRAIN_CYTOKINE_IL6:
+                stats->cytokine_il6 += cyt->concentration;
+                break;
+            case BRAIN_CYTOKINE_IL10:
+                stats->cytokine_il10 += cyt->concentration;
+                break;
+            case BRAIN_CYTOKINE_TNF:
+                stats->cytokine_tnf += cyt->concentration;
+                break;
+            case BRAIN_CYTOKINE_IFN_GAMMA:
+                stats->cytokine_ifn_gamma += cyt->concentration;
+                break;
+            default:
+                break;
+        }
+    }
+
+    /* Clamp cytokine levels to [0, 1] */
+    if (stats->cytokine_il1 > 1.0f) stats->cytokine_il1 = 1.0f;
+    if (stats->cytokine_il6 > 1.0f) stats->cytokine_il6 = 1.0f;
+    if (stats->cytokine_il10 > 1.0f) stats->cytokine_il10 = 1.0f;
+    if (stats->cytokine_tnf > 1.0f) stats->cytokine_tnf = 1.0f;
+    if (stats->cytokine_ifn_gamma > 1.0f) stats->cytokine_ifn_gamma = 1.0f;
+
+    /* Compute inflammation level from inflammation sites */
+    if (system->inflammation_count == 0) {
+        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_NONE;
+    } else if (system->inflammation_count == 1) {
+        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_LOCAL;
+    } else if (system->inflammation_count <= 3) {
+        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_REGIONAL;
+    } else if (system->inflammation_count <= 6) {
+        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_SYSTEMIC;
+    } else {
+        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_STORM;
+    }
+
     nimcp_mutex_unlock(system->mutex);
 
     return 0;

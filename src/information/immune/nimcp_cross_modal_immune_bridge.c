@@ -185,17 +185,15 @@ int cross_modal_immune_apply_cytokine_effects(cross_modal_immune_bridge_t* bridg
     /* Reset effects */
     memset(&bridge->cytokine_effects, 0, sizeof(cross_modal_cytokine_effects_t));
 
-    /* Compute cytokine-induced binding disruption (simplified - would query actual cytokine levels) */
-    float inflammation_proxy = stats.inflammation_sites > 0 ? 0.5f : 0.0f;
-
+    /* Compute cytokine-induced binding disruption from actual cytokine levels */
     bridge->cytokine_effects.il1_binding_disruption =
-        inflammation_proxy * CYTOKINE_IL1_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
+        stats.cytokine_il1 * CYTOKINE_IL1_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
     bridge->cytokine_effects.il6_binding_disruption =
-        inflammation_proxy * CYTOKINE_IL6_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
+        stats.cytokine_il6 * CYTOKINE_IL6_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
     bridge->cytokine_effects.tnf_binding_disruption =
-        inflammation_proxy * CYTOKINE_TNF_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
+        stats.cytokine_tnf * CYTOKINE_TNF_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
     bridge->cytokine_effects.ifn_gamma_binding_disruption =
-        inflammation_proxy * CYTOKINE_IFN_GAMMA_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
+        stats.cytokine_ifn_gamma * CYTOKINE_IFN_GAMMA_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
 
     /* Total binding impairment */
     bridge->cytokine_effects.total_binding_impairment = clamp_0_1(
@@ -239,15 +237,8 @@ int cross_modal_immune_apply_inflammation_effects(cross_modal_immune_bridge_t* b
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
 
-    /* Determine inflammation level (simplified - would query actual sites) */
-    brain_inflammation_level_t level = INFLAMMATION_NONE;
-    if (stats.inflammation_sites > 0) {
-        if (stats.inflammation_sites >= 4) level = INFLAMMATION_STORM;
-        else if (stats.inflammation_sites >= 3) level = INFLAMMATION_SYSTEMIC;
-        else if (stats.inflammation_sites >= 2) level = INFLAMMATION_REGIONAL;
-        else level = INFLAMMATION_LOCAL;
-    }
-
+    /* Use inflammation level from immune stats */
+    brain_inflammation_level_t level = stats.inflammation_level;
     bridge->inflammation_state.current_level = level;
 
     /* Transfer efficiency factor based on inflammation */

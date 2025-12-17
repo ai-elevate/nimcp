@@ -178,17 +178,15 @@ int gpu_neuron_immune_apply_cytokine_effects(gpu_neuron_immune_bridge_t* bridge)
     /* Reset effects */
     memset(&bridge->cytokine_effects, 0, sizeof(gpu_neuron_cytokine_effects_t));
 
-    /* Compute cytokine-induced reductions (simplified - would query actual cytokine levels) */
-    float inflammation_proxy = stats.inflammation_sites > 0 ? 0.5f : 0.0f;
-
+    /* Compute cytokine-induced reductions from actual cytokine levels */
     bridge->cytokine_effects.il1_batch_reduction =
-        inflammation_proxy * CYTOKINE_IL1_GPU_BATCH_IMPACT;
+        stats.cytokine_il1 * CYTOKINE_IL1_GPU_BATCH_IMPACT;
     bridge->cytokine_effects.il6_batch_reduction =
-        inflammation_proxy * CYTOKINE_IL6_GPU_BATCH_IMPACT;
+        stats.cytokine_il6 * CYTOKINE_IL6_GPU_BATCH_IMPACT;
     bridge->cytokine_effects.tnf_batch_reduction =
-        inflammation_proxy * CYTOKINE_TNF_GPU_BATCH_IMPACT;
+        stats.cytokine_tnf * CYTOKINE_TNF_GPU_BATCH_IMPACT;
     bridge->cytokine_effects.ifn_gamma_batch_reduction =
-        inflammation_proxy * CYTOKINE_IFN_GAMMA_GPU_BATCH_IMPACT;
+        stats.cytokine_ifn_gamma * CYTOKINE_IFN_GAMMA_GPU_BATCH_IMPACT;
 
     /* Total batch size factor */
     float reduction = fabsf(bridge->cytokine_effects.il1_batch_reduction) +
@@ -218,14 +216,8 @@ float gpu_neuron_immune_compute_batch_factor(const gpu_neuron_immune_bridge_t* b
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
 
-    brain_inflammation_level_t level = INFLAMMATION_NONE;
-    if (stats.inflammation_sites > 0) {
-        if (stats.inflammation_sites >= 4) level = INFLAMMATION_STORM;
-        else if (stats.inflammation_sites >= 3) level = INFLAMMATION_SYSTEMIC;
-        else if (stats.inflammation_sites >= 2) level = INFLAMMATION_REGIONAL;
-        else level = INFLAMMATION_LOCAL;
-    }
-
+    /* Use inflammation level from immune stats */
+    brain_inflammation_level_t level = stats.inflammation_level;
     float inflammation_factor = get_inflammation_gpu_factor(level);
 
     /* Combine with cytokine effects */
