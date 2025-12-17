@@ -363,6 +363,12 @@ add_e2e_test(e2e_test_coordinator_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_coordinator_pipeline.cpp
 )
 
+# Core Directives Pipeline E2E Test (Asimov's Laws, Golden Rule, Combinatorial Harm)
+add_e2e_test(e2e_test_core_directives_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_core_directives_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

@@ -45,6 +45,7 @@
 #include "cognitive/nimcp_personality.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/ethics/nimcp_core_directives.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 
 /* Coordinator/Orchestrator headers for cleanup */
@@ -741,6 +742,21 @@ void brain_destroy(brain_t brain)
         fep_orchestrator_destroy(brain->fep_orchestrator);
         brain->fep_orchestrator = NULL;
         brain->fep_orchestrator_enabled = false;
+    }
+
+    // -1. Cleanup Core Directives (after FEP/immune, before cache cleanup)
+    if (brain->core_directives) {
+        // Disconnect bio-async if connected
+        if (core_directives_is_bio_async_connected(brain->core_directives)) {
+            core_directives_disconnect_bio_async(brain->core_directives);
+        }
+
+        // Destroy core directives system
+        core_directives_destroy(brain->core_directives);
+        brain->core_directives = NULL;
+        brain->directive_immune_bridge = NULL;  // Managed internally by directives
+        brain->directive_fep_bridge = NULL;     // Managed internally by directives
+        brain->core_directives_enabled = false;
     }
 
     // Cleanup cache

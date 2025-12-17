@@ -290,6 +290,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/logic")
 endif()
 
 # ============================================================================
+# Core Directives Tests (Asimov's Laws, Golden Rule, Combinatorial Harm)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/directives")
+    message(STATUS "Adding core directives unit tests...")
+    add_subdirectory(unit/core/directives)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/directives")
+    message(STATUS "Adding core directives integration tests...")
+    add_subdirectory(integration/core/directives)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/directives")
+    message(STATUS "Adding core directives regression tests...")
+    add_subdirectory(regression/core/directives)
+endif()
+
+# ============================================================================
 # Cognitive Fault Tolerance Tests
 # ============================================================================
 

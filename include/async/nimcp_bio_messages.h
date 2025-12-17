@@ -303,6 +303,20 @@ typedef enum {
     BIO_MSG_PORTIA_POWER_STATE_CHANGE,          /**< Power state changed */
     BIO_MSG_PORTIA_LEARNING_EVENT,              /**< Learning event */
 
+    /* Core Directives messages (0x1080 - 0x10FF) - Asimov's Laws, Golden Rule */
+    BIO_MSG_DIRECTIVE_EVALUATE_REQUEST = 0x1080,  /**< Request action evaluation */
+    BIO_MSG_DIRECTIVE_EVALUATE_RESPONSE,          /**< Evaluation response (allow/block) */
+    BIO_MSG_DIRECTIVE_ACTION_BLOCKED,             /**< Action was blocked notification */
+    BIO_MSG_DIRECTIVE_ACTION_ALLOWED,             /**< Action was allowed notification */
+    BIO_MSG_DIRECTIVE_ESCALATION,                 /**< Action requires human escalation */
+    BIO_MSG_DIRECTIVE_FIRST_LAW_VIOLATION,        /**< First Law violation detected */
+    BIO_MSG_DIRECTIVE_COMBINATORIAL_HARM,         /**< Combinatorial harm detected */
+    BIO_MSG_DIRECTIVE_GOLDEN_RULE_FAIL,           /**< Golden Rule violation detected */
+    BIO_MSG_DIRECTIVE_COMMAND_REFUSED,            /**< Command refused (Second Law conflict) */
+    BIO_MSG_DIRECTIVE_SELF_SACRIFICE,             /**< Self-sacrifice for higher law */
+    BIO_MSG_DIRECTIVE_STATS_UPDATE,               /**< Directive statistics update */
+    BIO_MSG_DIRECTIVE_CONFIG_CHANGE,              /**< Directive configuration changed */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -669,6 +683,7 @@ typedef enum {
     BIO_MODULE_IMMUNE_BROCA,                    /**< Broca's area-immune bridge */
     BIO_MODULE_IMMUNE_SUBSTRATE,                /**< Substrate-immune bridge */
     BIO_MODULE_NEURON_SUBSTRATE,                /**< Neuron-substrate bridge */
+    BIO_MODULE_IMMUNE_CORE_DIRECTIVES,          /**< Core directives-immune bridge */
 
     /* Information immune modules (0x0D60 - 0x0D6F) */
     BIO_MODULE_IMMUNE_SHANNON = 0x0D60,         /**< Shannon entropy-immune bridge */
@@ -839,6 +854,7 @@ typedef enum {
 
     /* FEP Orchestrator (0x0F90) */
     BIO_MODULE_FEP_ORCHESTRATOR = 0x0F90,       /**< FEP orchestrator - coordinates all FEP bridges */
+    BIO_MODULE_FEP_CORE_DIRECTIVES,             /**< FEP-core directives bridge */
 
     /* System Orchestrators/Coordinators (0x0FA0 - 0x0FAF) */
     BIO_MODULE_BIO_ASYNC_ORCHESTRATOR = 0x0FA0, /**< Bio-async orchestrator - coordinates 200+ bio-async modules */
@@ -847,6 +863,18 @@ typedef enum {
     BIO_MODULE_COGNITIVE_META_CONTROLLER,       /**< Cognitive meta-controller - arbitrates cognitive modules */
     BIO_MODULE_SWARM_REGISTRY,                  /**< Swarm module registry - plugin architecture for swarm behaviors */
     BIO_MODULE_SECURITY_PERCEPTION,             /**< Security-perception bridge - sensory threat analysis */
+
+    /* Core Directives modules (0x1000 - 0x10FF) - Asimov's Laws, Golden Rule, Ethical Foundation */
+    BIO_MODULE_CORE_DIRECTIVES = 0x1000,        /**< Core directives orchestrator - ALL actions pass through */
+    BIO_MODULE_ACTION_HISTORY,                  /**< Action history tracker for combinatorial harm */
+    BIO_MODULE_HARM_CLASSIFIER,                 /**< Harm outcome classifier */
+    BIO_MODULE_HARM_PREVENTION,                 /**< First Law - harm prevention */
+    BIO_MODULE_COMMAND_COMPLIANCE,              /**< Second Law - command compliance */
+    BIO_MODULE_SELF_PRESERVATION,               /**< Third Law - self preservation */
+    BIO_MODULE_RECIPROCITY_EVAL,                /**< Golden Rule - reciprocity evaluation */
+    BIO_MODULE_COMBINATORIAL_HARM,              /**< Combinatorial harm detection */
+    BIO_MODULE_DIRECTIVE_IMMUNE_BRIDGE,         /**< Core directives-immune bridge */
+    BIO_MODULE_DIRECTIVE_FEP_BRIDGE,            /**< Core directives-FEP bridge */
 
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */

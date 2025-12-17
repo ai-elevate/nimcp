@@ -6217,6 +6217,19 @@ e2e_test_coordinator_pipeline/fast:
 .PHONY : e2e_test_coordinator_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_core_directives_pipeline
+
+# Build rule for target.
+e2e_test_core_directives_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_core_directives_pipeline
+.PHONY : e2e_test_core_directives_pipeline
+
+# fast build rule for target.
+e2e_test_core_directives_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_core_directives_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_core_directives_pipeline.dir/build
+.PHONY : e2e_test_core_directives_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -7710,6 +7723,45 @@ test_neural_logic_circuit_builder: cmake_check_build_system
 test_neural_logic_circuit_builder/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/logic/CMakeFiles/test_neural_logic_circuit_builder.dir/build.make test/unit/core/logic/CMakeFiles/test_neural_logic_circuit_builder.dir/build
 .PHONY : test_neural_logic_circuit_builder/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_directives_action_history
+
+# Build rule for target.
+unit_core_directives_action_history: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_directives_action_history
+.PHONY : unit_core_directives_action_history
+
+# fast build rule for target.
+unit_core_directives_action_history/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/directives/CMakeFiles/unit_core_directives_action_history.dir/build.make test/unit/core/directives/CMakeFiles/unit_core_directives_action_history.dir/build
+.PHONY : unit_core_directives_action_history/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_directives
+
+# Build rule for target.
+integration_core_directives: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_directives
+.PHONY : integration_core_directives
+
+# fast build rule for target.
+integration_core_directives/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/directives/CMakeFiles/integration_core_directives.dir/build.make test/integration/core/directives/CMakeFiles/integration_core_directives.dir/build
+.PHONY : integration_core_directives/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_directives
+
+# Build rule for target.
+regression_core_directives: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_directives
+.PHONY : regression_core_directives
+
+# fast build rule for target.
+regression_core_directives/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/directives/CMakeFiles/regression_core_directives.dir/build.make test/regression/core/directives/CMakeFiles/regression_core_directives.dir/build
+.PHONY : regression_core_directives/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_fault_tolerance_emotional_tagging
@@ -14085,6 +14137,7 @@ help:
 	@echo "... e2e_test_cognitive_pipeline"
 	@echo "... e2e_test_coordinator_pipeline"
 	@echo "... e2e_test_core_bio_async"
+	@echo "... e2e_test_core_directives_pipeline"
 	@echo "... e2e_test_distributed_pipeline"
 	@echo "... e2e_test_emotion_tensor_pipeline"
 	@echo "... e2e_test_fep_bridges_pipeline"
@@ -14171,6 +14224,7 @@ help:
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline"
 	@echo "... integration_core_dendrite_test_integration"
+	@echo "... integration_core_directives"
 	@echo "... integration_core_integration_test_integration_cognitive"
 	@echo "... integration_core_integration_test_integration_e2e"
 	@echo "... integration_core_integration_test_integration_networking"
@@ -14339,6 +14393,7 @@ help:
 	@echo "... regression_core_brain_regions_test_language_production_bridge_regression"
 	@echo "... regression_core_brain_regions_test_visual_cortex_regression"
 	@echo "... regression_core_dendrite_performance"
+	@echo "... regression_core_directives"
 	@echo "... regression_core_integration_test_integration_regression"
 	@echo "... regression_core_neuron_types_regression"
 	@echo "... regression_core_synapse_compute_test_three_factor_backward_compat"
@@ -14798,6 +14853,7 @@ help:
 	@echo "... unit_core_brain_test_pretrained_bio_async"
 	@echo "... unit_core_brain_test_version_checking"
 	@echo "... unit_core_dendrite_test_dendrite"
+	@echo "... unit_core_directives_action_history"
 	@echo "... unit_core_integration_test_numerical_integration"
 	@echo "... unit_core_neural_substrate_test_neural_substrate"
 	@echo "... unit_core_neural_substrate_test_substrate_immune_bridge"

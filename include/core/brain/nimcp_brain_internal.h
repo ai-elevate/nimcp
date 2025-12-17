@@ -155,6 +155,9 @@
 // FEP Orchestrator Integration
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 
+// Core Directives Integration (Ethical Foundation)
+#include "cognitive/ethics/nimcp_core_directives.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -608,6 +611,24 @@ struct brain_struct {
     //
     struct fep_orchestrator* fep_orchestrator;   // FEP bridge coordination layer
     bool fep_orchestrator_enabled;               // FEP orchestrator enabled for this brain
+
+    // === CORE DIRECTIVES INTEGRATION (ETHICAL FOUNDATION) ===
+    //
+    // Core Directives provides foundational ethical constraint enforcement:
+    // - Asimov's Three Laws (harm prevention, obedience, self-preservation)
+    // - Golden Rule (reciprocity and fairness evaluation)
+    // - Combinatorial Harm Detection (emergent harm from action sequences)
+    // - All brain outputs must pass through directive evaluation
+    // - Integration with brain immune system (ethical violations → immune response)
+    // - Integration with FEP orchestrator (ethical constraints modulate free energy)
+    //
+    // This is the FIRST checkpoint before any action is executed - ethical
+    // constraints cannot be overridden by higher cognitive functions.
+    //
+    core_directives_system_t* core_directives;      // Core ethical directives system
+    directive_immune_bridge_t* directive_immune_bridge;  // Directives-immune bridge
+    directive_fep_bridge_t* directive_fep_bridge;   // Directives-FEP bridge
+    bool core_directives_enabled;                   // Core directives enabled for this brain
 
     // === COORDINATOR/ORCHESTRATOR INTEGRATIONS ===
     //

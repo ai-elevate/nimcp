@@ -75,6 +75,9 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain);
 // FEP Orchestrator (central coordination of all FEP bridges)
 bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t brain);
 
+// Core Directives (ethical foundation - Asimov's Laws, Golden Rule, Harm Prevention)
+bool nimcp_brain_factory_init_core_directives_subsystem(brain_t brain);
+
 // === COORDINATOR/ORCHESTRATOR SUBSYSTEMS ===
 // These provide system-wide coordination across NIMCP
 // Initialization order matters due to dependencies:

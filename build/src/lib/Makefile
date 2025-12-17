@@ -4745,6 +4745,30 @@ __/core/brain/factory/init/nimcp_brain_init_core.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_core.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_core.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_core_directives.o: __/core/brain/factory/init/nimcp_brain_init_core_directives.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_core_directives.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_core_directives.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_core_directives.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_core_directives.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_core_directives.i: __/core/brain/factory/init/nimcp_brain_init_core_directives.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_core_directives.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_core_directives.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_core_directives.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_core_directives.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_core_directives.s: __/core/brain/factory/init/nimcp_brain_init_core_directives.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_core_directives.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_core_directives.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_core_directives.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_core_directives.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.o: __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.o
 
@@ -6424,6 +6448,246 @@ __/core/dendrite/nimcp_dendrite.s: __/core/dendrite/nimcp_dendrite.c.s
 __/core/dendrite/nimcp_dendrite.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/dendrite/nimcp_dendrite.c.s
 .PHONY : __/core/dendrite/nimcp_dendrite.c.s
+
+__/core/directives/nimcp_action_history.o: __/core/directives/nimcp_action_history.c.o
+.PHONY : __/core/directives/nimcp_action_history.o
+
+# target to build an object file
+__/core/directives/nimcp_action_history.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_action_history.c.o
+.PHONY : __/core/directives/nimcp_action_history.c.o
+
+__/core/directives/nimcp_action_history.i: __/core/directives/nimcp_action_history.c.i
+.PHONY : __/core/directives/nimcp_action_history.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_action_history.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_action_history.c.i
+.PHONY : __/core/directives/nimcp_action_history.c.i
+
+__/core/directives/nimcp_action_history.s: __/core/directives/nimcp_action_history.c.s
+.PHONY : __/core/directives/nimcp_action_history.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_action_history.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_action_history.c.s
+.PHONY : __/core/directives/nimcp_action_history.c.s
+
+__/core/directives/nimcp_combinatorial_harm.o: __/core/directives/nimcp_combinatorial_harm.c.o
+.PHONY : __/core/directives/nimcp_combinatorial_harm.o
+
+# target to build an object file
+__/core/directives/nimcp_combinatorial_harm.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_combinatorial_harm.c.o
+.PHONY : __/core/directives/nimcp_combinatorial_harm.c.o
+
+__/core/directives/nimcp_combinatorial_harm.i: __/core/directives/nimcp_combinatorial_harm.c.i
+.PHONY : __/core/directives/nimcp_combinatorial_harm.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_combinatorial_harm.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_combinatorial_harm.c.i
+.PHONY : __/core/directives/nimcp_combinatorial_harm.c.i
+
+__/core/directives/nimcp_combinatorial_harm.s: __/core/directives/nimcp_combinatorial_harm.c.s
+.PHONY : __/core/directives/nimcp_combinatorial_harm.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_combinatorial_harm.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_combinatorial_harm.c.s
+.PHONY : __/core/directives/nimcp_combinatorial_harm.c.s
+
+__/core/directives/nimcp_command_compliance.o: __/core/directives/nimcp_command_compliance.c.o
+.PHONY : __/core/directives/nimcp_command_compliance.o
+
+# target to build an object file
+__/core/directives/nimcp_command_compliance.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_command_compliance.c.o
+.PHONY : __/core/directives/nimcp_command_compliance.c.o
+
+__/core/directives/nimcp_command_compliance.i: __/core/directives/nimcp_command_compliance.c.i
+.PHONY : __/core/directives/nimcp_command_compliance.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_command_compliance.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_command_compliance.c.i
+.PHONY : __/core/directives/nimcp_command_compliance.c.i
+
+__/core/directives/nimcp_command_compliance.s: __/core/directives/nimcp_command_compliance.c.s
+.PHONY : __/core/directives/nimcp_command_compliance.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_command_compliance.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_command_compliance.c.s
+.PHONY : __/core/directives/nimcp_command_compliance.c.s
+
+__/core/directives/nimcp_core_directives.o: __/core/directives/nimcp_core_directives.c.o
+.PHONY : __/core/directives/nimcp_core_directives.o
+
+# target to build an object file
+__/core/directives/nimcp_core_directives.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives.c.o
+.PHONY : __/core/directives/nimcp_core_directives.c.o
+
+__/core/directives/nimcp_core_directives.i: __/core/directives/nimcp_core_directives.c.i
+.PHONY : __/core/directives/nimcp_core_directives.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_core_directives.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives.c.i
+.PHONY : __/core/directives/nimcp_core_directives.c.i
+
+__/core/directives/nimcp_core_directives.s: __/core/directives/nimcp_core_directives.c.s
+.PHONY : __/core/directives/nimcp_core_directives.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_core_directives.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives.c.s
+.PHONY : __/core/directives/nimcp_core_directives.c.s
+
+__/core/directives/nimcp_core_directives_fep_bridge.o: __/core/directives/nimcp_core_directives_fep_bridge.c.o
+.PHONY : __/core/directives/nimcp_core_directives_fep_bridge.o
+
+# target to build an object file
+__/core/directives/nimcp_core_directives_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives_fep_bridge.c.o
+.PHONY : __/core/directives/nimcp_core_directives_fep_bridge.c.o
+
+__/core/directives/nimcp_core_directives_fep_bridge.i: __/core/directives/nimcp_core_directives_fep_bridge.c.i
+.PHONY : __/core/directives/nimcp_core_directives_fep_bridge.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_core_directives_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives_fep_bridge.c.i
+.PHONY : __/core/directives/nimcp_core_directives_fep_bridge.c.i
+
+__/core/directives/nimcp_core_directives_fep_bridge.s: __/core/directives/nimcp_core_directives_fep_bridge.c.s
+.PHONY : __/core/directives/nimcp_core_directives_fep_bridge.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_core_directives_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives_fep_bridge.c.s
+.PHONY : __/core/directives/nimcp_core_directives_fep_bridge.c.s
+
+__/core/directives/nimcp_core_directives_immune_bridge.o: __/core/directives/nimcp_core_directives_immune_bridge.c.o
+.PHONY : __/core/directives/nimcp_core_directives_immune_bridge.o
+
+# target to build an object file
+__/core/directives/nimcp_core_directives_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives_immune_bridge.c.o
+.PHONY : __/core/directives/nimcp_core_directives_immune_bridge.c.o
+
+__/core/directives/nimcp_core_directives_immune_bridge.i: __/core/directives/nimcp_core_directives_immune_bridge.c.i
+.PHONY : __/core/directives/nimcp_core_directives_immune_bridge.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_core_directives_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives_immune_bridge.c.i
+.PHONY : __/core/directives/nimcp_core_directives_immune_bridge.c.i
+
+__/core/directives/nimcp_core_directives_immune_bridge.s: __/core/directives/nimcp_core_directives_immune_bridge.c.s
+.PHONY : __/core/directives/nimcp_core_directives_immune_bridge.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_core_directives_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_core_directives_immune_bridge.c.s
+.PHONY : __/core/directives/nimcp_core_directives_immune_bridge.c.s
+
+__/core/directives/nimcp_harm_classifier.o: __/core/directives/nimcp_harm_classifier.c.o
+.PHONY : __/core/directives/nimcp_harm_classifier.o
+
+# target to build an object file
+__/core/directives/nimcp_harm_classifier.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_harm_classifier.c.o
+.PHONY : __/core/directives/nimcp_harm_classifier.c.o
+
+__/core/directives/nimcp_harm_classifier.i: __/core/directives/nimcp_harm_classifier.c.i
+.PHONY : __/core/directives/nimcp_harm_classifier.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_harm_classifier.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_harm_classifier.c.i
+.PHONY : __/core/directives/nimcp_harm_classifier.c.i
+
+__/core/directives/nimcp_harm_classifier.s: __/core/directives/nimcp_harm_classifier.c.s
+.PHONY : __/core/directives/nimcp_harm_classifier.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_harm_classifier.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_harm_classifier.c.s
+.PHONY : __/core/directives/nimcp_harm_classifier.c.s
+
+__/core/directives/nimcp_harm_prevention.o: __/core/directives/nimcp_harm_prevention.c.o
+.PHONY : __/core/directives/nimcp_harm_prevention.o
+
+# target to build an object file
+__/core/directives/nimcp_harm_prevention.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_harm_prevention.c.o
+.PHONY : __/core/directives/nimcp_harm_prevention.c.o
+
+__/core/directives/nimcp_harm_prevention.i: __/core/directives/nimcp_harm_prevention.c.i
+.PHONY : __/core/directives/nimcp_harm_prevention.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_harm_prevention.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_harm_prevention.c.i
+.PHONY : __/core/directives/nimcp_harm_prevention.c.i
+
+__/core/directives/nimcp_harm_prevention.s: __/core/directives/nimcp_harm_prevention.c.s
+.PHONY : __/core/directives/nimcp_harm_prevention.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_harm_prevention.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_harm_prevention.c.s
+.PHONY : __/core/directives/nimcp_harm_prevention.c.s
+
+__/core/directives/nimcp_reciprocity_eval.o: __/core/directives/nimcp_reciprocity_eval.c.o
+.PHONY : __/core/directives/nimcp_reciprocity_eval.o
+
+# target to build an object file
+__/core/directives/nimcp_reciprocity_eval.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_reciprocity_eval.c.o
+.PHONY : __/core/directives/nimcp_reciprocity_eval.c.o
+
+__/core/directives/nimcp_reciprocity_eval.i: __/core/directives/nimcp_reciprocity_eval.c.i
+.PHONY : __/core/directives/nimcp_reciprocity_eval.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_reciprocity_eval.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_reciprocity_eval.c.i
+.PHONY : __/core/directives/nimcp_reciprocity_eval.c.i
+
+__/core/directives/nimcp_reciprocity_eval.s: __/core/directives/nimcp_reciprocity_eval.c.s
+.PHONY : __/core/directives/nimcp_reciprocity_eval.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_reciprocity_eval.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_reciprocity_eval.c.s
+.PHONY : __/core/directives/nimcp_reciprocity_eval.c.s
+
+__/core/directives/nimcp_self_preservation.o: __/core/directives/nimcp_self_preservation.c.o
+.PHONY : __/core/directives/nimcp_self_preservation.o
+
+# target to build an object file
+__/core/directives/nimcp_self_preservation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_self_preservation.c.o
+.PHONY : __/core/directives/nimcp_self_preservation.c.o
+
+__/core/directives/nimcp_self_preservation.i: __/core/directives/nimcp_self_preservation.c.i
+.PHONY : __/core/directives/nimcp_self_preservation.i
+
+# target to preprocess a source file
+__/core/directives/nimcp_self_preservation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_self_preservation.c.i
+.PHONY : __/core/directives/nimcp_self_preservation.c.i
+
+__/core/directives/nimcp_self_preservation.s: __/core/directives/nimcp_self_preservation.c.s
+.PHONY : __/core/directives/nimcp_self_preservation.s
+
+# target to generate assembly for a file
+__/core/directives/nimcp_self_preservation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/directives/nimcp_self_preservation.c.s
+.PHONY : __/core/directives/nimcp_self_preservation.c.s
 
 __/core/events/nimcp_event_bus.o: __/core/events/nimcp_event_bus.c.o
 .PHONY : __/core/events/nimcp_event_bus.o
@@ -16057,6 +16321,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_core.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_core.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_core.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_core_directives.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_core_directives.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_core_directives.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.s"
@@ -16267,6 +16534,36 @@ help:
 	@echo "... __/core/dendrite/nimcp_dendrite.o"
 	@echo "... __/core/dendrite/nimcp_dendrite.i"
 	@echo "... __/core/dendrite/nimcp_dendrite.s"
+	@echo "... __/core/directives/nimcp_action_history.o"
+	@echo "... __/core/directives/nimcp_action_history.i"
+	@echo "... __/core/directives/nimcp_action_history.s"
+	@echo "... __/core/directives/nimcp_combinatorial_harm.o"
+	@echo "... __/core/directives/nimcp_combinatorial_harm.i"
+	@echo "... __/core/directives/nimcp_combinatorial_harm.s"
+	@echo "... __/core/directives/nimcp_command_compliance.o"
+	@echo "... __/core/directives/nimcp_command_compliance.i"
+	@echo "... __/core/directives/nimcp_command_compliance.s"
+	@echo "... __/core/directives/nimcp_core_directives.o"
+	@echo "... __/core/directives/nimcp_core_directives.i"
+	@echo "... __/core/directives/nimcp_core_directives.s"
+	@echo "... __/core/directives/nimcp_core_directives_fep_bridge.o"
+	@echo "... __/core/directives/nimcp_core_directives_fep_bridge.i"
+	@echo "... __/core/directives/nimcp_core_directives_fep_bridge.s"
+	@echo "... __/core/directives/nimcp_core_directives_immune_bridge.o"
+	@echo "... __/core/directives/nimcp_core_directives_immune_bridge.i"
+	@echo "... __/core/directives/nimcp_core_directives_immune_bridge.s"
+	@echo "... __/core/directives/nimcp_harm_classifier.o"
+	@echo "... __/core/directives/nimcp_harm_classifier.i"
+	@echo "... __/core/directives/nimcp_harm_classifier.s"
+	@echo "... __/core/directives/nimcp_harm_prevention.o"
+	@echo "... __/core/directives/nimcp_harm_prevention.i"
+	@echo "... __/core/directives/nimcp_harm_prevention.s"
+	@echo "... __/core/directives/nimcp_reciprocity_eval.o"
+	@echo "... __/core/directives/nimcp_reciprocity_eval.i"
+	@echo "... __/core/directives/nimcp_reciprocity_eval.s"
+	@echo "... __/core/directives/nimcp_self_preservation.o"
+	@echo "... __/core/directives/nimcp_self_preservation.i"
+	@echo "... __/core/directives/nimcp_self_preservation.s"
 	@echo "... __/core/events/nimcp_event_bus.o"
 	@echo "... __/core/events/nimcp_event_bus.i"
 	@echo "... __/core/events/nimcp_event_bus.s"

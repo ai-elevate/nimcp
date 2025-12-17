@@ -65,6 +65,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.c  # Cognitive Meta-Controller
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_security_perception_bridge.c  # Security-Perception Bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_swarm_module_registry.c  # Swarm Module Registry
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_core_directives.c     # Core Directives subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -917,6 +918,18 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_power.c           # Power management
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_sensor_fusion.c   # Multi-sensor fusion
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_tier_switch.c     # Tier switching
+
+    # Core Directives - Asimov's Laws & Ethical Foundation (Phase 1.0)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_action_history.c           # Action history tracking (combinatorial harm foundation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_harm_classifier.c          # Outcome classification (harm types/severity)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_harm_prevention.c          # First Law: Prevent human harm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_command_compliance.c       # Second Law: Obey commands (unless First Law)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_self_preservation.c        # Third Law: Self-preservation (unless First/Second)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_reciprocity_eval.c         # Golden Rule: Reciprocity evaluation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_combinatorial_harm.c       # Emergent harm detection (A+B=harm)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_core_directives.c          # Main orchestrator (all actions pass through)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_core_directives_immune_bridge.c  # Immune system integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_core_directives_fep_bridge.c     # FEP integration
 )
 
 # Core library
