@@ -7,6 +7,8 @@
 set(PORTIA_SOURCES
     nimcp_portia.c
     nimcp_portia_swarm_bridge.c
+    nimcp_portia_swarm_logic_bridge.c
+    nimcp_portia_logic_bridge.c
 )
 
 # Additional subsystem files (to be integrated later)

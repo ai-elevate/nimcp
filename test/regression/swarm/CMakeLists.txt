@@ -74,3 +74,10 @@ target_include_directories(regression_swarm_bridges
 add_test(NAME regression_swarm_bridges
          COMMAND regression_swarm_bridges)
 set_tests_properties(regression_swarm_bridges PROPERTIES LABELS "regression")
+
+# Test: Enhanced Swarm Logic Bridge Regression
+add_test_binary(
+    test_swarm_logic_bridge_enhanced_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_logic_bridge_enhanced_regression.cpp
+    regression
+)

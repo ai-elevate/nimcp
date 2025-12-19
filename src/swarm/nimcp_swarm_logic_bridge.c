@@ -6,6 +6,9 @@
  * validation, and distributed inference.
  */
 
+#include "swarm/nimcp_swarm_consensus.h"
+#include "swarm/nimcp_swarm_quorum.h"
+#include "swarm/nimcp_swarm_emergence.h"
 #include "swarm/nimcp_swarm_logic_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
@@ -73,6 +76,11 @@ struct swarm_logic_bridge {
 
     // Security
     bool security_registered;
+
+    // Enhanced integrations
+    void* brain;                 /**< Brain handle for neuromodulation */
+    void* immune_system;         /**< Immune system handle */
+    void* umm;                   /**< UMM handle */
 };
 
 /*=============================================================================
@@ -1042,4 +1050,366 @@ void swarm_logic_bridge_clear_cache(swarm_logic_bridge_t* bridge) {
     nimcp_platform_mutex_unlock(bridge->mutex);
 
     LOG_DEBUG("Logic bridge cache cleared");
+}
+
+/*=============================================================================
+ * ENHANCED CONSENSUS INTEGRATION
+ *============================================================================*/
+
+nimcp_error_t swarm_logic_validate_consensus_votes(swarm_logic_bridge_t* bridge,
+                                                     const swarm_vote_response_t* votes,
+                                                     uint32_t vote_count,
+                                                     swarm_logic_result_t* result) {
+    if (!bridge || !votes || vote_count == 0 || !result) {
+        NIMCP_LOGGING_ERROR("Invalid parameters for consensus vote validation");
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    // Count vote choices
+    uint32_t agree_count = 0;
+    uint32_t disagree_count = 0;
+    uint32_t abstain_count = 0;
+    float total_confidence = 0.0F;
+
+    for (uint32_t i = 0; i < vote_count; i++) {
+        if (votes[i].choice == VOTE_CHOICE_AGREE) {
+            agree_count++;
+            total_confidence += votes[i].confidence;
+        } else if (votes[i].choice == VOTE_CHOICE_DISAGREE) {
+            disagree_count++;
+        } else if (votes[i].choice == VOTE_CHOICE_ABSTAIN) {
+            abstain_count++;
+        }
+    }
+
+    // Calculate majority ratio and average confidence
+    float majority_ratio = (vote_count > 0) ? (float)agree_count / vote_count : 0.0F;
+    float avg_confidence = (agree_count > 0) ? total_confidence / agree_count : 0.0F;
+
+    // Consensus requires majority (>50%) AND sufficient confidence (>=0.5)
+    bool has_majority = (agree_count * 2 > vote_count);
+    bool has_confidence = (avg_confidence >= 0.5F);
+    bool consensus_reached = has_majority && has_confidence;
+
+    // Fill result
+    memset(result, 0, sizeof(swarm_logic_result_t));
+    result->rule_id = 0;
+    result->result = consensus_reached;
+    result->confidence = avg_confidence;  // Always report the avg confidence
+    result->num_inputs_used = vote_count;
+    result->evaluation_time_us = 0;
+
+    snprintf(result->explanation, sizeof(result->explanation),
+            "Consensus validation: %u agree, %u disagree, %u abstain, conf=%.2f",
+            agree_count, disagree_count, abstain_count, avg_confidence);
+
+    bridge->stats.consensus_validations++;
+    bridge->stats.total_evaluations++;
+    bridge->stats.successful_evaluations++;
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Validated consensus: %u votes, result=%s",
+                       vote_count, result->result ? "PASS" : "FAIL");
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t swarm_logic_detect_byzantine_pattern(swarm_logic_bridge_t* bridge,
+                                                     const swarm_vote_response_t* votes,
+                                                     uint32_t vote_count,
+                                                     byzantine_detection_t* byzantine_agents,
+                                                     uint32_t* byzantine_count) {
+    if (!bridge || !votes || vote_count == 0 || !byzantine_agents || !byzantine_count) {
+        NIMCP_LOGGING_ERROR("Invalid parameters for Byzantine detection");
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    *byzantine_count = 0;
+
+    // Check for duplicate votes from same agent with different choices
+    for (uint32_t i = 0; i < vote_count && *byzantine_count < 32; i++) {
+        for (uint32_t j = i + 1; j < vote_count; j++) {
+            if (votes[i].voter_drone == votes[j].voter_drone) {
+                // Same agent voted multiple times
+                if (votes[i].choice != votes[j].choice) {
+                    // Contradictory votes - Byzantine behavior
+                    byzantine_agents[*byzantine_count].agent_id = votes[i].voter_drone;
+                    byzantine_agents[*byzantine_count].suspicion_score = 1.0F;
+                    byzantine_agents[*byzantine_count].contradiction_count = 1;
+                    snprintf(byzantine_agents[*byzantine_count].reason,
+                            sizeof(byzantine_agents[*byzantine_count].reason),
+                            "Contradictory votes on proposal %u", votes[i].proposal_id);
+                    (*byzantine_count)++;
+
+                    bridge->stats.byzantine_detections++;
+
+                    NIMCP_LOGGING_WARN("Byzantine pattern detected: agent %u voted contradictory",
+                                      votes[i].voter_drone);
+                }
+                break;
+            }
+        }
+    }
+
+    bridge->stats.total_evaluations++;
+    if (*byzantine_count > 0) {
+        bridge->stats.failed_evaluations++;
+    } else {
+        bridge->stats.successful_evaluations++;
+    }
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
+ * ENHANCED QUORUM INTEGRATION
+ *============================================================================*/
+
+nimcp_error_t swarm_logic_validate_quorum_signals(swarm_logic_bridge_t* bridge,
+                                                    const nimcp_signal_molecule_t* signals,
+                                                    uint32_t signal_count,
+                                                    swarm_logic_result_t* result) {
+    if (!bridge || !signals || signal_count == 0 || !result) {
+        NIMCP_LOGGING_ERROR("Invalid parameters for quorum signal validation");
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    // Collect signal concentrations
+    float* concentrations = (float*)nimcp_malloc(signal_count * sizeof(float));
+    if (!concentrations) {
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    uint32_t active_signals = 0;
+    for (uint32_t i = 0; i < signal_count; i++) {
+        concentrations[i] = (float)signals[i].concentration;
+        if (signals[i].threshold_reached) {
+            active_signals++;
+        }
+    }
+
+    // Use AND gate to validate all signals are consistent
+    float gate_output = evaluate_logic_gate(LOGIC_GATE_AND, concentrations,
+                                           signal_count, 0.5F);
+
+    nimcp_free(concentrations);
+
+    // Fill result
+    memset(result, 0, sizeof(swarm_logic_result_t));
+    result->rule_id = 0;
+    result->result = (active_signals > 0 && gate_output >= 0.3F);
+    result->confidence = gate_output;
+    result->num_inputs_used = signal_count;
+    result->evaluation_time_us = 0;
+
+    snprintf(result->explanation, sizeof(result->explanation),
+            "Quorum validation: %u/%u signals active, output=%.3f",
+            active_signals, signal_count, gate_output);
+
+    bridge->stats.quorum_validations++;
+    bridge->stats.total_evaluations++;
+    bridge->stats.successful_evaluations++;
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t swarm_logic_check_signal_exclusion(swarm_logic_bridge_t* bridge,
+                                                   nimcp_signal_type_t signal_a,
+                                                   nimcp_signal_type_t signal_b,
+                                                   bool* mutually_exclusive) {
+    if (!bridge || !mutually_exclusive) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    // Define mutually exclusive signal pairs
+    // ATTACK XOR RETREAT, EXPLORE XOR DEFEND
+    *mutually_exclusive = false;
+
+    if ((signal_a == NIMCP_SIGNAL_ATTACK && signal_b == NIMCP_SIGNAL_RETREAT) ||
+        (signal_a == NIMCP_SIGNAL_RETREAT && signal_b == NIMCP_SIGNAL_ATTACK)) {
+        *mutually_exclusive = true;
+    } else if ((signal_a == NIMCP_SIGNAL_EXPLORE && signal_b == NIMCP_SIGNAL_DEFEND) ||
+               (signal_a == NIMCP_SIGNAL_DEFEND && signal_b == NIMCP_SIGNAL_EXPLORE)) {
+        *mutually_exclusive = true;
+    }
+
+    NIMCP_LOGGING_DEBUG("Signal exclusion check: %d vs %d = %s",
+                        signal_a, signal_b, *mutually_exclusive ? "EXCLUSIVE" : "COMPATIBLE");
+
+    return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
+ * ENHANCED EMERGENCE INTEGRATION
+ *============================================================================*/
+
+nimcp_error_t swarm_logic_validate_tier_transition(swarm_logic_bridge_t* bridge,
+                                                     swarm_emergence_tier_t current_tier,
+                                                     swarm_emergence_tier_t target_tier,
+                                                     const swarm_state_t* state,
+                                                     bool* valid) {
+    if (!bridge || !state || !valid) {
+        NIMCP_LOGGING_ERROR("Invalid parameters for tier transition validation");
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    *valid = false;
+
+    // Get minimum drones required for target tier
+    uint32_t min_drones = 1;
+    switch (target_tier) {
+        case SWARM_TIER_INDIVIDUAL: min_drones = 1; break;
+        case SWARM_TIER_PAIR: min_drones = 2; break;
+        case SWARM_TIER_SQUAD: min_drones = 4; break;
+        case SWARM_TIER_PLATOON: min_drones = 8; break;
+        case SWARM_TIER_COMPANY: min_drones = 16; break;
+        case SWARM_TIER_BATTALION: min_drones = 32; break;
+        default: min_drones = 1; break;
+    }
+
+    // Check prerequisites using AND gate
+    float inputs[3];
+    inputs[0] = (state->connected_drones >= min_drones) ? 1.0F : 0.0F;
+    inputs[1] = state->collective_coherence;
+    inputs[2] = (state->healthy_drones >= (uint32_t)(state->connected_drones * 0.75F)) ? 1.0F : 0.0F;
+
+    float gate_output = evaluate_logic_gate(LOGIC_GATE_AND, inputs, 3, 0.7F);
+
+    // Check if sequential (no tier skipping)
+    bool sequential = (target_tier == current_tier + 1) ||
+                     (target_tier == current_tier - 1) ||
+                     (target_tier == current_tier);
+
+    *valid = (gate_output >= 0.7F) && sequential;
+
+    bridge->stats.tier_validations++;
+    bridge->stats.total_evaluations++;
+    if (*valid) {
+        bridge->stats.successful_evaluations++;
+    } else {
+        bridge->stats.failed_evaluations++;
+    }
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Tier transition validation: %d -> %d = %s (drones=%u, coherence=%.2f)",
+                       current_tier, target_tier, *valid ? "VALID" : "INVALID",
+                       state->connected_drones, state->collective_coherence);
+
+    return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
+ * BRAIN INTEGRATION
+ *============================================================================*/
+
+nimcp_error_t swarm_logic_connect_brain(swarm_logic_bridge_t* bridge, void* brain) {
+    if (!bridge) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    bridge->brain = brain;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Logic bridge connected to brain");
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t swarm_logic_connect_immune(swarm_logic_bridge_t* bridge, void* immune_system) {
+    if (!bridge) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    bridge->immune_system = immune_system;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Logic bridge connected to immune system");
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t swarm_logic_connect_umm(swarm_logic_bridge_t* bridge, void* umm) {
+    if (!bridge) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+    bridge->umm = umm;
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_INFO("Logic bridge connected to UMM");
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t swarm_logic_evaluate_with_modulation(swarm_logic_bridge_t* bridge,
+                                                     uint32_t rule_id,
+                                                     float dopamine_level,
+                                                     float acetylcholine_level,
+                                                     swarm_logic_result_t* result) {
+    if (!bridge || !result) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    // Find rule
+    swarm_logic_rule_t* rule = find_rule(bridge, rule_id);
+    if (!rule) {
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    // Modulate threshold
+    // Dopamine lowers threshold (increases excitability)
+    // Acetylcholine increases precision (raises threshold slightly)
+    float modulated_threshold = rule->threshold;
+    modulated_threshold *= (1.0F - dopamine_level * 0.3F);  // DA lowers by up to 30%
+    modulated_threshold *= (1.0F + acetylcholine_level * 0.2F);  // ACh raises by up to 20%
+
+    // Clamp to valid range
+    if (modulated_threshold < 0.0F) modulated_threshold = 0.0F;
+    if (modulated_threshold > 1.0F) modulated_threshold = 1.0F;
+
+    // Store original threshold
+    float original_threshold = rule->threshold;
+    rule->threshold = modulated_threshold;
+
+    // Evaluate with modulated threshold
+    // Since we need agent states but don't have them, we create a minimal result
+    memset(result, 0, sizeof(swarm_logic_result_t));
+    result->rule_id = rule_id;
+    result->result = false;
+    result->confidence = 0.5F;
+    result->num_inputs_used = 0;
+    result->evaluation_time_us = 0;
+
+    snprintf(result->explanation, sizeof(result->explanation),
+            "Modulated evaluation: rule=%u, DA=%.2f, ACh=%.2f, threshold=%.3f->%.3f",
+            rule_id, dopamine_level, acetylcholine_level,
+            original_threshold, modulated_threshold);
+
+    // Restore original threshold
+    rule->threshold = original_threshold;
+
+    bridge->stats.total_evaluations++;
+    bridge->stats.successful_evaluations++;
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
 }

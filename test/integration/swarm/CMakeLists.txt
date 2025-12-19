@@ -72,6 +72,13 @@ add_test_binary(
     integration
 )
 
+# Test: Enhanced Swarm Logic Bridge with Consensus Integration
+add_test_binary(
+    test_swarm_logic_consensus_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_logic_consensus_integration.cpp
+    integration
+)
+
 # ============================================================================
 # Subdirectories
 # ============================================================================

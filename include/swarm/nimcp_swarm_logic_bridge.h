@@ -47,6 +47,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform.h"
+#include "swarm/nimcp_swarm_consensus.h"
+#include "swarm/nimcp_swarm_quorum.h"
+#include "swarm/nimcp_swarm_emergence.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -59,6 +62,15 @@ extern "C" {
  *============================================================================*/
 
 typedef struct swarm_logic_bridge swarm_logic_bridge_t;
+
+/*
+ * NOTE: This header depends on types from:
+ * - swarm/nimcp_swarm_consensus.h (swarm_vote_response_t)
+ * - swarm/nimcp_swarm_quorum.h (nimcp_signal_molecule_t, nimcp_signal_type_t)
+ * - swarm/nimcp_swarm_emergence.h (swarm_state_t, swarm_emergence_tier_t)
+ *
+ * Those headers must be included before this header to provide the necessary types.
+ */
 
 /*=============================================================================
  * CONFIGURATION STRUCTURES
@@ -124,7 +136,21 @@ typedef struct {
     float avg_evaluation_time_us;    /**< Average evaluation time */
     uint32_t active_rules;           /**< Currently active rules */
     uint32_t active_agents;          /**< Currently active agents */
+    uint64_t byzantine_detections;   /**< Byzantine patterns detected */
+    uint64_t consensus_validations;  /**< Consensus validations */
+    uint64_t quorum_validations;     /**< Quorum validations */
+    uint64_t tier_validations;       /**< Tier transition validations */
 } swarm_logic_bridge_stats_t;
+
+/**
+ * @brief Byzantine detection result
+ */
+typedef struct {
+    uint32_t agent_id;               /**< Agent identifier */
+    float suspicion_score;           /**< Suspicion score [0-1] */
+    uint32_t contradiction_count;    /**< Number of contradictions */
+    char reason[128];                /**< Detection reason */
+} byzantine_detection_t;
 
 /*=============================================================================
  * LIFECYCLE FUNCTIONS
@@ -421,6 +447,191 @@ void swarm_logic_bridge_reset_stats(swarm_logic_bridge_t* bridge);
  * @param bridge Bridge handle
  */
 void swarm_logic_bridge_clear_cache(swarm_logic_bridge_t* bridge);
+
+/*=============================================================================
+ * ENHANCED CONSENSUS INTEGRATION
+ *============================================================================*/
+
+/**
+ * @brief Validate consensus votes using logic gates
+ *
+ * WHAT: Validates consensus voting patterns with logic gate evaluation
+ * WHY:  Detect invalid voting patterns and Byzantine behavior
+ * HOW:  Apply AND/OR/XOR gates to vote responses, check for contradictions
+ *
+ * BIOLOGICAL BASIS: Honeybee consensus uses threshold-based decision making
+ *
+ * @param bridge Bridge handle
+ * @param votes Array of vote responses from swarm_consensus
+ * @param vote_count Number of votes
+ * @param result Output validation result
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_validate_consensus_votes(swarm_logic_bridge_t* bridge,
+                                                     const swarm_vote_response_t* votes,
+                                                     uint32_t vote_count,
+                                                     swarm_logic_result_t* result);
+
+/**
+ * @brief Detect Byzantine patterns in votes
+ *
+ * WHAT: Identifies contradictory or malicious voting behavior
+ * WHY:  Protect against faulty or adversarial agents
+ * HOW:  Check for same agent voting multiple times with conflicting choices
+ *
+ * BIOLOGICAL BASIS: Honeybees reject scouts providing contradictory information
+ *
+ * @param bridge Bridge handle
+ * @param votes Array of vote responses
+ * @param vote_count Number of votes
+ * @param byzantine_agents Output array of detected Byzantine agents
+ * @param byzantine_count Output count of Byzantine agents detected
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_detect_byzantine_pattern(swarm_logic_bridge_t* bridge,
+                                                     const swarm_vote_response_t* votes,
+                                                     uint32_t vote_count,
+                                                     byzantine_detection_t* byzantine_agents,
+                                                     uint32_t* byzantine_count);
+
+/*=============================================================================
+ * ENHANCED QUORUM INTEGRATION
+ *============================================================================*/
+
+/**
+ * @brief Validate quorum signals using logic gates
+ *
+ * WHAT: Validates quorum signal patterns for logical consistency
+ * WHY:  Ensure signals are mutually compatible and meet prerequisites
+ * HOW:  Apply AND/OR/NOT/XOR gates to signal concentrations
+ *
+ * BIOLOGICAL BASIS: Bacterial quorum sensing has signal cross-inhibition
+ *
+ * @param bridge Bridge handle
+ * @param signals Array of signal molecules from quorum system
+ * @param signal_count Number of signals
+ * @param result Output validation result
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_validate_quorum_signals(swarm_logic_bridge_t* bridge,
+                                                    const nimcp_signal_molecule_t* signals,
+                                                    uint32_t signal_count,
+                                                    swarm_logic_result_t* result);
+
+/**
+ * @brief Check signal exclusion rules
+ *
+ * WHAT: Determines if two signals are mutually exclusive
+ * WHY:  Prevent logically contradictory decisions (e.g. ATTACK and RETREAT)
+ * HOW:  XOR logic: signals should not both be high simultaneously
+ *
+ * BIOLOGICAL BASIS: Ant colonies use pheromone inhibition between trails
+ *
+ * @param bridge Bridge handle
+ * @param signal_a First signal type
+ * @param signal_b Second signal type
+ * @param mutually_exclusive Output: true if signals are exclusive
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_check_signal_exclusion(swarm_logic_bridge_t* bridge,
+                                                   nimcp_signal_type_t signal_a,
+                                                   nimcp_signal_type_t signal_b,
+                                                   bool* mutually_exclusive);
+
+/*=============================================================================
+ * ENHANCED EMERGENCE INTEGRATION
+ *============================================================================*/
+
+/**
+ * @brief Validate tier transition using logic gates
+ *
+ * WHAT: Validates emergence tier transitions meet all prerequisites
+ * WHY:  Prevent invalid tier jumps that skip required capabilities
+ * HOW:  AND gate: all requirements (drone count, coherence, health) must pass
+ *
+ * BIOLOGICAL BASIS: Insect colony task allocation has threshold-based transitions
+ *
+ * @param bridge Bridge handle
+ * @param current_tier Current emergence tier
+ * @param target_tier Desired emergence tier
+ * @param state Current swarm state
+ * @param valid Output: true if transition is valid
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_validate_tier_transition(swarm_logic_bridge_t* bridge,
+                                                     swarm_emergence_tier_t current_tier,
+                                                     swarm_emergence_tier_t target_tier,
+                                                     const swarm_state_t* state,
+                                                     bool* valid);
+
+/*=============================================================================
+ * BRAIN INTEGRATION
+ *============================================================================*/
+
+/**
+ * @brief Connect bridge to brain for neuromodulation
+ *
+ * WHAT: Connects logic bridge to brain for dopamine/ACh modulation
+ * WHY:  Enable neuromodulator influence on logic thresholds
+ * HOW:  Stores brain pointer, enables modulation in evaluations
+ *
+ * BIOLOGICAL BASIS: Dopamine modulates decision thresholds in basal ganglia
+ *
+ * @param bridge Bridge handle
+ * @param brain Brain handle
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_connect_brain(swarm_logic_bridge_t* bridge, void* brain);
+
+/**
+ * @brief Connect bridge to immune system
+ *
+ * WHAT: Connects logic bridge to brain immune system
+ * WHY:  Modulate logic evaluation based on inflammation state
+ * HOW:  Stores immune pointer, queries inflammation during evaluation
+ *
+ * BIOLOGICAL BASIS: Inflammation impairs cognitive processing
+ *
+ * @param bridge Bridge handle
+ * @param immune_system Brain immune system handle
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_connect_immune(swarm_logic_bridge_t* bridge, void* immune_system);
+
+/**
+ * @brief Connect bridge to UMM
+ *
+ * WHAT: Connects logic bridge to Universal Memory Manager
+ * WHY:  Track memory allocations and enable rule caching in UMM
+ * HOW:  Stores UMM pointer, uses UMM for allocations
+ *
+ * @param bridge Bridge handle
+ * @param umm UMM handle
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_connect_umm(swarm_logic_bridge_t* bridge, void* umm);
+
+/**
+ * @brief Evaluate rule with neuromodulation
+ *
+ * WHAT: Evaluates logic rule with dopamine/acetylcholine modulation
+ * WHY:  Model neuromodulator effects on decision making
+ * HOW:  Adjust thresholds based on DA (lowers thresholds) and ACh (increases precision)
+ *
+ * BIOLOGICAL BASIS: DA reduces response thresholds, ACh increases attentional precision
+ *
+ * @param bridge Bridge handle
+ * @param rule_id Rule to evaluate
+ * @param dopamine_level Dopamine concentration [0-1]
+ * @param acetylcholine_level Acetylcholine concentration [0-1]
+ * @param result Output result
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_logic_evaluate_with_modulation(swarm_logic_bridge_t* bridge,
+                                                     uint32_t rule_id,
+                                                     float dopamine_level,
+                                                     float acetylcholine_level,
+                                                     swarm_logic_result_t* result);
 
 #ifdef __cplusplus
 }

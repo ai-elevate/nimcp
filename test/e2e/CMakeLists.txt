@@ -35,6 +35,7 @@ set(E2E_INCLUDE_DIRS
 )
 
 set(E2E_LIBRARIES
+    nimcp_portia
     nimcp
     GTest::GTest
     GTest::Main
@@ -259,6 +260,11 @@ add_e2e_test(e2e_test_portia_planning_mission
 add_e2e_test(e2e_test_portia_threat_response
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_threat_response.cpp
+)
+
+add_e2e_test(e2e_test_portia_swarm_logic_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_swarm_logic_pipeline.cpp
 )
 
 # Emotion Tensor E2E Test

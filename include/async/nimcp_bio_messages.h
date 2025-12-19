@@ -662,6 +662,7 @@ typedef enum {
     BIO_MODULE_PORTIA_ACCELERATOR,
     BIO_MODULE_PORTIA_CLASSIFICATION,
     BIO_MODULE_PORTIA_DECEPTION,
+    BIO_MODULE_PORTIA_LOGIC,
 
     /* Immune bridge modules (0x0D00 - 0x0DFF) */
     BIO_MODULE_IMMUNE_BRAIN = 0x0D00,           /**< Brain immune system core */

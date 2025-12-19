@@ -125,6 +125,13 @@ add_test_binary(
     unit
 )
 
+# Test: Enhanced Swarm Logic Bridge
+add_test_binary(
+    test_swarm_logic_bridge_enhanced
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_logic_bridge_enhanced.cpp
+    unit
+)
+
 # ============================================================================
 # Subdirectories
 # ============================================================================

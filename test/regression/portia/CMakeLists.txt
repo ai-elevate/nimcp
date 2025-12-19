@@ -278,6 +278,63 @@ set_tests_properties(regression_portia_swarm_bridge PROPERTIES
     TIMEOUT 180
 )
 
+# Unified Portia-Swarm-Logic Bridge Regression Tests
+add_executable(regression_portia_swarm_logic_bridge
+    test_portia_swarm_logic_regression.cpp
+)
+target_link_libraries(regression_portia_swarm_logic_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_portia
+        nimcp
+        pthread
+        m
+)
+target_include_directories(regression_portia_swarm_logic_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/portia
+        ${CMAKE_SOURCE_DIR}/include/swarm
+        ${CMAKE_SOURCE_DIR}/include/core/neuron_types
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+add_test(NAME regression_portia_swarm_logic_bridge
+         COMMAND regression_portia_swarm_logic_bridge --gtest_brief=1)
+set_tests_properties(regression_portia_swarm_logic_bridge PROPERTIES
+    LABELS "regression;portia;swarm_logic_bridge;unified"
+    TIMEOUT 240
+)
+
+# Portia-Logic Bridge Regression Tests
+add_executable(regression_portia_logic_bridge
+    test_portia_logic_bridge_regression.cpp
+)
+target_link_libraries(regression_portia_logic_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_portia
+        nimcp
+        pthread
+        m
+)
+target_include_directories(regression_portia_logic_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/portia
+        ${CMAKE_SOURCE_DIR}/include/core/neuron_types
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+add_test(NAME regression_portia_logic_bridge
+         COMMAND regression_portia_logic_bridge --gtest_brief=1)
+set_tests_properties(regression_portia_logic_bridge PROPERTIES
+    LABELS "regression;portia;logic_bridge"
+    TIMEOUT 240
+)
+
 # ============================================================================
 # Test Summary
 # ============================================================================

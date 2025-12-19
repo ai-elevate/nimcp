@@ -19,6 +19,8 @@ set(PORTIA_INTEGRATION_TESTS
     test_portia_deception_sensor_integration.cpp
     test_portia_full_system_integration.cpp
     test_portia_swarm_bridge_integration.cpp
+    test_portia_swarm_logic_integration.cpp
+    test_portia_logic_bridge_integration.cpp
 )
 
 # Create test executables
@@ -36,6 +38,9 @@ foreach(test_source ${PORTIA_INTEGRATION_TESTS})
             GTest::gtest
             GTest::gtest_main
             GTest::gmock
+
+            # Portia library
+            nimcp_portia
 
             # Main nimcp library (contains all subsystems including async, platform, validation)
             nimcp

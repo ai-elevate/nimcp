@@ -210,6 +210,46 @@ set_tests_properties(PortiaSwarmBridge PROPERTIES
     LABELS "unit;portia;swarm_bridge"
 )
 
+# Portia-Swarm-Logic Bridge Tests
+add_executable(test_portia_swarm_logic_bridge
+    test_portia_swarm_logic_bridge.cpp
+)
+
+target_link_libraries(test_portia_swarm_logic_bridge
+    nimcp_portia
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+add_test(NAME PortiaSwarmLogicBridge COMMAND test_portia_swarm_logic_bridge)
+set_tests_properties(PortiaSwarmLogicBridge PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;portia;swarm_logic_bridge;unified"
+)
+
+# Portia-Logic Bridge Tests
+add_executable(test_portia_logic_bridge
+    test_portia_logic_bridge.cpp
+)
+
+target_link_libraries(test_portia_logic_bridge
+    nimcp_portia
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+add_test(NAME PortiaLogicBridge COMMAND test_portia_logic_bridge)
+set_tests_properties(PortiaLogicBridge PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;portia;logic_bridge"
+)
+
 # ============================================================================
 # Portia-Immune Bridge Tests
 # ============================================================================
