@@ -124,3 +124,13 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_fep_bridges.cpp
     unit
 )
+
+# ============================================================================
+# Subdirectories
+# ============================================================================
+
+# Sleep Bridge Tests
+add_subdirectory(sleep)
+
+# Immune Bridge Tests
+add_subdirectory(immune)

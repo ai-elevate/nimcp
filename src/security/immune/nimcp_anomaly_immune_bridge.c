@@ -4,7 +4,7 @@
  */
 
 #include "security/immune/nimcp_anomaly_immune_bridge.h"
-#include "utils/memory/nimcp_malloc.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>

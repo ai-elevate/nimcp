@@ -574,8 +574,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_artifact_verify.c
 
     # Security Immune Integration (Phase BII-S: Security immune bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_anomaly_immune_bridge.c     # Anomaly detector-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_rate_limiter_immune_bridge.c # Rate limiter-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_pattern_db_immune_bridge.c  # Pattern DB-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_perception_bridge.c  # Security-Perception Bridge - sensory threat analysis and defense
+
+    # Security Sleep Integration (Phase SB-S: Security sleep bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/sleep/nimcp_bbb_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/sleep/nimcp_anomaly_detector_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/sleep/nimcp_rate_limiter_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/sleep/nimcp_pattern_db_sleep_bridge.c
 
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
@@ -911,6 +919,31 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_brain_local.c    # Per-agent brain management
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consciousness.c  # Gestalt consciousness (collective phi)
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consciousness_enhanced.c  # Enhanced consciousness (peer callbacks, remote phi, dynamics)
+
+    # Swarm Sleep Bridges (Sleep-state modulation for swarm behaviors)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_brain_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_immune_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_memory_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_signal_sleep_bridge.c
+
+    # Swarm Immune Bridges (Immune-state modulation for swarm behaviors)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_brain_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_consciousness_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_consensus_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_emergence_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_flocking_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_immune_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_memory_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_pheromone_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_quorum_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_signal_immune_bridge.c
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_protocol_metrics.c # Protocol metrics dashboard
 
     # Platform Tier System (Portia Spider Foundation)

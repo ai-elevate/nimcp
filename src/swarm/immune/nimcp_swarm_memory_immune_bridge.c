@@ -1,0 +1,292 @@
+/**
+ * @file nimcp_swarm_memory_immune_bridge.c
+ * @brief Swarm Memory-Immune System Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-18
+ *
+ * WHAT: Modulates swarm memory based on immune state
+ * WHY:  Inflammation impairs memory consolidation; overload triggers immune
+ * HOW:  Cytokines reduce consolidation; high load triggers stress response
+ *
+ * @author NIMCP Development Team
+ */
+
+#include "swarm/immune/nimcp_swarm_memory_immune_bridge.h"
+#include "utils/platform/nimcp_platform.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+#include <stdlib.h>
+#include <string.h>
+
+struct swarm_memory_immune_bridge_struct {
+    swarm_memory_immune_config_t config;
+    brain_immune_system_t* immune_system;
+    void* swarm_memory;
+    cytokine_memory_effects_t cytokine_effects;
+    inflammation_memory_state_t inflammation_state;
+    memory_immune_modulation_t modulation;
+    nimcp_mutex_t* mutex;
+    bool bio_async_connected;
+};
+
+static float get_capacity_factor_for_level(brain_inflammation_level_t level)
+{
+    switch (level) {
+        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_MEMORY_CAPACITY;
+        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_MEMORY_CAPACITY;
+        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_MEMORY_CAPACITY;
+        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_MEMORY_CAPACITY;
+        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_MEMORY_CAPACITY;
+        default:                          return INFLAMMATION_NONE_MEMORY_CAPACITY;
+    }
+}
+
+static float get_forgetting_mult_for_level(brain_inflammation_level_t level)
+{
+    switch (level) {
+        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_FORGETTING_MULT;
+        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_FORGETTING_MULT;
+        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_FORGETTING_MULT;
+        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_FORGETTING_MULT;
+        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_FORGETTING_MULT;
+        default:                          return INFLAMMATION_NONE_FORGETTING_MULT;
+    }
+}
+
+int swarm_memory_immune_default_config(swarm_memory_immune_config_t* config)
+{
+    if (!config) return -1;
+
+    config->enable_cytokine_effects = true;
+    config->enable_inflammation_effects = true;
+    config->enable_load_stress = true;
+    config->enable_corruption_cleanup = true;
+    config->cytokine_sensitivity = 1.0f;
+
+    return 0;
+}
+
+swarm_memory_immune_bridge_t* swarm_memory_immune_create(
+    const swarm_memory_immune_config_t* config,
+    brain_immune_system_t* immune_system,
+    void* swarm_memory)
+{
+    if (!config || !immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid parameters for swarm memory immune bridge creation");
+        return NULL;
+    }
+
+    swarm_memory_immune_bridge_t* bridge =
+        (swarm_memory_immune_bridge_t*)nimcp_malloc(sizeof(swarm_memory_immune_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate swarm memory immune bridge");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(swarm_memory_immune_bridge_t));
+    memcpy(&bridge->config, config, sizeof(swarm_memory_immune_config_t));
+    bridge->immune_system = immune_system;
+    bridge->swarm_memory = swarm_memory;
+
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex for swarm memory immune bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    bridge->cytokine_effects.consolidation_deficit = 0.0f;
+    bridge->cytokine_effects.forgetting_rate_multiplier = 1.0f;
+    bridge->cytokine_effects.replay_strength_reduction = 0.0f;
+
+    bridge->inflammation_state.current_level = INFLAMMATION_NONE;
+    bridge->inflammation_state.capacity_factor = 1.0f;
+    bridge->inflammation_state.consolidation_efficiency = 1.0f;
+    bridge->inflammation_state.forgetting_multiplier = 1.0f;
+
+    bridge->modulation.memory_load = 0.0f;
+    bridge->modulation.corruptions = 0;
+    bridge->modulation.stress_triggered = false;
+    bridge->modulation.cleanup_signal = 0.0f;
+
+    NIMCP_LOGGING_INFO("Swarm memory immune bridge created");
+    return bridge;
+}
+
+void swarm_memory_immune_destroy(swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return;
+
+    if (bridge->mutex) {
+        nimcp_platform_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Swarm memory immune bridge destroyed");
+}
+
+int swarm_memory_immune_apply_cytokine_effects(swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge->config.enable_cytokine_effects) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float sensitivity = bridge->config.cytokine_sensitivity;
+
+    bridge->cytokine_effects.consolidation_deficit =
+        (CYTOKINE_IL1_CONSOLIDATION_IMPACT +
+         CYTOKINE_IL6_CONSOLIDATION_IMPACT +
+         CYTOKINE_TNF_CONSOLIDATION_IMPACT +
+         CYTOKINE_IL10_CONSOLIDATION_IMPACT) * sensitivity;
+
+    bridge->cytokine_effects.forgetting_rate_multiplier =
+        1.0f - bridge->cytokine_effects.consolidation_deficit;
+    bridge->cytokine_effects.replay_strength_reduction =
+        -bridge->cytokine_effects.consolidation_deficit * 0.5f;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Applied cytokine memory effects: deficit=%.2f",
+                        bridge->cytokine_effects.consolidation_deficit);
+    return 0;
+}
+
+int swarm_memory_immune_apply_inflammation_effects(swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge->config.enable_inflammation_effects) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    brain_immune_stats_t stats;
+    if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+    brain_inflammation_level_t level = stats.inflammation_level;
+    bridge->inflammation_state.current_level = level;
+    bridge->inflammation_state.capacity_factor = get_capacity_factor_for_level(level);
+    bridge->inflammation_state.forgetting_multiplier = get_forgetting_mult_for_level(level);
+    bridge->inflammation_state.consolidation_efficiency =
+        bridge->inflammation_state.capacity_factor;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Applied inflammation memory effects: level=%d, capacity=%.2f",
+                        level, bridge->inflammation_state.capacity_factor);
+    return 0;
+}
+
+int swarm_memory_immune_trigger_stress_from_load(swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+    if (!bridge->config.enable_load_stress) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (bridge->modulation.memory_load > 0.9f) {
+        bridge->modulation.stress_triggered = true;
+        NIMCP_LOGGING_INFO("Memory load triggered stress response: load=%.2f",
+                          bridge->modulation.memory_load);
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_memory_immune_activate_cleanup(swarm_memory_immune_bridge_t* bridge, uint32_t corruptions)
+{
+    if (!bridge) return -1;
+    if (!bridge->config.enable_corruption_cleanup) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->modulation.corruptions += corruptions;
+    if (bridge->modulation.corruptions > 5) {
+        bridge->modulation.cleanup_signal = 1.0f;
+        NIMCP_LOGGING_INFO("Memory corruption activated cleanup: count=%d",
+                          bridge->modulation.corruptions);
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_memory_immune_update(swarm_memory_immune_bridge_t* bridge, uint64_t delta_ms)
+{
+    if (!bridge) return -1;
+    (void)delta_ms;
+
+    swarm_memory_immune_apply_cytokine_effects(bridge);
+    swarm_memory_immune_apply_inflammation_effects(bridge);
+
+    return 0;
+}
+
+float swarm_memory_immune_get_capacity_factor(const swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return 1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float factor = bridge->inflammation_state.capacity_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return factor;
+}
+
+float swarm_memory_immune_get_consolidation_efficiency(const swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return 1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float efficiency = bridge->inflammation_state.consolidation_efficiency;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return efficiency;
+}
+
+float swarm_memory_immune_compute_forgetting_multiplier(const swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return 1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float mult = bridge->inflammation_state.forgetting_multiplier *
+                 bridge->cytokine_effects.forgetting_rate_multiplier;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return mult;
+}
+
+bool swarm_memory_immune_has_memory_impairment(const swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool impaired = (bridge->inflammation_state.current_level >= INFLAMMATION_REGIONAL);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return impaired;
+}
+
+int swarm_memory_immune_connect_bio_async(swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+    bridge->bio_async_connected = true;
+    NIMCP_LOGGING_DEBUG("Swarm memory immune bridge connected to bio-async");
+    return 0;
+}
+
+int swarm_memory_immune_disconnect_bio_async(swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+    bridge->bio_async_connected = false;
+    NIMCP_LOGGING_DEBUG("Swarm memory immune bridge disconnected from bio-async");
+    return 0;
+}
+
+bool swarm_memory_immune_is_bio_async_connected(const swarm_memory_immune_bridge_t* bridge)
+{
+    if (!bridge) return false;
+    return bridge->bio_async_connected;
+}

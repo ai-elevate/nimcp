@@ -375,6 +375,33 @@ add_e2e_test(e2e_test_medulla_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_medulla_pipeline.cpp
 )
 
+# Bridge Pipelines E2E Test (Sleep + Immune Bridges Integration)
+add_executable(e2e_test_bridge_pipelines
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bridge_pipelines.cpp
+)
+target_link_libraries(e2e_test_bridge_pipelines
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(e2e_test_bridge_pipelines
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/swarm/sleep
+        ${CMAKE_SOURCE_DIR}/src/swarm/immune
+        ${CMAKE_SOURCE_DIR}/src/security/sleep
+        ${CMAKE_SOURCE_DIR}/src/cognitive
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/thread
+)
+add_test(NAME e2e_test_bridge_pipelines COMMAND e2e_test_bridge_pipelines)
+set_tests_properties(e2e_test_bridge_pipelines PROPERTIES
+    LABELS "e2e"
+    TIMEOUT 180
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

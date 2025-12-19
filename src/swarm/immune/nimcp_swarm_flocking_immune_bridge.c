@@ -1,0 +1,292 @@
+/**
+ * @file nimcp_swarm_flocking_immune_bridge.c
+ * @brief Swarm Flocking-Immune System Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-18
+ *
+ * WHAT: Modulates swarm flocking behavior based on immune state
+ * WHY:  Inflammation affects flocking behavior; fragmentation triggers immune
+ * HOW:  Cytokines reduce alignment/cohesion; fragmentation triggers stress
+ *
+ * @author NIMCP Development Team
+ */
+
+#include "swarm/immune/nimcp_swarm_flocking_immune_bridge.h"
+#include "utils/platform/nimcp_platform.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+#include <stdlib.h>
+#include <string.h>
+
+struct swarm_flocking_immune_bridge_struct {
+    swarm_flocking_immune_config_t config;
+    brain_immune_system_t* immune_system;
+    void* swarm_flocking;
+    cytokine_flocking_effects_t cytokine_effects;
+    inflammation_flocking_state_t inflammation_state;
+    flocking_immune_modulation_t modulation;
+    nimcp_mutex_t* mutex;
+    bool bio_async_connected;
+};
+
+static float get_flocking_factor_for_level(brain_inflammation_level_t level)
+{
+    switch (level) {
+        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_FLOCKING_FACTOR;
+        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_FLOCKING_FACTOR;
+        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_FLOCKING_FACTOR;
+        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_FLOCKING_FACTOR;
+        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_FLOCKING_FACTOR;
+        default:                          return INFLAMMATION_NONE_FLOCKING_FACTOR;
+    }
+}
+
+int swarm_flocking_immune_default_config(swarm_flocking_immune_config_t* config)
+{
+    if (!config) return -1;
+
+    config->enable_cytokine_effects = true;
+    config->enable_inflammation_effects = true;
+    config->enable_fragmentation_stress = true;
+    config->enable_formation_boost = true;
+    config->cytokine_sensitivity = 1.0f;
+
+    return 0;
+}
+
+swarm_flocking_immune_bridge_t* swarm_flocking_immune_bridge_create(
+    const swarm_flocking_immune_config_t* config,
+    brain_immune_system_t* immune_system,
+    void* swarm_flocking)
+{
+    if (!config || !immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid parameters for swarm flocking immune bridge creation");
+        return NULL;
+    }
+
+    swarm_flocking_immune_bridge_t* bridge =
+        (swarm_flocking_immune_bridge_t*)nimcp_malloc(sizeof(swarm_flocking_immune_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate swarm flocking immune bridge");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(swarm_flocking_immune_bridge_t));
+    memcpy(&bridge->config, config, sizeof(swarm_flocking_immune_config_t));
+    bridge->immune_system = immune_system;
+    bridge->swarm_flocking = swarm_flocking;
+
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex for swarm flocking immune bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    bridge->cytokine_effects.alignment_reduction = 0.0f;
+    bridge->cytokine_effects.cohesion_reduction = 0.0f;
+    bridge->cytokine_effects.separation_increase = 0.0f;
+    bridge->cytokine_effects.formation_quality_impact = 0.0f;
+
+    bridge->inflammation_state.current_level = INFLAMMATION_NONE;
+    bridge->inflammation_state.flocking_factor = 1.0f;
+    bridge->inflammation_state.fragmentation_risk = 0.0f;
+    bridge->inflammation_state.formation_degraded = false;
+
+    bridge->modulation.formation_quality = 1.0f;
+    bridge->modulation.fragmentation_events = 0;
+    bridge->modulation.stress_triggered = false;
+    bridge->modulation.il10_from_formation = 0.0f;
+
+    NIMCP_LOGGING_INFO("Swarm flocking immune bridge created");
+    return bridge;
+}
+
+void swarm_flocking_immune_bridge_destroy(swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return;
+
+    if (bridge->mutex) {
+        nimcp_platform_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Swarm flocking immune bridge destroyed");
+}
+
+int swarm_flocking_immune_apply_cytokine_effects(swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge->config.enable_cytokine_effects) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float sensitivity = bridge->config.cytokine_sensitivity;
+
+    bridge->cytokine_effects.alignment_reduction =
+        (CYTOKINE_IL1_ALIGNMENT_IMPACT +
+         CYTOKINE_IL6_ALIGNMENT_IMPACT +
+         CYTOKINE_TNF_ALIGNMENT_IMPACT) * sensitivity;
+
+    bridge->cytokine_effects.cohesion_reduction =
+        bridge->cytokine_effects.alignment_reduction + CYTOKINE_IL10_COHESION_BOOST * sensitivity;
+
+    bridge->cytokine_effects.separation_increase =
+        (CYTOKINE_IL1_SEPARATION_INCREASE + CYTOKINE_TNF_SEPARATION_INCREASE) * sensitivity;
+
+    bridge->cytokine_effects.formation_quality_impact =
+        bridge->cytokine_effects.alignment_reduction;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Applied cytokine flocking effects: align=%.2f, sep=%.2f",
+                        bridge->cytokine_effects.alignment_reduction,
+                        bridge->cytokine_effects.separation_increase);
+    return 0;
+}
+
+int swarm_flocking_immune_apply_inflammation_effects(swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge->config.enable_inflammation_effects) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    brain_immune_stats_t stats;
+    if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+    brain_inflammation_level_t level = stats.inflammation_level;
+    bridge->inflammation_state.current_level = level;
+    bridge->inflammation_state.flocking_factor = get_flocking_factor_for_level(level);
+    bridge->inflammation_state.fragmentation_risk =
+        (level >= INFLAMMATION_SYSTEMIC) ? 0.5f : 0.0f;
+    bridge->inflammation_state.formation_degraded =
+        (level >= INFLAMMATION_REGIONAL);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Applied inflammation flocking effects: level=%d, factor=%.2f",
+                        level, bridge->inflammation_state.flocking_factor);
+    return 0;
+}
+
+int swarm_flocking_immune_trigger_from_fragmentation(swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+    if (!bridge->config.enable_fragmentation_stress) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->modulation.fragmentation_events++;
+    if (bridge->modulation.fragmentation_events > 3) {
+        bridge->modulation.stress_triggered = true;
+        NIMCP_LOGGING_INFO("Flocking fragmentation triggered stress: count=%d",
+                          bridge->modulation.fragmentation_events);
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_flocking_immune_boost_from_formation(swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+    if (!bridge->config.enable_formation_boost) return 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->modulation.il10_from_formation += 0.05f;
+    bridge->modulation.fragmentation_events = 0;
+    bridge->modulation.stress_triggered = false;
+
+    NIMCP_LOGGING_DEBUG("Good formation boosted IL-10: total=%.2f",
+                       bridge->modulation.il10_from_formation);
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int swarm_flocking_immune_bridge_update(swarm_flocking_immune_bridge_t* bridge, uint64_t delta_ms)
+{
+    if (!bridge) return -1;
+    (void)delta_ms;
+
+    swarm_flocking_immune_apply_cytokine_effects(bridge);
+    swarm_flocking_immune_apply_inflammation_effects(bridge);
+
+    return 0;
+}
+
+float swarm_flocking_immune_get_alignment_factor(const swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return 1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float factor = bridge->inflammation_state.flocking_factor +
+                   bridge->cytokine_effects.alignment_reduction;
+    if (factor < 0.0f) factor = 0.0f;
+    if (factor > 1.0f) factor = 1.0f;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return factor;
+}
+
+float swarm_flocking_immune_get_cohesion_factor(const swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return 1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float factor = bridge->inflammation_state.flocking_factor +
+                   bridge->cytokine_effects.cohesion_reduction;
+    if (factor < 0.0f) factor = 0.0f;
+    if (factor > 1.0f) factor = 1.0f;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return factor;
+}
+
+float swarm_flocking_immune_get_separation_factor(const swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return 1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float factor = 1.0f + bridge->cytokine_effects.separation_increase;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return factor;
+}
+
+bool swarm_flocking_immune_is_fragmented(const swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool fragmented = bridge->inflammation_state.fragmentation_risk > 0.3f;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return fragmented;
+}
+
+int swarm_flocking_immune_connect_bio_async(swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+    bridge->bio_async_connected = true;
+    NIMCP_LOGGING_DEBUG("Swarm flocking immune bridge connected to bio-async");
+    return 0;
+}
+
+int swarm_flocking_immune_disconnect_bio_async(swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+    bridge->bio_async_connected = false;
+    NIMCP_LOGGING_DEBUG("Swarm flocking immune bridge disconnected from bio-async");
+    return 0;
+}
+
+bool swarm_flocking_immune_is_bio_async_connected(const swarm_flocking_immune_bridge_t* bridge)
+{
+    if (!bridge) return false;
+    return bridge->bio_async_connected;
+}

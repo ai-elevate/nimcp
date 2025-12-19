@@ -329,3 +329,10 @@ set_tests_properties(integration_security_test_swarm_security PROPERTIES
     LABELS "integration;security;swarm"
     TIMEOUT 300
 )
+
+# ============================================================================
+# Security Sleep Bridge Integration Tests
+# ============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sleep/CMakeLists.txt")
+    add_subdirectory(sleep)
+endif()

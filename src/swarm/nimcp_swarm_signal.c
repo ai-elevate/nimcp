@@ -17,6 +17,8 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -90,6 +92,10 @@ struct nimcp_swarm_signal_adapter {
 
     /* Positional encoding support */
     nimcp_pos_encoder_t* pe_encoder;  /**< Positional encoder instance (optional) */
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;      /**< Bio-async module context */
+    bool bio_async_enabled;            /**< Whether bio-async is active */
 };
 
 /* ==================== Internal Functions ==================== */
@@ -462,6 +468,10 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
     // Initialize PE encoder as NULL (not configured by default)
     adapter->pe_encoder = NULL;
 
+    // Initialize bio-async fields
+    adapter->bio_ctx = NULL;
+    adapter->bio_async_enabled = false;
+
     // BBB: Log successful creation
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_signal", "adapter_created",
                   "type=%d node_id=%u max_packet=%u", config->radio_type, adapter->node_id, config->max_packet_size);
@@ -475,6 +485,11 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
 void swarm_signal_adapter_destroy(nimcp_swarm_signal_adapter_t* adapter) {
     if (!bbb_check_pointer(adapter, "swarm_signal_adapter_destroy")) {
         return;
+    }
+
+    /* Disconnect bio-async if connected */
+    if (adapter->bio_async_enabled) {
+        swarm_signal_disconnect_bio_async(adapter);
     }
 
     // BBB: Log destruction
@@ -1007,4 +1022,87 @@ bool swarm_signal_get_temporal_embedding(
     }
 
     return true;
+}
+
+//=============================================================================
+// Bio-async Integration API
+//=============================================================================
+
+/**
+ * @brief Connect signal adapter to bio-async router
+ *
+ * WHAT: Register with bio-async messaging system
+ * WHY:  Enable inter-module messaging for swarm coordination
+ * HOW:  Register as BIO_MODULE_SWARM_SIGNAL
+ */
+bool swarm_signal_connect_bio_async(nimcp_swarm_signal_adapter_t* adapter)
+{
+    if (!bbb_check_pointer(adapter, "swarm_signal_connect_bio_async")) {
+        return false;
+    }
+
+    if (adapter->bio_async_enabled) {
+        return true;  // Already connected
+    }
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_SWARM_SIGNAL,
+        .module_name = "swarm_signal",
+        .inbox_capacity = 32,
+        .user_data = adapter
+    };
+
+    adapter->bio_ctx = bio_router_register_module(&info);
+    if (adapter->bio_ctx) {
+        adapter->bio_async_enabled = true;
+        LOG_INFO("Connected to bio-async router");
+    } else {
+        LOG_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return true;
+}
+
+/**
+ * @brief Disconnect signal adapter from bio-async router
+ *
+ * WHAT: Unregister from bio-async messaging
+ * WHY:  Clean shutdown
+ * HOW:  Deregister and cleanup
+ */
+bool swarm_signal_disconnect_bio_async(nimcp_swarm_signal_adapter_t* adapter)
+{
+    if (!bbb_check_pointer(adapter, "swarm_signal_disconnect_bio_async")) {
+        return false;
+    }
+
+    if (!adapter->bio_async_enabled) {
+        return true;  // Not connected
+    }
+
+    if (adapter->bio_ctx) {
+        bio_router_unregister_module(adapter->bio_ctx);
+        adapter->bio_ctx = NULL;
+    }
+
+    adapter->bio_async_enabled = false;
+    LOG_INFO("Disconnected from bio-async router");
+
+    return true;
+}
+
+/**
+ * @brief Check if signal adapter is connected to bio-async
+ *
+ * WHAT: Query bio-async connection status
+ * WHY:  Verify messaging availability
+ * HOW:  Check flag
+ */
+bool swarm_signal_is_bio_async_connected(const nimcp_swarm_signal_adapter_t* adapter)
+{
+    if (!bbb_check_pointer(adapter, "swarm_signal_is_bio_async_connected")) {
+        return false;
+    }
+
+    return adapter->bio_async_enabled;
 }

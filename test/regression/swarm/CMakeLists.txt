@@ -50,3 +50,27 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_enhanced_regression.cpp
     regression
 )
+
+# Test 8: Swarm Sleep and Immune Bridges Regression
+add_executable(regression_swarm_bridges
+    test_swarm_bridges_regression.cpp
+)
+target_link_libraries(regression_swarm_bridges
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(regression_swarm_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/swarm/sleep
+        ${CMAKE_SOURCE_DIR}/src/swarm/immune
+        ${CMAKE_SOURCE_DIR}/src/cognitive
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/thread
+)
+add_test(NAME regression_swarm_bridges
+         COMMAND regression_swarm_bridges)
+set_tests_properties(regression_swarm_bridges PROPERTIES LABELS "regression")

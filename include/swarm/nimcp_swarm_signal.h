@@ -283,6 +283,46 @@ bool swarm_signal_get_temporal_embedding(
     float* output
 );
 
+//=============================================================================
+// BIO-ASYNC INTEGRATION
+//=============================================================================
+
+/**
+ * @brief Connect signal adapter to bio-async router
+ *
+ * WHAT: Register signal module with bio-async messaging system
+ * WHY:  Enable inter-module messaging for swarm coordination
+ * HOW:  Register with BIO_MODULE_SWARM_SIGNAL ID
+ *
+ * @param adapter Signal adapter
+ * @return true on success, false on failure
+ */
+bool swarm_signal_connect_bio_async(nimcp_swarm_signal_adapter_t* adapter);
+
+/**
+ * @brief Disconnect signal adapter from bio-async router
+ *
+ * WHAT: Unregister from bio-async messaging system
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Deregister module and cleanup
+ *
+ * @param adapter Signal adapter
+ * @return true on success, false on failure
+ */
+bool swarm_signal_disconnect_bio_async(nimcp_swarm_signal_adapter_t* adapter);
+
+/**
+ * @brief Check if signal adapter is connected to bio-async
+ *
+ * WHAT: Query bio-async connection status
+ * WHY:  Verify messaging availability
+ * HOW:  Check bio_async_enabled flag
+ *
+ * @param adapter Signal adapter
+ * @return true if connected, false otherwise
+ */
+bool swarm_signal_is_bio_async_connected(const nimcp_swarm_signal_adapter_t* adapter);
+
 #ifdef __cplusplus
 }
 #endif

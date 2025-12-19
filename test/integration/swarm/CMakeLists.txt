@@ -71,3 +71,13 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_swarm_immune_integration.cpp
     integration
 )
+
+# ============================================================================
+# Subdirectories
+# ============================================================================
+
+# Sleep Bridge Integration Tests
+add_subdirectory(sleep)
+
+# Immune Bridge Integration Tests
+add_subdirectory(immune)

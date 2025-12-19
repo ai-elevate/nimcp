@@ -28,6 +28,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <time.h>
 #include <math.h>
@@ -86,6 +88,10 @@ struct swarm_consensus_context {
     swarm_consensus_stats_t stats;           /**< Statistics */
     nimcp_mutex_t mutex;                     /**< Thread safety */
     bool mutex_initialized;                  /**< Mutex init flag */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;            /**< Bio-async module context */
+    bool bio_async_enabled;                  /**< Whether bio-async is active */
 };
 
 //=============================================================================
@@ -243,6 +249,10 @@ swarm_consensus_t swarm_consensus_create(const swarm_consensus_config_t* config)
     }
     ctx->mutex_initialized = true;
 
+    /* Initialize bio-async fields */
+    ctx->bio_ctx = NULL;
+    ctx->bio_async_enabled = false;
+
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_consensus", "created",
                  "Consensus context created for drone %u", config->drone_id);
     LOG_INFO("Consensus context created for drone %u", config->drone_id);
@@ -260,6 +270,11 @@ void swarm_consensus_destroy(swarm_consensus_t ctx)
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_CONSENSUS_MAGIC) {
         return;
+    }
+
+    /* Disconnect bio-async if connected */
+    if (ctx->bio_async_enabled) {
+        swarm_consensus_disconnect_bio_async(ctx);
     }
 
     /* Cancel all active votes and invoke callbacks */
@@ -997,4 +1012,87 @@ static bool is_byzantine_fault(
     }
 
     return false;
+}
+
+//=============================================================================
+// Bio-async Integration API
+//=============================================================================
+
+/**
+ * @brief Connect consensus context to bio-async router
+ *
+ * WHAT: Register with bio-async messaging system
+ * WHY:  Enable inter-module messaging for consensus coordination
+ * HOW:  Register as BIO_MODULE_SWARM_CONSENSUS
+ */
+nimcp_error_t swarm_consensus_connect_bio_async(swarm_consensus_t ctx)
+{
+    if (!ctx || ctx->magic != NIMCP_SWARM_CONSENSUS_MAGIC) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (ctx->bio_async_enabled) {
+        return NIMCP_SUCCESS;  // Already connected
+    }
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_SWARM_CONSENSUS,
+        .module_name = "swarm_consensus",
+        .inbox_capacity = 32,
+        .user_data = ctx
+    };
+
+    ctx->bio_ctx = bio_router_register_module(&info);
+    if (ctx->bio_ctx) {
+        ctx->bio_async_enabled = true;
+        LOG_INFO("Connected to bio-async router");
+    } else {
+        LOG_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Disconnect consensus context from bio-async router
+ *
+ * WHAT: Unregister from bio-async messaging
+ * WHY:  Clean shutdown
+ * HOW:  Deregister and cleanup
+ */
+nimcp_error_t swarm_consensus_disconnect_bio_async(swarm_consensus_t ctx)
+{
+    if (!ctx || ctx->magic != NIMCP_SWARM_CONSENSUS_MAGIC) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (!ctx->bio_async_enabled) {
+        return NIMCP_SUCCESS;  // Not connected
+    }
+
+    if (ctx->bio_ctx) {
+        bio_router_unregister_module(ctx->bio_ctx);
+        ctx->bio_ctx = NULL;
+    }
+
+    ctx->bio_async_enabled = false;
+    LOG_INFO("Disconnected from bio-async router");
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Check if consensus is connected to bio-async
+ *
+ * WHAT: Query bio-async connection status
+ * WHY:  Verify messaging availability
+ * HOW:  Check flag
+ */
+bool swarm_consensus_is_bio_async_connected(const swarm_consensus_t ctx)
+{
+    if (!ctx || ctx->magic != NIMCP_SWARM_CONSENSUS_MAGIC) {
+        return false;
+    }
+
+    return ctx->bio_async_enabled;
 }

@@ -386,3 +386,8 @@ set_tests_properties(unit_security_test_security_perception_bridge PROPERTIES
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/immune/CMakeLists.txt")
     add_subdirectory(immune)
 endif()
+
+# Security Sleep Bridge Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sleep/CMakeLists.txt")
+    add_subdirectory(sleep)
+endif()

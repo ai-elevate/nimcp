@@ -285,3 +285,27 @@ target_link_libraries(regression_security_test_supply_chain PRIVATE GTest::GTest
 target_include_directories(regression_security_test_supply_chain PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME regression_security_test_supply_chain COMMAND regression_security_test_supply_chain)
 set_tests_properties(regression_security_test_supply_chain PROPERTIES LABELS "regression;security" TIMEOUT 120)
+
+# ============================================================================
+# Security Sleep Bridge Regression Tests
+# ============================================================================
+add_executable(regression_security_sleep_bridges
+    test_security_sleep_regression.cpp
+)
+target_link_libraries(regression_security_sleep_bridges
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(regression_security_sleep_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security/sleep
+        ${CMAKE_SOURCE_DIR}/src/cognitive
+        ${CMAKE_SOURCE_DIR}/src/utils/thread
+)
+add_test(NAME regression_security_sleep_bridges
+         COMMAND regression_security_sleep_bridges)
+set_tests_properties(regression_security_sleep_bridges PROPERTIES LABELS "regression;security")

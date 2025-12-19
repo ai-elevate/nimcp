@@ -1,0 +1,176 @@
+/**
+ * @file nimcp_cortical_hierarchy_sleep_bridge.c
+ * @brief Sleep-Cortical Hierarchy Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-17
+ */
+
+#include "core/cortical_columns/sleep/nimcp_cortical_hierarchy_sleep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <string.h>
+
+struct cortical_hierarchy_sleep_bridge_struct {
+    cortical_hierarchy_sleep_config_t config;
+    cortical_hierarchy_t* hierarchy;
+    sleep_system_t sleep_system;
+    cortical_hierarchy_sleep_effects_t effects;
+    nimcp_mutex_t* mutex;
+    bool callback_registered;
+};
+
+static void cortical_hierarchy_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    cortical_hierarchy_sleep_bridge_t bridge = (cortical_hierarchy_sleep_bridge_t)user_data;
+    if (!bridge) return;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->effects.current_state = new_state;
+
+    if (bridge->config.enable_ff_modulation) {
+        switch (new_state) {
+            case SLEEP_STATE_LIGHT_NREM:
+            case SLEEP_STATE_DEEP_NREM:
+                bridge->effects.feedforward_strength = HIERARCHY_SLEEP_FF_NREM;
+                break;
+            case SLEEP_STATE_REM:
+                bridge->effects.feedforward_strength = HIERARCHY_SLEEP_FF_REM;
+                break;
+            default:
+                bridge->effects.feedforward_strength = HIERARCHY_SLEEP_FF_AWAKE;
+                break;
+        }
+    }
+
+    if (bridge->config.enable_fb_modulation) {
+        switch (new_state) {
+            case SLEEP_STATE_LIGHT_NREM:
+            case SLEEP_STATE_DEEP_NREM:
+                bridge->effects.feedback_strength = HIERARCHY_SLEEP_FB_NREM;
+                break;
+            case SLEEP_STATE_REM:
+                bridge->effects.feedback_strength = HIERARCHY_SLEEP_FB_REM;
+                break;
+            default:
+                bridge->effects.feedback_strength = HIERARCHY_SLEEP_FB_AWAKE;
+                break;
+        }
+    }
+
+    bridge->effects.hierarchy_offline = (new_state == SLEEP_STATE_DEEP_NREM);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Cortical hierarchy modulated: FF=%.2f, FB=%.2f",
+                        bridge->effects.feedforward_strength,
+                        bridge->effects.feedback_strength);
+}
+
+int cortical_hierarchy_sleep_default_config(cortical_hierarchy_sleep_config_t* config)
+{
+    if (!config) return -1;
+    config->enable_ff_modulation = true;
+    config->enable_fb_modulation = true;
+    config->modulation_strength = 1.0f;
+    return 0;
+}
+
+cortical_hierarchy_sleep_bridge_t cortical_hierarchy_sleep_bridge_create(
+    const cortical_hierarchy_sleep_config_t* config,
+    cortical_hierarchy_t* hierarchy,
+    sleep_system_t sleep)
+{
+    if (!hierarchy || !sleep) return NULL;
+
+    struct cortical_hierarchy_sleep_bridge_struct* bridge =
+        (struct cortical_hierarchy_sleep_bridge_struct*)nimcp_malloc(
+            sizeof(struct cortical_hierarchy_sleep_bridge_struct));
+    if (!bridge) return NULL;
+
+    memset(bridge, 0, sizeof(struct cortical_hierarchy_sleep_bridge_struct));
+
+    if (config) bridge->config = *config;
+    else cortical_hierarchy_sleep_default_config(&bridge->config);
+
+    bridge->hierarchy = hierarchy;
+    bridge->sleep_system = sleep;
+
+    bridge->mutex = nimcp_mutex_create();
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    bridge->effects.current_state = SLEEP_STATE_AWAKE;
+    bridge->effects.feedforward_strength = 1.0f;
+    bridge->effects.feedback_strength = 1.0f;
+    bridge->effects.hierarchy_offline = false;
+
+    bool registered = sleep_register_state_callback(sleep, cortical_hierarchy_on_sleep_state_change, bridge);
+    if (registered) {
+        bridge->callback_registered = true;
+        NIMCP_LOGGING_INFO("Cortical hierarchy sleep bridge created");
+    }
+
+    return bridge;
+}
+
+void cortical_hierarchy_sleep_bridge_destroy(cortical_hierarchy_sleep_bridge_t bridge)
+{
+    if (!bridge) return;
+    if (bridge->callback_registered) {
+        sleep_unregister_state_callback(bridge->sleep_system, cortical_hierarchy_on_sleep_state_change, bridge);
+    }
+    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    nimcp_free(bridge);
+}
+
+int cortical_hierarchy_sleep_update(cortical_hierarchy_sleep_bridge_t bridge)
+{
+    if (!bridge) return -1;
+    return 0;
+}
+
+int cortical_hierarchy_sleep_apply_modulation(cortical_hierarchy_sleep_bridge_t bridge)
+{
+    if (!bridge) return -1;
+    /* Application would modify hierarchy FF/FB connection strengths */
+    return 0;
+}
+
+int cortical_hierarchy_sleep_get_effects(const cortical_hierarchy_sleep_bridge_t bridge,
+                                         cortical_hierarchy_sleep_effects_t* effects)
+{
+    if (!bridge || !effects) return -1;
+    nimcp_mutex_lock(bridge->mutex);
+    *effects = bridge->effects;
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+float cortical_hierarchy_sleep_get_ff_strength(const cortical_hierarchy_sleep_bridge_t bridge)
+{
+    if (!bridge) return -1.0f;
+    nimcp_mutex_lock(bridge->mutex);
+    float strength = bridge->effects.feedforward_strength;
+    nimcp_mutex_unlock(bridge->mutex);
+    return strength;
+}
+
+float cortical_hierarchy_sleep_get_fb_strength(const cortical_hierarchy_sleep_bridge_t bridge)
+{
+    if (!bridge) return -1.0f;
+    nimcp_mutex_lock(bridge->mutex);
+    float strength = bridge->effects.feedback_strength;
+    nimcp_mutex_unlock(bridge->mutex);
+    return strength;
+}
+
+bool cortical_hierarchy_sleep_is_offline(const cortical_hierarchy_sleep_bridge_t bridge)
+{
+    if (!bridge) return false;
+    nimcp_mutex_lock(bridge->mutex);
+    bool offline = bridge->effects.hierarchy_offline;
+    nimcp_mutex_unlock(bridge->mutex);
+    return offline;
+}

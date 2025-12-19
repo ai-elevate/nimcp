@@ -521,6 +521,46 @@ const char* swarm_vote_choice_name(swarm_vote_choice_t choice);
  */
 const char* swarm_vote_status_name(swarm_vote_status_t status);
 
+//=============================================================================
+// Bio-async Integration API
+//=============================================================================
+
+/**
+ * @brief Connect consensus context to bio-async router
+ *
+ * WHAT: Register consensus module with bio-async messaging system
+ * WHY:  Enable inter-module messaging for consensus coordination
+ * HOW:  Register with BIO_MODULE_SWARM_CONSENSUS ID
+ *
+ * @param ctx Consensus context
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_consensus_connect_bio_async(swarm_consensus_t ctx);
+
+/**
+ * @brief Disconnect consensus context from bio-async router
+ *
+ * WHAT: Unregister from bio-async messaging system
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Deregister module and cleanup
+ *
+ * @param ctx Consensus context
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t swarm_consensus_disconnect_bio_async(swarm_consensus_t ctx);
+
+/**
+ * @brief Check if consensus is connected to bio-async
+ *
+ * WHAT: Query bio-async connection status
+ * WHY:  Verify messaging availability
+ * HOW:  Check bio_async_enabled flag
+ *
+ * @param ctx Consensus context
+ * @return true if connected, false otherwise
+ */
+bool swarm_consensus_is_bio_async_connected(const swarm_consensus_t ctx);
+
 #ifdef __cplusplus
 }
 #endif

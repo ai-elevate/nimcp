@@ -1,0 +1,266 @@
+/**
+ * @file nimcp_dendritic_sleep_bridge.c
+ * @brief Sleep-Dendritic Plasticity Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-17
+ */
+
+#include "plasticity/dendritic/nimcp_dendritic_sleep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <string.h>
+
+struct dendritic_sleep_bridge_struct {
+    dendritic_sleep_config_t config;
+    sleep_system_t sleep_system;
+    dendritic_sleep_effects_t effects;
+    nimcp_mutex_t* mutex;
+    bool callback_registered;  /* Track if callback is registered for cleanup */
+};
+
+/* Forward declarations */
+static void dendritic_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update dendritic computation parameters for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - NMDA receptors show enhanced activity during NREM sleep
+ * - Dendritic spike thresholds are reduced during consolidation
+ * - Ca2+ dynamics are prolonged during sleep to enhance integration
+ * - Deep NREM provides optimal conditions for dendritic computation
+ */
+static void dendritic_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    dendritic_sleep_bridge_t bridge = (dendritic_sleep_bridge_t)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("Dendritic bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    if (bridge->config.enable_nmda_modulation) {
+        float nmda_base = dendritic_sleep_get_nmda_factor(new_state);
+        bridge->effects.nmda_conductance_factor =
+            1.0f + (nmda_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_threshold_modulation) {
+        float threshold_base = dendritic_sleep_get_threshold_factor(new_state);
+        bridge->effects.spike_threshold_factor =
+            1.0f + (threshold_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_calcium_modulation) {
+        float calcium_base = dendritic_sleep_get_calcium_factor(new_state);
+        bridge->effects.calcium_decay_factor =
+            1.0f + (calcium_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    bridge->effects.enhanced_integration =
+        (new_state == SLEEP_STATE_LIGHT_NREM || new_state == SLEEP_STATE_DEEP_NREM);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Dendritic modulated: nmda=%.2f, threshold=%.2f, ca_decay=%.2f",
+                        bridge->effects.nmda_conductance_factor,
+                        bridge->effects.spike_threshold_factor,
+                        bridge->effects.calcium_decay_factor);
+}
+
+int dendritic_sleep_default_config(dendritic_sleep_config_t* config) {
+    if (!config) return -1;
+    config->enable_nmda_modulation = true;
+    config->enable_threshold_modulation = true;
+    config->enable_calcium_modulation = true;
+    config->modulation_strength = 1.0f;
+    return 0;
+}
+
+dendritic_sleep_bridge_t dendritic_sleep_bridge_create(
+    const dendritic_sleep_config_t* config,
+    sleep_system_t sleep_system)
+{
+    if (!sleep_system) {
+        NIMCP_LOGGING_ERROR("dendritic_sleep_bridge_create: NULL sleep_system");
+        return NULL;
+    }
+
+    struct dendritic_sleep_bridge_struct* bridge =
+        (struct dendritic_sleep_bridge_struct*)nimcp_malloc(
+            sizeof(struct dendritic_sleep_bridge_struct));
+    if (!bridge) return NULL;
+
+    memset(bridge, 0, sizeof(struct dendritic_sleep_bridge_struct));
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        dendritic_sleep_default_config(&bridge->config);
+    }
+
+    bridge->sleep_system = sleep_system;
+    bridge->effects.nmda_conductance_factor = 1.0f;
+    bridge->effects.spike_threshold_factor = 1.0f;
+    bridge->effects.calcium_decay_factor = 1.0f;
+    bridge->effects.enhanced_integration = false;
+
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep_system,
+        dendritic_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for dendritic bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep_system);
+    dendritic_on_sleep_state_change(initial_state, bridge);
+
+    NIMCP_LOGGING_INFO("Dendritic-sleep bridge created");
+    return bridge;
+}
+
+void dendritic_sleep_bridge_destroy(dendritic_sleep_bridge_t bridge) {
+    if (!bridge) return;
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            dendritic_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for dendritic bridge");
+        }
+    }
+
+    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    nimcp_free(bridge);
+}
+
+int dendritic_sleep_update(dendritic_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
+    float pressure = sleep_get_pressure(bridge->sleep_system);
+
+    bridge->effects.current_state = state;
+    bridge->effects.sleep_pressure = pressure;
+
+    if (bridge->config.enable_nmda_modulation) {
+        float nmda_base = dendritic_sleep_get_nmda_factor(state);
+        bridge->effects.nmda_conductance_factor =
+            1.0f + (nmda_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_threshold_modulation) {
+        float threshold_base = dendritic_sleep_get_threshold_factor(state);
+        bridge->effects.spike_threshold_factor =
+            1.0f + (threshold_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    if (bridge->config.enable_calcium_modulation) {
+        float calcium_base = dendritic_sleep_get_calcium_factor(state);
+        bridge->effects.calcium_decay_factor =
+            1.0f + (calcium_base - 1.0f) * bridge->config.modulation_strength;
+    }
+
+    bridge->effects.enhanced_integration =
+        (state == SLEEP_STATE_LIGHT_NREM || state == SLEEP_STATE_DEEP_NREM);
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int dendritic_sleep_get_effects(const dendritic_sleep_bridge_t bridge,
+                                 dendritic_sleep_effects_t* effects) {
+    if (!bridge || !effects) return -1;
+    nimcp_mutex_lock(bridge->mutex);
+    *effects = bridge->effects;
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+float dendritic_sleep_get_nmda_conductance(const dendritic_sleep_bridge_t bridge,
+                                            float base_conductance) {
+    if (!bridge) return base_conductance;
+    nimcp_mutex_lock(bridge->mutex);
+    float result = base_conductance * bridge->effects.nmda_conductance_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+    return result;
+}
+
+float dendritic_sleep_get_spike_threshold(const dendritic_sleep_bridge_t bridge,
+                                           float base_threshold) {
+    if (!bridge) return base_threshold;
+    nimcp_mutex_lock(bridge->mutex);
+    float result = base_threshold * bridge->effects.spike_threshold_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+    return result;
+}
+
+float dendritic_sleep_get_calcium_decay(const dendritic_sleep_bridge_t bridge,
+                                         float base_tau) {
+    if (!bridge) return base_tau;
+    nimcp_mutex_lock(bridge->mutex);
+    /* Lower factor = slower decay (longer tau) */
+    float result = base_tau / bridge->effects.calcium_decay_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+    return result;
+}
+
+float dendritic_sleep_get_nmda_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return DENDRITIC_SLEEP_NMDA_AWAKE;
+        case SLEEP_STATE_DROWSY:     return DENDRITIC_SLEEP_NMDA_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return DENDRITIC_SLEEP_NMDA_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return DENDRITIC_SLEEP_NMDA_DEEP_NREM;
+        case SLEEP_STATE_REM:        return DENDRITIC_SLEEP_NMDA_REM;
+        default:                     return DENDRITIC_SLEEP_NMDA_AWAKE;
+    }
+}
+
+float dendritic_sleep_get_threshold_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return DENDRITIC_SLEEP_THRESHOLD_AWAKE;
+        case SLEEP_STATE_DROWSY:     return DENDRITIC_SLEEP_THRESHOLD_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return DENDRITIC_SLEEP_THRESHOLD_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return DENDRITIC_SLEEP_THRESHOLD_DEEP_NREM;
+        case SLEEP_STATE_REM:        return DENDRITIC_SLEEP_THRESHOLD_REM;
+        default:                     return DENDRITIC_SLEEP_THRESHOLD_AWAKE;
+    }
+}
+
+float dendritic_sleep_get_calcium_factor(sleep_state_t state) {
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return DENDRITIC_SLEEP_CA_DECAY_AWAKE;
+        case SLEEP_STATE_DROWSY:     return DENDRITIC_SLEEP_CA_DECAY_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return DENDRITIC_SLEEP_CA_DECAY_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return DENDRITIC_SLEEP_CA_DECAY_DEEP_NREM;
+        case SLEEP_STATE_REM:        return DENDRITIC_SLEEP_CA_DECAY_REM;
+        default:                     return DENDRITIC_SLEEP_CA_DECAY_AWAKE;
+    }
+}
