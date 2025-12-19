@@ -611,6 +611,11 @@ typedef enum {
     BIO_MODULE_SPEECH_CORTEX,
     BIO_MODULE_MULTIMODAL,
 
+    /* Perception-Cortical Bridge modules (0x0710 - 0x071F) */
+    BIO_MODULE_VISUAL_CORTICAL = 0x0710,        /**< Visual-cortical bridge */
+    BIO_MODULE_AUDIO_CORTICAL,                  /**< Audio-cortical bridge */
+    BIO_MODULE_SPEECH_CORTICAL,                 /**< Speech-cortical bridge */
+
     /* Language modules (0x0800 - 0x08FF) */
     BIO_MODULE_NLP = 0x0800,
     BIO_MODULE_BROCA,

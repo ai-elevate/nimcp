@@ -15,6 +15,7 @@
  */
 
 #include "core/cortical_columns/nimcp_orientation_columns.h"
+#include "utils/gabor/nimcp_gabor.h"  /* Shared Gabor filter library */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -106,99 +107,63 @@ static void orientation_columns_bio_cleanup(void) {
  * ========================================================================== */
 
 /**
- * @brief Convert degrees to radians
- *
- * WHAT: Converts angle from degrees to radians.
- * WHY:  Math functions require radians.
- * HOW:  Multiply by π/180.
+ * @brief Convert degrees to radians (local helper for von Mises)
  */
 static inline float deg2rad(float degrees) {
-    return degrees * (float)M_PI / 180.0F;
+    return gabor_deg_to_rad(degrees);
 }
 
 /**
- * @brief Convert radians to degrees
- *
- * WHAT: Converts angle from radians to degrees.
- * WHY:  User-facing API uses degrees.
- * HOW:  Multiply by 180/π.
+ * @brief Convert radians to degrees (local helper)
  */
 static inline float rad2deg(float radians) {
-    return radians * 180.0F / (float)M_PI;
+    return gabor_rad_to_deg(radians);
 }
 
 /**
- * @brief Normalize angle to [0, 180) range
- *
- * WHAT: Wraps orientation angle to 0-180 degree range.
- * WHY:  Orientations have 180-degree periodicity (not 360).
- * HOW:  Uses modulo arithmetic with wrapping.
+ * @brief Normalize angle to [0, 180) range - uses shared library
  */
 static float normalize_orientation(float angle) {
-    while (angle < 0.0F) {
-        angle += 180.0F;
-    }
-    while (angle >= 180.0F) {
-        angle -= 180.0F;
-    }
-    return angle;
+    return gabor_normalize_orientation(angle);
 }
 
 /**
- * @brief Compute angular difference considering 180-degree periodicity
- *
- * WHAT: Calculates shortest angular distance between two orientations.
- * WHY:  Orientations wrap at 180 degrees.
- * HOW:  Considers both direct and wrapped differences.
+ * @brief Compute angular difference - uses shared library
  */
 static float angular_difference(float angle1, float angle2) {
-    float diff = fabsf(angle1 - angle2);
-    if (diff > 90.0F) {
-        diff = 180.0F - diff;
-    }
-    return diff;
+    return gabor_angular_difference(angle1, angle2);
 }
 
 /**
- * @brief Compute 2D Gaussian value
+ * @brief Convert cc_gabor_params_t to gabor_filter_params_t
  *
- * WHAT: Evaluates Gaussian function at (x, y).
- * WHY:  Used for Gabor envelope.
- * HOW:  exp(-(x²/(2σ_x²) + y²/(2σ_y²)))
+ * WHAT: Bridges between orientation_columns' cc_gabor_params_t and shared library.
+ * WHY:  Maintains backward compatibility while using shared Gabor implementation.
+ * HOW:  Maps fields between the two structures.
  */
-static float gaussian_2d(float x, float y, float sigma_x, float sigma_y) {
-    if (sigma_x < EPSILON || sigma_y < EPSILON) {
-        return 0.0F;
-    }
-
-    float x_term = (x * x) / (2.0F * sigma_x * sigma_x);
-    float y_term = (y * y) / (2.0F * sigma_y * sigma_y);
-    return expf(-(x_term + y_term));
-}
-
-/**
- * @brief Rotate 2D coordinates
- *
- * WHAT: Applies rotation transformation to (x, y).
- * WHY:  Needed for oriented Gabor filters.
- * HOW:  x' = x×cos(θ) + y×sin(θ), y' = -x×sin(θ) + y×cos(θ)
- */
-static void rotate_coords(
-    float x, float y, float theta,
-    float* x_rot, float* y_rot
+static void cc_to_filter_params(
+    const cc_gabor_params_t* cc_params,
+    gabor_filter_params_t* filter_params
 ) {
-    float cos_theta = cosf(theta);
-    float sin_theta = sinf(theta);
-    *x_rot = x * cos_theta + y * sin_theta;
-    *y_rot = -x * sin_theta + y * cos_theta;
+    if (!cc_params || !filter_params) {
+        return;
+    }
+
+    gabor_default_params(filter_params);
+    filter_params->orientation_deg = gabor_rad_to_deg(cc_params->theta);
+    filter_params->wavelength = cc_params->lambda;
+    filter_params->phase_deg = gabor_rad_to_deg(cc_params->psi);
+    filter_params->aspect_ratio = cc_params->gamma;
+    filter_params->sigma_x_override = cc_params->sigma_x;
+    filter_params->sigma_y_override = cc_params->sigma_y;
 }
 
 /**
- * @brief Compute Gabor filter value at a point
+ * @brief Compute Gabor filter value at a point - uses shared library
  *
  * WHAT: Evaluates Gabor function at (x, y) with given parameters.
  * WHY:  Core of simple cell receptive field model.
- * HOW:  G = exp(-(x'² + γ²y'²)/(2σ²)) × cos(2π×x'/λ + ψ)
+ * HOW:  Converts to shared library format and calls gabor_evaluate.
  */
 static float gabor_function(
     float x, float y,
@@ -208,24 +173,10 @@ static float gabor_function(
         return 0.0F;
     }
 
-    /* Rotate coordinates by orientation angle */
-    float x_rot, y_rot;
-    rotate_coords(x, y, params->theta, &x_rot, &y_rot);
+    gabor_filter_params_t filter_params;
+    cc_to_filter_params(params, &filter_params);
 
-    /* Compute Gaussian envelope with aspect ratio gamma */
-    float gaussian_term = gaussian_2d(
-        x_rot,
-        y_rot * params->gamma,
-        params->sigma_x,
-        params->sigma_y
-    );
-
-    /* Compute sinusoidal carrier */
-    float sinusoid_term = cosf(
-        2.0F * (float)M_PI * x_rot / params->lambda + params->psi
-    );
-
-    return gaussian_term * sinusoid_term;
+    return gabor_evaluate(x, y, &filter_params);
 }
 
 /**
@@ -241,11 +192,11 @@ static float von_mises(float theta, float mu, float kappa) {
 }
 
 /**
- * @brief Initialize default Gabor parameters
+ * @brief Initialize default Gabor parameters - uses shared library
  *
  * WHAT: Sets up Gabor parameters based on spatial frequency and orientation.
  * WHY:  Provide sensible defaults for Gabor filtering.
- * HOW:  λ = 1/f, σ related to λ, standard aspect ratio.
+ * HOW:  Uses shared library then converts back to cc_gabor_params_t.
  */
 static void init_default_gabor_params(
     cc_gabor_params_t* params,
@@ -257,12 +208,21 @@ static void init_default_gabor_params(
         return;
     }
 
-    params->lambda = 1.0F / spatial_frequency;
-    params->sigma_x = params->lambda * 0.56F;  /* Standard ratio */
-    params->sigma_y = params->lambda * 0.56F;
-    params->gamma = DEFAULT_GABOR_GAMMA;
-    params->psi = phase;
-    params->theta = deg2rad(orientation_deg);
+    /* Use shared library to compute defaults */
+    gabor_filter_params_t filter_params;
+    gabor_params_from_frequency(&filter_params, spatial_frequency, orientation_deg);
+    filter_params.phase_deg = gabor_rad_to_deg(phase);  /* phase is in radians here */
+
+    /* Convert back to cc_gabor_params_t */
+    float sigma_x, sigma_y;
+    gabor_compute_sigmas(&filter_params, &sigma_x, &sigma_y);
+
+    params->lambda = filter_params.wavelength;
+    params->sigma_x = sigma_x;
+    params->sigma_y = sigma_y;
+    params->gamma = filter_params.aspect_ratio;
+    params->psi = phase;  /* Keep as radians per cc_gabor_params_t convention */
+    params->theta = gabor_deg_to_rad(filter_params.orientation_deg);
 }
 
 /* ============================================================================

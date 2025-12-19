@@ -402,6 +402,30 @@ set_tests_properties(e2e_test_bridge_pipelines PROPERTIES
     TIMEOUT 180
 )
 
+# Perception-Cortical Bridge E2E Test
+add_executable(e2e_test_perception_cortical
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_perception_cortical.cpp
+)
+target_link_libraries(e2e_test_perception_cortical
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(e2e_test_perception_cortical
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/perception
+        ${CMAKE_SOURCE_DIR}/src/perception/cortical
+        ${CMAKE_SOURCE_DIR}/src/core/cortical_columns
+)
+add_test(NAME e2e_test_perception_cortical COMMAND e2e_test_perception_cortical)
+set_tests_properties(e2e_test_perception_cortical PROPERTIES
+    LABELS "e2e"
+    TIMEOUT 180
+)
+
 # ============================================================================
 # Plasticity Pipeline E2E Test
 # ============================================================================

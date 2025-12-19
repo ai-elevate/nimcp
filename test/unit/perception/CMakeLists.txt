@@ -20,3 +20,8 @@ endmacro()
 
 # Speech Cortex PE tests
 add_speech_cortex_pe_test(test_speech_cortex_pe)
+
+# Cortical tests subdirectory
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cortical/CMakeLists.txt")
+    add_subdirectory(cortical)
+endif()

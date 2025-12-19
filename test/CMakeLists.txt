@@ -798,6 +798,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/encoding")
 endif()
 
 # ============================================================================
+# Utils Gabor Filter Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/gabor")
+    message(STATUS "Adding utils gabor filter unit tests...")
+    add_subdirectory(unit/utils/gabor)
+endif()
+
+# ============================================================================
 # Cognitive Integration Tests (General)
 # ============================================================================
 
@@ -992,6 +1001,28 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/plasticity")
     message(STATUS "Adding plasticity regression tests...")
     add_subdirectory(regression/plasticity)
+endif()
+
+# ============================================================================
+# Perception Tests
+# ============================================================================
+# WHAT: Tests for perception modules (visual, audio, speech cortex)
+# WHY:  Verify sensory processing and cortical integration
+# HOW:  Unit tests for cortical processing, integration tests for multimodal
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/perception")
+    message(STATUS "Adding perception unit tests...")
+    add_subdirectory(unit/perception)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/perception")
+    message(STATUS "Adding perception integration tests...")
+    add_subdirectory(integration/perception)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/perception")
+    message(STATUS "Adding perception regression tests...")
+    add_subdirectory(regression/perception)
 endif()
 
 # ============================================================================

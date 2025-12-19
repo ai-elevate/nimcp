@@ -756,6 +756,9 @@ set(NIMCP_CORE_SOURCES
     # Utils - Positional Encoding (Transformer-style encodings)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/encoding/nimcp_positional_encoding.c  # Sinusoidal, learned, RoPE, ALiBi encodings
 
+    # Utils - Gabor Filters (V1 visual processing)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/gabor/nimcp_gabor.c  # Unified Gabor filter library for orientation selectivity
+
     # Information Theory (Phase C4: Shannon Information Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_shannon.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_cross_modal.c  # Phase C4.7: Cross-Modal Information Flow
@@ -775,6 +778,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_visual_immune_bridge.c  # Visual cortex-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_audio_immune_bridge.c  # Audio cortex-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_speech_immune_bridge.c  # Speech cortex-immune integration
+
+    # Perception-Cortical Bridges (Phase CC-P: Cortical column integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_visual_cortical_bridge.c  # Visual-cortical bridge
+    # Audio and speech cortical bridges temporarily disabled pending API alignment
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_audio_cortical_bridge.c   # Audio-cortical bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_speech_cortical_bridge.c  # Speech-cortical bridge
 
     # Glial-Immune Integration (Phase BII-G: Glial immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocyte_immune_bridge.c  # Astrocyte-immune integration

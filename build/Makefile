@@ -4553,19 +4553,6 @@ integration_optimization_test_multi_objective_integration/fast:
 .PHONY : integration_optimization_test_multi_objective_integration/fast
 
 #=============================================================================
-# Target rules for targets named integration_perception_test_brain_topology_integration
-
-# Build rule for target.
-integration_perception_test_brain_topology_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_perception_test_brain_topology_integration
-.PHONY : integration_perception_test_brain_topology_integration
-
-# fast build rule for target.
-integration_perception_test_brain_topology_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_perception_test_brain_topology_integration.dir/build.make test/CMakeFiles/integration_perception_test_brain_topology_integration.dir/build
-.PHONY : integration_perception_test_brain_topology_integration/fast
-
-#=============================================================================
 # Target rules for targets named integration_plasticity_adaptive_test_adaptive_integration
 
 # Build rule for target.
@@ -6698,6 +6685,19 @@ e2e_test_bridge_pipelines/fast:
 .PHONY : e2e_test_bridge_pipelines/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_perception_cortical
+
+# Build rule for target.
+e2e_test_perception_cortical: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_perception_cortical
+.PHONY : e2e_test_perception_cortical
+
+# fast build rule for target.
+e2e_test_perception_cortical/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_perception_cortical.dir/build.make test/e2e/CMakeFiles/e2e_test_perception_cortical.dir/build
+.PHONY : e2e_test_perception_cortical/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_plasticity_pipeline
 
 # Build rule for target.
@@ -6722,6 +6722,19 @@ e2e_test_neural_plasticity_pipeline: cmake_check_build_system
 e2e_test_neural_plasticity_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build
 .PHONY : e2e_test_neural_plasticity_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_master_connectivity
+
+# Build rule for target.
+e2e_test_master_connectivity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_master_connectivity
+.PHONY : e2e_test_master_connectivity
+
+# fast build rule for target.
+e2e_test_master_connectivity/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_master_connectivity.dir/build.make test/e2e/CMakeFiles/e2e_test_master_connectivity.dir/build
+.PHONY : e2e_test_master_connectivity/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -11300,6 +11313,19 @@ regression_utils_encoding_pe_stability/fast:
 .PHONY : regression_utils_encoding_pe_stability/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_gabor_test_gabor_filters
+
+# Build rule for target.
+unit_utils_gabor_test_gabor_filters: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_gabor_test_gabor_filters
+.PHONY : unit_utils_gabor_test_gabor_filters
+
+# fast build rule for target.
+unit_utils_gabor_test_gabor_filters/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/gabor/CMakeFiles/unit_utils_gabor_test_gabor_filters.dir/build.make test/unit/utils/gabor/CMakeFiles/unit_utils_gabor_test_gabor_filters.dir/build
+.PHONY : unit_utils_gabor_test_gabor_filters/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_emotion_integration
 
 # Build rule for target.
@@ -13705,6 +13731,58 @@ test_calcium_regression/fast:
 .PHONY : test_calcium_regression/fast
 
 #=============================================================================
+# Target rules for targets named unit_perception_test_speech_cortex_pe
+
+# Build rule for target.
+unit_perception_test_speech_cortex_pe: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_test_speech_cortex_pe
+.PHONY : unit_perception_test_speech_cortex_pe
+
+# fast build rule for target.
+unit_perception_test_speech_cortex_pe/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/CMakeFiles/unit_perception_test_speech_cortex_pe.dir/build.make test/unit/perception/CMakeFiles/unit_perception_test_speech_cortex_pe.dir/build
+.PHONY : unit_perception_test_speech_cortex_pe/fast
+
+#=============================================================================
+# Target rules for targets named unit_perception_cortical_test_visual_cortical_bridge
+
+# Build rule for target.
+unit_perception_cortical_test_visual_cortical_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_cortical_test_visual_cortical_bridge
+.PHONY : unit_perception_cortical_test_visual_cortical_bridge
+
+# fast build rule for target.
+unit_perception_cortical_test_visual_cortical_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_visual_cortical_bridge.dir/build.make test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_visual_cortical_bridge.dir/build
+.PHONY : unit_perception_cortical_test_visual_cortical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_perception_cortical_test_audio_cortical_bridge
+
+# Build rule for target.
+unit_perception_cortical_test_audio_cortical_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_cortical_test_audio_cortical_bridge
+.PHONY : unit_perception_cortical_test_audio_cortical_bridge
+
+# fast build rule for target.
+unit_perception_cortical_test_audio_cortical_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_audio_cortical_bridge.dir/build.make test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_audio_cortical_bridge.dir/build
+.PHONY : unit_perception_cortical_test_audio_cortical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_perception_cortical_test_speech_cortical_bridge
+
+# Build rule for target.
+unit_perception_cortical_test_speech_cortical_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_cortical_test_speech_cortical_bridge
+.PHONY : unit_perception_cortical_test_speech_cortical_bridge
+
+# fast build rule for target.
+unit_perception_cortical_test_speech_cortical_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_speech_cortical_bridge.dir/build.make test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_speech_cortical_bridge.dir/build
+.PHONY : unit_perception_cortical_test_speech_cortical_bridge/fast
+
+#=============================================================================
 # Target rules for targets named test_swarm_protocol
 
 # Build rule for target.
@@ -15340,6 +15418,7 @@ help:
 	@echo "... e2e_test_fep_bridges_pipeline"
 	@echo "... e2e_test_fep_orchestrator_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
+	@echo "... e2e_test_master_connectivity"
 	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
 	@echo "... e2e_test_neural_plasticity_pipeline"
@@ -15347,6 +15426,7 @@ help:
 	@echo "... e2e_test_nlp_neural_distributed"
 	@echo "... e2e_test_nlp_swarm_coordination"
 	@echo "... e2e_test_nlp_war_zone"
+	@echo "... e2e_test_perception_cortical"
 	@echo "... e2e_test_plasticity_pipeline"
 	@echo "... e2e_test_portia_bio_async_pipeline"
 	@echo "... e2e_test_portia_constrained_platform"
@@ -15485,7 +15565,6 @@ help:
 	@echo "... integration_optimization_test_cross_modal_integration"
 	@echo "... integration_optimization_test_dynamic_adaptation_integration"
 	@echo "... integration_optimization_test_multi_objective_integration"
-	@echo "... integration_perception_test_brain_topology_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_routing_integration"
 	@echo "... integration_plasticity_astrocyte_test_astrocyte_integration"
@@ -16261,9 +16340,13 @@ help:
 	@echo "... unit_optimization_test_cross_modal"
 	@echo "... unit_optimization_test_dynamic_adaptation"
 	@echo "... unit_optimization_test_multi_objective"
+	@echo "... unit_perception_cortical_test_audio_cortical_bridge"
+	@echo "... unit_perception_cortical_test_speech_cortical_bridge"
+	@echo "... unit_perception_cortical_test_visual_cortical_bridge"
 	@echo "... unit_perception_immune_test_audio_immune_integration"
 	@echo "... unit_perception_immune_test_speech_immune_integration"
 	@echo "... unit_perception_immune_test_visual_immune_integration"
+	@echo "... unit_perception_test_speech_cortex_pe"
 	@echo "... unit_plasticity_adaptive_test_adaptive"
 	@echo "... unit_plasticity_adaptive_test_adaptive_bioasync"
 	@echo "... unit_plasticity_adaptive_test_adaptive_comprehensive"
@@ -16385,6 +16468,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_recovery_observability"
 	@echo "... unit_utils_fault_tolerance_test_recovery_pool"
 	@echo "... unit_utils_fault_tolerance_test_state_machine"
+	@echo "... unit_utils_gabor_test_gabor_filters"
 	@echo "... unit_utils_logging_test_logging_async"
 	@echo "... unit_utils_logging_test_logging_basic"
 	@echo "... unit_utils_logging_test_logging_context"

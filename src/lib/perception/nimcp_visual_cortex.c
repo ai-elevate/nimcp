@@ -15,6 +15,7 @@
 
 #include "perception/nimcp_visual_cortex.h"
 #include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
+#include "utils/gabor/nimcp_gabor.h"    /* Shared Gabor filter library */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -468,11 +469,13 @@ bool pool_layer_forward(pool_layer_t* layer, const float* input, float* output)
 }
 
 //=============================================================================
-// Gabor Filter Implementation
+// Gabor Filter Implementation - Uses shared Gabor library
 //=============================================================================
 
 /**
- * WHAT: Create Gabor kernel
+ * WHAT: Create Gabor kernel using shared library
+ * WHY:  Consolidated Gabor implementation eliminates duplicate code
+ * HOW:  Converts gabor_params_t to gabor_filter_params_t and uses shared library
  */
 float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
 {
@@ -486,44 +489,20 @@ float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
         return NULL;
     }
 
-    float* kernel = (float*)nimcp_calloc(kernel_size * kernel_size, sizeof(float));
-    if (!nimcp_validate_pointer(kernel, "kernel")) {
-        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate Gabor kernel");
+    /* Convert visual_cortex gabor_params_t to shared library format */
+    gabor_filter_params_t filter_params;
+    gabor_default_params(&filter_params);
+    filter_params.orientation_deg = params->orientation;
+    filter_params.wavelength = params->wavelength;
+    filter_params.phase_deg = params->phase;
+    filter_params.aspect_ratio = params->aspect_ratio;
+    filter_params.bandwidth = params->bandwidth;
+
+    /* Use shared library to create kernel data (DC balanced) */
+    float* kernel = gabor_create_kernel_data(kernel_size, &filter_params);
+    if (!kernel) {
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to create Gabor kernel via shared library");
         return NULL;
-    }
-
-    int center = kernel_size / 2;
-    float theta = params->orientation * M_PI / 180.0F;  // Convert to radians
-    float sigma = params->wavelength * params->bandwidth;
-    float gamma = params->aspect_ratio;
-    float lambda = params->wavelength;
-    float psi = params->phase * M_PI / 180.0F;
-
-    // Generate Gabor function
-    float sum = 0.0F;
-    for (int y = 0; y < kernel_size; y++) {
-        for (int x = 0; x < kernel_size; x++) {
-            float x_offset = x - center;
-            float y_offset = y - center;
-
-            // Rotate coordinates
-            float x_rot = x_offset * cosf(theta) + y_offset * sinf(theta);
-            float y_rot = -x_offset * sinf(theta) + y_offset * cosf(theta);
-
-            // Gabor function
-            float gaussian = expf(-(x_rot * x_rot + gamma * gamma * y_rot * y_rot) / (2.0F * sigma * sigma));
-            float sinusoid = cosf(2.0F * M_PI * x_rot / lambda + psi);
-
-            float value = gaussian * sinusoid;
-            kernel[y * kernel_size + x] = value;
-            sum += value;
-        }
-    }
-
-    // DC balance: subtract mean to make kernel sum to zero
-    float mean = sum / (kernel_size * kernel_size);
-    for (int i = 0; i < kernel_size * kernel_size; i++) {
-        kernel[i] -= mean;
     }
 
     return kernel;
