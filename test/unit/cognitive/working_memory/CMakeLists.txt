@@ -20,3 +20,6 @@ endmacro()
 
 # Working Memory PE tests
 add_working_memory_pe_test(test_working_memory_pe)
+
+# Substrate bridge tests
+add_subdirectory(substrate)

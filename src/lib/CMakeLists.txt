@@ -509,6 +509,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_sleep_bridge.c  # Executive function-sleep integration (inhibition, flexibility)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_oscillations_sleep_bridge.c  # Oscillations-sleep integration (band power, spindles)
 
+    # Cognitive Substrate Bridges (Phase 6)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_substrate_bridge.c  # Attention-substrate integration (focus, shifting, filtering)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_emotion_substrate_bridge.c  # Emotion-substrate integration (intensity, regulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_substrate_bridge.c  # Executive-substrate integration (decision, inhibition)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection_substrate_bridge.c  # Introspection-substrate integration (self-awareness)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_consolidation_substrate_bridge.c  # Memory-substrate integration (consolidation rate)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_substrate_bridge.c  # Reasoning-substrate integration (inference depth)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_substrate_bridge.c  # ToM-substrate integration (mentalizing capacity)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_substrate_bridge.c  # Working memory-substrate integration (capacity, decay)
+
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocyte_calcium.c

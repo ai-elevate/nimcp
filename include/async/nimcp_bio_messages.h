@@ -912,6 +912,36 @@ typedef enum {
     BIO_MODULE_BRAINSTEM_COUPLING,              /**< Brainstem-cortex bidirectional coupling */
     BIO_MODULE_CIRCADIAN,                       /**< Circadian rhythm modulation (SCN model) */
 
+    /* Phase 6: Cognitive Substrate Bridges (0x1200 - 0x120F) */
+    BIO_MODULE_SUBSTRATE_WORKING_MEMORY = 0x1200, /**< Working memory substrate bridge */
+    BIO_MODULE_SUBSTRATE_ATTENTION,             /**< Attention substrate bridge */
+    BIO_MODULE_SUBSTRATE_EXECUTIVE,             /**< Executive function substrate bridge */
+    BIO_MODULE_SUBSTRATE_EMOTION,               /**< Emotion substrate bridge */
+    BIO_MODULE_SUBSTRATE_REASONING,             /**< Reasoning substrate bridge */
+    BIO_MODULE_SUBSTRATE_MEMORY_CONSOLIDATION,  /**< Memory consolidation substrate bridge */
+    BIO_MODULE_SUBSTRATE_TOM,                   /**< Theory of Mind substrate bridge */
+    BIO_MODULE_SUBSTRATE_INTROSPECTION,         /**< Introspection substrate bridge */
+
+    /* Phase 6: Cognitive Thalamic Bridges (0x1210 - 0x121F) */
+    BIO_MODULE_THALAMIC_WORKING_MEMORY = 0x1210, /**< Working memory thalamic bridge */
+    BIO_MODULE_THALAMIC_ATTENTION,              /**< Attention thalamic bridge */
+    BIO_MODULE_THALAMIC_EXECUTIVE,              /**< Executive function thalamic bridge */
+    BIO_MODULE_THALAMIC_EMOTION,                /**< Emotion thalamic bridge */
+    BIO_MODULE_THALAMIC_REASONING,              /**< Reasoning thalamic bridge */
+    BIO_MODULE_THALAMIC_MEMORY_CONSOLIDATION,   /**< Memory consolidation thalamic bridge */
+    BIO_MODULE_THALAMIC_TOM,                    /**< Theory of Mind thalamic bridge */
+    BIO_MODULE_THALAMIC_INTROSPECTION,          /**< Introspection thalamic bridge */
+
+    /* Phase 6: Sensory Thalamic Bridges (0x1220 - 0x122F) */
+    BIO_MODULE_THALAMIC_VISUAL = 0x1220,        /**< Visual thalamic (LGN) bridge */
+    BIO_MODULE_THALAMIC_AUDIO,                  /**< Audio thalamic (MGN) bridge */
+    BIO_MODULE_THALAMIC_SPEECH,                 /**< Speech thalamic bridge */
+
+    /* Phase 6: Sensory Substrate Bridges (0x1230 - 0x123F) */
+    BIO_MODULE_SUBSTRATE_VISUAL = 0x1230,       /**< Visual substrate bridge */
+    BIO_MODULE_SUBSTRATE_AUDIO,                 /**< Audio substrate bridge */
+    BIO_MODULE_SUBSTRATE_SPEECH,                /**< Speech substrate bridge */
+
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
 

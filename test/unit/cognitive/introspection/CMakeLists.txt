@@ -139,3 +139,6 @@ target_include_directories(unit_cognitive_introspection_immune_integration
 add_test(NAME unit_cognitive_introspection_immune_integration
          COMMAND unit_cognitive_introspection_immune_integration)
 set_tests_properties(unit_cognitive_introspection_immune_integration PROPERTIES LABELS "unit")
+
+# Substrate bridge tests
+add_subdirectory(substrate)

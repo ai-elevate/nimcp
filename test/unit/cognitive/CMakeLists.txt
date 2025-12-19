@@ -295,3 +295,29 @@ target_link_libraries(unit_cognitive_executive_sleep_bridge
 target_compile_features(unit_cognitive_executive_sleep_bridge PRIVATE cxx_std_17)
 gtest_discover_tests(unit_cognitive_executive_sleep_bridge
     PROPERTIES LABELS "unit;cognitive;executive;sleep")
+
+# ============================================================================
+# Substrate Bridge Tests (Phase 6)
+# ============================================================================
+# WHAT: Unit tests for Neural Substrate integration bridges
+# WHY:  Ensure cognitive systems correctly modulate based on metabolic state
+# HOW:  Test ATP, temperature, fatigue effects on cognitive functions
+# ============================================================================
+
+# Attention tests (includes substrate bridge)
+add_subdirectory(attention)
+
+# Emotion tests (includes substrate bridge)
+add_subdirectory(emotion)
+
+# Executive tests (includes substrate bridge)
+add_subdirectory(executive)
+
+# Note: introspection and reasoning directories are added from test/CMakeLists.txt
+# Their substrate subdirectories are included via those parent CMakeLists
+
+# Memory tests (includes substrate bridge)
+add_subdirectory(memory)
+
+# Theory of Mind tests (includes substrate bridge)
+add_subdirectory(tom)

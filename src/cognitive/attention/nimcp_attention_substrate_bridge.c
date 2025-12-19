@@ -1,0 +1,492 @@
+/**
+ * @file nimcp_attention_substrate_bridge.c
+ * @brief Attention-Neural Substrate Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-19
+ *
+ * WHAT: Bidirectional integration between metabolic/thermal substrate and attention system
+ * WHY:  Attention is metabolically expensive; frontoparietal networks require sustained
+ *       ATP for focus, switching, filtering, and vigilance. Substrate state directly
+ *       modulates attention capabilities.
+ * HOW:  Monitors substrate (ATP, temperature, metabolic stress), computes attention
+ *       effects (focus capacity, shifting efficiency, filter strength, vigilance),
+ *       and applies modulation to attention system.
+ *
+ * BIOLOGICAL BASIS:
+ * - Frontoparietal attention networks consume significant ATP during sustained focus
+ * - ATP depletion reduces attention span and increases distractibility
+ * - Hyperthermia (fever) impairs executive attention and attention switching
+ * - Metabolic stress weakens top-down distractor filtering
+ * - Vigilance tasks show performance decline with metabolic fatigue
+ */
+
+#include "cognitive/attention/nimcp_attention_substrate_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <math.h>
+#include <string.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * @brief Clamp value to range
+ * WHAT: Constrain value to [min, max]
+ * WHY:  Prevent runaway modulation
+ * HOW:  Standard clamping
+ */
+static float clamp_f(float value, float min, float max)
+{
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/**
+ * @brief Compute Q10-based temperature scaling factor
+ * WHAT: Calculate multiplicative factor for rate constants based on temperature
+ * WHY:  Biological processes have exponential temperature dependence
+ * HOW:  factor = Q10^((T - T_ref) / 10)
+ *
+ * BIOLOGICAL: Q10 rule from Arrhenius equation
+ * - Q10 = 2.5: rate increases 2.5x per 10°C
+ * - Hyperthermia accelerates processes but impairs precision
+ * - Hypothermia slows processes
+ */
+static float compute_q10_factor(float current_temp, float reference_temp, float q10)
+{
+    if (q10 <= 0.0f) {
+        return 1.0f;
+    }
+
+    float temp_diff = current_temp - reference_temp;
+    float exponent = temp_diff / 10.0f;
+    return powf(q10, exponent);
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+void attention_substrate_default_config(attention_substrate_config_t* config)
+{
+    if (!config) {
+        return;
+    }
+
+    /* Enable all modulations by default */
+    config->enable_focus_modulation = true;
+    config->enable_shifting_modulation = true;
+    config->enable_filter_modulation = true;
+    config->enable_bio_async = false;
+
+    /* Moderate sensitivity (1.0 = biological measurements) */
+    config->atp_sensitivity = 1.0f;
+    config->temperature_sensitivity = 1.0f;
+}
+
+attention_substrate_bridge_t* attention_substrate_bridge_create(
+    const attention_substrate_config_t* config,
+    neural_substrate_t* substrate,
+    nimcp_attention_system_t* attention)
+{
+    /* Guard: Validate inputs */
+    if (!substrate) {
+        NIMCP_LOGGING_ERROR("Cannot create attention substrate bridge: NULL substrate");
+        return NULL;
+    }
+    if (!attention) {
+        NIMCP_LOGGING_ERROR("Cannot create attention substrate bridge: NULL attention system");
+        return NULL;
+    }
+
+    /* Allocate bridge structure */
+    attention_substrate_bridge_t* bridge =
+        (attention_substrate_bridge_t*)nimcp_malloc(sizeof(attention_substrate_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate attention substrate bridge");
+        return NULL;
+    }
+
+    /* Initialize to zero */
+    memset(bridge, 0, sizeof(attention_substrate_bridge_t));
+
+    /* Store references */
+    bridge->substrate = substrate;
+    bridge->attention = attention;
+
+    /* Apply configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        attention_substrate_default_config(&bridge->config);
+    }
+
+    /* Initialize mutex */
+    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to allocate mutex for attention substrate bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize mutex for attention substrate bridge");
+        nimcp_free(bridge->mutex);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize effects to optimal (no impairment) */
+    bridge->effects.focus_capacity = 1.0f;
+    bridge->effects.shifting_efficiency = 1.0f;
+    bridge->effects.filter_strength = 1.0f;
+    bridge->effects.vigilance_factor = 1.0f;
+    bridge->effects.is_impaired = false;
+
+    /* Initialize statistics */
+    memset(&bridge->stats, 0, sizeof(attention_substrate_stats_t));
+    bridge->stats.min_focus_observed = 1.0f;
+    bridge->stats.max_focus_observed = 1.0f;
+
+    NIMCP_LOGGING_INFO("Created attention substrate bridge");
+
+    return bridge;
+}
+
+void attention_substrate_bridge_destroy(attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return;
+    }
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        attention_substrate_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_platform_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
+    }
+
+    /* Free bridge */
+    nimcp_free(bridge);
+
+    NIMCP_LOGGING_INFO("Destroyed attention substrate bridge");
+}
+
+/* ============================================================================
+ * Bio-Async API
+ * ============================================================================ */
+
+int attention_substrate_connect_bio_async(attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (bridge->bio_async_enabled) {
+        return 0;  /* Already connected */
+    }
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_SUBSTRATE_ATTENTION,
+        .module_name = "attention_substrate_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected attention substrate bridge to bio-async router");
+        return 0;
+    }
+
+    NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    return NIMCP_ERROR_INVALID_STATE;
+}
+
+int attention_substrate_disconnect_bio_async(attention_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->bio_async_enabled) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Disconnected attention substrate bridge from bio-async router");
+
+    return 0;
+}
+
+bool attention_substrate_is_bio_async_connected(const attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return false;
+    }
+    return bridge->bio_async_enabled;
+}
+
+/* ============================================================================
+ * Update API - Core Substrate-Attention Integration
+ * ============================================================================ */
+
+int attention_substrate_update(attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    /* Get substrate state */
+    substrate_metabolic_state_t metabolic;
+    substrate_physical_state_t physical;
+
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to get physical state from substrate");
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL EFFECT 1: Focus Capacity
+     *
+     * WHAT: Ability to sustain attention on target
+     * WHY:  Sustained focus requires continuous ATP for prefrontal activity
+     * HOW:  focus_capacity = clamp(atp_level * atp_sensitivity, 0.2, 1.0)
+     *
+     * BIOLOGICAL BASIS:
+     * - Frontoparietal networks maintain sustained attention
+     * - ATP depletion → reduced firing → attention lapses
+     * - Floor of 0.2 represents minimal attention (distracted, unfocused)
+     * ======================================================================== */
+
+    if (bridge->config.enable_focus_modulation) {
+        float atp_factor = metabolic.atp_level * bridge->config.atp_sensitivity;
+        bridge->effects.focus_capacity = clamp_f(atp_factor, 0.2f, 1.0f);
+    } else {
+        bridge->effects.focus_capacity = 1.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL EFFECT 2: Shifting Efficiency
+     *
+     * WHAT: Speed and effectiveness of attention switching
+     * WHY:  Rapid attention reorienting requires metabolic resources and
+     *       temperature-sensitive neurotransmitter dynamics
+     * HOW:  shifting_efficiency = metabolic_capacity * temperature_factor
+     *
+     * BIOLOGICAL BASIS:
+     * - Attention switching involves TPJ, FEF activation
+     * - Temperature affects synaptic transmission speed (Q10)
+     * - Fever → impaired executive attention and switching
+     * - Hyperthermia → sluggish reorienting
+     * ======================================================================== */
+
+    if (bridge->config.enable_shifting_modulation) {
+        /* Compute temperature scaling factor */
+        float temp_factor = compute_q10_factor(
+            physical.temperature,
+            SUBSTRATE_NORMAL_TEMPERATURE,
+            ATTENTION_SUBSTRATE_Q10_SHIFTING
+        );
+
+        /* Scale by temperature sensitivity */
+        temp_factor = 1.0f + (temp_factor - 1.0f) * bridge->config.temperature_sensitivity;
+
+        /* Hyperthermia impairs switching (fever makes attention sluggish) */
+        if (physical.temperature > SUBSTRATE_HYPERTHERMIA_THRESHOLD) {
+            /* Above 40°C → impaired switching */
+            float hyperthermia_penalty = (physical.temperature - SUBSTRATE_HYPERTHERMIA_THRESHOLD) / 5.0f;
+            temp_factor *= (1.0f - clamp_f(hyperthermia_penalty, 0.0f, 0.5f));
+        }
+
+        /* Combine metabolic capacity and temperature */
+        float shifting = metabolic.metabolic_capacity * temp_factor;
+        bridge->effects.shifting_efficiency = clamp_f(shifting, 0.3f, 1.0f);
+    } else {
+        bridge->effects.shifting_efficiency = 1.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL EFFECT 3: Filter Strength
+     *
+     * WHAT: Ability to suppress distractors (selective attention)
+     * WHY:  Top-down filtering requires prefrontal ATP for inhibitory control
+     * HOW:  filter_strength = clamp(atp_level * 1.2, 0.2, 1.0)
+     *
+     * BIOLOGICAL BASIS:
+     * - DLPFC exerts top-down attentional control
+     * - Low ATP → weakened inhibition → increased distractibility
+     * - Metabolic stress reduces executive function
+     * - Factor of 1.2 models high metabolic cost of filtering
+     * ======================================================================== */
+
+    if (bridge->config.enable_filter_modulation) {
+        /* Filtering is expensive (1.2x ATP factor models high prefrontal cost) */
+        float filter_factor = metabolic.atp_level * 1.2f * bridge->config.atp_sensitivity;
+        bridge->effects.filter_strength = clamp_f(filter_factor, 0.2f, 1.0f);
+    } else {
+        bridge->effects.filter_strength = 1.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL EFFECT 4: Vigilance Factor
+     *
+     * WHAT: Sustained attention capability over time
+     * WHY:  Vigilance tasks are metabolically exhausting, show performance
+     *       decline with fatigue (vigilance decrement)
+     * HOW:  vigilance = clamp(metabolic_capacity * physical_capacity, 0.2, 1.0)
+     *
+     * BIOLOGICAL BASIS:
+     * - Vigilance requires sustained noradrenergic tone
+     * - Both metabolic and physical substrates must be intact
+     * - Fatigue → vigilance decrement (well-documented phenomenon)
+     * - Combined factor models multi-system requirement
+     * ======================================================================== */
+
+    float vigilance = metabolic.metabolic_capacity * physical.physical_capacity;
+    bridge->effects.vigilance_factor = clamp_f(vigilance, 0.2f, 1.0f);
+
+    /* ========================================================================
+     * IMPAIRMENT DETECTION
+     *
+     * WHAT: Overall attention impairment flag
+     * WHY:  Quick check for critical attention degradation
+     * HOW:  is_impaired = (focus_capacity < 0.7 || vigilance_factor < 0.6)
+     *
+     * BIOLOGICAL BASIS:
+     * - Clinical attention deficits occur at ~70% capacity
+     * - Vigilance decrement significant below 60%
+     * ======================================================================== */
+
+    bool was_impaired = bridge->effects.is_impaired;
+    bridge->effects.is_impaired = (bridge->effects.focus_capacity < 0.7f ||
+                                    bridge->effects.vigilance_factor < 0.6f);
+
+    /* Track impairment events (transitions from normal to impaired) */
+    if (bridge->effects.is_impaired && !was_impaired) {
+        bridge->stats.impairment_events++;
+        NIMCP_LOGGING_WARN("Attention became impaired (focus: %.2f, vigilance: %.2f)",
+                          bridge->effects.focus_capacity,
+                          bridge->effects.vigilance_factor);
+    }
+
+    /* ========================================================================
+     * UPDATE STATISTICS
+     * ======================================================================== */
+
+    bridge->stats.update_count++;
+
+    /* Running averages (exponential moving average with alpha = 0.01) */
+    float alpha = 0.01f;
+    bridge->stats.avg_focus_capacity =
+        (1.0f - alpha) * bridge->stats.avg_focus_capacity +
+        alpha * bridge->effects.focus_capacity;
+    bridge->stats.avg_shifting_efficiency =
+        (1.0f - alpha) * bridge->stats.avg_shifting_efficiency +
+        alpha * bridge->effects.shifting_efficiency;
+    bridge->stats.avg_filter_strength =
+        (1.0f - alpha) * bridge->stats.avg_filter_strength +
+        alpha * bridge->effects.filter_strength;
+    bridge->stats.avg_vigilance =
+        (1.0f - alpha) * bridge->stats.avg_vigilance +
+        alpha * bridge->effects.vigilance_factor;
+
+    /* Track min/max focus */
+    if (bridge->effects.focus_capacity < bridge->stats.min_focus_observed) {
+        bridge->stats.min_focus_observed = bridge->effects.focus_capacity;
+    }
+    if (bridge->effects.focus_capacity > bridge->stats.max_focus_observed) {
+        bridge->stats.max_focus_observed = bridge->effects.focus_capacity;
+    }
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Query API
+ * ============================================================================ */
+
+float attention_substrate_get_focus_capacity(const attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return -1.0f;
+    }
+    return bridge->effects.focus_capacity;
+}
+
+float attention_substrate_get_shifting_efficiency(const attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return -1.0f;
+    }
+    return bridge->effects.shifting_efficiency;
+}
+
+float attention_substrate_get_filter_strength(const attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return -1.0f;
+    }
+    return bridge->effects.filter_strength;
+}
+
+float attention_substrate_get_vigilance(const attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return -1.0f;
+    }
+    return bridge->effects.vigilance_factor;
+}
+
+int attention_substrate_get_effects(
+    const attention_substrate_bridge_t* bridge,
+    attention_substrate_effects_t* effects)
+{
+    if (!bridge || !effects) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    *effects = bridge->effects;
+    return 0;
+}
+
+bool attention_substrate_is_impaired(const attention_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return false;
+    }
+    return bridge->effects.is_impaired;
+}
+
+int attention_substrate_get_stats(
+    const attention_substrate_bridge_t* bridge,
+    attention_substrate_stats_t* stats)
+{
+    if (!bridge || !stats) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    *stats = bridge->stats;
+    return 0;
+}

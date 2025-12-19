@@ -1,0 +1,524 @@
+/**
+ * @file nimcp_executive_substrate_bridge.c
+ * @brief Executive-Substrate Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2024-12
+ *
+ * BIOLOGICAL BASIS:
+ * The prefrontal cortex (PFC) is the most metabolically demanding brain region,
+ * consuming disproportionate ATP for executive functions. ATP depletion
+ * progressively impairs decision quality, inhibitory control, planning depth,
+ * and cognitive flexibility.
+ */
+
+#include "cognitive/executive/nimcp_executive_substrate_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <math.h>
+#include <string.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * @brief Clamp value to range [min, max]
+ *
+ * WHAT: Constrain value to valid range
+ * WHY:  Prevent runaway modulation factors
+ * HOW:  Standard clamping
+ */
+static float clamp_f(float value, float min, float max)
+{
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/**
+ * @brief Update running average with exponential smoothing
+ *
+ * WHAT: Compute exponentially weighted moving average
+ * WHY:  Track statistics over time without storing all values
+ * HOW:  avg = (1-alpha)*old_avg + alpha*new_value
+ */
+static float update_running_avg(float current_avg, float new_value, float alpha)
+{
+    return (1.0f - alpha) * current_avg + alpha * new_value;
+}
+
+/* ============================================================================
+ * Configuration API
+ * ============================================================================ */
+
+void executive_substrate_default_config(executive_substrate_config_t* config)
+{
+    if (!config) {
+        return;
+    }
+
+    /* Enable all modulations by default */
+    config->enable_decision_modulation = true;
+    config->enable_inhibition_modulation = true;
+    config->enable_planning_modulation = true;
+    config->enable_flexibility_modulation = true;
+    config->enable_fatigue_tracking = true;
+
+    /* Moderate sensitivity (1.0 = biological measurements) */
+    config->decision_sensitivity = 1.0f;
+    config->inhibition_sensitivity = 1.0f;
+    config->planning_sensitivity = 1.0f;
+    config->flexibility_sensitivity = 1.0f;
+    config->fatigue_accumulation_rate = 0.01f;  /* 1% per update when ATP low */
+    config->fatigue_recovery_rate = 0.005f;      /* 0.5% per update when ATP high */
+
+    /* Thresholds from biological literature */
+    config->impairment_threshold = EXECUTIVE_ATP_IMPAIRED_THRESHOLD;
+    config->critical_threshold = EXECUTIVE_ATP_CRITICAL_THRESHOLD;
+
+    /* Bio-async disabled by default */
+    config->enable_bio_async = false;
+    config->inbox_capacity = 32;
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+executive_substrate_bridge_t* executive_substrate_bridge_create(
+    const executive_substrate_config_t* config,
+    nimcp_executive_t* executive,
+    neural_substrate_t* substrate)
+{
+    /* Guard: Validate required components */
+    if (!executive) {
+        NIMCP_LOGGING_ERROR("Cannot create executive substrate bridge: NULL executive");
+        return NULL;
+    }
+
+    if (!substrate) {
+        NIMCP_LOGGING_ERROR("Cannot create executive substrate bridge: NULL substrate");
+        return NULL;
+    }
+
+    /* Allocate bridge structure */
+    executive_substrate_bridge_t* bridge =
+        (executive_substrate_bridge_t*)nimcp_malloc(sizeof(executive_substrate_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate executive substrate bridge");
+        return NULL;
+    }
+
+    /* Initialize to zero */
+    memset(bridge, 0, sizeof(executive_substrate_bridge_t));
+
+    /* Store component references */
+    bridge->substrate = substrate;
+    bridge->executive = executive;
+
+    /* Apply configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        executive_substrate_default_config(&bridge->config);
+    }
+
+    /* Initialize mutex */
+    bridge->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        nimcp_free(bridge->mutex);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize effects to neutral (no modulation) */
+    bridge->effects.decision_quality = 1.0f;
+    bridge->effects.inhibition_strength = 1.0f;
+    bridge->effects.planning_depth = 1.0f;
+    bridge->effects.cognitive_flexibility = 1.0f;
+    bridge->effects.fatigue_level = 0.0f;
+    bridge->effects.is_impaired = false;
+
+    /* Initialize statistics */
+    memset(&bridge->stats, 0, sizeof(executive_substrate_stats_t));
+    bridge->stats.min_atp_level = 1.0f;
+    bridge->stats.avg_decision_quality = 1.0f;
+    bridge->stats.avg_inhibition_strength = 1.0f;
+    bridge->stats.avg_planning_depth = 1.0f;
+    bridge->stats.avg_flexibility = 1.0f;
+
+    /* Initialize internal state */
+    bridge->last_atp_level = 1.0f;
+    bridge->last_update_time = 0;
+    bridge->initialized = true;
+
+    /* Connect to bio-async if enabled */
+    if (bridge->config.enable_bio_async) {
+        executive_substrate_connect_bio_async(bridge);
+    }
+
+    NIMCP_LOGGING_INFO("Created executive substrate bridge");
+
+    return bridge;
+}
+
+void executive_substrate_bridge_destroy(executive_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return;
+    }
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        executive_substrate_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_platform_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
+    }
+
+    /* Free bridge */
+    nimcp_free(bridge);
+
+    NIMCP_LOGGING_INFO("Destroyed executive substrate bridge");
+}
+
+/* ============================================================================
+ * Bio-async Integration API
+ * ============================================================================ */
+
+int executive_substrate_connect_bio_async(executive_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return -1;
+    }
+
+    if (bridge->bio_async_enabled) {
+        return 0;  /* Already connected */
+    }
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_SUBSTRATE_EXECUTIVE,
+        .module_name = "executive_substrate_bridge",
+        .inbox_capacity = bridge->config.inbox_capacity,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected executive substrate bridge to bio-async router");
+        return 0;
+    }
+
+    NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    return -1;
+}
+
+int executive_substrate_disconnect_bio_async(executive_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->bio_async_enabled) {
+        return -1;
+    }
+
+    bio_router_unregister_module(bridge->bio_ctx);
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_INFO("Disconnected executive substrate bridge from bio-async");
+
+    return 0;
+}
+
+bool executive_substrate_is_bio_async_connected(const executive_substrate_bridge_t* bridge)
+{
+    return bridge && bridge->bio_async_enabled;
+}
+
+/* ============================================================================
+ * Update API
+ * ============================================================================ */
+
+int executive_substrate_update(executive_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    /* ========================================================================
+     * Get current metabolic state
+     * ======================================================================== */
+    substrate_metabolic_state_t metabolic;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    float atp_level = metabolic.atp_level;
+    float glucose_level = metabolic.glucose_level;
+    float metabolic_capacity = metabolic.metabolic_capacity;
+
+    /* Track statistics */
+    if (atp_level < bridge->stats.min_atp_level) {
+        bridge->stats.min_atp_level = atp_level;
+    }
+    bridge->stats.avg_atp_level = update_running_avg(
+        bridge->stats.avg_atp_level,
+        atp_level,
+        0.01f
+    );
+
+    /* ========================================================================
+     * BIOLOGICAL: Decision Quality
+     * - Prefrontal cortex requires high ATP for optimal decision-making
+     * - decision_quality = clamp(atp_level * metabolic_capacity, 0.3, 1.0)
+     * ======================================================================== */
+    if (bridge->config.enable_decision_modulation) {
+        float base_quality = atp_level * metabolic_capacity;
+        float modulated = 1.0f - (1.0f - base_quality) * bridge->config.decision_sensitivity;
+        bridge->effects.decision_quality = clamp_f(modulated, 0.3f, 1.0f);
+    } else {
+        bridge->effects.decision_quality = 1.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL: Inhibition Strength
+     * - Impulse control is most sensitive to ATP depletion (frontal vulnerability)
+     * - Low ATP reduces inhibition → increased impulsivity
+     * - inhibition_strength = clamp(atp_level * 1.3, 0.2, 1.0)
+     * - Multiplier of 1.3 reflects enhanced sensitivity
+     * ======================================================================== */
+    if (bridge->config.enable_inhibition_modulation) {
+        float base_inhibition = atp_level * 1.3f;
+        float modulated = 1.0f - (1.0f - base_inhibition) * bridge->config.inhibition_sensitivity;
+        bridge->effects.inhibition_strength = clamp_f(modulated, 0.2f, 1.0f);
+    } else {
+        bridge->effects.inhibition_strength = 1.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL: Planning Depth
+     * - Deep planning requires sustained cognitive effort and working memory
+     * - ATP depletion limits planning horizon
+     * - planning_depth = clamp(metabolic_capacity, 0.2, 1.0)
+     * ======================================================================== */
+    if (bridge->config.enable_planning_modulation) {
+        float modulated = 1.0f - (1.0f - metabolic_capacity) * bridge->config.planning_sensitivity;
+        bridge->effects.planning_depth = clamp_f(modulated, 0.2f, 1.0f);
+    } else {
+        bridge->effects.planning_depth = 1.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL: Cognitive Flexibility
+     * - Task switching requires energy for context updating
+     * - Combines ATP and glucose availability
+     * - flexibility = clamp((atp_level + glucose_level) / 2.0, 0.3, 1.0)
+     * ======================================================================== */
+    if (bridge->config.enable_flexibility_modulation) {
+        float base_flexibility = (atp_level + glucose_level) / 2.0f;
+        float modulated = 1.0f - (1.0f - base_flexibility) * bridge->config.flexibility_sensitivity;
+        bridge->effects.cognitive_flexibility = clamp_f(modulated, 0.3f, 1.0f);
+    } else {
+        bridge->effects.cognitive_flexibility = 1.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL: Fatigue Level
+     * - Accumulates when ATP is low, recovers when ATP is high
+     * - fatigue_level = 1.0 - metabolic_capacity
+     * - Also use rate-based accumulation/recovery
+     * ======================================================================== */
+    if (bridge->config.enable_fatigue_tracking) {
+        /* Base fatigue from metabolic state */
+        float base_fatigue = 1.0f - metabolic_capacity;
+
+        /* Accumulation when ATP is low */
+        if (atp_level < EXECUTIVE_ATP_FATIGUE_THRESHOLD) {
+            float deficit = (EXECUTIVE_ATP_FATIGUE_THRESHOLD - atp_level) /
+                           EXECUTIVE_ATP_FATIGUE_THRESHOLD;
+            bridge->effects.fatigue_level += deficit * bridge->config.fatigue_accumulation_rate;
+        }
+
+        /* Recovery when ATP is high */
+        if (atp_level > EXECUTIVE_ATP_OPTIMAL_THRESHOLD) {
+            float surplus = (atp_level - EXECUTIVE_ATP_OPTIMAL_THRESHOLD) /
+                           (1.0f - EXECUTIVE_ATP_OPTIMAL_THRESHOLD);
+            bridge->effects.fatigue_level -= surplus * bridge->config.fatigue_recovery_rate;
+        }
+
+        /* Blend with base fatigue */
+        bridge->effects.fatigue_level = (bridge->effects.fatigue_level + base_fatigue) / 2.0f;
+
+        /* Clamp to valid range */
+        bridge->effects.fatigue_level = clamp_f(bridge->effects.fatigue_level, 0.0f, 1.0f);
+
+        /* Track maximum fatigue */
+        if (bridge->effects.fatigue_level > bridge->stats.max_fatigue_level) {
+            bridge->stats.max_fatigue_level = bridge->effects.fatigue_level;
+        }
+    } else {
+        bridge->effects.fatigue_level = 0.0f;
+    }
+
+    /* ========================================================================
+     * BIOLOGICAL: Impairment Detection
+     * - is_impaired = (decision_quality < 0.7 || fatigue_level > 0.5)
+     * - Also check if ATP below impairment threshold
+     * ======================================================================== */
+    bool was_impaired = bridge->effects.is_impaired;
+
+    bridge->effects.is_impaired = (
+        atp_level < bridge->config.impairment_threshold ||
+        bridge->effects.decision_quality < 0.7f ||
+        bridge->effects.fatigue_level > 0.5f
+    );
+
+    /* Track impairment events (transitions to impaired state) */
+    if (bridge->effects.is_impaired && !was_impaired) {
+        bridge->stats.impairment_events++;
+        NIMCP_LOGGING_WARN("Executive function impaired (ATP: %.2f, Decision: %.2f, Fatigue: %.2f)",
+            atp_level, bridge->effects.decision_quality, bridge->effects.fatigue_level);
+    }
+
+    /* ========================================================================
+     * Update Statistics
+     * ======================================================================== */
+    bridge->stats.update_count++;
+
+    /* Running averages */
+    bridge->stats.avg_decision_quality = update_running_avg(
+        bridge->stats.avg_decision_quality,
+        bridge->effects.decision_quality,
+        0.01f
+    );
+    bridge->stats.avg_inhibition_strength = update_running_avg(
+        bridge->stats.avg_inhibition_strength,
+        bridge->effects.inhibition_strength,
+        0.01f
+    );
+    bridge->stats.avg_planning_depth = update_running_avg(
+        bridge->stats.avg_planning_depth,
+        bridge->effects.planning_depth,
+        0.01f
+    );
+    bridge->stats.avg_flexibility = update_running_avg(
+        bridge->stats.avg_flexibility,
+        bridge->effects.cognitive_flexibility,
+        0.01f
+    );
+
+    /* Store last ATP level for next update */
+    bridge->last_atp_level = atp_level;
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Query API - Individual Effects
+ * ============================================================================ */
+
+float executive_substrate_get_decision_quality(const executive_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->config.enable_decision_modulation) {
+        return 1.0f;
+    }
+    return bridge->effects.decision_quality;
+}
+
+float executive_substrate_get_inhibition_strength(const executive_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->config.enable_inhibition_modulation) {
+        return 1.0f;
+    }
+    return bridge->effects.inhibition_strength;
+}
+
+float executive_substrate_get_planning_depth(const executive_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->config.enable_planning_modulation) {
+        return 1.0f;
+    }
+    return bridge->effects.planning_depth;
+}
+
+float executive_substrate_get_cognitive_flexibility(const executive_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->config.enable_flexibility_modulation) {
+        return 1.0f;
+    }
+    return bridge->effects.cognitive_flexibility;
+}
+
+float executive_substrate_get_fatigue(const executive_substrate_bridge_t* bridge)
+{
+    if (!bridge || !bridge->config.enable_fatigue_tracking) {
+        return 0.0f;
+    }
+    return bridge->effects.fatigue_level;
+}
+
+executive_substrate_effects_t executive_substrate_get_effects(
+    const executive_substrate_bridge_t* bridge)
+{
+    executive_substrate_effects_t effects = {0};
+
+    if (!bridge) {
+        /* Return neutral effects */
+        effects.decision_quality = 1.0f;
+        effects.inhibition_strength = 1.0f;
+        effects.planning_depth = 1.0f;
+        effects.cognitive_flexibility = 1.0f;
+        effects.fatigue_level = 0.0f;
+        effects.is_impaired = false;
+        return effects;
+    }
+
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    effects = bridge->effects;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+
+    return effects;
+}
+
+bool executive_substrate_is_impaired(const executive_substrate_bridge_t* bridge)
+{
+    if (!bridge) {
+        return false;
+    }
+    return bridge->effects.is_impaired;
+}
+
+/* ============================================================================
+ * Query API - Statistics
+ * ============================================================================ */
+
+executive_substrate_stats_t executive_substrate_get_stats(
+    const executive_substrate_bridge_t* bridge)
+{
+    executive_substrate_stats_t stats = {0};
+
+    if (!bridge) {
+        return stats;
+    }
+
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    stats = bridge->stats;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+
+    return stats;
+}

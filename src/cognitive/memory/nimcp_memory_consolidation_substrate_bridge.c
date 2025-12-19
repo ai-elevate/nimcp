@@ -1,0 +1,615 @@
+/**
+ * @file nimcp_memory_consolidation_substrate_bridge.c
+ * @brief Neural substrate integration for memory consolidation module
+ *
+ * WHAT: Bidirectional bridge between memory consolidation and neural substrate
+ * WHY: Memory consolidation requires substantial ATP for protein synthesis,
+ *      hippocampal replay, and synaptic remodeling. Metabolic stress impairs
+ *      consolidation rate, especially during sleep-dependent consolidation.
+ * HOW: Monitor substrate state (ATP, metabolic stress), modulate consolidation
+ *      rate, protein synthesis, replay efficiency, and hippocampal→cortical transfer
+ *
+ * BIOLOGICAL BASIS:
+ * - Memory consolidation requires protein synthesis (ATP-intensive process)
+ * - Hippocampal replay during sleep consumes metabolic energy
+ * - Systems consolidation (hippocampus→cortex) requires sustained ATP
+ * - Metabolic stress during sleep impairs consolidation quality
+ * - LTP maintenance depends on protein synthesis (ATP-dependent)
+ * - Synaptic tagging and capture mechanism requires local protein production
+ */
+
+#include "cognitive/memory/nimcp_memory_consolidation_substrate_bridge.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <string.h>
+#include <math.h>
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * Clamp value to range [min, max]
+ *
+ * WHAT: Constrain value within bounds
+ * WHY: Ensure effects stay within valid ranges
+ * HOW: Return min if value < min, max if value > max, otherwise value
+ */
+static inline float clamp(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/**
+ * Compute consolidation rate from substrate state
+ *
+ * WHAT: Calculate overall consolidation speed based on ATP and metabolic capacity
+ * WHY: Memory consolidation is ATP-intensive, requiring sustained energy supply
+ * HOW: consolidation_rate = clamp(atp_level * metabolic_capacity, 0.1, 1.0)
+ *
+ * BIOLOGICAL BASIS: Consolidation requires continuous ATP for protein synthesis,
+ * synaptic remodeling, and hippocampal replay. Low ATP severely impairs consolidation.
+ */
+static float compute_consolidation_rate(
+    float atp_level,
+    float metabolic_capacity,
+    float atp_sensitivity
+) {
+    /* Base rate from ATP and metabolic capacity */
+    float base_rate = atp_level * metabolic_capacity;
+
+    /* Apply sensitivity */
+    float rate = base_rate * atp_sensitivity;
+
+    /* Clamp to valid range (min 0.1 to prevent complete halt) */
+    return clamp(rate, 0.1f, 1.0f);
+}
+
+/**
+ * Compute protein synthesis rate from substrate state
+ *
+ * WHAT: Calculate LTP-dependent protein synthesis rate
+ * WHY: Late-phase LTP requires protein synthesis, which is very ATP-intensive
+ * HOW: protein_synthesis_rate = clamp(atp_level * glucose_level, 0.0, 1.0)
+ *
+ * BIOLOGICAL BASIS: Protein synthesis for LTP consolidation requires both ATP
+ * and glucose. Below ATP 0.5, protein synthesis is severely impaired.
+ */
+static float compute_protein_synthesis_rate(
+    float atp_level,
+    float glucose_level,
+    float atp_sensitivity
+) {
+    /* Protein synthesis requires both ATP and glucose */
+    float base_rate = atp_level * glucose_level;
+
+    /* Apply sensitivity */
+    float rate = base_rate * atp_sensitivity;
+
+    /* Severe impairment below ATP 0.5 */
+    if (atp_level < 0.5f) {
+        rate *= 0.5f;
+    }
+
+    /* Clamp to valid range */
+    return clamp(rate, 0.0f, 1.0f);
+}
+
+/**
+ * Compute replay efficiency from substrate state
+ *
+ * WHAT: Calculate hippocampal replay efficiency
+ * WHY: Replay requires metabolic energy and oxygen supply
+ * HOW: replay_efficiency = clamp(metabolic_capacity * o2_factor, 0.2, 1.0)
+ *
+ * BIOLOGICAL BASIS: Hippocampal replay during sleep reactivates memory traces.
+ * Hypoxia and metabolic stress reduce replay quality and frequency.
+ */
+static float compute_replay_efficiency(
+    float metabolic_capacity,
+    float o2_saturation,
+    float hypoxia_sensitivity
+) {
+    /* Replay efficiency depends on metabolic capacity and oxygen */
+    float o2_factor = 0.5f + (o2_saturation * 0.5f);
+    float base_efficiency = metabolic_capacity * o2_factor;
+
+    /* Apply hypoxia sensitivity */
+    float efficiency = base_efficiency;
+    if (o2_saturation < 0.8f) {
+        float hypoxia_impact = (0.8f - o2_saturation) * hypoxia_sensitivity;
+        efficiency *= (1.0f - hypoxia_impact);
+    }
+
+    /* Clamp to valid range (min 0.2 to maintain some replay) */
+    return clamp(efficiency, 0.2f, 1.0f);
+}
+
+/**
+ * Compute hippocampal→cortical transfer rate
+ *
+ * WHAT: Calculate systems consolidation transfer rate
+ * WHY: Transferring memories from hippocampus to cortex requires sustained ATP
+ * HOW: transfer_rate = clamp((atp_level + o2_saturation) / 2.0, 0.2, 1.0)
+ *
+ * BIOLOGICAL BASIS: Systems consolidation is a gradual process requiring
+ * coordinated activity between hippocampus and cortex, consuming metabolic energy.
+ */
+static float compute_transfer_rate(
+    float atp_level,
+    float o2_saturation,
+    float stress_sensitivity
+) {
+    /* Transfer rate depends on both ATP and oxygen */
+    float base_rate = (atp_level + o2_saturation) / 2.0f;
+
+    /* Reduce transfer under stress */
+    float rate = base_rate * (2.0f - stress_sensitivity) / 2.0f;
+
+    /* Clamp to valid range (min 0.2 to maintain some transfer) */
+    return clamp(rate, 0.2f, 1.0f);
+}
+
+/**
+ * Check if consolidation is critically impaired
+ *
+ * WHAT: Determine if substrate state critically impairs consolidation
+ * WHY: Identify conditions requiring intervention
+ * HOW: impaired = (protein_synthesis_rate < 0.5 || consolidation_rate < 0.5)
+ *
+ * BIOLOGICAL BASIS: Below 50% protein synthesis or consolidation rate,
+ * memory stabilization is severely compromised.
+ */
+static bool check_impairment(
+    float protein_synthesis_rate,
+    float consolidation_rate
+) {
+    return (protein_synthesis_rate < 0.5f || consolidation_rate < 0.5f);
+}
+
+/**
+ * Update statistics with new effects
+ *
+ * WHAT: Update running statistics with current effect values
+ * WHY: Track consolidation quality over time
+ * HOW: Update min/max/avg for all effect metrics
+ */
+static void update_statistics(
+    consolidation_substrate_bridge_t* bridge,
+    const consolidation_substrate_effects_t* effects,
+    float atp_level,
+    float metabolic_stress
+) {
+    consolidation_substrate_stats_t* stats = &bridge->stats;
+
+    /* Update counts */
+    stats->update_count++;
+    if (effects->is_impaired) {
+        stats->impairment_count++;
+    }
+
+    /* Update consolidation rate statistics */
+    if (stats->update_count == 1) {
+        stats->min_consolidation_rate = effects->consolidation_rate;
+        stats->max_consolidation_rate = effects->consolidation_rate;
+        stats->avg_consolidation_rate = effects->consolidation_rate;
+    } else {
+        if (effects->consolidation_rate < stats->min_consolidation_rate) {
+            stats->min_consolidation_rate = effects->consolidation_rate;
+        }
+        if (effects->consolidation_rate > stats->max_consolidation_rate) {
+            stats->max_consolidation_rate = effects->consolidation_rate;
+        }
+        /* Running average */
+        stats->avg_consolidation_rate =
+            (stats->avg_consolidation_rate * (stats->update_count - 1) +
+             effects->consolidation_rate) / stats->update_count;
+    }
+
+    /* Update protein synthesis statistics */
+    if (stats->update_count == 1) {
+        stats->min_protein_synthesis = effects->protein_synthesis_rate;
+        stats->max_protein_synthesis = effects->protein_synthesis_rate;
+        stats->avg_protein_synthesis = effects->protein_synthesis_rate;
+    } else {
+        if (effects->protein_synthesis_rate < stats->min_protein_synthesis) {
+            stats->min_protein_synthesis = effects->protein_synthesis_rate;
+        }
+        if (effects->protein_synthesis_rate > stats->max_protein_synthesis) {
+            stats->max_protein_synthesis = effects->protein_synthesis_rate;
+        }
+        stats->avg_protein_synthesis =
+            (stats->avg_protein_synthesis * (stats->update_count - 1) +
+             effects->protein_synthesis_rate) / stats->update_count;
+    }
+
+    /* Update replay efficiency statistics */
+    if (stats->update_count == 1) {
+        stats->min_replay_efficiency = effects->replay_efficiency;
+        stats->max_replay_efficiency = effects->replay_efficiency;
+        stats->avg_replay_efficiency = effects->replay_efficiency;
+    } else {
+        if (effects->replay_efficiency < stats->min_replay_efficiency) {
+            stats->min_replay_efficiency = effects->replay_efficiency;
+        }
+        if (effects->replay_efficiency > stats->max_replay_efficiency) {
+            stats->max_replay_efficiency = effects->replay_efficiency;
+        }
+        stats->avg_replay_efficiency =
+            (stats->avg_replay_efficiency * (stats->update_count - 1) +
+             effects->replay_efficiency) / stats->update_count;
+    }
+
+    /* Update substrate state observations */
+    if (stats->update_count == 1 || atp_level < stats->min_atp_observed) {
+        stats->min_atp_observed = atp_level;
+    }
+    if (stats->update_count == 1 || metabolic_stress > stats->max_stress_observed) {
+        stats->max_stress_observed = metabolic_stress;
+    }
+}
+
+/* ============================================================================
+ * Lifecycle Functions
+ * ============================================================================ */
+
+void consolidation_substrate_default_config(consolidation_substrate_config_t* config) {
+    if (!config) {
+        NIMCP_LOGGING_ERROR("Cannot initialize NULL config");
+        return;
+    }
+
+    /* Enable all modulation features by default */
+    config->enable_atp_modulation = true;
+    config->enable_stress_modulation = true;
+    config->enable_hypoxia_modulation = true;
+    config->enable_protein_synthesis = true;
+
+    /* Default sensitivity parameters */
+    config->atp_sensitivity = CONSOLIDATION_SUBSTRATE_DEFAULT_ATP_SENSITIVITY;
+    config->stress_sensitivity = CONSOLIDATION_SUBSTRATE_DEFAULT_STRESS_SENSITIVITY;
+    config->hypoxia_sensitivity = CONSOLIDATION_SUBSTRATE_DEFAULT_HYPOXIA_SENSITIVITY;
+
+    /* Default update parameters */
+    config->update_interval_ms = 100;  /* 100ms updates */
+    config->auto_update = true;
+}
+
+consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(
+    const consolidation_substrate_config_t* config,
+    memory_consolidation_t* consolidation,
+    neural_substrate_t* substrate
+) {
+    if (!config || !consolidation || !substrate) {
+        NIMCP_LOGGING_ERROR("Cannot create bridge with NULL parameters");
+        return NULL;
+    }
+
+    /* Allocate bridge */
+    consolidation_substrate_bridge_t* bridge =
+        (consolidation_substrate_bridge_t*)nimcp_malloc(sizeof(consolidation_substrate_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate memory consolidation substrate bridge");
+        return NULL;
+    }
+
+    /* Zero-initialize */
+    memset(bridge, 0, sizeof(consolidation_substrate_bridge_t));
+
+    /* Store references */
+    bridge->substrate = substrate;
+    bridge->consolidation = consolidation;
+
+    /* Copy configuration */
+    memcpy(&bridge->config, config, sizeof(consolidation_substrate_config_t));
+
+    /* Initialize effects to optimal state */
+    bridge->effects.consolidation_rate = 1.0f;
+    bridge->effects.protein_synthesis_rate = 1.0f;
+    bridge->effects.replay_efficiency = 1.0f;
+    bridge->effects.transfer_rate = 1.0f;
+    bridge->effects.is_impaired = false;
+
+    /* Initialize statistics */
+    memset(&bridge->stats, 0, sizeof(consolidation_substrate_stats_t));
+    bridge->stats.min_consolidation_rate = 1.0f;
+    bridge->stats.max_consolidation_rate = 1.0f;
+    bridge->stats.avg_consolidation_rate = 1.0f;
+    bridge->stats.min_protein_synthesis = 1.0f;
+    bridge->stats.max_protein_synthesis = 1.0f;
+    bridge->stats.avg_protein_synthesis = 1.0f;
+    bridge->stats.min_replay_efficiency = 1.0f;
+    bridge->stats.max_replay_efficiency = 1.0f;
+    bridge->stats.avg_replay_efficiency = 1.0f;
+    bridge->stats.min_atp_observed = 1.0f;
+    bridge->stats.max_stress_observed = 0.0f;
+
+    /* Create mutex for thread safety */
+    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to allocate mutex for consolidation substrate bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize mutex for consolidation substrate bridge");
+        nimcp_free(bridge->mutex);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Bio-async not enabled yet */
+    bridge->bio_ctx = NULL;
+    bridge->bio_async_enabled = false;
+
+    NIMCP_LOGGING_INFO("Created memory consolidation substrate bridge");
+
+    return bridge;
+}
+
+void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        return;
+    }
+
+    /* Disconnect bio-async if enabled */
+    if (bridge->bio_async_enabled) {
+        consolidation_substrate_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_platform_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
+        bridge->mutex = NULL;
+    }
+
+    /* Free bridge */
+    nimcp_free(bridge);
+
+    NIMCP_LOGGING_INFO("Destroyed memory consolidation substrate bridge");
+}
+
+/* ============================================================================
+ * Bio-async Integration
+ * ============================================================================ */
+
+int consolidation_substrate_connect_bio_async(consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot connect NULL bridge to bio-async");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    /* Check if already connected */
+    if (bridge->bio_async_enabled) {
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return 0;
+    }
+
+    /* Register with bio-async router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_SUBSTRATE_MEMORY_CONSOLIDATION,
+        .module_name = "consolidation_substrate_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected memory consolidation substrate bridge to bio-async router");
+    } else {
+        NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    }
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int consolidation_substrate_disconnect_bio_async(consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot disconnect NULL bridge from bio-async");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    if (bridge->bio_async_enabled && bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+        bridge->bio_async_enabled = false;
+        NIMCP_LOGGING_INFO("Disconnected memory consolidation substrate bridge from bio-async router");
+    }
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+bool consolidation_substrate_is_bio_async_connected(const consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        return false;
+    }
+    return bridge->bio_async_enabled;
+}
+
+/* ============================================================================
+ * Update Functions
+ * ============================================================================ */
+
+int consolidation_substrate_update(consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot update NULL bridge");
+        return -1;
+    }
+
+    if (!bridge->substrate) {
+        NIMCP_LOGGING_ERROR("Bridge has NULL substrate");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(bridge->mutex);
+
+    /* Get substrate metabolic state */
+    substrate_metabolic_state_t metabolic;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
+        nimcp_platform_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    /* Compute consolidation rate */
+    float consolidation_rate = 1.0f;
+    if (bridge->config.enable_atp_modulation) {
+        consolidation_rate = compute_consolidation_rate(
+            metabolic.atp_level,
+            metabolic.metabolic_capacity,
+            bridge->config.atp_sensitivity
+        );
+    }
+
+    /* Compute protein synthesis rate */
+    float protein_synthesis_rate = 1.0f;
+    if (bridge->config.enable_protein_synthesis) {
+        protein_synthesis_rate = compute_protein_synthesis_rate(
+            metabolic.atp_level,
+            metabolic.glucose_level,
+            bridge->config.atp_sensitivity
+        );
+    }
+
+    /* Compute replay efficiency */
+    float replay_efficiency = 1.0f;
+    if (bridge->config.enable_hypoxia_modulation) {
+        replay_efficiency = compute_replay_efficiency(
+            metabolic.metabolic_capacity,
+            metabolic.oxygen_saturation,
+            bridge->config.hypoxia_sensitivity
+        );
+    }
+
+    /* Compute transfer rate */
+    float transfer_rate = 1.0f;
+    if (bridge->config.enable_stress_modulation) {
+        transfer_rate = compute_transfer_rate(
+            metabolic.atp_level,
+            metabolic.oxygen_saturation,
+            bridge->config.stress_sensitivity
+        );
+    }
+
+    /* Check for impairment */
+    bool is_impaired = check_impairment(protein_synthesis_rate, consolidation_rate);
+
+    /* Update effects */
+    bridge->effects.consolidation_rate = consolidation_rate;
+    bridge->effects.protein_synthesis_rate = protein_synthesis_rate;
+    bridge->effects.replay_efficiency = replay_efficiency;
+    bridge->effects.transfer_rate = transfer_rate;
+    bridge->effects.is_impaired = is_impaired;
+
+    /* Update statistics - compute metabolic stress from metabolic capacity */
+    float metabolic_stress = 1.0f - metabolic.metabolic_capacity;
+    update_statistics(bridge, &bridge->effects, metabolic.atp_level, metabolic_stress);
+
+    /* Log significant state changes */
+    if (is_impaired) {
+        NIMCP_LOGGING_WARN("Memory consolidation critically impaired (protein_synth=%.2f, consol_rate=%.2f)",
+                          protein_synthesis_rate, consolidation_rate);
+    }
+
+    if (metabolic.atp_level < CONSOLIDATION_SUBSTRATE_ATP_CRITICAL) {
+        NIMCP_LOGGING_WARN("Critical ATP level for consolidation: %.2f", metabolic.atp_level);
+    }
+
+    nimcp_platform_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Query Functions
+ * ============================================================================ */
+
+float consolidation_substrate_get_consolidation_rate(const consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot get consolidation rate from NULL bridge");
+        return 1.0f;
+    }
+
+    return bridge->effects.consolidation_rate;
+}
+
+float consolidation_substrate_get_protein_synthesis_rate(const consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot get protein synthesis rate from NULL bridge");
+        return 1.0f;
+    }
+
+    return bridge->effects.protein_synthesis_rate;
+}
+
+float consolidation_substrate_get_replay_efficiency(const consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot get replay efficiency from NULL bridge");
+        return 1.0f;
+    }
+
+    return bridge->effects.replay_efficiency;
+}
+
+float consolidation_substrate_get_transfer_rate(const consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot get transfer rate from NULL bridge");
+        return 1.0f;
+    }
+
+    return bridge->effects.transfer_rate;
+}
+
+consolidation_substrate_effects_t consolidation_substrate_get_effects(
+    const consolidation_substrate_bridge_t* bridge
+) {
+    consolidation_substrate_effects_t effects = {0};
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot get effects from NULL bridge");
+        /* Return default optimal effects */
+        effects.consolidation_rate = 1.0f;
+        effects.protein_synthesis_rate = 1.0f;
+        effects.replay_efficiency = 1.0f;
+        effects.transfer_rate = 1.0f;
+        effects.is_impaired = false;
+        return effects;
+    }
+
+    /* Return copy of effects */
+    return bridge->effects;
+}
+
+bool consolidation_substrate_is_impaired(const consolidation_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot check impairment on NULL bridge");
+        return false;
+    }
+
+    return bridge->effects.is_impaired;
+}
+
+consolidation_substrate_stats_t consolidation_substrate_get_stats(
+    const consolidation_substrate_bridge_t* bridge
+) {
+    consolidation_substrate_stats_t stats = {0};
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot get stats from NULL bridge");
+        return stats;
+    }
+
+    /* Return copy of statistics */
+    return bridge->stats;
+}

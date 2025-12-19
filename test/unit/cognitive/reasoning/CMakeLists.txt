@@ -65,3 +65,6 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_reasoning_attention.cpp
     unit
 )
+
+# Substrate bridge tests
+add_subdirectory(substrate)

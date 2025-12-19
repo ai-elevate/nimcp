@@ -30,3 +30,6 @@ add_test_binary(
 
 # TODO: Convert test_executive_swarm_integration.c from libcheck to GTest
 message(STATUS "  [SKIP] test_executive_swarm_integration.c - uses libcheck (not GTest)")
+
+# Substrate bridge tests
+add_subdirectory(substrate)
