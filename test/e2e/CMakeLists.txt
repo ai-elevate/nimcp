@@ -465,6 +465,38 @@ set_tests_properties(e2e_test_neural_plasticity_pipeline PROPERTIES
 )
 
 # ============================================================================
+# Master Connectivity E2E Test
+# ============================================================================
+# WHAT: E2E tests verifying full NIMCP brain connectivity across all layers
+# WHY:  Ensure every component communicates with every other relevant component
+# HOW:  Test neural substrate, thalamic/perception, Broca's region, cognitive,
+#       brain infrastructure, and cross-layer integration
+# ============================================================================
+add_executable(e2e_test_master_connectivity
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_master_connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_test_master_connectivity
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(e2e_test_master_connectivity
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(e2e_test_master_connectivity PRIVATE cxx_std_17)
+add_test(NAME e2e_test_master_connectivity COMMAND e2e_test_master_connectivity)
+set_tests_properties(e2e_test_master_connectivity PROPERTIES
+    LABELS "e2e;connectivity;master"
+    TIMEOUT 300
+)
+
+# ============================================================================
 # Test Execution Instructions
 # ============================================================================
 
