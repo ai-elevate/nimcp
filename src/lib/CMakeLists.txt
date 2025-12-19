@@ -125,6 +125,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_neuromodulation.c # Neuromodulatory effects on columns
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_oscillations_integration.c  # Oscillation integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_plasticity_bridge.c  # Plasticity coordinator integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_substrate_bridge.c  # Cortical-neural substrate integration
 
     # Broca's region sub-modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_syntax_processor.c
@@ -1009,6 +1010,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_planning.c        # Planning and strategy
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_power.c           # Power management
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_sensor_fusion.c   # Multi-sensor fusion
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_swarm_bridge.c    # Portia-Swarm integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_tier_switch.c     # Tier switching
 
     # Core Directives - Asimov's Laws & Ethical Foundation (Phase 1.0)

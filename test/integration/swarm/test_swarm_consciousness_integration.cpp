@@ -320,11 +320,11 @@ protected:
 
     // Helper: Mock emergence tier from swarm size
     swarm_emergence_tier_t GetMockEmergenceTier(uint32_t num_drones) {
-        if (num_drones >= 16) return SWARM_TIER_4_SUPERORGANISM;
-        if (num_drones >= 8) return SWARM_TIER_3_SWARM;
-        if (num_drones >= 4) return SWARM_TIER_2_CLUSTER;
-        if (num_drones >= 2) return SWARM_TIER_1_PAIRED;
-        return SWARM_TIER_0_DISCONNECTED;
+        if (num_drones >= 16) return SWARM_TIER_COMPANY;
+        if (num_drones >= 8) return SWARM_TIER_PLATOON;
+        if (num_drones >= 4) return SWARM_TIER_SQUAD;
+        if (num_drones >= 2) return SWARM_TIER_PAIR;
+        return SWARM_TIER_INDIVIDUAL;
     }
 
     // Helper: Process all swarm brains
@@ -1036,12 +1036,12 @@ TEST_F(SwarmConsciousnessIntegrationTest, ConsciousnessEnhancesTier) {
     swarm_emergence_tier_t tier = swarm_brain_get_emergence_tier(swarm_brains_[0]);
 
     // Verify tier is valid (may be TIER_0 if emergence not fully implemented yet)
-    EXPECT_GE(tier, SWARM_TIER_0_DISCONNECTED);
-    EXPECT_LE(tier, SWARM_TIER_4_SUPERORGANISM);
+    EXPECT_GE(tier, SWARM_TIER_INDIVIDUAL);
+    EXPECT_LE(tier, SWARM_TIER_COMPANY);
 
     // Verify mock tier calculation works
     swarm_emergence_tier_t expected_tier = GetMockEmergenceTier(8);
-    EXPECT_EQ(expected_tier, SWARM_TIER_3_SWARM) << "Mock tier should be SWARM for 8 drones";
+    EXPECT_EQ(expected_tier, SWARM_TIER_PLATOON) << "Mock tier should be SWARM for 8 drones";
 
     // High Φ should correlate with consciousness
     EXPECT_GT(phi, 0.0f) << "Collective Φ should be positive";
@@ -1069,12 +1069,12 @@ TEST_F(SwarmConsciousnessIntegrationTest, TierAffectsCapabilities) {
     swarm_emergence_tier_t tier = swarm_brain_get_emergence_tier(swarm_brains_[0]);
 
     // Verify tier is valid
-    EXPECT_GE(tier, SWARM_TIER_0_DISCONNECTED);
-    EXPECT_LE(tier, SWARM_TIER_4_SUPERORGANISM);
+    EXPECT_GE(tier, SWARM_TIER_INDIVIDUAL);
+    EXPECT_LE(tier, SWARM_TIER_COMPANY);
 
     // Verify tier progression logic
     swarm_emergence_tier_t mock_tier = GetMockEmergenceTier(16);
-    EXPECT_EQ(mock_tier, SWARM_TIER_4_SUPERORGANISM) << "Mock tier should be SUPERORGANISM";
+    EXPECT_EQ(mock_tier, SWARM_TIER_COMPANY) << "Mock tier should be SUPERORGANISM";
 
     // Verify different swarm sizes produce different tiers
     EXPECT_LT(GetMockEmergenceTier(2), GetMockEmergenceTier(16))

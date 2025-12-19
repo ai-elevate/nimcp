@@ -190,6 +190,26 @@ set_tests_properties(PortiaDeception PROPERTIES
     LABELS "unit;portia;deception"
 )
 
+# Swarm Bridge Tests
+add_executable(test_portia_swarm_bridge
+    test_portia_swarm_bridge.cpp
+)
+
+target_link_libraries(test_portia_swarm_bridge
+    nimcp_portia
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+add_test(NAME PortiaSwarmBridge COMMAND test_portia_swarm_bridge)
+set_tests_properties(PortiaSwarmBridge PROPERTIES
+    TIMEOUT 60
+    LABELS "unit;portia;swarm_bridge"
+)
+
 # ============================================================================
 # Portia-Immune Bridge Tests
 # ============================================================================

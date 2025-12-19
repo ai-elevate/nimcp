@@ -311,6 +311,19 @@ void portia_destroy(void);
 bool portia_is_initialized(void);
 
 /**
+ * @brief Get Portia context
+ *
+ * WHAT: Returns the global Portia context
+ * WHY:  Allow integration modules to access Portia context
+ * HOW:  Returns pointer to singleton context
+ *
+ * @return Portia context or NULL if not initialized
+ *
+ * THREAD SAFETY: Thread-safe
+ */
+portia_context_t* portia_get_context(void);
+
+/**
  * @brief Update Portia system
  *
  * WHAT: Main update loop for Portia

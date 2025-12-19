@@ -249,11 +249,40 @@ set_tests_properties(regression_portia_test_deception_effectiveness PROPERTIES
     TIMEOUT 60
 )
 
+# Swarm Bridge Regression Tests
+add_executable(regression_portia_swarm_bridge
+    test_portia_swarm_bridge_regression.cpp
+)
+target_link_libraries(regression_portia_swarm_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_portia_swarm_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/portia
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/portia
+        ${CMAKE_SOURCE_DIR}/src/swarm
+        ${CMAKE_SOURCE_DIR}/src/utils/thread
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+)
+add_test(NAME regression_portia_swarm_bridge
+         COMMAND regression_portia_swarm_bridge --gtest_brief=1)
+set_tests_properties(regression_portia_swarm_bridge PROPERTIES
+    LABELS "regression;portia;swarm_bridge"
+    TIMEOUT 180
+)
+
 # ============================================================================
 # Test Summary
 # ============================================================================
-# Total Tests: 10 test executables
-# Total Test Cases: ~100+ individual test cases
+# Total Tests: 11 test executables
+# Total Test Cases: ~120+ individual test cases
 # Coverage Areas:
 #   - Tier switching stability and performance
 #   - Power monitoring accuracy and stability
@@ -265,4 +294,13 @@ set_tests_properties(regression_portia_test_deception_effectiveness PROPERTIES
 #   - Graceful degradation and recovery
 #   - Target classification accuracy
 #   - Deception system effectiveness
+#   - Portia-Swarm bridge integration (20 regression tests)
+#     * Performance benchmarks (throughput, latency)
+#     * Memory stability (leak detection)
+#     * Numerical stability (recommendation blending)
+#     * Scaling tests (increasing loads)
+#     * Thread safety (concurrent operations)
+#     * State consistency (accuracy checks)
+#     * Callback reliability (event tracking)
+#     * Recovery tests (disconnect/reconnect)
 # ============================================================================

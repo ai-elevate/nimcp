@@ -118,6 +118,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "swarm/nimcp_swarm_emergence.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -174,19 +175,7 @@ struct nimcp_bio_async_module_ctx;      // Bio-async module context
 // Enumerations
 //=============================================================================
 
-/**
- * @brief Swarm emergence tiers
- *
- * Defines levels of collective intelligence based on peer count,
- * coherence, and behavioral complexity.
- */
-typedef enum {
-    SWARM_TIER_0_DISCONNECTED = 0,    /**< No peers, solo operation */
-    SWARM_TIER_1_PAIRED = 1,          /**< 2-3 drones, basic coordination */
-    SWARM_TIER_2_CLUSTER = 2,         /**< 4-7 drones, group behaviors */
-    SWARM_TIER_3_SWARM = 3,           /**< 8-15 drones, emergent intelligence */
-    SWARM_TIER_4_SUPERORGANISM = 4    /**< 16+ drones, high coherence */
-} swarm_emergence_tier_t;
+// swarm_emergence_tier_t is now defined in nimcp_swarm_emergence.h
 
 /**
  * @brief Swarm message types

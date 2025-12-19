@@ -267,7 +267,7 @@ TEST_F(SwarmBrainIntegrationTest, EmergenceTier_Disconnected) {
 
     // Single drone should be TIER_0_DISCONNECTED
     swarm_emergence_tier_t tier = swarm_brain_get_emergence_tier(swarm);
-    EXPECT_EQ(tier, SWARM_TIER_0_DISCONNECTED);
+    EXPECT_EQ(tier, SWARM_TIER_INDIVIDUAL);
 }
 
 TEST_F(SwarmBrainIntegrationTest, EmergenceTier_Paired) {
@@ -284,7 +284,7 @@ TEST_F(SwarmBrainIntegrationTest, EmergenceTier_Paired) {
     bool any_paired = false;
     for (auto* swarm : swarm_brains_) {
         swarm_emergence_tier_t tier = swarm_brain_get_emergence_tier(swarm);
-        if (tier >= SWARM_TIER_1_PAIRED) {
+        if (tier >= SWARM_TIER_PAIR) {
             any_paired = true;
         }
     }
@@ -304,7 +304,7 @@ TEST_F(SwarmBrainIntegrationTest, EmergenceTier_Cluster) {
     bool any_cluster = false;
     for (auto* swarm : swarm_brains_) {
         swarm_emergence_tier_t tier = swarm_brain_get_emergence_tier(swarm);
-        if (tier >= SWARM_TIER_2_CLUSTER) {
+        if (tier >= SWARM_TIER_SQUAD) {
             any_cluster = true;
         }
     }
@@ -326,7 +326,7 @@ TEST_F(SwarmBrainIntegrationTest, EmergenceTier_Swarm) {
     bool any_swarm = false;
     for (auto* swarm : swarm_brains_) {
         swarm_emergence_tier_t tier = swarm_brain_get_emergence_tier(swarm);
-        if (tier >= SWARM_TIER_3_SWARM) {
+        if (tier >= SWARM_TIER_PLATOON) {
             any_swarm = true;
         }
     }
@@ -346,7 +346,7 @@ TEST_F(SwarmBrainIntegrationTest, EmergenceTierTransitions) {
 
     swarm_emergence_tier_t initial_tier = swarm_brain_get_emergence_tier(swarm_brains_[0]);
     // Initial tier may be DISCONNECTED or PAIRED depending on timing
-    EXPECT_LE(initial_tier, SWARM_TIER_1_PAIRED);
+    EXPECT_LE(initial_tier, SWARM_TIER_PAIR);
 
     // Add more drones (IDs 3-6, since CreateSwarm made 1-2)
     for (uint32_t i = 3; i <= 6; i++) {
@@ -358,7 +358,7 @@ TEST_F(SwarmBrainIntegrationTest, EmergenceTierTransitions) {
     ProcessAll(20);
 
     // Check if any drone transitioned to a higher tier
-    swarm_emergence_tier_t max_tier = SWARM_TIER_0_DISCONNECTED;
+    swarm_emergence_tier_t max_tier = SWARM_TIER_INDIVIDUAL;
     for (auto* swarm : swarm_brains_) {
         swarm_emergence_tier_t tier = swarm_brain_get_emergence_tier(swarm);
         if (tier > max_tier) {

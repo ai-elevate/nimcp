@@ -914,6 +914,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/dendrite")
     add_subdirectory(regression/core/dendrite)
 endif()
 
+# ============================================================================
+# Substrate Bridge Tests (Neural Substrate Integration)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/substrate")
+    message(STATUS "Adding core substrate bridges regression tests...")
+    add_subdirectory(regression/core/substrate)
+endif()
+
 # Neuron Types Regression Tests
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/neuron_types")
     message(STATUS "Adding neuron types performance regression tests...")

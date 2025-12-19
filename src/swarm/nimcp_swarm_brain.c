@@ -403,7 +403,7 @@ static emergence_context_t* create_emergence_context(void) {
     emergence_context_t* ctx = (emergence_context_t*)nimcp_calloc(1, sizeof(emergence_context_t));
     if (!ctx) return NULL;
 
-    ctx->current_tier = SWARM_TIER_0_DISCONNECTED;
+    ctx->current_tier = SWARM_TIER_INDIVIDUAL;
     ctx->tier_enter_time_ms = get_time_ms();
     return ctx;
 }
@@ -422,30 +422,30 @@ static void emergence_update_tier(emergence_context_t* ctx, uint32_t peer_count,
     if (!ctx) return;
 
     swarm_emergence_tier_t old_tier = ctx->current_tier;
-    swarm_emergence_tier_t new_tier = SWARM_TIER_0_DISCONNECTED;
+    swarm_emergence_tier_t new_tier = SWARM_TIER_INDIVIDUAL;
 
     // Determine tier based on peer count
     // Note: peer_count is number of OTHER drones known, not total including self
-    // TIER_1_PAIRED: at least 1 peer (2 total drones)
-    // TIER_2_CLUSTER: at least 4 peers (5 total drones)
-    // TIER_3_SWARM: at least 7 peers (8 total drones)
-    // TIER_4_SUPERORGANISM: at least 15 peers (16 total drones)
+    // TIER_PAIR: at least 1 peer (2 total drones)
+    // TIER_SQUAD: at least 4 peers (5 total drones)
+    // TIER_PLATOON: at least 7 peers (8 total drones)
+    // TIER_COMPANY: at least 15 peers (16 total drones)
     if (peer_count >= 15) {
-        new_tier = SWARM_TIER_4_SUPERORGANISM;
+        new_tier = SWARM_TIER_COMPANY;
     } else if (peer_count >= 7) {
-        new_tier = SWARM_TIER_3_SWARM;
+        new_tier = SWARM_TIER_PLATOON;
     } else if (peer_count >= 4) {
-        new_tier = SWARM_TIER_2_CLUSTER;
+        new_tier = SWARM_TIER_SQUAD;
     } else if (peer_count >= 1) {
-        new_tier = SWARM_TIER_1_PAIRED;
+        new_tier = SWARM_TIER_PAIR;
     } else {
-        new_tier = SWARM_TIER_0_DISCONNECTED;
+        new_tier = SWARM_TIER_INDIVIDUAL;
     }
 
     // Require some coherence for highest tier only
     // Note: In test scenarios coherence may be low due to limited workspace activity
-    if (new_tier >= SWARM_TIER_4_SUPERORGANISM && coherence < 0.2F) {
-        new_tier = SWARM_TIER_3_SWARM;
+    if (new_tier >= SWARM_TIER_COMPANY && coherence < 0.2F) {
+        new_tier = SWARM_TIER_PLATOON;
     }
 
     // Update if tier changed
@@ -1293,7 +1293,7 @@ bool swarm_brain_sync_neuromodulators(swarm_brain_t* swarm, const neuromod_state
 }
 
 swarm_emergence_tier_t swarm_brain_get_emergence_tier(const swarm_brain_t* swarm) {
-    if (!swarm || !swarm->emergence) return SWARM_TIER_0_DISCONNECTED;
+    if (!swarm || !swarm->emergence) return SWARM_TIER_INDIVIDUAL;
     return swarm->emergence->current_tier;
 }
 
@@ -1328,11 +1328,12 @@ brain_t swarm_brain_get_local_brain(swarm_brain_t* swarm) {
 
 const char* swarm_emergence_tier_string(swarm_emergence_tier_t tier) {
     switch (tier) {
-        case SWARM_TIER_0_DISCONNECTED: return "DISCONNECTED";
-        case SWARM_TIER_1_PAIRED: return "PAIRED";
-        case SWARM_TIER_2_CLUSTER: return "CLUSTER";
-        case SWARM_TIER_3_SWARM: return "SWARM";
-        case SWARM_TIER_4_SUPERORGANISM: return "SUPERORGANISM";
+        case SWARM_TIER_INDIVIDUAL: return "INDIVIDUAL";
+        case SWARM_TIER_PAIR: return "PAIR";
+        case SWARM_TIER_SQUAD: return "SQUAD";
+        case SWARM_TIER_PLATOON: return "PLATOON";
+        case SWARM_TIER_COMPANY: return "COMPANY";
+        case SWARM_TIER_BATTALION: return "BATTALION";
         default: return "UNKNOWN";
     }
 }

@@ -442,6 +442,10 @@ bool portia_is_initialized(void) {
     return g_portia_ctx != NULL && g_portia_ctx->initialized;
 }
 
+portia_context_t* portia_get_context(void) {
+    return g_portia_ctx;
+}
+
 nimcp_error_t portia_update(void) {
     if (!portia_is_initialized()) {
         return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;

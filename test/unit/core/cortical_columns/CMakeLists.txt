@@ -476,3 +476,8 @@ set_tests_properties(test_cortical_surround
         TIMEOUT 120
         LABELS "unit;core;cortical_columns;surround"
 )
+
+# ============================================================================
+# Cortical Substrate Bridge Tests
+# ============================================================================
+add_subdirectory(substrate)

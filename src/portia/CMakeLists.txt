@@ -6,6 +6,7 @@
 # Core infrastructure file ONLY (user-requested - COMPLETE AND WORKING)
 set(PORTIA_SOURCES
     nimcp_portia.c
+    nimcp_portia_swarm_bridge.c
 )
 
 # Additional subsystem files (to be integrated later)

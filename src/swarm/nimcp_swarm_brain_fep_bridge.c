@@ -76,7 +76,7 @@ swarm_brain_fep_bridge_t* swarm_brain_fep_create(
         return NULL;
     }
 
-    bridge->state.last_tier = SWARM_TIER_0_DISCONNECTED;
+    bridge->state.last_tier = SWARM_TIER_INDIVIDUAL;
 
     NIMCP_LOGGING_INFO("Swarm brain FEP bridge created");
     return bridge;

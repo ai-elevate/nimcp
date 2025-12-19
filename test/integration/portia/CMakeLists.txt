@@ -18,6 +18,7 @@ set(PORTIA_INTEGRATION_TESTS
     test_portia_degradation_bio_async_integration.cpp
     test_portia_deception_sensor_integration.cpp
     test_portia_full_system_integration.cpp
+    test_portia_swarm_bridge_integration.cpp
 )
 
 # Create test executables
@@ -52,6 +53,7 @@ foreach(test_source ${PORTIA_INTEGRATION_TESTS})
             ${CMAKE_SOURCE_DIR}/include/utils
             ${CMAKE_SOURCE_DIR}/include/utils/platform
             ${CMAKE_SOURCE_DIR}/include/utils/validation
+            ${CMAKE_SOURCE_DIR}/include/swarm
     )
 
     # Compiler flags
@@ -170,6 +172,21 @@ set_property(
     TEST test_portia_full_system_integration
     PROPERTY DESCRIPTION
     "Tests complete Portia system with all subsystems"
+)
+
+set_property(
+    TEST test_portia_swarm_bridge_integration
+    PROPERTY DESCRIPTION
+    "Tests Portia-Swarm bridge bidirectional integration and coordination"
+)
+
+#=============================================================================
+# Portia-Swarm Bridge Test Group
+#=============================================================================
+
+add_custom_target(integration_portia_swarm
+    COMMAND ${CMAKE_CTEST_COMMAND} -R "portia_swarm_bridge" --output-on-failure
+    COMMENT "Running Portia-Swarm bridge integration tests"
 )
 
 #=============================================================================

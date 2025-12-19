@@ -195,6 +195,13 @@ add_custom_target(doc_cortical_columns_integration
 )
 
 #=============================================================================
+# Subdirectories
+#=============================================================================
+
+# Substrate bridge integration tests
+add_subdirectory(substrate)
+
+#=============================================================================
 # Build Summary
 #=============================================================================
 
@@ -205,3 +212,4 @@ message(STATUS "  - Test count: ~20 comprehensive integration tests")
 message(STATUS "  - Includes: Topographic maps, Orientation columns, Feature hypercolumns")
 message(STATUS "  - Plasticity: STDP, Hebbian learning across columns")
 message(STATUS "  - Performance: Large-scale processing benchmarks")
+message(STATUS "  - Substrate: Cortical substrate bridge integration tests")

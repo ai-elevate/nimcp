@@ -521,6 +521,78 @@ set_tests_properties(e2e_test_master_connectivity PROPERTIES
 )
 
 # ============================================================================
+# Cortical Substrate Bridge Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for cortical substrate bridge integration
+# WHY:  Verify metabolic/thermal substrate modulates cortical processing
+# HOW:  Test sensory-to-cortical pipelines with substrate state effects
+# ============================================================================
+add_executable(e2e_test_cortical_substrate_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cortical_substrate_pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_test_cortical_substrate_pipeline
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(e2e_test_cortical_substrate_pipeline
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(e2e_test_cortical_substrate_pipeline PRIVATE cxx_std_17)
+add_test(NAME e2e_test_cortical_substrate_pipeline COMMAND e2e_test_cortical_substrate_pipeline)
+set_tests_properties(e2e_test_cortical_substrate_pipeline PROPERTIES
+    LABELS "e2e;cortical;substrate"
+    TIMEOUT 180
+)
+
+# ============================================================================
+# Substrate Bridges Pipeline E2E Test
+# ============================================================================
+# WHAT: Comprehensive E2E tests for all substrate bridges across NIMCP
+# WHY:  Verify complete substrate-cognitive-neural integration and stress scenarios
+# HOW:  Test cognitive pipeline, neural pipeline, stress scenarios, and full brain integration
+#
+# TEST COVERAGE (16 tests):
+# - Cognitive Pipeline (5): Full cognitive cycle, emotion-cognition interaction,
+#   introspection monitoring, ToM processing, memory consolidation recovery
+# - Neural Pipeline (4): Spike processing, signal propagation, plasticity learning,
+#   glial support during sustained activity
+# - Stress Scenarios (4): Low ATP cascade, hyperthermia effects, recovery sequence,
+#   gradual degradation simulation
+# - Full Brain Integration (3): Sensory-to-motor pathway, learning/adaptation cycle,
+#   multi-modal processing
+# ============================================================================
+add_executable(e2e_test_substrate_bridges_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_substrate_bridges_pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_test_substrate_bridges_pipeline
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(e2e_test_substrate_bridges_pipeline
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(e2e_test_substrate_bridges_pipeline PRIVATE cxx_std_17)
+add_test(NAME e2e_test_substrate_bridges_pipeline COMMAND e2e_test_substrate_bridges_pipeline)
+set_tests_properties(e2e_test_substrate_bridges_pipeline PROPERTIES
+    LABELS "e2e;substrate;bridges"
+    TIMEOUT 300
+)
+
+# ============================================================================
 # Test Execution Instructions
 # ============================================================================
 

@@ -67,6 +67,9 @@ gtest_discover_tests(integration_cognitive_working_memory_pe
 add_subdirectory(free_energy)
 add_subdirectory(autobiographical_memory)
 
+# Cognitive Substrate Bridges Integration
+add_subdirectory(substrate)
+
 # Curiosity - FEP Bridge Integration Test
 add_executable(integration_cognitive_curiosity_fep_bridge
     curiosity/test_curiosity_fep_bridge_integration.cpp
