@@ -10073,6 +10073,54 @@ __/optimization/quantum_annealing/nimcp_quantum_annealing.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing.c.s
 .PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.c.s
 
+__/perception/cortical/nimcp_audio_cortical_bridge.o: __/perception/cortical/nimcp_audio_cortical_bridge.c.o
+.PHONY : __/perception/cortical/nimcp_audio_cortical_bridge.o
+
+# target to build an object file
+__/perception/cortical/nimcp_audio_cortical_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/cortical/nimcp_audio_cortical_bridge.c.o
+.PHONY : __/perception/cortical/nimcp_audio_cortical_bridge.c.o
+
+__/perception/cortical/nimcp_audio_cortical_bridge.i: __/perception/cortical/nimcp_audio_cortical_bridge.c.i
+.PHONY : __/perception/cortical/nimcp_audio_cortical_bridge.i
+
+# target to preprocess a source file
+__/perception/cortical/nimcp_audio_cortical_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/cortical/nimcp_audio_cortical_bridge.c.i
+.PHONY : __/perception/cortical/nimcp_audio_cortical_bridge.c.i
+
+__/perception/cortical/nimcp_audio_cortical_bridge.s: __/perception/cortical/nimcp_audio_cortical_bridge.c.s
+.PHONY : __/perception/cortical/nimcp_audio_cortical_bridge.s
+
+# target to generate assembly for a file
+__/perception/cortical/nimcp_audio_cortical_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/cortical/nimcp_audio_cortical_bridge.c.s
+.PHONY : __/perception/cortical/nimcp_audio_cortical_bridge.c.s
+
+__/perception/cortical/nimcp_speech_cortical_bridge.o: __/perception/cortical/nimcp_speech_cortical_bridge.c.o
+.PHONY : __/perception/cortical/nimcp_speech_cortical_bridge.o
+
+# target to build an object file
+__/perception/cortical/nimcp_speech_cortical_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/cortical/nimcp_speech_cortical_bridge.c.o
+.PHONY : __/perception/cortical/nimcp_speech_cortical_bridge.c.o
+
+__/perception/cortical/nimcp_speech_cortical_bridge.i: __/perception/cortical/nimcp_speech_cortical_bridge.c.i
+.PHONY : __/perception/cortical/nimcp_speech_cortical_bridge.i
+
+# target to preprocess a source file
+__/perception/cortical/nimcp_speech_cortical_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/cortical/nimcp_speech_cortical_bridge.c.i
+.PHONY : __/perception/cortical/nimcp_speech_cortical_bridge.c.i
+
+__/perception/cortical/nimcp_speech_cortical_bridge.s: __/perception/cortical/nimcp_speech_cortical_bridge.c.s
+.PHONY : __/perception/cortical/nimcp_speech_cortical_bridge.s
+
+# target to generate assembly for a file
+__/perception/cortical/nimcp_speech_cortical_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/cortical/nimcp_speech_cortical_bridge.c.s
+.PHONY : __/perception/cortical/nimcp_speech_cortical_bridge.c.s
+
 __/perception/cortical/nimcp_visual_cortical_bridge.o: __/perception/cortical/nimcp_visual_cortical_bridge.c.o
 .PHONY : __/perception/cortical/nimcp_visual_cortical_bridge.o
 
@@ -18691,6 +18739,12 @@ help:
 	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.o"
 	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.i"
 	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.s"
+	@echo "... __/perception/cortical/nimcp_audio_cortical_bridge.o"
+	@echo "... __/perception/cortical/nimcp_audio_cortical_bridge.i"
+	@echo "... __/perception/cortical/nimcp_audio_cortical_bridge.s"
+	@echo "... __/perception/cortical/nimcp_speech_cortical_bridge.o"
+	@echo "... __/perception/cortical/nimcp_speech_cortical_bridge.i"
+	@echo "... __/perception/cortical/nimcp_speech_cortical_bridge.s"
 	@echo "... __/perception/cortical/nimcp_visual_cortical_bridge.o"
 	@echo "... __/perception/cortical/nimcp_visual_cortical_bridge.i"
 	@echo "... __/perception/cortical/nimcp_visual_cortical_bridge.s"

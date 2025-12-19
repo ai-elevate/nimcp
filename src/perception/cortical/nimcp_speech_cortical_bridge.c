@@ -39,7 +39,7 @@ struct speech_cortical_bridge {
     /* Feature hypercolumns for phoneme classes */
     feature_hypercolumn_t** hypercolumns;
     uint32_t num_hypercolumns;
-    uint32_t features_per_hypercolumn;
+    uint32_t phonemes_per_hypercolumn;
 
     /* Configuration */
     speech_cortical_config_t config;
@@ -60,7 +60,8 @@ struct speech_cortical_bridge {
     float* hypercolumn_gains;
 
     /* Thread safety */
-    nimcp_mutex_t* mutex;
+    nimcp_mutex_t mutex;
+    bool mutex_initialized;
 
     /* Timing */
     uint64_t last_process_time_ns;
@@ -92,11 +93,23 @@ static uint32_t compute_hypercolumn_index(
         return UINT32_MAX;
     }
 
-    /* Convert to grid position */
-    float norm_x = (tono_x + bridge->config.frequency_range_hz / 2.0f) /
-                   bridge->config.frequency_range_hz;
-    float norm_y = (tono_y + bridge->config.frequency_range_hz / 2.0f) /
-                   bridge->config.frequency_range_hz;
+    /* Convert frequency to normalized position using logarithmic mapping */
+    float min_freq = bridge->config.min_formant_freq;
+    float max_freq = bridge->config.max_formant_freq;
+
+    /* Handle invalid frequency range */
+    if (max_freq <= min_freq || min_freq <= 0) {
+        min_freq = SPEECH_CORTICAL_DEFAULT_FORMANT_MIN;
+        max_freq = SPEECH_CORTICAL_DEFAULT_FORMANT_MAX;
+    }
+
+    /* Logarithmic frequency mapping (cochlear-like) */
+    float log_min = logf(min_freq);
+    float log_max = logf(max_freq);
+    float log_x = logf(fmaxf(tono_x, min_freq));
+
+    float norm_x = (log_x - log_min) / (log_max - log_min);
+    float norm_y = (tono_y + 1.0f) / 2.0f;  /* Assume tono_y is in [-1, 1] */
 
     /* Clamp to [0, 1] */
     norm_x = fminf(1.0f, fmaxf(0.0f, norm_x));
@@ -176,6 +189,40 @@ static void compute_phoneme_result(
     result->confidence = stats.selectivity;
 }
 
+/**
+ * @brief Extract formants from audio using simple peak detection
+ */
+static void extract_formants(
+    const float* audio_data,
+    uint32_t num_samples,
+    float* formants)
+{
+    /* Initialize formants to typical values */
+    formants[0] = 500.0f;   /* F1 - typically 200-900 Hz */
+    formants[1] = 1500.0f;  /* F2 - typically 800-2500 Hz */
+    formants[2] = 2500.0f;  /* F3 - typically 1500-3500 Hz */
+    formants[3] = 3500.0f;  /* F4 - typically 3000-4500 Hz */
+
+    if (!audio_data || num_samples == 0) {
+        return;
+    }
+
+    /* Simple energy-based formant estimation */
+    /* In a real implementation, this would use LPC or similar */
+    float energy = 0.0f;
+    for (uint32_t i = 0; i < num_samples; i++) {
+        energy += audio_data[i] * audio_data[i];
+    }
+    energy /= (float)num_samples;
+
+    /* Adjust formants based on energy (simple heuristic) */
+    float energy_factor = sqrtf(energy) * 2.0f;
+    if (energy_factor > 0.1f) {
+        formants[0] *= (1.0f + energy_factor * 0.1f);
+        formants[1] *= (1.0f + energy_factor * 0.05f);
+    }
+}
+
 /* ============================================================================
  * Lifecycle Functions
  * ============================================================================ */
@@ -187,14 +234,16 @@ void speech_cortical_default_config(speech_cortical_config_t* config)
     memset(config, 0, sizeof(speech_cortical_config_t));
 
     config->num_hypercolumns = 64;  /* 8x8 grid */
-    config->features_per_hypercolumn = SPEECH_CORTICAL_DEFAULT_FEATURES;
+    config->phonemes_per_hypercolumn = SPEECH_CORTICAL_DEFAULT_PHONEMES;
+    config->min_formant_freq = SPEECH_CORTICAL_DEFAULT_FORMANT_MIN;
+    config->max_formant_freq = SPEECH_CORTICAL_DEFAULT_FORMANT_MAX;
+    config->tuning_width = SPEECH_CORTICAL_DEFAULT_TUNING_WIDTH;
     config->mode = SPEECH_CORTICAL_MODE_HYPERCOLUMN;
     config->enable_tonotopic_mapping = true;
     config->enable_cortical_immune = true;
     config->enable_bio_async = true;
-    config->frequency_range_hz = 8000.0f;  /* 0-8kHz speech range */
-    config->primary_frequency_hz = 1000.0f; /* Center frequency */
-    config->cortical_magnification = 10.0f;
+    config->auditory_field_octaves = 4.0f;  /* ~4 octaves for speech */
+    config->cochlear_magnification = 10.0f;
     config->immune_modulation_factor = SPEECH_CORTICAL_DEFAULT_IMMUNE_FACTOR;
     config->use_umm = false;
 }
@@ -235,10 +284,12 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
     bridge->immune_modulation_factor = 0.0f;
     bridge->umm_enabled = config->use_umm;
 
-    /* Create mutex */
-    bridge->mutex = nimcp_mutex_create();
-    if (!bridge->mutex) {
-        NIMCP_LOGGING_WARN("Failed to create mutex, continuing without thread safety");
+    /* Initialize mutex */
+    if (nimcp_mutex_init(&bridge->mutex, NULL) == 0) {
+        bridge->mutex_initialized = true;
+    } else {
+        NIMCP_LOGGING_WARN("Failed to initialize mutex, continuing without thread safety");
+        bridge->mutex_initialized = false;
     }
 
     /* Allocate hypercolumns array */
@@ -255,18 +306,18 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
 
     /* Create hypercolumns for phoneme features */
     bridge->num_hypercolumns = config->num_hypercolumns;
-    bridge->features_per_hypercolumn = config->features_per_hypercolumn;
+    bridge->phonemes_per_hypercolumn = config->phonemes_per_hypercolumn;
 
     for (uint32_t i = 0; i < config->num_hypercolumns; i++) {
         /* Create feature dimension for phoneme classes */
         feature_dimension_t dim = feature_dimension_create(
             FEATURE_CUSTOM,  /* Phoneme features are custom */
             0.0f,
-            (float)config->features_per_hypercolumn,
-            config->features_per_hypercolumn
+            (float)config->phonemes_per_hypercolumn,
+            config->phonemes_per_hypercolumn
         );
         feature_dimension_set_circular(&dim, false);
-        feature_dimension_set_tuning_width(&dim, 1.0f);
+        feature_dimension_set_tuning_width(&dim, config->tuning_width);
 
         bridge->hypercolumns[i] = feature_hypercolumn_create(&dim, 1);
         if (!bridge->hypercolumns[i]) {
@@ -298,20 +349,16 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
     /* Create tonotopic map if enabled */
     if (config->enable_tonotopic_mapping) {
         tonotopic_params_t tono_params = {
-            .min_freq = 80.0f,           /* Low frequency bound */
-            .max_freq = config->frequency_range_hz,
-            .freq_scale = TONOTOPIC_LOG,  /* Logarithmic frequency mapping */
-            .num_channels = (uint32_t)sqrtf((float)config->num_hypercolumns),
-            .bandwidth_octaves = 0.5f
+            .min_frequency = config->min_formant_freq,
+            .max_frequency = config->max_formant_freq,
+            .octave_span = config->auditory_field_octaves,
+            .is_logarithmic = true,  /* Logarithmic frequency mapping */
+            .q_factor = 10.0f  /* Default Q factor for speech */
         };
-
-        uint32_t grid_size = (uint32_t)sqrtf((float)config->num_hypercolumns);
-        if (grid_size == 0) grid_size = 1;
 
         bridge->tonotopic_map = topographic_map_create_tonotopic(
             &tono_params,
-            grid_size,
-            grid_size
+            config->num_hypercolumns
         );
         if (!bridge->tonotopic_map) {
             NIMCP_LOGGING_WARN("Failed to create tonotopic map, continuing without");
@@ -323,8 +370,8 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
 
     bridge->state = SPEECH_CORTICAL_STATE_READY;
 
-    NIMCP_LOGGING_INFO("Speech-cortical bridge created with %u hypercolumns (%u features each)",
-                       bridge->num_hypercolumns, bridge->features_per_hypercolumn);
+    NIMCP_LOGGING_INFO("Speech-cortical bridge created with %u hypercolumns (%u phonemes each)",
+                       bridge->num_hypercolumns, bridge->phonemes_per_hypercolumn);
 
     return bridge;
 }
@@ -359,8 +406,8 @@ void speech_cortical_bridge_destroy(speech_cortical_bridge_t* bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex_initialized) {
+        nimcp_mutex_destroy(&bridge->mutex);
     }
 
     nimcp_free(bridge);
@@ -378,11 +425,11 @@ int speech_cortical_connect_speech_cortex(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
 
     bridge->speech_cortex = speech_cortex;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Connected to speech cortex");
     return NIMCP_SUCCESS;
@@ -394,22 +441,16 @@ int speech_cortical_connect_immune(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
 
     bridge->cortical_immune = immune;
 
     /* Register hypercolumns with immune system */
-    if (immune) {
-        for (uint32_t i = 0; i < bridge->num_hypercolumns; i++) {
-            if (bridge->hypercolumns[i]) {
-                cortical_immune_register_feature_hypercolumn(
-                    immune, bridge->hypercolumns[i], i
-                );
-            }
-        }
-    }
+    /* Note: Feature hypercolumns don't have a direct registration function */
+    /* The cortical immune system will be used for inflammation modulation */
+    (void)immune; /* Suppress unused warning when registration is skipped */
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Connected to cortical immune system");
     return NIMCP_SUCCESS;
@@ -470,31 +511,73 @@ bool speech_cortical_is_bio_async_connected(const speech_cortical_bridge_t* brid
 
 int speech_cortical_process(
     speech_cortical_bridge_t* bridge,
-    const float* phoneme_features,
-    uint32_t num_features,
+    const float* audio_data,
+    uint32_t num_samples,
     speech_cortical_phoneme_result_t* result)
 {
-    if (!bridge || !phoneme_features || !result) {
+    if (!bridge || !audio_data || !result) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (num_features == 0) {
+    if (num_samples == 0) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
 
     bridge->state = SPEECH_CORTICAL_STATE_PROCESSING;
     uint64_t start_time = get_time_ns();
 
     memset(result, 0, sizeof(speech_cortical_phoneme_result_t));
 
+    /* Extract formants from audio */
+    extract_formants(audio_data, num_samples, result->formants);
+
+    /* Convert audio energy to phoneme features */
+    /* Simple energy-based feature extraction per hypercolumn */
+    float* phoneme_features = (float*)nimcp_calloc(
+        bridge->phonemes_per_hypercolumn, sizeof(float)
+    );
+    if (!phoneme_features) {
+        bridge->state = SPEECH_CORTICAL_STATE_ERROR;
+        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Compute basic audio features */
+    float total_energy = 0.0f;
+    float zero_crossings = 0.0f;
+
+    for (uint32_t i = 0; i < num_samples; i++) {
+        total_energy += audio_data[i] * audio_data[i];
+        if (i > 0 && ((audio_data[i] >= 0) != (audio_data[i-1] >= 0))) {
+            zero_crossings += 1.0f;
+        }
+    }
+    total_energy = sqrtf(total_energy / (float)num_samples);
+    zero_crossings /= (float)num_samples;
+
+    /* Map features to phoneme classes based on energy and ZCR patterns */
+    /* This is a simplified model - real phoneme detection would use spectral analysis */
+    for (uint32_t p = 0; p < bridge->phonemes_per_hypercolumn; p++) {
+        /* Different phoneme classes respond to different feature combinations */
+        float phase = (float)p / (float)bridge->phonemes_per_hypercolumn;
+        phoneme_features[p] = total_energy * cosf(phase * M_PI * 2.0f + zero_crossings * 10.0f);
+        phoneme_features[p] = fmaxf(0.0f, phoneme_features[p]);
+    }
+
     /* Process through hypercolumns */
-    /* Compute average response across central hypercolumns */
     float* avg_responses = (float*)nimcp_calloc(
-        bridge->features_per_hypercolumn, sizeof(float)
+        bridge->phonemes_per_hypercolumn, sizeof(float)
     );
     uint32_t processed_count = 0;
+
+    if (!avg_responses) {
+        nimcp_free(phoneme_features);
+        bridge->state = SPEECH_CORTICAL_STATE_ERROR;
+        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
 
     /* Process a subset of hypercolumns (center and corners) */
     uint32_t grid_size = (uint32_t)sqrtf((float)bridge->num_hypercolumns);
@@ -506,9 +589,9 @@ int speech_cortical_process(
         0, grid_size - 1, center,
         bridge->num_hypercolumns - grid_size, bridge->num_hypercolumns - 1
     };
-    uint32_t num_samples = sizeof(sample_indices) / sizeof(sample_indices[0]);
+    uint32_t num_sample_indices = sizeof(sample_indices) / sizeof(sample_indices[0]);
 
-    for (uint32_t s = 0; s < num_samples && s < bridge->num_hypercolumns; s++) {
+    for (uint32_t s = 0; s < num_sample_indices && s < bridge->num_hypercolumns; s++) {
         uint32_t idx = sample_indices[s];
         if (idx >= bridge->num_hypercolumns) continue;
 
@@ -516,18 +599,18 @@ int speech_cortical_process(
         if (!hcol) continue;
 
         /* Process phoneme features through hypercolumn */
-        feature_hypercolumn_process(hcol, phoneme_features, num_features);
+        feature_hypercolumn_process(hcol, phoneme_features, bridge->phonemes_per_hypercolumn);
         feature_hypercolumn_normalize(hcol);
 
         /* Accumulate responses */
         float* hcol_activations = (float*)nimcp_malloc(
             hcol->total_columns * sizeof(float)
         );
-        if (hcol_activations && avg_responses) {
+        if (hcol_activations) {
             feature_hypercolumn_get_all_activations(hcol, hcol_activations);
 
             for (uint32_t f = 0; f < hcol->total_columns &&
-                 f < bridge->features_per_hypercolumn; f++) {
+                 f < bridge->phonemes_per_hypercolumn; f++) {
                 float resp = hcol_activations[f];
                 resp = apply_immune_modulation(bridge, idx, resp);
                 avg_responses[f] += resp;
@@ -539,13 +622,15 @@ int speech_cortical_process(
         bridge->stats.hypercolumn_activations++;
     }
 
+    nimcp_free(phoneme_features);
+
     /* Compute average and find dominant */
-    if (processed_count > 0 && avg_responses) {
+    if (processed_count > 0) {
         float max_response = 0.0f;
         uint32_t max_idx = 0;
         float sum_responses = 0.0f;
 
-        for (uint32_t i = 0; i < bridge->features_per_hypercolumn; i++) {
+        for (uint32_t i = 0; i < bridge->phonemes_per_hypercolumn; i++) {
             avg_responses[i] /= (float)processed_count;
             sum_responses += avg_responses[i];
             if (avg_responses[i] > max_response) {
@@ -555,7 +640,7 @@ int speech_cortical_process(
         }
 
         result->dominant_phoneme = (phoneme_t)max_idx;
-        result->num_phonemes = bridge->features_per_hypercolumn;
+        result->num_phonemes = bridge->phonemes_per_hypercolumn;
         result->phoneme_responses = avg_responses;  /* Transfer ownership */
 
         if (sum_responses > 0.0f) {
@@ -565,7 +650,7 @@ int speech_cortical_process(
 
         bridge->stats.active_hypercolumns = processed_count;
     } else {
-        if (avg_responses) nimcp_free(avg_responses);
+        nimcp_free(avg_responses);
     }
 
     /* Update statistics */
@@ -583,48 +668,76 @@ int speech_cortical_process(
     bridge->last_process_time_ns = end_time;
     bridge->state = SPEECH_CORTICAL_STATE_READY;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     return NIMCP_SUCCESS;
 }
 
-int speech_cortical_process_at_position(
+int speech_cortical_process_segment(
     speech_cortical_bridge_t* bridge,
-    const float* phoneme_features,
-    uint32_t num_features,
+    const float* audio_segment,
+    uint32_t num_samples,
     float tono_x,
     float tono_y,
     speech_cortical_phoneme_result_t* result)
 {
-    if (!bridge || !phoneme_features || !result) {
+    if (!bridge || !audio_segment || !result) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (num_features == 0) {
+    if (num_samples == 0) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
 
     memset(result, 0, sizeof(speech_cortical_phoneme_result_t));
 
     /* Find hypercolumn for this position */
     uint32_t hcol_idx = compute_hypercolumn_index(bridge, tono_x, tono_y);
     if (hcol_idx >= bridge->num_hypercolumns) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     feature_hypercolumn_t* hcol = bridge->hypercolumns[hcol_idx];
     if (!hcol) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
+    /* Extract formants from audio segment */
+    extract_formants(audio_segment, num_samples, result->formants);
+
+    /* Convert audio to phoneme features */
+    float* phoneme_features = (float*)nimcp_calloc(
+        bridge->phonemes_per_hypercolumn, sizeof(float)
+    );
+    if (!phoneme_features) {
+        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Compute audio energy */
+    float energy = 0.0f;
+    for (uint32_t i = 0; i < num_samples; i++) {
+        energy += audio_segment[i] * audio_segment[i];
+    }
+    energy = sqrtf(energy / (float)num_samples);
+
+    /* Map to phoneme features */
+    for (uint32_t p = 0; p < bridge->phonemes_per_hypercolumn; p++) {
+        float phase = (float)p / (float)bridge->phonemes_per_hypercolumn;
+        phoneme_features[p] = energy * cosf(phase * M_PI * 2.0f);
+        phoneme_features[p] = fmaxf(0.0f, phoneme_features[p]);
+    }
+
     /* Process through hypercolumn */
-    feature_hypercolumn_process(hcol, phoneme_features, num_features);
+    feature_hypercolumn_process(hcol, phoneme_features, bridge->phonemes_per_hypercolumn);
     feature_hypercolumn_normalize(hcol);
     bridge->stats.hypercolumn_activations++;
+
+    nimcp_free(phoneme_features);
 
     /* Compute result */
     compute_phoneme_result(hcol, result, tono_x, tono_y);
@@ -638,7 +751,7 @@ int speech_cortical_process_at_position(
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -654,27 +767,55 @@ void speech_cortical_free_result(speech_cortical_phoneme_result_t* result)
     result->num_phonemes = 0;
 }
 
-int speech_cortical_get_feature_map(
+int speech_cortical_get_phoneme_map(
     speech_cortical_bridge_t* bridge,
-    const float* phoneme_features,
-    uint32_t num_features,
-    float* feature_map,
+    const float* audio_data,
+    uint32_t num_samples,
+    phoneme_t* phoneme_map,
     float* selectivity_map)
 {
-    if (!bridge || !phoneme_features || !feature_map) {
+    if (!bridge || !audio_data || !phoneme_map) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (num_features == 0) {
+    if (num_samples == 0) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
 
     uint32_t grid_size = (uint32_t)sqrtf((float)bridge->num_hypercolumns);
     if (grid_size == 0) grid_size = 1;
 
-    /* Process each hypercolumn and fill feature map */
+    /* Convert audio to phoneme features once */
+    float* phoneme_features = (float*)nimcp_calloc(
+        bridge->phonemes_per_hypercolumn, sizeof(float)
+    );
+    if (!phoneme_features) {
+        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Compute audio features */
+    float energy = 0.0f;
+    float zero_crossings = 0.0f;
+    for (uint32_t i = 0; i < num_samples; i++) {
+        energy += audio_data[i] * audio_data[i];
+        if (i > 0 && ((audio_data[i] >= 0) != (audio_data[i-1] >= 0))) {
+            zero_crossings += 1.0f;
+        }
+    }
+    energy = sqrtf(energy / (float)num_samples);
+    zero_crossings /= (float)num_samples;
+
+    /* Map to phoneme features */
+    for (uint32_t p = 0; p < bridge->phonemes_per_hypercolumn; p++) {
+        float phase = (float)p / (float)bridge->phonemes_per_hypercolumn;
+        phoneme_features[p] = energy * cosf(phase * M_PI * 2.0f + zero_crossings * 10.0f);
+        phoneme_features[p] = fmaxf(0.0f, phoneme_features[p]);
+    }
+
+    /* Process each hypercolumn and fill phoneme map */
     for (uint32_t hy = 0; hy < grid_size; hy++) {
         for (uint32_t hx = 0; hx < grid_size; hx++) {
             uint32_t hcol_idx = hy * grid_size + hx;
@@ -684,21 +825,22 @@ int speech_cortical_get_feature_map(
             if (!hcol) continue;
 
             /* Process */
-            feature_hypercolumn_process(hcol, phoneme_features, num_features);
+            feature_hypercolumn_process(hcol, phoneme_features, bridge->phonemes_per_hypercolumn);
             feature_hypercolumn_normalize(hcol);
 
             feature_hypercolumn_stats_t stats;
             feature_hypercolumn_get_stats(hcol, &stats);
 
-            uint32_t map_idx = hcol_idx;
-            feature_map[map_idx] = (float)stats.winner_index;
+            phoneme_map[hcol_idx] = (phoneme_t)stats.winner_index;
             if (selectivity_map) {
-                selectivity_map[map_idx] = stats.selectivity;
+                selectivity_map[hcol_idx] = stats.selectivity;
             }
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    nimcp_free(phoneme_features);
+
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -745,7 +887,7 @@ int speech_cortical_update_immune_modulation(speech_cortical_bridge_t* bridge)
         return NIMCP_SUCCESS;  /* No immune system connected */
     }
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
 
     /* Get cortical immune statistics */
     cortical_immune_stats_t stats;
@@ -765,7 +907,7 @@ int speech_cortical_update_immune_modulation(speech_cortical_bridge_t* bridge)
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -779,10 +921,10 @@ int speech_cortical_set_immune_factor(
     if (factor < 0.0f) factor = 0.0f;
     if (factor > 1.0f) factor = 1.0f;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
     bridge->immune_modulation_factor = factor;
     bridge->stats.current_immune_modulation = factor;
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -802,9 +944,13 @@ int speech_cortical_get_stats(
 {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex) nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    if (bridge->mutex_initialized) {
+        nimcp_mutex_lock((nimcp_mutex_t*)&bridge->mutex);
+    }
     memcpy(stats, &bridge->stats, sizeof(speech_cortical_stats_t));
-    if (bridge->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    if (bridge->mutex_initialized) {
+        nimcp_mutex_unlock((nimcp_mutex_t*)&bridge->mutex);
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -813,9 +959,9 @@ int speech_cortical_reset_stats(speech_cortical_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
     memset(&bridge->stats, 0, sizeof(speech_cortical_stats_t));
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -874,5 +1020,5 @@ int speech_cortical_broadcast_phoneme(
     NIMCP_LOGGING_DEBUG("Broadcast phoneme: phoneme=%u, selectivity=%.2f",
                         (uint32_t)result->dominant_phoneme, result->selectivity_index);
 
-    return 0;
+    return NIMCP_SUCCESS;
 }

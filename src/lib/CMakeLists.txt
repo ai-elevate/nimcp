@@ -781,9 +781,8 @@ set(NIMCP_CORE_SOURCES
 
     # Perception-Cortical Bridges (Phase CC-P: Cortical column integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_visual_cortical_bridge.c  # Visual-cortical bridge
-    # Audio and speech cortical bridges temporarily disabled pending API alignment
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_audio_cortical_bridge.c   # Audio-cortical bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_speech_cortical_bridge.c  # Speech-cortical bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_audio_cortical_bridge.c   # Audio-cortical bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_speech_cortical_bridge.c  # Speech-cortical bridge
 
     # Glial-Immune Integration (Phase BII-G: Glial immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocyte_immune_bridge.c  # Astrocyte-immune integration
