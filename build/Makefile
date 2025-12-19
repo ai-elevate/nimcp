@@ -2850,6 +2850,19 @@ unit_plasticity_adaptive_test_adaptive_routing/fast:
 .PHONY : unit_plasticity_adaptive_test_adaptive_routing/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_astrocyte_test_astrocyte_plasticity
+
+# Build rule for target.
+unit_plasticity_astrocyte_test_astrocyte_plasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_astrocyte_test_astrocyte_plasticity
+.PHONY : unit_plasticity_astrocyte_test_astrocyte_plasticity
+
+# fast build rule for target.
+unit_plasticity_astrocyte_test_astrocyte_plasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_astrocyte_test_astrocyte_plasticity.dir/build.make test/CMakeFiles/unit_plasticity_astrocyte_test_astrocyte_plasticity.dir/build
+.PHONY : unit_plasticity_astrocyte_test_astrocyte_plasticity/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_bcm_test_bcm
 
 # Build rule for target.
@@ -2967,6 +2980,32 @@ unit_plasticity_homeostatic_test_homeostatic_fep_bridge/fast:
 .PHONY : unit_plasticity_homeostatic_test_homeostatic_fep_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_metabolic_test_metabolic_plasticity
+
+# Build rule for target.
+unit_plasticity_metabolic_test_metabolic_plasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_metabolic_test_metabolic_plasticity
+.PHONY : unit_plasticity_metabolic_test_metabolic_plasticity
+
+# fast build rule for target.
+unit_plasticity_metabolic_test_metabolic_plasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_metabolic_test_metabolic_plasticity.dir/build.make test/CMakeFiles/unit_plasticity_metabolic_test_metabolic_plasticity.dir/build
+.PHONY : unit_plasticity_metabolic_test_metabolic_plasticity/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_metaplasticity_test_extended_metaplasticity
+
+# Build rule for target.
+unit_plasticity_metaplasticity_test_extended_metaplasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_metaplasticity_test_extended_metaplasticity
+.PHONY : unit_plasticity_metaplasticity_test_extended_metaplasticity
+
+# fast build rule for target.
+unit_plasticity_metaplasticity_test_extended_metaplasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_metaplasticity_test_extended_metaplasticity.dir/build.make test/CMakeFiles/unit_plasticity_metaplasticity_test_extended_metaplasticity.dir/build
+.PHONY : unit_plasticity_metaplasticity_test_extended_metaplasticity/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_neuromodulators_test_neuromod_substrate_bridge
 
 # Build rule for target.
@@ -3071,6 +3110,71 @@ unit_plasticity_noise_test_pink_noise/fast:
 .PHONY : unit_plasticity_noise_test_pink_noise/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_orchestrator_test_axon_orchestrator_bridge
+
+# Build rule for target.
+unit_plasticity_orchestrator_test_axon_orchestrator_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_orchestrator_test_axon_orchestrator_bridge
+.PHONY : unit_plasticity_orchestrator_test_axon_orchestrator_bridge
+
+# fast build rule for target.
+unit_plasticity_orchestrator_test_axon_orchestrator_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_orchestrator_test_axon_orchestrator_bridge.dir/build.make test/CMakeFiles/unit_plasticity_orchestrator_test_axon_orchestrator_bridge.dir/build
+.PHONY : unit_plasticity_orchestrator_test_axon_orchestrator_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge
+
+# Build rule for target.
+unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge
+.PHONY : unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge
+
+# fast build rule for target.
+unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge.dir/build.make test/CMakeFiles/unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge.dir/build
+.PHONY : unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_orchestrator_test_neural_plasticity_coordinator
+
+# Build rule for target.
+unit_plasticity_orchestrator_test_neural_plasticity_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_orchestrator_test_neural_plasticity_coordinator
+.PHONY : unit_plasticity_orchestrator_test_neural_plasticity_coordinator
+
+# fast build rule for target.
+unit_plasticity_orchestrator_test_neural_plasticity_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_orchestrator_test_neural_plasticity_coordinator.dir/build.make test/CMakeFiles/unit_plasticity_orchestrator_test_neural_plasticity_coordinator.dir/build
+.PHONY : unit_plasticity_orchestrator_test_neural_plasticity_coordinator/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_orchestrator_test_neuron_orchestrator_bridge
+
+# Build rule for target.
+unit_plasticity_orchestrator_test_neuron_orchestrator_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_orchestrator_test_neuron_orchestrator_bridge
+.PHONY : unit_plasticity_orchestrator_test_neuron_orchestrator_bridge
+
+# fast build rule for target.
+unit_plasticity_orchestrator_test_neuron_orchestrator_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_orchestrator_test_neuron_orchestrator_bridge.dir/build.make test/CMakeFiles/unit_plasticity_orchestrator_test_neuron_orchestrator_bridge.dir/build
+.PHONY : unit_plasticity_orchestrator_test_neuron_orchestrator_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_orchestrator_test_plasticity_orchestrator
+
+# Build rule for target.
+unit_plasticity_orchestrator_test_plasticity_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_orchestrator_test_plasticity_orchestrator
+.PHONY : unit_plasticity_orchestrator_test_plasticity_orchestrator
+
+# fast build rule for target.
+unit_plasticity_orchestrator_test_plasticity_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_orchestrator_test_plasticity_orchestrator.dir/build.make test/CMakeFiles/unit_plasticity_orchestrator_test_plasticity_orchestrator.dir/build
+.PHONY : unit_plasticity_orchestrator_test_plasticity_orchestrator/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_predictive_test_predictive_bioasync
 
 # Build rule for target.
@@ -3097,6 +3201,19 @@ unit_plasticity_predictive_test_predictive_coding/fast:
 .PHONY : unit_plasticity_predictive_test_predictive_coding/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_protein_test_protein_synthesis
+
+# Build rule for target.
+unit_plasticity_protein_test_protein_synthesis: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_protein_test_protein_synthesis
+.PHONY : unit_plasticity_protein_test_protein_synthesis
+
+# fast build rule for target.
+unit_plasticity_protein_test_protein_synthesis/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_protein_test_protein_synthesis.dir/build.make test/CMakeFiles/unit_plasticity_protein_test_protein_synthesis.dir/build
+.PHONY : unit_plasticity_protein_test_protein_synthesis/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_second_messengers_test_second_messengers
 
 # Build rule for target.
@@ -3121,6 +3238,19 @@ unit_plasticity_second_messengers_test_second_messengers_modules: cmake_check_bu
 unit_plasticity_second_messengers_test_second_messengers_modules/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_second_messengers_test_second_messengers_modules.dir/build.make test/CMakeFiles/unit_plasticity_second_messengers_test_second_messengers_modules.dir/build
 .PHONY : unit_plasticity_second_messengers_test_second_messengers_modules/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_structural_test_structural_plasticity
+
+# Build rule for target.
+unit_plasticity_structural_test_structural_plasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_structural_test_structural_plasticity
+.PHONY : unit_plasticity_structural_test_structural_plasticity
+
+# fast build rule for target.
+unit_plasticity_structural_test_structural_plasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_structural_test_structural_plasticity.dir/build.make test/CMakeFiles/unit_plasticity_structural_test_structural_plasticity.dir/build
+.PHONY : unit_plasticity_structural_test_structural_plasticity/fast
 
 #=============================================================================
 # Target rules for targets named unit_plasticity_substrate_test_plasticity_substrate_bridge
@@ -4020,6 +4150,19 @@ integration_cognitive_salience_test_salience_fep_bridge_integration/fast:
 .PHONY : integration_cognitive_salience_test_salience_fep_bridge_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_sleep_test_cognitive_sleep_integration
+
+# Build rule for target.
+integration_cognitive_sleep_test_cognitive_sleep_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_sleep_test_cognitive_sleep_integration
+.PHONY : integration_cognitive_sleep_test_cognitive_sleep_integration
+
+# fast build rule for target.
+integration_cognitive_sleep_test_cognitive_sleep_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cognitive_sleep_test_cognitive_sleep_integration.dir/build.make test/CMakeFiles/integration_cognitive_sleep_test_cognitive_sleep_integration.dir/build
+.PHONY : integration_cognitive_sleep_test_cognitive_sleep_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
 
 # Build rule for target.
@@ -4449,6 +4592,19 @@ integration_plasticity_adaptive_test_adaptive_routing_integration/fast:
 .PHONY : integration_plasticity_adaptive_test_adaptive_routing_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_astrocyte_test_astrocyte_integration
+
+# Build rule for target.
+integration_plasticity_astrocyte_test_astrocyte_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_astrocyte_test_astrocyte_integration
+.PHONY : integration_plasticity_astrocyte_test_astrocyte_integration
+
+# fast build rule for target.
+integration_plasticity_astrocyte_test_astrocyte_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_astrocyte_test_astrocyte_integration.dir/build.make test/CMakeFiles/integration_plasticity_astrocyte_test_astrocyte_integration.dir/build
+.PHONY : integration_plasticity_astrocyte_test_astrocyte_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_attention_test_attention_integration_e2e
 
 # Build rule for target.
@@ -4501,6 +4657,32 @@ integration_plasticity_eligibility_test_eligibility_wiring/fast:
 .PHONY : integration_plasticity_eligibility_test_eligibility_wiring/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_metabolic_test_metabolic_integration
+
+# Build rule for target.
+integration_plasticity_metabolic_test_metabolic_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_metabolic_test_metabolic_integration
+.PHONY : integration_plasticity_metabolic_test_metabolic_integration
+
+# fast build rule for target.
+integration_plasticity_metabolic_test_metabolic_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_metabolic_test_metabolic_integration.dir/build.make test/CMakeFiles/integration_plasticity_metabolic_test_metabolic_integration.dir/build
+.PHONY : integration_plasticity_metabolic_test_metabolic_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_metaplasticity_test_metaplasticity_integration
+
+# Build rule for target.
+integration_plasticity_metaplasticity_test_metaplasticity_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_metaplasticity_test_metaplasticity_integration
+.PHONY : integration_plasticity_metaplasticity_test_metaplasticity_integration
+
+# fast build rule for target.
+integration_plasticity_metaplasticity_test_metaplasticity_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_metaplasticity_test_metaplasticity_integration.dir/build.make test/CMakeFiles/integration_plasticity_metaplasticity_test_metaplasticity_integration.dir/build
+.PHONY : integration_plasticity_metaplasticity_test_metaplasticity_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_neuromodulators_test_neuromodulators_bio_async_integration
 
 # Build rule for target.
@@ -4540,6 +4722,45 @@ integration_plasticity_neuromodulators_test_spatial_neuromod_bio_async_integrati
 .PHONY : integration_plasticity_neuromodulators_test_spatial_neuromod_bio_async_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_orchestrator_test_neural_integration
+
+# Build rule for target.
+integration_plasticity_orchestrator_test_neural_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_orchestrator_test_neural_integration
+.PHONY : integration_plasticity_orchestrator_test_neural_integration
+
+# fast build rule for target.
+integration_plasticity_orchestrator_test_neural_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_orchestrator_test_neural_integration.dir/build.make test/CMakeFiles/integration_plasticity_orchestrator_test_neural_integration.dir/build
+.PHONY : integration_plasticity_orchestrator_test_neural_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_orchestrator_test_orchestrator_integration
+
+# Build rule for target.
+integration_plasticity_orchestrator_test_orchestrator_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_orchestrator_test_orchestrator_integration
+.PHONY : integration_plasticity_orchestrator_test_orchestrator_integration
+
+# fast build rule for target.
+integration_plasticity_orchestrator_test_orchestrator_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_orchestrator_test_orchestrator_integration.dir/build.make test/CMakeFiles/integration_plasticity_orchestrator_test_orchestrator_integration.dir/build
+.PHONY : integration_plasticity_orchestrator_test_orchestrator_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_protein_test_protein_integration
+
+# Build rule for target.
+integration_plasticity_protein_test_protein_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_protein_test_protein_integration
+.PHONY : integration_plasticity_protein_test_protein_integration
+
+# fast build rule for target.
+integration_plasticity_protein_test_protein_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_protein_test_protein_integration.dir/build.make test/CMakeFiles/integration_plasticity_protein_test_protein_integration.dir/build
+.PHONY : integration_plasticity_protein_test_protein_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_second_messengers_test_second_messengers_integration
 
 # Build rule for target.
@@ -4566,6 +4787,19 @@ integration_plasticity_second_messengers_test_second_messengers_module_integrati
 .PHONY : integration_plasticity_second_messengers_test_second_messengers_module_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_sleep_test_plasticity_sleep_integration
+
+# Build rule for target.
+integration_plasticity_sleep_test_plasticity_sleep_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_sleep_test_plasticity_sleep_integration
+.PHONY : integration_plasticity_sleep_test_plasticity_sleep_integration
+
+# fast build rule for target.
+integration_plasticity_sleep_test_plasticity_sleep_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_sleep_test_plasticity_sleep_integration.dir/build.make test/CMakeFiles/integration_plasticity_sleep_test_plasticity_sleep_integration.dir/build
+.PHONY : integration_plasticity_sleep_test_plasticity_sleep_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_stp_test_stp_integration
 
 # Build rule for target.
@@ -4577,6 +4811,19 @@ integration_plasticity_stp_test_stp_integration: cmake_check_build_system
 integration_plasticity_stp_test_stp_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_stp_test_stp_integration.dir/build.make test/CMakeFiles/integration_plasticity_stp_test_stp_integration.dir/build
 .PHONY : integration_plasticity_stp_test_stp_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_structural_test_structural_integration
+
+# Build rule for target.
+integration_plasticity_structural_test_structural_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_structural_test_structural_integration
+.PHONY : integration_plasticity_structural_test_structural_integration
+
+# fast build rule for target.
+integration_plasticity_structural_test_structural_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_structural_test_structural_integration.dir/build.make test/CMakeFiles/integration_plasticity_structural_test_structural_integration.dir/build
+.PHONY : integration_plasticity_structural_test_structural_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_test_brain_oscillations_integration
@@ -4902,6 +5149,19 @@ regression_cognitive_memory_test_semantic_memory_backward_compat: cmake_check_bu
 regression_cognitive_memory_test_semantic_memory_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_cognitive_memory_test_semantic_memory_backward_compat.dir/build.make test/CMakeFiles/regression_cognitive_memory_test_semantic_memory_backward_compat.dir/build
 .PHONY : regression_cognitive_memory_test_semantic_memory_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_sleep_test_cognitive_sleep_regression
+
+# Build rule for target.
+regression_cognitive_sleep_test_cognitive_sleep_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_sleep_test_cognitive_sleep_regression
+.PHONY : regression_cognitive_sleep_test_cognitive_sleep_regression
+
+# fast build rule for target.
+regression_cognitive_sleep_test_cognitive_sleep_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_cognitive_sleep_test_cognitive_sleep_regression.dir/build.make test/CMakeFiles/regression_cognitive_sleep_test_cognitive_sleep_regression.dir/build
+.PHONY : regression_cognitive_sleep_test_cognitive_sleep_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_brain_learning_test_learning_stability
@@ -5411,6 +5671,19 @@ regression_plasticity_adaptive_test_adaptive_routing_backward_compat/fast:
 .PHONY : regression_plasticity_adaptive_test_adaptive_routing_backward_compat/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_astrocyte_test_astrocyte_regression
+
+# Build rule for target.
+regression_plasticity_astrocyte_test_astrocyte_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_astrocyte_test_astrocyte_regression
+.PHONY : regression_plasticity_astrocyte_test_astrocyte_regression
+
+# fast build rule for target.
+regression_plasticity_astrocyte_test_astrocyte_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_astrocyte_test_astrocyte_regression.dir/build.make test/CMakeFiles/regression_plasticity_astrocyte_test_astrocyte_regression.dir/build
+.PHONY : regression_plasticity_astrocyte_test_astrocyte_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_attention_test_attention_pe_regression
 
 # Build rule for target.
@@ -5476,6 +5749,32 @@ regression_plasticity_eligibility_test_eligibility_backward_compat/fast:
 .PHONY : regression_plasticity_eligibility_test_eligibility_backward_compat/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_metabolic_test_metabolic_regression
+
+# Build rule for target.
+regression_plasticity_metabolic_test_metabolic_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_metabolic_test_metabolic_regression
+.PHONY : regression_plasticity_metabolic_test_metabolic_regression
+
+# fast build rule for target.
+regression_plasticity_metabolic_test_metabolic_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_metabolic_test_metabolic_regression.dir/build.make test/CMakeFiles/regression_plasticity_metabolic_test_metabolic_regression.dir/build
+.PHONY : regression_plasticity_metabolic_test_metabolic_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_metaplasticity_test_metaplasticity_regression
+
+# Build rule for target.
+regression_plasticity_metaplasticity_test_metaplasticity_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_metaplasticity_test_metaplasticity_regression
+.PHONY : regression_plasticity_metaplasticity_test_metaplasticity_regression
+
+# fast build rule for target.
+regression_plasticity_metaplasticity_test_metaplasticity_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_metaplasticity_test_metaplasticity_regression.dir/build.make test/CMakeFiles/regression_plasticity_metaplasticity_test_metaplasticity_regression.dir/build
+.PHONY : regression_plasticity_metaplasticity_test_metaplasticity_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_neuromodulators_test_neuromodulators_bio_async_regression
 
 # Build rule for target.
@@ -5528,6 +5827,45 @@ regression_plasticity_noise_test_pink_noise_backward_compat/fast:
 .PHONY : regression_plasticity_noise_test_pink_noise_backward_compat/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_orchestrator_test_neural_regression
+
+# Build rule for target.
+regression_plasticity_orchestrator_test_neural_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_orchestrator_test_neural_regression
+.PHONY : regression_plasticity_orchestrator_test_neural_regression
+
+# fast build rule for target.
+regression_plasticity_orchestrator_test_neural_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_orchestrator_test_neural_regression.dir/build.make test/CMakeFiles/regression_plasticity_orchestrator_test_neural_regression.dir/build
+.PHONY : regression_plasticity_orchestrator_test_neural_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_orchestrator_test_orchestrator_regression
+
+# Build rule for target.
+regression_plasticity_orchestrator_test_orchestrator_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_orchestrator_test_orchestrator_regression
+.PHONY : regression_plasticity_orchestrator_test_orchestrator_regression
+
+# fast build rule for target.
+regression_plasticity_orchestrator_test_orchestrator_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_orchestrator_test_orchestrator_regression.dir/build.make test/CMakeFiles/regression_plasticity_orchestrator_test_orchestrator_regression.dir/build
+.PHONY : regression_plasticity_orchestrator_test_orchestrator_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_protein_test_protein_regression
+
+# Build rule for target.
+regression_plasticity_protein_test_protein_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_protein_test_protein_regression
+.PHONY : regression_plasticity_protein_test_protein_regression
+
+# fast build rule for target.
+regression_plasticity_protein_test_protein_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_protein_test_protein_regression.dir/build.make test/CMakeFiles/regression_plasticity_protein_test_protein_regression.dir/build
+.PHONY : regression_plasticity_protein_test_protein_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_second_messengers_test_second_messengers_module_regression
 
 # Build rule for target.
@@ -5554,6 +5892,19 @@ regression_plasticity_second_messengers_test_second_messengers_regression/fast:
 .PHONY : regression_plasticity_second_messengers_test_second_messengers_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_sleep_test_plasticity_sleep_regression
+
+# Build rule for target.
+regression_plasticity_sleep_test_plasticity_sleep_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_sleep_test_plasticity_sleep_regression
+.PHONY : regression_plasticity_sleep_test_plasticity_sleep_regression
+
+# fast build rule for target.
+regression_plasticity_sleep_test_plasticity_sleep_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_sleep_test_plasticity_sleep_regression.dir/build.make test/CMakeFiles/regression_plasticity_sleep_test_plasticity_sleep_regression.dir/build
+.PHONY : regression_plasticity_sleep_test_plasticity_sleep_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_stp_test_stp_backward_compat
 
 # Build rule for target.
@@ -5565,6 +5916,19 @@ regression_plasticity_stp_test_stp_backward_compat: cmake_check_build_system
 regression_plasticity_stp_test_stp_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_stp_test_stp_backward_compat.dir/build.make test/CMakeFiles/regression_plasticity_stp_test_stp_backward_compat.dir/build
 .PHONY : regression_plasticity_stp_test_stp_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_structural_test_structural_regression
+
+# Build rule for target.
+regression_plasticity_structural_test_structural_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_structural_test_structural_regression
+.PHONY : regression_plasticity_structural_test_structural_regression
+
+# fast build rule for target.
+regression_plasticity_structural_test_structural_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_structural_test_structural_regression.dir/build.make test/CMakeFiles/regression_plasticity_structural_test_structural_regression.dir/build
+.PHONY : regression_plasticity_structural_test_structural_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_test_brain_oscillations_regression
@@ -5695,6 +6059,84 @@ regression_utils_test_utils_regression: cmake_check_build_system
 regression_utils_test_utils_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_test_utils_regression.dir/build.make test/CMakeFiles/regression_utils_test_utils_regression.dir/build
 .PHONY : regression_utils_test_utils_regression/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_oscillations_sleep_bridge
+
+# Build rule for target.
+unit_core_oscillations_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_oscillations_sleep_bridge
+.PHONY : unit_core_oscillations_sleep_bridge
+
+# fast build rule for target.
+unit_core_oscillations_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_oscillations_sleep_bridge.dir/build.make test/CMakeFiles/unit_core_oscillations_sleep_bridge.dir/build
+.PHONY : unit_core_oscillations_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_sleep_bridge
+
+# Build rule for target.
+integration_plasticity_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_sleep_bridge
+.PHONY : integration_plasticity_sleep_bridge
+
+# fast build rule for target.
+integration_plasticity_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_sleep_bridge.dir/build.make test/CMakeFiles/integration_plasticity_sleep_bridge.dir/build
+.PHONY : integration_plasticity_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_sleep_bridge
+
+# Build rule for target.
+integration_cognitive_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_sleep_bridge
+.PHONY : integration_cognitive_sleep_bridge
+
+# fast build rule for target.
+integration_cognitive_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cognitive_sleep_bridge.dir/build.make test/CMakeFiles/integration_cognitive_sleep_bridge.dir/build
+.PHONY : integration_cognitive_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_sleep_bridge
+
+# Build rule for target.
+regression_plasticity_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_sleep_bridge
+.PHONY : regression_plasticity_sleep_bridge
+
+# fast build rule for target.
+regression_plasticity_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_sleep_bridge.dir/build.make test/CMakeFiles/regression_plasticity_sleep_bridge.dir/build
+.PHONY : regression_plasticity_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_sleep_bridge
+
+# Build rule for target.
+regression_cognitive_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_sleep_bridge
+.PHONY : regression_cognitive_sleep_bridge
+
+# fast build rule for target.
+regression_cognitive_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_cognitive_sleep_bridge.dir/build.make test/CMakeFiles/regression_cognitive_sleep_bridge.dir/build
+.PHONY : regression_cognitive_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_sleep_bridge_pipeline
+
+# Build rule for target.
+e2e_test_sleep_bridge_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_sleep_bridge_pipeline
+.PHONY : e2e_test_sleep_bridge_pipeline
+
+# fast build rule for target.
+e2e_test_sleep_bridge_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/e2e_test_sleep_bridge_pipeline.dir/build.make test/CMakeFiles/e2e_test_sleep_bridge_pipeline.dir/build
+.PHONY : e2e_test_sleep_bridge_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_brain_pipeline
@@ -6241,6 +6683,45 @@ e2e_test_medulla_pipeline: cmake_check_build_system
 e2e_test_medulla_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_medulla_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_medulla_pipeline.dir/build
 .PHONY : e2e_test_medulla_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_bridge_pipelines
+
+# Build rule for target.
+e2e_test_bridge_pipelines: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_bridge_pipelines
+.PHONY : e2e_test_bridge_pipelines
+
+# fast build rule for target.
+e2e_test_bridge_pipelines/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_bridge_pipelines.dir/build.make test/e2e/CMakeFiles/e2e_test_bridge_pipelines.dir/build
+.PHONY : e2e_test_bridge_pipelines/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_plasticity_pipeline
+
+# Build rule for target.
+e2e_test_plasticity_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_plasticity_pipeline
+.PHONY : e2e_test_plasticity_pipeline
+
+# fast build rule for target.
+e2e_test_plasticity_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_plasticity_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_plasticity_pipeline.dir/build
+.PHONY : e2e_test_plasticity_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_neural_plasticity_pipeline
+
+# Build rule for target.
+e2e_test_neural_plasticity_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_neural_plasticity_pipeline
+.PHONY : e2e_test_neural_plasticity_pipeline
+
+# fast build rule for target.
+e2e_test_neural_plasticity_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build
+.PHONY : e2e_test_neural_plasticity_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -8438,6 +8919,45 @@ unit_cognitive_test_fep_bridges: cmake_check_build_system
 unit_cognitive_test_fep_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_fep_bridges.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_fep_bridges.dir/build
 .PHONY : unit_cognitive_test_fep_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_attention_sleep_bridge
+
+# Build rule for target.
+unit_cognitive_attention_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_attention_sleep_bridge
+.PHONY : unit_cognitive_attention_sleep_bridge
+
+# fast build rule for target.
+unit_cognitive_attention_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_attention_sleep_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_attention_sleep_bridge.dir/build
+.PHONY : unit_cognitive_attention_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_working_memory_sleep_bridge
+
+# Build rule for target.
+unit_cognitive_working_memory_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_working_memory_sleep_bridge
+.PHONY : unit_cognitive_working_memory_sleep_bridge
+
+# fast build rule for target.
+unit_cognitive_working_memory_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_working_memory_sleep_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_working_memory_sleep_bridge.dir/build
+.PHONY : unit_cognitive_working_memory_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_executive_sleep_bridge
+
+# Build rule for target.
+unit_cognitive_executive_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_executive_sleep_bridge
+.PHONY : unit_cognitive_executive_sleep_bridge
+
+# fast build rule for target.
+unit_cognitive_executive_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_executive_sleep_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_executive_sleep_bridge.dir/build
+.PHONY : unit_cognitive_executive_sleep_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -11742,6 +12262,19 @@ unit_security_immune_pattern_db/fast:
 .PHONY : unit_security_immune_pattern_db/fast
 
 #=============================================================================
+# Target rules for targets named unit_security_sleep_bridges
+
+# Build rule for target.
+unit_security_sleep_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_sleep_bridges
+.PHONY : unit_security_sleep_bridges
+
+# fast build rule for target.
+unit_security_sleep_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/sleep/CMakeFiles/unit_security_sleep_bridges.dir/build.make test/unit/security/sleep/CMakeFiles/unit_security_sleep_bridges.dir/build
+.PHONY : unit_security_sleep_bridges/fast
+
+#=============================================================================
 # Target rules for targets named integration_security_test_bbb_integration
 
 # Build rule for target.
@@ -11870,6 +12403,19 @@ integration_security_test_swarm_security: cmake_check_build_system
 integration_security_test_swarm_security/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_swarm_security.dir/build.make test/integration/security/CMakeFiles/integration_security_test_swarm_security.dir/build
 .PHONY : integration_security_test_swarm_security/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_sleep_bridges
+
+# Build rule for target.
+integration_security_sleep_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_sleep_bridges
+.PHONY : integration_security_sleep_bridges
+
+# fast build rule for target.
+integration_security_sleep_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/sleep/CMakeFiles/integration_security_sleep_bridges.dir/build.make test/integration/security/sleep/CMakeFiles/integration_security_sleep_bridges.dir/build
+.PHONY : integration_security_sleep_bridges/fast
 
 #=============================================================================
 # Target rules for targets named regression_security_test_bbb_regression
@@ -12065,6 +12611,19 @@ regression_security_test_supply_chain: cmake_check_build_system
 regression_security_test_supply_chain/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_test_supply_chain.dir/build.make test/regression/security/CMakeFiles/regression_security_test_supply_chain.dir/build
 .PHONY : regression_security_test_supply_chain/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_sleep_bridges
+
+# Build rule for target.
+regression_security_sleep_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_sleep_bridges
+.PHONY : regression_security_sleep_bridges
+
+# fast build rule for target.
+regression_security_sleep_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_sleep_bridges.dir/build.make test/regression/security/CMakeFiles/regression_security_sleep_bridges.dir/build
+.PHONY : regression_security_sleep_bridges/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_logging_test_logging_basic
@@ -12600,6 +13159,201 @@ unit_plasticity_test_coordinator/fast:
 .PHONY : unit_plasticity_test_coordinator/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_neuromodulators_sleep_bridge
+
+# Build rule for target.
+unit_plasticity_neuromodulators_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_neuromodulators_sleep_bridge
+.PHONY : unit_plasticity_neuromodulators_sleep_bridge
+
+# fast build rule for target.
+unit_plasticity_neuromodulators_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_neuromodulators_sleep_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_neuromodulators_sleep_bridge.dir/build
+.PHONY : unit_plasticity_neuromodulators_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_stdp_sleep_bridge
+
+# Build rule for target.
+unit_plasticity_stdp_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_stdp_sleep_bridge
+.PHONY : unit_plasticity_stdp_sleep_bridge
+
+# fast build rule for target.
+unit_plasticity_stdp_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_sleep_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_sleep_bridge.dir/build
+.PHONY : unit_plasticity_stdp_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_triplet_stdp
+
+# Build rule for target.
+unit_plasticity_triplet_stdp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_triplet_stdp
+.PHONY : unit_plasticity_triplet_stdp
+
+# fast build rule for target.
+unit_plasticity_triplet_stdp/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_triplet_stdp.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_triplet_stdp.dir/build
+.PHONY : unit_plasticity_triplet_stdp/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_bcm_sleep_bridge
+
+# Build rule for target.
+unit_plasticity_bcm_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_bcm_sleep_bridge
+.PHONY : unit_plasticity_bcm_sleep_bridge
+
+# fast build rule for target.
+unit_plasticity_bcm_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_bcm_sleep_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_bcm_sleep_bridge.dir/build
+.PHONY : unit_plasticity_bcm_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_homeostatic_sleep_bridge
+
+# Build rule for target.
+unit_plasticity_homeostatic_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_homeostatic_sleep_bridge
+.PHONY : unit_plasticity_homeostatic_sleep_bridge
+
+# fast build rule for target.
+unit_plasticity_homeostatic_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_homeostatic_sleep_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_homeostatic_sleep_bridge.dir/build
+.PHONY : unit_plasticity_homeostatic_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_protein_synthesis
+
+# Build rule for target.
+unit_plasticity_protein_synthesis: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_protein_synthesis
+.PHONY : unit_plasticity_protein_synthesis
+
+# fast build rule for target.
+unit_plasticity_protein_synthesis/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_protein_synthesis.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_protein_synthesis.dir/build
+.PHONY : unit_plasticity_protein_synthesis/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_metabolic
+
+# Build rule for target.
+unit_plasticity_metabolic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_metabolic
+.PHONY : unit_plasticity_metabolic
+
+# fast build rule for target.
+unit_plasticity_metabolic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_metabolic.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_metabolic.dir/build
+.PHONY : unit_plasticity_metabolic/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_structural
+
+# Build rule for target.
+unit_plasticity_structural: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_structural
+.PHONY : unit_plasticity_structural
+
+# fast build rule for target.
+unit_plasticity_structural/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_structural.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_structural.dir/build
+.PHONY : unit_plasticity_structural/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_extended_metaplasticity
+
+# Build rule for target.
+unit_plasticity_extended_metaplasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_extended_metaplasticity
+.PHONY : unit_plasticity_extended_metaplasticity
+
+# fast build rule for target.
+unit_plasticity_extended_metaplasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_extended_metaplasticity.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_extended_metaplasticity.dir/build
+.PHONY : unit_plasticity_extended_metaplasticity/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_astrocyte
+
+# Build rule for target.
+unit_plasticity_astrocyte: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_astrocyte
+.PHONY : unit_plasticity_astrocyte
+
+# fast build rule for target.
+unit_plasticity_astrocyte/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_astrocyte.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_astrocyte.dir/build
+.PHONY : unit_plasticity_astrocyte/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_orchestrator
+
+# Build rule for target.
+unit_plasticity_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_orchestrator
+.PHONY : unit_plasticity_orchestrator
+
+# fast build rule for target.
+unit_plasticity_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_orchestrator.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_orchestrator.dir/build
+.PHONY : unit_plasticity_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_axon_orchestrator_bridge
+
+# Build rule for target.
+unit_plasticity_axon_orchestrator_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_axon_orchestrator_bridge
+.PHONY : unit_plasticity_axon_orchestrator_bridge
+
+# fast build rule for target.
+unit_plasticity_axon_orchestrator_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_axon_orchestrator_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_axon_orchestrator_bridge.dir/build
+.PHONY : unit_plasticity_axon_orchestrator_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_neuron_orchestrator_bridge
+
+# Build rule for target.
+unit_plasticity_neuron_orchestrator_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_neuron_orchestrator_bridge
+.PHONY : unit_plasticity_neuron_orchestrator_bridge
+
+# fast build rule for target.
+unit_plasticity_neuron_orchestrator_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_neuron_orchestrator_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_neuron_orchestrator_bridge.dir/build
+.PHONY : unit_plasticity_neuron_orchestrator_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_dendrite_orchestrator_bridge
+
+# Build rule for target.
+unit_plasticity_dendrite_orchestrator_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_dendrite_orchestrator_bridge
+.PHONY : unit_plasticity_dendrite_orchestrator_bridge
+
+# fast build rule for target.
+unit_plasticity_dendrite_orchestrator_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_dendrite_orchestrator_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_dendrite_orchestrator_bridge.dir/build
+.PHONY : unit_plasticity_dendrite_orchestrator_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_neural_coordinator
+
+# Build rule for target.
+unit_plasticity_neural_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_neural_coordinator
+.PHONY : unit_plasticity_neural_coordinator
+
+# fast build rule for target.
+unit_plasticity_neural_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_neural_coordinator.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_neural_coordinator.dir/build
+.PHONY : unit_plasticity_neural_coordinator/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_attention_test_attention_pe
 
 # Build rule for target.
@@ -12611,6 +13365,32 @@ unit_plasticity_attention_test_attention_pe: cmake_check_build_system
 unit_plasticity_attention_test_attention_pe/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_attention_pe.dir/build.make test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_attention_pe.dir/build
 .PHONY : unit_plasticity_attention_test_attention_pe/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_heterosynaptic
+
+# Build rule for target.
+unit_plasticity_heterosynaptic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_heterosynaptic
+.PHONY : unit_plasticity_heterosynaptic
+
+# fast build rule for target.
+unit_plasticity_heterosynaptic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/heterosynaptic/CMakeFiles/unit_plasticity_heterosynaptic.dir/build.make test/unit/plasticity/heterosynaptic/CMakeFiles/unit_plasticity_heterosynaptic.dir/build
+.PHONY : unit_plasticity_heterosynaptic/fast
+
+#=============================================================================
+# Target rules for targets named test_calcium_dynamics
+
+# Build rule for target.
+test_calcium_dynamics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_calcium_dynamics
+.PHONY : test_calcium_dynamics
+
+# fast build rule for target.
+test_calcium_dynamics/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/calcium/CMakeFiles/test_calcium_dynamics.dir/build.make test/unit/plasticity/calcium/CMakeFiles/test_calcium_dynamics.dir/build
+.PHONY : test_calcium_dynamics/fast
 
 #=============================================================================
 # Target rules for targets named test_plasticity_bioasync_integration
@@ -12639,6 +13419,19 @@ integration_plasticity_second_messengers_test/fast:
 .PHONY : integration_plasticity_second_messengers_test/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_metabolic
+
+# Build rule for target.
+integration_plasticity_metabolic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_metabolic
+.PHONY : integration_plasticity_metabolic
+
+# fast build rule for target.
+integration_plasticity_metabolic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_metabolic.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_metabolic.dir/build
+.PHONY : integration_plasticity_metabolic/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_second_messengers_module_test
 
 # Build rule for target.
@@ -12650,6 +13443,97 @@ integration_plasticity_second_messengers_module_test: cmake_check_build_system
 integration_plasticity_second_messengers_module_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_second_messengers_module_test.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_second_messengers_module_test.dir/build
 .PHONY : integration_plasticity_second_messengers_module_test/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_metaplasticity
+
+# Build rule for target.
+integration_plasticity_metaplasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_metaplasticity
+.PHONY : integration_plasticity_metaplasticity
+
+# fast build rule for target.
+integration_plasticity_metaplasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_metaplasticity.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_metaplasticity.dir/build
+.PHONY : integration_plasticity_metaplasticity/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_protein
+
+# Build rule for target.
+integration_plasticity_protein: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_protein
+.PHONY : integration_plasticity_protein
+
+# fast build rule for target.
+integration_plasticity_protein/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_protein.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_protein.dir/build
+.PHONY : integration_plasticity_protein/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_triplet_stdp
+
+# Build rule for target.
+integration_plasticity_triplet_stdp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_triplet_stdp
+.PHONY : integration_plasticity_triplet_stdp
+
+# fast build rule for target.
+integration_plasticity_triplet_stdp/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_triplet_stdp.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_triplet_stdp.dir/build
+.PHONY : integration_plasticity_triplet_stdp/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_orchestrator
+
+# Build rule for target.
+integration_plasticity_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_orchestrator
+.PHONY : integration_plasticity_orchestrator
+
+# fast build rule for target.
+integration_plasticity_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_orchestrator.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_orchestrator.dir/build
+.PHONY : integration_plasticity_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_neural
+
+# Build rule for target.
+integration_plasticity_neural: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_neural
+.PHONY : integration_plasticity_neural
+
+# fast build rule for target.
+integration_plasticity_neural/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_neural.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_neural.dir/build
+.PHONY : integration_plasticity_neural/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_heterosynaptic
+
+# Build rule for target.
+integration_plasticity_heterosynaptic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_heterosynaptic
+.PHONY : integration_plasticity_heterosynaptic
+
+# fast build rule for target.
+integration_plasticity_heterosynaptic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/heterosynaptic/CMakeFiles/integration_plasticity_heterosynaptic.dir/build.make test/integration/plasticity/heterosynaptic/CMakeFiles/integration_plasticity_heterosynaptic.dir/build
+.PHONY : integration_plasticity_heterosynaptic/fast
+
+#=============================================================================
+# Target rules for targets named test_calcium_integration
+
+# Build rule for target.
+test_calcium_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_calcium_integration
+.PHONY : test_calcium_integration
+
+# fast build rule for target.
+test_calcium_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/calcium/CMakeFiles/test_calcium_integration.dir/build.make test/integration/plasticity/calcium/CMakeFiles/test_calcium_integration.dir/build
+.PHONY : test_calcium_integration/fast
 
 #=============================================================================
 # Target rules for targets named test_learning_stability
@@ -12678,6 +13562,19 @@ regression_plasticity_second_messengers_test/fast:
 .PHONY : regression_plasticity_second_messengers_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_metabolic
+
+# Build rule for target.
+regression_plasticity_metabolic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_metabolic
+.PHONY : regression_plasticity_metabolic
+
+# fast build rule for target.
+regression_plasticity_metabolic/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_metabolic.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_metabolic.dir/build
+.PHONY : regression_plasticity_metabolic/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_second_messengers_module_test
 
 # Build rule for target.
@@ -12691,6 +13588,19 @@ regression_plasticity_second_messengers_module_test/fast:
 .PHONY : regression_plasticity_second_messengers_module_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_metaplasticity
+
+# Build rule for target.
+regression_plasticity_metaplasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_metaplasticity
+.PHONY : regression_plasticity_metaplasticity
+
+# fast build rule for target.
+regression_plasticity_metaplasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_metaplasticity.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_metaplasticity.dir/build
+.PHONY : regression_plasticity_metaplasticity/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_attention_pe_test
 
 # Build rule for target.
@@ -12702,6 +13612,97 @@ regression_plasticity_attention_pe_test: cmake_check_build_system
 regression_plasticity_attention_pe_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_attention_pe_test.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_attention_pe_test.dir/build
 .PHONY : regression_plasticity_attention_pe_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_protein
+
+# Build rule for target.
+regression_plasticity_protein: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_protein
+.PHONY : regression_plasticity_protein
+
+# fast build rule for target.
+regression_plasticity_protein/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_protein.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_protein.dir/build
+.PHONY : regression_plasticity_protein/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_triplet_stdp
+
+# Build rule for target.
+regression_plasticity_triplet_stdp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_triplet_stdp
+.PHONY : regression_plasticity_triplet_stdp
+
+# fast build rule for target.
+regression_plasticity_triplet_stdp/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_triplet_stdp.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_triplet_stdp.dir/build
+.PHONY : regression_plasticity_triplet_stdp/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_modules_test
+
+# Build rule for target.
+regression_plasticity_modules_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_modules_test
+.PHONY : regression_plasticity_modules_test
+
+# fast build rule for target.
+regression_plasticity_modules_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_modules_test.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_modules_test.dir/build
+.PHONY : regression_plasticity_modules_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_orchestrator
+
+# Build rule for target.
+regression_plasticity_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_orchestrator
+.PHONY : regression_plasticity_orchestrator
+
+# fast build rule for target.
+regression_plasticity_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_orchestrator.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_orchestrator.dir/build
+.PHONY : regression_plasticity_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_neural
+
+# Build rule for target.
+regression_plasticity_neural: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_neural
+.PHONY : regression_plasticity_neural
+
+# fast build rule for target.
+regression_plasticity_neural/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_neural.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_neural.dir/build
+.PHONY : regression_plasticity_neural/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_heterosynaptic
+
+# Build rule for target.
+regression_plasticity_heterosynaptic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_heterosynaptic
+.PHONY : regression_plasticity_heterosynaptic
+
+# fast build rule for target.
+regression_plasticity_heterosynaptic/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/heterosynaptic/CMakeFiles/regression_plasticity_heterosynaptic.dir/build.make test/regression/plasticity/heterosynaptic/CMakeFiles/regression_plasticity_heterosynaptic.dir/build
+.PHONY : regression_plasticity_heterosynaptic/fast
+
+#=============================================================================
+# Target rules for targets named test_calcium_regression
+
+# Build rule for target.
+test_calcium_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_calcium_regression
+.PHONY : test_calcium_regression
+
+# fast build rule for target.
+test_calcium_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/calcium/CMakeFiles/test_calcium_regression.dir/build.make test/regression/plasticity/calcium/CMakeFiles/test_calcium_regression.dir/build
+.PHONY : test_calcium_regression/fast
 
 #=============================================================================
 # Target rules for targets named test_swarm_protocol
@@ -12925,6 +13926,32 @@ test_swarm_fep_bridges/fast:
 .PHONY : test_swarm_fep_bridges/fast
 
 #=============================================================================
+# Target rules for targets named unit_swarm_sleep_bridges
+
+# Build rule for target.
+unit_swarm_sleep_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_swarm_sleep_bridges
+.PHONY : unit_swarm_sleep_bridges
+
+# fast build rule for target.
+unit_swarm_sleep_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/sleep/CMakeFiles/unit_swarm_sleep_bridges.dir/build.make test/unit/swarm/sleep/CMakeFiles/unit_swarm_sleep_bridges.dir/build
+.PHONY : unit_swarm_sleep_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_swarm_immune_bridges
+
+# Build rule for target.
+unit_swarm_immune_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_swarm_immune_bridges
+.PHONY : unit_swarm_immune_bridges
+
+# fast build rule for target.
+unit_swarm_immune_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/immune/CMakeFiles/unit_swarm_immune_bridges.dir/build.make test/unit/swarm/immune/CMakeFiles/unit_swarm_immune_bridges.dir/build
+.PHONY : unit_swarm_immune_bridges/fast
+
+#=============================================================================
 # Target rules for targets named test_swarm_communication_integration
 
 # Build rule for target.
@@ -13055,6 +14082,32 @@ test_brain_swarm_immune_integration/fast:
 .PHONY : test_brain_swarm_immune_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_swarm_sleep_bridges
+
+# Build rule for target.
+integration_swarm_sleep_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_swarm_sleep_bridges
+.PHONY : integration_swarm_sleep_bridges
+
+# fast build rule for target.
+integration_swarm_sleep_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/swarm/sleep/CMakeFiles/integration_swarm_sleep_bridges.dir/build.make test/integration/swarm/sleep/CMakeFiles/integration_swarm_sleep_bridges.dir/build
+.PHONY : integration_swarm_sleep_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_swarm_immune_bridges
+
+# Build rule for target.
+integration_swarm_immune_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_swarm_immune_bridges
+.PHONY : integration_swarm_immune_bridges
+
+# fast build rule for target.
+integration_swarm_immune_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/swarm/immune/CMakeFiles/integration_swarm_immune_bridges.dir/build.make test/integration/swarm/immune/CMakeFiles/integration_swarm_immune_bridges.dir/build
+.PHONY : integration_swarm_immune_bridges/fast
+
+#=============================================================================
 # Target rules for targets named test_swarm_memory_regression
 
 # Build rule for target.
@@ -13144,6 +14197,19 @@ test_swarm_consciousness_enhanced_regression: cmake_check_build_system
 test_swarm_consciousness_enhanced_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/swarm/CMakeFiles/test_swarm_consciousness_enhanced_regression.dir/build.make test/regression/swarm/CMakeFiles/test_swarm_consciousness_enhanced_regression.dir/build
 .PHONY : test_swarm_consciousness_enhanced_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_swarm_bridges
+
+# Build rule for target.
+regression_swarm_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_swarm_bridges
+.PHONY : regression_swarm_bridges
+
+# fast build rule for target.
+regression_swarm_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/swarm/CMakeFiles/regression_swarm_bridges.dir/build.make test/regression/swarm/CMakeFiles/regression_swarm_bridges.dir/build
+.PHONY : regression_swarm_bridges/fast
 
 #=============================================================================
 # Target rules for targets named test_platform_tier
@@ -14263,6 +15329,7 @@ help:
 	@echo "... e2e_test_brain_immune_pipeline"
 	@echo "... e2e_test_brain_immune_plasticity_pipeline"
 	@echo "... e2e_test_brain_pipeline"
+	@echo "... e2e_test_bridge_pipelines"
 	@echo "... e2e_test_cognitive_bio_async"
 	@echo "... e2e_test_cognitive_pipeline"
 	@echo "... e2e_test_coordinator_pipeline"
@@ -14275,10 +15342,12 @@ help:
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
+	@echo "... e2e_test_neural_plasticity_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
 	@echo "... e2e_test_nlp_neural_distributed"
 	@echo "... e2e_test_nlp_swarm_coordination"
 	@echo "... e2e_test_nlp_war_zone"
+	@echo "... e2e_test_plasticity_pipeline"
 	@echo "... e2e_test_portia_bio_async_pipeline"
 	@echo "... e2e_test_portia_constrained_platform"
 	@echo "... e2e_test_portia_degradation_scenario"
@@ -14293,6 +15362,7 @@ help:
 	@echo "... e2e_test_second_messenger_pipeline"
 	@echo "... e2e_test_security_attack_simulation"
 	@echo "... e2e_test_server_swarm_pipeline"
+	@echo "... e2e_test_sleep_bridge_pipeline"
 	@echo "... e2e_test_swarm_consciousness_enhanced_pipeline"
 	@echo "... e2e_test_swarm_consciousness_pipeline"
 	@echo "... e2e_test_swarm_formation"
@@ -14348,6 +15418,8 @@ help:
 	@echo "... integration_cognitive_memory_test_semantic_memory_integration"
 	@echo "... integration_cognitive_mirror_neurons_substrate"
 	@echo "... integration_cognitive_salience_test_salience_fep_bridge_integration"
+	@echo "... integration_cognitive_sleep_bridge"
+	@echo "... integration_cognitive_sleep_test_cognitive_sleep_integration"
 	@echo "... integration_cognitive_wellbeing_enhanced"
 	@echo "... integration_cognitive_working_memory_pe"
 	@echo "... integration_core_axon_test_integration"
@@ -14416,18 +15488,35 @@ help:
 	@echo "... integration_perception_test_brain_topology_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_routing_integration"
+	@echo "... integration_plasticity_astrocyte_test_astrocyte_integration"
 	@echo "... integration_plasticity_attention_test_attention_integration_e2e"
 	@echo "... integration_plasticity_bcm_test_bcm_integration"
 	@echo "... integration_plasticity_biological_test_biological_plasticity_integration"
 	@echo "... integration_plasticity_eligibility_test_eligibility_wiring"
+	@echo "... integration_plasticity_heterosynaptic"
+	@echo "... integration_plasticity_metabolic"
+	@echo "... integration_plasticity_metabolic_test_metabolic_integration"
+	@echo "... integration_plasticity_metaplasticity"
+	@echo "... integration_plasticity_metaplasticity_test_metaplasticity_integration"
+	@echo "... integration_plasticity_neural"
 	@echo "... integration_plasticity_neuromodulators_test_neuromodulators_bio_async_integration"
 	@echo "... integration_plasticity_neuromodulators_test_phasic_tonic_integration"
 	@echo "... integration_plasticity_neuromodulators_test_spatial_neuromod_bio_async_integration"
+	@echo "... integration_plasticity_orchestrator"
+	@echo "... integration_plasticity_orchestrator_test_neural_integration"
+	@echo "... integration_plasticity_orchestrator_test_orchestrator_integration"
+	@echo "... integration_plasticity_protein"
+	@echo "... integration_plasticity_protein_test_protein_integration"
 	@echo "... integration_plasticity_second_messengers_module_test"
 	@echo "... integration_plasticity_second_messengers_test"
 	@echo "... integration_plasticity_second_messengers_test_second_messengers_integration"
 	@echo "... integration_plasticity_second_messengers_test_second_messengers_module_integration"
+	@echo "... integration_plasticity_sleep_bridge"
+	@echo "... integration_plasticity_sleep_test_plasticity_sleep_integration"
 	@echo "... integration_plasticity_stp_test_stp_integration"
+	@echo "... integration_plasticity_structural_test_structural_integration"
+	@echo "... integration_plasticity_triplet_stdp"
+	@echo "... integration_security_sleep_bridges"
 	@echo "... integration_security_test_anomaly_detector"
 	@echo "... integration_security_test_bbb_bio_router"
 	@echo "... integration_security_test_bbb_integration"
@@ -14438,6 +15527,8 @@ help:
 	@echo "... integration_security_test_math_integration"
 	@echo "... integration_security_test_pattern_db"
 	@echo "... integration_security_test_swarm_security"
+	@echo "... integration_swarm_immune_bridges"
+	@echo "... integration_swarm_sleep_bridges"
 	@echo "... integration_test_brain_oscillations_integration"
 	@echo "... integration_test_brain_resize_integration"
 	@echo "... integration_test_config_brain_integration"
@@ -14510,6 +15601,8 @@ help:
 	@echo "... regression_cognitive_memory_test_semantic_memory_backward_compat"
 	@echo "... regression_cognitive_mirror_neurons_substrate"
 	@echo "... regression_cognitive_modules_api_test"
+	@echo "... regression_cognitive_sleep_bridge"
+	@echo "... regression_cognitive_sleep_test_cognitive_sleep_regression"
 	@echo "... regression_cognitive_wellbeing_enhanced"
 	@echo "... regression_core_axon_performance"
 	@echo "... regression_core_brain_coordinator_regression"
@@ -14603,21 +15696,38 @@ help:
 	@echo "... regression_optimization_test_multi_objective_backward_compat"
 	@echo "... regression_plasticity_adaptive_test_adaptive_backward_compat"
 	@echo "... regression_plasticity_adaptive_test_adaptive_routing_backward_compat"
+	@echo "... regression_plasticity_astrocyte_test_astrocyte_regression"
 	@echo "... regression_plasticity_attention_pe_test"
 	@echo "... regression_plasticity_attention_test_attention_pe_regression"
 	@echo "... regression_plasticity_attention_test_attention_regression"
 	@echo "... regression_plasticity_bcm_test_bcm_backward_compat"
 	@echo "... regression_plasticity_biological_test_biological_plasticity_performance"
 	@echo "... regression_plasticity_eligibility_test_eligibility_backward_compat"
+	@echo "... regression_plasticity_heterosynaptic"
+	@echo "... regression_plasticity_metabolic"
+	@echo "... regression_plasticity_metabolic_test_metabolic_regression"
+	@echo "... regression_plasticity_metaplasticity"
+	@echo "... regression_plasticity_metaplasticity_test_metaplasticity_regression"
+	@echo "... regression_plasticity_modules_test"
+	@echo "... regression_plasticity_neural"
 	@echo "... regression_plasticity_neuromodulators_test_neuromodulators_bio_async_regression"
 	@echo "... regression_plasticity_neuromodulators_test_phasic_tonic_backward_compat"
 	@echo "... regression_plasticity_neuromodulators_test_spatial_neuromod_bio_async_regression"
 	@echo "... regression_plasticity_noise_test_pink_noise_backward_compat"
+	@echo "... regression_plasticity_orchestrator"
+	@echo "... regression_plasticity_orchestrator_test_neural_regression"
+	@echo "... regression_plasticity_orchestrator_test_orchestrator_regression"
+	@echo "... regression_plasticity_protein"
+	@echo "... regression_plasticity_protein_test_protein_regression"
 	@echo "... regression_plasticity_second_messengers_module_test"
 	@echo "... regression_plasticity_second_messengers_test"
 	@echo "... regression_plasticity_second_messengers_test_second_messengers_module_regression"
 	@echo "... regression_plasticity_second_messengers_test_second_messengers_regression"
+	@echo "... regression_plasticity_sleep_bridge"
+	@echo "... regression_plasticity_sleep_test_plasticity_sleep_regression"
 	@echo "... regression_plasticity_stp_test_stp_backward_compat"
+	@echo "... regression_plasticity_structural_test_structural_regression"
+	@echo "... regression_plasticity_triplet_stdp"
 	@echo "... regression_portia_test_accelerator_robustness"
 	@echo "... regression_portia_test_attention_fairness"
 	@echo "... regression_portia_test_classification_accuracy"
@@ -14628,6 +15738,7 @@ help:
 	@echo "... regression_portia_test_planning_performance"
 	@echo "... regression_portia_test_power_stability"
 	@echo "... regression_portia_test_tier_switch_stability"
+	@echo "... regression_security_sleep_bridges"
 	@echo "... regression_security_test_anomaly_detector"
 	@echo "... regression_security_test_bbb_regression"
 	@echo "... regression_security_test_constant_time"
@@ -14643,6 +15754,7 @@ help:
 	@echo "... regression_security_test_shell_detector"
 	@echo "... regression_security_test_supply_chain"
 	@echo "... regression_security_test_validation_performance"
+	@echo "... regression_swarm_bridges"
 	@echo "... regression_test_brain_oscillations_regression"
 	@echo "... regression_test_brain_resize_backward_compat"
 	@echo "... regression_test_mirror_activations_backward_compat"
@@ -14680,6 +15792,9 @@ help:
 	@echo "... test_backward_chaining"
 	@echo "... test_brain_reasoning_api"
 	@echo "... test_brain_swarm_immune_integration"
+	@echo "... test_calcium_dynamics"
+	@echo "... test_calcium_integration"
+	@echo "... test_calcium_regression"
 	@echo "... test_collective_workspace"
 	@echo "... test_cortical_attention_gain"
 	@echo "... test_cortical_column"
@@ -14809,6 +15924,7 @@ help:
 	@echo "... unit_cognitive_analysis_test_analysis_fep_bridge"
 	@echo "... unit_cognitive_analysis_test_network_analysis"
 	@echo "... unit_cognitive_analysis_test_network_analyzer_integration"
+	@echo "... unit_cognitive_attention_sleep_bridge"
 	@echo "... unit_cognitive_attention_test_attention_fep_bridge"
 	@echo "... unit_cognitive_attention_test_emotion_attention_pe"
 	@echo "... unit_cognitive_autobiographical_test_fep_bridge"
@@ -14833,6 +15949,7 @@ help:
 	@echo "... unit_cognitive_ethics_test_ethics_immune"
 	@echo "... unit_cognitive_ethics_test_ethics_real"
 	@echo "... unit_cognitive_ethics_test_ethics_warfare"
+	@echo "... unit_cognitive_executive_sleep_bridge"
 	@echo "... unit_cognitive_explanations_test_explanations"
 	@echo "... unit_cognitive_explanations_test_explanations_extraction"
 	@echo "... unit_cognitive_explanations_test_explanations_integration"
@@ -14917,6 +16034,7 @@ help:
 	@echo "... unit_cognitive_wellbeing_immune_full_integration"
 	@echo "... unit_cognitive_wellbeing_immune_integration"
 	@echo "... unit_cognitive_wellbeing_real"
+	@echo "... unit_cognitive_working_memory_sleep_bridge"
 	@echo "... unit_cognitive_working_memory_test_working_memory_pe"
 	@echo "... unit_core_axon_test_axon"
 	@echo "... unit_core_axon_test_axon_enhanced"
@@ -15005,6 +16123,7 @@ help:
 	@echo "... unit_core_neuron_types_test_neural_logic_connectivity"
 	@echo "... unit_core_neuron_types_test_neuron_types_bio_async"
 	@echo "... unit_core_neuron_types_test_v1_neurons"
+	@echo "... unit_core_oscillations_sleep_bridge"
 	@echo "... unit_core_synapse_compute_test_synapse_substrate_bridge"
 	@echo "... unit_core_synapse_compute_test_three_factor_learning"
 	@echo "... unit_core_synapse_types_test_synapse_compute_real"
@@ -15149,36 +16268,63 @@ help:
 	@echo "... unit_plasticity_adaptive_test_adaptive_bioasync"
 	@echo "... unit_plasticity_adaptive_test_adaptive_comprehensive"
 	@echo "... unit_plasticity_adaptive_test_adaptive_routing"
+	@echo "... unit_plasticity_astrocyte"
+	@echo "... unit_plasticity_astrocyte_test_astrocyte_plasticity"
 	@echo "... unit_plasticity_attention_test_attention_pe"
+	@echo "... unit_plasticity_axon_orchestrator_bridge"
+	@echo "... unit_plasticity_bcm_sleep_bridge"
 	@echo "... unit_plasticity_bcm_test_bcm"
 	@echo "... unit_plasticity_bcm_test_bcm_fep_bridge"
+	@echo "... unit_plasticity_dendrite_orchestrator_bridge"
 	@echo "... unit_plasticity_dendritic_test_dendritic"
 	@echo "... unit_plasticity_dendritic_test_dendritic_bioasync"
 	@echo "... unit_plasticity_dendritic_test_dendritic_fep_bridge"
 	@echo "... unit_plasticity_eligibility_test_eligibility_burst"
 	@echo "... unit_plasticity_eligibility_test_eligibility_fep_bridge"
+	@echo "... unit_plasticity_extended_metaplasticity"
+	@echo "... unit_plasticity_heterosynaptic"
+	@echo "... unit_plasticity_homeostatic_sleep_bridge"
 	@echo "... unit_plasticity_homeostatic_test_homeostatic"
 	@echo "... unit_plasticity_homeostatic_test_homeostatic_fep_bridge"
+	@echo "... unit_plasticity_metabolic"
+	@echo "... unit_plasticity_metabolic_test_metabolic_plasticity"
+	@echo "... unit_plasticity_metaplasticity_test_extended_metaplasticity"
+	@echo "... unit_plasticity_neural_coordinator"
 	@echo "... unit_plasticity_neuromodulator_immune"
+	@echo "... unit_plasticity_neuromodulators_sleep_bridge"
 	@echo "... unit_plasticity_neuromodulators_test_neuromod_substrate_bridge"
 	@echo "... unit_plasticity_neuromodulators_test_neuromodulators"
 	@echo "... unit_plasticity_neuromodulators_test_neuromodulators_bio_async"
 	@echo "... unit_plasticity_neuromodulators_test_phasic_tonic"
 	@echo "... unit_plasticity_neuromodulators_test_receptor_subtypes"
 	@echo "... unit_plasticity_neuromodulators_test_spatial_neuromod_bio_async"
+	@echo "... unit_plasticity_neuron_orchestrator_bridge"
 	@echo "... unit_plasticity_noise_pink_noise_tests"
 	@echo "... unit_plasticity_noise_test_pink_noise"
+	@echo "... unit_plasticity_orchestrator"
+	@echo "... unit_plasticity_orchestrator_test_axon_orchestrator_bridge"
+	@echo "... unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge"
+	@echo "... unit_plasticity_orchestrator_test_neural_plasticity_coordinator"
+	@echo "... unit_plasticity_orchestrator_test_neuron_orchestrator_bridge"
+	@echo "... unit_plasticity_orchestrator_test_plasticity_orchestrator"
 	@echo "... unit_plasticity_predictive_test_predictive_bioasync"
 	@echo "... unit_plasticity_predictive_test_predictive_coding"
+	@echo "... unit_plasticity_protein_synthesis"
+	@echo "... unit_plasticity_protein_test_protein_synthesis"
 	@echo "... unit_plasticity_second_messengers_modules_test"
 	@echo "... unit_plasticity_second_messengers_test"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers_modules"
+	@echo "... unit_plasticity_stdp_sleep_bridge"
+	@echo "... unit_plasticity_structural"
+	@echo "... unit_plasticity_structural_test_structural_plasticity"
 	@echo "... unit_plasticity_substrate_test_plasticity_substrate_bridge"
 	@echo "... unit_plasticity_test_coordinator"
 	@echo "... unit_plasticity_test_fep_bridges"
+	@echo "... unit_plasticity_triplet_stdp"
 	@echo "... unit_portia_immune_bridges"
 	@echo "... unit_security_immune_pattern_db"
+	@echo "... unit_security_sleep_bridges"
 	@echo "... unit_security_test_anomaly_detector"
 	@echo "... unit_security_test_bayesian_network"
 	@echo "... unit_security_test_bbb_immune_integration"
@@ -15202,6 +16348,8 @@ help:
 	@echo "... unit_security_test_shell_detector"
 	@echo "... unit_security_test_supply_chain"
 	@echo "... unit_shannon_monitor_bio_async"
+	@echo "... unit_swarm_immune_bridges"
+	@echo "... unit_swarm_sleep_bridges"
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"
 	@echo "... unit_utils_algorithms_test_centrality"

@@ -70,7 +70,7 @@ struct second_messenger_system {
     second_messenger_stats_t stats;
 
     /* Thread safety */
-    nimcp_mutex_t mutex;
+    nimcp_platform_mutex_t mutex;
     bool mutex_initialized;
 
     /* Security */
@@ -242,7 +242,7 @@ void second_messenger_destroy(second_messenger_system_t* system) {
 
     /* Destroy mutex */
     if (system->mutex_initialized) {
-        nimcp_mutex_destroy(&system->mutex);
+        nimcp_platform_mutex_destroy(&system->mutex);
     }
 
     /* Free arrays */
@@ -500,7 +500,7 @@ nimcp_result_t second_messenger_activate_gs(
 
     /* Lock for thread safety */
     if (system->mutex_initialized) {
-        nimcp_mutex_lock(&system->mutex);
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     /* Ensure neuron state is initialized */
@@ -524,7 +524,7 @@ nimcp_result_t second_messenger_activate_gs(
     system->stats.receptor_activations++;
 
     if (system->mutex_initialized) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Gs activation: neuron=%u, occupancy=%.2f, AC=%.3f",
@@ -549,7 +549,7 @@ nimcp_result_t second_messenger_activate_gi(
     }
 
     if (system->mutex_initialized) {
-        nimcp_mutex_lock(&system->mutex);
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     if (!system->neuron_active[neuron_id]) {
@@ -572,7 +572,7 @@ nimcp_result_t second_messenger_activate_gi(
     system->stats.receptor_activations++;
 
     if (system->mutex_initialized) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Gi activation: neuron=%u, occupancy=%.2f, AC=%.3f",
@@ -597,7 +597,7 @@ nimcp_result_t second_messenger_activate_gq(
     }
 
     if (system->mutex_initialized) {
-        nimcp_mutex_lock(&system->mutex);
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     if (!system->neuron_active[neuron_id]) {
@@ -620,7 +620,7 @@ nimcp_result_t second_messenger_activate_gq(
     system->stats.receptor_activations++;
 
     if (system->mutex_initialized) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Gq activation: neuron=%u, occupancy=%.2f, PLC=%.3f",
@@ -648,7 +648,7 @@ nimcp_result_t second_messenger_update(
     }
 
     if (system->mutex_initialized) {
-        nimcp_mutex_lock(&system->mutex);
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     /* Update aggregate statistics */
@@ -701,7 +701,7 @@ nimcp_result_t second_messenger_update(
     system->stats.cascade_updates++;
 
     if (system->mutex_initialized) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     return NIMCP_SUCCESS;
@@ -727,7 +727,7 @@ nimcp_result_t second_messenger_update_neuron(
     }
 
     if (system->mutex_initialized) {
-        nimcp_mutex_lock(&system->mutex);
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     second_messenger_state_t* state = &system->states[neuron_id];
@@ -742,7 +742,7 @@ nimcp_result_t second_messenger_update_neuron(
     system->stats.cascade_updates++;
 
     if (system->mutex_initialized) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     return NIMCP_SUCCESS;
@@ -768,7 +768,7 @@ nimcp_result_t second_messenger_inject_calcium(
     }
 
     if (system->mutex_initialized) {
-        nimcp_mutex_lock(&system->mutex);
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     if (!system->neuron_active[neuron_id]) {
@@ -790,7 +790,7 @@ nimcp_result_t second_messenger_inject_calcium(
     state->last_update_ms = timestamp_ms;
 
     if (system->mutex_initialized) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Calcium injection: neuron=%u, added=%.1fnM, total=%.1fnM",
@@ -1040,7 +1040,7 @@ nimcp_result_t second_messenger_reset(
     uint64_t now_ms = nimcp_platform_time_monotonic_ms();
 
     if (system->mutex_initialized) {
-        nimcp_mutex_lock(&system->mutex);
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     if (neuron_id == 0) {
@@ -1061,13 +1061,13 @@ nimcp_result_t second_messenger_reset(
         LOG_MODULE_DEBUG(LOG_MODULE, "Reset cascade state for neuron %u", neuron_id);
     } else {
         if (system->mutex_initialized) {
-            nimcp_mutex_unlock(&system->mutex);
+            nimcp_platform_mutex_unlock(&system->mutex);
         }
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (system->mutex_initialized) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     return NIMCP_SUCCESS;

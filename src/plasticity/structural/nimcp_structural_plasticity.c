@@ -1,0 +1,875 @@
+/**
+ * @file nimcp_structural_plasticity.c
+ * @brief Structural Plasticity Implementation
+ */
+
+#include "plasticity/structural/nimcp_structural_plasticity.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+/* ============================================================================
+ * Internal Structures
+ * ============================================================================ */
+
+struct structural_plasticity_system {
+    /* Configuration */
+    structural_plasticity_config_t config;
+
+    /* Spine tracking */
+    synapse_structural_state_t* spines;
+    uint32_t num_spines;
+    uint32_t max_spines;
+    uint32_t next_synapse_id;
+
+    /* Callbacks */
+    structural_change_callback_t callback;
+    void* callback_user_data;
+
+    /* Statistics */
+    uint64_t total_formations;
+    uint64_t total_eliminations;
+    uint64_t total_stabilizations;
+    uint64_t total_potentiations;
+    uint64_t total_pruning_starts;
+
+    /* Thread safety */
+    nimcp_platform_mutex_t* mutex;
+};
+
+/* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Find spine by synapse ID
+ * WHY:  Need to locate spine in array
+ * HOW:  Linear search (could optimize with hash table)
+ */
+static synapse_structural_state_t* find_spine(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id
+) {
+    if (!system || !system->spines) {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < system->num_spines; i++) {
+        if (system->spines[i].synapse_id == synapse_id &&
+            system->spines[i].state != SYNAPSE_STATE_ELIMINATED) {
+            return &system->spines[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * WHAT: Initialize spine morphology for nascent state
+ * WHY:  New spines start as thin, unstable structures
+ * HOW:  Set small volume, PSD, high motility
+ */
+static void init_nascent_morphology(spine_morphology_t* morph) {
+    if (!morph) return;
+
+    morph->spine_volume = STRUCTURAL_VOLUME_NASCENT_MIN +
+        (STRUCTURAL_VOLUME_NASCENT_MAX - STRUCTURAL_VOLUME_NASCENT_MIN) * 0.5f;
+    morph->psd_size = STRUCTURAL_PSD_NASCENT_MIN +
+        (STRUCTURAL_PSD_NASCENT_MAX - STRUCTURAL_PSD_NASCENT_MIN) * 0.5f;
+    morph->actin_dynamics = STRUCTURAL_ACTIN_GROWTH_RATE;
+    morph->spine_stability = 0.2f;  /* Low stability */
+    morph->spine_motility = 0.8f;   /* High motility */
+    morph->camkii_concentration = 0.1f;
+    morph->ampar_count = 5.0f;      /* Few receptors */
+    morph->nmdar_count = 3.0f;
+}
+
+/**
+ * WHAT: Update morphology to stable state
+ * WHY:  Stabilized spines are larger, more stable
+ * HOW:  Increase volume, PSD, stability
+ */
+static void update_to_stable_morphology(spine_morphology_t* morph) {
+    if (!morph) return;
+
+    morph->spine_volume = STRUCTURAL_VOLUME_STABLE_MIN +
+        (STRUCTURAL_VOLUME_STABLE_MAX - STRUCTURAL_VOLUME_STABLE_MIN) * 0.7f;
+    morph->psd_size = STRUCTURAL_PSD_STABLE_MIN +
+        (STRUCTURAL_PSD_STABLE_MAX - STRUCTURAL_PSD_STABLE_MIN) * 0.7f;
+    morph->actin_dynamics = 0.02f;  /* Slower dynamics */
+    morph->spine_stability = 0.8f;
+    morph->spine_motility = 0.2f;
+    morph->camkii_concentration = 0.6f;
+    morph->ampar_count = 30.0f;
+    morph->nmdar_count = 15.0f;
+}
+
+/**
+ * WHAT: Update morphology to potentiated state
+ * WHY:  LTP enlarges spines
+ * HOW:  Maximize volume, PSD, receptors
+ */
+static void update_to_potentiated_morphology(spine_morphology_t* morph) {
+    if (!morph) return;
+
+    morph->spine_volume = STRUCTURAL_VOLUME_POTENTIATED_MIN +
+        (STRUCTURAL_VOLUME_POTENTIATED_MAX - STRUCTURAL_VOLUME_POTENTIATED_MIN) * 0.8f;
+    morph->psd_size = STRUCTURAL_PSD_POTENTIATED_MIN +
+        (STRUCTURAL_PSD_POTENTIATED_MAX - STRUCTURAL_PSD_POTENTIATED_MIN) * 0.8f;
+    morph->actin_dynamics = 0.01f;
+    morph->spine_stability = 0.95f;
+    morph->spine_motility = 0.05f;
+    morph->camkii_concentration = 0.9f;
+    morph->ampar_count = 80.0f;
+    morph->nmdar_count = 30.0f;
+}
+
+/**
+ * WHAT: Invoke structural change callback
+ * WHY:  Notify listeners of state transitions
+ * HOW:  Call registered callback if present
+ */
+static void invoke_callback(
+    structural_plasticity_system_t* system,
+    structural_event_t event,
+    uint32_t synapse_id,
+    synapse_state_t old_state,
+    synapse_state_t new_state
+) {
+    if (!system || !system->callback) {
+        return;
+    }
+
+    system->callback(event, synapse_id, old_state, new_state,
+                    system->callback_user_data);
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+int structural_plasticity_default_config(structural_plasticity_config_t* config) {
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config pointer");
+        return -1;
+    }
+
+    config->formation_threshold_hz = STRUCTURAL_FORMATION_THRESHOLD_MAX;
+    config->formation_rate = 0.01f;
+    config->maturation_time_sec = STRUCTURAL_MATURATION_TIME_TYPICAL;
+    config->stabilization_threshold = 10.0f;
+    config->require_sleep_consolidation = true;
+    config->pruning_threshold_hz = 0.5f;  /* Lower threshold to avoid premature pruning */
+    config->pruning_rate = 0.005f;
+    config->inactivity_timeout_sec = 3600.0f * 24.0f;  /* 24 hours */
+    config->ltp_potentiation_threshold = 10.0f;
+    config->potentiation_decay_rate = 0.001f;
+    config->enable_immune_pruning = true;
+    config->complement_sensitivity = 1.0f;
+    config->enable_sleep_consolidation = true;
+    config->sleep_consolidation_boost = 2.0f;
+    config->max_spines = STRUCTURAL_MAX_SPINES;
+    config->spine_density_limit = 1000.0f;
+
+    return 0;
+}
+
+structural_plasticity_system_t* structural_plasticity_create(
+    const structural_plasticity_config_t* config
+) {
+    structural_plasticity_system_t* system =
+        (structural_plasticity_system_t*)nimcp_malloc(sizeof(*system));
+    if (!system) {
+        NIMCP_LOGGING_ERROR("Failed to allocate structural plasticity system");
+        return NULL;
+    }
+
+    memset(system, 0, sizeof(*system));
+
+    /* Apply configuration */
+    if (config) {
+        system->config = *config;
+    } else {
+        structural_plasticity_default_config(&system->config);
+    }
+
+    /* Allocate spine array */
+    system->max_spines = system->config.max_spines;
+    system->spines = (synapse_structural_state_t*)nimcp_malloc(
+        sizeof(synapse_structural_state_t) * system->max_spines);
+    if (!system->spines) {
+        NIMCP_LOGGING_ERROR("Failed to allocate spine array");
+        nimcp_free(system);
+        return NULL;
+    }
+
+    memset(system->spines, 0,
+           sizeof(synapse_structural_state_t) * system->max_spines);
+
+    /* Create mutex */
+    system->mutex = nimcp_platform_mutex_create();
+    if (!system->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        nimcp_free(system->spines);
+        nimcp_free(system);
+        return NULL;
+    }
+
+    system->next_synapse_id = 1;
+
+    NIMCP_LOGGING_INFO("Structural plasticity system created");
+    return system;
+}
+
+void structural_plasticity_destroy(structural_plasticity_system_t* system) {
+    if (!system) return;
+
+    if (system->mutex) {
+        nimcp_platform_mutex_destroy(system->mutex);
+    }
+
+    if (system->spines) {
+        nimcp_free(system->spines);
+    }
+
+    nimcp_free(system);
+    NIMCP_LOGGING_INFO("Structural plasticity system destroyed");
+}
+
+/* ============================================================================
+ * Formation and Elimination Implementation
+ * ============================================================================ */
+
+int structural_plasticity_form_synapse(
+    structural_plasticity_system_t* system,
+    uint32_t pre_neuron_id,
+    uint32_t post_neuron_id,
+    float activity_hz,
+    uint32_t* synapse_id
+) {
+    if (!system || !synapse_id) {
+        NIMCP_LOGGING_ERROR("NULL parameter");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* Check spine limit */
+    if (system->num_spines >= system->max_spines) {
+        NIMCP_LOGGING_WARN("Spine limit reached");
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    /* Find free slot */
+    uint32_t slot = system->num_spines;
+    synapse_structural_state_t* spine = &system->spines[slot];
+
+    /* Initialize spine */
+    memset(spine, 0, sizeof(*spine));
+    spine->synapse_id = system->next_synapse_id++;
+    spine->pre_neuron_id = pre_neuron_id;
+    spine->post_neuron_id = post_neuron_id;
+    spine->state = SYNAPSE_STATE_NASCENT;
+    init_nascent_morphology(&spine->morphology);
+    spine->recent_activity_hz = activity_hz;
+    spine->formation_time = 0;  /* Will be set by caller */
+    spine->maturation_progress = 0.0f;
+    spine->consolidation_tagged = false;
+    spine->complement_tagged = false;
+    spine->pruning_urgency = 0.0f;
+    spine->formation_events = 1;
+
+    system->num_spines++;
+    system->total_formations++;
+    *synapse_id = spine->synapse_id;
+
+    /* Notify callback */
+    invoke_callback(system, STRUCTURAL_EVENT_FORMATION,
+                   spine->synapse_id, SYNAPSE_STATE_ELIMINATED,
+                   SYNAPSE_STATE_NASCENT);
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_DEBUG("Formed synapse %u (pre=%u, post=%u)",
+                       spine->synapse_id, pre_neuron_id, post_neuron_id);
+    return 0;
+}
+
+int structural_plasticity_eliminate_synapse(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        NIMCP_LOGGING_WARN("Synapse %u not found", synapse_id);
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    synapse_state_t old_state = spine->state;
+    spine->state = SYNAPSE_STATE_ELIMINATED;
+    system->total_eliminations++;
+
+    /* Notify callback */
+    invoke_callback(system, STRUCTURAL_EVENT_ELIMINATION,
+                   synapse_id, old_state, SYNAPSE_STATE_ELIMINATED);
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_DEBUG("Eliminated synapse %u", synapse_id);
+    return 0;
+}
+
+bool structural_plasticity_should_form(
+    const structural_plasticity_system_t* system,
+    float activity_hz
+) {
+    if (!system) return false;
+    return activity_hz >= system->config.formation_threshold_hz;
+}
+
+bool structural_plasticity_should_prune(
+    const structural_plasticity_system_t* system,
+    const synapse_structural_state_t* synapse
+) {
+    if (!system || !synapse) return false;
+
+    /* Complement-tagged synapses should be pruned */
+    if (system->config.enable_immune_pruning && synapse->complement_tagged) {
+        return true;
+    }
+
+    /* Low activity triggers pruning */
+    if (synapse->recent_activity_hz < system->config.pruning_threshold_hz) {
+        return true;
+    }
+
+    return false;
+}
+
+/* ============================================================================
+ * Stabilization and Potentiation Implementation
+ * ============================================================================ */
+
+int structural_plasticity_stabilize_synapse(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    if (spine->state != SYNAPSE_STATE_NASCENT) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;  /* Can only stabilize nascent spines */
+    }
+
+    synapse_state_t old_state = spine->state;
+    spine->state = SYNAPSE_STATE_STABLE;
+    update_to_stable_morphology(&spine->morphology);
+    spine->maturation_progress = 1.0f;
+    system->total_stabilizations++;
+
+    /* Notify callback */
+    invoke_callback(system, STRUCTURAL_EVENT_STABILIZATION,
+                   synapse_id, old_state, SYNAPSE_STATE_STABLE);
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_DEBUG("Stabilized synapse %u", synapse_id);
+    return 0;
+}
+
+int structural_plasticity_potentiate_synapse(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    if (spine->state != SYNAPSE_STATE_STABLE) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;  /* Can only potentiate stable spines */
+    }
+
+    synapse_state_t old_state = spine->state;
+    spine->state = SYNAPSE_STATE_POTENTIATED;
+    update_to_potentiated_morphology(&spine->morphology);
+    spine->potentiation_events++;
+    system->total_potentiations++;
+
+    /* Notify callback */
+    invoke_callback(system, STRUCTURAL_EVENT_POTENTIATION,
+                   synapse_id, old_state, SYNAPSE_STATE_POTENTIATED);
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_DEBUG("Potentiated synapse %u", synapse_id);
+    return 0;
+}
+
+int structural_plasticity_tag_for_consolidation(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    spine->consolidation_tagged = true;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Activity Tracking Implementation
+ * ============================================================================ */
+
+int structural_plasticity_update_activity(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id,
+    uint64_t current_time
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    /* Update activity with exponential moving average */
+    float alpha = 0.1f;  /* Smoothing factor */
+    if (spine->last_active_time > 0) {
+        float dt_sec = (current_time - spine->last_active_time) / 1000.0f;
+        if (dt_sec > 0) {
+            float instant_rate = 1.0f / dt_sec;
+            spine->recent_activity_hz =
+                alpha * instant_rate + (1.0f - alpha) * spine->recent_activity_hz;
+        }
+    }
+
+    spine->last_active_time = current_time;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+int structural_plasticity_record_ltp(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id,
+    float ltp_magnitude
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    spine->ltp_accumulator += ltp_magnitude;
+
+    /* Check potentiation threshold */
+    if (spine->state == SYNAPSE_STATE_STABLE &&
+        spine->ltp_accumulator >= system->config.ltp_potentiation_threshold) {
+        /* Auto-potentiate */
+        synapse_state_t old_state = spine->state;
+        spine->state = SYNAPSE_STATE_POTENTIATED;
+        update_to_potentiated_morphology(&spine->morphology);
+        spine->potentiation_events++;
+        system->total_potentiations++;
+
+        invoke_callback(system, STRUCTURAL_EVENT_POTENTIATION,
+                       synapse_id, old_state, SYNAPSE_STATE_POTENTIATED);
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+int structural_plasticity_record_ltd(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id,
+    float ltd_magnitude
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    spine->ltd_accumulator += ltd_magnitude;
+
+    /* LTD increases pruning urgency */
+    spine->pruning_urgency += ltd_magnitude * 0.1f;
+    if (spine->pruning_urgency > 1.0f) {
+        spine->pruning_urgency = 1.0f;
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Update Implementation
+ * ============================================================================ */
+
+int structural_plasticity_update(
+    structural_plasticity_system_t* system,
+    float delta_sec
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    for (uint32_t i = 0; i < system->num_spines; i++) {
+        synapse_structural_state_t* spine = &system->spines[i];
+
+        if (spine->state == SYNAPSE_STATE_ELIMINATED) {
+            continue;
+        }
+
+        /* Decay activity rate during inactivity (exponential decay with time constant ~20s) */
+        float decay_rate = 0.05f;  /* 1/tau where tau = 20 seconds (accelerated for simulations) */
+        float decay_factor = expf(-decay_rate * delta_sec);
+        float old_activity = spine->recent_activity_hz;
+        spine->recent_activity_hz *= decay_factor;
+
+        /* Update maturation progress for nascent spines */
+        if (spine->state == SYNAPSE_STATE_NASCENT) {
+            float maturation_rate = 1.0f / system->config.maturation_time_sec;
+            spine->maturation_progress += delta_sec * maturation_rate;
+
+            /* Check for auto-stabilization */
+            if (spine->maturation_progress >= 1.0f &&
+                spine->recent_activity_hz >= system->config.stabilization_threshold) {
+
+                /* Require sleep consolidation if enabled */
+                bool can_stabilize = !system->config.require_sleep_consolidation ||
+                                    spine->consolidation_tagged;
+
+                if (can_stabilize) {
+                    synapse_state_t old_state = spine->state;
+                    spine->state = SYNAPSE_STATE_STABLE;
+                    update_to_stable_morphology(&spine->morphology);
+                    system->total_stabilizations++;
+
+                    invoke_callback(system, STRUCTURAL_EVENT_STABILIZATION,
+                                   spine->synapse_id, old_state, SYNAPSE_STATE_STABLE);
+                }
+            }
+        }
+
+        /* Check for pruning */
+        if (structural_plasticity_should_prune(system, spine) &&
+            spine->state != SYNAPSE_STATE_PRUNING) {
+
+            synapse_state_t old_state = spine->state;
+            spine->state = SYNAPSE_STATE_PRUNING;
+            spine->pruning_start_time = 0;  /* Set by caller with real time */
+            system->total_pruning_starts++;
+
+            invoke_callback(system, STRUCTURAL_EVENT_PRUNING_START,
+                           spine->synapse_id, old_state, SYNAPSE_STATE_PRUNING);
+        }
+
+        /* Update pruning spines */
+        if (spine->state == SYNAPSE_STATE_PRUNING) {
+            spine->pruning_urgency += delta_sec * system->config.pruning_rate;
+
+            /* Shrink spine */
+            spine->morphology.spine_volume -=
+                delta_sec * STRUCTURAL_ACTIN_SHRINK_RATE;
+            if (spine->morphology.spine_volume < 0.0f) {
+                spine->morphology.spine_volume = 0.0f;
+            }
+
+            /* Eliminate if urgency threshold reached */
+            if (spine->pruning_urgency >= 1.0f ||
+                spine->morphology.spine_volume <= 0.01f) {
+
+                synapse_state_t old_state = spine->state;
+                spine->state = SYNAPSE_STATE_ELIMINATED;
+                system->total_eliminations++;
+
+                invoke_callback(system, STRUCTURAL_EVENT_ELIMINATION,
+                               spine->synapse_id, old_state,
+                               SYNAPSE_STATE_ELIMINATED);
+            }
+        }
+
+        /* Decay potentiation back to stable */
+        if (spine->state == SYNAPSE_STATE_POTENTIATED) {
+            spine->ltp_accumulator -=
+                delta_sec * system->config.potentiation_decay_rate;
+
+            if (spine->ltp_accumulator < system->config.ltp_potentiation_threshold * 0.5f) {
+                /* Decay back to stable */
+                synapse_state_t old_state = spine->state;
+                spine->state = SYNAPSE_STATE_STABLE;
+                update_to_stable_morphology(&spine->morphology);
+
+                invoke_callback(system, STRUCTURAL_EVENT_STABILIZATION,
+                               spine->synapse_id, old_state, SYNAPSE_STATE_STABLE);
+            }
+        }
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Query Implementation
+ * ============================================================================ */
+
+int structural_plasticity_get_synapse_state(
+    const structural_plasticity_system_t* system,
+    uint32_t synapse_id,
+    synapse_structural_state_t* state
+) {
+    if (!system || !state) {
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine =
+        find_spine((structural_plasticity_system_t*)system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    *state = *spine;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+int structural_plasticity_get_morphology(
+    const structural_plasticity_system_t* system,
+    uint32_t synapse_id,
+    spine_morphology_t* morphology
+) {
+    if (!system || !morphology) {
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine =
+        find_spine((structural_plasticity_system_t*)system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    *morphology = spine->morphology;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+uint32_t structural_plasticity_get_spine_count(
+    const structural_plasticity_system_t* system,
+    synapse_state_t state
+) {
+    if (!system) return 0;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < system->num_spines; i++) {
+        if (system->spines[i].state == state) {
+            count++;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return count;
+}
+
+uint32_t structural_plasticity_get_total_spines(
+    const structural_plasticity_system_t* system
+) {
+    if (!system) return 0;
+
+    nimcp_platform_mutex_lock(system->mutex);
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < system->num_spines; i++) {
+        if (system->spines[i].state != SYNAPSE_STATE_ELIMINATED) {
+            count++;
+        }
+    }
+    nimcp_platform_mutex_unlock(system->mutex);
+    return count;
+}
+
+/* ============================================================================
+ * Callback Implementation
+ * ============================================================================ */
+
+int structural_plasticity_register_callback(
+    structural_plasticity_system_t* system,
+    structural_change_callback_t callback,
+    void* user_data
+) {
+    if (!system) {
+        NIMCP_LOGGING_ERROR("NULL system");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+    system->callback = callback;
+    system->callback_user_data = user_data;
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Immune Integration Implementation
+ * ============================================================================ */
+
+int structural_plasticity_tag_complement(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id,
+    const uint8_t* tag,
+    size_t tag_len
+) {
+    if (!system || !tag) {
+        NIMCP_LOGGING_ERROR("NULL parameter");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine = find_spine(system, synapse_id);
+    if (!spine) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    spine->complement_tagged = true;
+
+    /* Copy tag (truncate if necessary) */
+    size_t copy_len = tag_len < STRUCTURAL_EPITOPE_SIZE ?
+                     tag_len : STRUCTURAL_EPITOPE_SIZE;
+    memcpy(spine->complement_tag, tag, copy_len);
+    if (copy_len < STRUCTURAL_EPITOPE_SIZE) {
+        memset(spine->complement_tag + copy_len, 0,
+              STRUCTURAL_EPITOPE_SIZE - copy_len);
+    }
+
+    /* Increase pruning urgency */
+    spine->pruning_urgency += 0.5f * system->config.complement_sensitivity;
+    if (spine->pruning_urgency > 1.0f) {
+        spine->pruning_urgency = 1.0f;
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_DEBUG("Tagged synapse %u with complement", synapse_id);
+    return 0;
+}
+
+bool structural_plasticity_is_complement_tagged(
+    const structural_plasticity_system_t* system,
+    uint32_t synapse_id
+) {
+    if (!system) return false;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    synapse_structural_state_t* spine =
+        find_spine((structural_plasticity_system_t*)system, synapse_id);
+    bool tagged = spine ? spine->complement_tagged : false;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return tagged;
+}
+
+int structural_plasticity_get_complement_tagged(
+    const structural_plasticity_system_t* system,
+    uint32_t* synapse_ids,
+    uint32_t max_count,
+    uint32_t* count
+) {
+    if (!system || !synapse_ids || !count) {
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    *count = 0;
+    for (uint32_t i = 0; i < system->num_spines && *count < max_count; i++) {
+        if (system->spines[i].complement_tagged &&
+            system->spines[i].state != SYNAPSE_STATE_ELIMINATED) {
+            synapse_ids[(*count)++] = system->spines[i].synapse_id;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}

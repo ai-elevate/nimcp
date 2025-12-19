@@ -2412,3 +2412,69 @@ float brain_immune_compute_affinity(
 
     return affinity;
 }
+
+/* ============================================================================
+ * Cytokine and Inflammation Getters
+ * ============================================================================ */
+
+float brain_immune_get_cytokine_level(
+    brain_immune_system_t* system,
+    brain_cytokine_type_t type
+) {
+    if (!system) return 0.0f;
+
+    /* Lock for thread safety */
+    nimcp_platform_mutex_lock(system->mutex);
+
+    float level = 0.0f;
+    switch (type) {
+        case BRAIN_CYTOKINE_IL1:
+            level = system->stats.cytokine_il1;
+            break;
+        case BRAIN_CYTOKINE_IL6:
+            level = system->stats.cytokine_il6;
+            break;
+        case BRAIN_CYTOKINE_IL10:
+            level = system->stats.cytokine_il10;
+            break;
+        case BRAIN_CYTOKINE_TNF:
+            level = system->stats.cytokine_tnf;
+            break;
+        case BRAIN_CYTOKINE_IFN_GAMMA:
+            level = system->stats.cytokine_ifn_gamma;
+            break;
+        default:
+            level = 0.0f;
+            break;
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return level;
+}
+
+brain_inflammation_level_t brain_immune_get_inflammation_level(
+    brain_immune_system_t* system
+) {
+    if (!system) return INFLAMMATION_NONE;
+
+    /* Lock for thread safety */
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* Compute inflammation level directly from inflammation_count */
+    brain_inflammation_level_t level;
+    if (system->inflammation_count == 0) {
+        level = INFLAMMATION_NONE;
+    } else if (system->inflammation_count == 1) {
+        level = INFLAMMATION_LOCAL;
+    } else if (system->inflammation_count <= 3) {
+        level = INFLAMMATION_REGIONAL;
+    } else if (system->inflammation_count <= 6) {
+        level = INFLAMMATION_SYSTEMIC;
+    } else {
+        level = INFLAMMATION_STORM;
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return level;
+}

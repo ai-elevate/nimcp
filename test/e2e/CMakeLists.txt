@@ -403,6 +403,68 @@ set_tests_properties(e2e_test_bridge_pipelines PROPERTIES
 )
 
 # ============================================================================
+# Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for triplet STDP and plasticity orchestrator
+# WHY:  Verify complete plasticity pipeline functionality
+# HOW:  Test synaptic plasticity, sleep integration, immune integration
+# ============================================================================
+add_executable(e2e_test_plasticity_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_plasticity_pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_test_plasticity_pipeline
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(e2e_test_plasticity_pipeline
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(e2e_test_plasticity_pipeline PRIVATE cxx_std_17)
+add_test(NAME e2e_test_plasticity_pipeline COMMAND e2e_test_plasticity_pipeline)
+set_tests_properties(e2e_test_plasticity_pipeline PROPERTIES
+    LABELS "e2e;plasticity"
+    TIMEOUT 180
+)
+
+# ============================================================================
+# Neural Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for neural-plasticity integration (axon/neuron/dendrite)
+# WHY:  Verify complete spike-to-plasticity pipeline
+# HOW:  Test neuron dynamics, spike cascade, bidirectional sync
+# ============================================================================
+add_executable(e2e_test_neural_plasticity_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_neural_plasticity_pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_test_neural_plasticity_pipeline
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(e2e_test_neural_plasticity_pipeline
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(e2e_test_neural_plasticity_pipeline PRIVATE cxx_std_17)
+add_test(NAME e2e_test_neural_plasticity_pipeline COMMAND e2e_test_neural_plasticity_pipeline)
+set_tests_properties(e2e_test_neural_plasticity_pipeline PROPERTIES
+    LABELS "e2e;plasticity;neural"
+    TIMEOUT 180
+)
+
+# ============================================================================
 # Test Execution Instructions
 # ============================================================================
 

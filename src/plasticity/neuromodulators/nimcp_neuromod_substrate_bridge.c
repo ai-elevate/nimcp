@@ -244,7 +244,7 @@ neuromod_substrate_bridge_t* neuromod_substrate_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    bridge->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!bridge->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);

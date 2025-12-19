@@ -18,7 +18,7 @@ struct homeostatic_sleep_bridge_struct {
     homeostatic_sleep_config_t config;
     sleep_system_t sleep_system;
     homeostatic_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
+    nimcp_platform_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -46,7 +46,7 @@ static void homeostatic_on_sleep_state_change(sleep_state_t new_state, void* use
 
     NIMCP_LOGGING_DEBUG("Homeostatic bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     bridge->effects.current_state = new_state;
     bridge->effects.is_deep_nrem = (new_state == SLEEP_STATE_DEEP_NREM);
@@ -73,7 +73,7 @@ static void homeostatic_on_sleep_state_change(sleep_state_t new_state, void* use
     /* Scaling is active if rate factor > 0 */
     bridge->effects.scaling_active = (bridge->effects.scaling_rate_factor > 0.01f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Homeostatic modulated: scaling=%.2f, target=%.2f, pruning=%.2f",
                         bridge->effects.scaling_rate_factor,
@@ -161,14 +161,14 @@ void homeostatic_sleep_bridge_destroy(homeostatic_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }
 
 int homeostatic_sleep_update(homeostatic_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -199,7 +199,7 @@ int homeostatic_sleep_update(homeostatic_sleep_bridge_t bridge) {
     /* Scaling is active if rate factor > 0 */
     bridge->effects.scaling_active = (bridge->effects.scaling_rate_factor > 0.01f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Homeostatic sleep update: state=%d, scaling=%.2f, target=%.2f, pruning=%.2f",
                        state, bridge->effects.scaling_rate_factor,
@@ -214,25 +214,25 @@ int homeostatic_sleep_get_effects(
     homeostatic_sleep_effects_t* effects)
 {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 float homeostatic_sleep_get_scaling_rate(const homeostatic_sleep_bridge_t bridge) {
     if (!bridge) return 0.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     float result = bridge->effects.scaling_rate_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 
 bool homeostatic_sleep_is_scaling_active(const homeostatic_sleep_bridge_t bridge) {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bool result = bridge->effects.scaling_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 

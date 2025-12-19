@@ -545,6 +545,30 @@ __/cognitive/attention/nimcp_attention_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/attention/nimcp_attention_fep_bridge.c.s
 .PHONY : __/cognitive/attention/nimcp_attention_fep_bridge.c.s
 
+__/cognitive/attention/nimcp_attention_sleep_bridge.o: __/cognitive/attention/nimcp_attention_sleep_bridge.c.o
+.PHONY : __/cognitive/attention/nimcp_attention_sleep_bridge.o
+
+# target to build an object file
+__/cognitive/attention/nimcp_attention_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/attention/nimcp_attention_sleep_bridge.c.o
+.PHONY : __/cognitive/attention/nimcp_attention_sleep_bridge.c.o
+
+__/cognitive/attention/nimcp_attention_sleep_bridge.i: __/cognitive/attention/nimcp_attention_sleep_bridge.c.i
+.PHONY : __/cognitive/attention/nimcp_attention_sleep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/attention/nimcp_attention_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/attention/nimcp_attention_sleep_bridge.c.i
+.PHONY : __/cognitive/attention/nimcp_attention_sleep_bridge.c.i
+
+__/cognitive/attention/nimcp_attention_sleep_bridge.s: __/cognitive/attention/nimcp_attention_sleep_bridge.c.s
+.PHONY : __/cognitive/attention/nimcp_attention_sleep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/attention/nimcp_attention_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/attention/nimcp_attention_sleep_bridge.c.s
+.PHONY : __/cognitive/attention/nimcp_attention_sleep_bridge.c.s
+
 __/cognitive/attention/nimcp_emotion_attention.o: __/cognitive/attention/nimcp_emotion_attention.c.o
 .PHONY : __/cognitive/attention/nimcp_emotion_attention.o
 
@@ -1336,6 +1360,30 @@ __/cognitive/executive/nimcp_executive_fep_bridge.s: __/cognitive/executive/nimc
 __/cognitive/executive/nimcp_executive_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/executive/nimcp_executive_fep_bridge.c.s
 .PHONY : __/cognitive/executive/nimcp_executive_fep_bridge.c.s
+
+__/cognitive/executive/nimcp_executive_sleep_bridge.o: __/cognitive/executive/nimcp_executive_sleep_bridge.c.o
+.PHONY : __/cognitive/executive/nimcp_executive_sleep_bridge.o
+
+# target to build an object file
+__/cognitive/executive/nimcp_executive_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/executive/nimcp_executive_sleep_bridge.c.o
+.PHONY : __/cognitive/executive/nimcp_executive_sleep_bridge.c.o
+
+__/cognitive/executive/nimcp_executive_sleep_bridge.i: __/cognitive/executive/nimcp_executive_sleep_bridge.c.i
+.PHONY : __/cognitive/executive/nimcp_executive_sleep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/executive/nimcp_executive_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/executive/nimcp_executive_sleep_bridge.c.i
+.PHONY : __/cognitive/executive/nimcp_executive_sleep_bridge.c.i
+
+__/cognitive/executive/nimcp_executive_sleep_bridge.s: __/cognitive/executive/nimcp_executive_sleep_bridge.c.s
+.PHONY : __/cognitive/executive/nimcp_executive_sleep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/executive/nimcp_executive_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/executive/nimcp_executive_sleep_bridge.c.s
+.PHONY : __/cognitive/executive/nimcp_executive_sleep_bridge.c.s
 
 __/cognitive/explanations/nimcp_explanations.o: __/cognitive/explanations/nimcp_explanations.c.o
 .PHONY : __/cognitive/explanations/nimcp_explanations.o
@@ -4481,6 +4529,30 @@ __/cognitive/working_memory/nimcp_working_memory_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/working_memory/nimcp_working_memory_fep_bridge.c.s
 .PHONY : __/cognitive/working_memory/nimcp_working_memory_fep_bridge.c.s
 
+__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.o: __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.o
+.PHONY : __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.o
+
+# target to build an object file
+__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.o
+.PHONY : __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.o
+
+__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.i: __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.i
+.PHONY : __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.i
+.PHONY : __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.i
+
+__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.s: __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.s
+.PHONY : __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.s
+.PHONY : __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.c.s
+
 __/core/axon/nimcp_axon.o: __/core/axon/nimcp_axon.c.o
 .PHONY : __/core/axon/nimcp_axon.o
 
@@ -5896,6 +5968,30 @@ __/core/brain_oscillations/nimcp_oscillations_immune_bridge.s: __/core/brain_osc
 __/core/brain_oscillations/nimcp_oscillations_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_immune_bridge.c.s
 .PHONY : __/core/brain_oscillations/nimcp_oscillations_immune_bridge.c.s
+
+__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.o: __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.o
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.o
+
+# target to build an object file
+__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.o
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.o
+
+__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.i: __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.i
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.i
+
+# target to preprocess a source file
+__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.i
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.i
+
+__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.s: __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.s
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.s
+
+# target to generate assembly for a file
+__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.s
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.s
 
 __/core/brain_regions/nimcp_brain_regions.o: __/core/brain_regions/nimcp_brain_regions.c.o
 .PHONY : __/core/brain_regions/nimcp_brain_regions.o
@@ -10169,6 +10265,54 @@ __/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s
 .PHONY : __/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s
 
+__/plasticity/astrocyte/nimcp_astrocyte_plasticity.o: __/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.o
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_plasticity.o
+
+# target to build an object file
+__/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.o
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.o
+
+__/plasticity/astrocyte/nimcp_astrocyte_plasticity.i: __/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.i
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_plasticity.i
+
+# target to preprocess a source file
+__/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.i
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.i
+
+__/plasticity/astrocyte/nimcp_astrocyte_plasticity.s: __/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.s
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_plasticity.s
+
+# target to generate assembly for a file
+__/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.s
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.s
+
+__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.o: __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.o
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.o
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.o
+
+__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.i: __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.i
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.i
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.i
+
+__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.s: __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.s
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.s
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c.s
+
 __/plasticity/attention/nimcp_attention.o: __/plasticity/attention/nimcp_attention.c.o
 .PHONY : __/plasticity/attention/nimcp_attention.o
 
@@ -10240,6 +10384,102 @@ __/plasticity/bcm/nimcp_bcm_fep_bridge.s: __/plasticity/bcm/nimcp_bcm_fep_bridge
 __/plasticity/bcm/nimcp_bcm_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/bcm/nimcp_bcm_fep_bridge.c.s
 .PHONY : __/plasticity/bcm/nimcp_bcm_fep_bridge.c.s
+
+__/plasticity/bcm/nimcp_bcm_sleep_bridge.o: __/plasticity/bcm/nimcp_bcm_sleep_bridge.c.o
+.PHONY : __/plasticity/bcm/nimcp_bcm_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/bcm/nimcp_bcm_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/bcm/nimcp_bcm_sleep_bridge.c.o
+.PHONY : __/plasticity/bcm/nimcp_bcm_sleep_bridge.c.o
+
+__/plasticity/bcm/nimcp_bcm_sleep_bridge.i: __/plasticity/bcm/nimcp_bcm_sleep_bridge.c.i
+.PHONY : __/plasticity/bcm/nimcp_bcm_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/bcm/nimcp_bcm_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/bcm/nimcp_bcm_sleep_bridge.c.i
+.PHONY : __/plasticity/bcm/nimcp_bcm_sleep_bridge.c.i
+
+__/plasticity/bcm/nimcp_bcm_sleep_bridge.s: __/plasticity/bcm/nimcp_bcm_sleep_bridge.c.s
+.PHONY : __/plasticity/bcm/nimcp_bcm_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/bcm/nimcp_bcm_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/bcm/nimcp_bcm_sleep_bridge.c.s
+.PHONY : __/plasticity/bcm/nimcp_bcm_sleep_bridge.c.s
+
+__/plasticity/calcium/nimcp_calcium_dynamics.o: __/plasticity/calcium/nimcp_calcium_dynamics.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_dynamics.o
+
+# target to build an object file
+__/plasticity/calcium/nimcp_calcium_dynamics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_dynamics.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_dynamics.c.o
+
+__/plasticity/calcium/nimcp_calcium_dynamics.i: __/plasticity/calcium/nimcp_calcium_dynamics.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_dynamics.i
+
+# target to preprocess a source file
+__/plasticity/calcium/nimcp_calcium_dynamics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_dynamics.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_dynamics.c.i
+
+__/plasticity/calcium/nimcp_calcium_dynamics.s: __/plasticity/calcium/nimcp_calcium_dynamics.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_dynamics.s
+
+# target to generate assembly for a file
+__/plasticity/calcium/nimcp_calcium_dynamics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_dynamics.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_dynamics.c.s
+
+__/plasticity/calcium/nimcp_calcium_immune_bridge.o: __/plasticity/calcium/nimcp_calcium_immune_bridge.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_immune_bridge.o
+
+# target to build an object file
+__/plasticity/calcium/nimcp_calcium_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_immune_bridge.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_immune_bridge.c.o
+
+__/plasticity/calcium/nimcp_calcium_immune_bridge.i: __/plasticity/calcium/nimcp_calcium_immune_bridge.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/calcium/nimcp_calcium_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_immune_bridge.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_immune_bridge.c.i
+
+__/plasticity/calcium/nimcp_calcium_immune_bridge.s: __/plasticity/calcium/nimcp_calcium_immune_bridge.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/calcium/nimcp_calcium_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_immune_bridge.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_immune_bridge.c.s
+
+__/plasticity/calcium/nimcp_calcium_sleep_bridge.o: __/plasticity/calcium/nimcp_calcium_sleep_bridge.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/calcium/nimcp_calcium_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_sleep_bridge.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_sleep_bridge.c.o
+
+__/plasticity/calcium/nimcp_calcium_sleep_bridge.i: __/plasticity/calcium/nimcp_calcium_sleep_bridge.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/calcium/nimcp_calcium_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_sleep_bridge.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_sleep_bridge.c.i
+
+__/plasticity/calcium/nimcp_calcium_sleep_bridge.s: __/plasticity/calcium/nimcp_calcium_sleep_bridge.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/calcium/nimcp_calcium_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_sleep_bridge.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_sleep_bridge.c.s
 
 __/plasticity/dendritic/nimcp_dendritic.o: __/plasticity/dendritic/nimcp_dendritic.c.o
 .PHONY : __/plasticity/dendritic/nimcp_dendritic.o
@@ -10337,6 +10577,78 @@ __/plasticity/eligibility/nimcp_eligibility_trace.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_trace.c.s
 .PHONY : __/plasticity/eligibility/nimcp_eligibility_trace.c.s
 
+__/plasticity/heterosynaptic/nimcp_heterosynaptic.o: __/plasticity/heterosynaptic/nimcp_heterosynaptic.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic.o
+
+# target to build an object file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic.c.o
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic.i: __/plasticity/heterosynaptic/nimcp_heterosynaptic.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic.i
+
+# target to preprocess a source file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic.c.i
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic.s: __/plasticity/heterosynaptic/nimcp_heterosynaptic.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic.s
+
+# target to generate assembly for a file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic.c.s
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.o: __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.o
+
+# target to build an object file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.o
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.i: __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.i
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.s: __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.s
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.o: __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.o
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.i: __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.i
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.s: __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.s
+
 __/plasticity/homeostatic/nimcp_homeostatic.o: __/plasticity/homeostatic/nimcp_homeostatic.c.o
 .PHONY : __/plasticity/homeostatic/nimcp_homeostatic.o
 
@@ -10384,6 +10696,30 @@ __/plasticity/homeostatic/nimcp_homeostatic_fep_bridge.s: __/plasticity/homeosta
 __/plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c.s
 .PHONY : __/plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c.s
+
+__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.o: __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.o
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.o
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.o
+
+__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.i: __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.i
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.i
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.i
+
+__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.s: __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.s
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.s
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c.s
 
 __/plasticity/immune/nimcp_bcm_immune_bridge.o: __/plasticity/immune/nimcp_bcm_immune_bridge.c.o
 .PHONY : __/plasticity/immune/nimcp_bcm_immune_bridge.o
@@ -10553,6 +10889,150 @@ __/plasticity/immune/nimcp_synaptic_scaling_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/immune/nimcp_synaptic_scaling_immune_bridge.c.s
 .PHONY : __/plasticity/immune/nimcp_synaptic_scaling_immune_bridge.c.s
 
+__/plasticity/metabolic/nimcp_metabolic_immune_bridge.o: __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_immune_bridge.o
+
+# target to build an object file
+__/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.o
+
+__/plasticity/metabolic/nimcp_metabolic_immune_bridge.i: __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.i
+
+__/plasticity/metabolic/nimcp_metabolic_immune_bridge.s: __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.s
+
+__/plasticity/metabolic/nimcp_metabolic_plasticity.o: __/plasticity/metabolic/nimcp_metabolic_plasticity.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_plasticity.o
+
+# target to build an object file
+__/plasticity/metabolic/nimcp_metabolic_plasticity.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_plasticity.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_plasticity.c.o
+
+__/plasticity/metabolic/nimcp_metabolic_plasticity.i: __/plasticity/metabolic/nimcp_metabolic_plasticity.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_plasticity.i
+
+# target to preprocess a source file
+__/plasticity/metabolic/nimcp_metabolic_plasticity.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_plasticity.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_plasticity.c.i
+
+__/plasticity/metabolic/nimcp_metabolic_plasticity.s: __/plasticity/metabolic/nimcp_metabolic_plasticity.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_plasticity.s
+
+# target to generate assembly for a file
+__/plasticity/metabolic/nimcp_metabolic_plasticity.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_plasticity.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_plasticity.c.s
+
+__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.o: __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.o
+
+__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.i: __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.i
+
+__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.s: __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.c.s
+
+__/plasticity/metaplasticity/nimcp_extended_metaplasticity.o: __/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.o
+.PHONY : __/plasticity/metaplasticity/nimcp_extended_metaplasticity.o
+
+# target to build an object file
+__/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.o
+.PHONY : __/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.o
+
+__/plasticity/metaplasticity/nimcp_extended_metaplasticity.i: __/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.i
+.PHONY : __/plasticity/metaplasticity/nimcp_extended_metaplasticity.i
+
+# target to preprocess a source file
+__/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.i
+.PHONY : __/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.i
+
+__/plasticity/metaplasticity/nimcp_extended_metaplasticity.s: __/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.s
+.PHONY : __/plasticity/metaplasticity/nimcp_extended_metaplasticity.s
+
+# target to generate assembly for a file
+__/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.s
+.PHONY : __/plasticity/metaplasticity/nimcp_extended_metaplasticity.c.s
+
+__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.o: __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.o
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.o
+
+# target to build an object file
+__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.o
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.o
+
+__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.i: __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.i
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.i
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.i
+
+__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.s: __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.s
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.s
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c.s
+
+__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.o: __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.o
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.o
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.o
+
+__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.i: __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.i
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.i
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.i
+
+__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.s: __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.s
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.s
+.PHONY : __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c.s
+
 __/plasticity/neuromodulators/nimcp_metabolic_pathways.o: __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.o
 .PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.o
 
@@ -10672,6 +11152,30 @@ __/plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.s: __/plasticity/
 __/plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.c.s
 .PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.c.s
+
+__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.o: __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.o
+
+__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.i: __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.i
+
+__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.s: __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c.s
 
 __/plasticity/neuromodulators/nimcp_phasic_tonic.o: __/plasticity/neuromodulators/nimcp_phasic_tonic.c.o
 .PHONY : __/plasticity/neuromodulators/nimcp_phasic_tonic.o
@@ -10793,6 +11297,30 @@ __/plasticity/nimcp_plasticity_coordinator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/nimcp_plasticity_coordinator.c.s
 .PHONY : __/plasticity/nimcp_plasticity_coordinator.c.s
 
+__/plasticity/nimcp_plasticity_orchestrator.o: __/plasticity/nimcp_plasticity_orchestrator.c.o
+.PHONY : __/plasticity/nimcp_plasticity_orchestrator.o
+
+# target to build an object file
+__/plasticity/nimcp_plasticity_orchestrator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/nimcp_plasticity_orchestrator.c.o
+.PHONY : __/plasticity/nimcp_plasticity_orchestrator.c.o
+
+__/plasticity/nimcp_plasticity_orchestrator.i: __/plasticity/nimcp_plasticity_orchestrator.c.i
+.PHONY : __/plasticity/nimcp_plasticity_orchestrator.i
+
+# target to preprocess a source file
+__/plasticity/nimcp_plasticity_orchestrator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/nimcp_plasticity_orchestrator.c.i
+.PHONY : __/plasticity/nimcp_plasticity_orchestrator.c.i
+
+__/plasticity/nimcp_plasticity_orchestrator.s: __/plasticity/nimcp_plasticity_orchestrator.c.s
+.PHONY : __/plasticity/nimcp_plasticity_orchestrator.s
+
+# target to generate assembly for a file
+__/plasticity/nimcp_plasticity_orchestrator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/nimcp_plasticity_orchestrator.c.s
+.PHONY : __/plasticity/nimcp_plasticity_orchestrator.c.s
+
 __/plasticity/nimcp_plasticity_substrate_bridge.o: __/plasticity/nimcp_plasticity_substrate_bridge.c.o
 .PHONY : __/plasticity/nimcp_plasticity_substrate_bridge.o
 
@@ -10889,6 +11417,102 @@ __/plasticity/noise/nimcp_pink_noise_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_fep_bridge.c.s
 .PHONY : __/plasticity/noise/nimcp_pink_noise_fep_bridge.c.s
 
+__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.o: __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.o
+
+# target to build an object file
+__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.o
+
+__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.i: __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.i
+
+# target to preprocess a source file
+__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.i
+
+__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.s: __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.s
+
+__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.o: __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.o
+
+# target to build an object file
+__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.o
+
+__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.i: __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.i
+
+# target to preprocess a source file
+__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.i
+
+__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.s: __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c.s
+
+__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.o: __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.o
+
+# target to build an object file
+__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.o
+
+__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.i: __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.i
+
+# target to preprocess a source file
+__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.i
+
+__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.s: __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.s
+
+# target to generate assembly for a file
+__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c.s
+
+__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.o: __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.o
+
+# target to build an object file
+__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.o
+.PHONY : __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.o
+
+__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.i: __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.i
+
+# target to preprocess a source file
+__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.i
+.PHONY : __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.i
+
+__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.s: __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.s
+.PHONY : __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c.s
+
 __/plasticity/predictive/nimcp_predictive_coding.o: __/plasticity/predictive/nimcp_predictive_coding.c.o
 .PHONY : __/plasticity/predictive/nimcp_predictive_coding.o
 
@@ -10936,6 +11560,78 @@ __/plasticity/predictive/nimcp_predictive_coding_fep_bridge.s: __/plasticity/pre
 __/plasticity/predictive/nimcp_predictive_coding_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/predictive/nimcp_predictive_coding_fep_bridge.c.s
 .PHONY : __/plasticity/predictive/nimcp_predictive_coding_fep_bridge.c.s
+
+__/plasticity/protein/nimcp_protein_immune_bridge.o: __/plasticity/protein/nimcp_protein_immune_bridge.c.o
+.PHONY : __/plasticity/protein/nimcp_protein_immune_bridge.o
+
+# target to build an object file
+__/plasticity/protein/nimcp_protein_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_immune_bridge.c.o
+.PHONY : __/plasticity/protein/nimcp_protein_immune_bridge.c.o
+
+__/plasticity/protein/nimcp_protein_immune_bridge.i: __/plasticity/protein/nimcp_protein_immune_bridge.c.i
+.PHONY : __/plasticity/protein/nimcp_protein_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/protein/nimcp_protein_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_immune_bridge.c.i
+.PHONY : __/plasticity/protein/nimcp_protein_immune_bridge.c.i
+
+__/plasticity/protein/nimcp_protein_immune_bridge.s: __/plasticity/protein/nimcp_protein_immune_bridge.c.s
+.PHONY : __/plasticity/protein/nimcp_protein_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/protein/nimcp_protein_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_immune_bridge.c.s
+.PHONY : __/plasticity/protein/nimcp_protein_immune_bridge.c.s
+
+__/plasticity/protein/nimcp_protein_sleep_bridge.o: __/plasticity/protein/nimcp_protein_sleep_bridge.c.o
+.PHONY : __/plasticity/protein/nimcp_protein_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/protein/nimcp_protein_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_sleep_bridge.c.o
+.PHONY : __/plasticity/protein/nimcp_protein_sleep_bridge.c.o
+
+__/plasticity/protein/nimcp_protein_sleep_bridge.i: __/plasticity/protein/nimcp_protein_sleep_bridge.c.i
+.PHONY : __/plasticity/protein/nimcp_protein_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/protein/nimcp_protein_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_sleep_bridge.c.i
+.PHONY : __/plasticity/protein/nimcp_protein_sleep_bridge.c.i
+
+__/plasticity/protein/nimcp_protein_sleep_bridge.s: __/plasticity/protein/nimcp_protein_sleep_bridge.c.s
+.PHONY : __/plasticity/protein/nimcp_protein_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/protein/nimcp_protein_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_sleep_bridge.c.s
+.PHONY : __/plasticity/protein/nimcp_protein_sleep_bridge.c.s
+
+__/plasticity/protein/nimcp_protein_synthesis.o: __/plasticity/protein/nimcp_protein_synthesis.c.o
+.PHONY : __/plasticity/protein/nimcp_protein_synthesis.o
+
+# target to build an object file
+__/plasticity/protein/nimcp_protein_synthesis.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_synthesis.c.o
+.PHONY : __/plasticity/protein/nimcp_protein_synthesis.c.o
+
+__/plasticity/protein/nimcp_protein_synthesis.i: __/plasticity/protein/nimcp_protein_synthesis.c.i
+.PHONY : __/plasticity/protein/nimcp_protein_synthesis.i
+
+# target to preprocess a source file
+__/plasticity/protein/nimcp_protein_synthesis.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_synthesis.c.i
+.PHONY : __/plasticity/protein/nimcp_protein_synthesis.c.i
+
+__/plasticity/protein/nimcp_protein_synthesis.s: __/plasticity/protein/nimcp_protein_synthesis.c.s
+.PHONY : __/plasticity/protein/nimcp_protein_synthesis.s
+
+# target to generate assembly for a file
+__/plasticity/protein/nimcp_protein_synthesis.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/protein/nimcp_protein_synthesis.c.s
+.PHONY : __/plasticity/protein/nimcp_protein_synthesis.c.s
 
 __/plasticity/second_messengers/nimcp_second_messengers.o: __/plasticity/second_messengers/nimcp_second_messengers.c.o
 .PHONY : __/plasticity/second_messengers/nimcp_second_messengers.o
@@ -11009,6 +11705,102 @@ __/plasticity/stdp/nimcp_stdp_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_fep_bridge.c.s
 .PHONY : __/plasticity/stdp/nimcp_stdp_fep_bridge.c.s
 
+__/plasticity/stdp/nimcp_stdp_sleep_bridge.o: __/plasticity/stdp/nimcp_stdp_sleep_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_stdp_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/stdp/nimcp_stdp_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_sleep_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_stdp_sleep_bridge.c.o
+
+__/plasticity/stdp/nimcp_stdp_sleep_bridge.i: __/plasticity/stdp/nimcp_stdp_sleep_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_stdp_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/stdp/nimcp_stdp_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_sleep_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_stdp_sleep_bridge.c.i
+
+__/plasticity/stdp/nimcp_stdp_sleep_bridge.s: __/plasticity/stdp/nimcp_stdp_sleep_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_stdp_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/stdp/nimcp_stdp_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_sleep_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_stdp_sleep_bridge.c.s
+
+__/plasticity/stdp/nimcp_triplet_stdp.o: __/plasticity/stdp/nimcp_triplet_stdp.c.o
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp.o
+
+# target to build an object file
+__/plasticity/stdp/nimcp_triplet_stdp.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp.c.o
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp.c.o
+
+__/plasticity/stdp/nimcp_triplet_stdp.i: __/plasticity/stdp/nimcp_triplet_stdp.c.i
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp.i
+
+# target to preprocess a source file
+__/plasticity/stdp/nimcp_triplet_stdp.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp.c.i
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp.c.i
+
+__/plasticity/stdp/nimcp_triplet_stdp.s: __/plasticity/stdp/nimcp_triplet_stdp.c.s
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp.s
+
+# target to generate assembly for a file
+__/plasticity/stdp/nimcp_triplet_stdp.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp.c.s
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp.c.s
+
+__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.o: __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.o
+
+# target to build an object file
+__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.o
+
+__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.i: __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.i
+
+__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.s: __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c.s
+
+__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.o: __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.o
+
+__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.i: __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.i
+
+__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.s: __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c.s
+
 __/plasticity/stp/nimcp_stp.o: __/plasticity/stp/nimcp_stp.c.o
 .PHONY : __/plasticity/stp/nimcp_stp.o
 
@@ -11056,6 +11848,78 @@ __/plasticity/stp/nimcp_stp_fep_bridge.s: __/plasticity/stp/nimcp_stp_fep_bridge
 __/plasticity/stp/nimcp_stp_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stp/nimcp_stp_fep_bridge.c.s
 .PHONY : __/plasticity/stp/nimcp_stp_fep_bridge.c.s
+
+__/plasticity/structural/nimcp_structural_immune_bridge.o: __/plasticity/structural/nimcp_structural_immune_bridge.c.o
+.PHONY : __/plasticity/structural/nimcp_structural_immune_bridge.o
+
+# target to build an object file
+__/plasticity/structural/nimcp_structural_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_immune_bridge.c.o
+.PHONY : __/plasticity/structural/nimcp_structural_immune_bridge.c.o
+
+__/plasticity/structural/nimcp_structural_immune_bridge.i: __/plasticity/structural/nimcp_structural_immune_bridge.c.i
+.PHONY : __/plasticity/structural/nimcp_structural_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/structural/nimcp_structural_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_immune_bridge.c.i
+.PHONY : __/plasticity/structural/nimcp_structural_immune_bridge.c.i
+
+__/plasticity/structural/nimcp_structural_immune_bridge.s: __/plasticity/structural/nimcp_structural_immune_bridge.c.s
+.PHONY : __/plasticity/structural/nimcp_structural_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/structural/nimcp_structural_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_immune_bridge.c.s
+.PHONY : __/plasticity/structural/nimcp_structural_immune_bridge.c.s
+
+__/plasticity/structural/nimcp_structural_plasticity.o: __/plasticity/structural/nimcp_structural_plasticity.c.o
+.PHONY : __/plasticity/structural/nimcp_structural_plasticity.o
+
+# target to build an object file
+__/plasticity/structural/nimcp_structural_plasticity.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_plasticity.c.o
+.PHONY : __/plasticity/structural/nimcp_structural_plasticity.c.o
+
+__/plasticity/structural/nimcp_structural_plasticity.i: __/plasticity/structural/nimcp_structural_plasticity.c.i
+.PHONY : __/plasticity/structural/nimcp_structural_plasticity.i
+
+# target to preprocess a source file
+__/plasticity/structural/nimcp_structural_plasticity.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_plasticity.c.i
+.PHONY : __/plasticity/structural/nimcp_structural_plasticity.c.i
+
+__/plasticity/structural/nimcp_structural_plasticity.s: __/plasticity/structural/nimcp_structural_plasticity.c.s
+.PHONY : __/plasticity/structural/nimcp_structural_plasticity.s
+
+# target to generate assembly for a file
+__/plasticity/structural/nimcp_structural_plasticity.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_plasticity.c.s
+.PHONY : __/plasticity/structural/nimcp_structural_plasticity.c.s
+
+__/plasticity/structural/nimcp_structural_sleep_bridge.o: __/plasticity/structural/nimcp_structural_sleep_bridge.c.o
+.PHONY : __/plasticity/structural/nimcp_structural_sleep_bridge.o
+
+# target to build an object file
+__/plasticity/structural/nimcp_structural_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_sleep_bridge.c.o
+.PHONY : __/plasticity/structural/nimcp_structural_sleep_bridge.c.o
+
+__/plasticity/structural/nimcp_structural_sleep_bridge.i: __/plasticity/structural/nimcp_structural_sleep_bridge.c.i
+.PHONY : __/plasticity/structural/nimcp_structural_sleep_bridge.i
+
+# target to preprocess a source file
+__/plasticity/structural/nimcp_structural_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_sleep_bridge.c.i
+.PHONY : __/plasticity/structural/nimcp_structural_sleep_bridge.c.i
+
+__/plasticity/structural/nimcp_structural_sleep_bridge.s: __/plasticity/structural/nimcp_structural_sleep_bridge.c.s
+.PHONY : __/plasticity/structural/nimcp_structural_sleep_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/structural/nimcp_structural_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/structural/nimcp_structural_sleep_bridge.c.s
+.PHONY : __/plasticity/structural/nimcp_structural_sleep_bridge.c.s
 
 __/portia/immune/nimcp_portia_attention_immune_bridge.o: __/portia/immune/nimcp_portia_attention_immune_bridge.c.o
 .PHONY : __/portia/immune/nimcp_portia_attention_immune_bridge.o
@@ -11537,6 +12401,30 @@ __/python/nimcp_types.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/python/nimcp_types.c.s
 .PHONY : __/python/nimcp_types.c.s
 
+__/security/immune/nimcp_anomaly_immune_bridge.o: __/security/immune/nimcp_anomaly_immune_bridge.c.o
+.PHONY : __/security/immune/nimcp_anomaly_immune_bridge.o
+
+# target to build an object file
+__/security/immune/nimcp_anomaly_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_anomaly_immune_bridge.c.o
+.PHONY : __/security/immune/nimcp_anomaly_immune_bridge.c.o
+
+__/security/immune/nimcp_anomaly_immune_bridge.i: __/security/immune/nimcp_anomaly_immune_bridge.c.i
+.PHONY : __/security/immune/nimcp_anomaly_immune_bridge.i
+
+# target to preprocess a source file
+__/security/immune/nimcp_anomaly_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_anomaly_immune_bridge.c.i
+.PHONY : __/security/immune/nimcp_anomaly_immune_bridge.c.i
+
+__/security/immune/nimcp_anomaly_immune_bridge.s: __/security/immune/nimcp_anomaly_immune_bridge.c.s
+.PHONY : __/security/immune/nimcp_anomaly_immune_bridge.s
+
+# target to generate assembly for a file
+__/security/immune/nimcp_anomaly_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_anomaly_immune_bridge.c.s
+.PHONY : __/security/immune/nimcp_anomaly_immune_bridge.c.s
+
 __/security/immune/nimcp_pattern_db_immune_bridge.o: __/security/immune/nimcp_pattern_db_immune_bridge.c.o
 .PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.o
 
@@ -11560,6 +12448,30 @@ __/security/immune/nimcp_pattern_db_immune_bridge.s: __/security/immune/nimcp_pa
 __/security/immune/nimcp_pattern_db_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_pattern_db_immune_bridge.c.s
 .PHONY : __/security/immune/nimcp_pattern_db_immune_bridge.c.s
+
+__/security/immune/nimcp_rate_limiter_immune_bridge.o: __/security/immune/nimcp_rate_limiter_immune_bridge.c.o
+.PHONY : __/security/immune/nimcp_rate_limiter_immune_bridge.o
+
+# target to build an object file
+__/security/immune/nimcp_rate_limiter_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_rate_limiter_immune_bridge.c.o
+.PHONY : __/security/immune/nimcp_rate_limiter_immune_bridge.c.o
+
+__/security/immune/nimcp_rate_limiter_immune_bridge.i: __/security/immune/nimcp_rate_limiter_immune_bridge.c.i
+.PHONY : __/security/immune/nimcp_rate_limiter_immune_bridge.i
+
+# target to preprocess a source file
+__/security/immune/nimcp_rate_limiter_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_rate_limiter_immune_bridge.c.i
+.PHONY : __/security/immune/nimcp_rate_limiter_immune_bridge.c.i
+
+__/security/immune/nimcp_rate_limiter_immune_bridge.s: __/security/immune/nimcp_rate_limiter_immune_bridge.c.s
+.PHONY : __/security/immune/nimcp_rate_limiter_immune_bridge.s
+
+# target to generate assembly for a file
+__/security/immune/nimcp_rate_limiter_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_rate_limiter_immune_bridge.c.s
+.PHONY : __/security/immune/nimcp_rate_limiter_immune_bridge.c.s
 
 __/security/nimcp_anomaly_detector.o: __/security/nimcp_anomaly_detector.c.o
 .PHONY : __/security/nimcp_anomaly_detector.o
@@ -12785,6 +13697,342 @@ __/security/nimcp_toctou_guard.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_toctou_guard.c.s
 .PHONY : __/security/nimcp_toctou_guard.c.s
 
+__/security/sleep/nimcp_anomaly_detector_sleep_bridge.o: __/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_anomaly_detector_sleep_bridge.o
+
+# target to build an object file
+__/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.o
+
+__/security/sleep/nimcp_anomaly_detector_sleep_bridge.i: __/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_anomaly_detector_sleep_bridge.i
+
+# target to preprocess a source file
+__/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.i
+
+__/security/sleep/nimcp_anomaly_detector_sleep_bridge.s: __/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_anomaly_detector_sleep_bridge.s
+
+# target to generate assembly for a file
+__/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.s
+
+__/security/sleep/nimcp_bbb_sleep_bridge.o: __/security/sleep/nimcp_bbb_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_bbb_sleep_bridge.o
+
+# target to build an object file
+__/security/sleep/nimcp_bbb_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_bbb_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_bbb_sleep_bridge.c.o
+
+__/security/sleep/nimcp_bbb_sleep_bridge.i: __/security/sleep/nimcp_bbb_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_bbb_sleep_bridge.i
+
+# target to preprocess a source file
+__/security/sleep/nimcp_bbb_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_bbb_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_bbb_sleep_bridge.c.i
+
+__/security/sleep/nimcp_bbb_sleep_bridge.s: __/security/sleep/nimcp_bbb_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_bbb_sleep_bridge.s
+
+# target to generate assembly for a file
+__/security/sleep/nimcp_bbb_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_bbb_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_bbb_sleep_bridge.c.s
+
+__/security/sleep/nimcp_pattern_db_sleep_bridge.o: __/security/sleep/nimcp_pattern_db_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_pattern_db_sleep_bridge.o
+
+# target to build an object file
+__/security/sleep/nimcp_pattern_db_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_pattern_db_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_pattern_db_sleep_bridge.c.o
+
+__/security/sleep/nimcp_pattern_db_sleep_bridge.i: __/security/sleep/nimcp_pattern_db_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_pattern_db_sleep_bridge.i
+
+# target to preprocess a source file
+__/security/sleep/nimcp_pattern_db_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_pattern_db_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_pattern_db_sleep_bridge.c.i
+
+__/security/sleep/nimcp_pattern_db_sleep_bridge.s: __/security/sleep/nimcp_pattern_db_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_pattern_db_sleep_bridge.s
+
+# target to generate assembly for a file
+__/security/sleep/nimcp_pattern_db_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_pattern_db_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_pattern_db_sleep_bridge.c.s
+
+__/security/sleep/nimcp_rate_limiter_sleep_bridge.o: __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_rate_limiter_sleep_bridge.o
+
+# target to build an object file
+__/security/sleep/nimcp_rate_limiter_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_rate_limiter_sleep_bridge.c.o
+.PHONY : __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.o
+
+__/security/sleep/nimcp_rate_limiter_sleep_bridge.i: __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_rate_limiter_sleep_bridge.i
+
+# target to preprocess a source file
+__/security/sleep/nimcp_rate_limiter_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_rate_limiter_sleep_bridge.c.i
+.PHONY : __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.i
+
+__/security/sleep/nimcp_rate_limiter_sleep_bridge.s: __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_rate_limiter_sleep_bridge.s
+
+# target to generate assembly for a file
+__/security/sleep/nimcp_rate_limiter_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_rate_limiter_sleep_bridge.c.s
+.PHONY : __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_brain_immune_bridge.o: __/swarm/immune/nimcp_swarm_brain_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_brain_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_brain_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_brain_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_brain_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_brain_immune_bridge.i: __/swarm/immune/nimcp_swarm_brain_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_brain_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_brain_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_brain_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_brain_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_brain_immune_bridge.s: __/swarm/immune/nimcp_swarm_brain_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_brain_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_brain_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_brain_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_brain_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.o: __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.i: __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.s: __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_consensus_immune_bridge.o: __/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_consensus_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_consensus_immune_bridge.i: __/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_consensus_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_consensus_immune_bridge.s: __/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_consensus_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_consensus_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_emergence_immune_bridge.o: __/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_emergence_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_emergence_immune_bridge.i: __/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_emergence_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_emergence_immune_bridge.s: __/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_emergence_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_emergence_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_flocking_immune_bridge.o: __/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_flocking_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_flocking_immune_bridge.i: __/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_flocking_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_flocking_immune_bridge.s: __/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_flocking_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_flocking_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_immune_immune_bridge.o: __/swarm/immune/nimcp_swarm_immune_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_immune_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_immune_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_immune_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_immune_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_immune_immune_bridge.i: __/swarm/immune/nimcp_swarm_immune_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_immune_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_immune_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_immune_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_immune_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_immune_immune_bridge.s: __/swarm/immune/nimcp_swarm_immune_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_immune_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_immune_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_immune_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_immune_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_memory_immune_bridge.o: __/swarm/immune/nimcp_swarm_memory_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_memory_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_memory_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_memory_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_memory_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_memory_immune_bridge.i: __/swarm/immune/nimcp_swarm_memory_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_memory_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_memory_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_memory_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_memory_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_memory_immune_bridge.s: __/swarm/immune/nimcp_swarm_memory_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_memory_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_memory_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_memory_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_memory_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.o: __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.i: __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.s: __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_quorum_immune_bridge.o: __/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_quorum_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_quorum_immune_bridge.i: __/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_quorum_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_quorum_immune_bridge.s: __/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_quorum_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_quorum_immune_bridge.c.s
+
+__/swarm/immune/nimcp_swarm_signal_immune_bridge.o: __/swarm/immune/nimcp_swarm_signal_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_signal_immune_bridge.o
+
+# target to build an object file
+__/swarm/immune/nimcp_swarm_signal_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_signal_immune_bridge.c.o
+.PHONY : __/swarm/immune/nimcp_swarm_signal_immune_bridge.c.o
+
+__/swarm/immune/nimcp_swarm_signal_immune_bridge.i: __/swarm/immune/nimcp_swarm_signal_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_signal_immune_bridge.i
+
+# target to preprocess a source file
+__/swarm/immune/nimcp_swarm_signal_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_signal_immune_bridge.c.i
+.PHONY : __/swarm/immune/nimcp_swarm_signal_immune_bridge.c.i
+
+__/swarm/immune/nimcp_swarm_signal_immune_bridge.s: __/swarm/immune/nimcp_swarm_signal_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_signal_immune_bridge.s
+
+# target to generate assembly for a file
+__/swarm/immune/nimcp_swarm_signal_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/immune/nimcp_swarm_signal_immune_bridge.c.s
+.PHONY : __/swarm/immune/nimcp_swarm_signal_immune_bridge.c.s
+
 __/swarm/nimcp_collective_workspace.o: __/swarm/nimcp_collective_workspace.c.o
 .PHONY : __/swarm/nimcp_collective_workspace.o
 
@@ -13696,6 +14944,246 @@ __/swarm/nimcp_swarm_signal_fep_bridge.s: __/swarm/nimcp_swarm_signal_fep_bridge
 __/swarm/nimcp_swarm_signal_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_signal_fep_bridge.c.s
 .PHONY : __/swarm/nimcp_swarm_signal_fep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c.s
+
+__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.o: __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.o
+
+# target to build an object file
+__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.o
+.PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.o
+
+__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.i: __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.i
+
+# target to preprocess a source file
+__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.i
+.PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.i
+
+__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.s: __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.s
+
+# target to generate assembly for a file
+__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s
+.PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s
 
 __/utils/algorithms/nimcp_centrality.o: __/utils/algorithms/nimcp_centrality.c.o
 .PHONY : __/utils/algorithms/nimcp_centrality.o
@@ -15964,6 +17452,9 @@ help:
 	@echo "... __/cognitive/attention/nimcp_attention_fep_bridge.o"
 	@echo "... __/cognitive/attention/nimcp_attention_fep_bridge.i"
 	@echo "... __/cognitive/attention/nimcp_attention_fep_bridge.s"
+	@echo "... __/cognitive/attention/nimcp_attention_sleep_bridge.o"
+	@echo "... __/cognitive/attention/nimcp_attention_sleep_bridge.i"
+	@echo "... __/cognitive/attention/nimcp_attention_sleep_bridge.s"
 	@echo "... __/cognitive/attention/nimcp_emotion_attention.o"
 	@echo "... __/cognitive/attention/nimcp_emotion_attention.i"
 	@echo "... __/cognitive/attention/nimcp_emotion_attention.s"
@@ -16063,6 +17554,9 @@ help:
 	@echo "... __/cognitive/executive/nimcp_executive_fep_bridge.o"
 	@echo "... __/cognitive/executive/nimcp_executive_fep_bridge.i"
 	@echo "... __/cognitive/executive/nimcp_executive_fep_bridge.s"
+	@echo "... __/cognitive/executive/nimcp_executive_sleep_bridge.o"
+	@echo "... __/cognitive/executive/nimcp_executive_sleep_bridge.i"
+	@echo "... __/cognitive/executive/nimcp_executive_sleep_bridge.s"
 	@echo "... __/cognitive/explanations/nimcp_explanations.o"
 	@echo "... __/cognitive/explanations/nimcp_explanations.i"
 	@echo "... __/cognitive/explanations/nimcp_explanations.s"
@@ -16456,6 +17950,9 @@ help:
 	@echo "... __/cognitive/working_memory/nimcp_working_memory_fep_bridge.o"
 	@echo "... __/cognitive/working_memory/nimcp_working_memory_fep_bridge.i"
 	@echo "... __/cognitive/working_memory/nimcp_working_memory_fep_bridge.s"
+	@echo "... __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.o"
+	@echo "... __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.i"
+	@echo "... __/cognitive/working_memory/nimcp_working_memory_sleep_bridge.s"
 	@echo "... __/core/axon/nimcp_axon.o"
 	@echo "... __/core/axon/nimcp_axon.i"
 	@echo "... __/core/axon/nimcp_axon.s"
@@ -16633,6 +18130,9 @@ help:
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_immune_bridge.o"
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_immune_bridge.i"
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_immune_bridge.s"
+	@echo "... __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.o"
+	@echo "... __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.i"
+	@echo "... __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.s"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.o"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.i"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.s"
@@ -17167,6 +18667,12 @@ help:
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.o"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.i"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.s"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_plasticity.o"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_plasticity.i"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_plasticity.s"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.o"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.i"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.s"
 	@echo "... __/plasticity/attention/nimcp_attention.o"
 	@echo "... __/plasticity/attention/nimcp_attention.i"
 	@echo "... __/plasticity/attention/nimcp_attention.s"
@@ -17176,6 +18682,18 @@ help:
 	@echo "... __/plasticity/bcm/nimcp_bcm_fep_bridge.o"
 	@echo "... __/plasticity/bcm/nimcp_bcm_fep_bridge.i"
 	@echo "... __/plasticity/bcm/nimcp_bcm_fep_bridge.s"
+	@echo "... __/plasticity/bcm/nimcp_bcm_sleep_bridge.o"
+	@echo "... __/plasticity/bcm/nimcp_bcm_sleep_bridge.i"
+	@echo "... __/plasticity/bcm/nimcp_bcm_sleep_bridge.s"
+	@echo "... __/plasticity/calcium/nimcp_calcium_dynamics.o"
+	@echo "... __/plasticity/calcium/nimcp_calcium_dynamics.i"
+	@echo "... __/plasticity/calcium/nimcp_calcium_dynamics.s"
+	@echo "... __/plasticity/calcium/nimcp_calcium_immune_bridge.o"
+	@echo "... __/plasticity/calcium/nimcp_calcium_immune_bridge.i"
+	@echo "... __/plasticity/calcium/nimcp_calcium_immune_bridge.s"
+	@echo "... __/plasticity/calcium/nimcp_calcium_sleep_bridge.o"
+	@echo "... __/plasticity/calcium/nimcp_calcium_sleep_bridge.i"
+	@echo "... __/plasticity/calcium/nimcp_calcium_sleep_bridge.s"
 	@echo "... __/plasticity/dendritic/nimcp_dendritic.o"
 	@echo "... __/plasticity/dendritic/nimcp_dendritic.i"
 	@echo "... __/plasticity/dendritic/nimcp_dendritic.s"
@@ -17188,12 +18706,24 @@ help:
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.o"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.i"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.s"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic.o"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic.i"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic.s"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.o"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.i"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.s"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.o"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.i"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.s"
 	@echo "... __/plasticity/homeostatic/nimcp_homeostatic.o"
 	@echo "... __/plasticity/homeostatic/nimcp_homeostatic.i"
 	@echo "... __/plasticity/homeostatic/nimcp_homeostatic.s"
 	@echo "... __/plasticity/homeostatic/nimcp_homeostatic_fep_bridge.o"
 	@echo "... __/plasticity/homeostatic/nimcp_homeostatic_fep_bridge.i"
 	@echo "... __/plasticity/homeostatic/nimcp_homeostatic_fep_bridge.s"
+	@echo "... __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.o"
+	@echo "... __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.i"
+	@echo "... __/plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.s"
 	@echo "... __/plasticity/immune/nimcp_bcm_immune_bridge.o"
 	@echo "... __/plasticity/immune/nimcp_bcm_immune_bridge.i"
 	@echo "... __/plasticity/immune/nimcp_bcm_immune_bridge.s"
@@ -17215,6 +18745,24 @@ help:
 	@echo "... __/plasticity/immune/nimcp_synaptic_scaling_immune_bridge.o"
 	@echo "... __/plasticity/immune/nimcp_synaptic_scaling_immune_bridge.i"
 	@echo "... __/plasticity/immune/nimcp_synaptic_scaling_immune_bridge.s"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_immune_bridge.o"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_immune_bridge.i"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_immune_bridge.s"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_plasticity.o"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_plasticity.i"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_plasticity.s"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.o"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.i"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_sleep_bridge.s"
+	@echo "... __/plasticity/metaplasticity/nimcp_extended_metaplasticity.o"
+	@echo "... __/plasticity/metaplasticity/nimcp_extended_metaplasticity.i"
+	@echo "... __/plasticity/metaplasticity/nimcp_extended_metaplasticity.s"
+	@echo "... __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.o"
+	@echo "... __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.i"
+	@echo "... __/plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.s"
+	@echo "... __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.o"
+	@echo "... __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.i"
+	@echo "... __/plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.s"
 	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.s"
@@ -17230,6 +18778,9 @@ help:
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.s"
+	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.o"
+	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.i"
+	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.s"
 	@echo "... __/plasticity/neuromodulators/nimcp_phasic_tonic.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_phasic_tonic.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_phasic_tonic.s"
@@ -17245,6 +18796,9 @@ help:
 	@echo "... __/plasticity/nimcp_plasticity_coordinator.o"
 	@echo "... __/plasticity/nimcp_plasticity_coordinator.i"
 	@echo "... __/plasticity/nimcp_plasticity_coordinator.s"
+	@echo "... __/plasticity/nimcp_plasticity_orchestrator.o"
+	@echo "... __/plasticity/nimcp_plasticity_orchestrator.i"
+	@echo "... __/plasticity/nimcp_plasticity_orchestrator.s"
 	@echo "... __/plasticity/nimcp_plasticity_substrate_bridge.o"
 	@echo "... __/plasticity/nimcp_plasticity_substrate_bridge.i"
 	@echo "... __/plasticity/nimcp_plasticity_substrate_bridge.s"
@@ -17257,12 +18811,33 @@ help:
 	@echo "... __/plasticity/noise/nimcp_pink_noise_fep_bridge.o"
 	@echo "... __/plasticity/noise/nimcp_pink_noise_fep_bridge.i"
 	@echo "... __/plasticity/noise/nimcp_pink_noise_fep_bridge.s"
+	@echo "... __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.o"
+	@echo "... __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.i"
+	@echo "... __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.s"
+	@echo "... __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.o"
+	@echo "... __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.i"
+	@echo "... __/plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.s"
+	@echo "... __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.o"
+	@echo "... __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.i"
+	@echo "... __/plasticity/orchestrator/nimcp_neural_plasticity_coordinator.s"
+	@echo "... __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.o"
+	@echo "... __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.i"
+	@echo "... __/plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.s"
 	@echo "... __/plasticity/predictive/nimcp_predictive_coding.o"
 	@echo "... __/plasticity/predictive/nimcp_predictive_coding.i"
 	@echo "... __/plasticity/predictive/nimcp_predictive_coding.s"
 	@echo "... __/plasticity/predictive/nimcp_predictive_coding_fep_bridge.o"
 	@echo "... __/plasticity/predictive/nimcp_predictive_coding_fep_bridge.i"
 	@echo "... __/plasticity/predictive/nimcp_predictive_coding_fep_bridge.s"
+	@echo "... __/plasticity/protein/nimcp_protein_immune_bridge.o"
+	@echo "... __/plasticity/protein/nimcp_protein_immune_bridge.i"
+	@echo "... __/plasticity/protein/nimcp_protein_immune_bridge.s"
+	@echo "... __/plasticity/protein/nimcp_protein_sleep_bridge.o"
+	@echo "... __/plasticity/protein/nimcp_protein_sleep_bridge.i"
+	@echo "... __/plasticity/protein/nimcp_protein_sleep_bridge.s"
+	@echo "... __/plasticity/protein/nimcp_protein_synthesis.o"
+	@echo "... __/plasticity/protein/nimcp_protein_synthesis.i"
+	@echo "... __/plasticity/protein/nimcp_protein_synthesis.s"
 	@echo "... __/plasticity/second_messengers/nimcp_second_messengers.o"
 	@echo "... __/plasticity/second_messengers/nimcp_second_messengers.i"
 	@echo "... __/plasticity/second_messengers/nimcp_second_messengers.s"
@@ -17272,12 +18847,33 @@ help:
 	@echo "... __/plasticity/stdp/nimcp_stdp_fep_bridge.o"
 	@echo "... __/plasticity/stdp/nimcp_stdp_fep_bridge.i"
 	@echo "... __/plasticity/stdp/nimcp_stdp_fep_bridge.s"
+	@echo "... __/plasticity/stdp/nimcp_stdp_sleep_bridge.o"
+	@echo "... __/plasticity/stdp/nimcp_stdp_sleep_bridge.i"
+	@echo "... __/plasticity/stdp/nimcp_stdp_sleep_bridge.s"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp.o"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp.i"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp.s"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.o"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.i"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp_immune_bridge.s"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.o"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.i"
+	@echo "... __/plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.s"
 	@echo "... __/plasticity/stp/nimcp_stp.o"
 	@echo "... __/plasticity/stp/nimcp_stp.i"
 	@echo "... __/plasticity/stp/nimcp_stp.s"
 	@echo "... __/plasticity/stp/nimcp_stp_fep_bridge.o"
 	@echo "... __/plasticity/stp/nimcp_stp_fep_bridge.i"
 	@echo "... __/plasticity/stp/nimcp_stp_fep_bridge.s"
+	@echo "... __/plasticity/structural/nimcp_structural_immune_bridge.o"
+	@echo "... __/plasticity/structural/nimcp_structural_immune_bridge.i"
+	@echo "... __/plasticity/structural/nimcp_structural_immune_bridge.s"
+	@echo "... __/plasticity/structural/nimcp_structural_plasticity.o"
+	@echo "... __/plasticity/structural/nimcp_structural_plasticity.i"
+	@echo "... __/plasticity/structural/nimcp_structural_plasticity.s"
+	@echo "... __/plasticity/structural/nimcp_structural_sleep_bridge.o"
+	@echo "... __/plasticity/structural/nimcp_structural_sleep_bridge.i"
+	@echo "... __/plasticity/structural/nimcp_structural_sleep_bridge.s"
 	@echo "... __/portia/immune/nimcp_portia_attention_immune_bridge.o"
 	@echo "... __/portia/immune/nimcp_portia_attention_immune_bridge.i"
 	@echo "... __/portia/immune/nimcp_portia_attention_immune_bridge.s"
@@ -17338,9 +18934,15 @@ help:
 	@echo "... __/python/nimcp_types.o"
 	@echo "... __/python/nimcp_types.i"
 	@echo "... __/python/nimcp_types.s"
+	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.o"
+	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.i"
+	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.s"
 	@echo "... __/security/immune/nimcp_pattern_db_immune_bridge.o"
 	@echo "... __/security/immune/nimcp_pattern_db_immune_bridge.i"
 	@echo "... __/security/immune/nimcp_pattern_db_immune_bridge.s"
+	@echo "... __/security/immune/nimcp_rate_limiter_immune_bridge.o"
+	@echo "... __/security/immune/nimcp_rate_limiter_immune_bridge.i"
+	@echo "... __/security/immune/nimcp_rate_limiter_immune_bridge.s"
 	@echo "... __/security/nimcp_anomaly_detector.o"
 	@echo "... __/security/nimcp_anomaly_detector.i"
 	@echo "... __/security/nimcp_anomaly_detector.s"
@@ -17494,6 +19096,48 @@ help:
 	@echo "... __/security/nimcp_toctou_guard.o"
 	@echo "... __/security/nimcp_toctou_guard.i"
 	@echo "... __/security/nimcp_toctou_guard.s"
+	@echo "... __/security/sleep/nimcp_anomaly_detector_sleep_bridge.o"
+	@echo "... __/security/sleep/nimcp_anomaly_detector_sleep_bridge.i"
+	@echo "... __/security/sleep/nimcp_anomaly_detector_sleep_bridge.s"
+	@echo "... __/security/sleep/nimcp_bbb_sleep_bridge.o"
+	@echo "... __/security/sleep/nimcp_bbb_sleep_bridge.i"
+	@echo "... __/security/sleep/nimcp_bbb_sleep_bridge.s"
+	@echo "... __/security/sleep/nimcp_pattern_db_sleep_bridge.o"
+	@echo "... __/security/sleep/nimcp_pattern_db_sleep_bridge.i"
+	@echo "... __/security/sleep/nimcp_pattern_db_sleep_bridge.s"
+	@echo "... __/security/sleep/nimcp_rate_limiter_sleep_bridge.o"
+	@echo "... __/security/sleep/nimcp_rate_limiter_sleep_bridge.i"
+	@echo "... __/security/sleep/nimcp_rate_limiter_sleep_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_brain_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_brain_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_brain_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_consciousness_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_consensus_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_consensus_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_consensus_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_emergence_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_emergence_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_emergence_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_flocking_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_flocking_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_flocking_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_immune_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_immune_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_immune_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_memory_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_memory_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_memory_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_pheromone_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_quorum_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_quorum_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_quorum_immune_bridge.s"
+	@echo "... __/swarm/immune/nimcp_swarm_signal_immune_bridge.o"
+	@echo "... __/swarm/immune/nimcp_swarm_signal_immune_bridge.i"
+	@echo "... __/swarm/immune/nimcp_swarm_signal_immune_bridge.s"
 	@echo "... __/swarm/nimcp_collective_workspace.o"
 	@echo "... __/swarm/nimcp_collective_workspace.i"
 	@echo "... __/swarm/nimcp_collective_workspace.s"
@@ -17608,6 +19252,36 @@ help:
 	@echo "... __/swarm/nimcp_swarm_signal_fep_bridge.o"
 	@echo "... __/swarm/nimcp_swarm_signal_fep_bridge.i"
 	@echo "... __/swarm/nimcp_swarm_signal_fep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_brain_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_consensus_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_emergence_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_flocking_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_immune_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_memory_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_quorum_sleep_bridge.s"
+	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.o"
+	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.i"
+	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.s"
 	@echo "... __/utils/algorithms/nimcp_centrality.o"
 	@echo "... __/utils/algorithms/nimcp_centrality.i"
 	@echo "... __/utils/algorithms/nimcp_centrality.s"

@@ -191,6 +191,17 @@ target_compile_features(unit_plasticity_stdp_sleep_bridge PRIVATE cxx_std_17)
 gtest_discover_tests(unit_plasticity_stdp_sleep_bridge
     PROPERTIES LABELS "unit;plasticity;stdp;sleep")
 
+# Triplet STDP Tests
+add_executable(unit_plasticity_triplet_stdp
+    stdp/test_triplet_stdp.cpp
+)
+target_link_libraries(unit_plasticity_triplet_stdp
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_triplet_stdp PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_triplet_stdp
+    PROPERTIES LABELS "unit;plasticity;stdp;triplet")
+
 # BCM Sleep Bridge Tests
 add_executable(unit_plasticity_bcm_sleep_bridge
     bcm/sleep/test_bcm_sleep_bridge.cpp
@@ -212,3 +223,254 @@ target_link_libraries(unit_plasticity_homeostatic_sleep_bridge
 target_compile_features(unit_plasticity_homeostatic_sleep_bridge PRIVATE cxx_std_17)
 gtest_discover_tests(unit_plasticity_homeostatic_sleep_bridge
     PROPERTIES LABELS "unit;plasticity;homeostatic;sleep")
+
+# Heterosynaptic plasticity subdirectory
+add_subdirectory(heterosynaptic)
+
+# Calcium dynamics subdirectory
+add_subdirectory(calcium)
+
+# ============================================================================
+# Protein Synthesis Tests
+# ============================================================================
+# WHAT: Unit tests for Protein Synthesis Constraints System
+# WHY:  Test Frey & Morris synaptic tagging and capture model
+# HOW:  Test PRP pool, tag management, consolidation, sleep/immune bridges
+# ============================================================================
+
+add_executable(unit_plasticity_protein_synthesis
+    protein/test_protein_synthesis.cpp
+)
+target_link_libraries(unit_plasticity_protein_synthesis
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_protein_synthesis PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_protein_synthesis
+    PROPERTIES LABELS "unit;plasticity;protein"
+    TIMEOUT 60
+)
+
+# ============================================================================
+# Metabolic Plasticity Tests
+# ============================================================================
+# WHAT: Unit tests for metabolic plasticity and energy constraints
+# WHY:  Ensure ATP-based gating and energy dynamics work correctly
+# HOW:  Test lifecycle, consumption, recovery, gating, statistics
+# ============================================================================
+
+add_executable(unit_plasticity_metabolic
+    metabolic/test_metabolic_plasticity.cpp
+)
+target_link_libraries(unit_plasticity_metabolic
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_metabolic PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_metabolic
+    PROPERTIES LABELS "unit;plasticity;metabolic"
+    TIMEOUT 60
+)
+
+# ============================================================================
+# Structural Plasticity Tests
+# ============================================================================
+# WHAT: Unit tests for structural plasticity spine dynamics
+# WHY:  Test spine formation, stabilization, potentiation, and pruning
+# HOW:  Test lifecycle, morphology, state transitions, sleep/immune integration
+# ============================================================================
+
+add_executable(unit_plasticity_structural
+    structural/test_structural_plasticity.cpp
+)
+target_link_libraries(unit_plasticity_structural
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_structural PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_structural
+    PROPERTIES LABELS "unit;plasticity;structural"
+    TIMEOUT 60
+)
+
+# ============================================================================
+# Extended Metaplasticity Tests
+# ============================================================================
+# WHAT: Unit tests for extended metaplasticity module
+# WHY:  Test multi-timescale threshold adaptation (Abraham & Bear 1996)
+# HOW:  Test lifecycle, baseline updates, neuromodulator shifts, sleep resets, controller
+# ============================================================================
+
+add_executable(unit_plasticity_extended_metaplasticity
+    metaplasticity/test_extended_metaplasticity.cpp
+)
+target_link_libraries(unit_plasticity_extended_metaplasticity
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_extended_metaplasticity PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_extended_metaplasticity
+    PROPERTIES LABELS "unit;plasticity;metaplasticity"
+    TIMEOUT 60
+)
+
+# ============================================================================
+# Astrocyte Plasticity Tests
+# ============================================================================
+# WHAT: Unit tests for astrocyte plasticity and gliotransmitter modulation
+# WHY:  Test glial-synaptic plasticity interactions
+# HOW:  Test lifecycle, calcium waves, gliotransmitter release, modulation
+# ============================================================================
+
+add_executable(unit_plasticity_astrocyte
+    astrocyte/test_astrocyte_plasticity.cpp
+)
+target_link_libraries(unit_plasticity_astrocyte
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_astrocyte PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_astrocyte
+    PROPERTIES LABELS "unit;plasticity;astrocyte"
+    TIMEOUT 60
+)
+
+# ============================================================================
+# Plasticity Orchestrator Tests
+# ============================================================================
+# WHAT: Comprehensive unit tests for the unified plasticity orchestrator
+# WHY:  Test the central coordinator for all NIMCP plasticity mechanisms
+# HOW:  Test lifecycle, synapse/neuron management, updates, callbacks, statistics
+# ============================================================================
+
+add_executable(unit_plasticity_orchestrator
+    orchestrator/test_plasticity_orchestrator.cpp
+)
+target_link_libraries(unit_plasticity_orchestrator
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_orchestrator PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_orchestrator
+    PROPERTIES LABELS "unit;plasticity;orchestrator"
+    TIMEOUT 120
+)
+
+# ============================================================================
+# Axon-Orchestrator Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for axon-orchestrator bridge
+# WHY:  Test spike arrival forwarding to plasticity orchestrator
+# HOW:  Test lifecycle, mapping, spike forwarding, delay compensation
+# ============================================================================
+
+add_executable(unit_plasticity_axon_orchestrator_bridge
+    orchestrator/test_axon_orchestrator_bridge.cpp
+)
+target_link_libraries(unit_plasticity_axon_orchestrator_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_axon_orchestrator_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_axon_orchestrator_bridge
+    PROPERTIES LABELS "unit;plasticity;orchestrator;axon"
+    TIMEOUT 120
+)
+
+# ============================================================================
+# Neuron-Orchestrator Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for neuron-orchestrator bridge
+# WHY:  Test spike cascade (post_spike + axon + bAP)
+# HOW:  Test lifecycle, neuron registration, step, firing rate
+# ============================================================================
+
+add_executable(unit_plasticity_neuron_orchestrator_bridge
+    orchestrator/test_neuron_orchestrator_bridge.cpp
+)
+target_link_libraries(unit_plasticity_neuron_orchestrator_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_neuron_orchestrator_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_neuron_orchestrator_bridge
+    PROPERTIES LABELS "unit;plasticity;orchestrator;neuron"
+    TIMEOUT 120
+)
+
+# ============================================================================
+# Dendrite-Orchestrator Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for dendrite-orchestrator bridge
+# WHY:  Test bidirectional spine-synapse synchronization
+# HOW:  Test lifecycle, mapping, sync, spine formation/elimination
+# ============================================================================
+
+add_executable(unit_plasticity_dendrite_orchestrator_bridge
+    orchestrator/test_dendrite_orchestrator_bridge.cpp
+)
+target_link_libraries(unit_plasticity_dendrite_orchestrator_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_dendrite_orchestrator_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_dendrite_orchestrator_bridge
+    PROPERTIES LABELS "unit;plasticity;orchestrator;dendrite"
+    TIMEOUT 120
+)
+
+# ============================================================================
+# Neural Plasticity Coordinator Tests
+# ============================================================================
+# WHAT: Unit tests for unified neural-plasticity coordinator
+# WHY:  Test integrated neural computation and plasticity
+# HOW:  Test lifecycle, registration, simulation, rewards, stats
+# ============================================================================
+
+add_executable(unit_plasticity_neural_coordinator
+    orchestrator/test_neural_plasticity_coordinator.cpp
+)
+target_link_libraries(unit_plasticity_neural_coordinator
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_neural_coordinator PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_neural_coordinator
+    PROPERTIES LABELS "unit;plasticity;orchestrator;coordinator"
+    TIMEOUT 180
+)

@@ -39,34 +39,34 @@ eligibility_fep_bridge_t* eligibility_fep_bridge_create(const eligibility_fep_co
 void eligibility_fep_bridge_destroy(eligibility_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->bio_async_enabled) eligibility_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }
 
 int eligibility_fep_bridge_connect_fep(eligibility_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int eligibility_fep_bridge_connect_eligibility(eligibility_fep_bridge_t* bridge, eligibility_trace_t* traces, uint32_t num) {
     if (!bridge || !traces || num == 0) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->eligibility_system = traces;
     bridge->num_traces = num;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int eligibility_fep_bridge_disconnect(eligibility_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = NULL;
     bridge->eligibility_system = NULL;
     bridge->num_traces = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -93,15 +93,15 @@ float eligibility_fep_get_effective_decay(const eligibility_fep_bridge_t* bridge
 
 int eligibility_fep_report_consolidation(eligibility_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->stats.trace_consolidations++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int eligibility_fep_bridge_update(eligibility_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     if (bridge->fep_system) {
         float pe_scaling = eligibility_fep_apply_pe_eligibility(bridge, bridge->effects.pe_magnitude);
         float precision_decay = eligibility_fep_apply_precision_decay_modulation(bridge, bridge->effects.precision_value);
@@ -112,7 +112,7 @@ int eligibility_fep_bridge_update(eligibility_fep_bridge_t* bridge, uint64_t del
     }
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 

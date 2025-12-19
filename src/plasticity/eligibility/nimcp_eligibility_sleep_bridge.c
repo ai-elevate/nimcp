@@ -15,7 +15,7 @@ struct eligibility_sleep_bridge_struct {
     eligibility_sleep_config_t config;
     sleep_system_t sleep_system;
     eligibility_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
+    nimcp_platform_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -44,7 +44,7 @@ static void eligibility_on_sleep_state_change(sleep_state_t new_state, void* use
 
     NIMCP_LOGGING_DEBUG("Eligibility bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -64,7 +64,7 @@ static void eligibility_on_sleep_state_change(sleep_state_t new_state, void* use
         bridge->effects.consolidation_active = (new_state == SLEEP_STATE_DEEP_NREM);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Eligibility modulated: lr=%.2f, decay=%.2f, consolidation=%d",
                         bridge->effects.learning_rate_factor,
@@ -149,14 +149,14 @@ void eligibility_sleep_bridge_destroy(eligibility_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }
 
 int eligibility_sleep_update(eligibility_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -180,38 +180,38 @@ int eligibility_sleep_update(eligibility_sleep_bridge_t bridge) {
         bridge->effects.consolidation_active = (state == SLEEP_STATE_DEEP_NREM);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int eligibility_sleep_get_effects(const eligibility_sleep_bridge_t bridge,
                                    eligibility_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 float eligibility_sleep_get_learning_rate(const eligibility_sleep_bridge_t bridge,
                                            float base_lr) {
     if (!bridge) return base_lr;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     float result = base_lr * bridge->effects.learning_rate_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 
 float eligibility_sleep_get_decay_lambda(const eligibility_sleep_bridge_t bridge,
                                           float base_lambda) {
     if (!bridge) return base_lambda;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     /* Apply decay factor - higher factor = slower decay (higher lambda) */
     float result = base_lambda * bridge->effects.decay_factor;
     /* Clamp to valid range */
     if (result > 0.999f) result = 0.999f;
     if (result < 0.5f) result = 0.5f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 

@@ -52,35 +52,35 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
 void bcm_fep_bridge_destroy(bcm_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->bio_async_enabled) bcm_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("BCM-FEP bridge destroyed");
 }
 
 int bcm_fep_bridge_connect_fep(bcm_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int bcm_fep_bridge_connect_bcm(bcm_fep_bridge_t* bridge, bcm_synapse_t* bcm, uint32_t num) {
     if (!bridge || !bcm || num == 0) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->bcm_system = bcm;
     bridge->num_synapses = num;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int bcm_fep_bridge_disconnect(bcm_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = NULL;
     bridge->bcm_system = NULL;
     bridge->num_synapses = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -113,9 +113,9 @@ float bcm_fep_get_effective_lr(const bcm_fep_bridge_t* bridge, float base_lr) {
 
 int bcm_fep_report_threshold_changes(bcm_fep_bridge_t* bridge, float threshold_delta) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->stats.complexity_adjustments++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -130,15 +130,15 @@ float bcm_fep_compute_sparsity(const bcm_fep_bridge_t* bridge) {
 
 int bcm_fep_report_sparsity(bcm_fep_bridge_t* bridge, uint32_t active_count) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->state.sparsity_level = active_count;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     if (bridge->fep_system) {
         float complexity_scaling = bcm_fep_apply_complexity_regularization(bridge, bridge->effects.complexity_value);
@@ -158,7 +158,7 @@ int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
 
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 

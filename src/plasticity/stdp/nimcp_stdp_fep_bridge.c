@@ -78,7 +78,7 @@ void stdp_fep_bridge_destroy(stdp_fep_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_platform_mutex_destroy(bridge->mutex);
     }
 
     nimcp_free(bridge);
@@ -95,9 +95,9 @@ int stdp_fep_bridge_connect_fep(stdp_fep_bridge_t* bridge, fep_system_t* fep) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_INFO("Connected to FEP system");
     return 0;
@@ -111,10 +111,10 @@ int stdp_fep_bridge_connect_stdp(stdp_fep_bridge_t* bridge,
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->stdp_system = stdp_synapses;
     bridge->num_synapses = num_synapses;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_INFO("Connected to STDP system");
     return 0;
@@ -123,11 +123,11 @@ int stdp_fep_bridge_connect_stdp(stdp_fep_bridge_t* bridge,
 int stdp_fep_bridge_disconnect(stdp_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = NULL;
     bridge->stdp_system = NULL;
     bridge->num_synapses = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_INFO("Disconnected systems");
     return 0;
@@ -220,10 +220,10 @@ float stdp_fep_get_effective_lr(const stdp_fep_bridge_t* bridge, float base_lr) 
 int stdp_fep_report_weight_changes(stdp_fep_bridge_t* bridge, float weight_delta) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->stats.total_weight_delta += weight_delta;
     bridge->stats.weight_updates++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     return 0;
 }
@@ -245,7 +245,7 @@ float stdp_fep_compute_complexity_regularization(const stdp_fep_bridge_t* bridge
 int stdp_fep_bridge_update(stdp_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     if (bridge->fep_system) {
         float pe_lr_scaling = 1.0f;
@@ -283,7 +283,7 @@ int stdp_fep_bridge_update(stdp_fep_bridge_t* bridge, uint64_t delta_ms) {
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 

@@ -15,7 +15,7 @@ struct adaptive_sleep_bridge_struct {
     adaptive_sleep_config_t config;
     sleep_system_t sleep_system;
     adaptive_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
+    nimcp_platform_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -44,7 +44,7 @@ static void adaptive_on_sleep_state_change(sleep_state_t new_state, void* user_d
 
     NIMCP_LOGGING_DEBUG("Adaptive bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -67,7 +67,7 @@ static void adaptive_on_sleep_state_change(sleep_state_t new_state, void* user_d
 
     bridge->effects.freeze_thresholds = (new_state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Adaptive modulated: adapt=%.2f, sparsity=%.2f, reset=%.2f",
                         bridge->effects.adaptation_rate_factor,
@@ -153,14 +153,14 @@ void adaptive_sleep_bridge_destroy(adaptive_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }
 
 int adaptive_sleep_update(adaptive_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -187,43 +187,43 @@ int adaptive_sleep_update(adaptive_sleep_bridge_t bridge) {
 
     bridge->effects.freeze_thresholds = (state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int adaptive_sleep_get_effects(const adaptive_sleep_bridge_t bridge,
                                 adaptive_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 float adaptive_sleep_get_adaptation_rate(const adaptive_sleep_bridge_t bridge,
                                           float base_rate) {
     if (!bridge) return base_rate;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     float result = base_rate * bridge->effects.adaptation_rate_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 
 float adaptive_sleep_get_sparsity_target(const adaptive_sleep_bridge_t bridge,
                                           float base_sparsity) {
     if (!bridge) return base_sparsity;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     float result = bridge->effects.sparsity_target;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 
 float adaptive_sleep_get_soft_reset(const adaptive_sleep_bridge_t bridge,
                                      float base_reset) {
     if (!bridge) return base_reset;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     float result = base_reset * bridge->effects.soft_reset_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 

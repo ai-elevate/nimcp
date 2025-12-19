@@ -540,6 +540,13 @@ typedef enum {
     BIO_MODULE_SECOND_MESSENGER_CALCIUM = 0x0423, /**< Calcium signaling */
     BIO_MODULE_SECOND_MESSENGER_GENE = 0x0424,   /**< Gene expression (IEGs) */
 
+    /* Plasticity Orchestrator modules (0x0430-0x043F) */
+    BIO_MODULE_PLASTICITY_ORCHESTRATOR = 0x0430, /**< Central plasticity orchestrator */
+    BIO_MODULE_ORCHESTRATOR_AXON = 0x0431,       /**< Axon-orchestrator bridge */
+    BIO_MODULE_ORCHESTRATOR_NEURON = 0x0432,     /**< Neuron-orchestrator bridge */
+    BIO_MODULE_ORCHESTRATOR_DENDRITE = 0x0433,   /**< Dendrite-orchestrator bridge */
+    BIO_MODULE_NEURAL_PLASTICITY_COORDINATOR = 0x0434, /**< Neural plasticity coordinator */
+
     /* Middleware modules */
     BIO_MODULE_PIPELINE = 0x0500,
     BIO_MODULE_ENCODING,
@@ -681,6 +688,8 @@ typedef enum {
     BIO_MODULE_IMMUNE_ELIGIBILITY,              /**< Eligibility trace-immune bridge */
     BIO_MODULE_IMMUNE_DENDRITIC,                /**< Dendritic-immune bridge */
     BIO_MODULE_IMMUNE_NEUROMODULATOR,           /**< Neuromodulator-immune bridge */
+    BIO_MODULE_IMMUNE_METABOLIC,                /**< Metabolic-immune bridge */
+    BIO_MODULE_IMMUNE_METAPLASTICITY,           /**< Metaplasticity-immune bridge */
 
     /* Middleware immune modules */
     BIO_MODULE_IMMUNE_ROUTING = 0x0D40,         /**< Routing-immune bridge */

@@ -120,7 +120,7 @@ plasticity_substrate_bridge_t* plasticity_substrate_bridge_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    bridge->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!bridge->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
@@ -803,9 +803,9 @@ int plasticity_substrate_get_effects(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
 
     return 0;
 }
@@ -846,9 +846,9 @@ int plasticity_substrate_get_stats(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
 
     return 0;
 }

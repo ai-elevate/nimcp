@@ -444,6 +444,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic.c   # Phase T1: Homeostatic Plasticity (synaptic scaling, intrinsic plasticity)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic.c       # Phase T2: Dendritic Nonlinearities (NMDA dynamics, compartmental)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/predictive/nimcp_predictive_coding.c  # Phase T3: Predictive Coding (hierarchical error minimization)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metaplasticity/nimcp_extended_metaplasticity.c  # Extended Metaplasticity (multi-timescale threshold adaptation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c  # Metaplasticity-sleep integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c  # Metaplasticity-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_pink_noise.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_spatial_neuromod.c
@@ -459,20 +462,48 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_homeostatic_immune_bridge.c  # Homeostatic plasticity-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_stdp_immune_bridge.c  # STDP-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/immune/nimcp_synaptic_scaling_immune_bridge.c  # Synaptic scaling-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/protein/nimcp_protein_immune_bridge.c  # Protein synthesis-immune integration (inflammation suppresses synthesis)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/second_messengers/nimcp_second_messengers.c  # Second Messenger Cascades (cAMP, IP3/DAG, Ca2+, gene expression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_trace.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/calcium/nimcp_calcium_dynamics.c  # Calcium-dependent learning rate (Bhalla & Bhatt omega function)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/calcium/nimcp_calcium_sleep_bridge.c  # Calcium-sleep integration (NMDA modulation, clearance)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/calcium/nimcp_calcium_immune_bridge.c  # Calcium-immune integration (cytokine effects, instability detection)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/protein/nimcp_protein_synthesis.c  # Protein synthesis constraints - Frey & Morris synaptic tagging and capture
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/structural/nimcp_structural_plasticity.c  # Structural plasticity - spine dynamics, formation, elimination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/structural/nimcp_structural_immune_bridge.c  # Structural plasticity-immune integration (microglia pruning, complement tagging)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metabolic/nimcp_metabolic_plasticity.c  # Metabolic plasticity - ATP/energy constraints on plasticity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metabolic/nimcp_metabolic_sleep_bridge.c  # Metabolic-sleep integration (recovery rates)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metabolic/nimcp_metabolic_immune_bridge.c  # Metabolic-immune integration (inflammation costs)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/heterosynaptic/nimcp_heterosynaptic.c  # Heterosynaptic plasticity - competition/normalization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c  # Heterosynaptic-sleep integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c  # Heterosynaptic-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/astrocyte/nimcp_astrocyte_plasticity.c  # Astrocyte plasticity - gliotransmitter modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c  # Astrocyte-sleep integration
+    # Note: astrocyte_immune_bridge already defined in glial/immune/
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_substrate_bridge.c  # Plasticity-substrate integration (STDP/BCM/homeostatic LR modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_coordinator.c  # Plasticity Coordinator - unified manager for all plasticity mechanisms
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_orchestrator.c  # Plasticity Orchestrator - coordinates STDP/BCM/homeostatic/structural/metabolic mechanisms
+
+    # Neural-Plasticity Orchestrator Bridges (Axon/Dendrite/Neuron integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c  # Axon-orchestrator bridge - spike arrivals -> pre_spike timing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.c  # Neuron-orchestrator bridge - spike cascade (post_spike + axon + bAP)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c  # Dendrite-orchestrator bridge - bidirectional spine-synapse sync
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c  # Neural plasticity coordinator - unified simulation interface
 
     # Sleep-Wake Integration Bridges (Phase 1.1: Sleep-Module Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c  # Neuromodulators-sleep integration (ACh/NE/DA/5-HT state modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_sleep_bridge.c  # STDP-sleep integration (LTP/LTD ratio, timing window)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c  # Triplet STDP-sleep integration (trace time constants, amplitude modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c  # Triplet STDP-immune integration (cytokine modulation, instability detection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_sleep_bridge.c  # BCM-sleep integration (sliding threshold modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c  # Homeostatic-sleep integration (Tononi SHY: downscaling in NREM)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/protein/nimcp_protein_sleep_bridge.c  # Protein synthesis-sleep integration (synthesis upregulation during deep NREM)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/structural/nimcp_structural_sleep_bridge.c  # Structural plasticity-sleep integration (spine consolidation, pruning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_sleep_bridge.c  # Attention-sleep integration (capacity, vigilance)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_sleep_bridge.c  # Working memory-sleep integration (capacity, decay)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_sleep_bridge.c  # Executive function-sleep integration (inhibition, flexibility)

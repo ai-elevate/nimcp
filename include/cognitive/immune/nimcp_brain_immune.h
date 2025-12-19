@@ -1448,6 +1448,40 @@ float brain_immune_compute_affinity(
 );
 
 /* ============================================================================
+ * Cytokine and Inflammation Getters
+ * ============================================================================ */
+
+/**
+ * @brief Get current cytokine level
+ *
+ * WHAT: Query current concentration of a specific cytokine
+ * WHY:  Allow modules to adjust behavior based on inflammatory state
+ * HOW:  Look up cytokine level from internal stats
+ *
+ * @param system Immune system
+ * @param type Cytokine type to query
+ * @return Cytokine concentration (0.0-1.0), or 0.0 on error
+ */
+float brain_immune_get_cytokine_level(
+    brain_immune_system_t* system,
+    brain_cytokine_type_t type
+);
+
+/**
+ * @brief Get current inflammation level
+ *
+ * WHAT: Query current system-wide inflammation state
+ * WHY:  Allow modules to modulate behavior during inflammation
+ * HOW:  Return current inflammation level from stats
+ *
+ * @param system Immune system
+ * @return Current inflammation level
+ */
+brain_inflammation_level_t brain_immune_get_inflammation_level(
+    brain_immune_system_t* system
+);
+
+/* ============================================================================
  * String Conversion Utilities
  * ============================================================================ */
 

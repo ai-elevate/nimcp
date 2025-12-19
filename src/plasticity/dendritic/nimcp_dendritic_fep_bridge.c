@@ -41,32 +41,32 @@ dendritic_fep_bridge_t* dendritic_fep_bridge_create(const dendritic_fep_config_t
 void dendritic_fep_bridge_destroy(dendritic_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->bio_async_enabled) dendritic_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }
 
 int dendritic_fep_bridge_connect_fep(dendritic_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int dendritic_fep_bridge_connect_dendritic(dendritic_fep_bridge_t* bridge, dendritic_tree_t dendritic) {
     if (!bridge || !dendritic) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->dendritic_system = dendritic;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int dendritic_fep_bridge_disconnect(dendritic_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = NULL;
     bridge->dendritic_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -93,16 +93,16 @@ float dendritic_fep_get_effective_nmda_conductance(const dendritic_fep_bridge_t*
 
 int dendritic_fep_report_dendritic_spike(dendritic_fep_bridge_t* bridge, float spike_amplitude) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->state.dendritic_spikes++;
     bridge->stats.dendritic_spike_events++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int dendritic_fep_bridge_update(dendritic_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     if (bridge->fep_system) {
         float pe_nmda = dendritic_fep_apply_pe_nmda_modulation(bridge, bridge->effects.pe_magnitude);
         float precision_gain = dendritic_fep_apply_precision_gain_control(bridge, bridge->effects.precision_value);
@@ -120,7 +120,7 @@ int dendritic_fep_bridge_update(dendritic_fep_bridge_t* bridge, uint64_t delta_m
     }
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 

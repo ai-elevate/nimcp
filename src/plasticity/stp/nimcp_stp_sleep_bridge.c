@@ -15,7 +15,7 @@ struct stp_sleep_bridge_struct {
     stp_sleep_config_t config;
     sleep_system_t sleep_system;
     stp_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
+    nimcp_platform_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -44,7 +44,7 @@ static void stp_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 
     NIMCP_LOGGING_DEBUG("STP bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -68,7 +68,7 @@ static void stp_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 
     bridge->effects.vesicle_restoration_active = (new_state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("STP modulated: U=%.2f, tau_D=%.2f, tau_F=%.2f",
                         bridge->effects.release_probability_factor,
@@ -154,14 +154,14 @@ void stp_sleep_bridge_destroy(stp_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }
 
 int stp_sleep_update(stp_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -189,48 +189,48 @@ int stp_sleep_update(stp_sleep_bridge_t bridge) {
 
     bridge->effects.vesicle_restoration_active = (state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int stp_sleep_get_effects(const stp_sleep_bridge_t bridge,
                            stp_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 float stp_sleep_get_release_probability(const stp_sleep_bridge_t bridge,
                                          float base_u) {
     if (!bridge) return base_u;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     float result = base_u * bridge->effects.release_probability_factor;
     /* Clamp to valid range [0, 1] */
     if (result > 1.0f) result = 1.0f;
     if (result < 0.0f) result = 0.0f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 
 float stp_sleep_get_tau_depression(const stp_sleep_bridge_t bridge,
                                     float base_tau_d) {
     if (!bridge) return base_tau_d;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     /* Higher factor = faster recovery (shorter effective tau) */
     float result = base_tau_d / bridge->effects.depression_recovery_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 
 float stp_sleep_get_tau_facilitation(const stp_sleep_bridge_t bridge,
                                       float base_tau_f) {
     if (!bridge) return base_tau_f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     /* Higher factor = slower decay (longer tau) */
     float result = base_tau_f * bridge->effects.facilitation_decay_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return result;
 }
 

@@ -79,7 +79,7 @@ void adaptive_fep_bridge_destroy(adaptive_fep_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_platform_mutex_destroy(bridge->mutex);
     }
 
     nimcp_free(bridge);
@@ -96,9 +96,9 @@ int adaptive_fep_bridge_connect_fep(adaptive_fep_bridge_t* bridge, fep_system_t*
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_INFO("Connected to FEP system");
     return 0;
@@ -111,9 +111,9 @@ int adaptive_fep_bridge_connect_adaptive(adaptive_fep_bridge_t* bridge,
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->adaptive_network = network;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_INFO("Connected to adaptive network");
     return 0;
@@ -122,10 +122,10 @@ int adaptive_fep_bridge_connect_adaptive(adaptive_fep_bridge_t* bridge,
 int adaptive_fep_bridge_disconnect(adaptive_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = NULL;
     bridge->adaptive_network = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_INFO("Disconnected systems");
     return 0;
@@ -212,7 +212,7 @@ float adaptive_fep_get_effective_adaptation_rate(const adaptive_fep_bridge_t* br
 int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->feedback.measured_sparsity = sparsity;
 
     if (bridge->config.enable_sparsity_feedback) {
@@ -220,7 +220,7 @@ int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) 
             sparsity * bridge->config.sparsity_feedback_gain;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -228,10 +228,10 @@ int adaptive_fep_report_threshold_changes(adaptive_fep_bridge_t* bridge,
                                            float threshold_delta) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->stats.threshold_updates++;
     bridge->stats.total_threshold_delta += fabsf(threshold_delta);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     return 0;
 }
@@ -253,7 +253,7 @@ float adaptive_fep_compute_sparsity_precision(const adaptive_fep_bridge_t* bridg
 int adaptive_fep_bridge_update(adaptive_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     if (bridge->fep_system && bridge->adaptive_network) {
         float pe_scaling = adaptive_fep_apply_pe_scaling(bridge, bridge->effects.pe_magnitude);
@@ -287,7 +287,7 @@ int adaptive_fep_bridge_update(adaptive_fep_bridge_t* bridge, uint64_t delta_ms)
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 

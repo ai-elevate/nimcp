@@ -49,6 +49,32 @@ gtest_discover_tests(integration_plasticity_second_messengers_test
         LABELS "integration;plasticity;second_messengers"
 )
 
+# ============================================================================
+# Metabolic Plasticity Integration Tests
+# ============================================================================
+# WHAT: Integration tests for metabolic plasticity with sleep and immune systems
+# WHY:  Ensure bridge integrations work correctly across module boundaries
+# HOW:  Test sleep-metabolic and immune-metabolic bidirectional interactions
+# ============================================================================
+
+add_executable(integration_plasticity_metabolic
+    metabolic/test_metabolic_integration.cpp
+)
+target_link_libraries(integration_plasticity_metabolic
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_metabolic PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_metabolic
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;metabolic"
+)
+
 # Second messenger module integration tests (Broca, Audio, Speech, etc.)
 add_executable(integration_plasticity_second_messengers_module_test
     second_messengers/test_second_messengers_module_integration.cpp
@@ -66,4 +92,126 @@ gtest_discover_tests(integration_plasticity_second_messengers_module_test
     PROPERTIES
         TIMEOUT 300
         LABELS "integration;plasticity;second_messengers;modules"
+)
+
+# Heterosynaptic plasticity subdirectory
+add_subdirectory(heterosynaptic)
+
+# Calcium dynamics subdirectory
+
+# ============================================================================
+# Metaplasticity Integration Tests
+# ============================================================================
+# WHAT: Integration tests for metaplasticity bridges
+# WHY:  Ensure sleep and immune bridges work correctly
+# HOW:  Test bidirectional interactions between metaplasticity and sleep/immune systems
+# ============================================================================
+
+add_executable(integration_plasticity_metaplasticity
+    metaplasticity/test_metaplasticity_integration.cpp
+)
+target_link_libraries(integration_plasticity_metaplasticity
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_metaplasticity PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_metaplasticity
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;metaplasticity"
+)
+add_subdirectory(calcium)
+
+# ============================================================================
+# Protein Synthesis Integration Tests
+# ============================================================================
+# WHAT: Integration tests for protein synthesis with sleep and immune systems
+# WHY:  Ensure bridge integrations work correctly across module boundaries
+# HOW:  Test sleep-protein and immune-protein bidirectional interactions
+# ============================================================================
+
+add_executable(integration_plasticity_protein
+    protein/test_protein_integration.cpp
+)
+target_link_libraries(integration_plasticity_protein
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_protein PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_protein
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;protein"
+)
+
+
+# Triplet STDP Integration Tests
+add_executable(integration_plasticity_triplet_stdp
+    stdp/test_triplet_stdp_integration.cpp
+)
+target_link_libraries(integration_plasticity_triplet_stdp
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(integration_plasticity_triplet_stdp PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_triplet_stdp
+    PROPERTIES TIMEOUT 300 LABELS "integration;plasticity;stdp;triplet")
+
+# ============================================================================
+# Plasticity Orchestrator Integration Tests
+# ============================================================================
+# WHAT: Integration tests for plasticity orchestrator with sleep/immune systems
+# WHY:  Ensure orchestrator coordinates modules correctly with external systems
+# HOW:  Test sleep/immune modulation, multi-module updates, long-running simulations
+# ============================================================================
+
+add_executable(integration_plasticity_orchestrator
+    orchestrator/test_orchestrator_integration.cpp
+)
+target_link_libraries(integration_plasticity_orchestrator
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_orchestrator PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_orchestrator
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;orchestrator"
+)
+
+# ============================================================================
+# Neural Plasticity Integration Tests
+# ============================================================================
+# WHAT: Integration tests for neural-plasticity bridges and coordinator
+# WHY:  Ensure complete spike-to-plasticity pipeline works correctly
+# HOW:  Test multi-bridge coordination, spike cascade, bidirectional sync
+# ============================================================================
+
+add_executable(integration_plasticity_neural
+    orchestrator/test_neural_integration.cpp
+)
+target_link_libraries(integration_plasticity_neural
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_neural PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_neural
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;neural;orchestrator"
 )

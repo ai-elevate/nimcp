@@ -39,32 +39,32 @@ homeostatic_fep_bridge_t* homeostatic_fep_bridge_create(const homeostatic_fep_co
 void homeostatic_fep_bridge_destroy(homeostatic_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->bio_async_enabled) homeostatic_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
     nimcp_free(bridge);
 }
 
 int homeostatic_fep_bridge_connect_fep(homeostatic_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int homeostatic_fep_bridge_connect_homeostatic(homeostatic_fep_bridge_t* bridge, homeostatic_controller_t homeostatic) {
     if (!bridge || !homeostatic) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->homeostatic_system = homeostatic;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int homeostatic_fep_bridge_disconnect(homeostatic_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->fep_system = NULL;
     bridge->homeostatic_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -85,16 +85,16 @@ float homeostatic_fep_get_effective_target_rate(const homeostatic_fep_bridge_t* 
 
 int homeostatic_fep_report_scaling(homeostatic_fep_bridge_t* bridge, float scaling_factor) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bridge->stats.avg_scaling_factor = (bridge->stats.avg_scaling_factor * bridge->stats.total_updates + scaling_factor) /
                                         (bridge->stats.total_updates + 1);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 
 int homeostatic_fep_bridge_update(homeostatic_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     if (bridge->fep_system) {
         float precision_norm = homeostatic_fep_apply_precision_normalization(bridge, bridge->effects.precision_value);
         float fe_mod = homeostatic_fep_apply_fe_modulation(bridge, bridge->effects.free_energy_value);
@@ -104,7 +104,7 @@ int homeostatic_fep_bridge_update(homeostatic_fep_bridge_t* bridge, uint64_t del
     }
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return 0;
 }
 

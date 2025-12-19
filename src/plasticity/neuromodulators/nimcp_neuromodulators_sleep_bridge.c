@@ -27,7 +27,7 @@ struct neuromod_sleep_bridge_struct {
     neuromodulator_system_t neuromod_system; /**< Connected neuromod system */
     sleep_system_t sleep_system;             /**< Connected sleep system */
     neuromod_sleep_effects_t effects;        /**< Current computed effects */
-    nimcp_mutex_t* mutex;                    /**< Thread safety */
+    nimcp_platform_mutex_t* mutex;                    /**< Thread safety */
     bool callback_registered;  /**< Track if callback is registered for cleanup */
 };
 
@@ -56,7 +56,7 @@ static void neuromod_on_sleep_state_change(sleep_state_t new_state, void* user_d
 
     NIMCP_LOGGING_DEBUG("Neuromodulator bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -84,7 +84,7 @@ static void neuromod_on_sleep_state_change(sleep_state_t new_state, void* user_d
         (bridge->effects.ach_factor * 0.6f) +
         (bridge->effects.ne_factor * 0.4f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Neuromod modulated: ACh=%.2f, NE=%.2f, DA=%.2f, 5HT=%.2f",
                         bridge->effects.ach_factor,
@@ -226,7 +226,7 @@ void neuromod_sleep_bridge_destroy(neuromod_sleep_bridge_t bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_platform_mutex_destroy(bridge->mutex);
     }
 
     nimcp_free(bridge);
@@ -248,7 +248,7 @@ int neuromod_sleep_update(neuromod_sleep_bridge_t bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     /* Get sleep state */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -299,7 +299,7 @@ int neuromod_sleep_update(neuromod_sleep_bridge_t bridge) {
         (bridge->effects.ach_factor * 0.6f) +
         (bridge->effects.ne_factor * 0.4f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     NIMCP_LOGGING_DEBUG("Neuromod sleep effects updated: state=%d, pressure=%.2f, "
                        "ACh=%.2f, NE=%.2f, DA=%.2f, 5HT=%.2f",
@@ -323,12 +323,12 @@ int neuromod_sleep_apply_modulation(neuromod_sleep_bridge_t bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
 
     /* Get current baseline levels */
     neuromodulator_pool_t pool;
     if (!neuromodulator_get_levels(bridge->neuromod_system, &pool)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->mutex);
         NIMCP_LOGGING_WARN("neuromod_sleep_apply_modulation: failed to get levels");
         return -1;
     }
@@ -353,7 +353,7 @@ int neuromod_sleep_apply_modulation(neuromod_sleep_bridge_t bridge) {
     neuromodulator_set_level(bridge->neuromod_system, NEUROMOD_DOPAMINE, modulated_da);
     neuromodulator_set_level(bridge->neuromod_system, NEUROMOD_SEROTONIN, modulated_5ht);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     return 0;
 }
@@ -381,9 +381,9 @@ int neuromod_sleep_get_effects(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     return 0;
 }
@@ -401,7 +401,7 @@ float neuromod_sleep_get_factor(
         return 1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     float factor = 1.0f;
 
     switch (type) {
@@ -422,7 +422,7 @@ float neuromod_sleep_get_factor(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
     return factor;
 }
 
@@ -436,9 +436,9 @@ bool neuromod_sleep_is_inhibited(const neuromod_sleep_bridge_t bridge) {
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->mutex);
     bool inhibited = bridge->effects.sleep_inhibited;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->mutex);
 
     return inhibited;
 }
