@@ -13,6 +13,11 @@ make <test_target> -j4            # Build specific test
 
 ## Test Execution
 ```bash
+# LNN tests (84 total)
+./test/unit/lnn/unit_lnn_test_lnn_config --gtest_brief=1   # 24 tests
+./test/unit/lnn/unit_lnn_test_lnn_neuron --gtest_brief=1   # 34 tests
+./test/unit/lnn/unit_lnn_test_lnn_layer --gtest_brief=1    # 26 tests
+
 # Introspection tests (173 total)
 ./test/unit/cognitive/introspection/unit_cognitive_introspection_consciousness_metrics --gtest_brief=1  # 31 tests
 ./test/unit/cognitive/introspection/unit_cognitive_introspection_temporal_patterns --gtest_brief=1      # 43 tests
@@ -374,6 +379,100 @@ clamped to [0.7, 1.3]
 - Tests: `test/integration/portia/test_*_portia_swarm_integration.cpp`
 - E2E: `test/e2e/e2e_test_unified_training_integration.cpp`
 
+### Liquid Neural Network (LNN) Module (Complete - Dec 2024)
+Integrated Liquid Time-Constant (LTC) neural network module with continuous-time dynamics:
+
+| Component | Description | Files |
+|-----------|-------------|-------|
+| Types | Core enums, structs, error codes | `include/lnn/nimcp_lnn_types.h` |
+| Config | Network/layer configuration | `include/lnn/nimcp_lnn_config.h` |
+| Neuron | Single LTC neuron operations | `include/lnn/nimcp_lnn_neuron.h` |
+| Layer | Vectorized layer with wiring | `include/lnn/nimcp_lnn_layer.h` |
+| Network | Multi-layer network | `include/lnn/nimcp_lnn_network.h` |
+| ODE | Euler, Heun, RK4 solvers | `include/lnn/nimcp_lnn_ode.h` |
+| Wiring | Sparse connectivity patterns | `include/lnn/nimcp_lnn_wiring.h` |
+| Gradient | Adjoint method backprop | `include/lnn/nimcp_lnn_gradient.h` |
+| Training | Training loop integration | `include/lnn/nimcp_lnn_training.h` |
+| Bio-async | Inter-module messaging | `include/lnn/nimcp_lnn_bio_async.h` |
+| Immune | Instability detection | `include/lnn/nimcp_lnn_immune.h` |
+| Parallel | Multi-threaded execution | `include/lnn/nimcp_lnn_parallel.h` |
+
+**LTC Neuron Dynamics:**
+```
+dx/dt = -x/τ(x,I) + f(W_in·I + W_rec·x + b)
+τ(x,I) = τ_base · σ(W_τ·[x;I] + b_τ)  // Input-dependent time constant
+```
+
+**Wiring Patterns:**
+- `LNN_WIRING_FULL` - Dense all-to-all
+- `LNN_WIRING_RANDOM` - Erdos-Renyi sparse
+- `LNN_WIRING_SMALL_WORLD` - Watts-Strogatz
+- `LNN_WIRING_SCALE_FREE` - Barabasi-Albert hubs
+- `LNN_WIRING_NCP` - Neural Circuit Policy (sensory→inter→command→motor)
+
+**ODE Solvers:**
+- `LNN_ODE_EULER` - 1st order, fast
+- `LNN_ODE_HEUN` - 2nd order predictor-corrector
+- `LNN_ODE_RK4` - 4th order Runge-Kutta (default)
+- `LNN_ODE_DOPRI5` - Adaptive 5th order
+
+**API Examples:**
+```c
+// Configuration
+lnn_config_t config;
+lnn_config_ncp(&config, 8, 16, 8, 4);  // NCP: 8 sensory, 16 inter, 8 command, 4 motor
+lnn_config_validate(&config);
+
+// Layer creation
+lnn_layer_config_t layer_cfg = {
+    .n_neurons = 32,
+    .activation = LNN_ACTIVATION_TANH,
+    .tau_base_init = 10.0f,
+    .tau_min = 0.1f,
+    .tau_max = 1000.0f,
+    .wiring_type = LNN_WIRING_NCP,
+    .ode_method = LNN_ODE_RK4,
+    .dt = 1.0f
+};
+lnn_layer_t* layer = lnn_layer_create(&layer_cfg, n_inputs);
+lnn_layer_init_weights(layer, 0.1f, seed);
+lnn_layer_forward(layer, input, output, dt);
+
+// Neuron operations
+lnn_neuron_t* neuron = lnn_neuron_create(&neuron_cfg, n_inputs, n_recurrent);
+float tau = lnn_neuron_compute_tau(neuron, input, n_inputs, recurrent, n_recurrent);
+lnn_neuron_step(neuron, input, n_inputs, recurrent, n_recurrent, dt, LNN_ODE_RK4);
+```
+
+**LNN Error Codes:**
+```c
+LNN_ERROR_NONE = 0
+LNN_ERROR_NULL_POINTER = -1
+LNN_ERROR_INVALID_PARAM = -13
+LNN_ERROR_OPERATION_FAILED = -12
+LNN_ERROR_OUT_OF_MEMORY = -3
+```
+
+**Test Coverage: 84 tests**
+```bash
+./test/unit/lnn/unit_lnn_test_lnn_config --gtest_brief=1   # 24 tests
+./test/unit/lnn/unit_lnn_test_lnn_neuron --gtest_brief=1   # 34 tests
+./test/unit/lnn/unit_lnn_test_lnn_layer --gtest_brief=1    # 26 tests
+```
+
+**Bio-async Module ID:**
+- `BIO_MODULE_LNN_CORE = 0x0600`
+
+**Files:**
+- Headers: `include/lnn/nimcp_lnn_*.h` (13 files)
+- Implementation: `src/lnn/nimcp_lnn_*.c` (12 files)
+- Tests: `test/unit/lnn/test_lnn_*.cpp` (3 files)
+- Build: `src/lnn/CMakeLists.txt`
+
+**GOTCHA**: `nimcp_tensor_create` requires 3 args: `(dims, ndims, NIMCP_DTYPE_F32)`. The dtype parameter is mandatory.
+
+**GOTCHA**: Use `lnn_wiring_is_connected()` (inline alias) or `lnn_wiring_has_edge()` to check connectivity.
+
 ### Bio-Async Integration for Immune Bridges (Complete - Dec 2024)
 All 24+ immune bridge modules now have bio-async integration for inter-module messaging:
 
@@ -484,6 +583,7 @@ Integrated PE into 10 modules with full test coverage:
 ## File Organization
 ```
 include/
+├── lnn/                   # Liquid Neural Networks (LTC neurons, ODE solvers, wiring)
 ├── utils/tensor/          # Tensor library
 ├── utils/encoding/        # Positional encoding
 ├── utils/fault_tolerance/ # BFT, recovery cache, checkpointing
