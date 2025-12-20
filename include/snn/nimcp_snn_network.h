@@ -1,0 +1,553 @@
+//=============================================================================
+// nimcp_snn_network.h - SNN Network API
+//=============================================================================
+/**
+ * @file nimcp_snn_network.h
+ * @brief Main SNN network creation, simulation, and training API
+ *
+ * WHAT: Top-level SNN orchestration facade
+ * WHY:  Unified API for spiking neural network operations
+ * HOW:  Integrates with existing neural_network_t, adds spike-specific features
+ *
+ * DESIGN PATTERN: Facade
+ * - SNN network is a facade over neural_network_t
+ * - Adds spike encoding/decoding, population management, training
+ * - Does NOT duplicate neuron/synapse infrastructure
+ *
+ * @author NIMCP Development Team
+ * @date 2025-12-20
+ * @version 1.0.0
+ */
+
+#ifndef NIMCP_SNN_NETWORK_H
+#define NIMCP_SNN_NETWORK_H
+
+#include "snn/nimcp_snn_types.h"
+#include "snn/nimcp_snn_config.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//=============================================================================
+// Network Lifecycle
+//=============================================================================
+
+/**
+ * @brief Create SNN network from configuration
+ *
+ * WHAT: Allocate and initialize a complete SNN
+ * WHY:  Factory function for SNN creation
+ * HOW:  Creates underlying neural_network, populations, encoder/decoder
+ *
+ * @param config Network configuration (validated before use)
+ * @return New SNN network, or NULL on failure
+ *
+ * COMPLEXITY: O(n_inputs + n_outputs + sum(population_sizes))
+ * MEMORY: ~500 bytes base + ~2KB per neuron (spike trains)
+ */
+snn_network_t* snn_network_create(const snn_config_t* config);
+
+/**
+ * @brief Destroy SNN network and free all resources
+ *
+ * WHAT: Clean up SNN and all owned resources
+ * WHY:  Prevent memory leaks
+ * HOW:  Destroys populations, encoder/decoder, simulation, training context
+ *
+ * NOTE: Does NOT destroy the underlying neural_network if it was provided
+ *       externally. Only destroys if created internally.
+ *
+ * @param network Network to destroy (can be NULL)
+ *
+ * COMPLEXITY: O(n_populations + n_neurons)
+ */
+void snn_network_destroy(snn_network_t* network);
+
+/**
+ * @brief Reset SNN network to initial state
+ *
+ * WHAT: Clear all spike history, reset membrane potentials
+ * WHY:  Prepare for new input sequence without recreating network
+ * HOW:  Resets all neurons to resting state, clears spike trains
+ *
+ * @param network Network to reset
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_neurons)
+ */
+int snn_network_reset(snn_network_t* network);
+
+//=============================================================================
+// Simulation
+//=============================================================================
+
+/**
+ * @brief Run one simulation timestep
+ *
+ * WHAT: Advance simulation by dt milliseconds
+ * WHY:  Discrete-time SNN simulation
+ * HOW:  Update membrane potentials, generate spikes, propagate spikes
+ *
+ * ALGORITHM:
+ * 1. For each population:
+ *    a. Compute synaptic input currents
+ *    b. Update membrane potentials (LIF/Izhikevich)
+ *    c. Generate spikes where V >= V_thresh
+ *    d. Apply refractory period
+ *    e. Record spikes to spike trains
+ * 2. If training: update eligibility traces
+ * 3. If bio-async: broadcast spike events
+ *
+ * @param network SNN network
+ * @param dt Timestep in milliseconds (uses config.dt if 0)
+ * @return Number of spikes generated, or negative on error
+ *
+ * COMPLEXITY: O(n_neurons × avg_synapses)
+ */
+int snn_network_step(snn_network_t* network, float dt);
+
+/**
+ * @brief Run simulation for specified duration
+ *
+ * WHAT: Simulate network for T milliseconds
+ * WHY:  Convenience function for running multiple steps
+ * HOW:  Calls snn_network_step repeatedly
+ *
+ * @param network SNN network
+ * @param duration_ms Simulation duration in milliseconds
+ * @return Total spikes generated, or negative on error
+ *
+ * COMPLEXITY: O((duration/dt) × n_neurons × avg_synapses)
+ */
+int snn_network_run(snn_network_t* network, float duration_ms);
+
+//=============================================================================
+// Input/Output (Encoding/Decoding)
+//=============================================================================
+
+/**
+ * @brief Set input values (will be encoded to spikes)
+ *
+ * WHAT: Provide continuous input values for spike encoding
+ * WHY:  Convert external signals to spike trains
+ * HOW:  Store values, encode to spikes during simulation
+ *
+ * @param network SNN network
+ * @param inputs Input values [n_inputs]
+ * @param n_inputs Number of input values
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_inputs)
+ */
+int snn_network_set_inputs(snn_network_t* network,
+                           const float* inputs,
+                           uint32_t n_inputs);
+
+/**
+ * @brief Set input as tensor
+ *
+ * WHAT: Provide input as nimcp_tensor_t
+ * WHY:  Integration with tensor pipeline
+ * HOW:  Extract data from tensor, call snn_network_set_inputs
+ *
+ * @param network SNN network
+ * @param input Input tensor [n_inputs] or [batch, n_inputs]
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_inputs)
+ */
+int snn_network_set_input_tensor(snn_network_t* network,
+                                 const nimcp_tensor_t* input);
+
+/**
+ * @brief Get decoded output values
+ *
+ * WHAT: Decode output spike trains to continuous values
+ * WHY:  Convert spikes to usable output
+ * HOW:  Apply configured decoding method to output population
+ *
+ * @param network SNN network
+ * @param outputs Output buffer [n_outputs]
+ * @param n_outputs Size of output buffer
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_outputs × spike_count)
+ */
+int snn_network_get_outputs(snn_network_t* network,
+                            float* outputs,
+                            uint32_t n_outputs);
+
+/**
+ * @brief Get output as tensor
+ *
+ * WHAT: Return decoded outputs as tensor
+ * WHY:  Integration with tensor pipeline
+ * HOW:  Decode spikes, fill tensor
+ *
+ * @param network SNN network
+ * @param output Output tensor (must be pre-allocated [n_outputs])
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_outputs × spike_count)
+ */
+int snn_network_get_output_tensor(snn_network_t* network,
+                                  nimcp_tensor_t* output);
+
+/**
+ * @brief Forward pass (set input, run, get output)
+ *
+ * WHAT: Complete forward inference
+ * WHY:  Convenience function for single inference
+ * HOW:  Combines set_inputs, run, get_outputs
+ *
+ * @param network SNN network
+ * @param inputs Input values [n_inputs]
+ * @param n_inputs Number of inputs
+ * @param outputs Output buffer [n_outputs]
+ * @param n_outputs Number of outputs
+ * @param duration_ms Simulation duration
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O((duration/dt) × n_neurons × avg_synapses)
+ */
+int snn_network_forward(snn_network_t* network,
+                        const float* inputs,
+                        uint32_t n_inputs,
+                        float* outputs,
+                        uint32_t n_outputs,
+                        float duration_ms);
+
+//=============================================================================
+// Training
+//=============================================================================
+
+/**
+ * @brief Set training mode
+ *
+ * WHAT: Enable or disable training mode
+ * WHY:  Control whether learning updates are applied
+ * HOW:  Creates/destroys training context
+ *
+ * @param network SNN network
+ * @param training true to enable training
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(1) if no context change, O(n_synapses) if allocating traces
+ */
+int snn_network_set_training(snn_network_t* network, bool training);
+
+/**
+ * @brief Apply STDP learning (uses existing synapse_t infrastructure)
+ *
+ * WHAT: Apply spike-timing dependent plasticity
+ * WHY:  Local, biological learning rule
+ * HOW:  Uses spike times from spike_trains, updates synapse weights
+ *
+ * NOTE: This leverages existing stdp_params in synapse_t, not duplicating
+ *
+ * @param network SNN network
+ * @return Number of synapses modified
+ *
+ * COMPLEXITY: O(n_neurons × n_synapses × spike_count)
+ */
+int snn_network_apply_stdp(snn_network_t* network);
+
+/**
+ * @brief Apply reward-modulated STDP
+ *
+ * WHAT: Apply R-STDP with reward signal
+ * WHY:  Reinforcement learning with biological plausibility
+ * HOW:  STDP eligibility traces × reward signal
+ *
+ * @param network SNN network
+ * @param reward Reward signal [-1, 1]
+ * @return Number of synapses modified
+ *
+ * COMPLEXITY: O(n_synapses)
+ */
+int snn_network_apply_rstdp(snn_network_t* network, float reward);
+
+/**
+ * @brief Compute surrogate gradients (for backprop-through-time)
+ *
+ * WHAT: Compute gradients using surrogate gradient function
+ * WHY:  Enable gradient-based training of SNNs
+ * HOW:  Smooth approximation of spike derivative
+ *
+ * @param network SNN network
+ * @param target Target output values [n_outputs]
+ * @param n_targets Number of target values
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_neurons × n_synapses)
+ */
+int snn_network_compute_gradients(snn_network_t* network,
+                                  const float* target,
+                                  uint32_t n_targets);
+
+/**
+ * @brief Apply computed gradients to weights
+ *
+ * WHAT: Update weights using computed gradients
+ * WHY:  Complete the training step
+ * HOW:  w -= lr × grad_w
+ *
+ * @param network SNN network
+ * @param learning_rate Learning rate (uses config if 0)
+ * @return Number of weights updated
+ *
+ * COMPLEXITY: O(n_synapses)
+ */
+int snn_network_apply_gradients(snn_network_t* network, float learning_rate);
+
+/**
+ * @brief Complete training step (forward + backward + update)
+ *
+ * WHAT: Single training iteration
+ * WHY:  Convenience function for training loop
+ * HOW:  Forward pass, compute loss, compute gradients, update weights
+ *
+ * @param network SNN network
+ * @param inputs Input values [n_inputs]
+ * @param n_inputs Number of inputs
+ * @param targets Target values [n_outputs]
+ * @param n_targets Number of targets
+ * @param duration_ms Simulation duration
+ * @return Training loss, or negative on error
+ *
+ * COMPLEXITY: O((duration/dt) × n_neurons × avg_synapses)
+ */
+float snn_network_train_step(snn_network_t* network,
+                             const float* inputs,
+                             uint32_t n_inputs,
+                             const float* targets,
+                             uint32_t n_targets,
+                             float duration_ms);
+
+//=============================================================================
+// Population Management
+//=============================================================================
+
+/**
+ * @brief Add population to network
+ *
+ * WHAT: Create and add a new population of neurons
+ * WHY:  Build network architecture incrementally
+ * HOW:  Allocates population, adds neurons to underlying neural_network
+ *
+ * @param network SNN network
+ * @param n_neurons Number of neurons in population
+ * @param neuron_type Type of neurons (LIF, Izhikevich, etc.)
+ * @param name Human-readable name
+ * @return Population ID, or negative on error
+ *
+ * COMPLEXITY: O(n_neurons)
+ */
+int snn_network_add_population(snn_network_t* network,
+                               uint32_t n_neurons,
+                               neuron_type_t neuron_type,
+                               const char* name);
+
+/**
+ * @brief Connect two populations
+ *
+ * WHAT: Create synaptic connections between populations
+ * WHY:  Define network topology
+ * HOW:  Creates synapses in underlying neural_network
+ *
+ * @param network SNN network
+ * @param src_pop Source population ID
+ * @param dst_pop Destination population ID
+ * @param topology Connection topology
+ * @param connectivity Connectivity ratio [0, 1] for sparse topologies
+ * @param synapse_type Type of synapses (AMPA, NMDA, GABA, etc.)
+ * @param weight_mean Mean initial weight
+ * @param weight_std Weight std for random initialization
+ * @return Number of synapses created, or negative on error
+ *
+ * COMPLEXITY: O(n_src × n_dst × connectivity)
+ */
+int snn_network_connect_populations(snn_network_t* network,
+                                    uint32_t src_pop,
+                                    uint32_t dst_pop,
+                                    snn_topology_t topology,
+                                    float connectivity,
+                                    synapse_type_t synapse_type,
+                                    float weight_mean,
+                                    float weight_std);
+
+/**
+ * @brief Get population by ID
+ *
+ * WHAT: Access population structure
+ * WHY:  Inspect or modify population state
+ * HOW:  Look up in populations array
+ *
+ * @param network SNN network
+ * @param pop_id Population ID
+ * @return Population pointer, or NULL if not found
+ *
+ * COMPLEXITY: O(1)
+ */
+snn_population_t* snn_network_get_population(snn_network_t* network,
+                                             uint32_t pop_id);
+
+//=============================================================================
+// Statistics and Monitoring
+//=============================================================================
+
+/**
+ * @brief Get network statistics
+ *
+ * WHAT: Fill statistics structure with current metrics
+ * WHY:  Monitor network health and performance
+ * HOW:  Aggregate metrics from all populations
+ *
+ * @param network SNN network
+ * @param stats Statistics structure to fill
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_populations)
+ */
+int snn_network_get_stats(snn_network_t* network, snn_stats_t* stats);
+
+/**
+ * @brief Check network health
+ *
+ * WHAT: Detect simulation issues (silence, explosion, NaN)
+ * WHY:  Early warning for training problems
+ * HOW:  Check firing rates, weight norms, voltage ranges
+ *
+ * @param network SNN network
+ * @return Health status enum
+ *
+ * COMPLEXITY: O(n_populations)
+ */
+snn_state_health_t snn_network_check_health(snn_network_t* network);
+
+/**
+ * @brief Get firing rate for a neuron
+ *
+ * WHAT: Compute instantaneous firing rate
+ * WHY:  Monitor individual neuron activity
+ * HOW:  Count spikes in recent time window
+ *
+ * @param network SNN network
+ * @param pop_id Population ID
+ * @param neuron_idx Neuron index within population
+ * @param window_ms Time window for rate calculation
+ * @return Firing rate in Hz
+ *
+ * COMPLEXITY: O(spike_count in window)
+ */
+float snn_network_get_firing_rate(snn_network_t* network,
+                                  uint32_t pop_id,
+                                  uint32_t neuron_idx,
+                                  float window_ms);
+
+/**
+ * @brief Get population mean firing rate
+ *
+ * WHAT: Average firing rate across population
+ * WHY:  Monitor population activity level
+ *
+ * @param network SNN network
+ * @param pop_id Population ID
+ * @param window_ms Time window for rate calculation
+ * @return Mean firing rate in Hz
+ *
+ * COMPLEXITY: O(n_neurons × spike_count)
+ */
+float snn_network_get_population_rate(snn_network_t* network,
+                                      uint32_t pop_id,
+                                      float window_ms);
+
+//=============================================================================
+// Integration
+//=============================================================================
+
+/**
+ * @brief Connect to bio-async router
+ *
+ * WHAT: Register SNN with bio-async messaging system
+ * WHY:  Enable inter-module spike event communication
+ * HOW:  Registers with bio_router, sets up message handlers
+ *
+ * @param network SNN network
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(1)
+ */
+int snn_network_connect_bio_async(snn_network_t* network);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * @param network SNN network
+ * @return SNN_SUCCESS on success
+ */
+int snn_network_disconnect_bio_async(snn_network_t* network);
+
+/**
+ * @brief Connect to brain immune system
+ *
+ * WHAT: Integrate SNN with immune system
+ * WHY:  Cytokine modulation of excitability and plasticity
+ * HOW:  Creates immune bridge, registers for cytokine updates
+ *
+ * @param network SNN network
+ * @param immune Brain immune system handle
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(1)
+ */
+int snn_network_connect_immune(snn_network_t* network, void* immune);
+
+/**
+ * @brief Apply immune modulation effects
+ *
+ * WHAT: Update SNN parameters based on immune state
+ * WHY:  Model inflammatory effects on neural activity
+ * HOW:  Modulate threshold, learning rate, time constants
+ *
+ * @param network SNN network
+ * @return SNN_SUCCESS on success
+ *
+ * COMPLEXITY: O(n_populations)
+ */
+int snn_network_apply_immune_modulation(snn_network_t* network);
+
+//=============================================================================
+// Utility Functions
+//=============================================================================
+
+/**
+ * @brief Get underlying neural_network handle
+ *
+ * WHAT: Access the underlying neural_network_t
+ * WHY:  Direct access for advanced operations
+ * HOW:  Return internal handle
+ *
+ * @param network SNN network
+ * @return neural_network_t handle, or NULL
+ */
+neural_network_t snn_network_get_neural_net(snn_network_t* network);
+
+/**
+ * @brief Validate network structure
+ *
+ * WHAT: Check network integrity
+ * WHY:  Debug and validation
+ * HOW:  Verify magic number, population references, etc.
+ *
+ * @param network SNN network
+ * @return SNN_SUCCESS if valid
+ */
+int snn_network_validate(const snn_network_t* network);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NIMCP_SNN_NETWORK_H */

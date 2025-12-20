@@ -1121,6 +1121,28 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/lnn/CMakeLists.txt")
 endif()
 
 # ============================================================================
+# SNN Tests (Spiking Neural Network)
+# ============================================================================
+# WHAT: Tests for SNN module integrating with existing neural infrastructure
+# WHY:  SNN is the core neural substrate providing spike-based computation
+# HOW:  Tests config, network, encoding, training, and bio-async integration
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/snn/CMakeLists.txt")
+    message(STATUS "Adding SNN unit tests...")
+    add_subdirectory(unit/snn)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/snn/CMakeLists.txt")
+    message(STATUS "Adding SNN integration tests...")
+    add_subdirectory(integration/snn)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/snn/CMakeLists.txt")
+    message(STATUS "Adding SNN regression tests...")
+    add_subdirectory(regression/snn)
+endif()
+
+# ============================================================================
 # Performance Benchmarks
 # ============================================================================
 
