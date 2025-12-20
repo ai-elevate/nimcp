@@ -902,7 +902,7 @@ int training_logic_signal_instability(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (instability_type >= TRAINING_INSTABILITY_COUNT) {
+    if (instability_type >= LOGIC_INSTABILITY_COUNT) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -910,28 +910,28 @@ int training_logic_signal_instability(
 
     /* Map instability type to conditions */
     switch (instability_type) {
-        case TRAINING_INSTABILITY_LOSS_NAN:
-        case TRAINING_INSTABILITY_LOSS_INF:
+        case LOGIC_INSTABILITY_LOSS_NAN:
+        case LOGIC_INSTABILITY_LOSS_INF:
             bridge->conditions.loss_nan = true;
             break;
 
-        case TRAINING_INSTABILITY_LOSS_EXPLOSION:
+        case LOGIC_INSTABILITY_LOSS_EXPLOSION:
             bridge->conditions.diverging = true;
             break;
 
-        case TRAINING_INSTABILITY_GRAD_EXPLOSION:
+        case LOGIC_INSTABILITY_GRAD_EXPLOSION:
             bridge->conditions.grad_exploding = true;
             break;
 
-        case TRAINING_INSTABILITY_GRAD_VANISHING:
+        case LOGIC_INSTABILITY_GRAD_VANISHING:
             bridge->conditions.grad_stable = false;
             break;
 
-        case TRAINING_INSTABILITY_LOSS_PLATEAU:
+        case LOGIC_INSTABILITY_LOSS_PLATEAU:
             bridge->conditions.loss_stable = false;
             break;
 
-        case TRAINING_INSTABILITY_OSCILLATION:
+        case LOGIC_INSTABILITY_OSCILLATION:
             bridge->conditions.loss_stable = false;
             bridge->conditions.grad_stable = false;
             bridge->conditions.diverging = true;  /* Oscillation is a form of divergence */

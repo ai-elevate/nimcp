@@ -780,6 +780,33 @@ typedef enum {
     BIO_MODULE_IMMUNE_OPTIMIZATION = 0x0E80,    /**< Optimization-immune base */
     BIO_MODULE_IMMUNE_QUANTUM_ANNEALING,        /**< Quantum annealing-immune bridge */
 
+    /* LNN (Liquid Neural Network) modules (0x0E90 - 0x0E9F) */
+    BIO_MODULE_LNN_CORE = 0x0E90,               /**< LNN core network module */
+    BIO_MODULE_LNN_CALCIUM,                     /**< LNN-calcium dynamics integration */
+    BIO_MODULE_LNN_STP,                         /**< LNN-short term plasticity integration */
+    BIO_MODULE_LNN_ELIGIBILITY,                 /**< LNN-eligibility trace integration */
+    BIO_MODULE_LNN_OSCILLATIONS,                /**< LNN-oscillations integration */
+    BIO_MODULE_LNN_CORTICAL_TEMPORAL,           /**< LNN-cortical temporal integration */
+    BIO_MODULE_LNN_PREDICTIVE,                  /**< LNN-predictive coding integration */
+    BIO_MODULE_LNN_SEQUENCE,                    /**< LNN-sequence detector integration */
+    BIO_MODULE_LNN_WORKING_MEMORY,              /**< LNN-working memory integration */
+    BIO_MODULE_LNN_SLEEP,                       /**< LNN-sleep cycle integration */
+    BIO_MODULE_LNN_AUDIO,                       /**< LNN-audio cortex integration */
+    BIO_MODULE_LNN_SPEECH,                      /**< LNN-speech cortex integration */
+    BIO_MODULE_LNN_VISUAL,                      /**< LNN-visual cortex integration */
+    BIO_MODULE_LNN_HOMEOSTATIC,                 /**< LNN-homeostatic plasticity integration */
+    BIO_MODULE_LNN_NEUROMOD,                    /**< LNN-neuromodulator integration */
+    BIO_MODULE_LNN_EMOTION,                     /**< LNN-emotion integration */
+    BIO_MODULE_LNN_ATTENTION,                   /**< LNN-attention integration */
+    BIO_MODULE_LNN_POPULATION,                  /**< LNN-population coding integration */
+    BIO_MODULE_LNN_TEMPORAL_CODING,             /**< LNN-temporal coding integration */
+    BIO_MODULE_LNN_SECOND_MESSENGER,            /**< LNN-second messenger integration */
+    BIO_MODULE_LNN_MOTOR,                       /**< LNN-motor system integration */
+    BIO_MODULE_LNN_LANGUAGE,                    /**< LNN-language production integration */
+    BIO_MODULE_LNN_TIMESCALES,                  /**< LNN-multiple timescales integration */
+    BIO_MODULE_LNN_SYNCHRONY,                   /**< LNN-synchrony detector integration */
+    BIO_MODULE_LNN_DENDRITIC,                   /**< LNN-dendritic computation integration */
+
     /* Free Energy Principle modules (0x0F00 - 0x0FFF) */
     BIO_MODULE_FEP = 0x0F00,                    /**< FEP core module */
     BIO_MODULE_FEP_LEARNING,                    /**< FEP learning module */

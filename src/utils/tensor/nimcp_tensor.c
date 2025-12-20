@@ -1412,6 +1412,84 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
     return result;
 }
 
+nimcp_tensor_t* nimcp_tensor_mv(const nimcp_tensor_t* mat, const nimcp_tensor_t* vec)
+{
+    if (!tensor_is_valid(mat) || !tensor_is_valid(vec)) return NULL;
+
+    /* Matrix must be 2D, vector must be 1D */
+    if (mat->shape.rank != 2 || vec->shape.rank != 1) {
+        LOG_ERROR(LOG_MODULE, "mv: matrix must be 2D, vector must be 1D");
+        return NULL;
+    }
+
+    uint32_t M = mat->shape.dims[0];  /* rows */
+    uint32_t N = mat->shape.dims[1];  /* cols */
+
+    if (N != vec->shape.dims[0]) {
+        LOG_ERROR(LOG_MODULE, "mv: matrix cols (%u) must match vector size (%u)", N, vec->shape.dims[0]);
+        return NULL;
+    }
+
+    /* Create output vector [M] */
+    uint32_t out_dims[1] = {M};
+    nimcp_tensor_t* result = nimcp_tensor_zeros(out_dims, 1, mat->dtype);
+    if (!result) return NULL;
+
+    float* A = (float*)mat->data;
+    float* x = (float*)vec->data;
+    float* y = (float*)result->data;
+
+    /* y = A * x */
+    for (uint32_t i = 0; i < M; i++) {
+        float sum = 0.0F;
+        for (uint32_t j = 0; j < N; j++) {
+            sum += A[i * N + j] * x[j];
+        }
+        y[i] = sum;
+    }
+
+    return result;
+}
+
+nimcp_tensor_t* nimcp_tensor_vm(const nimcp_tensor_t* vec, const nimcp_tensor_t* mat)
+{
+    if (!tensor_is_valid(vec) || !tensor_is_valid(mat)) return NULL;
+
+    /* Vector must be 1D, matrix must be 2D */
+    if (vec->shape.rank != 1 || mat->shape.rank != 2) {
+        LOG_ERROR(LOG_MODULE, "vm: vector must be 1D, matrix must be 2D");
+        return NULL;
+    }
+
+    uint32_t M = mat->shape.dims[0];  /* rows */
+    uint32_t N = mat->shape.dims[1];  /* cols */
+
+    if (M != vec->shape.dims[0]) {
+        LOG_ERROR(LOG_MODULE, "vm: vector size (%u) must match matrix rows (%u)", vec->shape.dims[0], M);
+        return NULL;
+    }
+
+    /* Create output vector [N] */
+    uint32_t out_dims[1] = {N};
+    nimcp_tensor_t* result = nimcp_tensor_zeros(out_dims, 1, mat->dtype);
+    if (!result) return NULL;
+
+    float* x = (float*)vec->data;
+    float* A = (float*)mat->data;
+    float* y = (float*)result->data;
+
+    /* y = x^T * A (row vector times matrix) */
+    for (uint32_t j = 0; j < N; j++) {
+        float sum = 0.0F;
+        for (uint32_t i = 0; i < M; i++) {
+            sum += x[i] * A[i * N + j];
+        }
+        y[j] = sum;
+    }
+
+    return result;
+}
+
 nimcp_tensor_t* nimcp_tensor_dot(const nimcp_tensor_t* a, const nimcp_tensor_t* b)
 {
     if (!tensor_is_valid(a) || !tensor_is_valid(b)) return NULL;

@@ -1,5 +1,6 @@
 # Add subdirectories with specific order
 add_subdirectory(lib)
+add_subdirectory(lnn)
 add_subdirectory(middleware)
 add_subdirectory(portia)
 add_subdirectory(python)

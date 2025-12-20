@@ -1112,6 +1112,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/gpu/immune/CMakeLists.txt")
 endif()
 
 # ============================================================================
+# LNN Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/lnn/CMakeLists.txt")
+    message(STATUS "Adding LNN unit tests...")
+    add_subdirectory(unit/lnn)
+endif()
+
+# ============================================================================
 # Performance Benchmarks
 # ============================================================================
 
