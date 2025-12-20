@@ -344,7 +344,7 @@ int snn_visual_bridge_encode(
                                                           sizeof(snn_spike_train_t));
         if (!*spike_trains) {
             NIMCP_LOGGING_ERROR("Failed to allocate spike trains");
-            return NIMCP_ERROR_NO_MEMORY;
+            return SNN_ERROR_OUT_OF_MEMORY;
         }
         /* Initialize neuron IDs */
         for (uint32_t i = 0; i < num_pixels; i++) {
@@ -416,7 +416,7 @@ int snn_visual_bridge_encode_features(
         *spike_trains = (snn_spike_train_t*)nimcp_calloc(num_features,
                                                           sizeof(snn_spike_train_t));
         if (!*spike_trains) {
-            return NIMCP_ERROR_NO_MEMORY;
+            return SNN_ERROR_OUT_OF_MEMORY;
         }
         for (uint32_t i = 0; i < num_features; i++) {
             (*spike_trains)[i].neuron_id = i;

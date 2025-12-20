@@ -16,26 +16,107 @@ set(SNN_SOURCES
     nimcp_snn_immune.c
 )
 
-# SNN Bridge source files
-set(SNN_BRIDGE_SOURCES
+# SNN Bridge source files - Perception
+set(SNN_BRIDGE_PERCEPTION_SOURCES
     bridges/nimcp_snn_visual_bridge.c
     bridges/nimcp_snn_audio_bridge.c
     bridges/nimcp_snn_speech_bridge.c
-    bridges/nimcp_snn_attention_bridge.c
-    bridges/nimcp_snn_memory_bridge.c
-    bridges/nimcp_snn_routing_bridge.c
+)
+
+# SNN Bridge source files - Plasticity
+set(SNN_BRIDGE_PLASTICITY_SOURCES
     bridges/nimcp_snn_stdp_bridge.c
     bridges/nimcp_snn_bcm_bridge.c
     bridges/nimcp_snn_homeostatic_bridge.c
     bridges/nimcp_snn_scaling_bridge.c
-    bridges/nimcp_snn_buffer_bridge.c
-    bridges/nimcp_snn_cortical_bridge.c
-    bridges/nimcp_snn_hippocampus_bridge.c
-    bridges/nimcp_snn_population_bridge.c
+)
+
+# SNN Bridge source files - Cognitive
+set(SNN_BRIDGE_COGNITIVE_SOURCES
+    bridges/nimcp_snn_attention_bridge.c
+    bridges/nimcp_snn_memory_bridge.c
     bridges/nimcp_snn_reasoning_bridge.c
     bridges/nimcp_snn_executive_bridge.c
-    bridges/nimcp_snn_thalamic_bridge.c
+)
+
+# SNN Bridge source files - Memory Regions
+set(SNN_BRIDGE_REGIONS_SOURCES
+    bridges/nimcp_snn_hippocampus_bridge.c
     bridges/nimcp_snn_prefrontal_bridge.c
+)
+
+# SNN Bridge source files - Middleware
+set(SNN_BRIDGE_MIDDLEWARE_SOURCES
+    bridges/nimcp_snn_routing_bridge.c
+    bridges/nimcp_snn_buffer_bridge.c
+    bridges/nimcp_snn_population_bridge.c
+    bridges/nimcp_snn_thalamic_bridge.c
+    bridges/nimcp_snn_cortical_bridge.c
+)
+
+# SNN Bridge source files - Emotion
+set(SNN_BRIDGE_EMOTION_SOURCES
+    bridges/nimcp_snn_emotion_bridge.c
+    bridges/nimcp_snn_grief_bridge.c
+    bridges/nimcp_snn_joy_bridge.c
+    bridges/nimcp_snn_love_bridge.c
+    bridges/nimcp_snn_empathetic_bridge.c
+)
+
+# SNN Bridge source files - Consciousness/Metacognition
+set(SNN_BRIDGE_CONSCIOUSNESS_SOURCES
+    bridges/nimcp_snn_introspection_bridge.c
+    bridges/nimcp_snn_global_workspace_bridge.c
+    bridges/nimcp_snn_free_energy_bridge.c
+    bridges/nimcp_snn_self_model_bridge.c
+)
+
+# SNN Bridge source files - Higher Cognition
+set(SNN_BRIDGE_COGNITION_SOURCES
+    bridges/nimcp_snn_tom_bridge.c
+    bridges/nimcp_snn_curiosity_bridge.c
+    bridges/nimcp_snn_meta_learning_bridge.c
+)
+
+# SNN Bridge source files - Health/Wellbeing
+set(SNN_BRIDGE_HEALTH_SOURCES
+    bridges/nimcp_snn_wellbeing_bridge.c
+    bridges/nimcp_snn_mental_health_bridge.c
+    bridges/nimcp_snn_sleep_bridge.c
+)
+
+# SNN Bridge source files - Memory Systems
+set(SNN_BRIDGE_MEMORY_SOURCES
+    bridges/nimcp_snn_shadow_bridge.c
+    bridges/nimcp_snn_emotional_tagging_bridge.c
+    bridges/nimcp_snn_autobiographical_bridge.c
+)
+
+# SNN Bridge source files - Training Integration
+set(SNN_BRIDGE_TRAINING_SOURCES
+    bridges/nimcp_snn_training_bridge.c
+    bridges/nimcp_snn_training_integration_bridge.c
+)
+
+# SNN Bridge source files - Brainstem Integration
+set(SNN_BRIDGE_BRAINSTEM_SOURCES
+    bridges/nimcp_snn_medulla_bridge.c
+)
+
+# Combined bridge sources
+set(SNN_BRIDGE_SOURCES
+    ${SNN_BRIDGE_PERCEPTION_SOURCES}
+    ${SNN_BRIDGE_PLASTICITY_SOURCES}
+    ${SNN_BRIDGE_COGNITIVE_SOURCES}
+    ${SNN_BRIDGE_REGIONS_SOURCES}
+    ${SNN_BRIDGE_MIDDLEWARE_SOURCES}
+    ${SNN_BRIDGE_EMOTION_SOURCES}
+    ${SNN_BRIDGE_CONSCIOUSNESS_SOURCES}
+    ${SNN_BRIDGE_COGNITION_SOURCES}
+    ${SNN_BRIDGE_HEALTH_SOURCES}
+    ${SNN_BRIDGE_MEMORY_SOURCES}
+    ${SNN_BRIDGE_TRAINING_SOURCES}
+    ${SNN_BRIDGE_BRAINSTEM_SOURCES}
 )
 
 # Create SNN static library with bridges

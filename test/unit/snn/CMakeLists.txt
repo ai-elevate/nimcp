@@ -197,6 +197,13 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_immune.cpp)
 endif()
 
 # ============================================================================
+# Include bridges subdirectory
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bridges/CMakeLists.txt)
+    add_subdirectory(bridges)
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_snn_population.cpp

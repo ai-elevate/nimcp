@@ -470,7 +470,7 @@ int snn_speech_bridge_encode_phoneme(
         *spike_trains = (snn_spike_train_t*)nimcp_calloc(num_neurons,
                                                           sizeof(snn_spike_train_t));
         if (!*spike_trains) {
-            return NIMCP_ERROR_NO_MEMORY;
+            return SNN_ERROR_OUT_OF_MEMORY;
         }
         for (uint32_t i = 0; i < num_neurons; i++) {
             (*spike_trains)[i].neuron_id = i;
@@ -583,7 +583,7 @@ int snn_speech_bridge_encode_sequence(
         *spike_trains = (snn_spike_train_t*)nimcp_calloc(num_neurons,
                                                           sizeof(snn_spike_train_t));
         if (!*spike_trains) {
-            return NIMCP_ERROR_NO_MEMORY;
+            return SNN_ERROR_OUT_OF_MEMORY;
         }
         for (uint32_t i = 0; i < num_neurons; i++) {
             (*spike_trains)[i].neuron_id = i;
@@ -684,7 +684,7 @@ int snn_speech_bridge_encode_phonological_buffer(
         *spike_trains = (snn_spike_train_t*)nimcp_calloc(num_neurons,
                                                           sizeof(snn_spike_train_t));
         if (!*spike_trains) {
-            return NIMCP_ERROR_NO_MEMORY;
+            return SNN_ERROR_OUT_OF_MEMORY;
         }
         for (uint32_t i = 0; i < num_neurons; i++) {
             (*spike_trains)[i].neuron_id = i;
