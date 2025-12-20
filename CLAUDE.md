@@ -264,6 +264,116 @@ float lr_factor = training_immune_get_lr_factor(ti);  // Returns 0.50
 
 **GOTCHA**: Manual CMakeLists.txt edit required. See `TRAINING_IMMUNE_BUILD_INSTRUCTIONS.md` for details.
 
+### Cross-Bridge Perception/Cortical Integration (Complete - Dec 2024)
+Full integration of Perception-Training and Cortical-Training bridges with all existing training subsystems:
+
+| Integration | Direction | Effect |
+|-------------|-----------|--------|
+| Perception → Cognitive | visual_confidence → attention_focus | High perception quality increases cognitive attention |
+| Cortical → Cognitive | burst_rate → epistemic_uncertainty | Stable predictions reduce cognitive uncertainty |
+| Perception → Logic | perception_quality condition | Gates require perception quality threshold |
+| Cortical → Logic | cortical_stable condition | Gates require prediction stability |
+| Perception → Immune | collapse detection | Low confidence triggers immune response |
+| Cortical → Immune | explosion detection | Free energy explosion triggers immune response |
+| Perception → Plasticity | lr_factor modulation | Perception quality scales regional plasticity |
+| Cortical → Plasticity | burst_rate enhancement | Bursts enhance LTP in confirmed predictions |
+| Perception → Portia-Swarm | confidence modifier [0.5, 1.5] | High perception boosts decision confidence |
+| Cortical → Portia-Swarm | threshold modifier [0.7, 1.3] | Stable cortex lowers decision threshold |
+
+**Architecture:**
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        TRAINING PIPELINE                                  │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+        ┌────────────────────────┼────────────────────────┐
+        ▼                        ▼                        ▼
+┌───────────────┐     ┌───────────────────┐     ┌───────────────────┐
+│  PERCEPTION   │────▶│    COGNITIVE      │◀────│    CORTICAL       │
+│   TRAINING    │     │    TRAINING       │     │    TRAINING       │
+└───────┬───────┘     └─────────┬─────────┘     └─────────┬─────────┘
+        │                       │                         │
+        │              ┌────────┴────────┐               │
+        │              ▼                 ▼               │
+        │    ┌─────────────────┐  ┌─────────────┐       │
+        └───▶│ TRAINING-LOGIC  │◀─│  PORTIA-    │◀──────┘
+             │    BRIDGE       │  │ SWARM-LOGIC │
+             └────────┬────────┘  └─────────────┘
+                      │
+         ┌────────────┼────────────┐
+         ▼            ▼            ▼
+┌─────────────┐ ┌───────────┐ ┌───────────┐
+│  TRAINING-  │ │ TRAINING- │ │  SWARM    │
+│   IMMUNE    │ │ PLASTICITY│ │ CONSENSUS │
+└─────────────┘ └───────────┘ └───────────┘
+```
+
+**API Examples:**
+```c
+// Connect perception/cortical to cognitive bridge
+cognitive_training_connect_perception_training(cognitive_bridge, perception_bridge);
+cognitive_training_connect_cortical_training(cognitive_bridge, cortical_bridge);
+
+// Connect perception/cortical to logic bridge
+training_logic_connect_perception_training(logic_bridge, perception_bridge);
+training_logic_connect_cortical_training(logic_bridge, cortical_bridge);
+
+// Connect perception/cortical to immune
+training_immune_connect_perception_training(immune_sys, perception_bridge);
+training_immune_connect_cortical_training(immune_sys, cortical_bridge);
+
+// Connect perception/cortical to plasticity
+tpb_connect_perception_training(plasticity_ctx, perception_bridge);
+tpb_connect_cortical_training(plasticity_ctx, cortical_bridge);
+
+// Connect perception/cortical to portia-swarm-logic
+portia_swarm_logic_connect_perception_training(psl_bridge, perception_bridge);
+portia_swarm_logic_connect_cortical_training(psl_bridge, cortical_bridge);
+
+// Get modifiers from portia-swarm
+float conf_mod = portia_swarm_logic_get_perception_confidence_modifier(psl_bridge);  // [0.5, 1.5]
+float thresh_mod = portia_swarm_logic_get_cortical_threshold_modifier(psl_bridge);   // [0.7, 1.3]
+```
+
+**Modifier Formulas:**
+```c
+// Perception confidence modifier
+confidence_base = 0.5 + 0.5 × visual_confidence
+modifier = confidence_base × lr_factor
+clamped to [0.5, 1.5]
+
+// Cortical threshold modifier
+modifier = 1.0 - 0.3 × (burst_rate - 0.5)
+if (!predictions_stable) modifier += 0.15
+modifier += 0.1 × prediction_error_mag
+clamped to [0.7, 1.3]
+```
+
+**Test Coverage: 180 tests**
+- Perception-Cognitive Integration: 20 tests
+- Cortical-Cognitive Integration: 20 tests
+- Perception-Logic Integration: 15 tests
+- Cortical-Logic Integration: 15 tests
+- Perception-Immune Integration: 15 tests
+- Cortical-Immune Integration: 15 tests
+- Perception-Plasticity Integration: 15 tests
+- Cortical-Plasticity Integration: 15 tests
+- Perception-Portia-Swarm Integration: 15 tests
+- Cortical-Portia-Swarm Integration: 15 tests
+- Unified E2E Integration: 20 tests
+
+**Bio-async IDs:**
+- `BIO_MODULE_PERCEPTION_TRAINING = 0x0523`
+- `BIO_MODULE_CORTICAL_TRAINING = 0x0524`
+
+**Files:**
+- Headers: `include/middleware/training/nimcp_*_training_bridge.h`
+- Implementation: `src/middleware/training/nimcp_*_training_bridge.c`
+- Portia integration: `include/portia/nimcp_portia_swarm_logic_bridge.h`
+- Tests: `test/integration/middleware/training/test_*_integration.cpp`
+- Tests: `test/integration/portia/test_*_portia_swarm_integration.cpp`
+- E2E: `test/e2e/e2e_test_unified_training_integration.cpp`
+
 ### Bio-Async Integration for Immune Bridges (Complete - Dec 2024)
 All 24+ immune bridge modules now have bio-async integration for inter-module messaging:
 
