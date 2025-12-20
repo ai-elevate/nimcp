@@ -96,6 +96,13 @@ extern "C" {
 #endif
 
 //=============================================================================
+// Forward Declarations for Cross-Bridge Integration
+//=============================================================================
+
+typedef struct perception_training_bridge perception_training_bridge_t;
+typedef struct cortical_training_bridge cortical_training_bridge_t;
+
+//=============================================================================
 // Constants
 //=============================================================================
 
@@ -954,6 +961,118 @@ NIMCP_EXPORT nimcp_result_t tpb_get_callback_stats(
     uint64_t* weight_callbacks_fired,
     uint64_t* epoch_callbacks_fired,
     uint64_t* divergence_callbacks_fired
+);
+
+//=============================================================================
+// Perception-Cortical Training Integration (Phase XBI)
+//=============================================================================
+
+/**
+ * @brief Connect to perception training bridge
+ *
+ * WHAT: Links perception training to plasticity modulation
+ * WHY:  Visual attention weights scale per-feature plasticity
+ * HOW:  Stores pointer, queries effects during updates
+ *
+ * BIOLOGICAL BASIS: Visual attention gates plasticity in visual cortex.
+ * Attended features get enhanced LTP (attention × Hebbian × reward).
+ *
+ * @param ctx Bridge context
+ * @param perception_bridge Perception training bridge (NULL to disconnect)
+ * @return NIMCP_SUCCESS or error code
+ */
+NIMCP_EXPORT nimcp_result_t tpb_connect_perception_training(
+    tpb_context_t* ctx,
+    perception_training_bridge_t* perception_bridge
+);
+
+/**
+ * @brief Connect to cortical training bridge
+ *
+ * WHAT: Links cortical training to plasticity modulation
+ * WHY:  Burst rate and prediction error modulate plasticity
+ * HOW:  Stores pointer, queries effects during updates
+ *
+ * BIOLOGICAL BASIS: Dendritic bursts signal successful prediction → enhance LTP.
+ * High prediction error → focus plasticity on error regions.
+ *
+ * @param ctx Bridge context
+ * @param cortical_bridge Cortical training bridge (NULL to disconnect)
+ * @return NIMCP_SUCCESS or error code
+ */
+NIMCP_EXPORT nimcp_result_t tpb_connect_cortical_training(
+    tpb_context_t* ctx,
+    cortical_training_bridge_t* cortical_bridge
+);
+
+/**
+ * @brief Get perception-based plasticity modulation factor
+ *
+ * WHAT: Compute plasticity factor from perception state
+ * WHY:  Visual confidence and attention modulate learning
+ * HOW:  Uses lr_factor and visual_confidence from perception effects
+ *
+ * MODULATION FORMULA:
+ *   factor = perception.lr_factor × (0.5 + 0.5 × perception.visual_confidence)
+ *
+ * @param ctx Bridge context
+ * @return Perception plasticity factor [0.25-1.5]
+ */
+NIMCP_EXPORT float tpb_get_perception_plasticity_factor(
+    const tpb_context_t* ctx
+);
+
+/**
+ * @brief Get cortical-based plasticity modulation factor
+ *
+ * WHAT: Compute plasticity factor from cortical state
+ * WHY:  Burst rate and predictions stable modulate learning
+ * HOW:  Uses burst_rate and predictions_stable from cortical effects
+ *
+ * MODULATION FORMULA:
+ *   base = 0.5 + 0.5 × burst_rate
+ *   if predictions_stable: factor = base × 1.2  (consolidation boost)
+ *   else: factor = base × (1.0 + 0.3 × prediction_error_mag)  (error-driven)
+ *
+ * @param ctx Bridge context
+ * @return Cortical plasticity factor [0.25-1.5]
+ */
+NIMCP_EXPORT float tpb_get_cortical_plasticity_factor(
+    const tpb_context_t* ctx
+);
+
+/**
+ * @brief Get combined perception-cortical plasticity factor
+ *
+ * WHAT: Combined modulation from both perception and cortical state
+ * WHY:  Unified factor for training-plasticity coordination
+ * HOW:  Weighted average of perception and cortical factors
+ *
+ * @param ctx Bridge context
+ * @return Combined plasticity factor [0.25-2.0]
+ */
+NIMCP_EXPORT float tpb_get_combined_plasticity_factor(
+    const tpb_context_t* ctx
+);
+
+/**
+ * @brief Check if perception training is connected
+ *
+ * @param ctx Bridge context
+ * @return true if connected, false otherwise
+ */
+NIMCP_EXPORT bool tpb_is_perception_training_connected(
+    const tpb_context_t* ctx
+);
+
+/**
+ * @brief Check if cortical training is connected
+ *
+ * @param ctx Bridge context
+ * @return true if connected, false otherwise
+ */
+NIMCP_EXPORT bool tpb_is_cortical_training_connected(
+    const tpb_context_t* ctx
 );
 
 #ifdef __cplusplus

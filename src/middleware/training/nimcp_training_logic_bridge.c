@@ -3,6 +3,8 @@
 //=============================================================================
 
 #include "middleware/training/nimcp_training_logic_bridge.h"
+#include "middleware/training/nimcp_perception_training_bridge.h"
+#include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -109,6 +111,8 @@ struct training_logic_bridge {
     portia_logic_bridge_t* portia_logic;
     swarm_logic_bridge_t* swarm_logic;
     portia_swarm_logic_bridge_t* unified_bridge;
+    perception_training_bridge_t* perception_training;
+    cortical_training_bridge_t* cortical_training;
 
     /* Bio-async */
     bio_module_context_t bio_ctx;
@@ -242,6 +246,49 @@ static int update_conditions_internal(training_logic_bridge_t* bridge) {
     if (bridge->swarm_logic && bridge->config.enable_swarm_integration) {
         /* Would query swarm consensus here */
         cond->swarm_consensus = true;
+    }
+
+    /*=========================================================================
+     * CROSS-BRIDGE INTEGRATION: Perception-Training → Logic
+     *
+     * Queries perception bridge for quality condition:
+     * - lr_factor > 0.8 → perception_quality (good perception → safe to learn)
+     *========================================================================*/
+    if (bridge->perception_training) {
+        perception_training_effects_t perception_effects;
+        if (perception_training_get_effects(bridge->perception_training,
+                                            &perception_effects) == 0 &&
+            perception_effects.valid) {
+            /* Perception quality based on lr_factor (already computed) */
+            cond->perception_quality = (perception_effects.lr_factor > 0.8f);
+
+            NIMCP_LOGGING_DEBUG("Perception → Logic: quality=%d (lr_factor=%.2f)",
+                               cond->perception_quality, perception_effects.lr_factor);
+        }
+    }
+
+    /*=========================================================================
+     * CROSS-BRIDGE INTEGRATION: Cortical-Training → Logic
+     *
+     * Queries cortical bridge for stability conditions:
+     * - predictions_stable → cortical_stable (converged predictive model)
+     * - burst_rate > 0.5 → predictions_ok (dendrites confirming predictions)
+     *========================================================================*/
+    if (bridge->cortical_training) {
+        cortical_training_effects_t cortical_effects;
+        if (cortical_training_get_effects(bridge->cortical_training,
+                                          &cortical_effects) == 0 &&
+            cortical_effects.valid) {
+            /* Cortical stability from predictions */
+            cond->cortical_stable = cortical_effects.predictions_stable;
+
+            /* Predictions OK based on burst rate */
+            cond->predictions_ok = (cortical_effects.burst_rate > 0.5f);
+
+            NIMCP_LOGGING_DEBUG("Cortical → Logic: stable=%d predictions_ok=%d (burst=%.2f)",
+                               cond->cortical_stable, cond->predictions_ok,
+                               cortical_effects.burst_rate);
+        }
     }
 
     /* Update checkpoint tracking */
@@ -725,6 +772,52 @@ int training_logic_connect_unified(
     bridge->unified_bridge = unified_bridge;
     if (unified_bridge) {
         NIMCP_LOGGING_INFO("Connected unified bridge to Training-Logic bridge");
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+int training_logic_connect_perception_training(
+    training_logic_bridge_t* bridge,
+    perception_training_bridge_t* perception_training)
+{
+    if (!bridge) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->perception_training = perception_training;
+
+    if (perception_training) {
+        NIMCP_LOGGING_INFO("Connected perception-training bridge to Training-Logic bridge");
+    } else {
+        NIMCP_LOGGING_INFO("Disconnected perception-training bridge from Training-Logic bridge");
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+int training_logic_connect_cortical_training(
+    training_logic_bridge_t* bridge,
+    cortical_training_bridge_t* cortical_training)
+{
+    if (!bridge) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->cortical_training = cortical_training;
+
+    if (cortical_training) {
+        NIMCP_LOGGING_INFO("Connected cortical-training bridge to Training-Logic bridge");
+    } else {
+        NIMCP_LOGGING_INFO("Disconnected cortical-training bridge from Training-Logic bridge");
     }
 
     nimcp_mutex_unlock(bridge->mutex);
@@ -1309,6 +1402,15 @@ int training_logic_set_condition(
         case TRAINING_COND_SWARM_CONSENSUS:
             bridge->conditions.swarm_consensus = value;
             break;
+        case TRAINING_COND_PERCEPTION_QUALITY:
+            bridge->conditions.perception_quality = value;
+            break;
+        case TRAINING_COND_CORTICAL_STABLE:
+            bridge->conditions.cortical_stable = value;
+            break;
+        case TRAINING_COND_PREDICTIONS_OK:
+            bridge->conditions.predictions_ok = value;
+            break;
         default:
             nimcp_mutex_unlock(bridge->mutex);
             return NIMCP_ERROR_INVALID_PARAMETER;
@@ -1679,6 +1781,9 @@ const char* training_logic_condition_to_string(training_logic_condition_t condit
         case TRAINING_COND_IMMUNE_OK: return "immune_ok";
         case TRAINING_COND_RESOURCE_OK: return "resource_ok";
         case TRAINING_COND_SWARM_CONSENSUS: return "swarm_consensus";
+        case TRAINING_COND_PERCEPTION_QUALITY: return "perception_quality";
+        case TRAINING_COND_CORTICAL_STABLE: return "cortical_stable";
+        case TRAINING_COND_PREDICTIONS_OK: return "predictions_ok";
         default: return "unknown";
     }
 }

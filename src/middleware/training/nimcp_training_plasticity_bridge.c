@@ -13,6 +13,8 @@
  */
 
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "middleware/training/nimcp_perception_training_bridge.h"
+#include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -84,6 +86,10 @@ struct tpb_context {
     tcb_context_t* callback_ctx;
     uint64_t callback_stats[4];  /* loss, weight, epoch, divergence */
     nimcp_mutex_t callback_mutex;
+
+    /* Perception-Cortical Training Integration (Phase XBI) */
+    perception_training_bridge_t* perception_training;
+    cortical_training_bridge_t* cortical_training;
 
     /* State */
     atomic_bool initialized;
@@ -1814,4 +1820,132 @@ nimcp_result_t tpb_get_callback_stats(const tpb_context_t* ctx,
     nimcp_mutex_unlock(&mutable_ctx->callback_mutex);
 
     return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Perception-Cortical Training Integration (Phase XBI)
+//=============================================================================
+
+nimcp_result_t tpb_connect_perception_training(
+    tpb_context_t* ctx,
+    perception_training_bridge_t* perception_bridge
+) {
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    ctx->perception_training = perception_bridge;
+
+    if (perception_bridge) {
+        LOG_DEBUG("[%s] Connected perception training bridge", TPB_LOG_MODULE);
+    } else {
+        LOG_DEBUG("[%s] Disconnected perception training bridge", TPB_LOG_MODULE);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_connect_cortical_training(
+    tpb_context_t* ctx,
+    cortical_training_bridge_t* cortical_bridge
+) {
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    ctx->cortical_training = cortical_bridge;
+
+    if (cortical_bridge) {
+        LOG_DEBUG("[%s] Connected cortical training bridge", TPB_LOG_MODULE);
+    } else {
+        LOG_DEBUG("[%s] Disconnected cortical training bridge", TPB_LOG_MODULE);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+float tpb_get_perception_plasticity_factor(const tpb_context_t* ctx)
+{
+    if (!ctx || !ctx->perception_training) {
+        return 1.0f;  /* Default: no modulation */
+    }
+
+    perception_training_effects_t effects;
+    if (perception_training_get_effects(ctx->perception_training, &effects) != 0 ||
+        !effects.valid) {
+        return 1.0f;
+    }
+
+    /* Modulation formula:
+     * factor = lr_factor × (0.5 + 0.5 × visual_confidence)
+     * Range: [0.25, 1.5] approximately
+     */
+    float factor = effects.lr_factor * (0.5f + 0.5f * effects.visual_confidence);
+
+    /* Clamp to valid range */
+    if (factor < 0.25f) factor = 0.25f;
+    if (factor > 1.5f) factor = 1.5f;
+
+    return factor;
+}
+
+float tpb_get_cortical_plasticity_factor(const tpb_context_t* ctx)
+{
+    if (!ctx || !ctx->cortical_training) {
+        return 1.0f;  /* Default: no modulation */
+    }
+
+    cortical_training_effects_t effects;
+    if (cortical_training_get_effects(ctx->cortical_training, &effects) != 0 ||
+        !effects.valid) {
+        return 1.0f;
+    }
+
+    /* Base factor from burst rate: higher burst = stable predictions = enhance LTP */
+    float base = 0.5f + 0.5f * effects.burst_rate;
+
+    float factor;
+    if (effects.predictions_stable) {
+        /* Consolidation boost: predictions converged, enhance learning */
+        factor = base * 1.2f;
+    } else {
+        /* Error-driven: high prediction error → focus plasticity */
+        float error_scale = 1.0f + 0.3f * fminf(effects.prediction_error_mag, 1.0f);
+        factor = base * error_scale;
+    }
+
+    /* Clamp to valid range */
+    if (factor < 0.25f) factor = 0.25f;
+    if (factor > 1.5f) factor = 1.5f;
+
+    return factor;
+}
+
+float tpb_get_combined_plasticity_factor(const tpb_context_t* ctx)
+{
+    if (!ctx) {
+        return 1.0f;
+    }
+
+    float perception_factor = tpb_get_perception_plasticity_factor(ctx);
+    float cortical_factor = tpb_get_cortical_plasticity_factor(ctx);
+
+    /* Weighted geometric mean for stability */
+    float combined = sqrtf(perception_factor * cortical_factor);
+
+    /* Clamp to valid range */
+    if (combined < 0.25f) combined = 0.25f;
+    if (combined > 2.0f) combined = 2.0f;
+
+    return combined;
+}
+
+bool tpb_is_perception_training_connected(const tpb_context_t* ctx)
+{
+    return ctx && ctx->perception_training != NULL;
+}
+
+bool tpb_is_cortical_training_connected(const tpb_context_t* ctx)
+{
+    return ctx && ctx->cortical_training != NULL;
 }

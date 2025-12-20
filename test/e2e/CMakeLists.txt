@@ -627,6 +627,12 @@ add_e2e_test(e2e_test_cortical_training_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cortical_training_pipeline.cpp
 )
 
+# Unified Training Integration E2E Test (All Perception/Cortical Integrations)
+add_e2e_test(e2e_test_unified_training_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_unified_training_integration.cpp
+)
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

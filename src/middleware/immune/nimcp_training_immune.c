@@ -9,6 +9,8 @@
  */
 
 #include "middleware/immune/nimcp_training_immune.h"
+#include "middleware/training/nimcp_perception_training_bridge.h"
+#include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -209,6 +211,11 @@ int training_immune_default_config(training_immune_config_t* config) {
     /* Monitoring */
     config->history_size = TRAINING_IMMUNE_MAX_HISTORY;
     config->enable_logging = false;
+
+    /* Perception/Cortical thresholds */
+    config->perception_collapse_threshold = 0.1f;
+    config->cortical_fe_explosion_threshold = 100.0f;
+    config->cortical_burst_collapse_threshold = 0.1f;
 
     return 0;
 }
@@ -430,6 +437,58 @@ int training_immune_connect_callbacks(
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
                   "Connected to training callbacks");
+    }
+
+    return 0;
+}
+
+int training_immune_connect_perception_training(
+    training_immune_system_t* system,
+    perception_training_bridge_t* perception_training
+) {
+    if (!system) return -1;
+
+    platform_mutex_lock((platform_mutex_t*)system->mutex);
+
+    system->perception_training = perception_training;
+    system->config.has_perception_training = (perception_training != NULL);
+
+    platform_mutex_unlock((platform_mutex_t*)system->mutex);
+
+    if (system->config.enable_logging) {
+        if (perception_training) {
+            LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
+                      "Connected to perception training bridge");
+        } else {
+            LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
+                      "Disconnected from perception training bridge");
+        }
+    }
+
+    return 0;
+}
+
+int training_immune_connect_cortical_training(
+    training_immune_system_t* system,
+    cortical_training_bridge_t* cortical_training
+) {
+    if (!system) return -1;
+
+    platform_mutex_lock((platform_mutex_t*)system->mutex);
+
+    system->cortical_training = cortical_training;
+    system->config.has_cortical_training = (cortical_training != NULL);
+
+    platform_mutex_unlock((platform_mutex_t*)system->mutex);
+
+    if (system->config.enable_logging) {
+        if (cortical_training) {
+            LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
+                      "Connected to cortical training bridge");
+        } else {
+            LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
+                      "Disconnected from cortical training bridge");
+        }
     }
 
     return 0;
@@ -761,6 +820,94 @@ int training_immune_trigger_immune_response(
     return result;
 }
 
+training_instability_type_t training_immune_check_perception_cortical_stability(
+    training_immune_system_t* system
+) {
+    if (!system) return TRAINING_INSTABILITY_NONE;
+
+    training_instability_type_t instability = TRAINING_INSTABILITY_NONE;
+
+    platform_mutex_lock((platform_mutex_t*)system->mutex);
+
+    /* Check perception training bridge */
+    if (system->perception_training) {
+        perception_training_effects_t perception_effects;
+        if (perception_training_get_effects(system->perception_training, &perception_effects) == 0 &&
+            perception_effects.valid) {
+            /* Check for perception collapse: all modality confidences near 0 */
+            float combined_confidence = (perception_effects.visual_confidence +
+                                         perception_effects.audio_quality +
+                                         perception_effects.comprehension) / 3.0f;
+            if (combined_confidence < system->config.perception_collapse_threshold) {
+                instability = TRAINING_INSTABILITY_PERCEPTION_COLLAPSE;
+                system->stats.perception_collapse_count++;
+            }
+        }
+    }
+
+    /* Check cortical training bridge (only if no perception instability found) */
+    if (instability == TRAINING_INSTABILITY_NONE && system->cortical_training) {
+        cortical_training_effects_t cortical_effects;
+        if (cortical_training_get_effects(system->cortical_training, &cortical_effects) == 0 &&
+            cortical_effects.valid) {
+            /* Check for free energy explosion */
+            if (cortical_effects.free_energy > system->config.cortical_fe_explosion_threshold) {
+                instability = TRAINING_INSTABILITY_CORTICAL_EXPLOSION;
+                system->stats.cortical_explosion_count++;
+            }
+            /* Check for burst rate collapse */
+            else if (cortical_effects.burst_rate < system->config.cortical_burst_collapse_threshold) {
+                instability = TRAINING_INSTABILITY_PREDICTION_FAILURE;
+                system->stats.prediction_failure_count++;
+            }
+        }
+    }
+
+    platform_mutex_unlock((platform_mutex_t*)system->mutex);
+
+    /* Auto-trigger immune response if enabled */
+    if (instability != TRAINING_INSTABILITY_NONE &&
+        system->config.enable_auto_immune_response) {
+
+        uint32_t event_id;
+        uint32_t severity = (instability == TRAINING_INSTABILITY_CORTICAL_EXPLOSION) ? 8 :
+                           (instability == TRAINING_INSTABILITY_PERCEPTION_COLLAPSE) ? 6 : 5;
+
+        training_immune_report_instability(system, instability, severity, &event_id);
+        training_immune_trigger_immune_response(system, event_id);
+    }
+
+    return instability;
+}
+
+float training_immune_get_perception_sensitivity(
+    const training_immune_system_t* system
+) {
+    if (!system) return 1.0f;
+
+    /* Map inflammation to sensitivity factor
+     * NONE      → 1.00 (full sensitivity)
+     * LOCAL     → 0.90 (slight reduction)
+     * REGIONAL  → 0.70 (moderate reduction)
+     * SYSTEMIC  → 0.50 (significant reduction)
+     * STORM     → 0.30 (conserve resources)
+     */
+    switch (system->inflammation) {
+        case INFLAMMATION_NONE:
+            return 1.0f;
+        case INFLAMMATION_LOCAL:
+            return 0.90f;
+        case INFLAMMATION_REGIONAL:
+            return 0.70f;
+        case INFLAMMATION_SYSTEMIC:
+            return 0.50f;
+        case INFLAMMATION_STORM:
+            return 0.30f;
+        default:
+            return 1.0f;
+    }
+}
+
 /* ============================================================================
  * Query and Statistics Implementation
  * ============================================================================ */
@@ -810,6 +957,10 @@ int training_immune_get_stats(
         stats->time_in_inflammation_pct =
             100.0f * (float)system->stats.inflamed_steps / (float)total_steps;
     }
+
+    /* Update perception/cortical integration stats */
+    stats->perception_training_connected = system->config.has_perception_training;
+    stats->cortical_training_connected = system->config.has_cortical_training;
 
     platform_mutex_unlock((platform_mutex_t*)system->mutex);
 
@@ -869,6 +1020,9 @@ const char* training_instability_type_to_string(training_instability_type_t type
         case TRAINING_INSTABILITY_GRAD_VANISHING: return "GRAD_VANISHING";
         case TRAINING_INSTABILITY_LOSS_PLATEAU:   return "LOSS_PLATEAU";
         case TRAINING_INSTABILITY_OSCILLATION:    return "OSCILLATION";
+        case TRAINING_INSTABILITY_PERCEPTION_COLLAPSE: return "PERCEPTION_COLLAPSE";
+        case TRAINING_INSTABILITY_CORTICAL_EXPLOSION:  return "CORTICAL_EXPLOSION";
+        case TRAINING_INSTABILITY_PREDICTION_FAILURE:  return "PREDICTION_FAILURE";
         default:                                  return "UNKNOWN";
     }
 }

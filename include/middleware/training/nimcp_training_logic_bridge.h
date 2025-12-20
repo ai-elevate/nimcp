@@ -36,6 +36,8 @@ typedef struct training_immune_system training_immune_system_t;
 typedef struct portia_logic_bridge portia_logic_bridge_t;
 typedef struct swarm_logic_bridge swarm_logic_bridge_t;
 typedef struct portia_swarm_logic_bridge portia_swarm_logic_bridge_t;
+typedef struct perception_training_bridge perception_training_bridge_t;
+typedef struct cortical_training_bridge cortical_training_bridge_t;
 
 //=============================================================================
 // Constants
@@ -181,6 +183,9 @@ typedef struct {
     bool immune_ok;              /**< Inflammation acceptable */
     bool resource_ok;            /**< Portia resources ok */
     bool swarm_consensus;        /**< Swarm consensus */
+    bool perception_quality;     /**< Perception quality above threshold */
+    bool cortical_stable;        /**< Cortical free energy converging */
+    bool predictions_ok;         /**< Cortical burst rate above threshold */
 
     /* Numeric values for fine-grained decisions */
     float loss_current;          /**< Current loss value */
@@ -455,6 +460,48 @@ int training_logic_connect_swarm_logic(
 int training_logic_connect_unified(
     training_logic_bridge_t* bridge,
     portia_swarm_logic_bridge_t* unified_bridge
+);
+
+/**
+ * @brief Connect to perception-training bridge
+ *
+ * WHAT: Links bridge to perception-training for condition updates
+ * WHY: Perception state affects training logic decisions
+ * HOW: Queries perception effects for condition evaluation:
+ *      - lr_factor > threshold → TRAINING_COND_PERCEPTION_QUALITY
+ *
+ * BIOLOGICAL BASIS: Sensory cortices provide perceptual quality signals
+ * that gate training decisions. Clear perception enables aggressive learning,
+ * while degraded perception triggers conservative strategies.
+ *
+ * @param bridge Bridge to connect
+ * @param perception_training Perception-training bridge (may be NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int training_logic_connect_perception_training(
+    training_logic_bridge_t* bridge,
+    perception_training_bridge_t* perception_training
+);
+
+/**
+ * @brief Connect to cortical-training bridge
+ *
+ * WHAT: Links bridge to cortical-training for condition updates
+ * WHY: Cortical dynamics affect training logic decisions
+ * HOW: Queries cortical effects for condition evaluation:
+ *      - predictions_stable → TRAINING_COND_CORTICAL_STABLE
+ *      - burst_rate > threshold → TRAINING_COND_PREDICTIONS_OK
+ *
+ * BIOLOGICAL BASIS: Predictive coding and dendritic dynamics provide
+ * signals about model stability that guide training decisions.
+ *
+ * @param bridge Bridge to connect
+ * @param cortical_training Cortical-training bridge (may be NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int training_logic_connect_cortical_training(
+    training_logic_bridge_t* bridge,
+    cortical_training_bridge_t* cortical_training
 );
 
 //=============================================================================

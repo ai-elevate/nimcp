@@ -5,11 +5,14 @@
 #include "portia/nimcp_portia_swarm_logic_bridge.h"
 #include "portia/nimcp_portia_swarm_bridge.h"
 #include "swarm/nimcp_swarm_logic_bridge.h"
+#include "middleware/training/nimcp_perception_training_bridge.h"
+#include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 //=============================================================================
 // Internal Structures
@@ -32,6 +35,10 @@ struct portia_swarm_logic_bridge {
 
     // UMM integration
     void* umm;                                 /**< Unified Memory Manager */
+
+    // Perception/Cortical training integration
+    perception_training_bridge_t* perception_training; /**< Perception training bridge */
+    cortical_training_bridge_t* cortical_training;     /**< Cortical training bridge */
 
     // Cross-module decision gates
     uint32_t collective_resource_gate;         /**< AND: local_ok AND swarm_ok */
@@ -283,6 +290,131 @@ int portia_swarm_logic_connect_umm(
 
     NIMCP_LOGGING_INFO("UMM connected to unified bridge");
     return 0;
+}
+
+int portia_swarm_logic_connect_perception_training(
+    portia_swarm_logic_bridge_t* bridge,
+    perception_training_bridge_t* perception_training)
+{
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Null bridge pointer");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->perception_training = perception_training;
+    bridge->stats.perception_training_connected = (perception_training != NULL);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    if (perception_training) {
+        NIMCP_LOGGING_INFO("Perception training connected to unified bridge");
+    } else {
+        NIMCP_LOGGING_INFO("Perception training disconnected from unified bridge");
+    }
+    return 0;
+}
+
+int portia_swarm_logic_connect_cortical_training(
+    portia_swarm_logic_bridge_t* bridge,
+    cortical_training_bridge_t* cortical_training)
+{
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Null bridge pointer");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->cortical_training = cortical_training;
+    bridge->stats.cortical_training_connected = (cortical_training != NULL);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    if (cortical_training) {
+        NIMCP_LOGGING_INFO("Cortical training connected to unified bridge");
+    } else {
+        NIMCP_LOGGING_INFO("Cortical training disconnected from unified bridge");
+    }
+    return 0;
+}
+
+float portia_swarm_logic_get_perception_confidence_modifier(
+    const portia_swarm_logic_bridge_t* bridge)
+{
+    if (!bridge || !bridge->perception_training) {
+        return 1.0f;  /* No modulation if not connected */
+    }
+
+    /* Get perception effects and compute confidence modifier */
+    perception_training_effects_t effects;
+    if (perception_training_get_effects(bridge->perception_training, &effects) != 0) {
+        return 1.0f;
+    }
+
+    if (!effects.valid) {
+        return 1.0f;
+    }
+
+    /*
+     * BIOLOGICAL BASIS: Perceptual clarity influences decision confidence.
+     * High visual confidence + high LR factor → boost decision confidence.
+     * Low perception quality → reduce confidence (proceed cautiously).
+     *
+     * modifier = 0.5 + 0.5 × visual_confidence × lr_factor
+     * Range: [0.5, 1.5] clamped
+     */
+    float confidence_base = 0.5f + 0.5f * effects.visual_confidence;
+    float modifier = confidence_base * effects.lr_factor;
+
+    /* Clamp to [0.5, 1.5] */
+    if (modifier < 0.5f) modifier = 0.5f;
+    if (modifier > 1.5f) modifier = 1.5f;
+
+    return modifier;
+}
+
+float portia_swarm_logic_get_cortical_threshold_modifier(
+    const portia_swarm_logic_bridge_t* bridge)
+{
+    if (!bridge || !bridge->cortical_training) {
+        return 1.0f;  /* No modulation if not connected */
+    }
+
+    /* Get cortical effects and compute threshold modifier */
+    cortical_training_effects_t effects;
+    if (cortical_training_get_effects(bridge->cortical_training, &effects) != 0) {
+        return 1.0f;
+    }
+
+    if (!effects.valid) {
+        return 1.0f;
+    }
+
+    /*
+     * BIOLOGICAL BASIS: Cortical stability influences decision thresholds.
+     * High burst rate + stable predictions → lower thresholds (confident).
+     * Prediction failure + high error → higher thresholds (cautious).
+     *
+     * Base threshold modifier from burst rate:
+     * - High burst (>0.7) → lower threshold (0.7-0.85)
+     * - Low burst (<0.3) → higher threshold (1.15-1.3)
+     * - Medium burst → moderate threshold (~1.0)
+     *
+     * modifier = 1.0 - 0.3 × (burst_rate - 0.5)
+     * If predictions unstable, add 0.15
+     */
+    float modifier = 1.0f - 0.3f * (effects.burst_rate - 0.5f);
+
+    if (!effects.predictions_stable) {
+        modifier += 0.15f;  /* More cautious when unstable */
+    }
+
+    /* Apply prediction error penalty */
+    modifier += 0.1f * effects.prediction_error_mag;
+
+    /* Clamp to [0.7, 1.3] */
+    if (modifier < 0.7f) modifier = 0.7f;
+    if (modifier > 1.3f) modifier = 1.3f;
+
+    return modifier;
 }
 
 //=============================================================================

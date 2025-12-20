@@ -24,6 +24,8 @@
 
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
 #include "middleware/training/nimcp_training_logic_bridge.h"
+#include "middleware/training/nimcp_perception_training_bridge.h"
+#include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -112,6 +114,8 @@ struct cognitive_training_bridge {
     training_logic_bridge_t* training_logic;
     training_plasticity_bridge_t* training_plasticity;
     training_immune_system_t* training_immune;
+    perception_training_bridge_t* perception_training;
+    cortical_training_bridge_t* cortical_training;
 
     /* Current effects */
     cognitive_training_effects_t cognitive_effects;
@@ -201,6 +205,80 @@ static int extract_cognitive_state(cognitive_training_bridge_t* bridge) {
     if (bridge->emotion && bridge->config.enable_emotion) {
         effects->emotional_valence = 0.0f;   /* Neutral valence */
         effects->emotional_arousal = 0.5f;   /* Moderate arousal */
+    }
+
+    /*=========================================================================
+     * CROSS-BRIDGE INTEGRATION: Perception-Training → Cognitive
+     *
+     * Propagates perceptual quality and salience to cognitive effects:
+     * - visual_confidence → attention_focus (clear vision → better focus)
+     * - speech_salience → task_relevance (salient speech → task priority)
+     * - visual_novelty → exploration_drive (novel input → curiosity)
+     *========================================================================*/
+    if (bridge->perception_training) {
+        perception_training_effects_t perception_effects;
+        if (perception_training_get_effects(bridge->perception_training,
+                                            &perception_effects) == 0 &&
+            perception_effects.valid) {
+            /* Visual confidence boosts attention focus */
+            if (perception_effects.visual_confidence > 0.0f) {
+                effects->attention_focus = fmaxf(effects->attention_focus,
+                                                 perception_effects.visual_confidence);
+            }
+
+            /* Speech salience increases task relevance */
+            if (perception_effects.speech_salience > 0.0f) {
+                effects->task_relevance = fmaxf(effects->task_relevance,
+                                                perception_effects.speech_salience);
+            }
+
+            /* Visual novelty drives exploration */
+            if (perception_effects.visual_novelty > 0.0f) {
+                effects->exploration_drive = fmaxf(effects->exploration_drive,
+                                                   perception_effects.visual_novelty * 0.8f);
+            }
+
+            NIMCP_LOGGING_DEBUG("Perception → Cognitive: focus=%.2f relevance=%.2f explore=%.2f",
+                               effects->attention_focus, effects->task_relevance,
+                               effects->exploration_drive);
+        }
+    }
+
+    /*=========================================================================
+     * CROSS-BRIDGE INTEGRATION: Cortical-Training → Cognitive
+     *
+     * Propagates cortical dynamics to cognitive effects:
+     * - (1 - burst_rate) → epistemic_uncertainty (low bursts → uncertain)
+     * - predictions_stable → metacognitive_confidence (stable → confident)
+     * - free_energy → cognitive_load (high FE → high load)
+     *========================================================================*/
+    if (bridge->cortical_training) {
+        cortical_training_effects_t cortical_effects;
+        if (cortical_training_get_effects(bridge->cortical_training,
+                                          &cortical_effects) == 0 &&
+            cortical_effects.valid) {
+            /* Low burst rate increases epistemic uncertainty */
+            float burst_uncertainty = 1.0f - cortical_effects.burst_rate;
+            effects->epistemic_uncertainty = fmaxf(effects->epistemic_uncertainty,
+                                                   burst_uncertainty * 0.6f);
+
+            /* Stable predictions boost metacognitive confidence */
+            if (cortical_effects.predictions_stable) {
+                effects->metacognitive_confidence = fmaxf(effects->metacognitive_confidence,
+                                                          0.7f);
+            }
+
+            /* High free energy increases cognitive load */
+            if (cortical_effects.free_energy > 0.0f) {
+                float fe_normalized = fminf(cortical_effects.free_energy / 10.0f, 1.0f);
+                effects->cognitive_load = fmaxf(effects->cognitive_load,
+                                                fe_normalized * 0.5f);
+            }
+
+            NIMCP_LOGGING_DEBUG("Cortical → Cognitive: uncertainty=%.2f confidence=%.2f load=%.2f",
+                               effects->epistemic_uncertainty, effects->metacognitive_confidence,
+                               effects->cognitive_load);
+        }
     }
 
     effects->valid = true;
@@ -773,6 +851,54 @@ int cognitive_training_connect_training_immune(
     bridge->training_immune = training_immune;
     if (training_immune) {
         NIMCP_LOGGING_INFO("Connected training-immune system to Cognitive-Training bridge");
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+int cognitive_training_connect_perception_training(
+    cognitive_training_bridge_t* bridge,
+    perception_training_bridge_t* perception_training)
+{
+    if (!bridge) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->perception_training = perception_training;
+    bridge->stats.perception_training_connected = (perception_training != NULL);
+
+    if (perception_training) {
+        NIMCP_LOGGING_INFO("Connected perception-training bridge to Cognitive-Training bridge");
+    } else {
+        NIMCP_LOGGING_INFO("Disconnected perception-training bridge from Cognitive-Training bridge");
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+int cognitive_training_connect_cortical_training(
+    cognitive_training_bridge_t* bridge,
+    cortical_training_bridge_t* cortical_training)
+{
+    if (!bridge) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->cortical_training = cortical_training;
+    bridge->stats.cortical_training_connected = (cortical_training != NULL);
+
+    if (cortical_training) {
+        NIMCP_LOGGING_INFO("Connected cortical-training bridge to Cognitive-Training bridge");
+    } else {
+        NIMCP_LOGGING_INFO("Disconnected cortical-training bridge from Cognitive-Training bridge");
     }
 
     nimcp_mutex_unlock(bridge->mutex);

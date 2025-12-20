@@ -187,6 +187,8 @@ extern "C" {
  * ============================================================================ */
 
 typedef struct training_immune_system training_immune_system_t;
+typedef struct perception_training_bridge perception_training_bridge_t;
+typedef struct cortical_training_bridge cortical_training_bridge_t;
 
 /* ============================================================================
  * Enumerations
@@ -207,6 +209,11 @@ typedef enum {
     TRAINING_INSTABILITY_GRAD_VANISHING,/**< Gradients vanished */
     TRAINING_INSTABILITY_LOSS_PLATEAU,  /**< Loss stopped improving */
     TRAINING_INSTABILITY_OSCILLATION,   /**< Loss oscillating wildly */
+    /* Perception-based instabilities */
+    TRAINING_INSTABILITY_PERCEPTION_COLLAPSE,   /**< All modality confidences near 0 */
+    /* Cortical-based instabilities */
+    TRAINING_INSTABILITY_CORTICAL_EXPLOSION,    /**< Free energy explosion */
+    TRAINING_INSTABILITY_PREDICTION_FAILURE,    /**< Burst rate collapse */
     TRAINING_INSTABILITY_COUNT
 } training_instability_type_t;
 
@@ -319,6 +326,13 @@ typedef struct {
     bool has_optimizer;                 /**< Optimizer connected */
     bool has_gradient_manager;          /**< Gradient manager connected */
     bool has_callbacks;                 /**< Training callbacks connected */
+    bool has_perception_training;       /**< Perception training connected */
+    bool has_cortical_training;         /**< Cortical training connected */
+
+    /* Perception/Cortical instability thresholds */
+    float perception_collapse_threshold;/**< Perception confidence for collapse (default: 0.1) */
+    float cortical_fe_explosion_threshold; /**< Free energy explosion threshold (default: 100.0) */
+    float cortical_burst_collapse_threshold; /**< Burst rate collapse threshold (default: 0.1) */
 } training_immune_config_t;
 
 /**
@@ -348,6 +362,13 @@ typedef struct {
     training_immune_phase_t current_phase;
     brain_inflammation_level_t current_inflammation;
     float current_lr_factor;
+
+    /* Perception/Cortical integration stats */
+    bool perception_training_connected;
+    bool cortical_training_connected;
+    uint64_t perception_collapse_count;
+    uint64_t cortical_explosion_count;
+    uint64_t prediction_failure_count;
 } training_immune_stats_t;
 
 /* ============================================================================
@@ -366,6 +387,8 @@ struct training_immune_system {
     nimcp_optimizer_context_t* optimizer;        /**< Optimizer */
     nimcp_gradient_manager_ctx_t* grad_manager;  /**< Gradient manager */
     tcb_context_t* callbacks;                     /**< Training callbacks */
+    perception_training_bridge_t* perception_training; /**< Perception training bridge */
+    cortical_training_bridge_t* cortical_training;     /**< Cortical training bridge */
 
     /* Current metrics */
     training_immune_metrics_t current_metrics;
@@ -535,6 +558,44 @@ int training_immune_connect_callbacks(
     tcb_context_t* callbacks
 );
 
+/**
+ * @brief Connect to perception training bridge
+ *
+ * WHAT: Link to perception training for instability detection
+ * WHY:  Perception collapse threatens training integrity
+ * HOW:  Store handle, monitor perception effects for collapse
+ *
+ * BIOLOGICAL BASIS: Sensory deprivation or collapse threatens learning.
+ * Total perceptual failure is an immune threat requiring response.
+ *
+ * @param system Training immune system
+ * @param perception_training Perception training bridge (NULL to disconnect)
+ * @return 0 on success
+ */
+int training_immune_connect_perception_training(
+    training_immune_system_t* system,
+    perception_training_bridge_t* perception_training
+);
+
+/**
+ * @brief Connect to cortical training bridge
+ *
+ * WHAT: Link to cortical training for instability detection
+ * WHY:  Free energy explosion and burst collapse threaten training
+ * HOW:  Store handle, monitor cortical effects for anomalies
+ *
+ * BIOLOGICAL BASIS: Cortical instability (free energy explosion, burst
+ * collapse) indicates neural dysfunction requiring immune intervention.
+ *
+ * @param system Training immune system
+ * @param cortical_training Cortical training bridge (NULL to disconnect)
+ * @return 0 on success
+ */
+int training_immune_connect_cortical_training(
+    training_immune_system_t* system,
+    cortical_training_bridge_t* cortical_training
+);
+
 /* ============================================================================
  * Immune → Training: Inflammation Modulates Learning
  * ============================================================================ */
@@ -685,6 +746,40 @@ int training_immune_report_instability(
 int training_immune_trigger_immune_response(
     training_immune_system_t* system,
     uint32_t event_id
+);
+
+/**
+ * @brief Check perception/cortical stability
+ *
+ * WHAT: Detect instabilities from connected perception/cortical bridges
+ * WHY:  Auto-trigger immune response to perception/cortical failures
+ * HOW:  Query perception/cortical effects, check against thresholds
+ *
+ * RETURNS: Detected instability type if any (may be PERCEPTION_COLLAPSE,
+ *          CORTICAL_EXPLOSION, or PREDICTION_FAILURE)
+ *
+ * @param system Training immune system
+ * @return Detected instability type (NONE if stable)
+ */
+training_instability_type_t training_immune_check_perception_cortical_stability(
+    training_immune_system_t* system
+);
+
+/**
+ * @brief Get perception sensitivity factor based on inflammation
+ *
+ * WHAT: Compute perception sensitivity modulation from immune state
+ * WHY:  Inflammation reduces perception sensitivity to conserve resources
+ * HOW:  Maps inflammation level to sensitivity factor [0.3-1.0]
+ *
+ * BIOLOGICAL BASIS: During illness (inflammation), sensory sensitivity
+ * decreases as resources are conserved for immune response.
+ *
+ * @param system Training immune system
+ * @return Perception sensitivity factor [0.3-1.0]
+ */
+float training_immune_get_perception_sensitivity(
+    const training_immune_system_t* system
 );
 
 /* ============================================================================

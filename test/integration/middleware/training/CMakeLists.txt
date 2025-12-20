@@ -392,3 +392,243 @@ set_tests_properties(integration_middleware_training_test_cortical_training_inte
     PROPERTIES
         LABELS "integration;middleware;training;cortical_training"
         TIMEOUT 300)
+
+# Perception-Cognitive Cross-Bridge Integration Tests (Phase XBI-1)
+add_executable(integration_middleware_training_test_perception_cognitive_integration
+    test_perception_cognitive_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_perception_cognitive_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_perception_cognitive_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_perception_cognitive_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_perception_cognitive_integration
+         COMMAND integration_middleware_training_test_perception_cognitive_integration)
+
+set_tests_properties(integration_middleware_training_test_perception_cognitive_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;perception_cognitive"
+        TIMEOUT 300)
+
+# Cortical-Cognitive Cross-Bridge Integration Tests (Phase XBI-2)
+add_executable(integration_middleware_training_test_cortical_cognitive_integration
+    test_cortical_cognitive_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_cortical_cognitive_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_cortical_cognitive_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_cortical_cognitive_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_cortical_cognitive_integration
+         COMMAND integration_middleware_training_test_cortical_cognitive_integration)
+
+set_tests_properties(integration_middleware_training_test_cortical_cognitive_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;cortical_cognitive"
+        TIMEOUT 300)
+
+# Perception-Logic Cross-Bridge Integration Tests (Phase XBI-3)
+add_executable(integration_middleware_training_test_perception_logic_integration
+    test_perception_logic_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_perception_logic_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_perception_logic_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_perception_logic_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_perception_logic_integration
+         COMMAND integration_middleware_training_test_perception_logic_integration)
+
+set_tests_properties(integration_middleware_training_test_perception_logic_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;perception_logic"
+        TIMEOUT 300)
+
+# Cortical-Logic Cross-Bridge Integration Tests (Phase XBI-4)
+add_executable(integration_middleware_training_test_cortical_logic_integration
+    test_cortical_logic_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_cortical_logic_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_cortical_logic_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_cortical_logic_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_cortical_logic_integration
+         COMMAND integration_middleware_training_test_cortical_logic_integration)
+
+set_tests_properties(integration_middleware_training_test_cortical_logic_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;cortical_logic"
+        TIMEOUT 300)
+
+# Perception-Immune Cross-Bridge Integration Tests (Phase XBI-5)
+add_executable(integration_middleware_training_test_perception_immune_integration
+    test_perception_immune_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_perception_immune_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_perception_immune_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_perception_immune_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_perception_immune_integration
+         COMMAND integration_middleware_training_test_perception_immune_integration)
+
+set_tests_properties(integration_middleware_training_test_perception_immune_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;perception_immune"
+        TIMEOUT 300)
+
+# Cortical-Immune Cross-Bridge Integration Tests (Phase XBI-6)
+add_executable(integration_middleware_training_test_cortical_immune_integration
+    test_cortical_immune_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_cortical_immune_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_cortical_immune_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_cortical_immune_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_cortical_immune_integration
+         COMMAND integration_middleware_training_test_cortical_immune_integration)
+
+set_tests_properties(integration_middleware_training_test_cortical_immune_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;cortical_immune"
+        TIMEOUT 300)
+
+# Perception-Plasticity Cross-Bridge Integration Tests (Phase XBI-7)
+add_executable(integration_middleware_training_test_perception_plasticity_integration
+    test_perception_plasticity_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_perception_plasticity_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_perception_plasticity_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_perception_plasticity_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_perception_plasticity_integration
+         COMMAND integration_middleware_training_test_perception_plasticity_integration)
+
+set_tests_properties(integration_middleware_training_test_perception_plasticity_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;perception_plasticity"
+        TIMEOUT 300)
+
+# Cortical-Plasticity Cross-Bridge Integration Tests (Phase XBI-8)
+add_executable(integration_middleware_training_test_cortical_plasticity_integration
+    test_cortical_plasticity_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_cortical_plasticity_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_cortical_plasticity_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_cortical_plasticity_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_cortical_plasticity_integration
+         COMMAND integration_middleware_training_test_cortical_plasticity_integration)
+
+set_tests_properties(integration_middleware_training_test_cortical_plasticity_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cross_bridge;cortical_plasticity"
+        TIMEOUT 300)

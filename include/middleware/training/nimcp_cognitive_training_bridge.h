@@ -47,6 +47,8 @@ typedef struct emotion_recognition_system emotion_recognition_system_t;
 typedef struct training_logic_bridge training_logic_bridge_t;
 typedef struct training_plasticity_bridge training_plasticity_bridge_t;
 typedef struct training_immune_system training_immune_system_t;
+typedef struct perception_training_bridge perception_training_bridge_t;
+typedef struct cortical_training_bridge cortical_training_bridge_t;
 
 //=============================================================================
 // Constants
@@ -375,6 +377,8 @@ typedef struct {
     bool training_logic_connected;
     bool training_plasticity_connected;
     bool training_immune_connected;
+    bool perception_training_connected;
+    bool cortical_training_connected;
     bool bio_async_connected;
 
     /* === Timing === */
@@ -617,6 +621,52 @@ int cognitive_training_connect_training_plasticity(
 int cognitive_training_connect_training_immune(
     cognitive_training_bridge_t* bridge,
     training_immune_system_t* training_immune
+);
+
+/**
+ * @brief Connect to perception-training bridge
+ *
+ * WHAT: Links cognitive bridge to perception-training for cross-integration
+ * WHY: Perception state affects cognitive state (novelty → curiosity, etc.)
+ * HOW: Propagates perception effects to cognitive modulations:
+ *      - visual_confidence → attention_focus
+ *      - speech_salience → task_relevance
+ *      - visual_novelty → exploration_drive
+ *
+ * BIOLOGICAL BASIS: Sensory cortices (V1, A1, STG) provide perceptual quality
+ * and salience signals that modulate prefrontal cognitive control. Clear,
+ * salient perception enhances attention and focus on learning.
+ *
+ * @param bridge Bridge to connect
+ * @param perception_training Perception-training bridge (may be NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int cognitive_training_connect_perception_training(
+    cognitive_training_bridge_t* bridge,
+    perception_training_bridge_t* perception_training
+);
+
+/**
+ * @brief Connect to cortical-training bridge
+ *
+ * WHAT: Links cognitive bridge to cortical-training for cross-integration
+ * WHY: Cortical dynamics affect cognitive uncertainty and confidence
+ * HOW: Propagates cortical effects to cognitive modulations:
+ *      - (1 - burst_rate) → epistemic_uncertainty
+ *      - predictions_stable → metacognitive_confidence
+ *      - free_energy → cognitive_load (high FE = high load)
+ *
+ * BIOLOGICAL BASIS: Predictive coding and dendritic bursting in cortical
+ * hierarchies provide signals about model uncertainty and prediction stability
+ * that inform metacognitive awareness in prefrontal cortex.
+ *
+ * @param bridge Bridge to connect
+ * @param cortical_training Cortical-training bridge (may be NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int cognitive_training_connect_cortical_training(
+    cognitive_training_bridge_t* bridge,
+    cortical_training_bridge_t* cortical_training
 );
 
 //=============================================================================

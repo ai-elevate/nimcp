@@ -83,6 +83,8 @@ typedef struct portia_logic_bridge portia_logic_bridge_t;
 typedef struct swarm_logic_bridge swarm_logic_bridge_t;
 typedef struct portia_swarm_bridge_t portia_swarm_bridge_t;
 typedef struct brain_struct* brain_t;
+typedef struct perception_training_bridge perception_training_bridge_t;
+typedef struct cortical_training_bridge cortical_training_bridge_t;
 
 //=============================================================================
 // Constants
@@ -146,6 +148,12 @@ typedef struct {
     uint64_t emergency_activations;  /**< Emergency mode activations */
     float avg_decision_time_us;      /**< Average decision time in microseconds */
     float avg_consensus_confidence;  /**< Average consensus confidence [0-1] */
+
+    /* Perception/Cortical integration stats */
+    bool perception_training_connected;  /**< Perception training bridge connected */
+    bool cortical_training_connected;    /**< Cortical training bridge connected */
+    uint64_t perception_influenced_decisions; /**< Decisions influenced by perception */
+    uint64_t cortical_influenced_decisions;   /**< Decisions influenced by cortical */
 } portia_swarm_logic_stats_t;
 
 /**
@@ -298,6 +306,74 @@ int portia_swarm_logic_connect_immune(
 int portia_swarm_logic_connect_umm(
     portia_swarm_logic_bridge_t* bridge,
     void* umm
+);
+
+/**
+ * @brief Connect perception training bridge
+ *
+ * WHAT: Integrates perception training for decision modulation
+ * WHY:  Perception quality affects resource/emergency gate decisions
+ * HOW:  Stores bridge reference, queries perception effects during decisions
+ *
+ * BIOLOGICAL BASIS: Perceptual clarity influences decision confidence.
+ * High perception quality → more confident decisions. Low perception
+ * quality → reduced consensus threshold (proceed cautiously).
+ *
+ * @param bridge Bridge context
+ * @param perception_training Perception training bridge (NULL to disconnect)
+ * @return 0 on success, negative error code on failure
+ */
+int portia_swarm_logic_connect_perception_training(
+    portia_swarm_logic_bridge_t* bridge,
+    perception_training_bridge_t* perception_training
+);
+
+/**
+ * @brief Connect cortical training bridge
+ *
+ * WHAT: Integrates cortical training for decision modulation
+ * WHY:  Cortical stability affects decision thresholds and consensus
+ * HOW:  Stores bridge reference, queries cortical effects during decisions
+ *
+ * BIOLOGICAL BASIS: Stable predictions → reliable decision making.
+ * High burst rate → confident symbolic reasoning. Prediction failure
+ * → cautious decisions (increase consensus requirement).
+ *
+ * @param bridge Bridge context
+ * @param cortical_training Cortical training bridge (NULL to disconnect)
+ * @return 0 on success, negative error code on failure
+ */
+int portia_swarm_logic_connect_cortical_training(
+    portia_swarm_logic_bridge_t* bridge,
+    cortical_training_bridge_t* cortical_training
+);
+
+/**
+ * @brief Get perception-based decision confidence modifier
+ *
+ * WHAT: Compute confidence modifier from perception state
+ * WHY:  Perception quality affects decision confidence
+ * HOW:  Uses perception effects to compute confidence multiplier
+ *
+ * @param bridge Bridge context
+ * @return Confidence modifier [0.5-1.5], 1.0 if not connected
+ */
+float portia_swarm_logic_get_perception_confidence_modifier(
+    const portia_swarm_logic_bridge_t* bridge
+);
+
+/**
+ * @brief Get cortical-based decision threshold modifier
+ *
+ * WHAT: Compute threshold modifier from cortical state
+ * WHY:  Cortical stability affects decision thresholds
+ * HOW:  Uses cortical effects to compute threshold multiplier
+ *
+ * @param bridge Bridge context
+ * @return Threshold modifier [0.7-1.3], 1.0 if not connected
+ */
+float portia_swarm_logic_get_cortical_threshold_modifier(
+    const portia_swarm_logic_bridge_t* bridge
 );
 
 //=============================================================================

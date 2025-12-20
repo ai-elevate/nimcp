@@ -21,6 +21,8 @@ set(PORTIA_INTEGRATION_TESTS
     test_portia_swarm_bridge_integration.cpp
     test_portia_swarm_logic_integration.cpp
     test_portia_logic_bridge_integration.cpp
+    test_perception_portia_swarm_integration.cpp
+    test_cortical_portia_swarm_integration.cpp
 )
 
 # Create test executables
@@ -59,6 +61,8 @@ foreach(test_source ${PORTIA_INTEGRATION_TESTS})
             ${CMAKE_SOURCE_DIR}/include/utils/platform
             ${CMAKE_SOURCE_DIR}/include/utils/validation
             ${CMAKE_SOURCE_DIR}/include/swarm
+            ${CMAKE_SOURCE_DIR}/include/middleware
+            ${CMAKE_SOURCE_DIR}/include/middleware/training
     )
 
     # Compiler flags
