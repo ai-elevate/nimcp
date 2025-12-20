@@ -272,3 +272,63 @@ set_tests_properties(regression_middleware_training_test_cognitive_training_brid
     PROPERTIES
         LABELS "regression;middleware;training;cognitive_training"
         TIMEOUT 300)
+
+# Perception-Training Bridge Regression Tests (Phase PTB-1)
+add_executable(regression_middleware_training_test_perception_training_bridge_regression
+    test_perception_training_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_perception_training_bridge_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_perception_training_bridge_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_perception_training_bridge_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_perception_training_bridge_regression
+         COMMAND regression_middleware_training_test_perception_training_bridge_regression)
+
+set_tests_properties(regression_middleware_training_test_perception_training_bridge_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;perception_training"
+        TIMEOUT 300)
+
+# Cortical-Training Bridge Regression Tests (Phase CRTB-1)
+add_executable(regression_middleware_training_test_cortical_training_bridge_regression
+    test_cortical_training_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_cortical_training_bridge_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_cortical_training_bridge_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_cortical_training_bridge_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_cortical_training_bridge_regression
+         COMMAND regression_middleware_training_test_cortical_training_bridge_regression)
+
+set_tests_properties(regression_middleware_training_test_cortical_training_bridge_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;cortical_training"
+        TIMEOUT 300)

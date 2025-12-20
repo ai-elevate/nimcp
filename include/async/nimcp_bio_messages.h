@@ -580,6 +580,8 @@ typedef enum {
     BIO_MODULE_TRAINING_LOGIC = 0x0520,         /**< Training-Logic bridge - integrates training with logic gates */
     BIO_MODULE_PORTIA_SWARM_LOGIC,              /**< Portia-Swarm-Logic unified bridge */
     BIO_MODULE_COGNITIVE_TRAINING,              /**< Cognitive-Training bridge - cognitive modules modulate training */
+    BIO_MODULE_PERCEPTION_TRAINING,             /**< Perception-Training bridge - perception cortices modulate training */
+    BIO_MODULE_CORTICAL_TRAINING,               /**< Cortical-Training bridge - cortical dynamics modulate training */
 
     /* System modules */
     BIO_MODULE_SYSTEM = 0x0600,

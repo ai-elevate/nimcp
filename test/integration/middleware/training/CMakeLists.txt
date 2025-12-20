@@ -332,3 +332,63 @@ set_tests_properties(integration_middleware_training_test_cognitive_training_bri
     PROPERTIES
         LABELS "integration;middleware;training;cognitive_training"
         TIMEOUT 300)
+
+# Perception-Training Bridge Integration Tests (Phase PTB-1)
+add_executable(integration_middleware_training_test_perception_training_integration
+    test_perception_training_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_perception_training_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_perception_training_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_perception_training_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_perception_training_integration
+         COMMAND integration_middleware_training_test_perception_training_integration)
+
+set_tests_properties(integration_middleware_training_test_perception_training_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;perception_training"
+        TIMEOUT 300)
+
+# Cortical-Training Bridge Integration Tests (Phase CRTB-1)
+add_executable(integration_middleware_training_test_cortical_training_integration
+    test_cortical_training_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_cortical_training_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_cortical_training_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_cortical_training_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_cortical_training_integration
+         COMMAND integration_middleware_training_test_cortical_training_integration)
+
+set_tests_properties(integration_middleware_training_test_cortical_training_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cortical_training"
+        TIMEOUT 300)

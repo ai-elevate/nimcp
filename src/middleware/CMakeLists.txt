@@ -82,6 +82,12 @@ add_library(nimcp_middleware STATIC
 
     # Cognitive-Training Bridge (Phase CTB-1)
     training/nimcp_cognitive_training_bridge.c
+
+    # Perception-Training Bridge (Phase PTB-1)
+    training/nimcp_perception_training_bridge.c
+
+    # Cortical-Training Bridge (Phase CRTB-1)
+    training/nimcp_cortical_training_bridge.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC

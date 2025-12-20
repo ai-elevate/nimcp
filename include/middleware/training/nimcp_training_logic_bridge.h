@@ -93,6 +93,9 @@ typedef enum {
     TRAINING_COND_IMMUNE_OK,             /**< No severe inflammation */
     TRAINING_COND_RESOURCE_OK,           /**< Portia resources available */
     TRAINING_COND_SWARM_CONSENSUS,       /**< Swarm agrees on action */
+    TRAINING_COND_PERCEPTION_QUALITY,    /**< Perception quality above threshold */
+    TRAINING_COND_CORTICAL_STABLE,       /**< Cortical free energy converging */
+    TRAINING_COND_PREDICTIONS_OK,        /**< Cortical burst rate above threshold */
     TRAINING_COND_COUNT
 } training_logic_condition_t;
 

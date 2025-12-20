@@ -615,6 +615,18 @@ add_e2e_test(e2e_test_cognitive_training_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cognitive_training_pipeline.cpp
 )
 
+# Perception-Training Pipeline E2E Test (Perception-Training Bridge Integration)
+add_e2e_test(e2e_test_perception_training_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_perception_training_pipeline.cpp
+)
+
+# Cortical-Training Pipeline E2E Test (Cortical-Training Bridge Integration)
+add_e2e_test(e2e_test_cortical_training_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cortical_training_pipeline.cpp
+)
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")
