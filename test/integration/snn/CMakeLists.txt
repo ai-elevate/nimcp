@@ -55,3 +55,31 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_integration.cpp)
 
     message(STATUS "  Added SNN integration test: test_snn_integration")
 endif()
+
+# ============================================================================
+# SNN Bridge Integration Test
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_bridge_integration.cpp)
+    add_executable(integration_snn_test_bridge_integration
+        test_snn_bridge_integration.cpp
+    )
+
+    target_link_libraries(integration_snn_test_bridge_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_LIBS}
+    )
+
+    target_include_directories(integration_snn_test_bridge_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_INCLUDES}
+    )
+
+    target_compile_features(integration_snn_test_bridge_integration PRIVATE cxx_std_17)
+
+    gtest_discover_tests(integration_snn_test_bridge_integration
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;bridges"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added SNN bridge integration test: test_snn_bridge_integration")
+endif()

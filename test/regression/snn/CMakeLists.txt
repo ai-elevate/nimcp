@@ -55,3 +55,31 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_regression.cpp)
 
     message(STATUS "  Added SNN regression test: test_snn_regression")
 endif()
+
+# ============================================================================
+# SNN Bridge Regression Test
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_bridge_regression.cpp)
+    add_executable(regression_snn_test_bridge_regression
+        test_snn_bridge_regression.cpp
+    )
+
+    target_link_libraries(regression_snn_test_bridge_regression
+        PRIVATE ${SNN_REGRESSION_TEST_LIBS}
+    )
+
+    target_include_directories(regression_snn_test_bridge_regression
+        PRIVATE ${SNN_REGRESSION_TEST_INCLUDES}
+    )
+
+    target_compile_features(regression_snn_test_bridge_regression PRIVATE cxx_std_17)
+
+    gtest_discover_tests(regression_snn_test_bridge_regression
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;snn;bridges"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added SNN bridge regression test: test_snn_bridge_regression")
+endif()

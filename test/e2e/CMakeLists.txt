@@ -660,6 +660,33 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_snn_pipeline.cpp)
     message(STATUS "  Added SNN E2E test: e2e_test_snn_pipeline")
 endif()
 
+# SNN Bridge Pipeline E2E Test
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_snn_bridge_pipeline.cpp)
+    add_executable(e2e_test_snn_bridge_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_snn_bridge_pipeline.cpp
+    )
+    target_include_directories(e2e_test_snn_bridge_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/snn
+    )
+    target_link_libraries(e2e_test_snn_bridge_pipeline PRIVATE
+        nimcp_snn
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_snn_bridge_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_snn_bridge_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;snn;bridges"
+            TIMEOUT 180
+    )
+    message(STATUS "  Added SNN Bridge E2E test: e2e_test_snn_bridge_pipeline")
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")
