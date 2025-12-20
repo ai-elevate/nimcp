@@ -98,3 +98,32 @@ gtest_discover_tests(integration_cognitive_curiosity_fep_bridge
         LABELS "integration;cognitive;curiosity;fep"
         TIMEOUT 120
 )
+
+# Enhanced Curiosity Integration Test
+add_executable(integration_cognitive_curiosity_enhanced
+    curiosity/test_curiosity_enhanced_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_curiosity_enhanced
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_curiosity_enhanced
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_cognitive_curiosity_enhanced PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_curiosity_enhanced
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;curiosity;enhanced"
+        TIMEOUT 180
+)

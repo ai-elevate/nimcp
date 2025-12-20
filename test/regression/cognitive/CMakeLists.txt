@@ -68,5 +68,6 @@ add_subdirectory(joy)
 add_subdirectory(mirror_neurons)
 add_subdirectory(free_energy)
 add_subdirectory(substrate)
+add_subdirectory(curiosity)
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)

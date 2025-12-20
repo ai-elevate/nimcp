@@ -452,6 +452,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/free_energy")
     add_subdirectory(regression/cognitive/free_energy)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/curiosity")
+    message(STATUS "Adding Enhanced Curiosity regression tests...")
+    add_subdirectory(regression/cognitive/curiosity)
+endif()
+
 # ============================================================================
 # Networking Protocol Tests
 # ============================================================================
