@@ -76,6 +76,12 @@ add_library(nimcp_middleware STATIC
 
     # Training Callbacks (Phase TCB-1)
     training/nimcp_training_callbacks.c
+
+    # Training-Logic Bridge (Phase TLB-1)
+    training/nimcp_training_logic_bridge.c
+
+    # Cognitive-Training Bridge (Phase CTB-1)
+    training/nimcp_cognitive_training_bridge.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC

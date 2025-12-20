@@ -576,6 +576,11 @@ typedef enum {
     BIO_MODULE_MIDDLEWARE_EXEC_ADAPTER,
     BIO_MODULE_MIDDLEWARE_QUANTUM_PROPAGATOR,
 
+    /* Training-Logic Bridge modules (0x0520 - 0x052F) */
+    BIO_MODULE_TRAINING_LOGIC = 0x0520,         /**< Training-Logic bridge - integrates training with logic gates */
+    BIO_MODULE_PORTIA_SWARM_LOGIC,              /**< Portia-Swarm-Logic unified bridge */
+    BIO_MODULE_COGNITIVE_TRAINING,              /**< Cognitive-Training bridge - cognitive modules modulate training */
+
     /* System modules */
     BIO_MODULE_SYSTEM = 0x0600,
     BIO_MODULE_MEMORY,

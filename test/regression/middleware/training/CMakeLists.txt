@@ -212,3 +212,63 @@ set_tests_properties(regression_middleware_training_test_training_callbacks_regr
 # Portia-Training Regression Tests (Phase PORTIA-1)
 # DISABLED: test_portia_training_regression.cpp has incorrect API usage
 message(STATUS "  [SKIP] test_portia_training_regression.cpp - API fixes needed")
+
+# Training-Logic Bridge Regression Tests (Phase TLB-1)
+add_executable(regression_middleware_training_test_training_logic_bridge_regression
+    test_training_logic_bridge_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_training_logic_bridge_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_training_logic_bridge_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_training_logic_bridge_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_training_logic_bridge_regression
+         COMMAND regression_middleware_training_test_training_logic_bridge_regression)
+
+set_tests_properties(regression_middleware_training_test_training_logic_bridge_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;logic_bridge"
+        TIMEOUT 300)
+
+# Cognitive-Training Bridge Regression Tests (Phase CTB-1)
+add_executable(regression_middleware_training_test_cognitive_training_bridge_regression
+    test_cognitive_training_bridge_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_cognitive_training_bridge_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_cognitive_training_bridge_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_cognitive_training_bridge_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_cognitive_training_bridge_regression
+         COMMAND regression_middleware_training_test_cognitive_training_bridge_regression)
+
+set_tests_properties(regression_middleware_training_test_cognitive_training_bridge_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;cognitive_training"
+        TIMEOUT 300)

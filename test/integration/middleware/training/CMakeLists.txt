@@ -272,3 +272,63 @@ set_tests_properties(integration_middleware_training_test_training_async_pipelin
 # Portia-Training Integration Tests (Phase PORTIA-1)
 # DISABLED: test_portia_training_integration.cpp has incorrect API usage
 message(STATUS "  [SKIP] test_portia_training_integration.cpp - API fixes needed")
+
+# Training-Logic Bridge Integration Tests (Phase TLB-1)
+add_executable(integration_middleware_training_test_training_logic_bridge_integration
+    test_training_logic_bridge_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_training_logic_bridge_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_training_logic_bridge_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_training_logic_bridge_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_training_logic_bridge_integration
+         COMMAND integration_middleware_training_test_training_logic_bridge_integration)
+
+set_tests_properties(integration_middleware_training_test_training_logic_bridge_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;logic_bridge"
+        TIMEOUT 240)
+
+# Cognitive-Training Bridge Integration Tests (Phase CTB-1)
+add_executable(integration_middleware_training_test_cognitive_training_bridge_integration
+    test_cognitive_training_bridge_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_cognitive_training_bridge_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_cognitive_training_bridge_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_cognitive_training_bridge_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_cognitive_training_bridge_integration
+         COMMAND integration_middleware_training_test_cognitive_training_bridge_integration)
+
+set_tests_properties(integration_middleware_training_test_cognitive_training_bridge_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;cognitive_training"
+        TIMEOUT 300)

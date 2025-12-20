@@ -37,6 +37,7 @@ set(E2E_INCLUDE_DIRS
 set(E2E_LIBRARIES
     nimcp_portia
     nimcp
+    nimcp_middleware
     GTest::GTest
     GTest::Main
     Python3::Python
@@ -601,6 +602,18 @@ set_tests_properties(e2e_test_substrate_bridges_pipeline PROPERTIES
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================
+
+# Training-Logic Pipeline E2E Test (Training-Logic Bridge Integration)
+add_e2e_test(e2e_test_training_logic_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_training_logic_pipeline.cpp
+)
+
+# Cognitive-Training Pipeline E2E Test (Cognitive-Training Bridge Integration)
+add_e2e_test(e2e_test_cognitive_training_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cognitive_training_pipeline.cpp
+)
 
 message(STATUS "")
 message(STATUS "E2E Test Execution:")

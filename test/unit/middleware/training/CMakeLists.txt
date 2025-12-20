@@ -365,3 +365,63 @@ gtest_discover_tests(unit_middleware_training_test_training_adapters_bio_async
 #   - enable_priority_channels (doesn't exist)
 #   - worker_thread_count (should be worker_threads)
 message(STATUS "  [SKIP] test_portia_training_integration.cpp - API fixes needed")
+
+# Training-Logic Bridge Unit Tests (Phase TLB-1)
+add_executable(unit_middleware_training_test_training_logic_bridge
+    test_training_logic_bridge.cpp
+)
+
+target_include_directories(unit_middleware_training_test_training_logic_bridge PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_training_logic_bridge PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_training_logic_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_training_logic_bridge
+         COMMAND unit_middleware_training_test_training_logic_bridge)
+
+set_tests_properties(unit_middleware_training_test_training_logic_bridge
+    PROPERTIES
+        LABELS "unit;middleware;training;logic_bridge"
+        TIMEOUT 120)
+
+# Cognitive-Training Bridge Unit Tests (Phase CTB-1)
+add_executable(unit_middleware_training_test_cognitive_training_bridge
+    test_cognitive_training_bridge.cpp
+)
+
+target_include_directories(unit_middleware_training_test_cognitive_training_bridge PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_cognitive_training_bridge PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_cognitive_training_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_cognitive_training_bridge
+         COMMAND unit_middleware_training_test_cognitive_training_bridge)
+
+set_tests_properties(unit_middleware_training_test_cognitive_training_bridge
+    PROPERTIES
+        LABELS "unit;middleware;training;cognitive_training"
+        TIMEOUT 120)
