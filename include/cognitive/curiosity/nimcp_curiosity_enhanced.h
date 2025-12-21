@@ -198,6 +198,7 @@ typedef struct curiosity_topic_interest_s {
     float current_interest;             /**< Current interest level */
     float decay_rate;                   /**< Topic-specific decay rate */
     float satiation_level;              /**< How "full" of knowledge */
+    float novelty_score;                /**< Novelty score for quantum exploration */
     uint64_t exposure_count;            /**< Number of exposures */
     uint64_t last_exposure_ms;          /**< Last exposure timestamp */
     uint64_t first_exposure_ms;         /**< First encounter timestamp */
@@ -330,6 +331,9 @@ typedef struct curiosity_social_config_s {
 } curiosity_social_config_t;
 
 /* Forward declaration for ToM system - NOTE: theory_of_mind_t is already defined in nimcp_brain.h as a pointer type */
+
+/* Forward declaration for quantum bridge */
+typedef struct curiosity_quantum_bridge_s curiosity_quantum_bridge_t;
 
 /* ============================================================================
  * Enhancement 6: Meta-Curiosity
@@ -529,6 +533,7 @@ typedef struct curiosity_enhanced_config_s {
     float update_interval_ms;           /**< Update frequency */
     bool enable_bio_async;              /**< Enable bio-async messaging */
     bool enable_all_enhancements;       /**< Enable all features */
+    bool enable_quantum_curiosity;      /**< Enable quantum exploration (default: true) */
 } curiosity_enhanced_config_t;
 
 /**
@@ -566,9 +571,11 @@ typedef struct curiosity_enhanced_stats_s {
     uint64_t surprise_events;
     uint64_t fatigue_rest_periods;
     uint64_t counterfactuals_generated;
+    uint64_t quantum_explorations;
     float avg_curiosity_level;
     float avg_boredom_level;
     float avg_fatigue_level;
+    float avg_quantum_speedup;
 } curiosity_enhanced_stats_t;
 
 /**
@@ -1349,6 +1356,78 @@ const char* curiosity_type_to_string(curiosity_type_t type);
  * @brief Convert string to curiosity type
  */
 curiosity_type_t curiosity_type_from_string(const char* str);
+
+/* ============================================================================
+ * Quantum Bridge Integration
+ * ============================================================================ */
+
+/**
+ * @brief Get quantum bridge handle
+ *
+ * WHAT: Access quantum exploration bridge
+ * WHY:  Allow direct quantum exploration queries
+ * HOW:  Return bridge pointer
+ *
+ * @param system System handle
+ * @return Quantum bridge, or NULL if not enabled
+ */
+curiosity_quantum_bridge_t* curiosity_enhanced_get_quantum_bridge(
+    curiosity_enhanced_system_t* system
+);
+
+/**
+ * @brief Perform quantum exploration
+ *
+ * WHAT: Use quantum walk to find novel topics
+ * WHY:  Quadratic speedup over classical exploration
+ * HOW:  Delegate to quantum bridge
+ *
+ * @param system System handle
+ * @param start_topic Starting topic (NULL for current)
+ * @param novel_topic Output: discovered novel topic (256 bytes min)
+ * @return Novelty score, or -1.0f on failure
+ */
+float curiosity_enhanced_quantum_explore(
+    curiosity_enhanced_system_t* system,
+    const char* start_topic,
+    char* novel_topic
+);
+
+/**
+ * @brief Add topic to quantum exploration graph
+ *
+ * WHAT: Register topic for quantum exploration
+ * WHY:  Expand explorable novelty space
+ * HOW:  Add to quantum bridge graph
+ *
+ * @param system System handle
+ * @param topic Topic identifier
+ * @param curiosity_level Initial curiosity [0,1]
+ * @param novelty_score Novelty score [0,1]
+ * @return 0 on success, negative on error
+ */
+int curiosity_enhanced_add_quantum_topic(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    float curiosity_level,
+    float novelty_score
+);
+
+/**
+ * @brief Evaluate topic novelty using quantum walk
+ *
+ * WHAT: Quantum assessment of topic novelty
+ * WHY:  Use quantum walk entropy for novelty
+ * HOW:  Run quantum walk, compute distribution entropy
+ *
+ * @param system System handle
+ * @param topic Topic to evaluate
+ * @return Novelty score [0,1], or -1.0f on error
+ */
+float curiosity_enhanced_quantum_evaluate_novelty(
+    curiosity_enhanced_system_t* system,
+    const char* topic
+);
 
 #ifdef __cplusplus
 }

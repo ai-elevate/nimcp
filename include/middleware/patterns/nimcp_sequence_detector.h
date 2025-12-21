@@ -125,6 +125,10 @@ typedef struct {
     nimcp_pos_encoding_type_t pe_type; // PE type (ROTARY or RELATIVE)
     uint32_t pe_embedding_dim;       // Position embedding dimension
     float pe_similarity_weight;      // Weight for PE similarity [0-1]
+
+    // Quantum Acceleration Configuration
+    bool enable_quantum_matching;    // Enable quantum-accelerated pattern matching
+    float quantum_match_threshold;   // Threshold for quantum match acceptance [0-1]
 } sequence_detector_config_t;
 
 /**

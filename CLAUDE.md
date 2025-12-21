@@ -48,6 +48,27 @@ make <test_target> -j4            # Build specific test
 - Return types and output parameters
 - Enum/constant names
 
+## MANDATORY Test Writing Protocol
+
+**BEFORE writing ANY test code, you MUST:**
+1. Read the COMPLETE header file for the module being tested
+2. List the exact function signatures you will call in a code block
+3. Show the struct definitions for any types you'll use
+4. Only THEN write test code
+
+**NEVER assume or infer:**
+- Function names - READ the header
+- Parameter counts/types - READ the header
+- Return types - READ the header
+- Struct member names - READ the header
+- Default config values - READ the implementation
+
+**If you write test code that fails to compile due to API mismatch:**
+- STOP and acknowledge you violated this protocol
+- Read the actual header before proceeding
+
+**Alternative approach:** Write implementation first, then derive tests from what was actually written - rather than writing tests for APIs you haven't verified.
+
 ## Key API Patterns
 
 ### Tensor Library (`include/utils/tensor/nimcp_tensor.h`)

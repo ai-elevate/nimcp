@@ -374,6 +374,11 @@ bcm_params_t bcm_params_cortical(void) {
      */
     params.max_threshold = 10.0F;
 
+    /* WHAT: Enable quantum threshold optimization by default
+     * WHY:  Quantum annealing finds better thresholds globally
+     */
+    params.enable_quantum_bcm = true;
+
     return params;
 }
 
@@ -417,6 +422,11 @@ bcm_params_t bcm_params_critical_period(void) {
      */
     params.max_threshold = 20.0F;
 
+    /* WHAT: Enable quantum threshold optimization by default
+     * WHY:  Quantum annealing finds better thresholds globally
+     */
+    params.enable_quantum_bcm = true;
+
     return params;
 }
 
@@ -455,6 +465,11 @@ bcm_params_t bcm_params_mature(void) {
      */
     params.min_threshold = 0.2F;
     params.max_threshold = 5.0F;
+
+    /* WHAT: Enable quantum threshold optimization by default
+     * WHY:  Quantum annealing finds better thresholds globally
+     */
+    params.enable_quantum_bcm = true;
 
     return params;
 }
@@ -540,4 +555,62 @@ void bcm_set_sleep_state(bcm_synapse_t* synapse, sleep_state_t state) {
      */
     if (!synapse) return;
     synapse->current_sleep_state = state;
+}
+
+//=============================================================================
+// Quantum Bridge Integration
+//=============================================================================
+
+#define NIMCP_BCM_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "plasticity/bcm/nimcp_bcm_quantum_bridge.h"
+
+void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
+                                float avg_post_activity) {
+    /* WHAT: Extract BCM activity statistics for quantum optimization
+     * WHY:  Provide input to quantum threshold optimization
+     * HOW:  Compute aggregated metrics from synapse population
+     *
+     * COMPLEXITY: O(n) where n = num_synapses
+     */
+
+    /* WHAT: Guard clause - validate inputs */
+    if (!synapses || num_synapses == 0) return NULL;
+
+    /* WHAT: Allocate statistics structure */
+    bcm_activity_stats_t* stats = (bcm_activity_stats_t*)malloc(sizeof(bcm_activity_stats_t));
+    if (!stats) return NULL;
+
+    /* WHAT: Compute BCM statistics */
+    bcm_stats_t bcm_stats;
+    if (!bcm_compute_stats(synapses, num_synapses, &bcm_stats)) {
+        free(stats);
+        return NULL;
+    }
+
+    /* WHAT: Populate activity statistics */
+    stats->avg_weight = bcm_stats.avg_weight;
+    stats->weight_variance = bcm_stats.weight_variance;
+    stats->avg_post_activity = avg_post_activity;
+
+    /* WHAT: Compute selectivity index
+     * WHY:  Measure of feature selectivity (winner-take-all)
+     * HOW:  Ratio of active to total synapses weighted by variance
+     */
+    uint32_t num_active = 0;
+    const float active_threshold = 0.1F;  /* Weights > 0.1 considered active */
+    for (uint32_t i = 0; i < num_synapses; i++) {
+        if (synapses[i].weight > active_threshold) {
+            num_active++;
+        }
+    }
+    stats->num_active_synapses = num_active;
+
+    /* WHAT: Compute selectivity index
+     * WHY:  High variance + low sparsity = selective
+     * FORMULA: selectivity = variance × (1 - sparsity)
+     */
+    float sparsity = (float)num_active / (float)num_synapses;
+    stats->selectivity_index = bcm_stats.weight_variance * (1.0F - sparsity);
+
+    return (void*)stats;
 }

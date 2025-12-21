@@ -688,6 +688,45 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_snn_bridge_pipeline.cpp)
 endif()
 
 # ============================================================================
+# Quantum Bridges Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for quantum-enhanced cognitive bridges
+# WHY:  Verify quantum acceleration works in complete cognitive pipelines
+# HOW:  Test attention, curiosity, emotion, executive, WM, BCM, thalamic integration
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_quantum_bridges_pipeline.cpp)
+    add_executable(e2e_test_quantum_bridges_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_quantum_bridges_pipeline.cpp
+    )
+    target_include_directories(e2e_test_quantum_bridges_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/plasticity/attention
+        ${CMAKE_SOURCE_DIR}/include/cognitive/curiosity
+        ${CMAKE_SOURCE_DIR}/include/cognitive/emotion
+        ${CMAKE_SOURCE_DIR}/include/cognitive/executive
+        ${CMAKE_SOURCE_DIR}/include/cognitive/memory
+        ${CMAKE_SOURCE_DIR}/include/core/logic
+        ${CMAKE_SOURCE_DIR}/include/plasticity/bcm
+        ${CMAKE_SOURCE_DIR}/include/middleware/routing
+    )
+    target_link_libraries(e2e_test_quantum_bridges_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_quantum_bridges_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_quantum_bridges_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;quantum;bridges"
+            TIMEOUT 180
+    )
+    message(STATUS "  Added Quantum Bridges E2E test: e2e_test_quantum_bridges_pipeline")
+endif()
+
+# ============================================================================
 # Enhanced Curiosity Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for Enhanced Curiosity System (10 enhancements)

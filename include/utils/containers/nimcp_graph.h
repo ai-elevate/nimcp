@@ -88,6 +88,8 @@ typedef struct {
  *
  * THREAD SAFETY: Protected by internal mutex (Monitor Pattern)
  * All public API functions acquire lock before modifying graph state.
+ *
+ * QUANTUM ACCELERATION: Optional quantum walk for O(√N) search speedup
  */
 typedef struct {
     uint32_t vertex_count;    /**< Current number of vertices in the graph */
@@ -96,6 +98,10 @@ typedef struct {
     uint32_t* components;     /**< Array tracking connected components */
     uint32_t component_count; /**< Number of distinct connected components */
     nimcp_mutex_t lock;       /**< Mutex for thread-safe operations */
+
+    /* Quantum walk acceleration */
+    void* quantum_bridge;     /**< quantum_walk_bridge_t* for graph search acceleration */
+    bool enable_quantum_walk; /**< Whether quantum walk is enabled (default: true) */
 } NimcpGraph;
 
 /**
@@ -268,6 +274,20 @@ uint32_t nimcp_graph_get_neighbors(const NimcpGraph* graph, uint32_t vertex_idx,
  */
 bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_t to,
                                  nimcp_weight_t* weight);
+
+/**
+ * @brief Find path using quantum walk acceleration
+ *
+ * Hybrid quantum-classical pathfinding algorithm.
+ * Uses quantum walk for O(√N) node discovery, then classical Dijkstra for exact path.
+ * Falls back to classical algorithm if quantum walk is disabled or unavailable.
+ *
+ * @param graph Source graph
+ * @param from Start vertex index
+ * @param to End vertex index
+ * @return Path object or NULL if no path exists
+ */
+NimcpPath* nimcp_graph_quantum_path(NimcpGraph* graph, uint32_t from, uint32_t to);
 
 
 #ifdef __cplusplus

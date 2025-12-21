@@ -145,6 +145,7 @@ typedef struct {
     bool enable_positional_encoding; /**< Apply position encodings (default: true) */
     nimcp_pos_encoding_type_t pe_type; /**< Type of positional encoding (default: SINUSOIDAL) */
     uint32_t pe_embedding_dim;      /**< Dimension for position embeddings (default: 64) */
+    bool enable_quantum_wm;         /**< Enable quantum retrieval (default: true) */
 } working_memory_config_t;
 
 /**

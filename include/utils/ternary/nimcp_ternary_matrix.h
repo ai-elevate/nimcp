@@ -221,6 +221,38 @@ static inline trit_matrix_t* trit_matrix_clone(const trit_matrix_t* src) {
 }
 
 //=============================================================================
+// Fill Operations
+//=============================================================================
+
+/**
+ * @brief Fill matrix with constant value (in-place)
+ *
+ * @param mat Matrix to fill
+ * @param value Value to fill with
+ * @return TERNARY_OK on success
+ */
+static inline ternary_error_t trit_matrix_fill(trit_matrix_t* mat, trit_t value) {
+    if (!mat || mat->magic != TERNARY_MAGIC) return TERNARY_ERR_NULL;
+    if (!TRIT_IS_VALID(value)) return TERNARY_ERR_INVALID;
+
+    if (mat->pack_mode == TERNARY_PACK_NONE) {
+        for (size_t i = 0; i < mat->numel; i++) {
+            mat->data.unpacked[i] = value;
+        }
+    } else if (mat->pack_mode == TERNARY_PACK_2BIT) {
+        trit_t trits[4] = {value, value, value, value};
+        trit_packed2_t packed = trit_pack4(trits);
+        memset(mat->data.packed, packed, mat->packed_bytes);
+    } else {
+        trit_t trits[5] = {value, value, value, value, value};
+        trit_packed243_t packed = trit_pack5(trits);
+        memset(mat->data.packed, packed, mat->packed_bytes);
+    }
+
+    return TERNARY_OK;
+}
+
+//=============================================================================
 // Element Access
 //=============================================================================
 

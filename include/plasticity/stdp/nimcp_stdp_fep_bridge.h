@@ -132,6 +132,9 @@ typedef struct {
     float pe_sensitivity;                /**< PE effect scaling */
     float precision_gain;                /**< Precision effect scaling */
     float belief_sensitivity;            /**< Belief change → STDP effect */
+
+    /* Quantum acceleration */
+    bool enable_quantum_optimization;    /**< Use quantum-accelerated LR optimization */
 } stdp_fep_config_t;
 
 /**
@@ -223,6 +226,10 @@ struct stdp_fep_bridge {
     /* Bio-async */
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    /* Quantum optimization */
+    void* quantum_bridge;                /**< Quantum STDP optimizer bridge */
+    uint64_t quantum_optimizations;      /**< Number of quantum-optimized updates */
 
     /* Thread safety */
     void* mutex;                         /**< Mutex for thread safety */

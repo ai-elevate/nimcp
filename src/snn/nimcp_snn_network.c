@@ -891,6 +891,13 @@ float snn_network_get_population_rate(snn_network_t* network,
     return total_rate / (float)pop->n_neurons;
 }
 
+float snn_population_get_firing_rate(const snn_population_t* population) {
+    if (!population) return 0.0f;
+
+    /* Return the cached mean_rate maintained by the population */
+    return population->mean_rate;
+}
+
 //=============================================================================
 // Integration
 //=============================================================================

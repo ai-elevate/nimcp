@@ -24,6 +24,7 @@ extern "C" {
 #include "core/axon/nimcp_axon.h"
 #include "core/dendrite/nimcp_dendrite.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
+#include "core/neuron_models/nimcp_izhikevich.h"
 #include "utils/memory/nimcp_memory.h"
 }
 
@@ -41,15 +42,11 @@ protected:
     void SetUp() override {
         neural_plasticity_default_config(&config);
 
-        // Create axon network
-        axon_network_config_t axon_config;
-        axon_network_default_config(&axon_config);
-        axon_network = axon_network_create(&axon_config);
+        // Create axon network with capacity
+        axon_network = axon_network_create(100);
 
-        // Create dendrite network
-        dendrite_network_config_t dend_config;
-        dendrite_network_default_config(&dend_config);
-        dendrite_network = dendrite_network_create(&dend_config);
+        // Create dendrite network with capacity
+        dendrite_network = dendrite_network_create(100);
     }
 
     void TearDown() override {
@@ -136,12 +133,12 @@ TEST_F(NeuralPlasticityCoordinatorTest, RegisterNeuron) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
     ASSERT_NE(vtable, nullptr);
 
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(vtable, &params);
 
     EXPECT_EQ(neural_plasticity_register_neuron(coordinator, 1, state, vtable), 0);
 }
@@ -150,19 +147,19 @@ TEST_F(NeuralPlasticityCoordinatorTest, RegisterMultipleNeurons) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     for (uint32_t i = 0; i < 50; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(vtable, &params);
         EXPECT_EQ(neural_plasticity_register_neuron(coordinator, i, state, vtable), 0);
     }
 }
 
 TEST_F(NeuralPlasticityCoordinatorTest, RegisterNeuronWithNullCoordinatorReturnsError) {
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    neuron_model_state_t state;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    neuron_model_state_t state = NULL;
 
     EXPECT_EQ(neural_plasticity_register_neuron(nullptr, 1, state, vtable), -1);
 }
@@ -171,10 +168,10 @@ TEST_F(NeuralPlasticityCoordinatorTest, AddAxonToNeuron) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(vtable, &params);
     neural_plasticity_register_neuron(coordinator, 1, state, vtable);
 
     EXPECT_EQ(neural_plasticity_add_neuron_axon(coordinator, 1, 10), 0);
@@ -184,10 +181,10 @@ TEST_F(NeuralPlasticityCoordinatorTest, AddDendriteToNeuron) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(vtable, &params);
     neural_plasticity_register_neuron(coordinator, 1, state, vtable);
 
     EXPECT_EQ(neural_plasticity_add_neuron_dendrite(coordinator, 1, 20), 0);
@@ -246,12 +243,12 @@ TEST_F(NeuralPlasticityCoordinatorTest, StepWithNeurons) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     for (uint32_t i = 0; i < 10; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(vtable, &params);
         neural_plasticity_register_neuron(coordinator, i, state, vtable);
     }
 
@@ -279,12 +276,12 @@ TEST_F(NeuralPlasticityCoordinatorTest, MultipleSteps) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     for (uint32_t i = 0; i < 5; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(vtable, &params);
         neural_plasticity_register_neuron(coordinator, i, state, vtable);
     }
 
@@ -367,10 +364,10 @@ TEST_F(NeuralPlasticityCoordinatorTest, GetFiringRate) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(vtable, &params);
     neural_plasticity_register_neuron(coordinator, 1, state, vtable);
 
     float rate = neural_plasticity_get_firing_rate(coordinator, 1);
@@ -422,10 +419,10 @@ TEST_F(NeuralPlasticityCoordinatorTest, ResetStats) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(vtable, &params);
     neural_plasticity_register_neuron(coordinator, 1, state, vtable);
 
     // Create activity
@@ -447,12 +444,12 @@ TEST_F(NeuralPlasticityCoordinatorTest, StatsTrackNeuronRegistration) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     for (uint32_t i = 0; i < 10; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(vtable, &params);
         neural_plasticity_register_neuron(coordinator, i, state, vtable);
     }
 
@@ -604,13 +601,13 @@ TEST_F(NeuralPlasticityCoordinatorTest, LongSimulation) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     // Register neurons
     for (uint32_t i = 0; i < 10; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(vtable, &params);
         neural_plasticity_register_neuron(coordinator, i, state, vtable);
     }
 
@@ -643,13 +640,13 @@ TEST_F(NeuralPlasticityCoordinatorTest, WeightChangesOverTime) {
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     // Register pre and post neurons
     for (uint32_t i = 0; i < 2; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(vtable, &params);
         neural_plasticity_register_neuron(coordinator, i, state, vtable);
     }
 

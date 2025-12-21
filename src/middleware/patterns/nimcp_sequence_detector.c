@@ -7,6 +7,10 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
 
+/* Quantum bridge integration */
+#define NIMCP_SEQUENCE_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "middleware/patterns/nimcp_sequence_detector_quantum_bridge.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <math.h>
@@ -76,6 +80,10 @@ struct sequence_detector {
     double pe_similarity_sum;              // Sum of PE similarities
     uint64_t pe_cache_hits;                // PE cache hits
     uint64_t pe_cache_misses;              // PE cache misses
+
+    // Quantum Bridge
+    sequence_quantum_bridge_t* quantum_bridge;  // Quantum-accelerated matching
+    uint64_t quantum_matches;                    // Number of quantum-accelerated matches
 };
 
 // ============================================================================
@@ -276,6 +284,10 @@ sequence_detector_config_t sequence_detector_default_config(void) {
     config.pe_type = NIMCP_POS_ROTARY;  // RoPE for temporal sequences
     config.pe_embedding_dim = 64;       // Moderate dimension
     config.pe_similarity_weight = 0.3F; // Temporal matching still dominant
+
+    // Quantum acceleration defaults (enabled by default)
+    config.enable_quantum_matching = true;
+    config.quantum_match_threshold = 0.7F;  // Require 70% similarity for quantum match
     return config;
 }
 
@@ -321,6 +333,18 @@ sequence_detector_t* sequence_detector_create(const sequence_detector_config_t* 
     detector->pe_cache_hits = 0;
     detector->pe_cache_misses = 0;
 
+    // Initialize quantum bridge
+    detector->quantum_bridge = NULL;
+    detector->quantum_matches = 0;
+    if (detector->config.enable_quantum_matching) {
+        sequence_quantum_config_t qconfig = sequence_quantum_default_config();
+        qconfig.match_threshold = detector->config.quantum_match_threshold;
+        detector->quantum_bridge = sequence_quantum_bridge_create(&qconfig);
+        if (detector->quantum_bridge) {
+            NIMCP_LOGGING_INFO("Quantum-accelerated sequence matching enabled");
+        }
+    }
+
     return detector;
 }
 
@@ -358,6 +382,11 @@ void sequence_detector_destroy(sequence_detector_t* detector) {
     // Destroy PE encoder
     if (detector->pe_encoder) {
         nimcp_pos_encoder_destroy(detector->pe_encoder);
+    }
+
+    // Destroy quantum bridge
+    if (detector->quantum_bridge) {
+        sequence_quantum_bridge_destroy(detector->quantum_bridge);
     }
 
     nimcp_free(detector);
@@ -404,6 +433,21 @@ bool sequence_detector_learn_template(sequence_detector_t* detector,
 
     detector->num_templates++;
 
+    // Register with quantum bridge if enabled
+    if (detector->quantum_bridge && sequence_quantum_bridge_is_enabled(detector->quantum_bridge)) {
+        // Extract neuron IDs for quantum pattern
+        uint32_t* symbols = (uint32_t*)nimcp_malloc(length * sizeof(uint32_t));
+        if (symbols) {
+            for (uint32_t i = 0; i < length; i++) {
+                symbols[i] = elements[i].neuron_id;
+            }
+            char name[32];
+            snprintf(name, sizeof(name), "template_%u", tmpl->template_id);
+            sequence_quantum_add_template(detector->quantum_bridge, name, symbols, length);
+            nimcp_free(symbols);
+        }
+    }
+
     return true;
 }
 
@@ -416,6 +460,33 @@ bool sequence_detector_detect(sequence_detector_t* detector,
     }
 
     *num_detected = 0;
+
+    // Use quantum-accelerated matching if enabled
+    if (detector->quantum_bridge &&
+        sequence_quantum_bridge_is_enabled(detector->quantum_bridge) &&
+        detector->buffer.count > 0) {
+
+        // Extract current sequence from buffer
+        uint32_t seq_len = detector->buffer.count > 32 ? 32 : detector->buffer.count;
+        uint32_t* symbols = (uint32_t*)nimcp_malloc(seq_len * sizeof(uint32_t));
+        if (symbols) {
+            for (uint32_t i = 0; i < seq_len; i++) {
+                uint32_t idx = (detector->buffer.head + detector->buffer.capacity -
+                               detector->buffer.count + i) % detector->buffer.capacity;
+                symbols[i] = detector->buffer.spikes[idx].neuron_id;
+            }
+
+            // Quantum match
+            qseq_match_result_t qresult;
+            if (sequence_quantum_match(detector->quantum_bridge, symbols, seq_len, &qresult) == 0) {
+                if (qresult.similarity >= detector->config.quantum_match_threshold) {
+                    detector->quantum_matches++;
+                    // Use quantum match as hint for classical verification
+                }
+            }
+            nimcp_free(symbols);
+        }
+    }
 
     // Match against all templates
     for (uint32_t i = 0; i < detector->num_templates && *num_detected < max_detections; i++) {

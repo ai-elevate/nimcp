@@ -21,6 +21,10 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+/* Quantum bridge integration */
+#define NIMCP_SEMANTIC_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "cognitive/memory/nimcp_semantic_memory_quantum_bridge.h"
+
 #include "nimcp.h"  // For NIMCP_ERROR_* codes
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -276,6 +280,18 @@ semantic_memory_system_t* semantic_memory_create(void) {
         }
     }
 
+    // Initialize quantum bridge (enabled by default)
+    system->quantum_bridge = NULL;
+    system->quantum_retrievals = 0;
+    system->enable_quantum = true;  // Quantum acceleration enabled
+
+    // Create quantum bridge
+    semantic_quantum_config_t qconfig = semantic_quantum_default_config();
+    system->quantum_bridge = semantic_quantum_bridge_create(&qconfig);
+    if (system->quantum_bridge) {
+        LOG_INFO("Quantum-accelerated semantic retrieval enabled");
+    }
+
 return system;
 }
 
@@ -407,6 +423,12 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
         bio_router_unregister_module(system->bio_ctx);
         system->bio_ctx = NULL;
         system->bio_async_enabled = false;
+    }
+
+    // Destroy quantum bridge
+    if (system->quantum_bridge) {
+        semantic_quantum_bridge_destroy((semantic_quantum_bridge_t*)system->quantum_bridge);
+        system->quantum_bridge = NULL;
     }
 
     nimcp_free(system);

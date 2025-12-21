@@ -237,6 +237,32 @@ nimcp/fast:
 .PHONY : nimcp/fast
 
 #=============================================================================
+# Target rules for targets named nimcp_lnn
+
+# Build rule for target.
+nimcp_lnn: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_lnn
+.PHONY : nimcp_lnn
+
+# fast build rule for target.
+nimcp_lnn/fast:
+	$(MAKE) $(MAKESILENT) -f src/lnn/CMakeFiles/nimcp_lnn.dir/build.make src/lnn/CMakeFiles/nimcp_lnn.dir/build
+.PHONY : nimcp_lnn/fast
+
+#=============================================================================
+# Target rules for targets named nimcp_snn
+
+# Build rule for target.
+nimcp_snn: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_snn
+.PHONY : nimcp_snn
+
+# fast build rule for target.
+nimcp_snn/fast:
+	$(MAKE) $(MAKESILENT) -f src/snn/CMakeFiles/nimcp_snn.dir/build.make src/snn/CMakeFiles/nimcp_snn.dir/build
+.PHONY : nimcp_snn/fast
+
+#=============================================================================
 # Target rules for targets named nimcp_middleware
 
 # Build rule for target.
@@ -599,6 +625,19 @@ unit_cognitive_curiosity_test_curiosity_comprehensive: cmake_check_build_system
 unit_cognitive_curiosity_test_curiosity_comprehensive/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_curiosity_test_curiosity_comprehensive.dir/build.make test/CMakeFiles/unit_cognitive_curiosity_test_curiosity_comprehensive.dir/build
 .PHONY : unit_cognitive_curiosity_test_curiosity_comprehensive/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_curiosity_test_curiosity_enhanced
+
+# Build rule for target.
+unit_cognitive_curiosity_test_curiosity_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_curiosity_test_curiosity_enhanced
+.PHONY : unit_cognitive_curiosity_test_curiosity_enhanced
+
+# fast build rule for target.
+unit_cognitive_curiosity_test_curiosity_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_curiosity_test_curiosity_enhanced.dir/build.make test/CMakeFiles/unit_cognitive_curiosity_test_curiosity_enhanced.dir/build
+.PHONY : unit_cognitive_curiosity_test_curiosity_enhanced/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_curiosity_test_curiosity_fep_bridge
@@ -3383,71 +3422,6 @@ unit_utils_numerical_test_utils_vector_math/fast:
 .PHONY : unit_utils_numerical_test_utils_vector_math/fast
 
 #=============================================================================
-# Target rules for targets named unit_utils_quantum_test_quantum_adaptive_routing
-
-# Build rule for target.
-unit_utils_quantum_test_quantum_adaptive_routing: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_quantum_test_quantum_adaptive_routing
-.PHONY : unit_utils_quantum_test_quantum_adaptive_routing
-
-# fast build rule for target.
-unit_utils_quantum_test_quantum_adaptive_routing/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_quantum_test_quantum_adaptive_routing.dir/build.make test/CMakeFiles/unit_utils_quantum_test_quantum_adaptive_routing.dir/build
-.PHONY : unit_utils_quantum_test_quantum_adaptive_routing/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_quantum_test_quantum_walk
-
-# Build rule for target.
-unit_utils_quantum_test_quantum_walk: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_quantum_test_quantum_walk
-.PHONY : unit_utils_quantum_test_quantum_walk
-
-# fast build rule for target.
-unit_utils_quantum_test_quantum_walk/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_quantum_test_quantum_walk.dir/build.make test/CMakeFiles/unit_utils_quantum_test_quantum_walk.dir/build
-.PHONY : unit_utils_quantum_test_quantum_walk/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_quantum_test_quantum_walk_coin
-
-# Build rule for target.
-unit_utils_quantum_test_quantum_walk_coin: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_quantum_test_quantum_walk_coin
-.PHONY : unit_utils_quantum_test_quantum_walk_coin
-
-# fast build rule for target.
-unit_utils_quantum_test_quantum_walk_coin/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_quantum_test_quantum_walk_coin.dir/build.make test/CMakeFiles/unit_utils_quantum_test_quantum_walk_coin.dir/build
-.PHONY : unit_utils_quantum_test_quantum_walk_coin/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_quantum_test_quantum_walk_integration
-
-# Build rule for target.
-unit_utils_quantum_test_quantum_walk_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_quantum_test_quantum_walk_integration
-.PHONY : unit_utils_quantum_test_quantum_walk_integration
-
-# fast build rule for target.
-unit_utils_quantum_test_quantum_walk_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_quantum_test_quantum_walk_integration.dir/build.make test/CMakeFiles/unit_utils_quantum_test_quantum_walk_integration.dir/build
-.PHONY : unit_utils_quantum_test_quantum_walk_integration/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_quantum_test_utils_quantum_walk
-
-# Build rule for target.
-unit_utils_quantum_test_utils_quantum_walk: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_quantum_test_utils_quantum_walk
-.PHONY : unit_utils_quantum_test_utils_quantum_walk
-
-# fast build rule for target.
-unit_utils_quantum_test_utils_quantum_walk/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_quantum_test_utils_quantum_walk.dir/build.make test/CMakeFiles/unit_utils_quantum_test_utils_quantum_walk.dir/build
-.PHONY : unit_utils_quantum_test_utils_quantum_walk/fast
-
-#=============================================================================
 # Target rules for targets named unit_utils_queue_manager_test_queue_manager
 
 # Build rule for target.
@@ -3901,6 +3875,19 @@ integration_cognitive_consolidation_test_systems_consolidation_integration: cmak
 integration_cognitive_consolidation_test_systems_consolidation_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cognitive_consolidation_test_systems_consolidation_integration.dir/build.make test/CMakeFiles/integration_cognitive_consolidation_test_systems_consolidation_integration.dir/build
 .PHONY : integration_cognitive_consolidation_test_systems_consolidation_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_curiosity_test_curiosity_enhanced_integration
+
+# Build rule for target.
+integration_cognitive_curiosity_test_curiosity_enhanced_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_curiosity_test_curiosity_enhanced_integration
+.PHONY : integration_cognitive_curiosity_test_curiosity_enhanced_integration
+
+# fast build rule for target.
+integration_cognitive_curiosity_test_curiosity_enhanced_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cognitive_curiosity_test_curiosity_enhanced_integration.dir/build.make test/CMakeFiles/integration_cognitive_curiosity_test_curiosity_enhanced_integration.dir/build
+.PHONY : integration_cognitive_curiosity_test_curiosity_enhanced_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_curiosity_test_curiosity_fep_bridge_integration
@@ -6789,6 +6776,71 @@ e2e_test_cortical_training_pipeline/fast:
 .PHONY : e2e_test_cortical_training_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_unified_training_integration
+
+# Build rule for target.
+e2e_test_unified_training_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_unified_training_integration
+.PHONY : e2e_test_unified_training_integration
+
+# fast build rule for target.
+e2e_test_unified_training_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_unified_training_integration.dir/build.make test/e2e/CMakeFiles/e2e_test_unified_training_integration.dir/build
+.PHONY : e2e_test_unified_training_integration/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_snn_pipeline
+
+# Build rule for target.
+e2e_test_snn_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_pipeline
+.PHONY : e2e_test_snn_pipeline
+
+# fast build rule for target.
+e2e_test_snn_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_snn_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_snn_pipeline.dir/build
+.PHONY : e2e_test_snn_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_snn_bridge_pipeline
+
+# Build rule for target.
+e2e_test_snn_bridge_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_bridge_pipeline
+.PHONY : e2e_test_snn_bridge_pipeline
+
+# fast build rule for target.
+e2e_test_snn_bridge_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_snn_bridge_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_snn_bridge_pipeline.dir/build
+.PHONY : e2e_test_snn_bridge_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_quantum_bridges_pipeline
+
+# Build rule for target.
+e2e_test_quantum_bridges_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_quantum_bridges_pipeline
+.PHONY : e2e_test_quantum_bridges_pipeline
+
+# fast build rule for target.
+e2e_test_quantum_bridges_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_quantum_bridges_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_quantum_bridges_pipeline.dir/build
+.PHONY : e2e_test_quantum_bridges_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_curiosity_enhanced_pipeline
+
+# Build rule for target.
+e2e_test_curiosity_enhanced_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_curiosity_enhanced_pipeline
+.PHONY : e2e_test_curiosity_enhanced_pipeline
+
+# fast build rule for target.
+e2e_test_curiosity_enhanced_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_curiosity_enhanced_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_curiosity_enhanced_pipeline.dir/build
+.PHONY : e2e_test_curiosity_enhanced_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -7036,6 +7088,19 @@ unit_middleware_features_feature_extractor/fast:
 .PHONY : unit_middleware_features_feature_extractor/fast
 
 #=============================================================================
+# Target rules for targets named unit_middleware_features_quantum_feature_maps
+
+# Build rule for target.
+unit_middleware_features_quantum_feature_maps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_features_quantum_feature_maps
+.PHONY : unit_middleware_features_quantum_feature_maps
+
+# fast build rule for target.
+unit_middleware_features_quantum_feature_maps/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/features/CMakeFiles/unit_middleware_features_quantum_feature_maps.dir/build.make test/unit/middleware/features/CMakeFiles/unit_middleware_features_quantum_feature_maps.dir/build
+.PHONY : unit_middleware_features_quantum_feature_maps/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_immune_pattern_immune
 
 # Build rule for target.
@@ -7268,6 +7333,19 @@ unit_middleware_patterns_sequence_detector_pe: cmake_check_build_system
 unit_middleware_patterns_sequence_detector_pe/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/middleware/patterns/CMakeFiles/unit_middleware_patterns_sequence_detector_pe.dir/build.make test/unit/middleware/patterns/CMakeFiles/unit_middleware_patterns_sequence_detector_pe.dir/build
 .PHONY : unit_middleware_patterns_sequence_detector_pe/fast
+
+#=============================================================================
+# Target rules for targets named unit_middleware_patterns_quantum_sequence_matcher
+
+# Build rule for target.
+unit_middleware_patterns_quantum_sequence_matcher: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_patterns_quantum_sequence_matcher
+.PHONY : unit_middleware_patterns_quantum_sequence_matcher
+
+# fast build rule for target.
+unit_middleware_patterns_quantum_sequence_matcher/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/patterns/CMakeFiles/unit_middleware_patterns_quantum_sequence_matcher.dir/build.make test/unit/middleware/patterns/CMakeFiles/unit_middleware_patterns_quantum_sequence_matcher.dir/build
+.PHONY : unit_middleware_patterns_quantum_sequence_matcher/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_pipeline_middleware_context
@@ -7944,6 +8022,110 @@ integration_middleware_training_test_cortical_training_integration: cmake_check_
 integration_middleware_training_test_cortical_training_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_training_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_training_integration.dir/build
 .PHONY : integration_middleware_training_test_cortical_training_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_perception_cognitive_integration
+
+# Build rule for target.
+integration_middleware_training_test_perception_cognitive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_perception_cognitive_integration
+.PHONY : integration_middleware_training_test_perception_cognitive_integration
+
+# fast build rule for target.
+integration_middleware_training_test_perception_cognitive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_cognitive_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_cognitive_integration.dir/build
+.PHONY : integration_middleware_training_test_perception_cognitive_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_cortical_cognitive_integration
+
+# Build rule for target.
+integration_middleware_training_test_cortical_cognitive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_cortical_cognitive_integration
+.PHONY : integration_middleware_training_test_cortical_cognitive_integration
+
+# fast build rule for target.
+integration_middleware_training_test_cortical_cognitive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_cognitive_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_cognitive_integration.dir/build
+.PHONY : integration_middleware_training_test_cortical_cognitive_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_perception_logic_integration
+
+# Build rule for target.
+integration_middleware_training_test_perception_logic_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_perception_logic_integration
+.PHONY : integration_middleware_training_test_perception_logic_integration
+
+# fast build rule for target.
+integration_middleware_training_test_perception_logic_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_logic_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_logic_integration.dir/build
+.PHONY : integration_middleware_training_test_perception_logic_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_cortical_logic_integration
+
+# Build rule for target.
+integration_middleware_training_test_cortical_logic_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_cortical_logic_integration
+.PHONY : integration_middleware_training_test_cortical_logic_integration
+
+# fast build rule for target.
+integration_middleware_training_test_cortical_logic_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_logic_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_logic_integration.dir/build
+.PHONY : integration_middleware_training_test_cortical_logic_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_perception_immune_integration
+
+# Build rule for target.
+integration_middleware_training_test_perception_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_perception_immune_integration
+.PHONY : integration_middleware_training_test_perception_immune_integration
+
+# fast build rule for target.
+integration_middleware_training_test_perception_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_immune_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_immune_integration.dir/build
+.PHONY : integration_middleware_training_test_perception_immune_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_cortical_immune_integration
+
+# Build rule for target.
+integration_middleware_training_test_cortical_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_cortical_immune_integration
+.PHONY : integration_middleware_training_test_cortical_immune_integration
+
+# fast build rule for target.
+integration_middleware_training_test_cortical_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_immune_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_immune_integration.dir/build
+.PHONY : integration_middleware_training_test_cortical_immune_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_perception_plasticity_integration
+
+# Build rule for target.
+integration_middleware_training_test_perception_plasticity_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_perception_plasticity_integration
+.PHONY : integration_middleware_training_test_perception_plasticity_integration
+
+# fast build rule for target.
+integration_middleware_training_test_perception_plasticity_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_plasticity_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_plasticity_integration.dir/build
+.PHONY : integration_middleware_training_test_perception_plasticity_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_cortical_plasticity_integration
+
+# Build rule for target.
+integration_middleware_training_test_cortical_plasticity_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_cortical_plasticity_integration
+.PHONY : integration_middleware_training_test_cortical_plasticity_integration
+
+# fast build rule for target.
+integration_middleware_training_test_cortical_plasticity_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_plasticity_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_plasticity_integration.dir/build
+.PHONY : integration_middleware_training_test_cortical_plasticity_integration/fast
 
 #=============================================================================
 # Target rules for targets named regression_middleware_test_signal_filter_regression
@@ -8726,6 +8908,19 @@ test_reasoning_unit_integration/fast:
 .PHONY : test_reasoning_unit_integration/fast
 
 #=============================================================================
+# Target rules for targets named test_quantum_reasoning
+
+# Build rule for target.
+test_quantum_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_quantum_reasoning
+.PHONY : test_quantum_reasoning
+
+# fast build rule for target.
+test_quantum_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/reasoning/CMakeFiles/test_quantum_reasoning.dir/build.make test/unit/cognitive/reasoning/CMakeFiles/test_quantum_reasoning.dir/build
+.PHONY : test_quantum_reasoning/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_reasoning_substrate_bridge
 
 # Build rule for target.
@@ -9153,6 +9348,19 @@ unit_cognitive_test_curiosity_fep_bridge: cmake_check_build_system
 unit_cognitive_test_curiosity_fep_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_fep_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_fep_bridge.dir/build
 .PHONY : unit_cognitive_test_curiosity_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_curiosity_enhanced
+
+# Build rule for target.
+unit_cognitive_test_curiosity_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_curiosity_enhanced
+.PHONY : unit_cognitive_test_curiosity_enhanced
+
+# fast build rule for target.
+unit_cognitive_test_curiosity_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_enhanced.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_enhanced.dir/build
+.PHONY : unit_cognitive_test_curiosity_enhanced/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_fep_bridges
@@ -9634,6 +9842,19 @@ unit_cognitive_executive_substrate_bridge: cmake_check_build_system
 unit_cognitive_executive_substrate_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/executive/substrate/CMakeFiles/unit_cognitive_executive_substrate_bridge.dir/build.make test/unit/cognitive/executive/substrate/CMakeFiles/unit_cognitive_executive_substrate_bridge.dir/build
 .PHONY : unit_cognitive_executive_substrate_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_memory_test_quantum_semantic
+
+# Build rule for target.
+unit_cognitive_memory_test_quantum_semantic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_memory_test_quantum_semantic
+.PHONY : unit_cognitive_memory_test_quantum_semantic
+
+# fast build rule for target.
+unit_cognitive_memory_test_quantum_semantic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/memory/CMakeFiles/unit_cognitive_memory_test_quantum_semantic.dir/build.make test/unit/cognitive/memory/CMakeFiles/unit_cognitive_memory_test_quantum_semantic.dir/build
+.PHONY : unit_cognitive_memory_test_quantum_semantic/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_memory_substrate_bridge
@@ -10141,6 +10362,19 @@ regression_fep_bridges: cmake_check_build_system
 regression_fep_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/free_energy/CMakeFiles/regression_fep_bridges.dir/build.make test/regression/cognitive/free_energy/CMakeFiles/regression_fep_bridges.dir/build
 .PHONY : regression_fep_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_curiosity_enhanced
+
+# Build rule for target.
+regression_cognitive_curiosity_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_curiosity_enhanced
+.PHONY : regression_cognitive_curiosity_enhanced
+
+# fast build rule for target.
+regression_cognitive_curiosity_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_enhanced.dir/build.make test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_enhanced.dir/build
+.PHONY : regression_cognitive_curiosity_enhanced/fast
 
 #=============================================================================
 # Target rules for targets named test_protocol_control_message
@@ -11677,6 +11911,19 @@ unit_utils_gabor_test_gabor_filters/fast:
 .PHONY : unit_utils_gabor_test_gabor_filters/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_ternary_test_ternary_core
+
+# Build rule for target.
+unit_utils_ternary_test_ternary_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_ternary_test_ternary_core
+.PHONY : unit_utils_ternary_test_ternary_core
+
+# fast build rule for target.
+unit_utils_ternary_test_ternary_core/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/ternary/CMakeFiles/unit_utils_ternary_test_ternary_core.dir/build.make test/unit/utils/ternary/CMakeFiles/unit_utils_ternary_test_ternary_core.dir/build
+.PHONY : unit_utils_ternary_test_ternary_core/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_emotion_integration
 
 # Build rule for target.
@@ -11714,6 +11961,19 @@ integration_cognitive_curiosity_fep_bridge: cmake_check_build_system
 integration_cognitive_curiosity_fep_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/CMakeFiles/integration_cognitive_curiosity_fep_bridge.dir/build.make test/integration/cognitive/CMakeFiles/integration_cognitive_curiosity_fep_bridge.dir/build
 .PHONY : integration_cognitive_curiosity_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_curiosity_enhanced
+
+# Build rule for target.
+integration_cognitive_curiosity_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_curiosity_enhanced
+.PHONY : integration_cognitive_curiosity_enhanced
+
+# fast build rule for target.
+integration_cognitive_curiosity_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/CMakeFiles/integration_cognitive_curiosity_enhanced.dir/build.make test/integration/cognitive/CMakeFiles/integration_cognitive_curiosity_enhanced.dir/build
+.PHONY : integration_cognitive_curiosity_enhanced/fast
 
 #=============================================================================
 # Target rules for targets named integration_fep_enhanced
@@ -13653,6 +13913,19 @@ unit_plasticity_triplet_stdp/fast:
 .PHONY : unit_plasticity_triplet_stdp/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_stdp_quantum_optimizer
+
+# Build rule for target.
+unit_plasticity_stdp_quantum_optimizer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_stdp_quantum_optimizer
+.PHONY : unit_plasticity_stdp_quantum_optimizer
+
+# fast build rule for target.
+unit_plasticity_stdp_quantum_optimizer/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_quantum_optimizer.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_quantum_optimizer.dir/build
+.PHONY : unit_plasticity_stdp_quantum_optimizer/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_bcm_sleep_bridge
 
 # Build rule for target.
@@ -13820,6 +14093,19 @@ unit_plasticity_attention_test_attention_pe: cmake_check_build_system
 unit_plasticity_attention_test_attention_pe/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_attention_pe.dir/build.make test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_attention_pe.dir/build
 .PHONY : unit_plasticity_attention_test_attention_pe/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_attention_test_quantum_attention
+
+# Build rule for target.
+unit_plasticity_attention_test_quantum_attention: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_attention_test_quantum_attention
+.PHONY : unit_plasticity_attention_test_quantum_attention
+
+# fast build rule for target.
+unit_plasticity_attention_test_quantum_attention/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_quantum_attention.dir/build.make test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_quantum_attention.dir/build
+.PHONY : unit_plasticity_attention_test_quantum_attention/fast
 
 #=============================================================================
 # Target rules for targets named unit_plasticity_heterosynaptic
@@ -14444,6 +14730,19 @@ test_swarm_logic_bridge_enhanced: cmake_check_build_system
 test_swarm_logic_bridge_enhanced/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_swarm_logic_bridge_enhanced.dir/build.make test/unit/swarm/CMakeFiles/test_swarm_logic_bridge_enhanced.dir/build
 .PHONY : test_swarm_logic_bridge_enhanced/fast
+
+#=============================================================================
+# Target rules for targets named test_quantum_consensus
+
+# Build rule for target.
+test_quantum_consensus: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_quantum_consensus
+.PHONY : test_quantum_consensus
+
+# fast build rule for target.
+test_quantum_consensus/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_quantum_consensus.dir/build.make test/unit/swarm/CMakeFiles/test_quantum_consensus.dir/build
+.PHONY : test_quantum_consensus/fast
 
 #=============================================================================
 # Target rules for targets named unit_swarm_sleep_bridges
@@ -15122,6 +15421,32 @@ test_portia_logic_bridge_integration/fast:
 .PHONY : test_portia_logic_bridge_integration/fast
 
 #=============================================================================
+# Target rules for targets named test_perception_portia_swarm_integration
+
+# Build rule for target.
+test_perception_portia_swarm_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_perception_portia_swarm_integration
+.PHONY : test_perception_portia_swarm_integration
+
+# fast build rule for target.
+test_perception_portia_swarm_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/portia/CMakeFiles/test_perception_portia_swarm_integration.dir/build.make test/integration/portia/CMakeFiles/test_perception_portia_swarm_integration.dir/build
+.PHONY : test_perception_portia_swarm_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_cortical_portia_swarm_integration
+
+# Build rule for target.
+test_cortical_portia_swarm_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_portia_swarm_integration
+.PHONY : test_cortical_portia_swarm_integration
+
+# fast build rule for target.
+test_cortical_portia_swarm_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/portia/CMakeFiles/test_cortical_portia_swarm_integration.dir/build.make test/integration/portia/CMakeFiles/test_cortical_portia_swarm_integration.dir/build
+.PHONY : test_cortical_portia_swarm_integration/fast
+
+#=============================================================================
 # Target rules for targets named test_portia_integration
 
 # Build rule for target.
@@ -15395,6 +15720,682 @@ unit_gpu_immune_multigpu/fast:
 .PHONY : unit_gpu_immune_multigpu/fast
 
 #=============================================================================
+# Target rules for targets named unit_lnn_test_lnn_config
+
+# Build rule for target.
+unit_lnn_test_lnn_config: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_lnn_test_lnn_config
+.PHONY : unit_lnn_test_lnn_config
+
+# fast build rule for target.
+unit_lnn_test_lnn_config/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_config.dir/build.make test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_config.dir/build
+.PHONY : unit_lnn_test_lnn_config/fast
+
+#=============================================================================
+# Target rules for targets named unit_lnn_test_lnn_neuron
+
+# Build rule for target.
+unit_lnn_test_lnn_neuron: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_lnn_test_lnn_neuron
+.PHONY : unit_lnn_test_lnn_neuron
+
+# fast build rule for target.
+unit_lnn_test_lnn_neuron/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_neuron.dir/build.make test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_neuron.dir/build
+.PHONY : unit_lnn_test_lnn_neuron/fast
+
+#=============================================================================
+# Target rules for targets named unit_lnn_test_lnn_layer
+
+# Build rule for target.
+unit_lnn_test_lnn_layer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_lnn_test_lnn_layer
+.PHONY : unit_lnn_test_lnn_layer
+
+# fast build rule for target.
+unit_lnn_test_lnn_layer/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_layer.dir/build.make test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_layer.dir/build
+.PHONY : unit_lnn_test_lnn_layer/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_config
+
+# Build rule for target.
+unit_snn_test_snn_config: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_config
+.PHONY : unit_snn_test_snn_config
+
+# fast build rule for target.
+unit_snn_test_snn_config/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_config.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_config.dir/build
+.PHONY : unit_snn_test_snn_config/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_network
+
+# Build rule for target.
+unit_snn_test_snn_network: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_network
+.PHONY : unit_snn_test_snn_network
+
+# fast build rule for target.
+unit_snn_test_snn_network/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_network.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_network.dir/build
+.PHONY : unit_snn_test_snn_network/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_encoding
+
+# Build rule for target.
+unit_snn_test_snn_encoding: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_encoding
+.PHONY : unit_snn_test_snn_encoding
+
+# fast build rule for target.
+unit_snn_test_snn_encoding/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_encoding.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_encoding.dir/build
+.PHONY : unit_snn_test_snn_encoding/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_training
+
+# Build rule for target.
+unit_snn_test_snn_training: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_training
+.PHONY : unit_snn_test_snn_training
+
+# fast build rule for target.
+unit_snn_test_snn_training/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_training.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_training.dir/build
+.PHONY : unit_snn_test_snn_training/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_bio_async
+
+# Build rule for target.
+unit_snn_test_snn_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_bio_async
+.PHONY : unit_snn_test_snn_bio_async
+
+# fast build rule for target.
+unit_snn_test_snn_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_bio_async.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_bio_async.dir/build
+.PHONY : unit_snn_test_snn_bio_async/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_immune
+
+# Build rule for target.
+unit_snn_test_snn_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_immune
+.PHONY : unit_snn_test_snn_immune
+
+# fast build rule for target.
+unit_snn_test_snn_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_immune.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_immune.dir/build
+.PHONY : unit_snn_test_snn_immune/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_visual_bridge
+
+# Build rule for target.
+test_snn_visual_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_visual_bridge
+.PHONY : test_snn_visual_bridge
+
+# fast build rule for target.
+test_snn_visual_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_visual_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_visual_bridge.dir/build
+.PHONY : test_snn_visual_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_audio_bridge
+
+# Build rule for target.
+test_snn_audio_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_audio_bridge
+.PHONY : test_snn_audio_bridge
+
+# fast build rule for target.
+test_snn_audio_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_audio_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_audio_bridge.dir/build
+.PHONY : test_snn_audio_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_speech_bridge
+
+# Build rule for target.
+test_snn_speech_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_speech_bridge
+.PHONY : test_snn_speech_bridge
+
+# fast build rule for target.
+test_snn_speech_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_speech_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_speech_bridge.dir/build
+.PHONY : test_snn_speech_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_stdp_bridge
+
+# Build rule for target.
+test_snn_stdp_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_stdp_bridge
+.PHONY : test_snn_stdp_bridge
+
+# fast build rule for target.
+test_snn_stdp_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_stdp_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_stdp_bridge.dir/build
+.PHONY : test_snn_stdp_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_bcm_bridge
+
+# Build rule for target.
+test_snn_bcm_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_bcm_bridge
+.PHONY : test_snn_bcm_bridge
+
+# fast build rule for target.
+test_snn_bcm_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_bcm_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_bcm_bridge.dir/build
+.PHONY : test_snn_bcm_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_homeostatic_bridge
+
+# Build rule for target.
+test_snn_homeostatic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_homeostatic_bridge
+.PHONY : test_snn_homeostatic_bridge
+
+# fast build rule for target.
+test_snn_homeostatic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_homeostatic_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_homeostatic_bridge.dir/build
+.PHONY : test_snn_homeostatic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_scaling_bridge
+
+# Build rule for target.
+test_snn_scaling_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_scaling_bridge
+.PHONY : test_snn_scaling_bridge
+
+# fast build rule for target.
+test_snn_scaling_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_scaling_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_scaling_bridge.dir/build
+.PHONY : test_snn_scaling_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_attention_bridge
+
+# Build rule for target.
+test_snn_attention_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_attention_bridge
+.PHONY : test_snn_attention_bridge
+
+# fast build rule for target.
+test_snn_attention_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_attention_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_attention_bridge.dir/build
+.PHONY : test_snn_attention_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_memory_bridge
+
+# Build rule for target.
+test_snn_memory_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_memory_bridge
+.PHONY : test_snn_memory_bridge
+
+# fast build rule for target.
+test_snn_memory_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_memory_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_memory_bridge.dir/build
+.PHONY : test_snn_memory_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_reasoning_bridge
+
+# Build rule for target.
+test_snn_reasoning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_reasoning_bridge
+.PHONY : test_snn_reasoning_bridge
+
+# fast build rule for target.
+test_snn_reasoning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_reasoning_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_reasoning_bridge.dir/build
+.PHONY : test_snn_reasoning_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_executive_bridge
+
+# Build rule for target.
+test_snn_executive_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_executive_bridge
+.PHONY : test_snn_executive_bridge
+
+# fast build rule for target.
+test_snn_executive_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_executive_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_executive_bridge.dir/build
+.PHONY : test_snn_executive_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_hippocampus_bridge
+
+# Build rule for target.
+test_snn_hippocampus_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_hippocampus_bridge
+.PHONY : test_snn_hippocampus_bridge
+
+# fast build rule for target.
+test_snn_hippocampus_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_hippocampus_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_hippocampus_bridge.dir/build
+.PHONY : test_snn_hippocampus_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_prefrontal_bridge
+
+# Build rule for target.
+test_snn_prefrontal_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_prefrontal_bridge
+.PHONY : test_snn_prefrontal_bridge
+
+# fast build rule for target.
+test_snn_prefrontal_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_prefrontal_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_prefrontal_bridge.dir/build
+.PHONY : test_snn_prefrontal_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_routing_bridge
+
+# Build rule for target.
+test_snn_routing_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_routing_bridge
+.PHONY : test_snn_routing_bridge
+
+# fast build rule for target.
+test_snn_routing_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_routing_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_routing_bridge.dir/build
+.PHONY : test_snn_routing_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_buffer_bridge
+
+# Build rule for target.
+test_snn_buffer_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_buffer_bridge
+.PHONY : test_snn_buffer_bridge
+
+# fast build rule for target.
+test_snn_buffer_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_buffer_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_buffer_bridge.dir/build
+.PHONY : test_snn_buffer_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_population_bridge
+
+# Build rule for target.
+test_snn_population_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_population_bridge
+.PHONY : test_snn_population_bridge
+
+# fast build rule for target.
+test_snn_population_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_population_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_population_bridge.dir/build
+.PHONY : test_snn_population_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_thalamic_bridge
+
+# Build rule for target.
+test_snn_thalamic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_thalamic_bridge
+.PHONY : test_snn_thalamic_bridge
+
+# fast build rule for target.
+test_snn_thalamic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_thalamic_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_thalamic_bridge.dir/build
+.PHONY : test_snn_thalamic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_cortical_bridge
+
+# Build rule for target.
+test_snn_cortical_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_cortical_bridge
+.PHONY : test_snn_cortical_bridge
+
+# fast build rule for target.
+test_snn_cortical_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_cortical_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_cortical_bridge.dir/build
+.PHONY : test_snn_cortical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_emotion_bridge
+
+# Build rule for target.
+test_snn_emotion_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_emotion_bridge
+.PHONY : test_snn_emotion_bridge
+
+# fast build rule for target.
+test_snn_emotion_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_emotion_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_emotion_bridge.dir/build
+.PHONY : test_snn_emotion_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_grief_bridge
+
+# Build rule for target.
+test_snn_grief_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_grief_bridge
+.PHONY : test_snn_grief_bridge
+
+# fast build rule for target.
+test_snn_grief_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_grief_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_grief_bridge.dir/build
+.PHONY : test_snn_grief_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_joy_bridge
+
+# Build rule for target.
+test_snn_joy_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_joy_bridge
+.PHONY : test_snn_joy_bridge
+
+# fast build rule for target.
+test_snn_joy_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_joy_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_joy_bridge.dir/build
+.PHONY : test_snn_joy_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_love_bridge
+
+# Build rule for target.
+test_snn_love_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_love_bridge
+.PHONY : test_snn_love_bridge
+
+# fast build rule for target.
+test_snn_love_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_love_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_love_bridge.dir/build
+.PHONY : test_snn_love_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_empathetic_bridge
+
+# Build rule for target.
+test_snn_empathetic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_empathetic_bridge
+.PHONY : test_snn_empathetic_bridge
+
+# fast build rule for target.
+test_snn_empathetic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_empathetic_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_empathetic_bridge.dir/build
+.PHONY : test_snn_empathetic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_introspection_bridge
+
+# Build rule for target.
+test_snn_introspection_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_introspection_bridge
+.PHONY : test_snn_introspection_bridge
+
+# fast build rule for target.
+test_snn_introspection_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_introspection_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_introspection_bridge.dir/build
+.PHONY : test_snn_introspection_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_global_workspace_bridge
+
+# Build rule for target.
+test_snn_global_workspace_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_global_workspace_bridge
+.PHONY : test_snn_global_workspace_bridge
+
+# fast build rule for target.
+test_snn_global_workspace_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_global_workspace_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_global_workspace_bridge.dir/build
+.PHONY : test_snn_global_workspace_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_free_energy_bridge
+
+# Build rule for target.
+test_snn_free_energy_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_free_energy_bridge
+.PHONY : test_snn_free_energy_bridge
+
+# fast build rule for target.
+test_snn_free_energy_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_free_energy_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_free_energy_bridge.dir/build
+.PHONY : test_snn_free_energy_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_self_model_bridge
+
+# Build rule for target.
+test_snn_self_model_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_self_model_bridge
+.PHONY : test_snn_self_model_bridge
+
+# fast build rule for target.
+test_snn_self_model_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_self_model_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_self_model_bridge.dir/build
+.PHONY : test_snn_self_model_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_tom_bridge
+
+# Build rule for target.
+test_snn_tom_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_tom_bridge
+.PHONY : test_snn_tom_bridge
+
+# fast build rule for target.
+test_snn_tom_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_tom_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_tom_bridge.dir/build
+.PHONY : test_snn_tom_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_curiosity_bridge
+
+# Build rule for target.
+test_snn_curiosity_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_curiosity_bridge
+.PHONY : test_snn_curiosity_bridge
+
+# fast build rule for target.
+test_snn_curiosity_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_curiosity_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_curiosity_bridge.dir/build
+.PHONY : test_snn_curiosity_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_meta_learning_bridge
+
+# Build rule for target.
+test_snn_meta_learning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_meta_learning_bridge
+.PHONY : test_snn_meta_learning_bridge
+
+# fast build rule for target.
+test_snn_meta_learning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_meta_learning_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_meta_learning_bridge.dir/build
+.PHONY : test_snn_meta_learning_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_wellbeing_bridge
+
+# Build rule for target.
+test_snn_wellbeing_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_wellbeing_bridge
+.PHONY : test_snn_wellbeing_bridge
+
+# fast build rule for target.
+test_snn_wellbeing_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_wellbeing_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_wellbeing_bridge.dir/build
+.PHONY : test_snn_wellbeing_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_mental_health_bridge
+
+# Build rule for target.
+test_snn_mental_health_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_mental_health_bridge
+.PHONY : test_snn_mental_health_bridge
+
+# fast build rule for target.
+test_snn_mental_health_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_mental_health_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_mental_health_bridge.dir/build
+.PHONY : test_snn_mental_health_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_sleep_bridge
+
+# Build rule for target.
+test_snn_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_sleep_bridge
+.PHONY : test_snn_sleep_bridge
+
+# fast build rule for target.
+test_snn_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_sleep_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_sleep_bridge.dir/build
+.PHONY : test_snn_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_shadow_bridge
+
+# Build rule for target.
+test_snn_shadow_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_shadow_bridge
+.PHONY : test_snn_shadow_bridge
+
+# fast build rule for target.
+test_snn_shadow_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_shadow_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_shadow_bridge.dir/build
+.PHONY : test_snn_shadow_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_emotional_tagging_bridge
+
+# Build rule for target.
+test_snn_emotional_tagging_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_emotional_tagging_bridge
+.PHONY : test_snn_emotional_tagging_bridge
+
+# fast build rule for target.
+test_snn_emotional_tagging_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_emotional_tagging_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_emotional_tagging_bridge.dir/build
+.PHONY : test_snn_emotional_tagging_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_autobiographical_bridge
+
+# Build rule for target.
+test_snn_autobiographical_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_autobiographical_bridge
+.PHONY : test_snn_autobiographical_bridge
+
+# fast build rule for target.
+test_snn_autobiographical_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_autobiographical_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_autobiographical_bridge.dir/build
+.PHONY : test_snn_autobiographical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_training_bridge
+
+# Build rule for target.
+test_snn_training_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_training_bridge
+.PHONY : test_snn_training_bridge
+
+# fast build rule for target.
+test_snn_training_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_training_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_training_bridge.dir/build
+.PHONY : test_snn_training_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_training_integration_bridge
+
+# Build rule for target.
+test_snn_training_integration_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_training_integration_bridge
+.PHONY : test_snn_training_integration_bridge
+
+# fast build rule for target.
+test_snn_training_integration_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_training_integration_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_training_integration_bridge.dir/build
+.PHONY : test_snn_training_integration_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_medulla_bridge
+
+# Build rule for target.
+test_snn_medulla_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_medulla_bridge
+.PHONY : test_snn_medulla_bridge
+
+# fast build rule for target.
+test_snn_medulla_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_medulla_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_medulla_bridge.dir/build
+.PHONY : test_snn_medulla_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_test_integration
+
+# Build rule for target.
+integration_snn_test_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_test_integration
+.PHONY : integration_snn_test_integration
+
+# fast build rule for target.
+integration_snn_test_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_test_integration.dir/build.make test/integration/snn/CMakeFiles/integration_snn_test_integration.dir/build
+.PHONY : integration_snn_test_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_test_bridge_integration
+
+# Build rule for target.
+integration_snn_test_bridge_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_test_bridge_integration
+.PHONY : integration_snn_test_bridge_integration
+
+# fast build rule for target.
+integration_snn_test_bridge_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_test_bridge_integration.dir/build.make test/integration/snn/CMakeFiles/integration_snn_test_bridge_integration.dir/build
+.PHONY : integration_snn_test_bridge_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_regression
+
+# Build rule for target.
+regression_snn_test_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_regression
+.PHONY : regression_snn_test_regression
+
+# fast build rule for target.
+regression_snn_test_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_regression.dir/build
+.PHONY : regression_snn_test_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_bridge_regression
+
+# Build rule for target.
+regression_snn_test_bridge_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_bridge_regression
+.PHONY : regression_snn_test_bridge_regression
+
+# fast build rule for target.
+regression_snn_test_bridge_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_bridge_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_bridge_regression.dir/build
+.PHONY : regression_snn_test_bridge_regression/fast
+
+#=============================================================================
 # Target rules for targets named bench_benchmark_complex_vs_real_oscillations
 
 # Build rule for target.
@@ -15601,6 +16602,58 @@ bench_benchmark_pattern_cow: cmake_check_build_system
 bench_benchmark_pattern_cow/fast:
 	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_pattern_cow.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_pattern_cow.dir/build
 .PHONY : bench_benchmark_pattern_cow/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_quantum_test_quantum_walk_ternary
+
+# Build rule for target.
+unit_utils_quantum_test_quantum_walk_ternary: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_quantum_test_quantum_walk_ternary
+.PHONY : unit_utils_quantum_test_quantum_walk_ternary
+
+# fast build rule for target.
+unit_utils_quantum_test_quantum_walk_ternary/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/quantum/CMakeFiles/unit_utils_quantum_test_quantum_walk_ternary.dir/build.make test/unit/utils/quantum/CMakeFiles/unit_utils_quantum_test_quantum_walk_ternary.dir/build
+.PHONY : unit_utils_quantum_test_quantum_walk_ternary/fast
+
+#=============================================================================
+# Target rules for targets named unit_quantum_bridges
+
+# Build rule for target.
+unit_quantum_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_quantum_bridges
+.PHONY : unit_quantum_bridges
+
+# fast build rule for target.
+unit_quantum_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/quantum/CMakeFiles/unit_quantum_bridges.dir/build.make test/unit/quantum/CMakeFiles/unit_quantum_bridges.dir/build
+.PHONY : unit_quantum_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_quantum_bridges
+
+# Build rule for target.
+integration_quantum_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_quantum_bridges
+.PHONY : integration_quantum_bridges
+
+# fast build rule for target.
+integration_quantum_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/quantum/CMakeFiles/integration_quantum_bridges.dir/build.make test/integration/quantum/CMakeFiles/integration_quantum_bridges.dir/build
+.PHONY : integration_quantum_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_quantum_bridges
+
+# Build rule for target.
+regression_quantum_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_quantum_bridges
+.PHONY : regression_quantum_bridges
+
+# fast build rule for target.
+regression_quantum_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/quantum/CMakeFiles/regression_quantum_bridges.dir/build.make test/regression/quantum/CMakeFiles/regression_quantum_bridges.dir/build
+.PHONY : regression_quantum_bridges/fast
 
 #=============================================================================
 # Target rules for targets named simple_demo
@@ -16016,6 +17069,7 @@ help:
 	@echo "... e2e_test_core_directives_pipeline"
 	@echo "... e2e_test_cortical_substrate_pipeline"
 	@echo "... e2e_test_cortical_training_pipeline"
+	@echo "... e2e_test_curiosity_enhanced_pipeline"
 	@echo "... e2e_test_distributed_pipeline"
 	@echo "... e2e_test_emotion_tensor_pipeline"
 	@echo "... e2e_test_fep_bridges_pipeline"
@@ -16044,16 +17098,20 @@ help:
 	@echo "... e2e_test_portia_threat_response"
 	@echo "... e2e_test_portia_tier_lifecycle"
 	@echo "... e2e_test_positional_encoding_pipeline"
+	@echo "... e2e_test_quantum_bridges_pipeline"
 	@echo "... e2e_test_second_messenger_pipeline"
 	@echo "... e2e_test_security_attack_simulation"
 	@echo "... e2e_test_server_swarm_pipeline"
 	@echo "... e2e_test_sleep_bridge_pipeline"
+	@echo "... e2e_test_snn_bridge_pipeline"
+	@echo "... e2e_test_snn_pipeline"
 	@echo "... e2e_test_substrate_bridges_pipeline"
 	@echo "... e2e_test_swarm_consciousness_enhanced_pipeline"
 	@echo "... e2e_test_swarm_consciousness_pipeline"
 	@echo "... e2e_test_swarm_formation"
 	@echo "... e2e_test_swarm_threat_response"
 	@echo "... e2e_test_training_logic_pipeline"
+	@echo "... e2e_test_unified_training_integration"
 	@echo "... e2e_test_wellbeing_enhanced_pipeline"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
@@ -16077,7 +17135,9 @@ help:
 	@echo "... integration_brain_regions_test_visual_cortex_integration"
 	@echo "... integration_cognitive_bio_async_test"
 	@echo "... integration_cognitive_consolidation_test_systems_consolidation_integration"
+	@echo "... integration_cognitive_curiosity_enhanced"
 	@echo "... integration_cognitive_curiosity_fep_bridge"
+	@echo "... integration_cognitive_curiosity_test_curiosity_enhanced_integration"
 	@echo "... integration_cognitive_curiosity_test_curiosity_fep_bridge_integration"
 	@echo "... integration_cognitive_emotion_integration"
 	@echo "... integration_cognitive_emotion_tensor_test_emotion_tensor_integration"
@@ -16160,10 +17220,18 @@ help:
 	@echo "... integration_middleware_test_signal_filter_integration"
 	@echo "... integration_middleware_training_test_brain_training_integration"
 	@echo "... integration_middleware_training_test_cognitive_training_bridge_integration"
+	@echo "... integration_middleware_training_test_cortical_cognitive_integration"
+	@echo "... integration_middleware_training_test_cortical_immune_integration"
+	@echo "... integration_middleware_training_test_cortical_logic_integration"
+	@echo "... integration_middleware_training_test_cortical_plasticity_integration"
 	@echo "... integration_middleware_training_test_cortical_training_integration"
 	@echo "... integration_middleware_training_test_event_driven_plasticity_integration"
 	@echo "... integration_middleware_training_test_loss_functions_integration"
 	@echo "... integration_middleware_training_test_optimizers_integration"
+	@echo "... integration_middleware_training_test_perception_cognitive_integration"
+	@echo "... integration_middleware_training_test_perception_immune_integration"
+	@echo "... integration_middleware_training_test_perception_logic_integration"
+	@echo "... integration_middleware_training_test_perception_plasticity_integration"
 	@echo "... integration_middleware_training_test_perception_training_integration"
 	@echo "... integration_middleware_training_test_plasticity_bridge_integration"
 	@echo "... integration_middleware_training_test_security_registration_integration"
@@ -16208,6 +17276,7 @@ help:
 	@echo "... integration_plasticity_stp_test_stp_integration"
 	@echo "... integration_plasticity_structural_test_structural_integration"
 	@echo "... integration_plasticity_triplet_stdp"
+	@echo "... integration_quantum_bridges"
 	@echo "... integration_security_sleep_bridges"
 	@echo "... integration_security_test_anomaly_detector"
 	@echo "... integration_security_test_bbb_bio_router"
@@ -16219,6 +17288,8 @@ help:
 	@echo "... integration_security_test_math_integration"
 	@echo "... integration_security_test_pattern_db"
 	@echo "... integration_security_test_swarm_security"
+	@echo "... integration_snn_test_bridge_integration"
+	@echo "... integration_snn_test_integration"
 	@echo "... integration_swarm_immune_bridges"
 	@echo "... integration_swarm_sleep_bridges"
 	@echo "... integration_test_brain_oscillations_integration"
@@ -16256,9 +17327,11 @@ help:
 	@echo "... multimodal_integration_demo"
 	@echo "... neuromodulation_integration_example"
 	@echo "... nimcp"
+	@echo "... nimcp_lnn"
 	@echo "... nimcp_middleware"
 	@echo "... nimcp_portia"
 	@echo "... nimcp_python"
+	@echo "... nimcp_snn"
 	@echo "... nlp_integration_demo"
 	@echo "... nlp_integration_test"
 	@echo "... phase8_comprehensive_demo"
@@ -16272,6 +17345,7 @@ help:
 	@echo "... regression_btree_test_ethics_btree_regression"
 	@echo "... regression_cognitive_bio_async_test"
 	@echo "... regression_cognitive_consolidation_test_systems_consolidation_backward_compat"
+	@echo "... regression_cognitive_curiosity_enhanced"
 	@echo "... regression_cognitive_emotion_tensor_test_emotion_tensor_regression"
 	@echo "... regression_cognitive_emotions_test_emotional_system_regression"
 	@echo "... regression_cognitive_ethics_test_asimov_laws_regression"
@@ -16441,6 +17515,7 @@ help:
 	@echo "... regression_portia_test_planning_performance"
 	@echo "... regression_portia_test_power_stability"
 	@echo "... regression_portia_test_tier_switch_stability"
+	@echo "... regression_quantum_bridges"
 	@echo "... regression_security_sleep_bridges"
 	@echo "... regression_security_test_anomaly_detector"
 	@echo "... regression_security_test_bbb_regression"
@@ -16457,6 +17532,8 @@ help:
 	@echo "... regression_security_test_shell_detector"
 	@echo "... regression_security_test_supply_chain"
 	@echo "... regression_security_test_validation_performance"
+	@echo "... regression_snn_test_bridge_regression"
+	@echo "... regression_snn_test_regression"
 	@echo "... regression_swarm_bridges"
 	@echo "... regression_test_brain_oscillations_regression"
 	@echo "... regression_test_brain_resize_backward_compat"
@@ -16508,6 +17585,7 @@ help:
 	@echo "... test_cortical_neuromodulation"
 	@echo "... test_cortical_oscillations_integration"
 	@echo "... test_cortical_plasticity_bridge"
+	@echo "... test_cortical_portia_swarm_integration"
 	@echo "... test_cortical_predictive_coding"
 	@echo "... test_cortical_sparse_coding"
 	@echo "... test_cortical_surround"
@@ -16527,6 +17605,7 @@ help:
 	@echo "... test_nlp_mode_transitions"
 	@echo "... test_nlp_neural_sync"
 	@echo "... test_nlp_peer_communication"
+	@echo "... test_perception_portia_swarm_integration"
 	@echo "... test_phase3"
 	@echo "... test_phase4"
 	@echo "... test_pink_weights"
@@ -16562,6 +17641,8 @@ help:
 	@echo "... test_protocol_event_packet"
 	@echo "... test_protocol_feature_subscription"
 	@echo "... test_protocol_integration"
+	@echo "... test_quantum_consensus"
+	@echo "... test_quantum_reasoning"
 	@echo "... test_quorum_immune_logic_integration"
 	@echo "... test_quorum_immune_logic_regression"
 	@echo "... test_quorum_logic"
@@ -16570,6 +17651,45 @@ help:
 	@echo "... test_reasoning_performance"
 	@echo "... test_reasoning_unit_integration"
 	@echo "... test_rule_learning_accuracy"
+	@echo "... test_snn_attention_bridge"
+	@echo "... test_snn_audio_bridge"
+	@echo "... test_snn_autobiographical_bridge"
+	@echo "... test_snn_bcm_bridge"
+	@echo "... test_snn_buffer_bridge"
+	@echo "... test_snn_cortical_bridge"
+	@echo "... test_snn_curiosity_bridge"
+	@echo "... test_snn_emotion_bridge"
+	@echo "... test_snn_emotional_tagging_bridge"
+	@echo "... test_snn_empathetic_bridge"
+	@echo "... test_snn_executive_bridge"
+	@echo "... test_snn_free_energy_bridge"
+	@echo "... test_snn_global_workspace_bridge"
+	@echo "... test_snn_grief_bridge"
+	@echo "... test_snn_hippocampus_bridge"
+	@echo "... test_snn_homeostatic_bridge"
+	@echo "... test_snn_introspection_bridge"
+	@echo "... test_snn_joy_bridge"
+	@echo "... test_snn_love_bridge"
+	@echo "... test_snn_medulla_bridge"
+	@echo "... test_snn_memory_bridge"
+	@echo "... test_snn_mental_health_bridge"
+	@echo "... test_snn_meta_learning_bridge"
+	@echo "... test_snn_population_bridge"
+	@echo "... test_snn_prefrontal_bridge"
+	@echo "... test_snn_reasoning_bridge"
+	@echo "... test_snn_routing_bridge"
+	@echo "... test_snn_scaling_bridge"
+	@echo "... test_snn_self_model_bridge"
+	@echo "... test_snn_shadow_bridge"
+	@echo "... test_snn_sleep_bridge"
+	@echo "... test_snn_speech_bridge"
+	@echo "... test_snn_stdp_bridge"
+	@echo "... test_snn_thalamic_bridge"
+	@echo "... test_snn_tom_bridge"
+	@echo "... test_snn_training_bridge"
+	@echo "... test_snn_training_integration_bridge"
+	@echo "... test_snn_visual_bridge"
+	@echo "... test_snn_wellbeing_bridge"
 	@echo "... test_sparse_synapse"
 	@echo "... test_swarm_brain"
 	@echo "... test_swarm_brain_fep_bridge"
@@ -16645,6 +17765,7 @@ help:
 	@echo "... unit_cognitive_consolidation_test_systems_consolidation"
 	@echo "... unit_cognitive_curiosity_test_curiosity"
 	@echo "... unit_cognitive_curiosity_test_curiosity_comprehensive"
+	@echo "... unit_cognitive_curiosity_test_curiosity_enhanced"
 	@echo "... unit_cognitive_curiosity_test_curiosity_fep_bridge"
 	@echo "... unit_cognitive_curiosity_test_curiosity_immune_integration"
 	@echo "... unit_cognitive_emotion_substrate_bridge"
@@ -16704,6 +17825,7 @@ help:
 	@echo "... unit_cognitive_introspection_temporal_patterns"
 	@echo "... unit_cognitive_joy_test_joy_euphoria"
 	@echo "... unit_cognitive_memory_substrate_bridge"
+	@echo "... unit_cognitive_memory_test_quantum_semantic"
 	@echo "... unit_cognitive_mental_health_basic"
 	@echo "... unit_cognitive_mental_health_coverage"
 	@echo "... unit_cognitive_mental_health_detectors"
@@ -16730,6 +17852,7 @@ help:
 	@echo "... unit_cognitive_sleep_wake_test_sleep_wake"
 	@echo "... unit_cognitive_test_bio_async"
 	@echo "... unit_cognitive_test_bio_async_registration"
+	@echo "... unit_cognitive_test_curiosity_enhanced"
 	@echo "... unit_cognitive_test_curiosity_fep_bridge"
 	@echo "... unit_cognitive_test_curiosity_immune"
 	@echo "... unit_cognitive_test_fep_bridges"
@@ -16896,6 +18019,9 @@ help:
 	@echo "... unit_io_test_stream"
 	@echo "... unit_io_test_vesicle_packaging"
 	@echo "... unit_lib_cognitive_test_hierarchical"
+	@echo "... unit_lnn_test_lnn_config"
+	@echo "... unit_lnn_test_lnn_layer"
+	@echo "... unit_lnn_test_lnn_neuron"
 	@echo "... unit_middleware_brain_integration_test_brain_integration"
 	@echo "... unit_middleware_buffering_buffer_immune_integration"
 	@echo "... unit_middleware_buffering_circular_buffer"
@@ -16915,6 +18041,7 @@ help:
 	@echo "... unit_middleware_events_event_queue"
 	@echo "... unit_middleware_events_event_types"
 	@echo "... unit_middleware_features_feature_extractor"
+	@echo "... unit_middleware_features_quantum_feature_maps"
 	@echo "... unit_middleware_immune_pattern_immune"
 	@echo "... unit_middleware_integration"
 	@echo "... unit_middleware_integration_CMakeFiles_3.28.3_CompilerIdCXX_CMakeCXXCompilerId"
@@ -16930,6 +18057,7 @@ help:
 	@echo "... unit_middleware_patterns_oscillation_detector"
 	@echo "... unit_middleware_patterns_oscillation_detector_phasor"
 	@echo "... unit_middleware_patterns_pattern_library"
+	@echo "... unit_middleware_patterns_quantum_sequence_matcher"
 	@echo "... unit_middleware_patterns_sequence_detector"
 	@echo "... unit_middleware_patterns_sequence_detector_pe"
 	@echo "... unit_middleware_patterns_synchrony_detector"
@@ -16998,6 +18126,7 @@ help:
 	@echo "... unit_plasticity_astrocyte"
 	@echo "... unit_plasticity_astrocyte_test_astrocyte_plasticity"
 	@echo "... unit_plasticity_attention_test_attention_pe"
+	@echo "... unit_plasticity_attention_test_quantum_attention"
 	@echo "... unit_plasticity_axon_orchestrator_bridge"
 	@echo "... unit_plasticity_bcm_sleep_bridge"
 	@echo "... unit_plasticity_bcm_test_bcm"
@@ -17042,6 +18171,7 @@ help:
 	@echo "... unit_plasticity_second_messengers_test"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers"
 	@echo "... unit_plasticity_second_messengers_test_second_messengers_modules"
+	@echo "... unit_plasticity_stdp_quantum_optimizer"
 	@echo "... unit_plasticity_stdp_sleep_bridge"
 	@echo "... unit_plasticity_structural"
 	@echo "... unit_plasticity_structural_test_structural_plasticity"
@@ -17050,6 +18180,7 @@ help:
 	@echo "... unit_plasticity_test_fep_bridges"
 	@echo "... unit_plasticity_triplet_stdp"
 	@echo "... unit_portia_immune_bridges"
+	@echo "... unit_quantum_bridges"
 	@echo "... unit_security_immune_pattern_db"
 	@echo "... unit_security_sleep_bridges"
 	@echo "... unit_security_test_anomaly_detector"
@@ -17075,6 +18206,12 @@ help:
 	@echo "... unit_security_test_shell_detector"
 	@echo "... unit_security_test_supply_chain"
 	@echo "... unit_shannon_monitor_bio_async"
+	@echo "... unit_snn_test_snn_bio_async"
+	@echo "... unit_snn_test_snn_config"
+	@echo "... unit_snn_test_snn_encoding"
+	@echo "... unit_snn_test_snn_immune"
+	@echo "... unit_snn_test_snn_network"
+	@echo "... unit_snn_test_snn_training"
 	@echo "... unit_swarm_immune_bridges"
 	@echo "... unit_swarm_sleep_bridges"
 	@echo "... unit_test_brain_full_simulation"
@@ -17138,11 +18275,7 @@ help:
 	@echo "... unit_utils_memory_test_unified_memory"
 	@echo "... unit_utils_memory_test_working_memory"
 	@echo "... unit_utils_numerical_test_utils_vector_math"
-	@echo "... unit_utils_quantum_test_quantum_adaptive_routing"
-	@echo "... unit_utils_quantum_test_quantum_walk"
-	@echo "... unit_utils_quantum_test_quantum_walk_coin"
-	@echo "... unit_utils_quantum_test_quantum_walk_integration"
-	@echo "... unit_utils_quantum_test_utils_quantum_walk"
+	@echo "... unit_utils_quantum_test_quantum_walk_ternary"
 	@echo "... unit_utils_queue_manager_test_queue_manager"
 	@echo "... unit_utils_signal_test_hilbert"
 	@echo "... unit_utils_signal_test_signal_filter"
@@ -17151,6 +18284,7 @@ help:
 	@echo "... unit_utils_tensor_networks_test_mps"
 	@echo "... unit_utils_tensor_networks_test_mps_compression"
 	@echo "... unit_utils_tensor_test_tensor"
+	@echo "... unit_utils_ternary_test_ternary_core"
 	@echo "... unit_utils_test_kdtree"
 	@echo "... unit_utils_test_queue_utils"
 	@echo "... unit_utils_test_thread_utils"

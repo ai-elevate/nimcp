@@ -10,6 +10,10 @@
 #include <math.h>
 #include <string.h>
 
+/* Quantum bridge integration */
+#define NIMCP_STDP_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "plasticity/stdp/nimcp_stdp_quantum_bridge.h"
+
 /* Logging module name */
 #define LOG_MODULE_STDP_FEP "STDP_FEP_BRIDGE"
 
@@ -37,6 +41,8 @@ int stdp_fep_bridge_default_config(stdp_fep_config_t* config) {
     config->pe_sensitivity = 1.0f;
     config->precision_gain = 1.0f;
     config->belief_sensitivity = 0.5f;
+
+    config->enable_quantum_optimization = true;  /* Enabled by default */
 
     return 0;
 }
@@ -66,6 +72,17 @@ stdp_fep_bridge_t* stdp_fep_bridge_create(const stdp_fep_config_t* config) {
     bridge->effects.total_lr_scaling = 1.0f;
     bridge->effects.effective_learning_rate = 0.01f;
 
+    /* Initialize quantum bridge if enabled */
+    bridge->quantum_bridge = NULL;
+    bridge->quantum_optimizations = 0;
+    if (bridge->config.enable_quantum_optimization) {
+        stdp_quantum_config_t qconfig = stdp_quantum_default_config();
+        bridge->quantum_bridge = stdp_quantum_bridge_create(&qconfig);
+        if (bridge->quantum_bridge) {
+            NIMCP_LOGGING_INFO("Quantum-accelerated STDP optimization enabled");
+        }
+    }
+
     NIMCP_LOGGING_INFO("STDP-FEP bridge created");
     return bridge;
 }
@@ -75,6 +92,11 @@ void stdp_fep_bridge_destroy(stdp_fep_bridge_t* bridge) {
 
     if (bridge->bio_async_enabled) {
         stdp_fep_bridge_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy quantum bridge */
+    if (bridge->quantum_bridge) {
+        stdp_quantum_bridge_destroy((stdp_quantum_bridge_t*)bridge->quantum_bridge);
     }
 
     if (bridge->mutex) {
@@ -268,6 +290,22 @@ int stdp_fep_bridge_update(stdp_fep_bridge_t* bridge, uint64_t delta_ms) {
         }
 
         bridge->effects.total_lr_scaling = pe_lr_scaling * precision_lr_scaling * belief_lr_scaling;
+
+        /* Apply quantum optimization if enabled */
+        if (bridge->quantum_bridge && stdp_quantum_bridge_is_enabled((stdp_quantum_bridge_t*)bridge->quantum_bridge)) {
+            qstdp_activity_stats_t activity_stats = {0};
+            activity_stats.mean_weight = 0.5f;  /* Default estimate */
+            activity_stats.weight_variance = 0.1f;
+            activity_stats.firing_rate = 10.0f;  /* Default estimate */
+            activity_stats.ltp_rate = bridge->effects.pe_magnitude * 100.0f;
+            activity_stats.ltd_rate = (1.0f - bridge->effects.precision_value) * 50.0f;
+            activity_stats.ltp_ltd_ratio = (activity_stats.ltd_rate > 0.0f) ?
+                activity_stats.ltp_rate / activity_stats.ltd_rate : 1.0f;
+
+            float quantum_lr = stdp_quantum_step((stdp_quantum_bridge_t*)bridge->quantum_bridge, &activity_stats);
+            bridge->effects.total_lr_scaling *= quantum_lr;
+            bridge->quantum_optimizations++;
+        }
 
         bridge->stats.avg_pe_scaling =
             (bridge->stats.avg_pe_scaling * bridge->stats.total_updates + pe_lr_scaling) /

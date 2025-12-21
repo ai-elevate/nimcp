@@ -785,6 +785,30 @@ __/cognitive/curiosity/nimcp_curiosity.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_curiosity.c.s
 .PHONY : __/cognitive/curiosity/nimcp_curiosity.c.s
 
+__/cognitive/curiosity/nimcp_curiosity_enhanced.o: __/cognitive/curiosity/nimcp_curiosity_enhanced.c.o
+.PHONY : __/cognitive/curiosity/nimcp_curiosity_enhanced.o
+
+# target to build an object file
+__/cognitive/curiosity/nimcp_curiosity_enhanced.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_curiosity_enhanced.c.o
+.PHONY : __/cognitive/curiosity/nimcp_curiosity_enhanced.c.o
+
+__/cognitive/curiosity/nimcp_curiosity_enhanced.i: __/cognitive/curiosity/nimcp_curiosity_enhanced.c.i
+.PHONY : __/cognitive/curiosity/nimcp_curiosity_enhanced.i
+
+# target to preprocess a source file
+__/cognitive/curiosity/nimcp_curiosity_enhanced.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_curiosity_enhanced.c.i
+.PHONY : __/cognitive/curiosity/nimcp_curiosity_enhanced.c.i
+
+__/cognitive/curiosity/nimcp_curiosity_enhanced.s: __/cognitive/curiosity/nimcp_curiosity_enhanced.c.s
+.PHONY : __/cognitive/curiosity/nimcp_curiosity_enhanced.s
+
+# target to generate assembly for a file
+__/cognitive/curiosity/nimcp_curiosity_enhanced.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_curiosity_enhanced.c.s
+.PHONY : __/cognitive/curiosity/nimcp_curiosity_enhanced.c.s
+
 __/cognitive/curiosity/nimcp_curiosity_fep_bridge.o: __/cognitive/curiosity/nimcp_curiosity_fep_bridge.c.o
 .PHONY : __/cognitive/curiosity/nimcp_curiosity_fep_bridge.o
 
@@ -7217,6 +7241,30 @@ __/core/logic/nimcp_neural_logic_neuromodulation.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/logic/nimcp_neural_logic_neuromodulation.c.s
 .PHONY : __/core/logic/nimcp_neural_logic_neuromodulation.c.s
 
+__/core/logic/nimcp_neural_logic_quantum_bridge.o: __/core/logic/nimcp_neural_logic_quantum_bridge.c.o
+.PHONY : __/core/logic/nimcp_neural_logic_quantum_bridge.o
+
+# target to build an object file
+__/core/logic/nimcp_neural_logic_quantum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/logic/nimcp_neural_logic_quantum_bridge.c.o
+.PHONY : __/core/logic/nimcp_neural_logic_quantum_bridge.c.o
+
+__/core/logic/nimcp_neural_logic_quantum_bridge.i: __/core/logic/nimcp_neural_logic_quantum_bridge.c.i
+.PHONY : __/core/logic/nimcp_neural_logic_quantum_bridge.i
+
+# target to preprocess a source file
+__/core/logic/nimcp_neural_logic_quantum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/logic/nimcp_neural_logic_quantum_bridge.c.i
+.PHONY : __/core/logic/nimcp_neural_logic_quantum_bridge.c.i
+
+__/core/logic/nimcp_neural_logic_quantum_bridge.s: __/core/logic/nimcp_neural_logic_quantum_bridge.c.s
+.PHONY : __/core/logic/nimcp_neural_logic_quantum_bridge.s
+
+# target to generate assembly for a file
+__/core/logic/nimcp_neural_logic_quantum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/logic/nimcp_neural_logic_quantum_bridge.c.s
+.PHONY : __/core/logic/nimcp_neural_logic_quantum_bridge.c.s
+
 __/core/medulla/nimcp_arousal_state.o: __/core/medulla/nimcp_arousal_state.c.o
 .PHONY : __/core/medulla/nimcp_arousal_state.o
 
@@ -10288,6 +10336,30 @@ __/optimization/quantum_annealing/nimcp_quantum_annealing.s: __/optimization/qua
 __/optimization/quantum_annealing/nimcp_quantum_annealing.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing.c.s
 .PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.c.s
+
+__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.o: __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.o
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.o
+
+# target to build an object file
+__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.o
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.o
+
+__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.i: __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.i
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.i
+
+# target to preprocess a source file
+__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.i
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.i
+
+__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.s: __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.s
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.s
+
+# target to generate assembly for a file
+__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.s
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c.s
 
 __/perception/cortical/nimcp_audio_cortical_bridge.o: __/perception/cortical/nimcp_audio_cortical_bridge.c.o
 .PHONY : __/perception/cortical/nimcp_audio_cortical_bridge.o
@@ -17441,6 +17513,30 @@ __/utils/tensor_networks/nimcp_svd_lapack.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_svd_lapack.c.s
 .PHONY : __/utils/tensor_networks/nimcp_svd_lapack.c.s
 
+__/utils/ternary/nimcp_ternary_tensor.o: __/utils/ternary/nimcp_ternary_tensor.c.o
+.PHONY : __/utils/ternary/nimcp_ternary_tensor.o
+
+# target to build an object file
+__/utils/ternary/nimcp_ternary_tensor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/ternary/nimcp_ternary_tensor.c.o
+.PHONY : __/utils/ternary/nimcp_ternary_tensor.c.o
+
+__/utils/ternary/nimcp_ternary_tensor.i: __/utils/ternary/nimcp_ternary_tensor.c.i
+.PHONY : __/utils/ternary/nimcp_ternary_tensor.i
+
+# target to preprocess a source file
+__/utils/ternary/nimcp_ternary_tensor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/ternary/nimcp_ternary_tensor.c.i
+.PHONY : __/utils/ternary/nimcp_ternary_tensor.c.i
+
+__/utils/ternary/nimcp_ternary_tensor.s: __/utils/ternary/nimcp_ternary_tensor.c.s
+.PHONY : __/utils/ternary/nimcp_ternary_tensor.s
+
+# target to generate assembly for a file
+__/utils/ternary/nimcp_ternary_tensor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/ternary/nimcp_ternary_tensor.c.s
+.PHONY : __/utils/ternary/nimcp_ternary_tensor.c.s
+
 __/utils/thread/nimcp_atomic.o: __/utils/thread/nimcp_atomic.c.o
 .PHONY : __/utils/thread/nimcp_atomic.o
 
@@ -17818,6 +17914,9 @@ help:
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.o"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.i"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.s"
+	@echo "... __/cognitive/curiosity/nimcp_curiosity_enhanced.o"
+	@echo "... __/cognitive/curiosity/nimcp_curiosity_enhanced.i"
+	@echo "... __/cognitive/curiosity/nimcp_curiosity_enhanced.s"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity_fep_bridge.o"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity_fep_bridge.i"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity_fep_bridge.s"
@@ -18622,6 +18721,9 @@ help:
 	@echo "... __/core/logic/nimcp_neural_logic_neuromodulation.o"
 	@echo "... __/core/logic/nimcp_neural_logic_neuromodulation.i"
 	@echo "... __/core/logic/nimcp_neural_logic_neuromodulation.s"
+	@echo "... __/core/logic/nimcp_neural_logic_quantum_bridge.o"
+	@echo "... __/core/logic/nimcp_neural_logic_quantum_bridge.i"
+	@echo "... __/core/logic/nimcp_neural_logic_quantum_bridge.s"
 	@echo "... __/core/medulla/nimcp_arousal_state.o"
 	@echo "... __/core/medulla/nimcp_arousal_state.i"
 	@echo "... __/core/medulla/nimcp_arousal_state.s"
@@ -19006,6 +19108,9 @@ help:
 	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.o"
 	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.i"
 	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.s"
+	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.o"
+	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.i"
+	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing_ternary.s"
 	@echo "... __/perception/cortical/nimcp_audio_cortical_bridge.o"
 	@echo "... __/perception/cortical/nimcp_audio_cortical_bridge.i"
 	@echo "... __/perception/cortical/nimcp_audio_cortical_bridge.s"
@@ -19900,6 +20005,9 @@ help:
 	@echo "... __/utils/tensor_networks/nimcp_svd_lapack.o"
 	@echo "... __/utils/tensor_networks/nimcp_svd_lapack.i"
 	@echo "... __/utils/tensor_networks/nimcp_svd_lapack.s"
+	@echo "... __/utils/ternary/nimcp_ternary_tensor.o"
+	@echo "... __/utils/ternary/nimcp_ternary_tensor.i"
+	@echo "... __/utils/ternary/nimcp_ternary_tensor.s"
 	@echo "... __/utils/thread/nimcp_atomic.o"
 	@echo "... __/utils/thread/nimcp_atomic.i"
 	@echo "... __/utils/thread/nimcp_atomic.s"

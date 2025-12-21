@@ -35,6 +35,8 @@
 #include "cognitive/immune/nimcp_brain_immune.h"  // Brain immune integration (cytokine enums)
 #include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
 #include "cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"  // Sleep bridge for modulation
+#define NIMCP_WORKING_MEMORY_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "cognitive/memory/nimcp_working_memory_quantum_bridge.h"  // Quantum retrieval bridge
 
 #include "nimcp.h"  // For error codes
 #include "async/nimcp_bio_async.h"
@@ -137,6 +139,10 @@ struct working_memory {
 
     // Sleep state integration
     sleep_state_t current_sleep_state;       // Current sleep/wake state for modulation
+
+    // Quantum retrieval integration
+    working_memory_quantum_bridge_t* quantum_bridge;  // Quantum search bridge
+    bool enable_quantum_wm;                          // Quantum retrieval enabled
 };
 
 //=============================================================================
@@ -399,6 +405,11 @@ static void evict_item_at_index(working_memory_t* wm, uint32_t index) {
         return;
     }
 
+    // Remove from quantum bridge before eviction
+    if (wm->enable_quantum_wm && wm->quantum_bridge) {
+        working_memory_quantum_remove(wm->quantum_bridge, index);
+    }
+
     // Free item memory
     nimcp_free(wm->items[index]);
 
@@ -485,7 +496,8 @@ working_memory_config_t working_memory_default_config(void) {
         .enable_temporal_decay = true,
         .enable_positional_encoding = true,           // Enable position encoding
         .pe_type = NIMCP_POS_SINUSOIDAL,              // Sinusoidal (no training needed)
-        .pe_embedding_dim = 64                        // 64-dim position embeddings
+        .pe_embedding_dim = 64,                       // 64-dim position embeddings
+        .enable_quantum_wm = true                     // Enable quantum retrieval
     };
     return config;
 }
@@ -680,6 +692,26 @@ working_memory_t* working_memory_create_custom(
                  wm->pe_type, wm->pe_embedding_dim);
     }
 
+    // Initialize quantum retrieval bridge
+    wm->quantum_bridge = NULL;
+    wm->enable_quantum_wm = config->enable_quantum_wm;
+
+    if (wm->enable_quantum_wm) {
+        working_memory_quantum_config_t qconfig = working_memory_quantum_default_config();
+        qconfig.max_items = config->capacity;
+        qconfig.item_embedding_dim = config->pe_embedding_dim;  // Use same dim as PE
+
+        wm->quantum_bridge = working_memory_quantum_bridge_create(&qconfig);
+        if (!wm->quantum_bridge) {
+            LOG_ERROR("Failed to create quantum bridge");
+            working_memory_destroy(wm);
+            return NULL;
+        }
+
+        LOG_INFO("Quantum working memory bridge enabled: max_items=%u, embedding_dim=%u",
+                 qconfig.max_items, qconfig.item_embedding_dim);
+    }
+
     return wm;
 }
 
@@ -731,6 +763,12 @@ void working_memory_destroy(working_memory_t* wm) {
     if (wm->pe_buffer) {
         nimcp_free(wm->pe_buffer);
         wm->pe_buffer = NULL;
+    }
+
+    // Destroy quantum bridge
+    if (wm->quantum_bridge) {
+        working_memory_quantum_bridge_destroy(wm->quantum_bridge);
+        wm->quantum_bridge = NULL;
     }
 
     // Destroy mutex
@@ -828,6 +866,11 @@ bool working_memory_add(
 
     wm->current_size++;
     wm->total_additions++;
+
+    // Store in quantum bridge for fast retrieval
+    if (wm->enable_quantum_wm && wm->quantum_bridge) {
+        working_memory_quantum_store(wm->quantum_bridge, item_copy, item_size, index, salience);
+    }
 
     // Check for high utilization and signal stress to immune system
     if (wm->immune_integration_enabled && wm->immune) {
@@ -1032,6 +1075,11 @@ void working_memory_clear(working_memory_t* wm) {
 
     wm->current_size = 0;
 
+    // Clear quantum bridge
+    if (wm->enable_quantum_wm && wm->quantum_bridge) {
+        working_memory_quantum_clear(wm->quantum_bridge);
+    }
+
     nimcp_platform_mutex_unlock(&wm->mutex);
 }
 
@@ -1187,6 +1235,13 @@ bool working_memory_refresh(working_memory_t* wm, uint32_t index) {
     wm->timestamps[index] = get_current_time_ms();
     wm->attention_refreshed[index] = true;
     wm->total_refreshes++;
+
+    // Update quantum bridge with refreshed salience
+    if (wm->enable_quantum_wm && wm->quantum_bridge) {
+        working_memory_quantum_update(wm->quantum_bridge, index,
+                                      wm->items[index], wm->item_sizes[index],
+                                      wm->salience[index]);
+    }
 
     nimcp_platform_mutex_unlock(&wm->mutex);
     return true;

@@ -29,6 +29,10 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
+/* Quantum bridge integration */
+#define NIMCP_EPISODIC_MEMORY_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "cognitive/memory/nimcp_episodic_memory_quantum_bridge.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -100,6 +104,10 @@ struct episodic_memory {
 
     // ======== Statistics ========
     episodic_memory_stats_t stats;
+
+    // ======== Quantum Bridge ========
+    episodic_quantum_bridge_t* quantum_bridge; /**< Quantum pattern matching */
+    bool enable_quantum_episodic;              /**< Enable quantum operations */
 
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
@@ -452,10 +460,23 @@ episodic_memory_t* episodic_memory_create_custom(
     // Initialize stats
     memset(&memory->stats, 0, sizeof(episodic_memory_stats_t));
 
+    // Initialize quantum bridge (enabled by default)
+    memory->enable_quantum_episodic = true;
+    episodic_quantum_config_t qconfig = episodic_quantum_default_config();
+    qconfig.max_episodes = config->max_episodes;
+    memory->quantum_bridge = episodic_quantum_bridge_create(&qconfig);
+    if (memory->quantum_bridge) {
+        episodic_quantum_bridge_connect(memory->quantum_bridge, memory);
+        LOG_INFO("Quantum episodic bridge enabled");
+    } else {
+        LOG_WARN("Failed to create quantum bridge, using LSH only");
+        memory->enable_quantum_episodic = false;
+    }
+
     LOG_INFO("Created episodic memory: capacity=%u, lsh_tables=%u",
              memory->capacity, memory->num_lsh_tables);
 
-    
+
     // Bio-async registration
     memory->bio_ctx = NULL;
     memory->bio_async_enabled = false;
@@ -479,6 +500,12 @@ void episodic_memory_destroy(episodic_memory_t* memory)
 {
     LOG_DEBUG("Destroying module");
     if (!memory) return;
+
+    // Destroy quantum bridge
+    if (memory->quantum_bridge) {
+        episodic_quantum_bridge_destroy(memory->quantum_bridge);
+        memory->quantum_bridge = NULL;
+    }
 
     // Free LSH tables
     if (memory->lsh_tables) {
@@ -633,6 +660,16 @@ bool episodic_memory_store(
     // Index in LSH tables
     for (uint32_t i = 0; i < memory->num_lsh_tables; i++) {
         lsh_table_add(memory->lsh_tables[i], &ep.error_sig, insert_idx);
+    }
+
+    // Encode in quantum bridge for temporal pattern matching
+    if (memory->enable_quantum_episodic && memory->quantum_bridge) {
+        uint32_t pattern_id;
+        int qstatus = episodic_quantum_encode_episode(
+            memory->quantum_bridge, &ep, &pattern_id);
+        if (qstatus != 0) {
+            LOG_DEBUG("Failed to encode episode in quantum bridge: %d", qstatus);
+        }
     }
 
     // Update statistics

@@ -190,6 +190,9 @@ typedef struct {
 
     // Bio-async communication
     bool enable_bio_async;       /**< Enable bio-async messaging */
+
+    // Quantum acceleration
+    bool enable_quantum_neural_logic; /**< Enable quantum SAT solving */
 } neural_logic_config_t;
 
 //=============================================================================
@@ -670,6 +673,41 @@ NIMCP_EXPORT nimcp_error_t neural_logic_broadcast_circuit_complete(
     uint32_t spikes_generated,
     uint32_t gates_evaluated
 );
+
+//=============================================================================
+// Quantum Acceleration API
+//=============================================================================
+
+/**
+ * WHAT: Get quantum bridge instance (lazy initialization)
+ * WHY:  Enable quantum-accelerated SAT solving for neural circuits
+ * HOW:  Create bridge on first access, reuse thereafter
+ *
+ * @param network Neural logic network handle
+ * @return Quantum bridge handle (opaque), or NULL if disabled
+ *
+ * USAGE:
+ * - Automatically creates bridge if quantum enabled
+ * - Returns cached bridge on subsequent calls
+ * - Returns NULL if quantum disabled in config
+ */
+NIMCP_EXPORT void* neural_logic_get_quantum_bridge(neural_logic_network_t network);
+
+/**
+ * WHAT: Check if quantum acceleration is enabled
+ *
+ * @param network Neural logic network handle
+ * @return true if quantum enabled and available
+ */
+NIMCP_EXPORT bool neural_logic_is_quantum_enabled(neural_logic_network_t network);
+
+/**
+ * WHAT: Enable/disable quantum acceleration at runtime
+ *
+ * @param network Neural logic network handle
+ * @param enabled Enable quantum mode
+ */
+NIMCP_EXPORT void neural_logic_set_quantum_enabled(neural_logic_network_t network, bool enabled);
 
 #ifdef __cplusplus
 }

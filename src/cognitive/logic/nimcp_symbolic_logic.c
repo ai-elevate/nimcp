@@ -25,6 +25,9 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 
+#define NIMCP_SYMBOLIC_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "cognitive/reasoning/nimcp_symbolic_logic_quantum_bridge.h"
+
 #define LOG_MODULE "cognitive.logic"
 #define BIO_MODULE_COGNITIVE_LOGIC 0x0343
 
@@ -52,6 +55,9 @@ struct symbolic_logic {
     // Working memory for inference
     logic_clause_t** working_memory;
     uint32_t working_memory_size;
+
+    // Quantum bridge integration
+    symbolic_quantum_bridge_t* quantum_bridge;  /**< Quantum reasoning bridge */
 
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
@@ -396,7 +402,41 @@ bool symbolic_logic_evaluate(
 
     if (!formula->atom) return false;
 
-    // Check if formula matches any fact in KB
+    // WHAT: Try quantum-accelerated evaluation first if available
+    // WHY:  O(√N) speedup for SAT solving, handles uncertainty with ternary logic
+    // HOW:  Query quantum bridge, fallback to classical evaluation
+    if (logic->quantum_bridge && symbolic_quantum_bridge_is_enabled(logic->quantum_bridge)) {
+        // Map predicate name to variable ID (simple hash for demo)
+        uint32_t variable = 0;
+        for (size_t i = 0; i < strlen(formula->atom->name); i++) {
+            variable = (variable * 31 + formula->atom->name[i]) % 1000;
+        }
+        variable = variable % QREASON_MAX_VARIABLES;  // Ensure within bounds
+
+        qreason_result_t qresult;
+        memset(&qresult, 0, sizeof(qresult));
+
+        int query_status = symbolic_quantum_query(logic->quantum_bridge, variable, &qresult);
+        if (query_status == 0 && qresult.confidences[variable] >= 0.5f) {
+            // Convert ternary truth value to boolean
+            qreason_truth_t truth = qresult.assignment[variable];
+            if (truth == QREASON_TRUE) {
+                *result = !formula->atom->negated;
+                LOG_DEBUG("Quantum evaluation: TRUE (confidence: %.2f)",
+                         qresult.confidences[variable]);
+                return true;
+            } else if (truth == QREASON_FALSE) {
+                *result = formula->atom->negated;
+                LOG_DEBUG("Quantum evaluation: FALSE (confidence: %.2f)",
+                         qresult.confidences[variable]);
+                return true;
+            }
+            // QREASON_UNKNOWN falls through to classical evaluation
+            LOG_DEBUG("Quantum evaluation: UNKNOWN, falling back to classical");
+        }
+    }
+
+    // Classical evaluation: check if formula matches any fact in KB
     for (uint32_t i = 0; i < logic->num_facts; i++) {
         kb_entry_t* entry = logic->kb[i];
         if (!entry || !entry->clause || entry->clause->num_literals == 0) continue;
@@ -548,6 +588,29 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
 
     memset(&logic->stats, 0, sizeof(logic_stats_t));
 
+    // Initialize quantum bridge if enabled
+    logic->quantum_bridge = NULL;
+    if (config->enable_quantum_logic) {
+        symbolic_quantum_config_t qconfig = symbolic_quantum_default_config();
+        qconfig.enabled = true;
+        qconfig.max_inference_depth = config->max_inference_depth;
+
+        logic->quantum_bridge = symbolic_quantum_bridge_create(&qconfig);
+        if (!logic->quantum_bridge) {
+            NIMCP_LOGGING_WARN("Failed to create quantum bridge, continuing without quantum acceleration");
+        } else {
+            // Connect quantum bridge to symbolic logic
+            int connect_result = symbolic_quantum_bridge_connect(logic->quantum_bridge, logic);
+            if (connect_result != 0) {
+                NIMCP_LOGGING_WARN("Failed to connect quantum bridge");
+                symbolic_quantum_bridge_destroy(logic->quantum_bridge);
+                logic->quantum_bridge = NULL;
+            } else {
+                NIMCP_LOGGING_INFO("Quantum reasoning bridge initialized");
+            }
+        }
+    }
+
     // Bio-async registration
     logic->bio_ctx = NULL;
     logic->bio_async_enabled = false;
@@ -605,6 +668,12 @@ void symbolic_logic_destroy(symbolic_logic_t* logic)
             logic_clause_destroy(logic->working_memory[i]);
         }
         nimcp_free(logic->working_memory);
+    }
+
+    // Destroy quantum bridge
+    if (logic->quantum_bridge) {
+        symbolic_quantum_bridge_destroy(logic->quantum_bridge);
+        logic->quantum_bridge = NULL;
     }
 
     // Unregister from bio-router

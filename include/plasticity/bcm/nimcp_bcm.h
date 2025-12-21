@@ -102,6 +102,7 @@ typedef struct {
     float min_threshold;              /**< Minimum θ (prevents over-depression) */
     float max_threshold;              /**< Maximum θ (prevents runaway) */
     bool enable_bio_async;            /**< Enable bio-async communication */
+    bool enable_quantum_bcm;          /**< Enable quantum threshold optimization (default: true) */
 } bcm_params_t;
 
 /**
@@ -267,6 +268,21 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
  * @param state New sleep state
  */
 void bcm_set_sleep_state(bcm_synapse_t* synapse, sleep_state_t state);
+
+/**
+ * @brief Extract BCM activity statistics for quantum optimization
+ *
+ * WHAT: Compute aggregated statistics from BCM synapses
+ * WHY:  Provide input to quantum threshold optimization
+ * HOW:  Analyze synapse population for activity metrics
+ *
+ * @param synapses Array of BCM synapses
+ * @param num_synapses Number of synapses
+ * @param avg_post_activity Average post-synaptic activity
+ * @return Activity statistics for quantum bridge
+ */
+void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
+                                float avg_post_activity);
 
 //=============================================================================
 // Module Management

@@ -182,6 +182,11 @@ typedef struct {
     void* bio_ctx;                    /**< bio_module_context_t pointer */
     bool bio_async_enabled;           /**< Bio-async registration status */
 
+    // Quantum acceleration
+    void* quantum_bridge;             /**< Quantum semantic retrieval bridge */
+    uint64_t quantum_retrievals;      /**< Number of quantum-accelerated retrievals */
+    bool enable_quantum;              /**< Whether quantum retrieval is enabled */
+
 } semantic_memory_system_t;
 
 /**

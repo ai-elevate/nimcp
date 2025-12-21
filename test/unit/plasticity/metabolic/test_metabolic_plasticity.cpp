@@ -105,7 +105,7 @@ TEST_F(MetabolicPlasticityTest, InitialATPState) {
 
 TEST_F(MetabolicPlasticityTest, ConsumeLTPEvent) {
     float initial_atp = metabolic_plasticity_get_atp_level(metabolic);
-    int ret = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+    int ret = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     EXPECT_EQ(ret, 0);
 
     float new_atp = metabolic_plasticity_get_atp_level(metabolic);
@@ -114,7 +114,7 @@ TEST_F(MetabolicPlasticityTest, ConsumeLTPEvent) {
 
 TEST_F(MetabolicPlasticityTest, ConsumeLTDEvent) {
     float initial_atp = metabolic_plasticity_get_atp_level(metabolic);
-    int ret = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTD, 1.0f);
+    int ret = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTD, 1.0f);
     EXPECT_EQ(ret, 0);
 
     float new_atp = metabolic_plasticity_get_atp_level(metabolic);
@@ -126,8 +126,8 @@ TEST_F(MetabolicPlasticityTest, ConsumeLTPMoreExpensiveThanLTD) {
     metabolic_plasticity_t* m1 = metabolic_plasticity_create(&config);
     metabolic_plasticity_t* m2 = metabolic_plasticity_create(&config);
 
-    metabolic_plasticity_consume_atp(m1, PLASTICITY_EVENT_LTP, 1.0f);
-    metabolic_plasticity_consume_atp(m2, PLASTICITY_EVENT_LTD, 1.0f);
+    metabolic_plasticity_consume_atp(m1, METABOLIC_EVENT_LTP, 1.0f);
+    metabolic_plasticity_consume_atp(m2, METABOLIC_EVENT_LTD, 1.0f);
 
     float atp_after_ltp = metabolic_plasticity_get_atp_level(m1);
     float atp_after_ltd = metabolic_plasticity_get_atp_level(m2);
@@ -140,7 +140,7 @@ TEST_F(MetabolicPlasticityTest, ConsumeLTPMoreExpensiveThanLTD) {
 
 TEST_F(MetabolicPlasticityTest, ConsumeScaledMagnitude) {
     float initial_atp = metabolic_plasticity_get_atp_level(metabolic);
-    int ret = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 0.5f);
+    int ret = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 0.5f);
     EXPECT_EQ(ret, 0);
 
     float new_atp = metabolic_plasticity_get_atp_level(metabolic);
@@ -150,7 +150,7 @@ TEST_F(MetabolicPlasticityTest, ConsumeScaledMagnitude) {
 TEST_F(MetabolicPlasticityTest, ConsumeMultipleEvents) {
     // Consume 10 LTP events
     for (int i = 0; i < 10; i++) {
-        metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+        metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     }
 
     float expected_atp = METABOLIC_ATP_INITIAL - (10 * METABOLIC_COST_LTP_BASE);
@@ -159,10 +159,10 @@ TEST_F(MetabolicPlasticityTest, ConsumeMultipleEvents) {
 }
 
 TEST_F(MetabolicPlasticityTest, ConsumeInvalidMagnitude) {
-    int ret1 = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, -0.1f);
+    int ret1 = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, -0.1f);
     EXPECT_EQ(ret1, -1);
 
-    int ret2 = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.5f);
+    int ret2 = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.5f);
     EXPECT_EQ(ret2, -1);
 }
 
@@ -177,7 +177,7 @@ TEST_F(MetabolicPlasticityTest, LTPBlockedWhenBelowThreshold) {
     EXPECT_FALSE(metabolic_plasticity_can_ltp(metabolic));
 
     // Attempting LTP should fail
-    int ret = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+    int ret = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     EXPECT_EQ(ret, -1);
 }
 
@@ -188,7 +188,7 @@ TEST_F(MetabolicPlasticityTest, LTDBlockedWhenBelowThreshold) {
     EXPECT_FALSE(metabolic_plasticity_can_ltd(metabolic));
 
     // Attempting LTD should fail
-    int ret = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTD, 1.0f);
+    int ret = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTD, 1.0f);
     EXPECT_EQ(ret, -1);
 }
 
@@ -197,7 +197,7 @@ TEST_F(MetabolicPlasticityTest, LTPAllowedAboveThreshold) {
 
     EXPECT_TRUE(metabolic_plasticity_can_ltp(metabolic));
 
-    int ret = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+    int ret = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     EXPECT_EQ(ret, 0);
 }
 
@@ -206,7 +206,7 @@ TEST_F(MetabolicPlasticityTest, LTDAllowedAboveThreshold) {
 
     EXPECT_TRUE(metabolic_plasticity_can_ltd(metabolic));
 
-    int ret = metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTD, 1.0f);
+    int ret = metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTD, 1.0f);
     EXPECT_EQ(ret, 0);
 }
 
@@ -249,7 +249,7 @@ TEST_F(MetabolicPlasticityTest, ClassifyEnergyStateHelper) {
  * Recovery Tests
  * ============================================================================ */
 
-TEST_F(MetabolicPlasticityTest, RecoveryIncreases ATP) {
+TEST_F(MetabolicPlasticityTest, RecoveryIncreasesATP) {
     // Deplete ATP
     metabolic_plasticity_restore_atp(metabolic, 50.0f);
 
@@ -346,24 +346,24 @@ TEST_F(MetabolicPlasticityTest, EffectiveLRScaledByATP) {
 TEST_F(MetabolicPlasticityTest, MagnitudeScaleLTP) {
     // Above LTP threshold: full magnitude
     metabolic_plasticity_restore_atp(metabolic, 80.0f);
-    float scale1 = metabolic_plasticity_get_magnitude_scale(metabolic, PLASTICITY_EVENT_LTP);
+    float scale1 = metabolic_plasticity_get_magnitude_scale(metabolic, METABOLIC_EVENT_LTP);
     EXPECT_GT(scale1, 0.5f);
 
     // Below LTP threshold: zero magnitude
     metabolic_plasticity_restore_atp(metabolic, 40.0f);
-    float scale2 = metabolic_plasticity_get_magnitude_scale(metabolic, PLASTICITY_EVENT_LTP);
+    float scale2 = metabolic_plasticity_get_magnitude_scale(metabolic, METABOLIC_EVENT_LTP);
     EXPECT_FLOAT_EQ(scale2, 0.0f);
 }
 
 TEST_F(MetabolicPlasticityTest, MagnitudeScaleLTD) {
     // Above LTD threshold: full magnitude
     metabolic_plasticity_restore_atp(metabolic, 80.0f);
-    float scale1 = metabolic_plasticity_get_magnitude_scale(metabolic, PLASTICITY_EVENT_LTD);
+    float scale1 = metabolic_plasticity_get_magnitude_scale(metabolic, METABOLIC_EVENT_LTD);
     EXPECT_GT(scale1, 0.7f);
 
     // Below LTD threshold: zero magnitude
     metabolic_plasticity_restore_atp(metabolic, 20.0f);
-    float scale2 = metabolic_plasticity_get_magnitude_scale(metabolic, PLASTICITY_EVENT_LTD);
+    float scale2 = metabolic_plasticity_get_magnitude_scale(metabolic, METABOLIC_EVENT_LTD);
     EXPECT_FLOAT_EQ(scale2, 0.0f);
 }
 
@@ -385,8 +385,8 @@ TEST_F(MetabolicPlasticityTest, StatsInitiallyZero) {
 }
 
 TEST_F(MetabolicPlasticityTest, StatsTrackLTPEvents) {
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
 
     metabolic_stats_t stats;
     metabolic_plasticity_get_stats(metabolic, &stats);
@@ -395,9 +395,9 @@ TEST_F(MetabolicPlasticityTest, StatsTrackLTPEvents) {
 }
 
 TEST_F(MetabolicPlasticityTest, StatsTrackLTDEvents) {
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTD, 1.0f);
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTD, 1.0f);
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTD, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTD, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTD, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTD, 1.0f);
 
     metabolic_stats_t stats;
     metabolic_plasticity_get_stats(metabolic, &stats);
@@ -410,7 +410,7 @@ TEST_F(MetabolicPlasticityTest, StatsTrackBlockedEvents) {
     metabolic_plasticity_restore_atp(metabolic, 40.0f);
 
     // Try LTP (should be blocked)
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
 
     metabolic_stats_t stats;
     metabolic_plasticity_get_stats(metabolic, &stats);
@@ -420,7 +420,7 @@ TEST_F(MetabolicPlasticityTest, StatsTrackBlockedEvents) {
 }
 
 TEST_F(MetabolicPlasticityTest, StatsTrackATPConsumed) {
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
 
     metabolic_stats_t stats;
     metabolic_plasticity_get_stats(metabolic, &stats);
@@ -448,7 +448,7 @@ TEST_F(MetabolicPlasticityTest, StatsTrackMinATP) {
 }
 
 TEST_F(MetabolicPlasticityTest, StatsReset) {
-    metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+    metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
 
     int ret = metabolic_plasticity_reset_stats(metabolic);
     EXPECT_EQ(ret, 0);
@@ -463,13 +463,13 @@ TEST_F(MetabolicPlasticityTest, StatsReset) {
 TEST_F(MetabolicPlasticityTest, GetLTPBlockRate) {
     // Do 5 successful LTP, then deplete and do 5 blocked
     for (int i = 0; i < 5; i++) {
-        metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+        metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     }
 
     metabolic_plasticity_restore_atp(metabolic, 40.0f);
 
     for (int i = 0; i < 5; i++) {
-        metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+        metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     }
 
     float block_rate = metabolic_plasticity_get_ltp_block_rate(metabolic);
@@ -489,10 +489,10 @@ TEST_F(MetabolicPlasticityTest, GetAvgATP) {
  * ============================================================================ */
 
 TEST_F(MetabolicPlasticityTest, GetEventCost) {
-    EXPECT_FLOAT_EQ(metabolic_get_event_cost(PLASTICITY_EVENT_LTP), METABOLIC_COST_LTP_BASE);
-    EXPECT_FLOAT_EQ(metabolic_get_event_cost(PLASTICITY_EVENT_LTD), METABOLIC_COST_LTD_BASE);
-    EXPECT_FLOAT_EQ(metabolic_get_event_cost(PLASTICITY_EVENT_SPINE_GROWTH), METABOLIC_COST_SPINE_GROWTH);
-    EXPECT_FLOAT_EQ(metabolic_get_event_cost(PLASTICITY_EVENT_PROTEIN_SYNTH), METABOLIC_COST_PROTEIN_SYNTH);
+    EXPECT_FLOAT_EQ(metabolic_get_event_cost(METABOLIC_EVENT_LTP), METABOLIC_COST_LTP_BASE);
+    EXPECT_FLOAT_EQ(metabolic_get_event_cost(METABOLIC_EVENT_LTD), METABOLIC_COST_LTD_BASE);
+    EXPECT_FLOAT_EQ(metabolic_get_event_cost(METABOLIC_EVENT_SPINE_GROWTH), METABOLIC_COST_SPINE_GROWTH);
+    EXPECT_FLOAT_EQ(metabolic_get_event_cost(METABOLIC_EVENT_PROTEIN_SYNTH), METABOLIC_COST_PROTEIN_SYNTH);
 }
 
 TEST_F(MetabolicPlasticityTest, EnergyStateNameHelper) {
@@ -503,10 +503,10 @@ TEST_F(MetabolicPlasticityTest, EnergyStateNameHelper) {
 }
 
 TEST_F(MetabolicPlasticityTest, EventTypeNameHelper) {
-    EXPECT_STREQ(metabolic_event_type_name(PLASTICITY_EVENT_LTP), "LTP");
-    EXPECT_STREQ(metabolic_event_type_name(PLASTICITY_EVENT_LTD), "LTD");
-    EXPECT_STREQ(metabolic_event_type_name(PLASTICITY_EVENT_SPINE_GROWTH), "SPINE_GROWTH");
-    EXPECT_STREQ(metabolic_event_type_name(PLASTICITY_EVENT_PROTEIN_SYNTH), "PROTEIN_SYNTH");
+    EXPECT_STREQ(metabolic_event_type_name(METABOLIC_EVENT_LTP), "LTP");
+    EXPECT_STREQ(metabolic_event_type_name(METABOLIC_EVENT_LTD), "LTD");
+    EXPECT_STREQ(metabolic_event_type_name(METABOLIC_EVENT_SPINE_GROWTH), "SPINE_GROWTH");
+    EXPECT_STREQ(metabolic_event_type_name(METABOLIC_EVENT_PROTEIN_SYNTH), "PROTEIN_SYNTH");
 }
 
 /* ============================================================================
@@ -518,7 +518,7 @@ TEST_F(MetabolicPlasticityTest, NullPointerHandling) {
     EXPECT_FALSE(metabolic_plasticity_can_ltd(nullptr));
     EXPECT_EQ(metabolic_plasticity_get_atp_level(nullptr), 0.0f);
     EXPECT_EQ(metabolic_plasticity_get_energy_state(nullptr), ENERGY_STATE_EMERGENCY);
-    EXPECT_EQ(metabolic_plasticity_consume_atp(nullptr, PLASTICITY_EVENT_LTP, 1.0f), -1);
+    EXPECT_EQ(metabolic_plasticity_consume_atp(nullptr, METABOLIC_EVENT_LTP, 1.0f), -1);
     EXPECT_EQ(metabolic_plasticity_update(nullptr, 1000), -1);
 }
 

@@ -463,6 +463,20 @@ float snn_network_get_population_rate(snn_network_t* network,
                                       uint32_t pop_id,
                                       float window_ms);
 
+/**
+ * @brief Get population firing rate directly from population pointer
+ *
+ * WHAT: Average firing rate across population (convenience wrapper)
+ * WHY:  Allow bridges with population pointers to query firing rate
+ * HOW:  Computes mean rate from population's neurons
+ *
+ * @param population Population pointer
+ * @return Mean firing rate in Hz (0.0 if NULL or no spikes)
+ *
+ * COMPLEXITY: O(n_neurons)
+ */
+float snn_population_get_firing_rate(const snn_population_t* population);
+
 //=============================================================================
 // Integration
 //=============================================================================

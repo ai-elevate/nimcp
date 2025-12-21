@@ -35,6 +35,10 @@
 #include <math.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 
+#define NIMCP_EMOTION_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "cognitive/emotion/nimcp_emotion_quantum_bridge.h"
+
+#undef LOG_MODULE  // Undefine from quantum bridge header
 #define LOG_MODULE "EMOTIONS"
 #define BIO_MODULE_EMOTIONS 0x0320
 
@@ -70,6 +74,9 @@ struct emotional_system {
     // === Bio-Async Integration ===
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    // === Quantum Bridge ===
+    emotion_quantum_bridge_t* quantum_bridge;
 };
 
 /*=============================================================================
@@ -193,6 +200,7 @@ emotion_config_t emotion_system_default_config(void) {
     config.enable_emotional_tagging = true;
     config.enable_shadow_detection = true;
     config.enable_emotion_regulation = true;
+    config.enable_quantum_emotion = true;
 
     // Integration features enabled
     config.integrate_with_memory = true;
@@ -265,6 +273,18 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
         }
     }
 
+    // Initialize quantum bridge
+    system->quantum_bridge = NULL;
+    if (system->config.enable_quantum_emotion) {
+        emotion_quantum_config_t quantum_config = emotion_quantum_default_config();
+        system->quantum_bridge = emotion_quantum_bridge_create(&quantum_config, system);
+        if (system->quantum_bridge) {
+            LOG_INFO(LOG_MODULE, "Quantum emotion bridge initialized");
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to create quantum bridge, continuing without it");
+        }
+    }
+
     LOG_INFO(LOG_MODULE, "Emotional system created successfully");
     return system;
 }
@@ -276,6 +296,13 @@ void emotion_system_destroy(emotional_system_t* system) {
     }
 
     LOG_DEBUG(LOG_MODULE, "Destroying emotional system");
+
+    // Destroy quantum bridge
+    if (system->quantum_bridge) {
+        emotion_quantum_bridge_destroy(system->quantum_bridge);
+        system->quantum_bridge = NULL;
+        LOG_DEBUG(LOG_MODULE, "Destroyed quantum bridge");
+    }
 
     // Unregister from bio-router
     if (system->bio_async_enabled && system->bio_ctx) {
@@ -526,7 +553,72 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
         return false;
     }
 
-    // Apply regulation
+    // Use quantum walk to find optimal regulation pathway
+    if (system->quantum_bridge && emotion_quantum_bridge_is_enabled(system->quantum_bridge)) {
+        // Target: neutral valence (0.0), low arousal (0.3)
+        float target_valence = 0.0F;
+        float target_arousal = 0.3F;
+
+        uint32_t steps_required = 0;
+        bool pathway_found = emotion_quantum_evaluate_state(
+            system->quantum_bridge,
+            system->state.valence,
+            system->state.arousal,
+            target_valence,
+            target_arousal,
+            &steps_required
+        );
+
+        if (pathway_found) {
+            LOG_DEBUG(LOG_MODULE, "Quantum regulation pathway found: %u steps", steps_required);
+
+            // Get intermediate state predictions
+            emotion_quantum_prediction_t pathway[8];
+            uint32_t steps_found = 0;
+            emotion_quantum_transition(
+                system->quantum_bridge,
+                system->state.valence,
+                system->state.arousal,
+                target_valence,
+                target_arousal,
+                pathway,
+                8,
+                &steps_found
+            );
+
+            // Take first step toward target
+            if (steps_found > 0) {
+                float step_size = 0.3F;  // Partial step
+                float delta_v = pathway[0].valence - system->state.valence;
+                float delta_a = pathway[0].arousal - system->state.arousal;
+
+                system->state.valence += delta_v * step_size;
+                system->state.arousal += delta_a * step_size;
+
+                // Clamp to valid ranges
+                system->state.valence = clamp(system->state.valence, -1.0F, 1.0F);
+                system->state.arousal = clamp(system->state.arousal, 0.0F, 1.0F);
+
+                // Recalculate intensity
+                system->state.intensity = calculate_intensity(system->state.valence,
+                                                              system->state.arousal);
+
+                system->state.in_self_regulation = true;
+                system->stats.total_regulations++;
+                system->stats.successful_regulations++;
+
+                LOG_DEBUG(LOG_MODULE, "Quantum-guided regulation: v=%.2f→%.2f, a=%.2f→%.2f",
+                         system->state.valence - delta_v * step_size,
+                         system->state.valence,
+                         system->state.arousal - delta_a * step_size,
+                         system->state.arousal);
+
+                return true;
+            }
+        }
+    }
+
+    // Fallback to classical regulation
     // Choose strategy based on state
     uint32_t strategy;
     if (system->state.valence < -0.5F && system->state.arousal > 0.7F) {

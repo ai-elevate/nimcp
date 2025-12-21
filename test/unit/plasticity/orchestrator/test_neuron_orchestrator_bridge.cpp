@@ -23,6 +23,7 @@ extern "C" {
 #include "core/axon/nimcp_axon.h"
 #include "core/dendrite/nimcp_dendrite.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
+#include "core/neuron_models/nimcp_izhikevich.h"
 #include "utils/memory/nimcp_memory.h"
 }
 
@@ -44,15 +45,11 @@ protected:
         // Create orchestrator
         orchestrator = plasticity_orchestrator_create(nullptr);
 
-        // Create axon network with default config
-        axon_network_config_t net_config;
-        axon_network_default_config(&net_config);
-        axon_network = axon_network_create(&net_config);
+        // Create axon network with capacity
+        axon_network = axon_network_create(100);
 
-        // Create dendrite network with default config
-        dendrite_network_config_t dend_config;
-        dendrite_network_default_config(&dend_config);
-        dendrite_network = dendrite_network_create(&dend_config);
+        // Create dendrite network with capacity
+        dendrite_network = dendrite_network_create(100);
     }
 
     void TearDown() override {
@@ -88,14 +85,14 @@ TEST_F(NeuronOrchestratorBridgeTest, DefaultConfigSetsReasonableDefaults) {
     EXPECT_EQ(neuron_orchestrator_default_config(&config), 0);
 
     // Check enabled flags
-    EXPECT_TRUE(config.enable_spike_cascade);
-    EXPECT_TRUE(config.enable_firing_rate_tracking);
-    EXPECT_FALSE(config.enable_bio_async);  // Off by default
+    EXPECT_TRUE(config.enable_axon_propagation);
+    EXPECT_TRUE(config.enable_rate_tracking);
+    EXPECT_TRUE(config.enable_bio_async);  // On by default
 
     // Check parameters
-    EXPECT_GT(config.firing_rate_tau_ms, 0.0f);
+    EXPECT_GT(config.rate_ema_tau_ms, 0.0f);
     EXPECT_GT(config.bap_amplitude, 0.0f);
-    EXPECT_GT(config.default_spike_amplitude, 0.0f);
+    EXPECT_GT(config.spike_amplitude, 0.0f);
     EXPECT_GT(config.initial_neuron_capacity, 0u);
 }
 
@@ -109,8 +106,8 @@ TEST_F(NeuronOrchestratorBridgeTest, CreateWithDefaultConfig) {
 }
 
 TEST_F(NeuronOrchestratorBridgeTest, CreateWithCustomConfig) {
-    config.enable_spike_cascade = false;
-    config.enable_firing_rate_tracking = false;
+    config.enable_axon_propagation = false;
+    config.enable_rate_tracking = false;
 
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
@@ -142,13 +139,13 @@ TEST_F(NeuronOrchestratorBridgeTest, RegisterNeuron) {
     ASSERT_NE(bridge, nullptr);
 
     // Get Izhikevich regular spiking vtable
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
     ASSERT_NE(vtable, nullptr);
 
     // Create neuron model state
-    neuron_model_state_t state;
-    izhikevich_params_t params = IZHIKEVICH_RS;  // Regular spiking
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    neuron_model_state_t state = NULL;
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);  // Regular spiking
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
 
     // Register neuron
     EXPECT_EQ(neuron_orchestrator_register_neuron(bridge, 1, state, vtable), 0);
@@ -158,14 +155,14 @@ TEST_F(NeuronOrchestratorBridgeTest, RegisterMultipleNeurons) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
     ASSERT_NE(vtable, nullptr);
 
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     for (uint32_t i = 0; i < 100; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
         EXPECT_EQ(neuron_orchestrator_register_neuron(bridge, i, state, vtable), 0);
     }
 
@@ -176,10 +173,10 @@ TEST_F(NeuronOrchestratorBridgeTest, UnregisterNeuron) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
 
     // Register and unregister
     EXPECT_EQ(neuron_orchestrator_register_neuron(bridge, 1, state, vtable), 0);
@@ -190,18 +187,19 @@ TEST_F(NeuronOrchestratorBridgeTest, UnregisterNeuron) {
 }
 
 TEST_F(NeuronOrchestratorBridgeTest, RegisterNeuronWithNullBridgeReturnsError) {
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    neuron_model_state_t state;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    neuron_model_state_t state = NULL;
 
     EXPECT_EQ(neuron_orchestrator_register_neuron(nullptr, 1, state, vtable), -1);
 }
 
-TEST_F(NeuronOrchestratorBridgeTest, RegisterNeuronWithNullVtableReturnsError) {
+TEST_F(NeuronOrchestratorBridgeTest, RegisterNeuronWithNullVtableAllowed) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    neuron_model_state_t state;
-    EXPECT_EQ(neuron_orchestrator_register_neuron(bridge, 1, state, nullptr), -1);
+    // NULL vtable is allowed (state-only registration)
+    neuron_model_state_t state = NULL;
+    EXPECT_EQ(neuron_orchestrator_register_neuron(bridge, 1, state, nullptr), 0);
 }
 
 // ============================================================================
@@ -213,10 +211,10 @@ TEST_F(NeuronOrchestratorBridgeTest, AddAxonToNeuron) {
     ASSERT_NE(bridge, nullptr);
 
     // Register neuron first
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     // Add axon
@@ -227,10 +225,10 @@ TEST_F(NeuronOrchestratorBridgeTest, AddMultipleAxonsToNeuron) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     // Add multiple axons
@@ -243,10 +241,10 @@ TEST_F(NeuronOrchestratorBridgeTest, AddDendriteToNeuron) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     // Add dendrite
@@ -275,10 +273,10 @@ TEST_F(NeuronOrchestratorBridgeTest, StepNeuron) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     // Step the neuron (no spike expected with zero input)
@@ -290,10 +288,10 @@ TEST_F(NeuronOrchestratorBridgeTest, StepNeuronWithStrongInputCausesSpike) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     // Step with strong input until spike
@@ -311,13 +309,13 @@ TEST_F(NeuronOrchestratorBridgeTest, StepAllNeurons) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     // Register multiple neurons
     for (uint32_t i = 0; i < 10; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
         neuron_orchestrator_register_neuron(bridge, i, state, vtable);
     }
 
@@ -345,10 +343,10 @@ TEST_F(NeuronOrchestratorBridgeTest, GetFiringRateInitiallyZero) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     float rate = neuron_orchestrator_get_firing_rate(bridge, 1);
@@ -356,14 +354,14 @@ TEST_F(NeuronOrchestratorBridgeTest, GetFiringRateInitiallyZero) {
 }
 
 TEST_F(NeuronOrchestratorBridgeTest, FiringRateIncreasesWithSpikes) {
-    config.enable_firing_rate_tracking = true;
+    config.enable_rate_tracking = true;
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     // Generate spikes with strong input
@@ -395,8 +393,8 @@ TEST_F(NeuronOrchestratorBridgeTest, GetStatsInitiallyZero) {
     neuron_orchestrator_stats_t stats;
     EXPECT_EQ(neuron_orchestrator_get_stats(bridge, &stats), 0);
 
-    EXPECT_EQ(stats.total_spikes, 0u);
-    EXPECT_EQ(stats.total_steps, 0u);
+    EXPECT_EQ(stats.spikes_detected, 0u);
+    EXPECT_EQ(stats.step_calls, 0u);
     EXPECT_EQ(stats.neurons_registered, 0u);
     EXPECT_EQ(stats.axon_spikes_initiated, 0u);
     EXPECT_EQ(stats.baps_initiated, 0u);
@@ -418,10 +416,10 @@ TEST_F(NeuronOrchestratorBridgeTest, ResetStats) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
     neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
 
     // Create activity
@@ -434,20 +432,20 @@ TEST_F(NeuronOrchestratorBridgeTest, ResetStats) {
 
     neuron_orchestrator_stats_t stats;
     neuron_orchestrator_get_stats(bridge, &stats);
-    EXPECT_EQ(stats.total_spikes, 0u);
-    EXPECT_EQ(stats.total_steps, 0u);
+    EXPECT_EQ(stats.spikes_detected, 0u);
+    EXPECT_EQ(stats.step_calls, 0u);
 }
 
 TEST_F(NeuronOrchestratorBridgeTest, NeuronRegistrationTrackedInStats) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     for (uint32_t i = 0; i < 5; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
         neuron_orchestrator_register_neuron(bridge, i, state, vtable);
     }
 
@@ -457,22 +455,47 @@ TEST_F(NeuronOrchestratorBridgeTest, NeuronRegistrationTrackedInStats) {
 }
 
 // ============================================================================
-// Update Tests
+// Step Tracking Tests
 // ============================================================================
 
-TEST_F(NeuronOrchestratorBridgeTest, BridgeUpdate) {
+TEST_F(NeuronOrchestratorBridgeTest, StepCallsTrackedInStats) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    EXPECT_EQ(neuron_orchestrator_bridge_update(bridge, 1000), 0);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
+    neuron_orchestrator_register_neuron(bridge, 1, state, vtable);
+
+    // Step the neuron
+    neuron_orchestrator_step(bridge, 1, 0.1f, 0.0f, 1000);
 
     neuron_orchestrator_stats_t stats;
     neuron_orchestrator_get_stats(bridge, &stats);
-    EXPECT_EQ(stats.update_calls, 1u);
+    EXPECT_EQ(stats.step_calls, 1u);
 }
 
-TEST_F(NeuronOrchestratorBridgeTest, BridgeUpdateWithNullReturnsError) {
-    EXPECT_EQ(neuron_orchestrator_bridge_update(nullptr, 1000), -1);
+TEST_F(NeuronOrchestratorBridgeTest, StepAllTrackedInStats) {
+    CreateBridge();
+    ASSERT_NE(bridge, nullptr);
+
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+
+    for (uint32_t i = 0; i < 5; i++) {
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
+        neuron_orchestrator_register_neuron(bridge, i, state, vtable);
+    }
+
+    float inputs[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    neuron_orchestrator_step_all(bridge, 0.1f, inputs, 1000);
+
+    neuron_orchestrator_stats_t stats;
+    neuron_orchestrator_get_stats(bridge, &stats);
+    // step_all counts as 5 step calls (one per neuron)
+    EXPECT_GE(stats.step_calls, 1u);
 }
 
 // ============================================================================
@@ -538,10 +561,10 @@ TEST_F(NeuronOrchestratorBridgeTest, RegisterSameNeuronTwiceUpdates) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
-    neuron_model_state_t state;
-    neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+    neuron_model_state_t state = NULL;
+    state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
 
     // Register twice
     EXPECT_EQ(neuron_orchestrator_register_neuron(bridge, 1, state, vtable), 0);
@@ -563,13 +586,13 @@ TEST_F(NeuronOrchestratorBridgeTest, LargeNeuronCount) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     // Register many neurons beyond initial capacity
     for (uint32_t i = 0; i < 500; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
         EXPECT_EQ(neuron_orchestrator_register_neuron(bridge, i, state, vtable), 0);
     }
 
@@ -580,12 +603,12 @@ TEST_F(NeuronOrchestratorBridgeTest, StepNeuronWithNullInputsUseZero) {
     CreateBridge();
     ASSERT_NE(bridge, nullptr);
 
-    const neuron_model_vtable_t* vtable = neuron_model_get_vtable(NEURON_MODEL_IZHIKEVICH);
-    izhikevich_params_t params = IZHIKEVICH_RS;
+    const neuron_model_vtable_t* vtable = neuron_model_get_izhikevich_vtable();
+    izhikevich_params_t params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
 
     for (uint32_t i = 0; i < 5; i++) {
-        neuron_model_state_t state;
-        neuron_model_init(&state, NEURON_MODEL_IZHIKEVICH, &params);
+        neuron_model_state_t state = NULL;
+        state = neuron_model_create(neuron_model_get_izhikevich_vtable(), &params);
         neuron_orchestrator_register_neuron(bridge, i, state, vtable);
     }
 

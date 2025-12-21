@@ -26,6 +26,18 @@
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
 
+/* WHAT: Quantum attention bridge integration
+ * WHY:  O(√N) speedup for attention head selection
+ * HOW:  Header-only implementation activated via define
+ * NOTE: Disabled due to API mismatch with actual quantum_attention implementation
+ *       The bridge expects Grover-based selection, but the implementation uses
+ *       ternary logic and quantum annealing. Needs API alignment.
+ */
+/* TODO: Fix quantum bridge API to match nimcp_quantum_attention.h
+#define NIMCP_ATTENTION_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "plasticity/attention/nimcp_attention_quantum_bridge.h"
+*/
+
 #define LOG_MODULE "plasticity_attention"
 
 #include <math.h>
@@ -145,6 +157,13 @@ struct multihead_attention_struct {
      * HOW:  Created based on config.pe_type, applied in forward pass
      */
     nimcp_pos_encoder_t* pos_encoder;
+
+    /* WHAT: Quantum attention bridge for accelerated head selection
+     * WHY:  O(√N) speedup using Grover-inspired amplitude amplification
+     * HOW:  Bridge selects high-scoring heads before attention computation
+     * NOTE: Disabled until quantum bridge API matches quantum_attention implementation
+     */
+    /* attention_quantum_bridge_t* quantum_bridge; */
 };
 
 //=============================================================================
@@ -910,10 +929,21 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
         }
     }
 
-    NIMCP_LOGGING_INFO("Created multihead attention: num_heads=%u, input_dim=%u, pe=%s",
+    /* WHAT: Quantum attention integration placeholder
+     * WHY:  Reserved for future quantum acceleration
+     * NOTE: Currently disabled due to API mismatch between quantum bridge
+     *       and actual quantum_attention implementation
+     */
+    if (config->enable_quantum_attention) {
+        NIMCP_LOGGING_WARN("Quantum attention requested but not yet integrated (API mismatch)");
+        mha->config.enable_quantum_attention = false;
+    }
+
+    NIMCP_LOGGING_INFO("Created multihead attention: num_heads=%u, input_dim=%u, pe=%s, quantum=%s",
                       config->num_heads, config->input_dim,
                       config->use_positional_encoding ?
-                      nimcp_pos_type_to_string(config->pe_type) : "none");
+                      nimcp_pos_type_to_string(config->pe_type) : "none",
+                      config->enable_quantum_attention ? "enabled" : "disabled");
 
     return mha;
 }
@@ -943,6 +973,8 @@ void multihead_attention_destroy(multihead_attention_t mha)
     if (mha->pos_encoder) {
         nimcp_pos_encoder_destroy(mha->pos_encoder);
     }
+
+    /* NOTE: Quantum bridge cleanup would go here when integrated */
 
     nimcp_free(mha);
 }
@@ -991,6 +1023,8 @@ bool multihead_attention_forward(multihead_attention_t mha,
         free_attention_buffer(attention_weights);
         return false;
     }
+
+    /* NOTE: Quantum head selection would go here when integrated */
 
     /* WHAT: Process each head independently
      * WHY:  Each head computes attention in parallel (logically)

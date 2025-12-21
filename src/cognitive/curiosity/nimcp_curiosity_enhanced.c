@@ -18,8 +18,13 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/containers/nimcp_hash_table.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_router.h"
 #include "nimcp.h"
+
+/* Include quantum bridge implementation */
+#define NIMCP_CURIOSITY_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "cognitive/curiosity/nimcp_curiosity_quantum_bridge.h"
 
 #include <string.h>
 #include <math.h>
@@ -76,6 +81,9 @@ struct curiosity_enhanced_system_s {
     /* Connected systems */
     anxiety_system_t* anxiety_system;
     theory_of_mind_t* tom_system;
+
+    /* Quantum bridge */
+    curiosity_quantum_bridge_t* quantum_bridge;
 
     /* Bio-async */
     bio_module_context_t bio_ctx;
@@ -817,6 +825,7 @@ void curiosity_enhanced_config_default(curiosity_enhanced_config_t* config) {
     config->update_interval_ms = 100.0f;
     config->enable_bio_async = true;
     config->enable_all_enhancements = true;
+    config->enable_quantum_curiosity = true;
 }
 
 curiosity_enhanced_system_t* curiosity_enhanced_create(
@@ -880,8 +889,23 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
     sys->creation_time_ms = get_time_ms();
     sys->last_update_ms = sys->creation_time_ms;
 
-    NIMCP_LOGGING_INFO("Created enhanced curiosity system with %d enhancements",
-                       sys->config.enable_all_enhancements ? 10 : 0);
+    /* Create quantum bridge if enabled */
+    if (sys->config.enable_quantum_curiosity) {
+        curiosity_quantum_config_t quantum_config;
+        curiosity_quantum_default_config(&quantum_config);
+
+        sys->quantum_bridge = curiosity_quantum_create(&quantum_config);
+        if (!sys->quantum_bridge) {
+            NIMCP_LOGGING_WARN("Failed to create quantum bridge, continuing without quantum exploration");
+        } else {
+            NIMCP_LOGGING_INFO("Quantum curiosity bridge enabled (max_topics=%u, steps=%u)",
+                              quantum_config.max_topics, quantum_config.exploration_steps);
+        }
+    }
+
+    NIMCP_LOGGING_INFO("Created enhanced curiosity system with %d enhancements%s",
+                       sys->config.enable_all_enhancements ? 10 : 0,
+                       sys->quantum_bridge ? " + quantum exploration" : "");
 
     return sys;
 }
@@ -892,6 +916,11 @@ void curiosity_enhanced_destroy(curiosity_enhanced_system_t* system) {
     /* Disconnect bio-async */
     if (system->bio_async_enabled) {
         curiosity_enhanced_disconnect_bio_async(system);
+    }
+
+    /* Destroy quantum bridge */
+    if (system->quantum_bridge) {
+        curiosity_quantum_destroy(system->quantum_bridge);
     }
 
     /* Free blind spots */
@@ -1616,4 +1645,99 @@ curiosity_type_t curiosity_type_from_string(const char* str) {
     if (strcmp(str, "morbid") == 0)     return CURIOSITY_TYPE_MORBID;
 
     return CURIOSITY_TYPE_EPISTEMIC;
+}
+
+/* ============================================================================
+ * Quantum Bridge Integration
+ * ============================================================================ */
+
+curiosity_quantum_bridge_t* curiosity_enhanced_get_quantum_bridge(
+    curiosity_enhanced_system_t* system) {
+
+    if (!system) return NULL;
+    return system->quantum_bridge;
+}
+
+float curiosity_enhanced_quantum_explore(
+    curiosity_enhanced_system_t* system,
+    const char* start_topic,
+    char* novel_topic) {
+
+    if (!system || !system->quantum_bridge) return -1.0f;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* Perform quantum exploration */
+    float novelty = curiosity_quantum_explore(
+        system->quantum_bridge,
+        start_topic,
+        0,  /* Use default steps */
+        novel_topic
+    );
+
+    /* Update stats */
+    if (novelty >= 0.0f) {
+        system->stats.quantum_explorations++;
+
+        /* Update average speedup */
+        curiosity_quantum_stats_t qstats;
+        if (curiosity_quantum_get_stats(system->quantum_bridge, &qstats) == 0) {
+            system->stats.avg_quantum_speedup = qstats.avg_exploration_speedup;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return novelty;
+}
+
+int curiosity_enhanced_add_quantum_topic(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    float curiosity_level,
+    float novelty_score) {
+
+    if (!system || !topic) return NIMCP_ERROR_NULL_ARG;
+    if (!system->quantum_bridge) return NIMCP_ERROR_INVALID;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    int result = curiosity_quantum_add_topic(
+        system->quantum_bridge,
+        topic,
+        curiosity_level,
+        novelty_score
+    );
+
+    /* Also add to interest tracking */
+    if (result >= 0) {
+        curiosity_topic_interest_t* interest = interest_get_or_create(system, topic);
+        if (interest) {
+            interest->initial_interest = curiosity_level;
+            interest->current_interest = curiosity_level;
+            interest->novelty_score = novelty_score;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return result >= 0 ? 0 : NIMCP_ERROR;
+}
+
+float curiosity_enhanced_quantum_evaluate_novelty(
+    curiosity_enhanced_system_t* system,
+    const char* topic) {
+
+    if (!system || !topic || !system->quantum_bridge) return -1.0f;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    float novelty = curiosity_quantum_evaluate_novelty(
+        system->quantum_bridge,
+        topic
+    );
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return novelty;
 }

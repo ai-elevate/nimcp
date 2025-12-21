@@ -1165,3 +1165,31 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks")
     add_subdirectory(benchmarks)
 endif()
 
+# ============================================================================
+# Utils Quantum Tests (Quantum Walk for Graph Algorithms)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/quantum")
+    message(STATUS "Adding utils quantum unit tests...")
+    add_subdirectory(unit/utils/quantum)
+endif()
+
+# ============================================================================
+# Quantum Bridge Integration Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/quantum")
+    message(STATUS "Adding quantum bridge unit tests...")
+    add_subdirectory(unit/quantum)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/quantum")
+    message(STATUS "Adding quantum bridge integration tests...")
+    add_subdirectory(integration/quantum)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/quantum")
+    message(STATUS "Adding quantum bridge regression tests...")
+    add_subdirectory(regression/quantum)
+endif()
+

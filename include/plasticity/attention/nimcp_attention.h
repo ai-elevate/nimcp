@@ -83,6 +83,12 @@ typedef struct {
     nimcp_pos_encoding_type_t pe_type;  // PE type: NIMCP_POS_ROTARY or NIMCP_POS_ALIBI
     float rope_base;              // RoPE frequency base (default: 10000.0)
     float alibi_slope_base;       // ALiBi slope base for geometric sequence
+
+    /* WHAT: Quantum attention acceleration configuration
+     * WHY:  Enable O(√N) speedup for attention head selection
+     * HOW:  Grover-inspired amplitude amplification for head selection
+     */
+    bool enable_quantum_attention; // Enable quantum-accelerated attention (default: true)
 } multihead_attention_config_t;
 
 /**

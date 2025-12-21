@@ -125,6 +125,10 @@ typedef struct {
     bool compute_oscillations;      /**< Enable oscillation power analysis */
     bool compute_entropy;           /**< Enable entropy calculation */
     bool compute_synchrony;         /**< Enable synchrony detection */
+
+    /* Quantum acceleration */
+    bool enable_quantum_features;   /**< Enable quantum feature map transformation */
+    uint32_t quantum_output_dim;    /**< Quantum feature output dimension */
 } feature_extractor_config_t;
 
 /**

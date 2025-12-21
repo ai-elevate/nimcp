@@ -98,6 +98,7 @@ typedef struct {
     bool enable_learning;              // Hebbian route strengthening
     bool enable_second_messengers;     // Enable neuromodulator cascades
     uint32_t num_neurons;              // Number of neurons for cascade tracking
+    bool enable_quantum_routing;       // Enable quantum attention for O(√N) routing
 } thalamic_router_config_t;
 
 /**

@@ -300,6 +300,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_circuit_builder.c  # Circuit builder
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_neuromodulation.c  # Neuromodulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_factory.c  # Factory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_quantum_bridge.c  # Quantum acceleration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive.c  # Phase 10.9: Predictive Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons.c  # Phase 10.11: Mirror Neurons
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_substrate.c  # Phase 10.11.2: Mirror Neuron Substrate Integration

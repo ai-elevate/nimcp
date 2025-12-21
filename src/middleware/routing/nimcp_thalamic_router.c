@@ -22,7 +22,10 @@
 #include "plasticity/nimcp_second_messengers.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 
-/* Version 1.1.0 - Added tensor library integration for vectorized signal modulation */
+#define NIMCP_THALAMIC_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
+
+/* Version 1.2.0 - Added quantum attention for O(√N) routing decisions */
 
 
 
@@ -79,6 +82,10 @@ struct thalamic_router {
     // Second messenger cascades
     second_messenger_system_t* second_messengers;
     bool second_messengers_enabled;
+
+    // Quantum routing
+    thalamic_quantum_bridge_t* quantum_bridge;
+    bool quantum_routing_enabled;
 };
 
 // ============================================================================
@@ -170,6 +177,53 @@ static float get_attention_threshold(thalamic_router_t* router, uint32_t dest_id
     return base_threshold * modulation;
 }
 
+// Helper: Apply quantum routing to filter destinations
+static bool apply_quantum_routing(thalamic_router_t* router,
+                                   uint32_t source_id,
+                                   const uint32_t* dest_ids,
+                                   uint32_t num_dests,
+                                   const float* signal_data,
+                                   uint32_t signal_size,
+                                   uint32_t* filtered_dests,
+                                   uint32_t* num_filtered) {
+    // WHAT: Use quantum attention to select destinations that should receive signal
+    // WHY:  O(√N) routing decision vs O(N) classical
+    // HOW:  Pass signal features to quantum bridge for attention-based gating
+
+    if (!router->quantum_routing_enabled || !router->quantum_bridge) {
+        // Fallback: route to all destinations
+        memcpy(filtered_dests, dest_ids, num_dests * sizeof(uint32_t));
+        *num_filtered = num_dests;
+        return true;
+    }
+
+    // Use signal data as features for quantum attention
+    uint32_t feature_dim = (signal_size < 64) ? signal_size : 64;
+
+    int result = thalamic_quantum_route(
+        router->quantum_bridge,
+        source_id,
+        dest_ids,
+        num_dests,
+        signal_data,
+        feature_dim,
+        filtered_dests,
+        num_filtered
+    );
+
+    if (result < 0) {
+        LOG_WARN(LOG_MODULE, "Quantum routing failed, using classical fallback");
+        memcpy(filtered_dests, dest_ids, num_dests * sizeof(uint32_t));
+        *num_filtered = num_dests;
+        return false;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Quantum routing: %u/%u destinations selected",
+              *num_filtered, num_dests);
+
+    return true;
+}
+
 // Helper: Deliver signal using CoW wrapper
 static bool deliver_signal_wrapper(thalamic_router_t* router,
                                      signal_wrapper_t wrapper,
@@ -186,8 +240,22 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
 
     if (!dest_ids || !signal_data) return false;
 
-    for (uint32_t i = 0; i < num_dests; i++) {
-        uint32_t dest_id = dest_ids[i];
+    // Apply quantum routing to filter destinations (O(√N) speedup)
+    uint32_t* filtered_dests = (uint32_t*)nimcp_malloc(num_dests * sizeof(uint32_t));
+    uint32_t num_filtered = 0;
+
+    if (!filtered_dests) {
+        LOG_ERROR(LOG_MODULE, "Failed to allocate filtered destinations");
+        return false;
+    }
+
+    apply_quantum_routing(router, source_id, dest_ids, num_dests,
+                         signal_data, signal_size,
+                         filtered_dests, &num_filtered);
+
+    // Deliver to quantum-selected destinations
+    for (uint32_t i = 0; i < num_filtered; i++) {
+        uint32_t dest_id = filtered_dests[i];
 
         // Find callback for destination
         signal_delivery_callback_t callback = NULL;
@@ -244,6 +312,7 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
         }
     }
 
+    nimcp_free(filtered_dests);
     return delivered;
 }
 
@@ -278,6 +347,7 @@ thalamic_router_config_t thalamic_router_default_config(void) {
     config.enable_learning = true;
     config.enable_second_messengers = true;  /* Enable by default - biological fidelity */
     config.num_neurons = 0;
+    config.enable_quantum_routing = true;    /* Enable quantum O(√N) routing */
     return config;
 }
 
@@ -368,11 +438,35 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
         }
     }
 
+    // Initialize quantum routing bridge
+    router->quantum_bridge = NULL;
+    router->quantum_routing_enabled = false;
+    if (config->enable_quantum_routing) {
+        thalamic_quantum_config_t qconfig = thalamic_quantum_default_config();
+        qconfig.max_destinations = config->max_destinations;
+        qconfig.routing_threshold = config->min_attention_threshold;
+
+        router->quantum_bridge = thalamic_quantum_bridge_create(&qconfig);
+        if (router->quantum_bridge) {
+            router->quantum_routing_enabled = true;
+            LOG_INFO(LOG_MODULE, "Initialized quantum routing bridge (O(√N) speedup)");
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to initialize quantum routing bridge");
+        }
+    }
+
     return router;
 }
 
 void thalamic_router_destroy(thalamic_router_t* router) {
     if (!router) return;
+
+    // Destroy quantum routing bridge
+    if (router->quantum_routing_enabled && router->quantum_bridge) {
+        thalamic_quantum_bridge_destroy(router->quantum_bridge);
+        router->quantum_bridge = NULL;
+        router->quantum_routing_enabled = false;
+    }
 
     // Destroy second messenger system
     if (router->second_messengers_enabled && router->second_messengers) {

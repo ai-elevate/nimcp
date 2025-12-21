@@ -34,6 +34,10 @@
 #include <time.h>
 #include <math.h>
 
+/* Quantum bridge integration */
+#define NIMCP_SWARM_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "swarm/nimcp_swarm_consensus_quantum_bridge.h"
+
 #define LOG_MODULE "swarm_consensus"
 
 static bool g_bbb_registered = false;
@@ -92,6 +96,10 @@ struct swarm_consensus_context {
     // Bio-async integration
     bio_module_context_t bio_ctx;            /**< Bio-async module context */
     bool bio_async_enabled;                  /**< Whether bio-async is active */
+
+    // Quantum consensus
+    swarm_quantum_bridge_t* quantum_bridge;  /**< Quantum-accelerated consensus */
+    uint64_t quantum_decisions;              /**< Number of quantum-accelerated decisions */
 };
 
 //=============================================================================
@@ -195,6 +203,7 @@ swarm_consensus_config_t swarm_consensus_default_config(uint16_t drone_id)
     config.enable_byzantine_ft = true;
     config.enable_logging = true;
     config.user_data = NULL;
+    config.enable_quantum_consensus = true;  /* Enabled by default */
     return config;
 }
 
@@ -253,6 +262,17 @@ swarm_consensus_t swarm_consensus_create(const swarm_consensus_config_t* config)
     ctx->bio_ctx = NULL;
     ctx->bio_async_enabled = false;
 
+    /* Initialize quantum bridge */
+    ctx->quantum_bridge = NULL;
+    ctx->quantum_decisions = 0;
+    if (ctx->config.enable_quantum_consensus) {
+        swarm_quantum_config_t qconfig = swarm_quantum_default_config();
+        ctx->quantum_bridge = swarm_quantum_bridge_create(&qconfig);
+        if (ctx->quantum_bridge) {
+            LOG_INFO("Quantum-accelerated consensus enabled");
+        }
+    }
+
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_consensus", "created",
                  "Consensus context created for drone %u", config->drone_id);
     LOG_INFO("Consensus context created for drone %u", config->drone_id);
@@ -293,6 +313,11 @@ void swarm_consensus_destroy(swarm_consensus_t ctx)
     /* Destroy mutex */
     if (ctx->mutex_initialized) {
         nimcp_mutex_destroy(&ctx->mutex);
+    }
+
+    /* Destroy quantum bridge */
+    if (ctx->quantum_bridge) {
+        swarm_quantum_bridge_destroy(ctx->quantum_bridge);
     }
 
     /* Clear magic and free */

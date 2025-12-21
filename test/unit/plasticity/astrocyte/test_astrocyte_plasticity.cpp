@@ -106,7 +106,7 @@ protected:
         ASSERT_NE(astro, nullptr);
 
         // Create sleep system
-        sleep_config_t sleep_config = sleep_config_default();
+        sleep_config_t sleep_config = sleep_default_config();
         sleep_sys = sleep_system_create(&sleep_config);
         ASSERT_NE(sleep_sys, nullptr);
 
@@ -414,7 +414,7 @@ TEST_F(AstrocyteSleepBridgeTest, SleepBridgeLifecycle) {
 
 TEST_F(AstrocyteSleepBridgeTest, UpdateFromSleepState) {
     // Set sleep to NREM
-    sleep_transition_state(sleep_sys, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_sys, SLEEP_STATE_DEEP_NREM);
 
     EXPECT_EQ(astrocyte_sleep_update(bridge), 0);
 
@@ -428,21 +428,21 @@ TEST_F(AstrocyteSleepBridgeTest, UpdateFromSleepState) {
 }
 
 TEST_F(AstrocyteSleepBridgeTest, GlymphaticActiveInNREM) {
-    sleep_transition_state(sleep_sys, SLEEP_STATE_LIGHT_NREM);
+    sleep_enter_state(sleep_sys, SLEEP_STATE_LIGHT_NREM);
     astrocyte_sleep_update(bridge);
 
     EXPECT_TRUE(astrocyte_sleep_is_glymphatic_active(bridge));
 }
 
 TEST_F(AstrocyteSleepBridgeTest, GlymphaticInactiveInAwake) {
-    sleep_transition_state(sleep_sys, SLEEP_STATE_AWAKE);
+    sleep_enter_state(sleep_sys, SLEEP_STATE_AWAKE);
     astrocyte_sleep_update(bridge);
 
     EXPECT_FALSE(astrocyte_sleep_is_glymphatic_active(bridge));
 }
 
 TEST_F(AstrocyteSleepBridgeTest, DSerineEnhancedInNREM) {
-    sleep_transition_state(sleep_sys, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_sys, SLEEP_STATE_DEEP_NREM);
     astrocyte_sleep_update(bridge);
 
     float base_d_serine = 0.8f;
@@ -452,7 +452,7 @@ TEST_F(AstrocyteSleepBridgeTest, DSerineEnhancedInNREM) {
 }
 
 TEST_F(AstrocyteSleepBridgeTest, DSerineReducedInREM) {
-    sleep_transition_state(sleep_sys, SLEEP_STATE_REM);
+    sleep_enter_state(sleep_sys, SLEEP_STATE_REM);
     astrocyte_sleep_update(bridge);
 
     float base_d_serine = 0.8f;
@@ -462,7 +462,7 @@ TEST_F(AstrocyteSleepBridgeTest, DSerineReducedInREM) {
 }
 
 TEST_F(AstrocyteSleepBridgeTest, ApplyModulationToAstrocytes) {
-    sleep_transition_state(sleep_sys, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_sys, SLEEP_STATE_DEEP_NREM);
     astrocyte_sleep_update(bridge);
     EXPECT_EQ(astrocyte_sleep_apply_modulation(bridge), 0);
     // Should not crash, effects applied to all astrocytes

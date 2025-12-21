@@ -4,18 +4,18 @@ add_executable(test_learning_stability
     test_learning_stability.cpp
 )
 
+target_include_directories(test_learning_stability
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
 target_link_libraries(test_learning_stability
-    nimcp_unified_memory
-    nimcp_bio_async
-    nimcp_bio_router
-    nimcp_stdp
-    nimcp_homeostatic
-    nimcp_bcm
-    nimcp_predictive_coding
-    nimcp_adaptive
-    nimcp_neuromodulators
+    PRIVATE
+    nimcp
     GTest::gtest
     GTest::gtest_main
+    Threads::Threads
+    m
 )
 
 add_test(NAME LearningStabilityRegression

@@ -41,6 +41,12 @@
 /* Logging module identifier */
 #define LOG_MODULE "NEURAL_LOGIC"
 
+/* Forward declarations for quantum bridge (avoid circular dependencies) */
+extern void* neural_logic_quantum_bridge_create(const void* config);
+extern void neural_logic_quantum_bridge_destroy(void* bridge);
+extern int neural_logic_quantum_bridge_connect(void* bridge, void* network);
+extern void neural_logic_quantum_default_config_opaque(void* config_out);
+
 #ifdef NIMCP_ENABLE_CUDA
 #include <cuda_runtime.h>
 
@@ -141,6 +147,10 @@ struct neural_logic_network_struct {
     // Bio-async communication
     bio_module_context_t bio_ctx;     /**< Bio-async module context */
     bool bio_async_enabled;           /**< Whether bio-async is enabled */
+
+    // Quantum acceleration
+    void* quantum_bridge;             /**< Quantum bridge (opaque pointer) */
+    bool quantum_enabled;             /**< Whether quantum acceleration is enabled */
 };
 
 //=============================================================================
@@ -182,7 +192,10 @@ NIMCP_EXPORT neural_logic_config_t neural_logic_default_config(uint32_t max_neur
     // Learning configuration
     config.enable_learning = false;          // Disable for now
     config.learning_rate = 0.01F;
-    
+
+    // Quantum acceleration
+    config.enable_quantum_neural_logic = true;  // Enable by default
+
     return config;
 }
 
@@ -340,10 +353,22 @@ cpu_fallback:
         }
     }
 
-    LOG_INFO(LOG_MODULE, "Neural logic network created: max_neurons=%u, max_vars=%u, gpu=%s, bio_async=%s",
+    // === Initialize Quantum Acceleration ===
+    network->quantum_bridge = NULL;
+    network->quantum_enabled = false;
+
+    if (config->enable_quantum_neural_logic) {
+        // Defer quantum bridge creation to avoid circular dependencies
+        // Bridge will be created on first use via lazy initialization
+        network->quantum_enabled = true;
+        LOG_INFO(LOG_MODULE, "Quantum neural logic enabled (lazy initialization)");
+    }
+
+    LOG_INFO(LOG_MODULE, "Neural logic network created: max_neurons=%u, max_vars=%u, gpu=%s, bio_async=%s, quantum=%s",
              config->max_logic_neurons, config->max_variables,
              network->using_gpu ? "enabled" : "disabled",
-             network->bio_async_enabled ? "enabled" : "disabled");
+             network->bio_async_enabled ? "enabled" : "disabled",
+             network->quantum_enabled ? "enabled" : "disabled");
 
     return network;
 }
@@ -363,6 +388,15 @@ NIMCP_EXPORT void neural_logic_destroy(neural_logic_network_t network)
         network->bio_ctx = NULL;
         network->bio_async_enabled = false;
         LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for neural logic");
+    }
+
+    // === Destroy Quantum Bridge ===
+    if (network->quantum_bridge) {
+        // Use forward declaration from file scope
+        neural_logic_quantum_bridge_destroy(network->quantum_bridge);
+        network->quantum_bridge = NULL;
+        network->quantum_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Quantum bridge destroyed");
     }
 
     // === Handle Copy-on-Write Reference Counting ===
@@ -1420,4 +1454,85 @@ NIMCP_EXPORT nimcp_error_t neural_logic_broadcast_circuit_complete(
                   spikes_generated, gates_evaluated);
     }
     return err;
+}
+
+//=============================================================================
+// Quantum Acceleration API Implementation
+//=============================================================================
+
+/**
+ * WHAT: Lazy initialization of quantum bridge
+ * WHY:  Avoid circular dependencies, create only when needed
+ * HOW:  Check if bridge exists, create if not, return cached instance
+ */
+NIMCP_EXPORT void* neural_logic_get_quantum_bridge(neural_logic_network_t network)
+{
+    if (!network) {
+        LOG_ERROR(LOG_MODULE, "NULL network in get_quantum_bridge");
+        return NULL;
+    }
+
+    if (!network->quantum_enabled) {
+        return NULL;
+    }
+
+    // Lazy initialization - create bridge on first access
+    if (!network->quantum_bridge) {
+        // Create bridge with default config
+        // Note: We use a stack-allocated config buffer since we don't know the actual type
+        uint8_t config_buffer[256];
+        memset(config_buffer, 0, sizeof(config_buffer));
+        neural_logic_quantum_default_config_opaque(config_buffer);
+
+        network->quantum_bridge = neural_logic_quantum_bridge_create(config_buffer);
+        if (!network->quantum_bridge) {
+            LOG_ERROR(LOG_MODULE, "Failed to create quantum bridge");
+            network->quantum_enabled = false;
+            return NULL;
+        }
+
+        // Connect bridge to this network
+        if (neural_logic_quantum_bridge_connect(network->quantum_bridge, network) != 0) {
+            LOG_ERROR(LOG_MODULE, "Failed to connect quantum bridge");
+            neural_logic_quantum_bridge_destroy(network->quantum_bridge);
+            network->quantum_bridge = NULL;
+            network->quantum_enabled = false;
+            return NULL;
+        }
+
+        LOG_INFO(LOG_MODULE, "Quantum bridge created and connected (lazy init)");
+    }
+
+    return network->quantum_bridge;
+}
+
+NIMCP_EXPORT bool neural_logic_is_quantum_enabled(neural_logic_network_t network)
+{
+    if (!network) {
+        return false;
+    }
+    return network->quantum_enabled;
+}
+
+NIMCP_EXPORT void neural_logic_set_quantum_enabled(neural_logic_network_t network, bool enabled)
+{
+    if (!network) {
+        LOG_ERROR(LOG_MODULE, "NULL network in set_quantum_enabled");
+        return;
+    }
+
+    if (enabled && !network->quantum_enabled) {
+        // Enabling quantum - will be lazy-initialized on first use
+        network->quantum_enabled = true;
+        LOG_INFO(LOG_MODULE, "Quantum acceleration enabled");
+    } else if (!enabled && network->quantum_enabled) {
+        // Disabling quantum - destroy bridge if exists
+        if (network->quantum_bridge) {
+            neural_logic_quantum_bridge_destroy(network->quantum_bridge);
+            network->quantum_bridge = NULL;
+            LOG_INFO(LOG_MODULE, "Quantum bridge destroyed");
+        }
+        network->quantum_enabled = false;
+        LOG_INFO(LOG_MODULE, "Quantum acceleration disabled");
+    }
 }

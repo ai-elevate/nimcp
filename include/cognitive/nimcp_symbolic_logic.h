@@ -155,6 +155,7 @@ typedef struct {
     bool enable_backward_chaining;
     bool enable_resolution;
     bool enable_memory_consolidation;
+    bool enable_quantum_logic;        ///< Enable quantum-accelerated reasoning
 } logic_config_t;
 
 /**

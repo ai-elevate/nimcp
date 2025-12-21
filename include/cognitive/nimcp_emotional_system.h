@@ -68,6 +68,7 @@ typedef struct {
     bool enable_emotional_tagging;       /**< Enable valence/arousal tagging */
     bool enable_shadow_detection;        /**< Enable maladaptive pattern detection */
     bool enable_emotion_regulation;      /**< Enable self-regulation strategies */
+    bool enable_quantum_emotion;         /**< Enable quantum state space exploration */
 
     // === Integration Features ===
     bool integrate_with_memory;          /**< Tag memories emotionally */

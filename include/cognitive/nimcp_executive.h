@@ -127,6 +127,9 @@ typedef struct {
     bool enable_immune_integration;   /**< Enable immune state modulation (default: false) */
     float immune_impairment_threshold; /**< Inflammation level that impairs function (default: 0.6) */
     float immune_critical_threshold;   /**< Critical inflammation requiring intervention (default: 0.85) */
+
+    // Quantum planning integration
+    bool enable_quantum_executive;    /**< Enable quantum-inspired planning (default: true) */
 } executive_config_t;
 
 /**

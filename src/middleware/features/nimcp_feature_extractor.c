@@ -6,6 +6,10 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+/* Quantum bridge integration */
+#define NIMCP_FEATURE_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "middleware/features/nimcp_feature_extractor_quantum_bridge.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -53,6 +57,10 @@ struct feature_extractor_struct {
     // Statistics
     uint64_t total_extractions;
     uint64_t last_update_time;
+
+    // Quantum bridge
+    feature_quantum_bridge_t* quantum_bridge;
+    uint64_t quantum_transforms;
 };
 
 //=============================================================================
@@ -95,6 +103,9 @@ feature_extractor_config_t feature_extractor_default_config(void) {
     config.compute_oscillations = true;
     config.compute_entropy = true;
     config.compute_synchrony = true;
+
+    config.enable_quantum_features = true;  /* Enabled by default */
+    config.quantum_output_dim = 128;
     return config;
 }
 
@@ -141,6 +152,19 @@ feature_extractor_t feature_extractor_create(const feature_extractor_config_t* c
         return NULL;
     }
 
+    // Initialize quantum bridge
+    extractor->quantum_bridge = NULL;
+    extractor->quantum_transforms = 0;
+    if (extractor->config.enable_quantum_features) {
+        feature_quantum_config_t qconfig = feature_quantum_default_config();
+        qconfig.output_dim = extractor->config.quantum_output_dim;
+        qconfig.input_dim = 14;  /* Number of features in middleware_features_t */
+        extractor->quantum_bridge = feature_quantum_bridge_create(&qconfig);
+        if (extractor->quantum_bridge) {
+            NIMCP_LOGGING_INFO("Quantum feature transformation enabled");
+        }
+    }
+
     return extractor;
 }
 
@@ -154,6 +178,12 @@ void feature_extractor_destroy(feature_extractor_t extractor) {
     nimcp_free(extractor->rate_buffer);
     nimcp_free(extractor->isi_buffer);
     nimcp_free(extractor->count_buffer);
+
+    // Destroy quantum bridge
+    if (extractor->quantum_bridge) {
+        feature_quantum_bridge_destroy(extractor->quantum_bridge);
+    }
+
     nimcp_free(extractor);
 }
 

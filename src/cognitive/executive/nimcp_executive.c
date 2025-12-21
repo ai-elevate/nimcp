@@ -27,6 +27,9 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#define NIMCP_EXECUTIVE_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "cognitive/executive/nimcp_executive_quantum_bridge.h"
+
 #include "utils/memory/nimcp_memory.h"  // nimcp_malloc/nimcp_free
 #include "utils/time/nimcp_time.h"       // nimcp_time_monotonic_ms
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
@@ -120,6 +123,10 @@ struct executive_controller {
 
     // Sleep integration
     sleep_state_t current_sleep_state;      /**< Current sleep state for modulation */
+
+    // Quantum planning integration
+    executive_quantum_bridge_t* quantum_bridge;  /**< Quantum reasoning for planning */
+    bool quantum_planning_enabled;               /**< Quantum planning active */
 };
 
 //=============================================================================
@@ -542,7 +549,8 @@ executive_controller_t* executive_create(void)
         .inhibition_threshold = DEFAULT_INHIBITION_THRESHOLD,
         .max_plan_depth = DEFAULT_MAX_PLAN_DEPTH,
         .enable_task_prioritization = true,
-        .enable_deadline_checking = true
+        .enable_deadline_checking = true,
+        .enable_quantum_executive = true
     };
 
     return executive_create_custom(&default_config);
@@ -646,6 +654,23 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     // SLEEP INTEGRATION: Initialize sleep state
     // =========================================================================
     exec->current_sleep_state = SLEEP_STATE_AWAKE;
+
+    // =========================================================================
+    // QUANTUM PLANNING: Initialize quantum bridge
+    // =========================================================================
+    exec->quantum_bridge = NULL;
+    exec->quantum_planning_enabled = false;
+    if (exec->config.enable_quantum_executive) {
+        executive_quantum_config_t quantum_config = executive_quantum_default_config();
+        quantum_config.planning_depth = exec->config.max_plan_depth;
+        exec->quantum_bridge = executive_quantum_bridge_create(&quantum_config);
+        if (exec->quantum_bridge) {
+            exec->quantum_planning_enabled = true;
+            LOG_INFO("Quantum planning bridge initialized");
+        } else {
+            LOG_WARN("Failed to initialize quantum planning bridge");
+        }
+    }
 
     // =========================================================================
     // BIO-ASYNC: Register with bio-router
@@ -861,6 +886,12 @@ void executive_destroy(executive_controller_t* exec)
         bio_router_unregister_module(exec->bio_ctx);
         exec->bio_ctx = NULL;
         exec->bio_async_enabled = false;
+    }
+
+    // Destroy quantum bridge
+    if (exec->quantum_bridge) {
+        executive_quantum_bridge_destroy(exec->quantum_bridge);
+        exec->quantum_bridge = NULL;
     }
 
     // Free controller structure
@@ -1107,24 +1138,64 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
     plan->type = PLAN_TYPE_SEQUENTIAL;
     snprintf(plan->goal, sizeof(plan->goal), "%s", goal);
 
-    // Simple decomposition (in real implementation, use search/planning algorithm)
-    // For now, create placeholder steps
-    plan->num_steps = (max_steps > 3) ? 3 : max_steps;
+    // Use quantum planning if enabled
+    if (exec->quantum_planning_enabled && exec->quantum_bridge) {
+        quantum_plan_result_t qresult;
+        uint32_t num_actions = 10;  // Simplified: assume 10 possible actions
 
-    snprintf(plan->steps[0].description, sizeof(plan->steps[0].description), "Analyze: %s", goal);
-    plan->steps[0].estimated_cost = 100;
-    plan->steps[0].is_critical = true;
+        int ret = executive_quantum_plan(
+            exec->quantum_bridge,
+            goal,
+            num_actions,
+            max_steps,
+            &qresult
+        );
 
-    if (plan->num_steps > 1) {
-        snprintf(plan->steps[1].description, sizeof(plan->steps[1].description), "Execute: %s", goal);
-        plan->steps[1].estimated_cost = 500;
-        plan->steps[1].is_critical = true;
-    }
+        if (ret == 0 && qresult.best_hypothesis &&
+            qresult.best_hypothesis->confidence >= 0.5f) {
+            // Use quantum plan
+            plan->num_steps = qresult.best_hypothesis->num_steps;
+            if (plan->num_steps > max_steps) {
+                plan->num_steps = max_steps;
+            }
 
-    if (plan->num_steps > 2) {
-        snprintf(plan->steps[2].description, sizeof(plan->steps[2].description), "Verify: %s", goal);
-        plan->steps[2].estimated_cost = 200;
-        plan->steps[2].is_critical = false;
+            // Generate plan steps from quantum hypothesis
+            for (uint32_t i = 0; i < plan->num_steps; i++) {
+                uint32_t action_id = qresult.best_hypothesis->action_sequence[i];
+                snprintf(plan->steps[i].description, sizeof(plan->steps[i].description),
+                         "Quantum step %u: action %u for %s", i, action_id, goal);
+                plan->steps[i].estimated_cost = 100 + (action_id * 50);
+                plan->steps[i].is_critical = (i == 0 || qresult.best_hypothesis->confidence > 0.8f);
+            }
+
+            LOG_DEBUG("Quantum plan created: %u steps, confidence %.2f, speedup %.2fx",
+                      plan->num_steps, qresult.best_hypothesis->confidence,
+                      qresult.planning_speedup);
+        } else {
+            // Fallback to classical planning
+            LOG_DEBUG("Quantum planning failed or low confidence, using classical");
+            goto classical_planning;
+        }
+    } else {
+classical_planning:
+        // Classical decomposition (simple placeholder)
+        plan->num_steps = (max_steps > 3) ? 3 : max_steps;
+
+        snprintf(plan->steps[0].description, sizeof(plan->steps[0].description), "Analyze: %s", goal);
+        plan->steps[0].estimated_cost = 100;
+        plan->steps[0].is_critical = true;
+
+        if (plan->num_steps > 1) {
+            snprintf(plan->steps[1].description, sizeof(plan->steps[1].description), "Execute: %s", goal);
+            plan->steps[1].estimated_cost = 500;
+            plan->steps[1].is_critical = true;
+        }
+
+        if (plan->num_steps > 2) {
+            snprintf(plan->steps[2].description, sizeof(plan->steps[2].description), "Verify: %s", goal);
+            plan->steps[2].estimated_cost = 200;
+            plan->steps[2].is_critical = false;
+        }
     }
 
     // Update statistics

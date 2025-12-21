@@ -232,6 +232,7 @@ typedef struct {
     bool enable_byzantine_ft;        /**< Enable Byzantine fault tolerance */
     bool enable_logging;             /**< Enable detailed logging */
     void* user_data;                 /**< User context for callbacks */
+    bool enable_quantum_consensus;   /**< Enable quantum-accelerated consensus */
 } swarm_consensus_config_t;
 
 /**
