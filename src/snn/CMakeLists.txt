@@ -14,6 +14,7 @@ set(SNN_SOURCES
     nimcp_snn_training.c
     nimcp_snn_bio_async.c
     nimcp_snn_immune.c
+    nimcp_snn_ternary.c
 )
 
 # SNN Bridge source files - Perception

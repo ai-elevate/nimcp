@@ -188,6 +188,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_fractal.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_enhanced.c  # Enhanced Curiosity (10 enhancements: boredom, interest decay, types, anxiety, social, meta, contagion, surprise, fatigue, counterfactual)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_ensemble_uncertainty.c  # Real Ensemble Uncertainty Quantification
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_connectivity_health.c  # Phase 1.5.4: Connectivity Health Assessment
@@ -769,6 +770,9 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Gabor Filters (V1 visual processing)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/gabor/nimcp_gabor.c  # Unified Gabor filter library for orientation selectivity
+
+    # Utils - Ternary Logic (Three-valued logic for SNN, ethics, voting)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/ternary/nimcp_ternary_tensor.c  # Ternary-tensor integration
 
     # Information Theory (Phase C4: Shannon Information Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_shannon.c

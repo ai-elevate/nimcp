@@ -227,6 +227,8 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
 
     /* Create ethics engine (First Law + Golden Rule) */
     ethics_config_t ethics_cfg = {0};
+    ethics_cfg.action_feature_size = 10;  /* Required: brain_create needs num_inputs > 0 */
+    ethics_cfg.max_agents = 100;          /* Default agent pool size */
     ethics_cfg.golden_rule_threshold = system->config.reciprocity_config.symmetry_threshold;
     ethics_cfg.empathy_weight = 0.7f;  /* Default empathy weight */
     ethics_cfg.enable_learning = false;

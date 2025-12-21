@@ -812,6 +812,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/gabor")
 endif()
 
 # ============================================================================
+# Utils Ternary Logic Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/ternary")
+    message(STATUS "Adding utils ternary logic unit tests...")
+    add_subdirectory(unit/utils/ternary)
+endif()
+
+# ============================================================================
 # Cognitive Integration Tests (General)
 # ============================================================================
 
