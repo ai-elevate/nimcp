@@ -1,0 +1,172 @@
+//=============================================================================
+// nimcp_quantum_annealing_ternary.c - Ternary Quantum Annealing Implementation
+//=============================================================================
+
+#include "optimization/quantum_annealing/nimcp_quantum_annealing_ternary.h"
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <math.h>
+
+//=============================================================================
+// RNG Utilities (xorshift64)
+//=============================================================================
+
+static inline uint64_t xorshift64(uint64_t* state) {
+    uint64_t x = *state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *state = x;
+    return x;
+}
+
+static inline float random_float(uint64_t* state) {
+    return (float)(xorshift64(state) & 0xFFFFFFFF) / 4294967296.0f;
+}
+
+//=============================================================================
+// Single Sweep
+//=============================================================================
+
+uint32_t quantum_ternary_sweep(
+    trit_ising_config_t* ising,
+    const float* J,
+    const float* h,
+    float temperature,
+    float gamma,
+    uint64_t* rng
+) {
+    if (!ising || !rng) return 0;
+
+    uint32_t accepted = 0;
+    uint32_t n = ising->n_spins;
+
+    for (uint32_t i = 0; i < n; i++) {
+        /* Random spin selection (could use sequential for speed) */
+        uint32_t idx = xorshift64(rng) % n;
+        float r = random_float(rng);
+
+        trit_spin_t current = trit_vector_get(ising->spins, idx);
+
+        if (current == TRIT_SPIN_SUPERPOSITION) {
+            /* Measure with probability based on temperature */
+            float p_measure = 1.0f / (1.0f + gamma);
+            if (r < p_measure) {
+                float r2 = random_float(rng);
+                quantum_ternary_measure(ising, J, h, idx, temperature, r2);
+                accepted++;
+            }
+        } else {
+            /* Attempt Metropolis flip */
+            if (quantum_ternary_metropolis(ising, J, h, idx, temperature, gamma, r)) {
+                accepted++;
+            }
+        }
+    }
+
+    return accepted;
+}
+
+//=============================================================================
+// Main Annealing Loop
+//=============================================================================
+
+int quantum_ternary_anneal(
+    trit_ising_config_t* ising,
+    const float* J,
+    const float* h,
+    const quantum_ternary_config_t* config,
+    quantum_ternary_result_t* result
+) {
+    /* Validate inputs */
+    if (!ising || !config || !result) {
+        return -1;
+    }
+
+    /* Initialize result */
+    memset(result, 0, sizeof(quantum_ternary_result_t));
+
+    /* Initialize RNG */
+    uint64_t rng_state = config->seed;
+    if (rng_state == 0) {
+        rng_state = (uint64_t)time(NULL) ^ (uint64_t)(size_t)ising;
+    }
+
+    /* Reset all spins to superposition */
+    for (uint32_t i = 0; i < ising->n_spins; i++) {
+        trit_ising_reset(ising, i);
+    }
+
+    /* Tracking best configuration */
+    trit_t* best_spins = NULL;
+    if (config->track_best) {
+        best_spins = (trit_t*)malloc(ising->n_spins * sizeof(trit_t));
+        if (!best_spins) return -2;
+    }
+
+    result->best_energy = 1e30;
+    uint32_t total_accepted = 0;
+    uint32_t tunnel_count = 0;
+
+    /* Main annealing loop */
+    for (uint32_t sweep = 0; sweep < config->num_sweeps; sweep++) {
+        /* Compute temperature and gamma for this sweep */
+        float progress = (float)sweep / (float)(config->num_sweeps - 1);
+
+        /* Exponential cooling */
+        float log_ratio = logf(config->initial_temperature / config->final_temperature);
+        float temperature = config->initial_temperature * expf(-progress * log_ratio);
+
+        /* Linear gamma decrease */
+        float gamma = config->initial_gamma * (1.0f - progress) +
+                     config->final_gamma * progress;
+
+        /* Perform sweep */
+        uint32_t accepted = quantum_ternary_sweep(ising, J, h, temperature, gamma, &rng_state);
+        total_accepted += accepted;
+
+        /* Compute current energy */
+        double energy = trit_ising_energy(ising, J, h);
+
+        /* Track best */
+        if (config->track_best && energy < result->best_energy) {
+            result->best_energy = energy;
+            result->best_iteration = sweep;
+
+            /* Save best configuration */
+            for (uint32_t i = 0; i < ising->n_spins; i++) {
+                best_spins[i] = trit_vector_get(ising->spins, i);
+            }
+        }
+
+        /* Check coherence for early collapse */
+        float coherence = trit_ising_coherence(ising);
+        if (coherence < config->collapse_threshold && coherence > 0) {
+            /* Collapse remaining superpositions */
+            trit_ising_collapse_all(ising, J, h);
+        }
+    }
+
+    /* Final collapse of any remaining superpositions */
+    trit_ising_collapse_all(ising, J, h);
+
+    /* Restore best configuration if tracking */
+    if (config->track_best && best_spins) {
+        for (uint32_t i = 0; i < ising->n_spins; i++) {
+            if (best_spins[i] != TRIT_SPIN_SUPERPOSITION) {
+                trit_ising_measure(ising, i, best_spins[i]);
+            }
+        }
+        free(best_spins);
+    }
+
+    /* Fill result */
+    result->final_energy = trit_ising_energy(ising, J, h);
+    result->total_flips = total_accepted;
+    result->tunnel_events = tunnel_count;
+    result->final_coherence = trit_ising_coherence(ising);
+    result->converged = (result->final_coherence == 0.0f);
+
+    return 0;
+}

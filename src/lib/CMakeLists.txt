@@ -780,6 +780,7 @@ set(NIMCP_CORE_SOURCES
 
     # Optimization - Quantum Annealing (Phase 11 Enhancement C1.1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../optimization/quantum_annealing/nimcp_quantum_annealing.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../optimization/quantum_annealing/nimcp_quantum_annealing_ternary.c
 
     # Brain Oscillations
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_brain_oscillations.c
