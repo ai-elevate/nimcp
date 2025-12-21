@@ -422,6 +422,438 @@ static inline float trit_walker_1d_variance(const trit_walker_1d_t* walker) {
     return var / walker->total_probability;
 }
 
+//=============================================================================
+// Graph Walker (for graph algorithms with ternary adjacency)
+//=============================================================================
+
+/**
+ * @brief Create graph walker from ternary adjacency matrix
+ *
+ * @param adjacency Ternary adjacency matrix (will be referenced, not copied)
+ * @return New graph walker, or NULL on failure
+ */
+static inline trit_walker_graph_t* trit_walker_graph_create(
+    const trit_matrix_t* adjacency
+) {
+    if (!adjacency || adjacency->magic != TERNARY_MAGIC) return NULL;
+    if (adjacency->rows != adjacency->cols) return NULL;  /* Must be square */
+
+    trit_walker_graph_t* walker = (trit_walker_graph_t*)calloc(1, sizeof(trit_walker_graph_t));
+    if (!walker) return NULL;
+
+    walker->magic = TRIT_WALK_MAGIC;
+    walker->n_nodes = (uint32_t)adjacency->rows;
+    walker->steps = 0;
+
+    /* Compute max degree */
+    walker->max_degree = 0;
+    for (uint32_t i = 0; i < walker->n_nodes; i++) {
+        uint32_t degree = 0;
+        for (uint32_t j = 0; j < walker->n_nodes; j++) {
+            if (trit_matrix_get(adjacency, i, j) != TRIT_UNKNOWN) {
+                degree++;
+            }
+        }
+        if (degree > walker->max_degree) {
+            walker->max_degree = degree;
+        }
+    }
+
+    /* Build CSR format from adjacency matrix */
+    uint32_t n_edges = 0;
+    for (size_t i = 0; i < adjacency->numel; i++) {
+        trit_t v;
+        if (adjacency->pack_mode == TERNARY_PACK_NONE) {
+            v = adjacency->data.unpacked[i];
+        } else {
+            v = trit_matrix_get(adjacency, i / adjacency->cols, i % adjacency->cols);
+        }
+        if (v != TRIT_UNKNOWN) n_edges++;
+    }
+
+    walker->row_ptr = (uint32_t*)calloc(walker->n_nodes + 1, sizeof(uint32_t));
+    walker->col_idx = (uint32_t*)calloc(n_edges, sizeof(uint32_t));
+    walker->edge_weights = (float*)calloc(n_edges, sizeof(float));
+
+    if (!walker->row_ptr || !walker->col_idx || !walker->edge_weights) {
+        free(walker->row_ptr);
+        free(walker->col_idx);
+        free(walker->edge_weights);
+        free(walker);
+        return NULL;
+    }
+
+    /* Fill CSR */
+    uint32_t edge_idx = 0;
+    for (uint32_t i = 0; i < walker->n_nodes; i++) {
+        walker->row_ptr[i] = edge_idx;
+        for (uint32_t j = 0; j < walker->n_nodes; j++) {
+            trit_t w = trit_matrix_get(adjacency, i, j);
+            if (w != TRIT_UNKNOWN) {
+                walker->col_idx[edge_idx] = j;
+                walker->edge_weights[edge_idx] = (float)w;
+                edge_idx++;
+            }
+        }
+    }
+    walker->row_ptr[walker->n_nodes] = edge_idx;
+
+    /* Allocate coin states per edge */
+    walker->coins = trit_matrix_create(walker->n_nodes, walker->max_degree,
+                                        TERNARY_PACK_NONE);
+    if (!walker->coins) {
+        free(walker->row_ptr);
+        free(walker->col_idx);
+        free(walker->edge_weights);
+        free(walker);
+        return NULL;
+    }
+
+    /* Allocate amplitudes */
+    walker->amplitudes = (float*)calloc(walker->n_nodes, sizeof(float));
+    if (!walker->amplitudes) {
+        trit_matrix_destroy(walker->coins);
+        free(walker->row_ptr);
+        free(walker->col_idx);
+        free(walker->edge_weights);
+        free(walker);
+        return NULL;
+    }
+
+    return walker;
+}
+
+/**
+ * @brief Destroy graph walker
+ */
+static inline void trit_walker_graph_destroy(trit_walker_graph_t* walker) {
+    if (!walker) return;
+    if (walker->magic != TRIT_WALK_MAGIC) return;
+
+    if (walker->coins) trit_matrix_destroy(walker->coins);
+    free(walker->amplitudes);
+    free(walker->row_ptr);
+    free(walker->col_idx);
+    free(walker->edge_weights);
+    walker->magic = 0;
+    free(walker);
+}
+
+/**
+ * @brief Initialize graph walker at source node
+ */
+static inline void trit_walker_graph_init(
+    trit_walker_graph_t* walker,
+    uint32_t source
+) {
+    if (!walker || source >= walker->n_nodes) return;
+
+    /* Clear all amplitudes */
+    for (uint32_t i = 0; i < walker->n_nodes; i++) {
+        walker->amplitudes[i] = 0.0f;
+    }
+
+    /* Set initial position */
+    walker->amplitudes[source] = 1.0f;
+    walker->steps = 0;
+}
+
+/**
+ * @brief Get node degree
+ */
+static inline uint32_t trit_walker_graph_degree(
+    const trit_walker_graph_t* walker,
+    uint32_t node
+) {
+    if (!walker || node >= walker->n_nodes) return 0;
+    return walker->row_ptr[node + 1] - walker->row_ptr[node];
+}
+
+/**
+ * @brief Single step of graph walk
+ */
+static inline void trit_walker_graph_step(trit_walker_graph_t* walker) {
+    if (!walker) return;
+
+    uint32_t n = walker->n_nodes;
+
+    /* Temporary storage for new amplitudes */
+    float* new_amps = (float*)calloc(n, sizeof(float));
+    if (!new_amps) return;
+
+    for (uint32_t i = 0; i < n; i++) {
+        float amp = walker->amplitudes[i];
+        if (fabsf(amp) < 1e-10f) continue;
+
+        uint32_t degree = trit_walker_graph_degree(walker, i);
+        if (degree == 0) {
+            new_amps[i] += amp;
+            continue;
+        }
+
+        float amp_per_edge = amp / sqrtf((float)degree);
+
+        /* Distribute amplitude to neighbors */
+        for (uint32_t e = walker->row_ptr[i]; e < walker->row_ptr[i + 1]; e++) {
+            uint32_t j = walker->col_idx[e];
+            float w = walker->edge_weights[e];
+            new_amps[j] += amp_per_edge * w;
+        }
+    }
+
+    /* Copy back */
+    memcpy(walker->amplitudes, new_amps, n * sizeof(float));
+    free(new_amps);
+
+    /* Normalize */
+    float norm_sq = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        norm_sq += walker->amplitudes[i] * walker->amplitudes[i];
+    }
+    if (norm_sq > 1e-10f) {
+        float inv_norm = 1.0f / sqrtf(norm_sq);
+        for (uint32_t i = 0; i < n; i++) {
+            walker->amplitudes[i] *= inv_norm;
+        }
+    }
+
+    walker->steps++;
+}
+
+/**
+ * @brief Run multiple steps of graph walk
+ */
+static inline void trit_walker_graph_run(
+    trit_walker_graph_t* walker,
+    uint32_t steps
+) {
+    if (!walker) return;
+    for (uint32_t s = 0; s < steps; s++) {
+        trit_walker_graph_step(walker);
+    }
+}
+
+/**
+ * @brief Get amplitude at node
+ */
+static inline float trit_walker_graph_get_amplitude(
+    const trit_walker_graph_t* walker,
+    uint32_t node
+) {
+    if (!walker || node >= walker->n_nodes) return 0.0f;
+    return walker->amplitudes[node];
+}
+
+/**
+ * @brief Get probability at node
+ */
+static inline float trit_walker_graph_get_probability(
+    const trit_walker_graph_t* walker,
+    uint32_t node
+) {
+    if (!walker || node >= walker->n_nodes) return 0.0f;
+    return walker->amplitudes[node] * walker->amplitudes[node];
+}
+
+/**
+ * @brief Get probability distribution
+ */
+static inline void trit_walker_graph_get_distribution(
+    const trit_walker_graph_t* walker,
+    float* probabilities
+) {
+    if (!walker || !probabilities) return;
+
+    for (uint32_t i = 0; i < walker->n_nodes; i++) {
+        probabilities[i] = walker->amplitudes[i] * walker->amplitudes[i];
+    }
+}
+
+/**
+ * @brief Find node with maximum amplitude
+ */
+static inline uint32_t trit_walker_graph_max_node(
+    const trit_walker_graph_t* walker,
+    float* max_amplitude
+) {
+    if (!walker) {
+        if (max_amplitude) *max_amplitude = 0.0f;
+        return 0;
+    }
+
+    float max_amp = 0.0f;
+    uint32_t max_node = 0;
+
+    for (uint32_t i = 0; i < walker->n_nodes; i++) {
+        float amp = fabsf(walker->amplitudes[i]);
+        if (amp > max_amp) {
+            max_amp = amp;
+            max_node = i;
+        }
+    }
+
+    if (max_amplitude) *max_amplitude = max_amp;
+    return max_node;
+}
+
+/**
+ * @brief Search for target node from source
+ *
+ * @param walker Graph walker
+ * @param source Source node
+ * @param target Target node
+ * @param max_steps Maximum steps
+ * @param steps_out Output: steps taken (can be NULL)
+ * @return true if target reached with amplitude > 0.5
+ */
+static inline bool trit_walker_graph_search(
+    trit_walker_graph_t* walker,
+    uint32_t source,
+    uint32_t target,
+    uint32_t max_steps,
+    uint32_t* steps_out
+) {
+    if (!walker || source >= walker->n_nodes || target >= walker->n_nodes) {
+        if (steps_out) *steps_out = 0;
+        return false;
+    }
+
+    trit_walker_graph_init(walker, source);
+
+    for (uint32_t step = 0; step < max_steps; step++) {
+        trit_walker_graph_step(walker);
+
+        if (fabsf(walker->amplitudes[target]) > 0.5f) {
+            if (steps_out) *steps_out = step + 1;
+            return true;
+        }
+    }
+
+    if (steps_out) *steps_out = max_steps;
+    return false;
+}
+
+/**
+ * @brief Compute reachability from source
+ *
+ * @param walker Graph walker
+ * @param source Source node
+ * @param steps Walk steps
+ * @param reachable Output: reachable nodes (amplitude > threshold)
+ * @param threshold Amplitude threshold for reachability
+ * @return Number of reachable nodes
+ */
+static inline uint32_t trit_walker_graph_reachability(
+    trit_walker_graph_t* walker,
+    uint32_t source,
+    uint32_t steps,
+    bool* reachable,
+    float threshold
+) {
+    if (!walker || !reachable || source >= walker->n_nodes) return 0;
+    if (threshold <= 0.0f) threshold = 0.01f;
+
+    trit_walker_graph_init(walker, source);
+    trit_walker_graph_run(walker, steps);
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < walker->n_nodes; i++) {
+        reachable[i] = fabsf(walker->amplitudes[i]) > threshold;
+        if (reachable[i]) count++;
+    }
+
+    return count;
+}
+
+/**
+ * @brief Compute quantum PageRank-like centrality
+ *
+ * @param adjacency Graph adjacency matrix
+ * @param steps Steps per source
+ * @param damping Damping factor (0.85 typical)
+ * @param centrality Output: centrality per node (caller allocated)
+ * @return 0 on success
+ */
+static inline int trit_walker_graph_centrality(
+    const trit_matrix_t* adjacency,
+    uint32_t steps,
+    float damping,
+    float* centrality
+) {
+    if (!adjacency || !centrality) return -1;
+    if (damping <= 0.0f || damping >= 1.0f) damping = 0.85f;
+
+    trit_walker_graph_t* walker = trit_walker_graph_create(adjacency);
+    if (!walker) return -1;
+
+    uint32_t n = walker->n_nodes;
+
+    /* Clear centrality */
+    for (uint32_t i = 0; i < n; i++) {
+        centrality[i] = 0.0f;
+    }
+
+    /* Run from each node and accumulate */
+    for (uint32_t start = 0; start < n; start++) {
+        trit_walker_graph_init(walker, start);
+        trit_walker_graph_run(walker, steps);
+
+        /* Accumulate amplitude squared */
+        for (uint32_t i = 0; i < n; i++) {
+            float prob = walker->amplitudes[i] * walker->amplitudes[i];
+            centrality[i] += prob;
+        }
+    }
+
+    /* Normalize */
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        sum += centrality[i];
+    }
+    if (sum > 0.0f) {
+        float uniform = 1.0f / (float)n;
+        for (uint32_t i = 0; i < n; i++) {
+            centrality[i] = damping * (centrality[i] / sum) + (1.0f - damping) * uniform;
+        }
+    }
+
+    trit_walker_graph_destroy(walker);
+    return 0;
+}
+
+/**
+ * @brief Estimate hitting time between nodes
+ *
+ * @param adjacency Graph adjacency matrix
+ * @param source Source node
+ * @param target Target node
+ * @param max_steps Maximum steps
+ * @return Estimated hitting time, or -1 if not reached
+ */
+static inline float trit_walker_graph_hitting_time(
+    const trit_matrix_t* adjacency,
+    uint32_t source,
+    uint32_t target,
+    uint32_t max_steps
+) {
+    if (!adjacency) return -1.0f;
+
+    trit_walker_graph_t* walker = trit_walker_graph_create(adjacency);
+    if (!walker) return -1.0f;
+
+    if (source >= walker->n_nodes || target >= walker->n_nodes) {
+        trit_walker_graph_destroy(walker);
+        return -1.0f;
+    }
+
+    uint32_t steps;
+    bool found = trit_walker_graph_search(walker, source, target, max_steps, &steps);
+
+    trit_walker_graph_destroy(walker);
+
+    return found ? (float)steps : -1.0f;
+}
+
 #ifdef __cplusplus
 }
 #endif

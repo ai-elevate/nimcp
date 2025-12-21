@@ -132,6 +132,13 @@ add_test_binary(
     unit
 )
 
+# Test 15: Quantum Consensus (Grover-inspired amplitude amplification)
+add_test_binary(
+    test_quantum_consensus
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_quantum_consensus.cpp
+    unit
+)
+
 # ============================================================================
 # Subdirectories
 # ============================================================================

@@ -63,3 +63,30 @@ set_tests_properties(TripletSTDPTests PROPERTIES
     TIMEOUT 30
     LABELS "unit;plasticity;stdp;triplet"
 )
+
+# Quantum STDP Optimizer Unit Tests
+add_executable(unit_plasticity_stdp_quantum_optimizer
+    test_quantum_stdp_optimizer.cpp
+)
+
+target_include_directories(unit_plasticity_stdp_quantum_optimizer PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${GTEST_INCLUDE_DIRS}
+)
+
+target_link_libraries(unit_plasticity_stdp_quantum_optimizer
+    nimcp
+    ${GTEST_LIBRARIES}
+    pthread
+    m
+)
+
+target_compile_features(unit_plasticity_stdp_quantum_optimizer PRIVATE cxx_std_17)
+
+add_test(NAME QuantumSTDPOptimizerTests
+         COMMAND unit_plasticity_stdp_quantum_optimizer)
+
+set_tests_properties(QuantumSTDPOptimizerTests PROPERTIES
+    TIMEOUT 30
+    LABELS "unit;plasticity;stdp;quantum"
+)

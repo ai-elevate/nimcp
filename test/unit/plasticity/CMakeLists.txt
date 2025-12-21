@@ -202,6 +202,17 @@ target_compile_features(unit_plasticity_triplet_stdp PRIVATE cxx_std_17)
 gtest_discover_tests(unit_plasticity_triplet_stdp
     PROPERTIES LABELS "unit;plasticity;stdp;triplet")
 
+# Quantum STDP Optimizer Tests
+add_executable(unit_plasticity_stdp_quantum_optimizer
+    stdp/test_quantum_stdp_optimizer.cpp
+)
+target_link_libraries(unit_plasticity_stdp_quantum_optimizer
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_stdp_quantum_optimizer PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_stdp_quantum_optimizer
+    PROPERTIES LABELS "unit;plasticity;stdp;quantum")
+
 # BCM Sleep Bridge Tests
 add_executable(unit_plasticity_bcm_sleep_bridge
     bcm/sleep/test_bcm_sleep_bridge.cpp

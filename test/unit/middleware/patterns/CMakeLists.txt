@@ -92,3 +92,20 @@ target_link_libraries(unit_middleware_patterns_sequence_detector_pe
     )
 add_test(NAME unit_middleware_patterns_sequence_detector_pe
          COMMAND unit_middleware_patterns_sequence_detector_pe)
+
+# Test Quantum Sequence Matcher
+add_executable(unit_middleware_patterns_quantum_sequence_matcher
+    test_quantum_sequence_matcher.cpp
+)
+target_link_libraries(unit_middleware_patterns_quantum_sequence_matcher
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        m
+        pthread
+    )
+target_compile_features(unit_middleware_patterns_quantum_sequence_matcher PRIVATE cxx_std_17)
+add_test(NAME unit_middleware_patterns_quantum_sequence_matcher
+         COMMAND unit_middleware_patterns_quantum_sequence_matcher)

@@ -20,3 +20,6 @@ endmacro()
 
 # Attention PE tests
 add_attention_pe_test(test_attention_pe)
+
+# Quantum Attention tests
+add_attention_pe_test(test_quantum_attention)

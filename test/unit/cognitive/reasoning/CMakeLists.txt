@@ -66,5 +66,12 @@ add_test_binary(
     unit
 )
 
+# Test 10: Quantum Reasoning
+add_test_binary(
+    test_quantum_reasoning
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_quantum_reasoning.cpp
+    unit
+)
+
 # Substrate bridge tests
 add_subdirectory(substrate)
