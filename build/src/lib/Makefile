@@ -11753,6 +11753,54 @@ __/plasticity/noise/nimcp_pink_noise.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise.c.s
 .PHONY : __/plasticity/noise/nimcp_pink_noise.c.s
 
+__/plasticity/noise/nimcp_pink_noise_correlated.o: __/plasticity/noise/nimcp_pink_noise_correlated.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_correlated.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_correlated.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_correlated.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_correlated.c.o
+
+__/plasticity/noise/nimcp_pink_noise_correlated.i: __/plasticity/noise/nimcp_pink_noise_correlated.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_correlated.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_correlated.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_correlated.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_correlated.c.i
+
+__/plasticity/noise/nimcp_pink_noise_correlated.s: __/plasticity/noise/nimcp_pink_noise_correlated.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_correlated.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_correlated.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_correlated.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_correlated.c.s
+
+__/plasticity/noise/nimcp_pink_noise_criticality.o: __/plasticity/noise/nimcp_pink_noise_criticality.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_criticality.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_criticality.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_criticality.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_criticality.c.o
+
+__/plasticity/noise/nimcp_pink_noise_criticality.i: __/plasticity/noise/nimcp_pink_noise_criticality.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_criticality.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_criticality.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_criticality.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_criticality.c.i
+
+__/plasticity/noise/nimcp_pink_noise_criticality.s: __/plasticity/noise/nimcp_pink_noise_criticality.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_criticality.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_criticality.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_criticality.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_criticality.c.s
+
 __/plasticity/noise/nimcp_pink_noise_fep_bridge.o: __/plasticity/noise/nimcp_pink_noise_fep_bridge.c.o
 .PHONY : __/plasticity/noise/nimcp_pink_noise_fep_bridge.o
 
@@ -11776,6 +11824,174 @@ __/plasticity/noise/nimcp_pink_noise_fep_bridge.s: __/plasticity/noise/nimcp_pin
 __/plasticity/noise/nimcp_pink_noise_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_fep_bridge.c.s
 .PHONY : __/plasticity/noise/nimcp_pink_noise_fep_bridge.c.s
+
+__/plasticity/noise/nimcp_pink_noise_immune_bridge.o: __/plasticity/noise/nimcp_pink_noise_immune_bridge.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_immune_bridge.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_immune_bridge.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_immune_bridge.c.o
+
+__/plasticity/noise/nimcp_pink_noise_immune_bridge.i: __/plasticity/noise/nimcp_pink_noise_immune_bridge.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_immune_bridge.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_immune_bridge.c.i
+
+__/plasticity/noise/nimcp_pink_noise_immune_bridge.s: __/plasticity/noise/nimcp_pink_noise_immune_bridge.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_immune_bridge.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_immune_bridge.c.s
+
+__/plasticity/noise/nimcp_pink_noise_monitor.o: __/plasticity/noise/nimcp_pink_noise_monitor.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_monitor.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_monitor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_monitor.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_monitor.c.o
+
+__/plasticity/noise/nimcp_pink_noise_monitor.i: __/plasticity/noise/nimcp_pink_noise_monitor.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_monitor.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_monitor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_monitor.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_monitor.c.i
+
+__/plasticity/noise/nimcp_pink_noise_monitor.s: __/plasticity/noise/nimcp_pink_noise_monitor.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_monitor.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_monitor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_monitor.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_monitor.c.s
+
+__/plasticity/noise/nimcp_pink_noise_multiscale.o: __/plasticity/noise/nimcp_pink_noise_multiscale.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_multiscale.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_multiscale.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_multiscale.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_multiscale.c.o
+
+__/plasticity/noise/nimcp_pink_noise_multiscale.i: __/plasticity/noise/nimcp_pink_noise_multiscale.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_multiscale.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_multiscale.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_multiscale.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_multiscale.c.i
+
+__/plasticity/noise/nimcp_pink_noise_multiscale.s: __/plasticity/noise/nimcp_pink_noise_multiscale.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_multiscale.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_multiscale.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_multiscale.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_multiscale.c.s
+
+__/plasticity/noise/nimcp_pink_noise_quantum_bridge.o: __/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_quantum_bridge.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.o
+
+__/plasticity/noise/nimcp_pink_noise_quantum_bridge.i: __/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_quantum_bridge.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.i
+
+__/plasticity/noise/nimcp_pink_noise_quantum_bridge.s: __/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_quantum_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_quantum_bridge.c.s
+
+__/plasticity/noise/nimcp_pink_noise_simd.o: __/plasticity/noise/nimcp_pink_noise_simd.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_simd.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_simd.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_simd.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_simd.c.o
+
+__/plasticity/noise/nimcp_pink_noise_simd.i: __/plasticity/noise/nimcp_pink_noise_simd.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_simd.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_simd.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_simd.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_simd.c.i
+
+__/plasticity/noise/nimcp_pink_noise_simd.s: __/plasticity/noise/nimcp_pink_noise_simd.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_simd.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_simd.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_simd.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_simd.c.s
+
+__/plasticity/noise/nimcp_pink_noise_sleep.o: __/plasticity/noise/nimcp_pink_noise_sleep.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_sleep.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_sleep.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_sleep.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_sleep.c.o
+
+__/plasticity/noise/nimcp_pink_noise_sleep.i: __/plasticity/noise/nimcp_pink_noise_sleep.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_sleep.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_sleep.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_sleep.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_sleep.c.i
+
+__/plasticity/noise/nimcp_pink_noise_sleep.s: __/plasticity/noise/nimcp_pink_noise_sleep.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_sleep.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_sleep.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_sleep.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_sleep.c.s
+
+__/plasticity/noise/nimcp_pink_noise_spatial.o: __/plasticity/noise/nimcp_pink_noise_spatial.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_spatial.o
+
+# target to build an object file
+__/plasticity/noise/nimcp_pink_noise_spatial.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_spatial.c.o
+.PHONY : __/plasticity/noise/nimcp_pink_noise_spatial.c.o
+
+__/plasticity/noise/nimcp_pink_noise_spatial.i: __/plasticity/noise/nimcp_pink_noise_spatial.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_spatial.i
+
+# target to preprocess a source file
+__/plasticity/noise/nimcp_pink_noise_spatial.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_spatial.c.i
+.PHONY : __/plasticity/noise/nimcp_pink_noise_spatial.c.i
+
+__/plasticity/noise/nimcp_pink_noise_spatial.s: __/plasticity/noise/nimcp_pink_noise_spatial.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_spatial.s
+
+# target to generate assembly for a file
+__/plasticity/noise/nimcp_pink_noise_spatial.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise_spatial.c.s
+.PHONY : __/plasticity/noise/nimcp_pink_noise_spatial.c.s
 
 __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.o: __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.c.o
 .PHONY : __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.o
@@ -19285,9 +19501,36 @@ help:
 	@echo "... __/plasticity/noise/nimcp_pink_noise.o"
 	@echo "... __/plasticity/noise/nimcp_pink_noise.i"
 	@echo "... __/plasticity/noise/nimcp_pink_noise.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_correlated.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_correlated.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_correlated.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_criticality.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_criticality.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_criticality.s"
 	@echo "... __/plasticity/noise/nimcp_pink_noise_fep_bridge.o"
 	@echo "... __/plasticity/noise/nimcp_pink_noise_fep_bridge.i"
 	@echo "... __/plasticity/noise/nimcp_pink_noise_fep_bridge.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_immune_bridge.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_immune_bridge.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_immune_bridge.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_monitor.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_monitor.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_monitor.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_multiscale.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_multiscale.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_multiscale.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_quantum_bridge.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_quantum_bridge.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_quantum_bridge.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_simd.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_simd.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_simd.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_sleep.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_sleep.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_sleep.s"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_spatial.o"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_spatial.i"
+	@echo "... __/plasticity/noise/nimcp_pink_noise_spatial.s"
 	@echo "... __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.o"
 	@echo "... __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.i"
 	@echo "... __/plasticity/orchestrator/nimcp_axon_orchestrator_bridge.s"
