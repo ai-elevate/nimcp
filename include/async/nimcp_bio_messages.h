@@ -303,6 +303,50 @@ typedef enum {
     BIO_MSG_PORTIA_POWER_STATE_CHANGE,          /**< Power state changed */
     BIO_MSG_PORTIA_LEARNING_EVENT,              /**< Learning event */
 
+    /* Immune messages (0x0D00 - 0x0DFF) */
+    BIO_MSG_CYTOKINE_UPDATE = 0x0D00,           /**< Cytokine level change */
+    BIO_MSG_INFLAMMATION_CHANGE,                 /**< Inflammation level change */
+    BIO_MSG_ANTIGEN_DETECTED,                    /**< Antigen detected by immune system */
+    BIO_MSG_IMMUNE_RESPONSE_STARTED,             /**< Immune response initiated */
+    BIO_MSG_IMMUNE_RESPONSE_COMPLETE,            /**< Immune response completed */
+    BIO_MSG_ANTIBODY_PRODUCED,                   /**< Antibody production event */
+    BIO_MSG_B_CELL_ACTIVATED,                    /**< B cell activation */
+    BIO_MSG_T_CELL_ACTIVATED,                    /**< T cell activation */
+    BIO_MSG_MEMORY_CELL_FORMED,                  /**< Memory cell formation */
+    BIO_MSG_INFLAMMATION_RESOLVED,               /**< Inflammation resolved */
+
+    /* Extended Plasticity messages (0x0E00 - 0x0EFF) */
+    BIO_MSG_WEIGHT_CHANGE = 0x0E00,              /**< Synaptic weight changed */
+    BIO_MSG_LTP_INDUCED,                         /**< LTP induced at synapse */
+    BIO_MSG_LTD_INDUCED,                         /**< LTD induced at synapse */
+    BIO_MSG_METAPLASTICITY_SHIFT,                /**< Metaplasticity threshold shift */
+    BIO_MSG_STRUCTURAL_PLASTICITY_EVENT,         /**< Structural plasticity event */
+    BIO_MSG_SPINE_FORMED,                        /**< Dendritic spine formed */
+    BIO_MSG_SPINE_ELIMINATED,                    /**< Dendritic spine eliminated */
+    BIO_MSG_SYNAPSE_TAGGED,                      /**< Synapse tagged for consolidation */
+
+    /* Sleep messages (0x0F00 - 0x0FFF) */
+    BIO_MSG_SLEEP_STAGE_CHANGE = 0x0F00,         /**< Sleep stage transition */
+    BIO_MSG_CONSOLIDATION_START,                 /**< Memory consolidation started */
+    BIO_MSG_CONSOLIDATION_COMPLETE,              /**< Memory consolidation complete */
+    BIO_MSG_REPLAY_EVENT,                        /**< Memory replay event */
+    BIO_MSG_ADENOSINE_UPDATE,                    /**< Adenosine level change */
+    BIO_MSG_GLYMPHATIC_CLEARANCE,                /**< Glymphatic clearance event */
+    BIO_MSG_SYNAPTIC_DOWNSCALING,                /**< Synaptic downscaling event */
+    BIO_MSG_SLEEP_SPINDLE,                       /**< Sleep spindle detected */
+    BIO_MSG_SLOW_WAVE,                           /**< Slow wave detected */
+    BIO_MSG_REM_ONSET,                           /**< REM sleep onset */
+
+    /* Extended Glial messages (0x1000 - 0x107F) */
+    BIO_MSG_GLIOTRANSMITTER_RELEASE = 0x1000,    /**< Gliotransmitter released */
+    BIO_MSG_ASTROCYTE_CALCIUM_WAVE_EXT,          /**< Extended astrocyte Ca2+ wave */
+    BIO_MSG_MICROGLIA_ACTIVATION,                /**< Microglia activation state */
+    BIO_MSG_MYELIN_DAMAGE,                       /**< Myelin damage detected */
+    BIO_MSG_MYELIN_REPAIR,                       /**< Myelin repair initiated */
+    BIO_MSG_LACTATE_SHUTTLE,                     /**< Astrocyte-neuron lactate shuttle */
+    BIO_MSG_POTASSIUM_BUFFERING,                 /**< Astrocyte K+ buffering */
+    BIO_MSG_TRIPARTITE_SYNAPSE_EVENT,            /**< Tripartite synapse event */
+
     /* Core Directives messages (0x1080 - 0x10FF) - Asimov's Laws, Golden Rule */
     BIO_MSG_DIRECTIVE_EVALUATE_REQUEST = 0x1080,  /**< Request action evaluation */
     BIO_MSG_DIRECTIVE_EVALUATE_RESPONSE,          /**< Evaluation response (allow/block) */
@@ -463,12 +507,14 @@ typedef enum {
     BIO_MODULE_KNOWLEDGE_INTERFACE,
     BIO_MODULE_KNOWLEDGE_FACTORY,
     BIO_MODULE_KNOWLEDGE_INTEGRATION,
+    BIO_MODULE_REASONING_SLEEP,
 
     /* Memory submodules (0x0250-0x025F) */
     BIO_MODULE_MEMORY_AUTOBIOGRAPHICAL = 0x0250,
     BIO_MODULE_MEMORY_EPISODIC_RECOVERY,
     BIO_MODULE_MEMORY_ENGRAM,
     BIO_MODULE_MEMORY_SEMANTIC,
+    BIO_MODULE_MEMORY_SLEEP,                /**< Memory-sleep bridge */
 
     /* Working memory submodules (0x0260-0x026F) */
     BIO_MODULE_WORKING_MEMORY_FAULT = 0x0260,
@@ -481,6 +527,7 @@ typedef enum {
 
     /* Mirror neuron submodules (0x0270-0x027F) */
     BIO_MODULE_MIRROR_NEURONS_STDP = 0x0270,
+    BIO_MODULE_MIRROR_NEURONS_SLEEP,
 
     /* Wellbeing submodules (0x0278-0x027F) */
     BIO_MODULE_WELLBEING_MENTAL_HEALTH = 0x0278,
@@ -510,6 +557,9 @@ typedef enum {
     BIO_MODULE_OLIGODENDROCYTES = BIO_MODULE_OLIGODENDROCYTE,  /* Alias */
     BIO_MODULE_MYELIN,
     BIO_MODULE_GLIAL_INTEGRATION,
+    BIO_MODULE_MICROGLIA_SLEEP,                 /**< Microglia-sleep bridge */
+    BIO_MODULE_ASTROCYTE_SLEEP,                 /**< Astrocyte-sleep bridge */
+    BIO_MODULE_OLIGO_SLEEP,                     /**< Oligodendrocyte-sleep bridge */
 
     /* Plasticity modules */
     BIO_MODULE_PLASTICITY = 0x0400,      /**< General plasticity module */
@@ -760,6 +810,7 @@ typedef enum {
     BIO_MODULE_IMMUNE_MICROGLIA,                /**< Microglia-immune bridge */
     BIO_MODULE_IMMUNE_ASTROCYTE,                /**< Astrocyte-immune bridge */
     BIO_MODULE_IMMUNE_OLIGODENDROCYTE,          /**< Oligodendrocyte-immune bridge */
+    BIO_MODULE_IMMUNE_MYELIN,                   /**< Myelin-immune bridge (MS pathophysiology) */
 
     /* GPU immune modules (0x0E50 - 0x0E5F) */
     BIO_MODULE_IMMUNE_GPU = 0x0E50,             /**< GPU-immune base */
@@ -781,6 +832,22 @@ typedef enum {
     /* Optimization immune modules (0x0E80 - 0x0E8F) */
     BIO_MODULE_IMMUNE_OPTIMIZATION = 0x0E80,    /**< Optimization-immune base */
     BIO_MODULE_IMMUNE_QUANTUM_ANNEALING,        /**< Quantum annealing-immune bridge */
+
+    /* Plasticity immune modules (0x0E88 - 0x0E8A) */
+    BIO_MODULE_IMMUNE_PINK_NOISE = 0x0E88,      /**< Pink noise-immune bridge */
+    BIO_MODULE_IMMUNE_TRIPLET_STDP,             /**< Triplet STDP-immune bridge */
+
+    /* Swarm immune modules (0x0E8B - 0x0E8F) */
+    BIO_MODULE_IMMUNE_SWARM_BRAIN = 0x0E8B,     /**< Swarm brain-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_CONSCIOUSNESS,      /**< Swarm consciousness-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_CONSENSUS,          /**< Swarm consensus-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_EMERGENCE,          /**< Swarm emergence-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_FLOCKING,           /**< Swarm flocking-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_IMMUNE,             /**< Swarm immune-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_MEMORY,             /**< Swarm memory-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_PHEROMONE,          /**< Swarm pheromone-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_QUORUM,             /**< Swarm quorum-immune bridge */
+    BIO_MODULE_IMMUNE_SWARM_SIGNAL,             /**< Swarm signal-immune bridge */
 
     /* LNN (Liquid Neural Network) modules (0x0E90 - 0x0E9F) */
     BIO_MODULE_LNN_CORE = 0x0E90,               /**< LNN core network module */

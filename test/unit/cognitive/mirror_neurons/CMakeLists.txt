@@ -90,3 +90,30 @@ set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_immune_integratio
     TIMEOUT 120
     LABELS "unit;cognitive;mirror_neurons;immune;integration"
 )
+
+# Mirror Neuron - Sleep Bridge Tests
+add_executable(unit_cognitive_mirror_neurons_test_mirror_sleep_bridge
+    test_mirror_neurons_sleep_bridge.cpp
+)
+target_link_libraries(unit_cognitive_mirror_neurons_test_mirror_sleep_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(unit_cognitive_mirror_neurons_test_mirror_sleep_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mirror_neurons
+        ${CMAKE_SOURCE_DIR}/src/cognitive
+)
+target_compile_features(unit_cognitive_mirror_neurons_test_mirror_sleep_bridge PRIVATE cxx_std_17)
+add_test(NAME unit_cognitive_mirror_neurons_test_mirror_sleep_bridge
+         COMMAND unit_cognitive_mirror_neurons_test_mirror_sleep_bridge)
+set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_sleep_bridge PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;cognitive;mirror_neurons;sleep;bridge"
+)

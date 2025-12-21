@@ -442,7 +442,7 @@ typedef struct {
  * - KD-tree indexed axon management
  * - Saltatory conduction modeling
  */
-typedef struct {
+typedef struct oligodendrocyte {
     uint32_t id;                          /**< Unique oligodendrocyte ID */
 
     //-------------------------------------------------------------------------

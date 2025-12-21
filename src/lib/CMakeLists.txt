@@ -519,6 +519,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.c  # Dendrite-orchestrator bridge - bidirectional spine-synapse sync
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/orchestrator/nimcp_neural_plasticity_coordinator.c  # Neural plasticity coordinator - unified simulation interface
 
+    # Neural Component-Plasticity Bridges (Phase 1: Critical Learning Path)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bridges/nimcp_dendrite_plasticity_bridge.c  # Dendrite-plasticity integration (compartment-specific STDP, BCM)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bridges/nimcp_synapse_plasticity_bridge.c  # Synapse-plasticity integration (17 plasticity mechanisms hub)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bridges/nimcp_axon_plasticity_bridge.c  # Axon-plasticity integration (conduction, myelination, fatigue)
+
     # Sleep-Wake Integration Bridges (Phase 1.1: Sleep-Module Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.c  # Neuromodulators-sleep integration (ACh/NE/DA/5-HT state modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_sleep_bridge.c  # STDP-sleep integration (LTP/LTD ratio, timing window)
@@ -533,6 +538,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_sleep_bridge.c  # Working memory-sleep integration (capacity, decay)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_sleep_bridge.c  # Executive function-sleep integration (inhibition, flexibility)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_oscillations_sleep_bridge.c  # Oscillations-sleep integration (band power, spindles)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_sleep_bridge.c  # Reasoning-sleep integration (inference, deduction, induction modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_logic_sleep_bridge.c  # Logic-sleep integration (gate/rule sensitivity, circuit dynamics)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_sleep_bridge.c  # Memory-sleep integration (consolidation, replay, reconsolidation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.c  # Mirror neurons-sleep integration (observation, imitation, empathy)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/sleep/nimcp_microglia_sleep_bridge.c  # Microglia-sleep integration (glymphatic clearance, neuroinflammation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/sleep/nimcp_astrocytes_sleep_bridge.c  # Astrocyte-sleep integration (adenosine, glymphatic, downscaling)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/sleep/nimcp_oligodendrocytes_sleep_bridge.c  # Oligodendrocyte-sleep integration (myelin maintenance)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_sleep_bridge.c  # LNN-sleep integration (tau modulation, ODE solver adaptation)
 
     # Cognitive Substrate Bridges (Phase 6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_substrate_bridge.c  # Attention-substrate integration (focus, shifting, filtering)
@@ -826,6 +839,9 @@ set(NIMCP_CORE_SOURCES
     # Glial-Immune Integration (Phase BII-G: Glial immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocyte_immune_bridge.c  # Astrocyte-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_microglia_immune_bridge.c  # Microglia-immune integration (brain macrophages)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_oligodendrocytes_immune_bridge.c  # Oligodendrocytes-immune integration (OPC differentiation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_myelin_immune_bridge.c  # Myelin-immune integration (MS pathophysiology)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocytes_immune_bridge.c  # Astrocytes-immune integration (A1/A2 phenotypes)
 
     # Networking-Immune Integration (Phase BII-N: Distributed cognition immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/immune/nimcp_distributed_immune_bridge.c  # Distributed cognition-immune integration

@@ -425,6 +425,40 @@ int pink_immune_bridge_get_stats(
  */
 int pink_immune_bridge_reset(pink_immune_bridge_t* bridge);
 
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+/**
+ * @brief Connect to bio-async router
+ *
+ * WHAT: Register bridge with bio-async messaging system
+ * WHY:  Enable inter-module communication
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_PINK_NOISE
+ *
+ * @param bridge Immune bridge
+ * @return 0 on success, negative on error
+ */
+int pink_immune_bridge_connect_bio_async(pink_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * @param bridge Immune bridge
+ * @return 0 on success, negative on error
+ */
+int pink_immune_bridge_disconnect_bio_async(pink_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if connected to bio-async
+ *
+ * @param bridge Immune bridge
+ * @return true if connected, false otherwise
+ */
+bool pink_immune_bridge_is_bio_async_connected(
+    const pink_immune_bridge_t* bridge
+);
+
 #ifdef __cplusplus
 }
 #endif

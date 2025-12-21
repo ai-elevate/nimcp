@@ -281,8 +281,10 @@ lnn_immune_bridge_t* lnn_immune_bridge_create(
     bridge->stats.current_lr_factor = 1.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create();
-    if (!bridge->mutex) {
+    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (bridge->mutex) {
+        nimcp_mutex_init(bridge->mutex, NULL);
+    } else {
         NIMCP_LOGGING_WARN("Failed to create mutex for LNN immune bridge");
     }
 
@@ -300,6 +302,7 @@ void lnn_immune_bridge_destroy(lnn_immune_bridge_t* bridge)
     /* Destroy mutex */
     if (bridge->mutex) {
         nimcp_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
     }
 
     /* Free bridge */

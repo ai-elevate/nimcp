@@ -73,5 +73,24 @@ add_test_binary(
     unit
 )
 
+# Test 11: Reasoning Sleep Bridge
+add_executable(unit_cognitive_reasoning_test_reasoning_sleep_bridge
+    test_reasoning_sleep_bridge.cpp
+)
+target_link_libraries(unit_cognitive_reasoning_test_reasoning_sleep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_cognitive_reasoning_test_reasoning_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_reasoning_test_reasoning_sleep_bridge
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;cognitive;reasoning;sleep"
+)
+
 # Substrate bridge tests
 add_subdirectory(substrate)

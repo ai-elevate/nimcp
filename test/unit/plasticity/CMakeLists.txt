@@ -241,6 +241,9 @@ add_subdirectory(heterosynaptic)
 # Calcium dynamics subdirectory
 add_subdirectory(calcium)
 
+# Substrate bridge subdirectory
+add_subdirectory(substrate)
+
 # ============================================================================
 # Protein Synthesis Tests
 # ============================================================================
@@ -508,5 +511,67 @@ target_link_libraries(unit_plasticity_pink_noise_enhancements
 target_compile_features(unit_plasticity_pink_noise_enhancements PRIVATE cxx_std_17)
 gtest_discover_tests(unit_plasticity_pink_noise_enhancements
     PROPERTIES LABELS "unit;plasticity;noise;pink"
+    TIMEOUT 120
+)
+
+# ============================================================================
+# Plasticity Bridge Tests (Phase 1)
+# ============================================================================
+# WHAT: Unit tests for neural component-plasticity bridges
+# WHY:  Ensure bridges correctly connect dendrites, synapses, axons to plasticity
+# HOW:  Test lifecycle, API functions, integration, statistics
+# ============================================================================
+
+# Dendrite-Plasticity Bridge Tests
+add_executable(unit_plasticity_dendrite_bridge
+    bridges/test_dendrite_plasticity_bridge.cpp
+)
+target_link_libraries(unit_plasticity_dendrite_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_dendrite_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_dendrite_bridge
+    PROPERTIES LABELS "unit;plasticity;bridges;dendrite"
+    TIMEOUT 120
+)
+
+# Synapse-Plasticity Bridge Tests
+add_executable(unit_plasticity_synapse_bridge
+    bridges/test_synapse_plasticity_bridge.cpp
+)
+target_link_libraries(unit_plasticity_synapse_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_synapse_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_synapse_bridge
+    PROPERTIES LABELS "unit;plasticity;bridges;synapse"
+    TIMEOUT 120
+)
+
+# Axon-Plasticity Bridge Tests
+add_executable(unit_plasticity_axon_bridge
+    bridges/test_axon_plasticity_bridge.cpp
+)
+target_link_libraries(unit_plasticity_axon_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_axon_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_axon_bridge
+    PROPERTIES LABELS "unit;plasticity;bridges;axon"
     TIMEOUT 120
 )

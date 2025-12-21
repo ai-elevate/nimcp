@@ -1,0 +1,529 @@
+/**
+ * @file nimcp_logic_sleep_bridge.c
+ * @brief Sleep-Logic Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-21
+ */
+
+#include "cognitive/logic/nimcp_logic_sleep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <string.h>
+#include <math.h>
+
+/* Forward declarations */
+static void logic_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+
+/* ============================================================================
+ * Sleep State Change Callback
+ * ============================================================================ */
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update logical reasoning parameters for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - Logical reasoning degrades rapidly with drowsiness
+ * - NREM sleep shifts to consolidation mode (procedural rule strengthening)
+ * - REM sleep enables associative rather than deductive reasoning
+ */
+static void logic_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    logic_sleep_bridge_t* bridge = (logic_sleep_bridge_t*)user_data;
+
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("Logic bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.current_state = new_state;
+
+    /* Update inference capacity */
+    if (bridge->config.enable_inference_modulation) {
+        bridge->effects.inference_capacity_factor =
+            logic_sleep_inference_for_state(new_state);
+    }
+
+    /* Update deduction accuracy */
+    if (bridge->config.enable_accuracy_modulation) {
+        bridge->effects.deduction_accuracy_factor =
+            logic_sleep_accuracy_for_state(new_state);
+    }
+
+    /* Update consistency checking */
+    if (bridge->config.enable_consistency_modulation) {
+        bridge->effects.consistency_check_factor =
+            logic_sleep_consistency_for_state(new_state);
+    }
+
+    /* Set functional modes */
+    bridge->effects.logic_offline = (new_state == SLEEP_STATE_DEEP_NREM ||
+                                      new_state == SLEEP_STATE_LIGHT_NREM);
+
+    bridge->effects.consolidation_mode = (new_state == SLEEP_STATE_LIGHT_NREM ||
+                                          new_state == SLEEP_STATE_DEEP_NREM);
+
+    bridge->effects.creative_mode = (new_state == SLEEP_STATE_REM);
+
+    /* NREM consolidation rate */
+    if (bridge->config.enable_nrem_consolidation) {
+        if (new_state == SLEEP_STATE_DEEP_NREM) {
+            bridge->effects.rule_consolidation_rate = LOGIC_SLEEP_CONSOLIDATION_DEEP;
+        } else if (new_state == SLEEP_STATE_LIGHT_NREM) {
+            bridge->effects.rule_consolidation_rate = LOGIC_SLEEP_CONSOLIDATION_NREM;
+        } else {
+            bridge->effects.rule_consolidation_rate = 0.0f;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Logic modulated: inference=%.2f, accuracy=%.2f, consistency=%.2f, offline=%d",
+                        bridge->effects.inference_capacity_factor,
+                        bridge->effects.deduction_accuracy_factor,
+                        bridge->effects.consistency_check_factor,
+                        bridge->effects.logic_offline);
+}
+
+/* ============================================================================
+ * Lifecycle API Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Get default configuration
+ * WHY:  Provide sensible defaults for typical use
+ * HOW:  Initialize all config fields with evidence-based values
+ */
+int logic_sleep_default_config(logic_sleep_config_t* config)
+{
+    /* Guard clause */
+    if (!config) return -1;
+
+    /* Feature enables */
+    config->enable_inference_modulation = true;
+    config->enable_accuracy_modulation = true;
+    config->enable_consistency_modulation = true;
+    config->enable_nrem_consolidation = true;
+    config->enable_rem_creativity = true;
+
+    /* Sensitivity */
+    config->modulation_strength = 1.0f;
+    config->sleep_pressure_threshold = 0.6f;  /* Start degrading at 60% pressure */
+
+    return 0;
+}
+
+/**
+ * WHAT: Create logic-sleep bridge
+ * WHY:  Initialize integration between sleep and logic systems
+ * HOW:  Allocate, configure, register callback, get initial state
+ */
+logic_sleep_bridge_t* logic_sleep_bridge_create(
+    const logic_sleep_config_t* config,
+    sleep_system_t sleep_system)
+{
+    /* Guard clauses */
+    if (!sleep_system) {
+        NIMCP_LOGGING_ERROR("Cannot create logic-sleep bridge: NULL sleep system");
+        return NULL;
+    }
+
+    /* Allocate bridge */
+    logic_sleep_bridge_t* bridge =
+        (logic_sleep_bridge_t*)nimcp_malloc(sizeof(logic_sleep_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate logic-sleep bridge");
+        return NULL;
+    }
+
+    memset(bridge, 0, sizeof(logic_sleep_bridge_t));
+
+    /* Initialize configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        logic_sleep_default_config(&bridge->config);
+    }
+
+    /* Store sleep system handle */
+    bridge->sleep_system = sleep_system;
+
+    /* Initialize effects to default (awake) state */
+    bridge->effects.inference_capacity_factor = 1.0f;
+    bridge->effects.deduction_accuracy_factor = 1.0f;
+    bridge->effects.consistency_check_factor = 1.0f;
+    bridge->effects.logic_offline = false;
+    bridge->effects.consolidation_mode = false;
+    bridge->effects.creative_mode = false;
+    bridge->effects.rule_consolidation_rate = 0.0f;
+    bridge->effects.pressure_inference_penalty = 0.0f;
+    bridge->effects.pressure_accuracy_penalty = 0.0f;
+
+    /* Create mutex for thread safety */
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex for logic-sleep bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep_system,
+        logic_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for logic bridge");
+    }
+
+    /* Get initial state immediately */
+    sleep_state_t initial_state = sleep_get_current_state(sleep_system);
+    logic_on_sleep_state_change(initial_state, bridge);
+
+    bridge->initialized = true;
+
+    NIMCP_LOGGING_INFO("Logic-sleep bridge created");
+    return bridge;
+}
+
+/**
+ * WHAT: Destroy logic-sleep bridge
+ * WHY:  Clean up resources and prevent memory leaks
+ * HOW:  Unregister callback, destroy mutex, free memory
+ */
+void logic_sleep_bridge_destroy(logic_sleep_bridge_t* bridge)
+{
+    /* Guard clause */
+    if (!bridge) return;
+
+    /* Unregister callback if it was registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            logic_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for logic bridge");
+        }
+    }
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        logic_sleep_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    /* Free bridge structure */
+    nimcp_free(bridge);
+}
+
+/* ============================================================================
+ * Update and Query API Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Update logic-sleep bridge state
+ * WHY:  Recompute effects based on current sleep state and pressure
+ * HOW:  Query sleep system, apply modulation formulas
+ */
+int logic_sleep_update(logic_sleep_bridge_t* bridge)
+{
+    /* Guard clause */
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get current sleep state and pressure */
+    sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
+    float pressure = sleep_get_pressure(bridge->sleep_system);
+
+    bridge->effects.current_state = state;
+    bridge->effects.sleep_pressure = pressure;
+
+    /* Update inference capacity */
+    if (bridge->config.enable_inference_modulation) {
+        bridge->effects.inference_capacity_factor =
+            logic_sleep_inference_for_state(state);
+
+        /* Sleep pressure impairs inference even when awake */
+        if (state == SLEEP_STATE_AWAKE && pressure > bridge->config.sleep_pressure_threshold) {
+            float pressure_excess = (pressure - bridge->config.sleep_pressure_threshold) /
+                                   (1.0f - bridge->config.sleep_pressure_threshold);
+            float penalty = 0.5f * pressure_excess;  /* Up to 50% reduction */
+            bridge->effects.pressure_inference_penalty = penalty;
+            bridge->effects.inference_capacity_factor *= (1.0f - penalty);
+        } else {
+            bridge->effects.pressure_inference_penalty = 0.0f;
+        }
+
+        /* Apply modulation strength */
+        bridge->effects.inference_capacity_factor =
+            1.0f - (1.0f - bridge->effects.inference_capacity_factor) *
+            bridge->config.modulation_strength;
+    }
+
+    /* Update deduction accuracy */
+    if (bridge->config.enable_accuracy_modulation) {
+        bridge->effects.deduction_accuracy_factor =
+            logic_sleep_accuracy_for_state(state);
+
+        /* Sleep pressure reduces accuracy when awake */
+        if (state == SLEEP_STATE_AWAKE && pressure > bridge->config.sleep_pressure_threshold) {
+            float pressure_excess = (pressure - bridge->config.sleep_pressure_threshold) /
+                                   (1.0f - bridge->config.sleep_pressure_threshold);
+            float penalty = 0.3f * pressure_excess;  /* Up to 30% reduction */
+            bridge->effects.pressure_accuracy_penalty = penalty;
+            bridge->effects.deduction_accuracy_factor *= (1.0f - penalty);
+        } else {
+            bridge->effects.pressure_accuracy_penalty = 0.0f;
+        }
+
+        /* Apply modulation strength */
+        bridge->effects.deduction_accuracy_factor =
+            1.0f - (1.0f - bridge->effects.deduction_accuracy_factor) *
+            bridge->config.modulation_strength;
+    }
+
+    /* Update consistency checking */
+    if (bridge->config.enable_consistency_modulation) {
+        bridge->effects.consistency_check_factor =
+            logic_sleep_consistency_for_state(state);
+
+        /* Apply modulation strength */
+        bridge->effects.consistency_check_factor =
+            1.0f - (1.0f - bridge->effects.consistency_check_factor) *
+            bridge->config.modulation_strength;
+    }
+
+    /* Update functional modes */
+    bridge->effects.logic_offline = (state == SLEEP_STATE_DEEP_NREM ||
+                                      state == SLEEP_STATE_LIGHT_NREM);
+
+    bridge->effects.consolidation_mode = (state == SLEEP_STATE_LIGHT_NREM ||
+                                          state == SLEEP_STATE_DEEP_NREM);
+
+    bridge->effects.creative_mode = (state == SLEEP_STATE_REM);
+
+    /* Update NREM consolidation rate */
+    if (bridge->config.enable_nrem_consolidation) {
+        if (state == SLEEP_STATE_DEEP_NREM) {
+            bridge->effects.rule_consolidation_rate = LOGIC_SLEEP_CONSOLIDATION_DEEP;
+        } else if (state == SLEEP_STATE_LIGHT_NREM) {
+            bridge->effects.rule_consolidation_rate = LOGIC_SLEEP_CONSOLIDATION_NREM;
+        } else {
+            bridge->effects.rule_consolidation_rate = 0.0f;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+/**
+ * WHAT: Get current sleep effects on logic
+ * WHY:  Provide effects structure to logic module
+ * HOW:  Thread-safe copy of effects
+ */
+int logic_sleep_get_effects(
+    const logic_sleep_bridge_t* bridge,
+    logic_sleep_effects_t* effects)
+{
+    /* Guard clauses */
+    if (!bridge || !effects) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *effects = bridge->effects;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/**
+ * WHAT: Get inference capacity factor
+ * WHY:  Quick access to most critical parameter
+ * HOW:  Thread-safe read
+ */
+float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge)
+{
+    /* Guard clause */
+    if (!bridge) return 1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float result = bridge->effects.inference_capacity_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+/**
+ * WHAT: Check if logic is offline
+ * WHY:  Allow logic module to skip processing during deep sleep
+ * HOW:  Thread-safe read of offline flag
+ */
+bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
+{
+    /* Guard clause */
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool result = bridge->effects.logic_offline;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+/**
+ * WHAT: Check if in consolidation mode
+ * WHY:  Signal NREM consolidation to logic system
+ * HOW:  Thread-safe read of consolidation flag
+ */
+bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge)
+{
+    /* Guard clause */
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool result = bridge->effects.consolidation_mode;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+/* ============================================================================
+ * Sleep State Mapping Functions
+ * ============================================================================ */
+
+/**
+ * WHAT: Map sleep state to inference capacity
+ * WHY:  Encapsulate state-to-performance mapping
+ * HOW:  Switch on state, return constant
+ */
+float logic_sleep_inference_for_state(sleep_state_t state)
+{
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return LOGIC_SLEEP_INFERENCE_AWAKE;
+        case SLEEP_STATE_DROWSY:     return LOGIC_SLEEP_INFERENCE_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return LOGIC_SLEEP_INFERENCE_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return LOGIC_SLEEP_INFERENCE_DEEP_NREM;
+        case SLEEP_STATE_REM:        return LOGIC_SLEEP_INFERENCE_REM;
+        default:                     return LOGIC_SLEEP_INFERENCE_AWAKE;
+    }
+}
+
+/**
+ * WHAT: Map sleep state to deduction accuracy
+ * WHY:  Encapsulate state-to-accuracy mapping
+ * HOW:  Switch on state, return constant
+ */
+float logic_sleep_accuracy_for_state(sleep_state_t state)
+{
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return LOGIC_SLEEP_ACCURACY_AWAKE;
+        case SLEEP_STATE_DROWSY:     return LOGIC_SLEEP_ACCURACY_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM: return LOGIC_SLEEP_ACCURACY_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:  return LOGIC_SLEEP_ACCURACY_DEEP_NREM;
+        case SLEEP_STATE_REM:        return LOGIC_SLEEP_ACCURACY_REM;
+        default:                     return LOGIC_SLEEP_ACCURACY_AWAKE;
+    }
+}
+
+/**
+ * WHAT: Map sleep state to consistency checking
+ * WHY:  Encapsulate state-to-consistency mapping
+ * HOW:  Switch on state, return constant
+ */
+float logic_sleep_consistency_for_state(sleep_state_t state)
+{
+    switch (state) {
+        case SLEEP_STATE_AWAKE:      return LOGIC_SLEEP_CONSISTENCY_AWAKE;
+        case SLEEP_STATE_DROWSY:     return LOGIC_SLEEP_CONSISTENCY_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+        case SLEEP_STATE_DEEP_NREM:  return LOGIC_SLEEP_CONSISTENCY_NREM;
+        case SLEEP_STATE_REM:        return LOGIC_SLEEP_CONSISTENCY_REM;
+        default:                     return LOGIC_SLEEP_CONSISTENCY_AWAKE;
+    }
+}
+
+/* ============================================================================
+ * Bio-Async Integration API Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Connect bridge to bio-async router
+ * WHY:  Enable inter-module messaging for distributed logic signals
+ * HOW:  Register with bio_router using BIO_MODULE_KNOWLEDGE_SYMBOLIC_LOGIC
+ */
+int logic_sleep_connect_bio_async(logic_sleep_bridge_t* bridge)
+{
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (bridge->bio_async_enabled) return 0;  /* Already connected */
+
+    /* Register with bio-async router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_KNOWLEDGE_SYMBOLIC_LOGIC,
+        .module_name = "logic_sleep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Logic-sleep bridge connected to bio-async router");
+        return 0;
+    }
+
+    NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    return 0;  /* Not an error if router unavailable */
+}
+
+/**
+ * WHAT: Disconnect from bio-async router
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ */
+int logic_sleep_disconnect_bio_async(logic_sleep_bridge_t* bridge)
+{
+    /* Guard clauses */
+    if (!bridge) return -1;
+    if (!bridge->bio_async_enabled) return 0;  /* Not connected */
+
+    /* Unregister from bio-async router */
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Logic-sleep bridge disconnected from bio-async router");
+
+    return 0;
+}
+
+/**
+ * WHAT: Check if bio-async is connected
+ * WHY:  Allow conditional bio-async usage
+ * HOW:  Return bio_async_enabled flag
+ */
+bool logic_sleep_is_bio_async_connected(const logic_sleep_bridge_t* bridge)
+{
+    /* Guard clause */
+    if (!bridge) return false;
+
+    return bridge->bio_async_enabled;
+}

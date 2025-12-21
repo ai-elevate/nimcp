@@ -113,6 +113,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_layer.cpp)
 endif()
 
 # ============================================================================
+# Test 4: LNN Sleep Bridge
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_sleep_bridge.cpp)
+    add_executable(unit_lnn_test_lnn_sleep_bridge
+        test_lnn_sleep_bridge.cpp
+    )
+
+    target_link_libraries(unit_lnn_test_lnn_sleep_bridge
+        PRIVATE ${LNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_lnn_test_lnn_sleep_bridge
+        PRIVATE ${LNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_lnn_test_lnn_sleep_bridge PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_lnn_test_lnn_sleep_bridge
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;lnn;sleep_bridge"
+            TIMEOUT 60
+    )
+
+    message(STATUS "  Added LNN unit test: test_lnn_sleep_bridge")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_lnn_network.cpp

@@ -10,6 +10,8 @@
 #include "plasticity/noise/nimcp_pink_noise_immune_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
 
@@ -372,4 +374,63 @@ int pink_immune_bridge_reset(pink_immune_bridge_t* bridge) {
     bridge->avg_alpha_modifier = 0.0f;
 
     return 0;
+}
+
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+int pink_immune_bridge_connect_bio_async(pink_immune_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot connect to bio-async: NULL bridge");
+        return -1;
+    }
+
+    if (bridge->bio_async_enabled) {
+        NIMCP_LOGGING_INFO("Pink noise-immune bridge already connected to bio-async");
+        return 0;
+    }
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_PINK_NOISE,
+        .module_name = "pink_noise_immune_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Pink noise-immune bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
+    return 0;
+}
+
+int pink_immune_bridge_disconnect_bio_async(pink_immune_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot disconnect from bio-async: NULL bridge");
+        return -1;
+    }
+
+    if (!bridge->bio_async_enabled) {
+        return 0;
+    }
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Pink noise-immune bridge disconnected from bio-async router");
+
+    return 0;
+}
+
+bool pink_immune_bridge_is_bio_async_connected(const pink_immune_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_enabled;
 }

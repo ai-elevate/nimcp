@@ -361,6 +361,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/reasoning")
     add_subdirectory(regression/cognitive/reasoning)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/logic")
+    message(STATUS "Adding cognitive logic unit tests...")
+    add_subdirectory(unit/cognitive/logic)
+endif()
+
 # ============================================================================
 # Cognitive Introspection Tests (Phase 1.5.4)
 # ============================================================================
@@ -931,6 +936,11 @@ endif()
 # ============================================================================
 # Substrate Bridge Tests (Neural Substrate Integration)
 # ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/neural_substrate")
+    message(STATUS "Adding neural substrate unit tests...")
+    add_subdirectory(unit/core/neural_substrate)
+endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/substrate")
     message(STATUS "Adding core substrate bridges regression tests...")

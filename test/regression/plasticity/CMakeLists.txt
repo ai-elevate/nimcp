@@ -288,3 +288,29 @@ gtest_discover_tests(regression_plasticity_pink_noise
         TIMEOUT 600
         LABELS "regression;plasticity;noise;pink"
 )
+
+# ============================================================================
+# Phase 1 Bridges Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Phase 1 bridges (dendrite, synapse, axon, glial-immune)
+# WHY:  Ensure numerical stability, parameter bounds, no regressions
+# HOW:  Extended simulations, stress tests, boundary conditions
+# ============================================================================
+
+add_executable(regression_plasticity_phase1_bridges
+    bridges/test_phase1_bridges_regression.cpp
+)
+target_link_libraries(regression_plasticity_phase1_bridges
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_phase1_bridges PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_phase1_bridges
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;bridges;phase1"
+)

@@ -793,6 +793,39 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_curiosity_enhanced_pipeline.cpp)
     message(STATUS "  Added Enhanced Curiosity E2E test: e2e_test_curiosity_enhanced_pipeline")
 endif()
 
+# ============================================================================
+# Phase 1 Bridges Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for Phase 1 bridges (dendrite, synapse, axon, glial-immune)
+# WHY:  Verify complete bridge pipeline in real-world scenarios
+# HOW:  Test learning, immune challenge, myelination, coordinated operation
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_phase1_bridges_pipeline.cpp)
+    add_executable(e2e_test_phase1_bridges_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_phase1_bridges_pipeline.cpp
+    )
+    target_include_directories(e2e_test_phase1_bridges_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/plasticity/bridges
+        ${CMAKE_SOURCE_DIR}/include/glial/immune
+    )
+    target_link_libraries(e2e_test_phase1_bridges_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_phase1_bridges_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_phase1_bridges_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;plasticity;bridges;phase1"
+            TIMEOUT 300
+    )
+    message(STATUS "  Added Phase 1 Bridges E2E test: e2e_test_phase1_bridges_pipeline")
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

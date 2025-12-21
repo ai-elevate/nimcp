@@ -20,6 +20,7 @@ set(LNN_SOURCES
     nimcp_lnn_bio_async.c
     nimcp_lnn_immune.c
     nimcp_lnn_parallel.c
+    nimcp_lnn_sleep_bridge.c
 )
 
 # Create static library

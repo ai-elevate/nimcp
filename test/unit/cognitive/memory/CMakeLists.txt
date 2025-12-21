@@ -13,3 +13,14 @@ target_link_libraries(unit_cognitive_memory_test_quantum_semantic
 target_compile_features(unit_cognitive_memory_test_quantum_semantic PRIVATE cxx_std_17)
 gtest_discover_tests(unit_cognitive_memory_test_quantum_semantic
     PROPERTIES LABELS "unit;cognitive;memory;quantum")
+
+# Memory Sleep Bridge Tests
+add_executable(unit_cognitive_memory_test_memory_sleep_bridge
+    test_memory_sleep_bridge.cpp
+)
+target_link_libraries(unit_cognitive_memory_test_memory_sleep_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_cognitive_memory_test_memory_sleep_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_memory_test_memory_sleep_bridge
+    PROPERTIES LABELS "unit;cognitive;memory;sleep")

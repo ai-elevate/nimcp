@@ -1011,6 +1011,197 @@ size_t lnn_network_memory_usage(const lnn_network_t* network) {
 }
 
 /*=============================================================================
+ * Parameter Access
+ *===========================================================================*/
+
+/**
+ * @brief Helper to copy tensor data to flat buffer
+ */
+static size_t copy_tensor_to_buffer(const nimcp_tensor_t* t, float* buf, size_t offset) {
+    if (!t) return 0;
+    size_t n = nimcp_tensor_numel(t);
+    const float* data = (const float*)nimcp_tensor_data_const(t);
+    if (data) {
+        memcpy(buf + offset, data, n * sizeof(float));
+    }
+    return n;
+}
+
+/**
+ * @brief Helper to copy flat buffer data to tensor
+ */
+static size_t copy_buffer_to_tensor(nimcp_tensor_t* t, const float* buf, size_t offset) {
+    if (!t) return 0;
+    size_t n = nimcp_tensor_numel(t);
+    float* data = (float*)nimcp_tensor_data(t);
+    if (data) {
+        memcpy(data, buf + offset, n * sizeof(float));
+    }
+    return n;
+}
+
+/**
+ * @brief Get all network parameters as flat array
+ *
+ * WHAT: Extract all trainable weights into contiguous buffer
+ * WHY:  Interface with optimizers
+ * HOW:  Iterate layers, copy W_in, W_rec, W_tau, b_in, b_tau, tau_base
+ */
+int lnn_network_get_params(
+    const lnn_network_t* network,
+    float* params,
+    size_t* n_params
+) {
+    /* Guard clauses */
+    if (!network) {
+        NIMCP_LOGGING_ERROR("lnn_network_get_params: NULL network");
+        return LNN_ERROR_NULL_POINTER;
+    }
+    if (!params || !n_params) {
+        NIMCP_LOGGING_ERROR("lnn_network_get_params: NULL output pointer");
+        return LNN_ERROR_NULL_POINTER;
+    }
+
+    size_t offset = 0;
+
+    /* Copy parameters from each layer */
+    for (uint32_t i = 0; i < network->n_layers; i++) {
+        lnn_layer_t* layer = network->layers[i];
+        if (!layer) continue;
+
+        /* Order: W_in, W_rec, W_tau, b_in, b_tau, tau_base */
+        offset += copy_tensor_to_buffer(layer->W_in, params, offset);
+        offset += copy_tensor_to_buffer(layer->W_rec, params, offset);
+        offset += copy_tensor_to_buffer(layer->W_tau, params, offset);
+        offset += copy_tensor_to_buffer(layer->b_in, params, offset);
+        offset += copy_tensor_to_buffer(layer->b_tau, params, offset);
+        offset += copy_tensor_to_buffer(layer->tau_base, params, offset);
+    }
+
+    *n_params = offset;
+    return LNN_SUCCESS;
+}
+
+/**
+ * @brief Set all network parameters from flat array
+ *
+ * WHAT: Load trainable weights from contiguous buffer
+ * WHY:  Apply optimizer updates
+ * HOW:  Iterate layers, write to weight tensors
+ */
+int lnn_network_set_params(
+    lnn_network_t* network,
+    const float* params,
+    size_t n_params
+) {
+    /* Guard clauses */
+    if (!network) {
+        NIMCP_LOGGING_ERROR("lnn_network_set_params: NULL network");
+        return LNN_ERROR_NULL_POINTER;
+    }
+    if (!params) {
+        NIMCP_LOGGING_ERROR("lnn_network_set_params: NULL params");
+        return LNN_ERROR_NULL_POINTER;
+    }
+
+    size_t expected = lnn_network_param_count(network);
+    if (n_params != expected) {
+        NIMCP_LOGGING_ERROR("lnn_network_set_params: param count mismatch (%zu vs %zu)",
+                           n_params, expected);
+        return LNN_ERROR_INVALID_PARAM;
+    }
+
+    size_t offset = 0;
+
+    /* Copy parameters to each layer */
+    for (uint32_t i = 0; i < network->n_layers; i++) {
+        lnn_layer_t* layer = network->layers[i];
+        if (!layer) continue;
+
+        /* Order: W_in, W_rec, W_tau, b_in, b_tau, tau_base */
+        offset += copy_buffer_to_tensor(layer->W_in, params, offset);
+        offset += copy_buffer_to_tensor(layer->W_rec, params, offset);
+        offset += copy_buffer_to_tensor(layer->W_tau, params, offset);
+        offset += copy_buffer_to_tensor(layer->b_in, params, offset);
+        offset += copy_buffer_to_tensor(layer->b_tau, params, offset);
+        offset += copy_buffer_to_tensor(layer->tau_base, params, offset);
+    }
+
+    return LNN_SUCCESS;
+}
+
+/**
+ * @brief Get all gradient values as flat array
+ *
+ * WHAT: Extract accumulated gradients from all layers
+ * WHY:  Interface with optimizers
+ * HOW:  Iterate layers, copy grad_W_in, grad_W_rec, etc.
+ */
+int lnn_network_get_gradients(
+    const lnn_network_t* network,
+    float* gradients,
+    size_t* n_grads
+) {
+    /* Guard clauses */
+    if (!network) {
+        NIMCP_LOGGING_ERROR("lnn_network_get_gradients: NULL network");
+        return LNN_ERROR_NULL_POINTER;
+    }
+    if (!gradients || !n_grads) {
+        NIMCP_LOGGING_ERROR("lnn_network_get_gradients: NULL output pointer");
+        return LNN_ERROR_NULL_POINTER;
+    }
+
+    size_t offset = 0;
+
+    /* Copy gradients from each layer */
+    for (uint32_t i = 0; i < network->n_layers; i++) {
+        lnn_layer_t* layer = network->layers[i];
+        if (!layer) continue;
+
+        /* Order: same as params */
+        offset += copy_tensor_to_buffer(layer->grad_W_in, gradients, offset);
+        offset += copy_tensor_to_buffer(layer->grad_W_rec, gradients, offset);
+        offset += copy_tensor_to_buffer(layer->grad_W_tau, gradients, offset);
+        offset += copy_tensor_to_buffer(layer->grad_b_in, gradients, offset);
+        offset += copy_tensor_to_buffer(layer->grad_b_tau, gradients, offset);
+        offset += copy_tensor_to_buffer(layer->grad_tau_base, gradients, offset);
+    }
+
+    *n_grads = offset;
+    return LNN_SUCCESS;
+}
+
+/**
+ * @brief Zero all gradient tensors in network
+ *
+ * WHAT: Reset gradients to zero
+ * WHY:  Prevent gradient accumulation
+ * HOW:  Call nimcp_tensor_zero on all grad_* tensors
+ */
+int lnn_network_zero_gradients(lnn_network_t* network) {
+    /* Guard clause */
+    if (!network) {
+        NIMCP_LOGGING_ERROR("lnn_network_zero_gradients: NULL network");
+        return LNN_ERROR_NULL_POINTER;
+    }
+
+    for (uint32_t i = 0; i < network->n_layers; i++) {
+        lnn_layer_t* layer = network->layers[i];
+        if (!layer) continue;
+
+        if (layer->grad_W_in) nimcp_tensor_zero_grad(layer->grad_W_in);
+        if (layer->grad_W_rec) nimcp_tensor_zero_grad(layer->grad_W_rec);
+        if (layer->grad_W_tau) nimcp_tensor_zero_grad(layer->grad_W_tau);
+        if (layer->grad_b_in) nimcp_tensor_zero_grad(layer->grad_b_in);
+        if (layer->grad_b_tau) nimcp_tensor_zero_grad(layer->grad_b_tau);
+        if (layer->grad_tau_base) nimcp_tensor_zero_grad(layer->grad_tau_base);
+    }
+
+    return LNN_SUCCESS;
+}
+
+/*=============================================================================
  * Serialization
  *===========================================================================*/
 

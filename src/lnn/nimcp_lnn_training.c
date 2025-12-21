@@ -8,8 +8,10 @@
  */
 
 #include "lnn/nimcp_lnn_training.h"
+#include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_gradient.h"
 #include "lnn/nimcp_lnn_network.h"
+#include "nimcp.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
@@ -243,6 +245,30 @@ lnn_training_ctx_t* lnn_training_create(
         return NULL;
     }
 
+    /* Create gradient context for LNN adjoint computation */
+    uint32_t max_steps = config->bptt_truncation > 0 ? config->bptt_truncation : 100;
+    ctx->gradient_ctx = lnn_gradient_ctx_create(
+        network,
+        max_steps,
+        config->use_adjoint_checkpointing,
+        10  /* checkpoint_interval */
+    );
+    if (!ctx->gradient_ctx) {
+        NIMCP_LOGGING_WARN("Failed to create gradient context, training may fail");
+        /* Non-fatal: some use cases may not need gradients */
+    }
+
+    /* Create output and gradient buffers */
+    uint32_t output_size = network->n_outputs;
+    if (output_size > 0) {
+        uint32_t dims[1] = { output_size };
+        ctx->output_buffer = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+        ctx->loss_gradient = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    } else {
+        ctx->output_buffer = NULL;
+        ctx->loss_gradient = NULL;
+    }
+
     /* Initialize LR schedule */
     ctx->lr_schedule = config->lr_schedule;
     if (config->n_schedule_params > 0) {
@@ -319,6 +345,19 @@ void lnn_training_destroy(lnn_training_ctx_t* ctx) {
         nimcp_loss_destroy(ctx->loss_context);
     }
 
+    /* Destroy gradient context */
+    if (ctx->gradient_ctx) {
+        lnn_gradient_ctx_destroy(ctx->gradient_ctx);
+    }
+
+    /* Destroy buffers */
+    if (ctx->output_buffer) {
+        nimcp_tensor_destroy(ctx->output_buffer);
+    }
+    if (ctx->loss_gradient) {
+        nimcp_tensor_destroy(ctx->loss_gradient);
+    }
+
     /* Free LR schedule params */
     if (ctx->lr_schedule_params) {
         free(ctx->lr_schedule_params);
@@ -347,18 +386,58 @@ int lnn_training_step(
         return LNN_ERROR_NULL_POINTER;
     }
 
-    uint64_t step_start_ms = 0; /* TODO: Add timing */
-
-    /* 1. Forward pass */
-    /* Note: Actual implementation would call lnn_network_forward_sequence() */
-    /* This is a placeholder showing the integration pattern */
-
-    /* 2. Compute loss */
+    uint64_t step_start_ms = nimcp_time_get_ms();
     float loss = 0.0f;
-    /* TODO: Call nimcp_loss_forward() with network outputs and targets */
+    float grad_norm = 0.0f;
 
-    /* 3. Backward pass (adjoint method for LNN) */
-    /* TODO: Call lnn_gradient_compute_adjoint() */
+    /* 1. Forward pass through network */
+    float dt = ctx->network->config ? ctx->network->config->default_dt : 1.0f;
+    int result = lnn_network_forward_step(ctx->network, inputs, ctx->output_buffer, dt);
+    if (result != 0) {
+        NIMCP_LOGGING_ERROR("Forward pass failed: %d", result);
+        return result;
+    }
+
+    /* 2. Compute loss using NIMCP loss functions */
+    if (ctx->loss_context && ctx->output_buffer) {
+        const float* predictions = (const float*)nimcp_tensor_data(ctx->output_buffer);
+        const float* target_data = (const float*)nimcp_tensor_data_const(targets);
+        size_t n_outputs = nimcp_tensor_numel(ctx->output_buffer);
+
+        nimcp_loss_result_t loss_result_data = {0};
+        nimcp_result_t loss_ret = nimcp_loss_forward(
+            ctx->loss_context,
+            predictions,
+            target_data,
+            1,  /* batch_size */
+            n_outputs,
+            &loss_result_data
+        );
+
+        if (loss_ret == NIMCP_OK) {
+            loss = loss_result_data.loss_value;
+        } else {
+            NIMCP_LOGGING_WARN("Loss computation failed: %d", loss_ret);
+        }
+
+        /* Compute loss gradient (dL/dx) for backward pass */
+        if (ctx->loss_gradient) {
+            float* loss_grad_data = (float*)nimcp_tensor_data(ctx->loss_gradient);
+            nimcp_loss_backward(ctx->loss_context, predictions, target_data,
+                               1, n_outputs, loss_grad_data);
+        }
+    }
+
+    /* 3. Backward pass using adjoint method for LNN */
+    if (ctx->gradient_ctx && ctx->loss_gradient) {
+        result = lnn_gradient_compute_adjoint(ctx->gradient_ctx, ctx->network, ctx->loss_gradient);
+        if (result != 0) {
+            NIMCP_LOGGING_WARN("Gradient computation failed: %d", result);
+        }
+
+        /* Get gradient norm for statistics */
+        grad_norm = lnn_gradient_norm(ctx->gradient_ctx);
+    }
 
     /* 4. Accumulate gradients if needed */
     ctx->current_accumulation++;
@@ -368,7 +447,42 @@ int lnn_training_step(
 
     if (should_update) {
         /* 5. Apply gradients via optimizer */
-        /* TODO: Call nimcp_optimizer_step() */
+        if (ctx->optimizer && ctx->network) {
+            /* Get parameter count and allocate buffers */
+            size_t n_params = lnn_network_param_count(ctx->network);
+            if (n_params > 0) {
+                float* params = (float*)malloc(n_params * sizeof(float));
+                float* grads = (float*)malloc(n_params * sizeof(float));
+
+                if (params && grads) {
+                    size_t actual_params = 0;
+                    size_t actual_grads = 0;
+
+                    /* Get current parameters and gradients */
+                    if (lnn_network_get_params(ctx->network, params, &actual_params) == 0 &&
+                        lnn_network_get_gradients(ctx->network, grads, &actual_grads) == 0 &&
+                        actual_params == actual_grads) {
+
+                        /* Apply optimizer step: params -= lr * grads (or Adam/etc) */
+                        nimcp_optimizer_step(ctx->optimizer, params, grads, actual_params);
+
+                        /* Write updated parameters back to network */
+                        lnn_network_set_params(ctx->network, params, actual_params);
+                    }
+
+                    /* Zero gradients for next iteration */
+                    lnn_network_zero_gradients(ctx->network);
+                }
+
+                if (params) free(params);
+                if (grads) free(grads);
+            }
+
+            /* Clear gradient context accumulated state */
+            if (ctx->gradient_ctx) {
+                lnn_gradient_reset(ctx->gradient_ctx);
+            }
+        }
 
         /* Reset accumulation counter */
         ctx->current_accumulation = 0;
@@ -383,12 +497,21 @@ int lnn_training_step(
     ctx->stats.step_count = ctx->step_count;
     ctx->stats.current_loss = loss;
     ctx->stats.total_loss += (double)loss;
+    ctx->stats.total_gradient_norm += (double)grad_norm;
 
     if (loss < ctx->stats.min_loss) ctx->stats.min_loss = loss;
     if (loss > ctx->stats.max_loss) ctx->stats.max_loss = loss;
+    if (grad_norm < ctx->stats.min_gradient_norm) ctx->stats.min_gradient_norm = grad_norm;
+    if (grad_norm > ctx->stats.max_gradient_norm) ctx->stats.max_gradient_norm = grad_norm;
 
-    /* Update average loss */
+    /* Update average loss and gradient norm */
     ctx->stats.avg_loss = (float)(ctx->stats.total_loss / (double)ctx->stats.step_count);
+    ctx->stats.avg_gradient_norm = (float)(ctx->stats.total_gradient_norm / (double)ctx->stats.step_count);
+
+    /* Track timing */
+    uint64_t step_end_ms = nimcp_time_get_ms();
+    (void)step_start_ms; /* Avoid unused warning if timing not tracked */
+    (void)step_end_ms;
 
     /* 7. Call step callback */
     if (ctx->on_step_complete) {
@@ -397,13 +520,16 @@ int lnn_training_step(
 
     /* 8. Update training bridges */
     if (ctx->cognitive_training_bridge) {
-        /* TODO: Update cognitive bridge with metrics */
+        cognitive_training_update_metrics(ctx->cognitive_training_bridge,
+                                         loss, grad_norm, ctx->current_lr, ctx->step_count);
     }
     if (ctx->training_logic_bridge) {
-        /* TODO: Update logic bridge with metrics */
+        training_logic_update_metrics(ctx->training_logic_bridge,
+                                     loss, grad_norm, ctx->current_lr, ctx->step_count);
     }
     if (ctx->training_immune_system) {
-        /* TODO: Update immune system with metrics */
+        training_immune_update_metrics(ctx->training_immune_system,
+                                      loss, grad_norm, ctx->current_lr);
     }
 
     /* Output loss if requested */

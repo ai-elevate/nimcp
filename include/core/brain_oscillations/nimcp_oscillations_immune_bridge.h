@@ -314,6 +314,10 @@ typedef struct {
 
     /* Thread safety */
     void* mutex;
+
+    /* Bio-async integration */
+    void* bio_ctx;                      /**< Bio-async module context */
+    bool bio_async_enabled;             /**< Whether bio-async is active */
 } oscillations_immune_bridge_t;
 
 /**
@@ -586,6 +590,46 @@ float oscillations_immune_get_delta_amplification(
 float oscillations_immune_get_gamma_suppression(
     const oscillations_immune_bridge_t* bridge
 );
+
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect bridge to bio-async router
+ *
+ * WHAT: Register bridge as bio-async module
+ * WHY:  Enable inter-module messaging for distributed oscillation/immune signals
+ * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_OSCILLATIONS
+ *
+ * @param bridge Oscillations-immune bridge
+ * @return 0 on success, -1 on error
+ */
+int oscillations_immune_connect_bio_async(oscillations_immune_bridge_t* bridge);
+
+/**
+ * @brief Disconnect from bio-async router
+ *
+ * WHAT: Unregister bridge from bio-async
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ *
+ * @param bridge Oscillations-immune bridge
+ * @return 0 on success, -1 on error
+ */
+int oscillations_immune_disconnect_bio_async(oscillations_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if bio-async is connected
+ *
+ * WHAT: Query bio-async connection status
+ * WHY:  Determine if messaging is available
+ * HOW:  Return bio_async_enabled flag
+ *
+ * @param bridge Oscillations-immune bridge
+ * @return true if connected to bio-async router
+ */
+bool oscillations_immune_is_bio_async_connected(const oscillations_immune_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

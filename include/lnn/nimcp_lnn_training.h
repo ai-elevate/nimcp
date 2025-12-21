@@ -19,6 +19,7 @@
 #define NIMCP_LNN_TRAINING_H
 
 #include "nimcp_lnn_types.h"
+#include "nimcp_lnn_gradient.h"
 #include "middleware/training/nimcp_optimizers.h"
 #include "middleware/training/nimcp_gradient_manager.h"
 #include "middleware/training/nimcp_loss_functions.h"
@@ -205,6 +206,11 @@ struct lnn_training_ctx_s {
     nimcp_optimizer_context_t* optimizer;
     nimcp_gradient_manager_ctx_t* gradient_manager;
     nimcp_loss_context_t* loss_context;
+
+    /* LNN gradient computation */
+    lnn_gradient_ctx_t* gradient_ctx;
+    nimcp_tensor_t* output_buffer;    /**< Buffer for network outputs */
+    nimcp_tensor_t* loss_gradient;    /**< Buffer for dL/dx */
 
     /* Configuration */
     lnn_training_config_t config;

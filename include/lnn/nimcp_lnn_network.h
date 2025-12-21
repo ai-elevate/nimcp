@@ -466,6 +466,75 @@ size_t lnn_network_param_count(const lnn_network_t* network);
  */
 size_t lnn_network_memory_usage(const lnn_network_t* network);
 
+/**
+ * @brief Get all network parameters as flat array
+ *
+ * WHAT: Extract all trainable weights into contiguous buffer
+ * WHY:  Interface with optimizers that expect flat parameter arrays
+ * HOW:  Iterate layers, copy W_in, W_rec, W_tau, b_in, b_tau, tau_base
+ *
+ * PARAMETER ORDER (per layer):
+ *   W_in → W_rec → W_tau → b_in → b_tau → tau_base
+ *
+ * @param network LNN network
+ * @param params Output buffer (must be pre-allocated to param_count size)
+ * @param n_params Output: actual number of parameters copied
+ * @return 0 on success, negative on error
+ */
+int lnn_network_get_params(
+    const lnn_network_t* network,
+    float* params,
+    size_t* n_params
+);
+
+/**
+ * @brief Set all network parameters from flat array
+ *
+ * WHAT: Load trainable weights from contiguous buffer back into network
+ * WHY:  Apply optimizer updates, load checkpoints
+ * HOW:  Iterate layers, write to W_in, W_rec, W_tau, b_in, b_tau, tau_base
+ *
+ * @param network LNN network
+ * @param params Input buffer with parameter values
+ * @param n_params Number of parameters in buffer
+ * @return 0 on success, negative on error
+ */
+int lnn_network_set_params(
+    lnn_network_t* network,
+    const float* params,
+    size_t n_params
+);
+
+/**
+ * @brief Get all gradient values as flat array
+ *
+ * WHAT: Extract accumulated gradients from all layers
+ * WHY:  Interface with optimizers for parameter updates
+ * HOW:  Iterate layers, copy grad_W_in, grad_W_rec, etc.
+ *
+ * @param network LNN network
+ * @param gradients Output buffer (must be pre-allocated to param_count size)
+ * @param n_grads Output: actual number of gradients copied
+ * @return 0 on success, negative on error
+ */
+int lnn_network_get_gradients(
+    const lnn_network_t* network,
+    float* gradients,
+    size_t* n_grads
+);
+
+/**
+ * @brief Zero all gradient tensors in network
+ *
+ * WHAT: Reset gradients to zero before backward pass
+ * WHY:  Prevent gradient accumulation across unrelated batches
+ * HOW:  Call nimcp_tensor_zero on all grad_* tensors in all layers
+ *
+ * @param network LNN network
+ * @return 0 on success, negative on error
+ */
+int lnn_network_zero_gradients(lnn_network_t* network);
+
 /*=============================================================================
  * Serialization
  *===========================================================================*/

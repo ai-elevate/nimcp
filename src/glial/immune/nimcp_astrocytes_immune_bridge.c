@@ -1,0 +1,222 @@
+/**
+ * @file nimcp_astrocytes_immune_bridge.c
+ * @brief Astrocytes-Immune Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-21
+ */
+
+#include "glial/immune/nimcp_astrocytes_immune_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
+#include <string.h>
+#include <math.h>
+
+/* NOTE: Message handlers are registered separately via bio_router_register_handler() */
+
+int astro_immune_default_config(astro_immune_config_t* config)
+{
+    if (!config) return -1;
+    memset(config, 0, sizeof(*config));
+    config->il1_a1_induction = 0.5f;
+    config->tnf_a1_induction = 0.4f;
+    config->il6_reactivity_gain = 0.3f;
+    config->il10_a2_promotion = 0.6f;
+    config->scar_formation_threshold = 0.8f;
+    config->glutamate_clearance_base = 1.0f;
+    config->enable_bio_async = true;
+    config->inbox_capacity = 32;
+    return 0;
+}
+
+astro_immune_bridge_t* astro_immune_create(
+    const astro_immune_config_t* config,
+    nimcp_astrocyte_t* astrocyte,
+    brain_immune_system_t* immune_system)
+{
+    astro_immune_bridge_t* bridge = nimcp_malloc(sizeof(astro_immune_bridge_t));
+    if (!bridge) return NULL;
+    memset(bridge, 0, sizeof(*bridge));
+
+    if (config) bridge->config = *config;
+    else astro_immune_default_config(&bridge->config);
+
+    bridge->astrocyte = astrocyte;
+    bridge->immune_system = immune_system;
+    bridge->reactivity_state = ASTRO_QUIESCENT;
+    bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base;
+
+    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+        nimcp_free(bridge->mutex);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    bridge->initialized = true;
+    NIMCP_LOGGING_INFO("Created astro-immune bridge");
+    return bridge;
+}
+
+void astro_immune_destroy(astro_immune_bridge_t* bridge)
+{
+    if (!bridge) return;
+    if (bridge->bio_async_enabled) astro_immune_disconnect_bio_async(bridge);
+    if (bridge->mutex) { nimcp_mutex_destroy(bridge->mutex); nimcp_free(bridge->mutex); }
+    nimcp_free(bridge);
+}
+
+int astro_immune_connect_bio_async(astro_immune_bridge_t* bridge)
+{
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (bridge->bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_ASTROCYTE,
+        .module_name = ASTRO_IMMUNE_MODULE_NAME,
+        .inbox_capacity = bridge->config.inbox_capacity,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    return 0;
+}
+
+int astro_immune_disconnect_bio_async(astro_immune_bridge_t* bridge)
+{
+    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (bridge->bio_ctx) { bio_router_unregister_module(bridge->bio_ctx); bridge->bio_ctx = NULL; }
+    bridge->bio_async_enabled = false;
+    return 0;
+}
+
+bool astro_immune_is_bio_async_connected(const astro_immune_bridge_t* bridge)
+{
+    return bridge && bridge->bio_async_enabled;
+}
+
+int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge)
+{
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_mutex_lock(bridge->mutex);
+
+    float il1 = 0, tnf = 0, il6 = 0, il10 = 0;
+    if (bridge->immune_system) {
+        il1 = brain_immune_get_cytokine_level(bridge->immune_system, BRAIN_CYTOKINE_IL1);
+        tnf = brain_immune_get_cytokine_level(bridge->immune_system, BRAIN_CYTOKINE_TNF);
+        il6 = brain_immune_get_cytokine_level(bridge->immune_system, BRAIN_CYTOKINE_IL6);
+        il10 = brain_immune_get_cytokine_level(bridge->immune_system, BRAIN_CYTOKINE_IL10);
+    }
+
+    bridge->cytokine_effects.il1_effect = il1 * bridge->config.il1_a1_induction;
+    bridge->cytokine_effects.tnf_effect = tnf * bridge->config.tnf_a1_induction;
+    bridge->cytokine_effects.il6_effect = il6 * bridge->config.il6_reactivity_gain;
+    bridge->cytokine_effects.il10_effect = il10 * bridge->config.il10_a2_promotion;
+
+    bridge->cytokine_effects.a1_drive =
+        bridge->cytokine_effects.il1_effect +
+        bridge->cytokine_effects.tnf_effect +
+        bridge->cytokine_effects.il6_effect * 0.5f;
+
+    bridge->cytokine_effects.a2_drive = bridge->cytokine_effects.il10_effect;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
+{
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    nimcp_mutex_lock(bridge->mutex);
+
+    astrocyte_reactivity_t old_state = bridge->reactivity_state;
+
+    /* Determine phenotype based on cytokine drives */
+    float a1 = bridge->cytokine_effects.a1_drive;
+    float a2 = bridge->cytokine_effects.a2_drive;
+
+    if (a1 > 0.5f && a1 > a2) {
+        bridge->reactivity_state = ASTRO_A1_REACTIVE;
+        bridge->reactivity_level = a1;
+        /* A1 reduces glutamate clearance (neurotoxic) */
+        bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base * (1.0f - a1 * 0.5f);
+    } else if (a2 > 0.3f) {
+        bridge->reactivity_state = ASTRO_A2_REACTIVE;
+        bridge->reactivity_level = a2;
+        /* A2 increases gliotransmitter release (neuroprotective) */
+        bridge->gliotransmitter_release = a2 * 0.5f;
+        bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base;
+    } else {
+        bridge->reactivity_state = ASTRO_QUIESCENT;
+        bridge->reactivity_level = 0.0f;
+        bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base;
+    }
+
+    /* Track scar formation from chronic A1 */
+    if (bridge->reactivity_state == ASTRO_A1_REACTIVE) {
+        bridge->scar_formation_progress += 0.001f * (dt_ms / 1000.0f);
+        if (bridge->scar_formation_progress >= bridge->config.scar_formation_threshold) {
+            bridge->reactivity_state = ASTRO_SCAR_FORMING;
+            bridge->stats.scar_formations++;
+        }
+    }
+
+    /* Update stats */
+    if (old_state != bridge->reactivity_state) {
+        bridge->stats.reactivity_changes++;
+        if (bridge->reactivity_state == ASTRO_A1_REACTIVE) bridge->stats.a1_activations++;
+        if (bridge->reactivity_state == ASTRO_A2_REACTIVE) bridge->stats.a2_activations++;
+    }
+
+    bridge->stats.glutamate_clearance_rate = bridge->glutamate_clearance_rate;
+    bridge->stats.gliotransmitter_release = bridge->gliotransmitter_release;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int astro_immune_update(astro_immune_bridge_t* bridge, float dt_ms)
+{
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    astro_immune_update_cytokine_effects(bridge);
+    astro_immune_update_reactivity(bridge, dt_ms);
+    return 0;
+}
+
+astrocyte_reactivity_t astro_immune_get_reactivity(const astro_immune_bridge_t* bridge)
+{
+    return bridge ? bridge->reactivity_state : ASTRO_QUIESCENT;
+}
+
+float astro_immune_get_glutamate_clearance(const astro_immune_bridge_t* bridge)
+{
+    return bridge ? bridge->glutamate_clearance_rate : 1.0f;
+}
+
+int astro_immune_get_stats(const astro_immune_bridge_t* bridge, astro_immune_stats_t* stats)
+{
+    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    *stats = bridge->stats;
+    return 0;
+}
+
+void astro_immune_reset_stats(astro_immune_bridge_t* bridge)
+{
+    if (!bridge) return;
+    nimcp_mutex_lock(bridge->mutex);
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->mutex);
+}
+
+const char* astrocyte_reactivity_to_string(astrocyte_reactivity_t state)
+{
+    switch (state) {
+        case ASTRO_QUIESCENT:    return "QUIESCENT";
+        case ASTRO_A1_REACTIVE:  return "A1_REACTIVE";
+        case ASTRO_A2_REACTIVE:  return "A2_REACTIVE";
+        case ASTRO_SCAR_FORMING: return "SCAR_FORMING";
+        default: return "UNKNOWN";
+    }
+}

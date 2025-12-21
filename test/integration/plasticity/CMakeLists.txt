@@ -239,3 +239,29 @@ gtest_discover_tests(integration_plasticity_pink_noise
         TIMEOUT 300
         LABELS "integration;plasticity;noise;pink"
 )
+
+# ============================================================================
+# Phase 1 Bridges Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Phase 1 bridges (dendrite, synapse, axon, glial-immune)
+# WHY:  Ensure all 6 Phase 1 bridges work correctly together
+# HOW:  Test cross-bridge interactions, cascading effects, stress scenarios
+# ============================================================================
+
+add_executable(integration_plasticity_phase1_bridges
+    bridges/test_phase1_bridges_integration.cpp
+)
+target_link_libraries(integration_plasticity_phase1_bridges
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_phase1_bridges PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_phase1_bridges
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;bridges;phase1"
+)

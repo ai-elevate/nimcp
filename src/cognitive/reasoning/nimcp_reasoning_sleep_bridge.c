@@ -1,0 +1,516 @@
+/**
+ * @file nimcp_reasoning_sleep_bridge.c
+ * @brief Sleep-Reasoning Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2025-12-21
+ */
+
+#include "cognitive/reasoning/nimcp_reasoning_sleep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include <string.h>
+#include <math.h>
+
+/**
+ * WHAT: Internal bridge structure
+ * WHY:  Encapsulate implementation details
+ * HOW:  Store config, effects, sleep system reference, mutex
+ */
+struct reasoning_sleep_bridge_struct {
+    reasoning_sleep_config_t config;      /**< Bridge configuration */
+    sleep_system_t sleep_system;          /**< Sleep system reference */
+    reasoning_sleep_effects_t effects;    /**< Current effects */
+    nimcp_mutex_t* mutex;                 /**< Thread safety */
+    bool callback_registered;             /**< Track callback for cleanup */
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;         /**< Bio-async module context */
+    bool bio_async_enabled;               /**< Whether bio-async is active */
+};
+
+/* Forward declarations */
+static void reasoning_on_sleep_state_change(sleep_state_t new_state, void* user_data);
+static void compute_reasoning_effects(reasoning_sleep_bridge_t bridge, sleep_state_t state, float pressure);
+
+/**
+ * WHAT: Callback invoked when sleep state changes
+ * WHY:  Immediately update reasoning parameters for new sleep state
+ * HOW:  Called by sleep system via observer pattern
+ *
+ * BIOLOGICAL BASIS:
+ * - Sleep state transitions affect reasoning immediately
+ * - REM enhances creative reasoning through loose semantic networks
+ * - NREM impairs logical reasoning but consolidates knowledge
+ * - Neurotransmitter shifts (ACh, NE, 5-HT) modulate reasoning modes
+ */
+static void reasoning_on_sleep_state_change(sleep_state_t new_state, void* user_data)
+{
+    /* Guard clause: Validate bridge */
+    reasoning_sleep_bridge_t bridge = (reasoning_sleep_bridge_t)user_data;
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        return;
+    }
+
+    NIMCP_LOGGING_DEBUG("Reasoning bridge received sleep state: %d", new_state);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get current pressure */
+    float pressure = sleep_get_pressure(bridge->sleep_system);
+
+    /* Compute all effects */
+    compute_reasoning_effects(bridge, new_state, pressure);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    NIMCP_LOGGING_DEBUG("Reasoning modulated: logical=%.2f, creative=%.2f, speed=%.2f, offline=%d",
+                        bridge->effects.logical_reasoning_factor,
+                        bridge->effects.creative_reasoning_factor,
+                        bridge->effects.inference_speed_factor,
+                        bridge->effects.reasoning_offline);
+}
+
+/**
+ * WHAT: Compute reasoning effects for given sleep state
+ * WHY:  Centralize effect computation logic
+ * HOW:  Apply state-specific factors with modulation strength
+ *
+ * BIOLOGICAL BASIS:
+ * - REM: High ACh, low NE → enhanced associations, impaired logic
+ * - Deep NREM: Low ACh, low NE → offline, consolidation mode
+ * - Awake: Balanced neurotransmitters → full reasoning capacity
+ */
+static void compute_reasoning_effects(reasoning_sleep_bridge_t bridge,
+                                       sleep_state_t state,
+                                       float pressure)
+{
+    /* Guard clause: Validate bridge */
+    if (!bridge) {
+        return;
+    }
+
+    /* Update state tracking */
+    bridge->effects.current_state = state;
+    bridge->effects.sleep_pressure = pressure;
+
+    /* Compute logical reasoning factor */
+    if (bridge->config.enable_logical_modulation) {
+        float logical_base = reasoning_sleep_logical_for_state(state);
+        bridge->effects.logical_reasoning_factor =
+            logical_base * bridge->config.modulation_strength +
+            (1.0f - bridge->config.modulation_strength);
+
+        /* Sleep pressure further impairs logical reasoning when awake */
+        if (state == SLEEP_STATE_AWAKE && pressure > 0.7f) {
+            float pressure_penalty = (pressure - 0.7f) * 0.5f;  /* Up to 15% reduction */
+            bridge->effects.logical_reasoning_factor *= (1.0f - pressure_penalty);
+        }
+    } else {
+        bridge->effects.logical_reasoning_factor = 1.0f;
+    }
+
+    /* Compute creative reasoning factor */
+    if (bridge->config.enable_creative_modulation) {
+        float creative_base = reasoning_sleep_creative_for_state(state);
+        bridge->effects.creative_reasoning_factor =
+            creative_base * bridge->config.modulation_strength +
+            (1.0f - bridge->config.modulation_strength);
+
+        /* REM creativity boost flag */
+        bridge->effects.rem_creativity_boost = (state == SLEEP_STATE_REM);
+    } else {
+        bridge->effects.creative_reasoning_factor = 1.0f;
+        bridge->effects.rem_creativity_boost = false;
+    }
+
+    /* Compute inference speed factor */
+    if (bridge->config.enable_speed_modulation) {
+        float speed_base = reasoning_sleep_speed_for_state(state);
+        bridge->effects.inference_speed_factor =
+            speed_base * bridge->config.modulation_strength +
+            (1.0f - bridge->config.modulation_strength);
+
+        /* Sleep pressure slows inference when awake */
+        if (state == SLEEP_STATE_AWAKE && pressure > 0.6f) {
+            float pressure_penalty = (pressure - 0.6f) * 0.3f;
+            bridge->effects.inference_speed_factor *= (1.0f - pressure_penalty);
+        }
+    } else {
+        bridge->effects.inference_speed_factor = 1.0f;
+    }
+
+    /* Compute working memory access factor */
+    if (bridge->config.enable_working_memory_gating) {
+        /* Working memory access mirrors logical reasoning capacity */
+        bridge->effects.working_memory_access_factor =
+            bridge->effects.logical_reasoning_factor;
+    } else {
+        bridge->effects.working_memory_access_factor = 1.0f;
+    }
+
+    /* Update offline status - reasoning offline during NREM */
+    bridge->effects.reasoning_offline =
+        (state == SLEEP_STATE_DEEP_NREM || state == SLEEP_STATE_LIGHT_NREM);
+}
+
+/* ========================================================================
+ * PUBLIC API IMPLEMENTATION
+ * ======================================================================== */
+
+int reasoning_sleep_default_config(reasoning_sleep_config_t* config)
+{
+    /* Guard clause: Validate config pointer */
+    if (!config) {
+        return -1;
+    }
+
+    /* Set defaults - all modulations enabled */
+    config->enable_logical_modulation = true;
+    config->enable_creative_modulation = true;
+    config->enable_speed_modulation = true;
+    config->enable_working_memory_gating = true;
+    config->modulation_strength = 1.0f;
+
+    return 0;
+}
+
+reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
+    const reasoning_sleep_config_t* config,
+    sleep_system_t sleep)
+{
+    /* Guard clause: Validate sleep system */
+    if (!sleep) {
+        NIMCP_LOGGING_ERROR("NULL sleep system in reasoning_sleep_bridge_create");
+        return NULL;
+    }
+
+    /* Allocate bridge structure */
+    struct reasoning_sleep_bridge_struct* bridge =
+        (struct reasoning_sleep_bridge_struct*)nimcp_malloc(
+            sizeof(struct reasoning_sleep_bridge_struct));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate reasoning-sleep bridge");
+        return NULL;
+    }
+
+    /* Zero initialize */
+    memset(bridge, 0, sizeof(struct reasoning_sleep_bridge_struct));
+
+    /* Set configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        reasoning_sleep_default_config(&bridge->config);
+    }
+
+    /* Store sleep system reference */
+    bridge->sleep_system = sleep;
+
+    /* Initialize effects to neutral */
+    bridge->effects.logical_reasoning_factor = 1.0f;
+    bridge->effects.creative_reasoning_factor = 1.0f;
+    bridge->effects.inference_speed_factor = 1.0f;
+    bridge->effects.working_memory_access_factor = 1.0f;
+    bridge->effects.reasoning_offline = false;
+    bridge->effects.rem_creativity_boost = false;
+
+    /* Create mutex */
+    bridge->mutex = nimcp_platform_mutex_create();
+    if (!bridge->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex for reasoning-sleep bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Register callback for automatic state updates */
+    bridge->callback_registered = sleep_register_state_callback(
+        sleep,
+        reasoning_on_sleep_state_change,
+        bridge);
+
+    if (!bridge->callback_registered) {
+        NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
+    } else {
+        NIMCP_LOGGING_DEBUG("Registered sleep state callback for reasoning bridge");
+    }
+
+    /* Get initial state and compute effects */
+    sleep_state_t initial_state = sleep_get_current_state(sleep);
+    reasoning_on_sleep_state_change(initial_state, bridge);
+
+    NIMCP_LOGGING_INFO("Reasoning-sleep bridge created");
+    return bridge;
+}
+
+void reasoning_sleep_bridge_destroy(reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clause: Safe with NULL */
+    if (!bridge) {
+        return;
+    }
+
+    /* Unregister callback if registered */
+    if (bridge->callback_registered && bridge->sleep_system) {
+        bool unregistered = sleep_unregister_state_callback(
+            bridge->sleep_system,
+            reasoning_on_sleep_state_change,
+            bridge);
+
+        if (unregistered) {
+            NIMCP_LOGGING_DEBUG("Unregistered sleep state callback for reasoning bridge");
+        }
+    }
+
+    /* Disconnect bio-async if connected */
+    if (bridge->bio_async_enabled) {
+        reasoning_sleep_disconnect_bio_async(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    /* Free bridge */
+    nimcp_free(bridge);
+    NIMCP_LOGGING_DEBUG("Reasoning-sleep bridge destroyed");
+}
+
+int reasoning_sleep_update(reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clause: Validate bridge */
+    if (!bridge) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get current state and pressure */
+    sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
+    float pressure = sleep_get_pressure(bridge->sleep_system);
+
+    /* Compute effects */
+    compute_reasoning_effects(bridge, state, pressure);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int reasoning_sleep_get_effects(const reasoning_sleep_bridge_t bridge,
+                                 reasoning_sleep_effects_t* effects)
+{
+    /* Guard clause: Validate parameters */
+    if (!bridge || !effects) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    *effects = bridge->effects;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+float reasoning_sleep_get_logical_factor(const reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clause: Return neutral on error */
+    if (!bridge) {
+        return 1.0f;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    float result = bridge->effects.logical_reasoning_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+float reasoning_sleep_get_creative_factor(const reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clause: Return neutral on error */
+    if (!bridge) {
+        return 1.0f;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    float result = bridge->effects.creative_reasoning_factor;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+bool reasoning_sleep_is_offline(const reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clause: Return false on error */
+    if (!bridge) {
+        return false;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool result = bridge->effects.reasoning_offline;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+bool reasoning_sleep_is_rem_creative(const reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clause: Return false on error */
+    if (!bridge) {
+        return false;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool result = bridge->effects.rem_creativity_boost;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return result;
+}
+
+/* ========================================================================
+ * UTILITY FUNCTIONS
+ * ======================================================================== */
+
+float reasoning_sleep_logical_for_state(sleep_state_t state)
+{
+    switch (state) {
+        case SLEEP_STATE_AWAKE:
+            return REASONING_SLEEP_LOGICAL_AWAKE;
+        case SLEEP_STATE_DROWSY:
+            return REASONING_SLEEP_LOGICAL_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+            return REASONING_SLEEP_LOGICAL_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:
+            return REASONING_SLEEP_LOGICAL_DEEP_NREM;
+        case SLEEP_STATE_REM:
+            return REASONING_SLEEP_LOGICAL_REM;
+        default:
+            return REASONING_SLEEP_LOGICAL_AWAKE;
+    }
+}
+
+float reasoning_sleep_creative_for_state(sleep_state_t state)
+{
+    switch (state) {
+        case SLEEP_STATE_AWAKE:
+            return REASONING_SLEEP_CREATIVE_AWAKE;
+        case SLEEP_STATE_DROWSY:
+            return REASONING_SLEEP_CREATIVE_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+            return REASONING_SLEEP_CREATIVE_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:
+            return REASONING_SLEEP_CREATIVE_DEEP_NREM;
+        case SLEEP_STATE_REM:
+            return REASONING_SLEEP_CREATIVE_REM;
+        default:
+            return REASONING_SLEEP_CREATIVE_AWAKE;
+    }
+}
+
+float reasoning_sleep_speed_for_state(sleep_state_t state)
+{
+    switch (state) {
+        case SLEEP_STATE_AWAKE:
+            return REASONING_SLEEP_SPEED_AWAKE;
+        case SLEEP_STATE_DROWSY:
+            return REASONING_SLEEP_SPEED_DROWSY;
+        case SLEEP_STATE_LIGHT_NREM:
+            return REASONING_SLEEP_SPEED_LIGHT_NREM;
+        case SLEEP_STATE_DEEP_NREM:
+            return REASONING_SLEEP_SPEED_DEEP_NREM;
+        case SLEEP_STATE_REM:
+            return REASONING_SLEEP_SPEED_REM;
+        default:
+            return REASONING_SLEEP_SPEED_AWAKE;
+    }
+}
+
+/* ========================================================================
+ * BIO-ASYNC INTEGRATION API IMPLEMENTATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Connect bridge to bio-async router
+ * WHY:  Enable inter-module messaging for distributed reasoning signals
+ * HOW:  Register with bio_router using BIO_MODULE_REASONING_SLEEP
+ *
+ * BIOLOGICAL BASIS:
+ * - Sleep-dependent reasoning modulation affects distributed cognitive networks
+ * - Bio-async messaging enables coordination across reasoning subsystems
+ * - Real-time state propagation for immediate reasoning parameter updates
+ */
+int reasoning_sleep_connect_bio_async(reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clauses */
+    if (!bridge) {
+        return -1;
+    }
+
+    if (bridge->bio_async_enabled) {
+        return 0;  /* Already connected */
+    }
+
+    /* Register with bio-async router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_REASONING_SLEEP,
+        .module_name = "reasoning_sleep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Reasoning-sleep bridge connected to bio-async router");
+        return 0;
+    }
+
+    NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    return 0;  /* Not an error if router unavailable */
+}
+
+/**
+ * WHAT: Disconnect from bio-async router
+ * WHY:  Clean shutdown of messaging
+ * HOW:  Unregister from bio_router
+ */
+int reasoning_sleep_disconnect_bio_async(reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clauses */
+    if (!bridge) {
+        return -1;
+    }
+
+    if (!bridge->bio_async_enabled) {
+        return 0;  /* Not connected */
+    }
+
+    /* Unregister from bio-async router */
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
+
+    bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Reasoning-sleep bridge disconnected from bio-async router");
+
+    return 0;
+}
+
+/**
+ * WHAT: Check if bio-async is connected
+ * WHY:  Query bio-async connection status
+ * HOW:  Return bio_async_enabled flag
+ */
+bool reasoning_sleep_is_bio_async_connected(const reasoning_sleep_bridge_t bridge)
+{
+    /* Guard clause */
+    if (!bridge) {
+        return false;
+    }
+
+    return bridge->bio_async_enabled;
+}

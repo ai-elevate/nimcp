@@ -9,6 +9,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
 
@@ -420,21 +422,52 @@ float triplet_stdp_immune_get_triplet_capacity_reduction(
  * ============================================================================ */
 
 int triplet_stdp_immune_connect_bio_async(triplet_stdp_immune_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot connect to bio-async: NULL bridge");
+        return -1;
+    }
 
-    /* Would register with bio-router */
-    bridge->bio_async_enabled = true;
+    if (bridge->bio_async_enabled) {
+        NIMCP_LOGGING_INFO("Triplet STDP-immune bridge already connected to bio-async");
+        return 0;
+    }
 
-    NIMCP_LOGGING_DEBUG("Connected triplet STDP immune bridge to bio-async");
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_IMMUNE_TRIPLET_STDP,
+        .module_name = "triplet_stdp_immune_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bridge->bio_ctx = bio_router_register_module(&info);
+    if (bridge->bio_ctx) {
+        bridge->bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Triplet STDP-immune bridge connected to bio-async router");
+    } else {
+        NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
+    }
+
     return 0;
 }
 
 int triplet_stdp_immune_disconnect_bio_async(triplet_stdp_immune_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Cannot disconnect from bio-async: NULL bridge");
+        return -1;
+    }
+
+    if (!bridge->bio_async_enabled) {
+        return 0;
+    }
+
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
 
     bridge->bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Triplet STDP-immune bridge disconnected from bio-async router");
 
-    NIMCP_LOGGING_DEBUG("Disconnected triplet STDP immune bridge from bio-async");
     return 0;
 }
 
