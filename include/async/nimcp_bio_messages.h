@@ -539,6 +539,8 @@ typedef enum {
     BIO_MODULE_SECOND_MESSENGER_IP3_DAG = 0x0422, /**< IP3/DAG pathway */
     BIO_MODULE_SECOND_MESSENGER_CALCIUM = 0x0423, /**< Calcium signaling */
     BIO_MODULE_SECOND_MESSENGER_GENE = 0x0424,   /**< Gene expression (IEGs) */
+    BIO_MODULE_CALCIUM_PINK_NOISE = 0x0425,      /**< Calcium-pink noise integration bridge */
+    BIO_MODULE_PINK_NOISE_DENDRITIC = 0x0426,    /**< Dendritic-pink noise integration bridge */
 
     /* Plasticity Orchestrator modules (0x0430-0x043F) */
     BIO_MODULE_PLASTICITY_ORCHESTRATOR = 0x0430, /**< Central plasticity orchestrator */
@@ -891,6 +893,8 @@ typedef enum {
     BIO_MODULE_FEP_NOISE_BRIDGE,                /**< FEP-noise bridge */
     BIO_MODULE_FEP_PREDICTIVE_PLASTICITY_BRIDGE, /**< FEP-predictive plasticity bridge */
     BIO_MODULE_FEP_STP_BRIDGE,                  /**< FEP-STP bridge */
+    BIO_MODULE_STP_PINK_NOISE_BRIDGE,           /**< STP-pink noise bridge */
+    BIO_MODULE_HETEROSYNAPTIC_PINK_NOISE,       /**< Heterosynaptic-pink noise bridge */
 
     /* FEP Middleware Bridges (0x0F70 - 0x0F7F) */
     BIO_MODULE_FEP_BUFFERING_BRIDGE = 0x0F70,   /**< FEP-buffering bridge */

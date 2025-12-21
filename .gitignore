@@ -204,3 +204,4 @@ src/bindings/web-demo/frontend/*.log
 *.brain
 checkpoints/
 /tmp/checkpoints/
+memory-bank/activeContext.md

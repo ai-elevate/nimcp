@@ -421,6 +421,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/predictive/nimcp_predictive_coding_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp_pink_noise_bridge.c
     # Security FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_anomaly_detector_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_blood_brain_barrier_fep_bridge.c
@@ -479,6 +480,17 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise_simd.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise_monitor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise_spatial.c
+    # Pink Noise Domain Bridges (1/f noise integration across neural subsystems)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/calcium/nimcp_calcium_pink_noise_bridge.c  # Calcium-pink noise integration (NMDA, Ca2+ wave modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c  # Dendritic-pink noise integration (bAP, NMDA spike modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c  # Heterosynaptic-pink noise integration (competition dynamics)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c  # Metabolic-pink noise integration (ATP/energy fluctuations)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c  # Spatial neuromodulator-pink noise integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c  # Vesicle packaging-pink noise integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c  # Ensemble uncertainty-pink noise integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c  # Memory consolidation-pink noise integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c  # Brain oscillations-pink noise integration (1/f cross-frequency coupling)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/encoding/nimcp_population_coding_pink_noise_bridge.c  # Population coding-pink noise integration (tuning curve modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_trace.c
@@ -512,6 +524,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_sleep_bridge.c  # STDP-sleep integration (LTP/LTD ratio, timing window)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c  # Triplet STDP-sleep integration (trace time constants, amplitude modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c  # Triplet STDP-immune integration (cytokine modulation, instability detection)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_pink_noise_bridge.c  # STDP-pink noise integration (quantum-inspired noise modulation for learning rates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_sleep_bridge.c  # BCM-sleep integration (sliding threshold modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c  # Homeostatic-sleep integration (Tononi SHY: downscaling in NREM)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/protein/nimcp_protein_sleep_bridge.c  # Protein synthesis-sleep integration (synthesis upregulation during deep NREM)

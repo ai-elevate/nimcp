@@ -2873,6 +2873,30 @@ __/cognitive/introspection/nimcp_ensemble_uncertainty.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_ensemble_uncertainty.c.s
 .PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty.c.s
 
+__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.o: __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.o
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.o
+
+# target to build an object file
+__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.o
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.o
+
+__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.i: __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.i
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.i
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.i
+
+__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.s: __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.s
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.s
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.c.s
+
 __/cognitive/introspection/nimcp_introspection.o: __/cognitive/introspection/nimcp_introspection.c.o
 .PHONY : __/cognitive/introspection/nimcp_introspection.o
 
@@ -3304,6 +3328,30 @@ __/cognitive/memory/nimcp_systems_consolidation.s: __/cognitive/memory/nimcp_sys
 __/cognitive/memory/nimcp_systems_consolidation.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_systems_consolidation.c.s
 .PHONY : __/cognitive/memory/nimcp_systems_consolidation.c.s
+
+__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.o: __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.o
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.o
+
+# target to build an object file
+__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.o
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.o
+
+__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.i: __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.i
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.i
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.i
+
+__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.s: __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.s
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.s
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c.s
 
 __/cognitive/memory/nimcp_wm_transfer.o: __/cognitive/memory/nimcp_wm_transfer.c.o
 .PHONY : __/cognitive/memory/nimcp_wm_transfer.o
@@ -6185,6 +6233,30 @@ __/core/brain_oscillations/nimcp_oscillations_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_immune_bridge.c.s
 .PHONY : __/core/brain_oscillations/nimcp_oscillations_immune_bridge.c.s
 
+__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.o: __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.o
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.o
+
+# target to build an object file
+__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.o
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.o
+
+__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.i: __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.i
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.i
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.i
+
+__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.s: __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.s
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.s
+.PHONY : __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.c.s
+
 __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.o: __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.c.o
 .PHONY : __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.o
 
@@ -8777,6 +8849,30 @@ __/middleware/cognitive/nimcp_working_memory_adapter.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/cognitive/nimcp_working_memory_adapter.c.s
 .PHONY : __/middleware/cognitive/nimcp_working_memory_adapter.c.s
 
+__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.o: __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.o
+.PHONY : __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.o
+
+# target to build an object file
+__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.o
+.PHONY : __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.o
+
+__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.i: __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.i
+.PHONY : __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.i
+.PHONY : __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.i
+
+__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.s: __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.s
+.PHONY : __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.s
+.PHONY : __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.c.s
+
 __/middleware/encoding/nimcp_rate_coding.o: __/middleware/encoding/nimcp_rate_coding.c.o
 .PHONY : __/middleware/encoding/nimcp_rate_coding.o
 
@@ -10817,6 +10913,30 @@ __/plasticity/calcium/nimcp_calcium_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_immune_bridge.c.s
 .PHONY : __/plasticity/calcium/nimcp_calcium_immune_bridge.c.s
 
+__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.o: __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.o
+.PHONY : __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.o
+
+__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.i: __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.i
+.PHONY : __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.i
+
+__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.s: __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.s
+.PHONY : __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.c.s
+
 __/plasticity/calcium/nimcp_calcium_sleep_bridge.o: __/plasticity/calcium/nimcp_calcium_sleep_bridge.c.o
 .PHONY : __/plasticity/calcium/nimcp_calcium_sleep_bridge.o
 
@@ -10888,6 +11008,30 @@ __/plasticity/dendritic/nimcp_dendritic_fep_bridge.s: __/plasticity/dendritic/ni
 __/plasticity/dendritic/nimcp_dendritic_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/dendritic/nimcp_dendritic_fep_bridge.c.s
 .PHONY : __/plasticity/dendritic/nimcp_dendritic_fep_bridge.c.s
+
+__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.o: __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.o
+.PHONY : __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.o
+.PHONY : __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.o
+
+__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.i: __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.i
+.PHONY : __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.i
+.PHONY : __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.i
+
+__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.s: __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.s
+.PHONY : __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.s
+.PHONY : __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.c.s
 
 __/plasticity/eligibility/nimcp_eligibility_fep_bridge.o: __/plasticity/eligibility/nimcp_eligibility_fep_bridge.c.o
 .PHONY : __/plasticity/eligibility/nimcp_eligibility_fep_bridge.o
@@ -10984,6 +11128,30 @@ __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.s: __/plasticity
 __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.s
 .PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c.s
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.o: __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.o
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.o
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.i: __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.i
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.i
+
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.s: __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.s
+.PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.c.s
 
 __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.o: __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.c.o
 .PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.o
@@ -11272,6 +11440,30 @@ __/plasticity/metabolic/nimcp_metabolic_immune_bridge.s: __/plasticity/metabolic
 __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.s
 .PHONY : __/plasticity/metabolic/nimcp_metabolic_immune_bridge.c.s
+
+__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.o: __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.o
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.o
+
+__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.i: __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.i
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.i
+
+__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.s: __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.s
+.PHONY : __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.c.s
 
 __/plasticity/metabolic/nimcp_metabolic_plasticity.o: __/plasticity/metabolic/nimcp_metabolic_plasticity.c.o
 .PHONY : __/plasticity/metabolic/nimcp_metabolic_plasticity.o
@@ -11609,6 +11801,30 @@ __/plasticity/neuromodulators/nimcp_spatial_neuromod.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_spatial_neuromod.c.s
 .PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod.c.s
 
+__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.o: __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.o
+
+__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.i: __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.i
+
+__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.s: __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.c.s
+
 __/plasticity/neuromodulators/nimcp_vesicle_packaging.o: __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.o
 .PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.o
 
@@ -11632,6 +11848,30 @@ __/plasticity/neuromodulators/nimcp_vesicle_packaging.s: __/plasticity/neuromodu
 __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_vesicle_packaging.c.s
 .PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.s
+
+__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.o: __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.o
+
+__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.i: __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.i
+
+__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.s: __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.c.s
 
 __/plasticity/nimcp_plasticity_coordinator.o: __/plasticity/nimcp_plasticity_coordinator.c.o
 .PHONY : __/plasticity/nimcp_plasticity_coordinator.o
@@ -12281,6 +12521,30 @@ __/plasticity/stdp/nimcp_stdp_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_fep_bridge.c.s
 .PHONY : __/plasticity/stdp/nimcp_stdp_fep_bridge.c.s
 
+__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.o: __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.o
+.PHONY : __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.o
+
+__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.i: __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.i
+.PHONY : __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.i
+
+__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.s: __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.s
+.PHONY : __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.c.s
+
 __/plasticity/stdp/nimcp_stdp_sleep_bridge.o: __/plasticity/stdp/nimcp_stdp_sleep_bridge.c.o
 .PHONY : __/plasticity/stdp/nimcp_stdp_sleep_bridge.o
 
@@ -12424,6 +12688,30 @@ __/plasticity/stp/nimcp_stp_fep_bridge.s: __/plasticity/stp/nimcp_stp_fep_bridge
 __/plasticity/stp/nimcp_stp_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stp/nimcp_stp_fep_bridge.c.s
 .PHONY : __/plasticity/stp/nimcp_stp_fep_bridge.c.s
+
+__/plasticity/stp/nimcp_stp_pink_noise_bridge.o: __/plasticity/stp/nimcp_stp_pink_noise_bridge.c.o
+.PHONY : __/plasticity/stp/nimcp_stp_pink_noise_bridge.o
+
+# target to build an object file
+__/plasticity/stp/nimcp_stp_pink_noise_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stp/nimcp_stp_pink_noise_bridge.c.o
+.PHONY : __/plasticity/stp/nimcp_stp_pink_noise_bridge.c.o
+
+__/plasticity/stp/nimcp_stp_pink_noise_bridge.i: __/plasticity/stp/nimcp_stp_pink_noise_bridge.c.i
+.PHONY : __/plasticity/stp/nimcp_stp_pink_noise_bridge.i
+
+# target to preprocess a source file
+__/plasticity/stp/nimcp_stp_pink_noise_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stp/nimcp_stp_pink_noise_bridge.c.i
+.PHONY : __/plasticity/stp/nimcp_stp_pink_noise_bridge.c.i
+
+__/plasticity/stp/nimcp_stp_pink_noise_bridge.s: __/plasticity/stp/nimcp_stp_pink_noise_bridge.c.s
+.PHONY : __/plasticity/stp/nimcp_stp_pink_noise_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/stp/nimcp_stp_pink_noise_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stp/nimcp_stp_pink_noise_bridge.c.s
+.PHONY : __/plasticity/stp/nimcp_stp_pink_noise_bridge.c.s
 
 __/plasticity/structural/nimcp_structural_immune_bridge.o: __/plasticity/structural/nimcp_structural_immune_bridge.c.o
 .PHONY : __/plasticity/structural/nimcp_structural_immune_bridge.o
@@ -18391,6 +18679,9 @@ help:
 	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty.o"
 	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty.i"
 	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty.s"
+	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.o"
+	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.i"
+	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.s"
 	@echo "... __/cognitive/introspection/nimcp_introspection.o"
 	@echo "... __/cognitive/introspection/nimcp_introspection.i"
 	@echo "... __/cognitive/introspection/nimcp_introspection.s"
@@ -18445,6 +18736,9 @@ help:
 	@echo "... __/cognitive/memory/nimcp_systems_consolidation.o"
 	@echo "... __/cognitive/memory/nimcp_systems_consolidation.i"
 	@echo "... __/cognitive/memory/nimcp_systems_consolidation.s"
+	@echo "... __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.o"
+	@echo "... __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.i"
+	@echo "... __/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.s"
 	@echo "... __/cognitive/memory/nimcp_wm_transfer.o"
 	@echo "... __/cognitive/memory/nimcp_wm_transfer.i"
 	@echo "... __/cognitive/memory/nimcp_wm_transfer.s"
@@ -18805,6 +19099,9 @@ help:
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_immune_bridge.o"
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_immune_bridge.i"
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_immune_bridge.s"
+	@echo "... __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.o"
+	@echo "... __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.i"
+	@echo "... __/core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.s"
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.o"
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.i"
 	@echo "... __/core/brain_oscillations/nimcp_oscillations_sleep_bridge.s"
@@ -19129,6 +19426,9 @@ help:
 	@echo "... __/middleware/cognitive/nimcp_working_memory_adapter.o"
 	@echo "... __/middleware/cognitive/nimcp_working_memory_adapter.i"
 	@echo "... __/middleware/cognitive/nimcp_working_memory_adapter.s"
+	@echo "... __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.o"
+	@echo "... __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.i"
+	@echo "... __/middleware/encoding/nimcp_population_coding_pink_noise_bridge.s"
 	@echo "... __/middleware/encoding/nimcp_rate_coding.o"
 	@echo "... __/middleware/encoding/nimcp_rate_coding.i"
 	@echo "... __/middleware/encoding/nimcp_rate_coding.s"
@@ -19384,6 +19684,9 @@ help:
 	@echo "... __/plasticity/calcium/nimcp_calcium_immune_bridge.o"
 	@echo "... __/plasticity/calcium/nimcp_calcium_immune_bridge.i"
 	@echo "... __/plasticity/calcium/nimcp_calcium_immune_bridge.s"
+	@echo "... __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.o"
+	@echo "... __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.i"
+	@echo "... __/plasticity/calcium/nimcp_calcium_pink_noise_bridge.s"
 	@echo "... __/plasticity/calcium/nimcp_calcium_sleep_bridge.o"
 	@echo "... __/plasticity/calcium/nimcp_calcium_sleep_bridge.i"
 	@echo "... __/plasticity/calcium/nimcp_calcium_sleep_bridge.s"
@@ -19393,6 +19696,9 @@ help:
 	@echo "... __/plasticity/dendritic/nimcp_dendritic_fep_bridge.o"
 	@echo "... __/plasticity/dendritic/nimcp_dendritic_fep_bridge.i"
 	@echo "... __/plasticity/dendritic/nimcp_dendritic_fep_bridge.s"
+	@echo "... __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.o"
+	@echo "... __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.i"
+	@echo "... __/plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.s"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_fep_bridge.o"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_fep_bridge.i"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_fep_bridge.s"
@@ -19405,6 +19711,9 @@ help:
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.o"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.i"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.s"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.o"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.i"
+	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.s"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.o"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.i"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.s"
@@ -19441,6 +19750,9 @@ help:
 	@echo "... __/plasticity/metabolic/nimcp_metabolic_immune_bridge.o"
 	@echo "... __/plasticity/metabolic/nimcp_metabolic_immune_bridge.i"
 	@echo "... __/plasticity/metabolic/nimcp_metabolic_immune_bridge.s"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.o"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.i"
+	@echo "... __/plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.s"
 	@echo "... __/plasticity/metabolic/nimcp_metabolic_plasticity.o"
 	@echo "... __/plasticity/metabolic/nimcp_metabolic_plasticity.i"
 	@echo "... __/plasticity/metabolic/nimcp_metabolic_plasticity.s"
@@ -19483,9 +19795,15 @@ help:
 	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod.s"
+	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.o"
+	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.i"
+	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.s"
 	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging.s"
+	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.o"
+	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.i"
+	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.s"
 	@echo "... __/plasticity/nimcp_plasticity_coordinator.o"
 	@echo "... __/plasticity/nimcp_plasticity_coordinator.i"
 	@echo "... __/plasticity/nimcp_plasticity_coordinator.s"
@@ -19567,6 +19885,9 @@ help:
 	@echo "... __/plasticity/stdp/nimcp_stdp_fep_bridge.o"
 	@echo "... __/plasticity/stdp/nimcp_stdp_fep_bridge.i"
 	@echo "... __/plasticity/stdp/nimcp_stdp_fep_bridge.s"
+	@echo "... __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.o"
+	@echo "... __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.i"
+	@echo "... __/plasticity/stdp/nimcp_stdp_pink_noise_bridge.s"
 	@echo "... __/plasticity/stdp/nimcp_stdp_sleep_bridge.o"
 	@echo "... __/plasticity/stdp/nimcp_stdp_sleep_bridge.i"
 	@echo "... __/plasticity/stdp/nimcp_stdp_sleep_bridge.s"
@@ -19585,6 +19906,9 @@ help:
 	@echo "... __/plasticity/stp/nimcp_stp_fep_bridge.o"
 	@echo "... __/plasticity/stp/nimcp_stp_fep_bridge.i"
 	@echo "... __/plasticity/stp/nimcp_stp_fep_bridge.s"
+	@echo "... __/plasticity/stp/nimcp_stp_pink_noise_bridge.o"
+	@echo "... __/plasticity/stp/nimcp_stp_pink_noise_bridge.i"
+	@echo "... __/plasticity/stp/nimcp_stp_pink_noise_bridge.s"
 	@echo "... __/plasticity/structural/nimcp_structural_immune_bridge.o"
 	@echo "... __/plasticity/structural/nimcp_structural_immune_bridge.i"
 	@echo "... __/plasticity/structural/nimcp_structural_immune_bridge.s"

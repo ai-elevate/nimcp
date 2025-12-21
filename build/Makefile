@@ -3084,6 +3084,19 @@ unit_plasticity_noise_test_pink_noise/fast:
 .PHONY : unit_plasticity_noise_test_pink_noise/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_noise_test_pink_noise_enhancements
+
+# Build rule for target.
+unit_plasticity_noise_test_pink_noise_enhancements: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_noise_test_pink_noise_enhancements
+.PHONY : unit_plasticity_noise_test_pink_noise_enhancements
+
+# fast build rule for target.
+unit_plasticity_noise_test_pink_noise_enhancements/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_noise_test_pink_noise_enhancements.dir/build.make test/CMakeFiles/unit_plasticity_noise_test_pink_noise_enhancements.dir/build
+.PHONY : unit_plasticity_noise_test_pink_noise_enhancements/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_orchestrator_test_axon_orchestrator_bridge
 
 # Build rule for target.
@@ -4631,6 +4644,19 @@ integration_plasticity_neuromodulators_test_spatial_neuromod_bio_async_integrati
 .PHONY : integration_plasticity_neuromodulators_test_spatial_neuromod_bio_async_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_noise_test_pink_noise_integration
+
+# Build rule for target.
+integration_plasticity_noise_test_pink_noise_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_noise_test_pink_noise_integration
+.PHONY : integration_plasticity_noise_test_pink_noise_integration
+
+# fast build rule for target.
+integration_plasticity_noise_test_pink_noise_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_noise_test_pink_noise_integration.dir/build.make test/CMakeFiles/integration_plasticity_noise_test_pink_noise_integration.dir/build
+.PHONY : integration_plasticity_noise_test_pink_noise_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_orchestrator_test_neural_integration
 
 # Build rule for target.
@@ -5762,6 +5788,19 @@ regression_plasticity_noise_test_pink_noise_backward_compat/fast:
 .PHONY : regression_plasticity_noise_test_pink_noise_backward_compat/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_noise_test_pink_noise_regression
+
+# Build rule for target.
+regression_plasticity_noise_test_pink_noise_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_noise_test_pink_noise_regression
+.PHONY : regression_plasticity_noise_test_pink_noise_regression
+
+# fast build rule for target.
+regression_plasticity_noise_test_pink_noise_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_noise_test_pink_noise_regression.dir/build.make test/CMakeFiles/regression_plasticity_noise_test_pink_noise_regression.dir/build
+.PHONY : regression_plasticity_noise_test_pink_noise_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_orchestrator_test_neural_regression
 
 # Build rule for target.
@@ -6826,6 +6865,19 @@ e2e_test_quantum_bridges_pipeline: cmake_check_build_system
 e2e_test_quantum_bridges_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_quantum_bridges_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_quantum_bridges_pipeline.dir/build
 .PHONY : e2e_test_quantum_bridges_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_pink_noise_pipeline
+
+# Build rule for target.
+e2e_test_pink_noise_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_pink_noise_pipeline
+.PHONY : e2e_test_pink_noise_pipeline
+
+# fast build rule for target.
+e2e_test_pink_noise_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_pink_noise_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_pink_noise_pipeline.dir/build
+.PHONY : e2e_test_pink_noise_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_curiosity_enhanced_pipeline
@@ -14082,6 +14134,19 @@ unit_plasticity_neural_coordinator/fast:
 .PHONY : unit_plasticity_neural_coordinator/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_pink_noise_enhancements
+
+# Build rule for target.
+unit_plasticity_pink_noise_enhancements: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_pink_noise_enhancements
+.PHONY : unit_plasticity_pink_noise_enhancements
+
+# fast build rule for target.
+unit_plasticity_pink_noise_enhancements/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_pink_noise_enhancements.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_pink_noise_enhancements.dir/build
+.PHONY : unit_plasticity_pink_noise_enhancements/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_attention_test_attention_pe
 
 # Build rule for target.
@@ -14251,6 +14316,19 @@ integration_plasticity_neural/fast:
 .PHONY : integration_plasticity_neural/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_pink_noise
+
+# Build rule for target.
+integration_plasticity_pink_noise: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_pink_noise
+.PHONY : integration_plasticity_pink_noise
+
+# fast build rule for target.
+integration_plasticity_pink_noise/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_pink_noise.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_pink_noise.dir/build
+.PHONY : integration_plasticity_pink_noise/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_heterosynaptic
 
 # Build rule for target.
@@ -14418,6 +14496,19 @@ regression_plasticity_neural: cmake_check_build_system
 regression_plasticity_neural/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_neural.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_neural.dir/build
 .PHONY : regression_plasticity_neural/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_pink_noise
+
+# Build rule for target.
+regression_plasticity_pink_noise: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_pink_noise
+.PHONY : regression_plasticity_pink_noise
+
+# fast build rule for target.
+regression_plasticity_pink_noise/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_pink_noise.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_pink_noise.dir/build
+.PHONY : regression_plasticity_pink_noise/fast
 
 #=============================================================================
 # Target rules for targets named regression_plasticity_heterosynaptic
@@ -17085,6 +17176,7 @@ help:
 	@echo "... e2e_test_nlp_war_zone"
 	@echo "... e2e_test_perception_cortical"
 	@echo "... e2e_test_perception_training_pipeline"
+	@echo "... e2e_test_pink_noise_pipeline"
 	@echo "... e2e_test_plasticity_pipeline"
 	@echo "... e2e_test_portia_bio_async_pipeline"
 	@echo "... e2e_test_portia_constrained_platform"
@@ -17262,9 +17354,11 @@ help:
 	@echo "... integration_plasticity_neuromodulators_test_neuromodulators_bio_async_integration"
 	@echo "... integration_plasticity_neuromodulators_test_phasic_tonic_integration"
 	@echo "... integration_plasticity_neuromodulators_test_spatial_neuromod_bio_async_integration"
+	@echo "... integration_plasticity_noise_test_pink_noise_integration"
 	@echo "... integration_plasticity_orchestrator"
 	@echo "... integration_plasticity_orchestrator_test_neural_integration"
 	@echo "... integration_plasticity_orchestrator_test_orchestrator_integration"
+	@echo "... integration_plasticity_pink_noise"
 	@echo "... integration_plasticity_protein"
 	@echo "... integration_plasticity_protein_test_protein_integration"
 	@echo "... integration_plasticity_second_messengers_module_test"
@@ -17488,9 +17582,11 @@ help:
 	@echo "... regression_plasticity_neuromodulators_test_phasic_tonic_backward_compat"
 	@echo "... regression_plasticity_neuromodulators_test_spatial_neuromod_bio_async_regression"
 	@echo "... regression_plasticity_noise_test_pink_noise_backward_compat"
+	@echo "... regression_plasticity_noise_test_pink_noise_regression"
 	@echo "... regression_plasticity_orchestrator"
 	@echo "... regression_plasticity_orchestrator_test_neural_regression"
 	@echo "... regression_plasticity_orchestrator_test_orchestrator_regression"
+	@echo "... regression_plasticity_pink_noise"
 	@echo "... regression_plasticity_protein"
 	@echo "... regression_plasticity_protein_test_protein_regression"
 	@echo "... regression_plasticity_second_messengers_module_test"
@@ -18157,12 +18253,14 @@ help:
 	@echo "... unit_plasticity_neuron_orchestrator_bridge"
 	@echo "... unit_plasticity_noise_pink_noise_tests"
 	@echo "... unit_plasticity_noise_test_pink_noise"
+	@echo "... unit_plasticity_noise_test_pink_noise_enhancements"
 	@echo "... unit_plasticity_orchestrator"
 	@echo "... unit_plasticity_orchestrator_test_axon_orchestrator_bridge"
 	@echo "... unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge"
 	@echo "... unit_plasticity_orchestrator_test_neural_plasticity_coordinator"
 	@echo "... unit_plasticity_orchestrator_test_neuron_orchestrator_bridge"
 	@echo "... unit_plasticity_orchestrator_test_plasticity_orchestrator"
+	@echo "... unit_plasticity_pink_noise_enhancements"
 	@echo "... unit_plasticity_predictive_test_predictive_bioasync"
 	@echo "... unit_plasticity_predictive_test_predictive_coding"
 	@echo "... unit_plasticity_protein_synthesis"

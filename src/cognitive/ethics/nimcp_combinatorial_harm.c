@@ -40,7 +40,9 @@
 // #include "core/topology/nimcp_fractal_topology.h"
 // #include "utils/quantum/nimcp_quantum_walk.h"
 // #include "utils/math/nimcp_complex_math.h"
-// #include "plasticity/noise/nimcp_pink_noise.h"
+#include "plasticity/noise/nimcp_pink_noise.h"
+#include "plasticity/noise/nimcp_pink_noise_monitor.h"
+#include "plasticity/noise/nimcp_pink_noise_criticality.h"
 // #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 
 //=============================================================================
@@ -93,6 +95,11 @@ struct combinatorial_harm_detector_struct {
     // Hardware memory protection (mprotect)
     nimcp_directive_system_t* directive_system;  /**< mprotect'd pattern storage */
     bool patterns_mprotect_locked;               /**< Whether patterns are hw-locked */
+
+    // Pink noise integration for spectral analysis
+    pink_noise_monitor_t* pink_monitor;          /**< Optional: Real-time spectral monitor */
+    criticality_analyzer_t* criticality;         /**< Optional: Criticality/avalanche detector */
+    bool pink_noise_enabled;                     /**< Whether pink noise analysis uses full modules */
 };
 
 //=============================================================================
@@ -286,6 +293,11 @@ NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
     detector->directive_system = NULL;
     detector->patterns_mprotect_locked = false;
 
+    // Initialize pink noise integration (disabled by default)
+    detector->pink_monitor = NULL;
+    detector->criticality = NULL;
+    detector->pink_noise_enabled = false;
+
     return detector;
 }
 
@@ -324,8 +336,100 @@ NIMCP_EXPORT void combinatorial_detector_destroy(
         detector->directive_system = NULL;
     }
 
+    // Destroy pink noise components
+    if (detector->pink_monitor) {
+        pink_monitor_destroy(detector->pink_monitor);
+        detector->pink_monitor = NULL;
+    }
+    if (detector->criticality) {
+        criticality_destroy(detector->criticality);
+        detector->criticality = NULL;
+    }
+
     // Free detector
     nimcp_free(detector);
+}
+
+//=============================================================================
+// Pink Noise Integration API
+//=============================================================================
+
+NIMCP_EXPORT bool combinatorial_enable_pink_noise(
+    combinatorial_harm_detector_t detector
+) {
+    if (!detector) return false;
+
+    nimcp_platform_mutex_lock(&detector->mutex);
+
+    // Already enabled?
+    if (detector->pink_noise_enabled && detector->pink_monitor != NULL) {
+        nimcp_platform_mutex_unlock(&detector->mutex);
+        return true;
+    }
+
+    // Create pink noise monitor with default config
+    pink_monitor_config_t monitor_config = pink_monitor_default_config();
+    monitor_config.target_alpha = 1.0F;  // Target pink noise (1/f)
+    monitor_config.tolerance = 0.2F;     // Allow some deviation
+    monitor_config.enable_auto_correction = false;  // Read-only monitoring
+    monitor_config.enable_alerts = false;
+
+    detector->pink_monitor = pink_monitor_create(&monitor_config);
+    if (!detector->pink_monitor) {
+        NIMCP_LOGGING_WARN("Failed to create pink noise monitor, using fallback");
+        nimcp_platform_mutex_unlock(&detector->mutex);
+        return false;
+    }
+
+    // Create criticality analyzer with default config
+    criticality_config_t crit_config = criticality_default_config();
+    crit_config.target_alpha = 1.0F;
+    crit_config.target_tau = 1.5F;  // Power-law exponent for avalanches
+    crit_config.enable_feedback = false;  // Read-only monitoring
+
+    detector->criticality = criticality_create(&crit_config);
+    if (!detector->criticality) {
+        NIMCP_LOGGING_WARN("Failed to create criticality analyzer, continuing without it");
+        // Continue without criticality analyzer - monitor still works
+    }
+
+    detector->pink_noise_enabled = true;
+    NIMCP_LOGGING_INFO("Pink noise modules enabled for combinatorial harm detection");
+
+    nimcp_platform_mutex_unlock(&detector->mutex);
+    return true;
+}
+
+NIMCP_EXPORT bool combinatorial_disable_pink_noise(
+    combinatorial_harm_detector_t detector
+) {
+    if (!detector) return false;
+
+    nimcp_platform_mutex_lock(&detector->mutex);
+
+    detector->pink_noise_enabled = false;
+
+    if (detector->pink_monitor) {
+        pink_monitor_destroy(detector->pink_monitor);
+        detector->pink_monitor = NULL;
+    }
+
+    if (detector->criticality) {
+        criticality_destroy(detector->criticality);
+        detector->criticality = NULL;
+    }
+
+    NIMCP_LOGGING_INFO("Pink noise modules disabled");
+
+    nimcp_platform_mutex_unlock(&detector->mutex);
+    return true;
+}
+
+NIMCP_EXPORT bool combinatorial_is_pink_noise_enabled(
+    combinatorial_harm_detector_t detector
+) {
+    if (!detector) return false;
+    return detector->pink_noise_enabled;
 }
 
 //=============================================================================
@@ -1247,9 +1351,61 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
         return true;
     }
 
-    // Compute power spectrum using variance at different scales
-    // (Simplified - proper FFT would be more accurate)
     float mean_harm = sum_harm / series_len;
+
+    // Use full pink noise modules if enabled
+    if (detector->pink_noise_enabled && detector->pink_monitor != NULL) {
+        // Feed harm series to pink noise monitor for proper FFT-based analysis
+        for (uint32_t i = 0; i < series_len; i++) {
+            pink_monitor_update(detector->pink_monitor, harm_series[i]);
+        }
+
+        // Get quality metrics from monitor
+        pink_monitor_quality_t quality;
+        if (pink_monitor_get_quality(detector->pink_monitor, &quality) == 0) {
+            analysis->spectral_slope = -quality.current_alpha;  // Monitor uses positive alpha
+            analysis->deviation_from_pink = quality.alpha_deviation;
+
+            // Use spectral fit R² for noise floor estimation
+            // Lower R² indicates more noise in the power-law fit
+            analysis->noise_floor = mean_harm * (1.0F - quality.spectral_fit_r2);
+
+            // Signal-to-noise based on how well data fits pink spectrum
+            analysis->signal_to_noise = quality.spectral_fit_r2 > 0.01F ?
+                quality.spectral_fit_r2 / (1.0F - quality.spectral_fit_r2 + 0.01F) : 100.0F;
+        }
+
+        // Use criticality analyzer for avalanche/anomaly detection
+        if (detector->criticality != NULL) {
+            for (uint32_t i = 0; i < series_len; i++) {
+                criticality_update(detector->criticality, harm_series[i]);
+            }
+
+            // Get criticality statistics
+            criticality_stats_t crit_stats;
+            if (criticality_get_stats(detector->criticality, &crit_stats) == 0) {
+                // Supercritical (too chaotic) or subcritical (too ordered) indicates anomaly
+                criticality_regime_t regime = criticality_get_regime(detector->criticality);
+                analysis->anomaly_detected = (regime != CRITICALITY_CRITICAL &&
+                                              regime != CRITICALITY_UNKNOWN);
+
+                // Stochastic resonance is optimal near criticality
+                // Critical index close to 0 = high resonance
+                float crit_index = criticality_get_index(detector->criticality);
+                analysis->stochastic_resonance = expf(-crit_index * 2.0F);
+            }
+        } else {
+            // Fallback stochastic resonance without criticality analyzer
+            float threshold = detector->config.harm_threshold;
+            analysis->stochastic_resonance = expf(-fabsf(analysis->noise_floor - threshold * 0.5F));
+            analysis->anomaly_detected = analysis->deviation_from_pink > 0.5F;
+        }
+
+        return true;
+    }
+
+    // Fallback: Simplified inline spectral analysis (original implementation)
+    // Compute power spectrum using variance at different scales
     float total_power = 0.0F;
     float weighted_freq_power = 0.0F;
 
@@ -1257,10 +1413,10 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
         // Compute power at frequency k
         float power = 0.0F;
         for (uint32_t n = 0; n < series_len; n++) {
-            float angle = 2.0F * M_PI * k * n / series_len;
+            float angle = 2.0F * (float)M_PI * (float)k * (float)n / (float)series_len;
             power += (harm_series[n] - mean_harm) * cosf(angle);
         }
-        power = (power * power) / series_len;
+        power = (power * power) / (float)series_len;
 
         // For 1/f (pink) noise, power ~ 1/f
         float freq = (float)k;
@@ -1283,12 +1439,11 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
     analysis->noise_floor = mean_harm * 0.1F;
 
     // Signal-to-noise ratio
-    float signal_power = sqrtf(total_power / (series_len / 2));
+    float signal_power = sqrtf(total_power / ((float)series_len / 2.0F));
     analysis->signal_to_noise = (analysis->noise_floor > 1e-10F) ?
         signal_power / analysis->noise_floor : 100.0F;
 
     // Stochastic resonance: optimal noise can enhance signal detection
-    // Peak resonance when noise_floor ~ signal threshold
     float threshold = detector->config.harm_threshold;
     analysis->stochastic_resonance = expf(-fabsf(analysis->noise_floor - threshold * 0.5F));
 

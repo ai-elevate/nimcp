@@ -879,6 +879,48 @@ NIMCP_EXPORT bool combinatorial_evaluate_enhanced(
     mathematical_harm_analysis_t* math_analysis
 );
 
+//=============================================================================
+// Pink Noise Integration API
+//=============================================================================
+
+/**
+ * @brief Enable full pink noise module integration
+ *
+ * WHAT: Enable proper FFT-based spectral analysis and criticality detection
+ * WHY:  More accurate 1/f analysis vs simplified inline implementation
+ * HOW:  Creates pink noise monitor and criticality analyzer instances
+ *
+ * @param detector Detector handle
+ * @return true on success, false on failure
+ */
+NIMCP_EXPORT bool combinatorial_enable_pink_noise(
+    combinatorial_harm_detector_t detector
+);
+
+/**
+ * @brief Disable pink noise module integration
+ *
+ * WHAT: Disable and destroy pink noise analyzers
+ * WHY:  Reduce memory usage when not needed
+ * HOW:  Destroys monitor and criticality analyzer, uses inline fallback
+ *
+ * @param detector Detector handle
+ * @return true on success
+ */
+NIMCP_EXPORT bool combinatorial_disable_pink_noise(
+    combinatorial_harm_detector_t detector
+);
+
+/**
+ * @brief Check if pink noise modules are enabled
+ *
+ * @param detector Detector handle
+ * @return true if pink noise modules are active
+ */
+NIMCP_EXPORT bool combinatorial_is_pink_noise_enabled(
+    combinatorial_harm_detector_t detector
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -278,6 +278,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_neuromodulators_test_spatial_neuromod_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_noise_pink_noise_tests.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_noise_test_pink_noise.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_noise_test_pink_noise_enhancements.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_orchestrator_test_axon_orchestrator_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_orchestrator_test_dendrite_orchestrator_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_orchestrator_test_neural_plasticity_coordinator.dir
@@ -397,6 +398,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_neuromodulators_test_neuromodulators_bio_async_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_neuromodulators_test_phasic_tonic_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_neuromodulators_test_spatial_neuromod_bio_async_integration.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_noise_test_pink_noise_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_orchestrator_test_neural_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_orchestrator_test_orchestrator_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_protein_test_protein_integration.dir
@@ -484,6 +486,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_neuromodulators_test_phasic_tonic_backward_compat.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_neuromodulators_test_spatial_neuromod_bio_async_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_noise_test_pink_noise_backward_compat.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_noise_test_pink_noise_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_orchestrator_test_neural_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_orchestrator_test_orchestrator_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_protein_test_protein_regression.dir
@@ -573,6 +576,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_snn_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_snn_bridge_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_quantum_bridges_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_pink_noise_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_curiosity_enhanced_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
@@ -2174,6 +2178,7 @@
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_neuron_orchestrator_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_dendrite_orchestrator_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_neural_coordinator.dir
+/home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_pink_noise_enhancements.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/rebuild_cache.dir
@@ -2215,6 +2220,7 @@
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_triplet_stdp.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_orchestrator.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_neural.dir
+/home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_pink_noise.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/rebuild_cache.dir
@@ -2249,6 +2255,7 @@
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_modules_test.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_orchestrator.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_neural.dir
+/home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_pink_noise.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/rebuild_cache.dir
