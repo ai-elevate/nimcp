@@ -88,6 +88,59 @@ nimcp_tensor_destroy(t);
 
 ## Recent Completions
 
+### Pink Noise Domain Bridges (Complete - Dec 2024)
+Integrated 1/f pink noise across 12 neural subsystems for biologically realistic stochastic dynamics:
+
+| Module | Bridge | Biological Basis |
+|--------|--------|------------------|
+| Calcium | `nimcp_calcium_pink_noise_bridge.h` | NMDA receptor, Ca2+ wave fluctuations |
+| Dendritic | `nimcp_dendritic_pink_noise_bridge.h` | bAP timing, NMDA spike variability |
+| Heterosynaptic | `nimcp_heterosynaptic_pink_noise_bridge.h` | Competition dynamics noise |
+| Metabolic | `nimcp_metabolic_pink_noise_bridge.h` | ATP/energy fluctuations |
+| Spatial Neuromod | `nimcp_spatial_neuromod_pink_noise_bridge.h` | Diffusion variability |
+| Vesicle Packaging | `nimcp_vesicle_packaging_pink_noise_bridge.h` | RRP, Pr, quantal noise |
+| Ensemble Uncertainty | `nimcp_ensemble_uncertainty_pink_noise_bridge.h` | Epistemic noise injection |
+| Systems Consolidation | `nimcp_systems_consolidation_pink_noise_bridge.h` | Sleep replay modulation |
+| Brain Oscillations | `nimcp_oscillations_pink_noise_bridge.h` | Cross-frequency 1/f coupling |
+| Population Coding | `nimcp_population_coding_pink_noise_bridge.h` | Tuning curve modulation |
+| STDP | `nimcp_stdp_pink_noise_bridge.h` | Learning rate noise |
+| STP | `nimcp_stp_pink_noise_bridge.h` | Facilitation/depression variability |
+
+**Common Bridge Pattern:**
+```c
+// Create bridge
+<module>_pink_noise_config_t config = <module>_pink_noise_default_config();
+<module>_pink_noise_bridge_t* bridge = <module>_pink_noise_create(&config);
+
+// Connect to module
+<module>_pink_noise_connect_<module>(bridge, <module>_system);
+
+// Update and apply modulation
+<module>_pink_noise_update(bridge);
+<module>_pink_noise_apply_modulation(bridge);
+
+// Cleanup
+<module>_pink_noise_destroy(bridge);
+```
+
+**Mutex API Pattern (IMPORTANT):**
+```c
+// Correct: Allocate + init
+bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+nimcp_mutex_init(bridge->mutex, NULL);
+
+// Correct: Destroy + free
+nimcp_mutex_destroy(bridge->mutex);
+nimcp_free(bridge->mutex);
+
+// WRONG: nimcp_mutex_create() does not exist
+```
+
+**Test Coverage: 139 tests**
+- Unit: 119 tests (`./test/unit/plasticity/unit_plasticity_pink_noise_enhancements`)
+- E2E: 6 tests (`./test/e2e/e2e_test_pink_noise_pipeline`)
+- Integration: 14 tests (`./test/integration/plasticity/integration_plasticity_pink_noise`)
+
 ### Brain Immune System (Complete - Dec 2024)
 Implemented biologically-inspired immune coordination layer integrating BBB, BFT, and swarm immune:
 
