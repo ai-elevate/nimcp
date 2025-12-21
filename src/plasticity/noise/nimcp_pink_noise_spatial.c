@@ -87,6 +87,190 @@ static bool cholesky_decomposition(
     return true;
 }
 
+/**
+ * @brief Cholesky decomposition with strided matrices
+ *
+ * WHAT: Compute L such that A = LL^T, with matrices stored with stride
+ * WHY:  Support matrices allocated with extra capacity
+ * HOW:  Same algorithm as cholesky_decomposition but with stride indexing
+ *
+ * @param matrix Input symmetric positive-definite matrix (n x n, stride storage)
+ * @param lower Output lower triangular matrix (n x n, stride storage)
+ * @param n Active matrix dimension
+ * @param stride Storage stride (>= n)
+ * @return true on success, false if matrix is not positive-definite
+ */
+static bool cholesky_decomposition_strided(
+    const float* matrix,
+    float* lower,
+    uint32_t n,
+    uint32_t stride
+) {
+    // Zero the output matrix
+    for (uint32_t i = 0; i < n; i++) {
+        for (uint32_t j = 0; j < n; j++) {
+            lower[i * stride + j] = 0.0f;
+        }
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        for (uint32_t j = 0; j <= i; j++) {
+            float sum = 0.0f;
+
+            if (j == i) {
+                for (uint32_t k = 0; k < j; k++) {
+                    sum += lower[j * stride + k] * lower[j * stride + k];
+                }
+                float diag = matrix[i * stride + j] - sum;
+                if (diag < 0.0f) {
+                    return false;
+                }
+                lower[i * stride + j] = sqrtf(diag);
+            } else {
+                for (uint32_t k = 0; k < j; k++) {
+                    sum += lower[i * stride + k] * lower[j * stride + k];
+                }
+                float d = lower[j * stride + j];
+                if (fabsf(d) < 1e-10f) {
+                    return false;
+                }
+                lower[i * stride + j] = (matrix[i * stride + j] - sum) / d;
+            }
+        }
+    }
+
+    return true;
+}
+
+//=============================================================================
+// Internal: Matrix Reallocation
+//=============================================================================
+
+/**
+ * @brief Ensure matrices have capacity for at least n regions
+ *
+ * WHAT: Reallocate correlation matrices if needed
+ * WHY:  Allow dynamic region addition without buffer overflow
+ * HOW:  Double capacity when exceeded, copy existing data
+ *
+ * @param spatial Spatial noise generator
+ * @param required_capacity Required number of regions
+ * @return 0 on success, -1 on failure
+ */
+static int ensure_matrix_capacity(pink_spatial_t* spatial, uint32_t required_capacity) {
+    if (!spatial) return -1;
+
+    // Already have enough capacity
+    if (required_capacity <= spatial->matrix_capacity) {
+        return 0;
+    }
+
+    // Calculate new capacity (at least double, or required)
+    uint32_t new_capacity = spatial->matrix_capacity * 2;
+    if (new_capacity < required_capacity) {
+        new_capacity = required_capacity;
+    }
+    if (new_capacity > PINK_SPATIAL_MAX_REGIONS) {
+        new_capacity = PINK_SPATIAL_MAX_REGIONS;
+    }
+    if (new_capacity < required_capacity) {
+        NIMCP_LOGGING_ERROR("Cannot allocate %u regions, max is %u",
+                           required_capacity, PINK_SPATIAL_MAX_REGIONS);
+        return -1;
+    }
+
+    // Allocate new matrices
+    size_t new_size = (size_t)new_capacity * new_capacity * sizeof(float);
+    float* new_distance = NULL;
+    float* new_correlation = NULL;
+    float* new_cholesky = NULL;
+    unified_mem_handle_t new_distance_handle = NULL;
+    unified_mem_handle_t new_correlation_handle = NULL;
+    unified_mem_handle_t new_cholesky_handle = NULL;
+
+    // Allocate via UMM if available
+    if (spatial->mem_manager) {
+        unified_mem_request_t req = unified_mem_request(new_size, NULL, true);
+        new_distance_handle = unified_mem_alloc(spatial->mem_manager, &req);
+        new_correlation_handle = unified_mem_alloc(spatial->mem_manager, &req);
+        new_cholesky_handle = unified_mem_alloc(spatial->mem_manager, &req);
+
+        if (new_distance_handle && new_correlation_handle && new_cholesky_handle) {
+            new_distance = (float*)unified_mem_write(new_distance_handle);
+            new_correlation = (float*)unified_mem_write(new_correlation_handle);
+            new_cholesky = (float*)unified_mem_write(new_cholesky_handle);
+            memset(new_distance, 0, new_size);
+            memset(new_correlation, 0, new_size);
+            memset(new_cholesky, 0, new_size);
+        } else {
+            // UMM allocation failed, fall back to direct allocation
+            if (new_distance_handle) unified_mem_free(new_distance_handle);
+            if (new_correlation_handle) unified_mem_free(new_correlation_handle);
+            if (new_cholesky_handle) unified_mem_free(new_cholesky_handle);
+            new_distance_handle = NULL;
+            new_correlation_handle = NULL;
+            new_cholesky_handle = NULL;
+        }
+    }
+
+    // Fallback to direct allocation
+    if (!new_distance) {
+        new_distance = nimcp_calloc(new_capacity * new_capacity, sizeof(float));
+        new_correlation = nimcp_calloc(new_capacity * new_capacity, sizeof(float));
+        new_cholesky = nimcp_calloc(new_capacity * new_capacity, sizeof(float));
+    }
+
+    if (!new_distance || !new_correlation || !new_cholesky) {
+        if (new_distance) nimcp_free(new_distance);
+        if (new_correlation) nimcp_free(new_correlation);
+        if (new_cholesky) nimcp_free(new_cholesky);
+        NIMCP_LOGGING_ERROR("Failed to allocate matrices for %u regions", new_capacity);
+        return -1;
+    }
+
+    // Copy existing data if present
+    if (spatial->distance_matrix && spatial->matrix_capacity > 0) {
+        uint32_t old_n = spatial->matrix_capacity;
+        for (uint32_t i = 0; i < old_n && i < new_capacity; i++) {
+            for (uint32_t j = 0; j < old_n && j < new_capacity; j++) {
+                new_distance[i * new_capacity + j] = spatial->distance_matrix[i * old_n + j];
+                new_correlation[i * new_capacity + j] = spatial->correlation_matrix[i * old_n + j];
+                new_cholesky[i * new_capacity + j] = spatial->cholesky_matrix[i * old_n + j];
+            }
+        }
+    }
+
+    // Free old matrices
+    if (spatial->distance_matrix_handle) {
+        unified_mem_free(spatial->distance_matrix_handle);
+    } else if (spatial->distance_matrix) {
+        nimcp_free(spatial->distance_matrix);
+    }
+    if (spatial->correlation_matrix_handle) {
+        unified_mem_free(spatial->correlation_matrix_handle);
+    } else if (spatial->correlation_matrix) {
+        nimcp_free(spatial->correlation_matrix);
+    }
+    if (spatial->cholesky_matrix_handle) {
+        unified_mem_free(spatial->cholesky_matrix_handle);
+    } else if (spatial->cholesky_matrix) {
+        nimcp_free(spatial->cholesky_matrix);
+    }
+
+    // Install new matrices
+    spatial->distance_matrix = new_distance;
+    spatial->correlation_matrix = new_correlation;
+    spatial->cholesky_matrix = new_cholesky;
+    spatial->distance_matrix_handle = new_distance_handle;
+    spatial->correlation_matrix_handle = new_correlation_handle;
+    spatial->cholesky_matrix_handle = new_cholesky_handle;
+    spatial->matrix_capacity = new_capacity;
+
+    NIMCP_LOGGING_DEBUG("Expanded spatial matrices to capacity %u%s", new_capacity,
+                        new_distance_handle ? " (via UMM)" : "");
+    return 0;
+}
+
 //=============================================================================
 // Configuration
 //=============================================================================
@@ -158,10 +342,17 @@ pink_spatial_t* pink_spatial_create(const pink_spatial_config_t* config) {
 
     memcpy(&spatial->config, config, sizeof(pink_spatial_config_t));
 
+    // Allocate matrices with some headroom for future add_region calls
     uint32_t n = config->num_regions;
-    spatial->distance_matrix = nimcp_calloc(n * n, sizeof(float));
-    spatial->correlation_matrix = nimcp_calloc(n * n, sizeof(float));
-    spatial->cholesky_matrix = nimcp_calloc(n * n, sizeof(float));
+    uint32_t initial_capacity = n + 4;  // Add headroom for dynamic additions
+    if (initial_capacity > PINK_SPATIAL_MAX_REGIONS) {
+        initial_capacity = PINK_SPATIAL_MAX_REGIONS;
+    }
+
+    spatial->matrix_capacity = initial_capacity;
+    spatial->distance_matrix = nimcp_calloc(initial_capacity * initial_capacity, sizeof(float));
+    spatial->correlation_matrix = nimcp_calloc(initial_capacity * initial_capacity, sizeof(float));
+    spatial->cholesky_matrix = nimcp_calloc(initial_capacity * initial_capacity, sizeof(float));
 
     if (!spatial->distance_matrix || !spatial->correlation_matrix ||
         !spatial->cholesky_matrix) {
@@ -199,9 +390,22 @@ void pink_spatial_destroy(pink_spatial_t* spatial) {
         }
     }
 
-    if (spatial->distance_matrix) nimcp_free(spatial->distance_matrix);
-    if (spatial->correlation_matrix) nimcp_free(spatial->correlation_matrix);
-    if (spatial->cholesky_matrix) nimcp_free(spatial->cholesky_matrix);
+    // Free matrices via UMM or direct free
+    if (spatial->distance_matrix_handle) {
+        unified_mem_free(spatial->distance_matrix_handle);
+    } else if (spatial->distance_matrix) {
+        nimcp_free(spatial->distance_matrix);
+    }
+    if (spatial->correlation_matrix_handle) {
+        unified_mem_free(spatial->correlation_matrix_handle);
+    } else if (spatial->correlation_matrix) {
+        nimcp_free(spatial->correlation_matrix);
+    }
+    if (spatial->cholesky_matrix_handle) {
+        unified_mem_free(spatial->cholesky_matrix_handle);
+    } else if (spatial->cholesky_matrix) {
+        nimcp_free(spatial->cholesky_matrix);
+    }
 
     nimcp_free(spatial);
 }
@@ -214,14 +418,23 @@ int pink_spatial_compute_correlations(pink_spatial_t* spatial) {
     if (!spatial) return -1;
 
     uint32_t n = spatial->config.num_regions;
+    uint32_t stride = spatial->matrix_capacity;
 
-    // Compute distance matrix
+    // Ensure we have capacity
+    if (n > stride) {
+        if (ensure_matrix_capacity(spatial, n) != 0) {
+            return -1;
+        }
+        stride = spatial->matrix_capacity;
+    }
+
+    // Compute distance matrix (using stride for proper indexing)
     for (uint32_t i = 0; i < n; i++) {
         for (uint32_t j = 0; j < n; j++) {
             if (i == j) {
-                spatial->distance_matrix[i * n + j] = 0.0f;
+                spatial->distance_matrix[i * stride + j] = 0.0f;
             } else {
-                spatial->distance_matrix[i * n + j] = compute_distance(
+                spatial->distance_matrix[i * stride + j] = compute_distance(
                     spatial->config.regions[i].x,
                     spatial->config.regions[i].y,
                     spatial->config.regions[i].z,
@@ -237,27 +450,28 @@ int pink_spatial_compute_correlations(pink_spatial_t* spatial) {
     for (uint32_t i = 0; i < n; i++) {
         for (uint32_t j = 0; j < n; j++) {
             if (i == j) {
-                spatial->correlation_matrix[i * n + j] = 1.0f;
+                spatial->correlation_matrix[i * stride + j] = 1.0f;
             } else {
-                spatial->correlation_matrix[i * n + j] = compute_correlation(
-                    spatial->distance_matrix[i * n + j],
+                spatial->correlation_matrix[i * stride + j] = compute_correlation(
+                    spatial->distance_matrix[i * stride + j],
                     &spatial->config
                 );
             }
         }
     }
 
-    // Compute Cholesky decomposition
-    spatial->matrices_valid = cholesky_decomposition(
+    // Compute Cholesky decomposition with proper stride
+    spatial->matrices_valid = cholesky_decomposition_strided(
         spatial->correlation_matrix,
         spatial->cholesky_matrix,
-        n
+        n,
+        stride
     );
 
     if (!spatial->matrices_valid) {
         NIMCP_LOGGING_WARN("Cholesky failed, using identity");
         for (uint32_t i = 0; i < n; i++) {
-            spatial->cholesky_matrix[i * n + i] = 1.0f;
+            spatial->cholesky_matrix[i * stride + i] = 1.0f;
         }
         spatial->matrices_valid = true;
     }
@@ -272,12 +486,21 @@ int pink_spatial_set_correlation_matrix(
     if (!spatial || !matrix) return -1;
 
     uint32_t n = spatial->config.num_regions;
-    memcpy(spatial->correlation_matrix, matrix, n * n * sizeof(float));
+    uint32_t stride = spatial->matrix_capacity;
 
-    spatial->matrices_valid = cholesky_decomposition(
+    // Copy from dense input matrix to strided storage
+    for (uint32_t i = 0; i < n; i++) {
+        for (uint32_t j = 0; j < n; j++) {
+            spatial->correlation_matrix[i * stride + j] = matrix[i * n + j];
+        }
+    }
+
+    // Compute Cholesky with strided storage
+    spatial->matrices_valid = cholesky_decomposition_strided(
         spatial->correlation_matrix,
         spatial->cholesky_matrix,
-        n
+        n,
+        stride
     );
 
     return spatial->matrices_valid ? 0 : -1;
@@ -291,6 +514,7 @@ int pink_spatial_step(pink_spatial_t* spatial) {
     if (!spatial) return -1;
 
     uint32_t n = spatial->config.num_regions;
+    uint32_t stride = spatial->matrix_capacity;
 
     // Generate independent pink noise
     for (uint32_t i = 0; i < n; i++) {
@@ -298,11 +522,11 @@ int pink_spatial_step(pink_spatial_t* spatial) {
                                    &spatial->independent_values[i]);
     }
 
-    // Apply Cholesky transformation for spatial correlation
+    // Apply Cholesky transformation for spatial correlation (using stride)
     for (uint32_t i = 0; i < n; i++) {
         float sum = 0.0f;
         for (uint32_t j = 0; j <= i; j++) {
-            sum += spatial->cholesky_matrix[i * n + j] * spatial->independent_values[j];
+            sum += spatial->cholesky_matrix[i * stride + j] * spatial->independent_values[j];
         }
         spatial->current_values[i] = sum;
     }
@@ -354,8 +578,8 @@ float pink_spatial_get_correlation(
     if (region_i >= spatial->config.num_regions) return 0.0f;
     if (region_j >= spatial->config.num_regions) return 0.0f;
 
-    uint32_t n = spatial->config.num_regions;
-    return spatial->correlation_matrix[region_i * n + region_j];
+    uint32_t stride = spatial->matrix_capacity;
+    return spatial->correlation_matrix[region_i * stride + region_j];
 }
 
 float pink_spatial_get_distance(
@@ -367,8 +591,8 @@ float pink_spatial_get_distance(
     if (region_i >= spatial->config.num_regions) return 0.0f;
     if (region_j >= spatial->config.num_regions) return 0.0f;
 
-    uint32_t n = spatial->config.num_regions;
-    return spatial->distance_matrix[region_i * n + region_j];
+    uint32_t stride = spatial->matrix_capacity;
+    return spatial->distance_matrix[region_i * stride + region_j];
 }
 
 int pink_spatial_add_region(
@@ -382,6 +606,14 @@ int pink_spatial_add_region(
     if (spatial->config.num_regions >= PINK_SPATIAL_MAX_REGIONS) return -1;
 
     uint32_t idx = spatial->config.num_regions;
+    uint32_t new_count = idx + 1;
+
+    // Ensure we have capacity for the new region BEFORE adding it
+    if (ensure_matrix_capacity(spatial, new_count) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to expand matrices for region %s", name);
+        return -1;
+    }
+
     spatial->config.regions[idx].name = name;
     spatial->config.regions[idx].x = x;
     spatial->config.regions[idx].y = y;
@@ -400,7 +632,7 @@ int pink_spatial_add_region(
 
     spatial->config.num_regions++;
 
-    // Recompute correlations
+    // Recompute correlations (now safe with proper capacity)
     pink_spatial_compute_correlations(spatial);
 
     return 0;
@@ -418,4 +650,71 @@ int pink_spatial_reset(pink_spatial_t* spatial, uint32_t new_seed) {
 
     spatial->sample_count = 0;
     return 0;
+}
+
+//=============================================================================
+// Unified Memory Manager Integration
+//=============================================================================
+
+int pink_spatial_connect_memory_manager(
+    pink_spatial_t* spatial,
+    unified_mem_manager_t mem_manager
+) {
+    if (!spatial) return -1;
+
+    // Store the memory manager
+    spatial->mem_manager = mem_manager;
+
+    // If we already have matrices allocated and manager is now set,
+    // migrate them to UMM for CoW benefits
+    if (mem_manager && spatial->distance_matrix && !spatial->distance_matrix_handle) {
+        uint32_t n = spatial->matrix_capacity;
+        size_t matrix_size = (size_t)n * n * sizeof(float);
+
+        // Migrate each matrix to UMM
+        unified_mem_request_t req;
+
+        // Distance matrix
+        req = unified_mem_request(matrix_size, spatial->distance_matrix, true);
+        unified_mem_handle_t new_dist_handle = unified_mem_alloc(mem_manager, &req);
+
+        // Correlation matrix
+        req = unified_mem_request(matrix_size, spatial->correlation_matrix, true);
+        unified_mem_handle_t new_corr_handle = unified_mem_alloc(mem_manager, &req);
+
+        // Cholesky matrix
+        req = unified_mem_request(matrix_size, spatial->cholesky_matrix, true);
+        unified_mem_handle_t new_chol_handle = unified_mem_alloc(mem_manager, &req);
+
+        // If all succeeded, install new handles
+        if (new_dist_handle && new_corr_handle && new_chol_handle) {
+            // Free old allocations
+            nimcp_free(spatial->distance_matrix);
+            nimcp_free(spatial->correlation_matrix);
+            nimcp_free(spatial->cholesky_matrix);
+
+            // Install new handles
+            spatial->distance_matrix_handle = new_dist_handle;
+            spatial->correlation_matrix_handle = new_corr_handle;
+            spatial->cholesky_matrix_handle = new_chol_handle;
+            spatial->distance_matrix = (float*)unified_mem_write(new_dist_handle);
+            spatial->correlation_matrix = (float*)unified_mem_write(new_corr_handle);
+            spatial->cholesky_matrix = (float*)unified_mem_write(new_chol_handle);
+
+            NIMCP_LOGGING_INFO("Migrated spatial matrices to UMM (%zu bytes each)", matrix_size);
+        } else {
+            // Cleanup failed allocations
+            if (new_dist_handle) unified_mem_free(new_dist_handle);
+            if (new_corr_handle) unified_mem_free(new_corr_handle);
+            if (new_chol_handle) unified_mem_free(new_chol_handle);
+            NIMCP_LOGGING_WARN("Failed to migrate spatial matrices to UMM, keeping direct allocations");
+        }
+    }
+
+    return 0;
+}
+
+bool pink_spatial_has_memory_manager(const pink_spatial_t* spatial) {
+    if (!spatial) return false;
+    return spatial->mem_manager != NULL;
 }

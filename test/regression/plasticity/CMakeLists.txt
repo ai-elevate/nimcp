@@ -262,3 +262,29 @@ gtest_discover_tests(regression_plasticity_neural
         TIMEOUT 600
         LABELS "regression;plasticity;neural;orchestrator"
 )
+
+# ============================================================================
+# Pink Noise Enhancement Regression Tests
+# ============================================================================
+# WHAT: Regression tests for 9 pink noise enhancement modules
+# WHY:  Ensure numerical stability, parameter bounds, and reproducibility
+# HOW:  Extended runs, edge cases, stress tests, statistical validation
+# ============================================================================
+
+add_executable(regression_plasticity_pink_noise
+    noise/test_pink_noise_regression.cpp
+)
+target_link_libraries(regression_plasticity_pink_noise
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_pink_noise PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_pink_noise
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;noise;pink"
+)

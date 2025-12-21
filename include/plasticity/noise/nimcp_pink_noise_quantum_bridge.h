@@ -49,6 +49,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "plasticity/noise/nimcp_pink_noise.h"
+#include "utils/memory/nimcp_unified_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -146,8 +147,12 @@ typedef struct {
 
     // Quantum walk state
     float* walk_amplitudes;         /**< Probability amplitudes */
+    unified_mem_handle_t walk_amplitudes_handle; /**< UMM handle for amplitudes */
     uint32_t walk_position;         /**< Current position in walk */
     uint32_t walk_steps;            /**< Steps taken */
+
+    // Unified Memory Manager (optional)
+    unified_mem_manager_t mem_manager; /**< UMM manager (NULL = use nimcp_malloc) */
 
     // Classical fallback
     pink_noise_generator_t classical_generator;
@@ -326,6 +331,30 @@ bool pink_quantum_is_enabled(const pink_quantum_bridge_t* bridge);
  * @return 0 on success, negative on error
  */
 int pink_quantum_restart_annealing(pink_quantum_bridge_t* bridge);
+
+/**
+ * @brief Connect unified memory manager for CoW allocations
+ *
+ * WHAT: Attach UMM for memory-efficient allocations
+ * WHY:  Enable Copy-on-Write for walk amplitudes
+ * HOW:  Store manager reference, reallocate via UMM
+ *
+ * @param bridge Quantum bridge
+ * @param mem_manager Unified memory manager (NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int pink_quantum_connect_memory_manager(
+    pink_quantum_bridge_t* bridge,
+    unified_mem_manager_t mem_manager
+);
+
+/**
+ * @brief Check if unified memory manager is connected
+ *
+ * @param bridge Quantum bridge
+ * @return true if UMM is connected
+ */
+bool pink_quantum_has_memory_manager(const pink_quantum_bridge_t* bridge);
 
 //=============================================================================
 // Statistics

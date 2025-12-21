@@ -485,3 +485,28 @@ gtest_discover_tests(unit_plasticity_neural_coordinator
     PROPERTIES LABELS "unit;plasticity;orchestrator;coordinator"
     TIMEOUT 180
 )
+
+# ============================================================================
+# Pink Noise Enhancement Tests
+# ============================================================================
+# WHAT: Unit tests for 9 pink noise enhancement modules
+# WHY:  Ensure comprehensive coverage of biologically-inspired noise features
+# HOW:  Test lifecycle, generation, modulation, statistics for each module
+# ============================================================================
+
+add_executable(unit_plasticity_pink_noise_enhancements
+    noise/test_pink_noise_enhancements.cpp
+)
+target_link_libraries(unit_plasticity_pink_noise_enhancements
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_pink_noise_enhancements PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_pink_noise_enhancements
+    PROPERTIES LABELS "unit;plasticity;noise;pink"
+    TIMEOUT 120
+)

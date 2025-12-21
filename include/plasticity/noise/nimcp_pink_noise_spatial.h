@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "plasticity/noise/nimcp_pink_noise.h"
+#include "utils/memory/nimcp_unified_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,6 +91,13 @@ typedef struct {
     float* distance_matrix;             /**< d_ij between regions */
     float* correlation_matrix;          /**< Correlation(i,j) */
     float* cholesky_matrix;             /**< L such that LL^T = Corr */
+    uint32_t matrix_capacity;           /**< Allocated capacity for matrices */
+
+    // UMM handles for matrices (optional)
+    unified_mem_handle_t distance_matrix_handle;
+    unified_mem_handle_t correlation_matrix_handle;
+    unified_mem_handle_t cholesky_matrix_handle;
+    unified_mem_manager_t mem_manager;  /**< UMM manager (NULL = use nimcp_malloc) */
 
     // Current noise values
     float current_values[PINK_SPATIAL_MAX_REGIONS];
@@ -201,6 +209,30 @@ float pink_spatial_get_distance(
  * @brief Reset all regions
  */
 int pink_spatial_reset(pink_spatial_t* spatial, uint32_t new_seed);
+
+/**
+ * @brief Connect unified memory manager for CoW allocations
+ *
+ * WHAT: Attach UMM for memory-efficient matrix allocations
+ * WHY:  Enable Copy-on-Write for distance/correlation/cholesky matrices
+ * HOW:  Store manager reference, migrate existing allocations
+ *
+ * @param spatial Spatial noise generator
+ * @param mem_manager Unified memory manager (NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int pink_spatial_connect_memory_manager(
+    pink_spatial_t* spatial,
+    unified_mem_manager_t mem_manager
+);
+
+/**
+ * @brief Check if unified memory manager is connected
+ *
+ * @param spatial Spatial noise generator
+ * @return true if UMM is connected
+ */
+bool pink_spatial_has_memory_manager(const pink_spatial_t* spatial);
 
 #ifdef __cplusplus
 }

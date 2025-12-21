@@ -213,3 +213,29 @@ gtest_discover_tests(integration_plasticity_neural
         TIMEOUT 300
         LABELS "integration;plasticity;neural;orchestrator"
 )
+
+# ============================================================================
+# Pink Noise Enhancement Integration Tests
+# ============================================================================
+# WHAT: Integration tests for 9 pink noise enhancement modules
+# WHY:  Ensure all modules work together correctly
+# HOW:  Test cross-module interactions, state transitions, full pipeline
+# ============================================================================
+
+add_executable(integration_plasticity_pink_noise
+    noise/test_pink_noise_integration.cpp
+)
+target_link_libraries(integration_plasticity_pink_noise
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_pink_noise PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_pink_noise
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;noise;pink"
+)

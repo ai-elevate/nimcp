@@ -727,6 +727,40 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_quantum_bridges_pipeline.cpp)
 endif()
 
 # ============================================================================
+# Pink Noise Enhancement Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for 9 pink noise enhancement modules
+# WHY:  Verify complete neural noise pipeline with all enhancements
+# HOW:  Test multiscale, correlated, criticality, quantum, immune, sleep,
+#       SIMD, monitor, and spatial noise in integrated brain scenarios
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_pink_noise_pipeline.cpp)
+    add_executable(e2e_test_pink_noise_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_pink_noise_pipeline.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    )
+    target_include_directories(e2e_test_pink_noise_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/plasticity/noise
+    )
+    target_link_libraries(e2e_test_pink_noise_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_pink_noise_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_pink_noise_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;plasticity;noise;pink"
+            TIMEOUT 300
+    )
+    message(STATUS "  Added Pink Noise E2E test: e2e_test_pink_noise_pipeline")
+endif()
+
+# ============================================================================
 # Enhanced Curiosity Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for Enhanced Curiosity System (10 enhancements)

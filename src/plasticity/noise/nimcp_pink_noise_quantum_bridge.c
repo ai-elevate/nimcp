@@ -88,10 +88,41 @@ static void init_quantum_walk(pink_quantum_bridge_t* bridge) {
     /**
      * WHAT: Initialize quantum walk probability amplitudes
      * WHY:  Quantum walk generates long-range correlations
+     * HOW:  Allocate (or reuse) amplitude array, initialize at center
+     *
+     * Walk position ranges from 0 to 2*len-1, each with 2 spin components
+     * So we need 4*len elements total: (2*len positions) * (2 components each)
      */
     uint32_t len = bridge->config.walk.walk_length;
+    // Position range: 0 to 2*len-1, with 2 components each = 4*len elements
+    size_t num_elements = 4 * len;
+    size_t alloc_size = num_elements * sizeof(float);
 
-    bridge->walk_amplitudes = nimcp_calloc(len * 2, sizeof(float));
+    // Free existing allocation if present (prevents memory leak on reset)
+    if (bridge->walk_amplitudes_handle) {
+        unified_mem_free(bridge->walk_amplitudes_handle);
+        bridge->walk_amplitudes_handle = NULL;
+        bridge->walk_amplitudes = NULL;
+    } else if (bridge->walk_amplitudes) {
+        nimcp_free(bridge->walk_amplitudes);
+        bridge->walk_amplitudes = NULL;
+    }
+
+    // Allocate via UMM if available, otherwise use nimcp_calloc
+    if (bridge->mem_manager) {
+        unified_mem_request_t req = unified_mem_request(alloc_size, NULL, true);
+        bridge->walk_amplitudes_handle = unified_mem_alloc(bridge->mem_manager, &req);
+        if (bridge->walk_amplitudes_handle) {
+            bridge->walk_amplitudes = (float*)unified_mem_write(bridge->walk_amplitudes_handle);
+            memset(bridge->walk_amplitudes, 0, alloc_size);
+            NIMCP_LOGGING_DEBUG("Quantum walk amplitudes allocated via UMM (%zu bytes)", alloc_size);
+        }
+    }
+
+    // Fallback to direct allocation if UMM unavailable or failed
+    if (!bridge->walk_amplitudes) {
+        bridge->walk_amplitudes = nimcp_calloc(num_elements, sizeof(float));
+    }
     if (!bridge->walk_amplitudes) return;
 
     // Initialize at center with symmetric superposition
@@ -181,7 +212,10 @@ pink_quantum_bridge_t* pink_quantum_create(const pink_quantum_config_t* config) 
 void pink_quantum_destroy(pink_quantum_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->walk_amplitudes) {
+    // Free walk amplitudes via UMM or direct free
+    if (bridge->walk_amplitudes_handle) {
+        unified_mem_free(bridge->walk_amplitudes_handle);
+    } else if (bridge->walk_amplitudes) {
         nimcp_free(bridge->walk_amplitudes);
     }
     if (bridge->classical_generator) {
@@ -453,10 +487,11 @@ bool pink_quantum_is_enabled(const pink_quantum_bridge_t* bridge) {
 int pink_quantum_restart_annealing(pink_quantum_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    // Reinitialize magnitudes
+    // Reinitialize magnitudes and phases (matching create sequence)
     for (uint32_t i = 0; i < bridge->num_frequencies; i++) {
         bridge->magnitudes[i] = bridge->target_spectrum[i] *
                                (0.5f + uniform_random(&bridge->rng_state));
+        bridge->phases[i] = uniform_random(&bridge->rng_state) * 2.0f * 3.14159265f;
     }
     bridge->energy = compute_energy(bridge);
 
@@ -525,4 +560,50 @@ const char* pink_quantum_method_name(pink_quantum_method_t method) {
         case PINK_QUANTUM_HYBRID: return "hybrid";
         default: return "unknown";
     }
+}
+
+//=============================================================================
+// Unified Memory Manager Integration
+//=============================================================================
+
+int pink_quantum_connect_memory_manager(
+    pink_quantum_bridge_t* bridge,
+    unified_mem_manager_t mem_manager
+) {
+    if (!bridge) return -1;
+
+    // Store the memory manager
+    bridge->mem_manager = mem_manager;
+
+    // If we already have walk_amplitudes allocated and manager is now set,
+    // reallocate via UMM for CoW benefits
+    if (mem_manager && bridge->walk_amplitudes && !bridge->walk_amplitudes_handle) {
+        // Save current state
+        uint32_t len = bridge->config.walk.walk_length;
+        size_t num_elements = 4 * len;
+        size_t alloc_size = num_elements * sizeof(float);
+
+        // Save current amplitudes
+        float* old_amplitudes = bridge->walk_amplitudes;
+
+        // Allocate via UMM
+        unified_mem_request_t req = unified_mem_request(alloc_size, old_amplitudes, true);
+        bridge->walk_amplitudes_handle = unified_mem_alloc(mem_manager, &req);
+        if (bridge->walk_amplitudes_handle) {
+            bridge->walk_amplitudes = (float*)unified_mem_write(bridge->walk_amplitudes_handle);
+            // Free old allocation
+            nimcp_free(old_amplitudes);
+            NIMCP_LOGGING_INFO("Migrated quantum walk amplitudes to UMM");
+        } else {
+            // Keep using old allocation
+            bridge->walk_amplitudes = old_amplitudes;
+        }
+    }
+
+    return 0;
+}
+
+bool pink_quantum_has_memory_manager(const pink_quantum_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->mem_manager != NULL;
 }
