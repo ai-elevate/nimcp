@@ -108,6 +108,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "utils/platform/nimcp_tier_optimization.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -197,9 +198,9 @@ extern "C" {
  *
  * WHAT: How many recent broadcasts to remember
  * WHY:  Track temporal dynamics, enable recency analysis
- * VALUE: 10 broadcasts (covers ~500ms at 50ms refractory period)
+ * VALUE: Tier-based (FULL=32, MEDIUM=16, CONSTRAINED=8, MINIMAL=4)
  */
-#define GLOBAL_WORKSPACE_HISTORY_DEPTH 10
+#define GLOBAL_WORKSPACE_HISTORY_DEPTH NIMCP_HISTORY_SIZE_SMALL
 
 /**
  * @brief Competition decay time constant (ms)

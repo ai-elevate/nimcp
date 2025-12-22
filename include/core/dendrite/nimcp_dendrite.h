@@ -47,6 +47,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_tier_optimization.h"
 
 //=============================================================================
 // CONSTANTS
@@ -277,8 +278,8 @@ struct stdp_state_struct {
  * - Nonlinear boost: 1.3-2x for clustered vs distributed
  */
 struct spine_cluster_struct {
-    uint32_t spine_ids[16];         // Spines in this cluster (max 16)
-    uint32_t num_spines;            // Active spines in cluster
+    uint32_t spine_ids[NIMCP_MAX_SPINE_IDS];  // Tier-optimized spine array
+    uint32_t num_spines;                       // Active spines in cluster
     uint32_t segment_id;            // Segment containing cluster
     float center_position_um;       // Cluster center on segment
     float radius_um;                // Cluster radius
@@ -501,8 +502,8 @@ struct dendritic_segment_struct {
     float voltage;              // Local voltage (mV)
     float calcium;              // Local [Ca²⁺] (μM)
 
-    // Spines on this segment
-    uint32_t spine_ids[64];     // Fixed-size array for performance
+    // Spines on this segment (tier-optimized)
+    uint32_t spine_ids[NIMCP_MAX_SPINE_IDS];  // Tier-based for memory efficiency
     uint32_t num_spines;
 
     // Active Conductances (optional)
@@ -561,8 +562,8 @@ struct dendrite_struct {
     dendrite_state_t state;
 
     //--- Connectivity ---
-    uint32_t target_neuron_id;     // Owning neuron
-    uint32_t synapse_ids[256];     // Synapses on this dendrite (fixed array)
+    uint32_t target_neuron_id;                    // Owning neuron
+    uint32_t synapse_ids[NIMCP_MAX_SYNAPSE_IDS];  // Tier-optimized synapse array
     uint32_t num_synapses;
 
     //--- Morphology ---
@@ -606,10 +607,10 @@ struct dendrite_struct {
     bool is_functional;            // Is dendrite functional?
 
     //--- Advanced Physiology ---
-    nmda_spike_state_t nmda_state; // Current NMDA spike state
-    bap_state_t bap_state;         // Current bAP state
-    spine_cluster_t clusters[32];  // Detected spine clusters
-    uint32_t num_clusters;         // Active cluster count
+    nmda_spike_state_t nmda_state;                         // Current NMDA spike state
+    bap_state_t bap_state;                                 // Current bAP state
+    spine_cluster_t clusters[NIMCP_HISTORY_SIZE_MEDIUM];   // Tier-optimized clusters
+    uint32_t num_clusters;                                 // Active cluster count
 
     //--- Memory Pool (O(1) spine allocation) ---
     dendrite_spine_pool_t* spine_pool; // Pool for spine allocation

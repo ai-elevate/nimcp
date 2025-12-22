@@ -32,6 +32,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_cond.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/platform/nimcp_tier_optimization.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -374,14 +375,15 @@ static uint32_t bio_msg_queue_count(bio_msg_queue_t* queue) {
 bio_router_config_t bio_router_default_config(void) {
     bio_router_config_t config = {
         .max_modules = 64,
-        .inbox_capacity = 256,
-        .outbox_capacity = 256,
-        .max_message_size = 64 * 1024,  // 64KB
-        .worker_threads = 4,
-        .enable_logging = true,
-        .enable_statistics = true,
+        // Tier-optimized inbox/outbox capacity (saves 150KB+ on MINIMAL tier)
+        .inbox_capacity = NIMCP_BIO_INBOX_CAPACITY * 8,  // Router-level default
+        .outbox_capacity = NIMCP_BIO_INBOX_CAPACITY * 8,
+        .max_message_size = nimcp_tier_scale_size(64 * 1024),  // Tier-scaled max message
+        .worker_threads = nimcp_tier_thread_count(),
+        .enable_logging = NIMCP_ENABLE_STATISTICS,  // Disable logging on MINIMAL
+        .enable_statistics = NIMCP_ENABLE_STATISTICS,
         .routing_timeout_ms = DEFAULT_TIMEOUT_MS,
-        .enable_predictive_protocol = true  // Enable by default
+        .enable_predictive_protocol = (NIMCP_BUILD_TIER <= PLATFORM_TIER_MEDIUM)
     };
     return config;
 }
@@ -646,9 +648,14 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
             MAX_MODULE_NAME - 1);
     entry->user_data = info->user_data;
 
-    // Initialize inbox
+    // Initialize inbox with tier-optimized capacity
+    // Cap at NIMCP_BIO_INBOX_CAPACITY to enforce tier-based memory limits
     uint32_t inbox_cap = info->inbox_capacity > 0 ?
                          info->inbox_capacity : g_router->config.inbox_capacity;
+    // Enforce tier-based maximum (saves 150KB+ on MINIMAL tier)
+    if (inbox_cap > NIMCP_BIO_INBOX_CAPACITY) {
+        inbox_cap = NIMCP_BIO_INBOX_CAPACITY;
+    }
     if (bio_msg_queue_init(&entry->inbox, inbox_cap) != NIMCP_SUCCESS) {
         nimcp_platform_mutex_unlock(&g_router->modules_mutex);
         LOG_ERROR("Failed to initialize inbox for module %s", entry->module_name);

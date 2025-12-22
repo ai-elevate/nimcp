@@ -93,6 +93,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "utils/validation/nimcp_common.h"
+#include "utils/platform/nimcp_tier_optimization.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,8 +116,8 @@ typedef struct protocol_metrics protocol_metrics_t;
 /** Default metrics window (ms) */
 #define METRICS_DEFAULT_WINDOW_MS 1000
 
-/** Default history depth (number of windows) */
-#define METRICS_DEFAULT_HISTORY_DEPTH 100
+/** Default history depth (number of windows) - tier-optimized */
+#define METRICS_DEFAULT_HISTORY_DEPTH NIMCP_TRAINING_HISTORY_SIZE
 
 /** Default alert threshold */
 #define METRICS_DEFAULT_ALERT_THRESHOLD 0.8f

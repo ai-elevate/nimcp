@@ -110,18 +110,18 @@ extern "C" {
  *
  * WHAT: How many recent anomalies to remember
  * WHY:  Detect patterns of anomalous behavior
- * VALUE: 32 (covers ~1.6 seconds at 50ms refractory period)
+ * VALUE: Tier-based (FULL=100, MEDIUM=50, CONSTRAINED=20, MINIMAL=5)
  */
-#define GW_IMMUNE_MAX_ANOMALY_HISTORY 32
+#define GW_IMMUNE_MAX_ANOMALY_HISTORY NIMCP_ANOMALY_HISTORY_SIZE
 
 /**
  * @brief Anomaly detection window size (broadcasts)
  *
  * WHAT: How many recent broadcasts to analyze for patterns
  * WHY:  Need temporal context for anomaly detection
- * VALUE: 10 (matches GW default history depth)
+ * VALUE: Tier-based (matches GW history depth)
  */
-#define GW_IMMUNE_ANOMALY_WINDOW 10
+#define GW_IMMUNE_ANOMALY_WINDOW NIMCP_HISTORY_SIZE_SMALL
 
 /* ============================================================================
  * Enumerations

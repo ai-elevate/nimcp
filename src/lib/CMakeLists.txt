@@ -687,6 +687,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_semaphore.c     # Counting semaphore primitive
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_atomic.c        # Atomic operations wrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_barrier.c       # Thread barrier primitive
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_mutex_pool.c    # Shared mutex pool for memory optimization
 
     # Utils - Math (Phase 0.5: Complex Number Support for Neural Phase Coding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c  # Complex phasor operations, FFT, PAC detection (SIMD optimized)
