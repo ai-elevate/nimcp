@@ -701,6 +701,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/regions")
 endif()
 
 # ============================================================================
+# Hemispheric Brain Tests (Bilateral Brain Architecture)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/hemispheric")
+    message(STATUS "Adding hemispheric brain unit tests...")
+    add_subdirectory(unit/core/brain/hemispheric)
+endif()
+
+# ============================================================================
 # Utils Math Tests (Phase 0.5: Complex Number Support)
 # ============================================================================
 

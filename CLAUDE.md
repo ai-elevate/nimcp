@@ -547,6 +547,181 @@ LNN_ERROR_OUT_OF_MEMORY = -3
 
 **GOTCHA**: Use `lnn_wiring_is_connected()` (inline alias) or `lnn_wiring_has_edge()` to check connectivity.
 
+### Hemispheric Brain Architecture (Complete - Dec 2024)
+Biologically-inspired two-hemisphere brain with inter-hemispheric communication via corpus callosum:
+
+| Component | Biological Basis | NIMCP Implementation |
+|-----------|------------------|---------------------|
+| Left Hemisphere | Language, logic, sequential | Symbolic logic, fine motor, analytical |
+| Right Hemisphere | Spatial, holistic, pattern recognition | Emotion, face recognition, creative |
+| Corpus Callosum | 200M axons, 5-20ms latency | Bio-async bridge with bandwidth limiting |
+| Lateralization | Hemisphere specialization | 12 cognitive domains with dominance weights |
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      HEMISPHERIC BRAIN (hemispheric_brain_t)             │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────┐     ┌──────────────────────────┐         │
+│  │    LEFT HEMISPHERE       │     │    RIGHT HEMISPHERE      │         │
+│  │  - Language (0.95)       │     │  - Spatial (0.80)        │         │
+│  │  - Logic (0.85)          │     │  - Emotion (0.70)        │         │
+│  │  - Fine Motor (0.90)     │     │  - Face Recognition (0.85)│        │
+│  │  - Local Attention (0.75)│     │  - Global Attention (0.75)│        │
+│  └──────────────────────────┘     └──────────────────────────┘         │
+│              │                                │                         │
+│              └────────────┬───────────────────┘                         │
+│              ┌────────────▼────────────┐                                │
+│              │    CORPUS CALLOSUM      │                                │
+│              │  Channels: MOTOR,       │                                │
+│              │  SENSORY, COGNITIVE,    │                                │
+│              │  EMOTIONAL, INHIBITORY  │                                │
+│              │  Bandwidth: Configurable│                                │
+│              └─────────────────────────┘                                │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Cognitive Domains (12 total):**
+```c
+COGNITIVE_DOMAIN_LANGUAGE           // Left dominant (0.95)
+COGNITIVE_DOMAIN_SPATIAL            // Right dominant (0.20)
+COGNITIVE_DOMAIN_MOTOR_FINE         // Left dominant (0.90)
+COGNITIVE_DOMAIN_MOTOR_GROSS        // Bilateral (0.50)
+COGNITIVE_DOMAIN_EMOTION            // Right dominant (0.30)
+COGNITIVE_DOMAIN_ATTENTION_GLOBAL   // Right dominant (0.25)
+COGNITIVE_DOMAIN_ATTENTION_LOCAL    // Left dominant (0.75)
+COGNITIVE_DOMAIN_MUSIC_MELODY       // Right dominant (0.20)
+COGNITIVE_DOMAIN_MUSIC_RHYTHM       // Left dominant (0.80)
+COGNITIVE_DOMAIN_FACE_RECOGNITION   // Right dominant (0.15)
+COGNITIVE_DOMAIN_LOGICAL_REASONING  // Left dominant (0.85)
+COGNITIVE_DOMAIN_CREATIVE_THINKING  // Right dominant (0.35)
+```
+
+**Processing Modes:**
+- `HEMISPHERIC_MODE_LATERALIZED` - Route to dominant hemisphere
+- `HEMISPHERIC_MODE_PARALLEL` - Both hemispheres process simultaneously
+- `HEMISPHERIC_MODE_COMPETITIVE` - Hemispheres race, winner outputs
+- `HEMISPHERIC_MODE_COOPERATIVE` - Combine outputs (weighted/average/dominant)
+
+**Bandwidth Modes:**
+```c
+CALLOSUM_BW_UNLIMITED   // No limits (fast simulation)
+CALLOSUM_BW_REALISTIC   // ~200 msg/s, 5-20ms latency (biological)
+CALLOSUM_BW_RESTRICTED  // ~50 msg/s, 20-50ms latency (impaired)
+CALLOSUM_BW_CUSTOM      // User-defined limits
+```
+
+**API Examples:**
+```c
+// Create hemispheric brain
+hemispheric_brain_config_t config = hemispheric_brain_default_config();
+hemispheric_brain_t* brain = hemispheric_brain_create(&config);
+
+// Process with lateralization (routes to appropriate hemisphere)
+hemispheric_brain_process_lateralized(brain, input, input_size,
+    COGNITIVE_DOMAIN_LANGUAGE, output, output_size);  // → Left hemisphere
+
+// Parallel processing (both hemispheres)
+hemispheric_brain_process_parallel(brain, input, input_size,
+    left_output, right_output, output_size);
+
+// Competitive processing (hemispheres race)
+hemisphere_id_t winner;
+hemispheric_brain_process_competitive(brain, input, input_size,
+    output, output_size, &winner);
+
+// Cooperative processing (combine outputs)
+hemispheric_brain_set_cooperation_strategy(brain, COOPERATION_WEIGHTED);
+hemispheric_brain_process_cooperative(brain, input, input_size,
+    output, output_size);
+
+// Split-brain mode (disconnect callosum)
+hemispheric_brain_disconnect_callosum(brain);
+// Hemispheres now operate independently
+hemispheric_brain_reconnect_callosum(brain);
+
+// Per-hemisphere resource control
+hemispheric_brain_set_tier(brain, HEMISPHERE_LEFT, PLATFORM_TIER_FULL);
+hemispheric_brain_set_tier(brain, HEMISPHERE_RIGHT, PLATFORM_TIER_MINIMAL);
+
+// Asymmetric resource allocation (70% to left)
+hemispheric_brain_set_asymmetric_resources(brain, 0.7f, true);
+
+// Query lateralization
+hemisphere_id_t dominant = hemispheric_brain_get_dominant_for(brain,
+    COGNITIVE_DOMAIN_SPATIAL);  // Returns HEMISPHERE_RIGHT
+float dominance = hemispheric_brain_get_dominance(brain,
+    COGNITIVE_DOMAIN_LANGUAGE);  // Returns 0.95
+
+// Shift dominance (plasticity)
+hemispheric_brain_shift_dominance(brain, COGNITIVE_DOMAIN_EMOTION, 0.1f);
+
+// Hemisphere-level operations
+brain_hemisphere_t* left = hemispheric_brain_get_left(brain);
+hemisphere_infer(left, input, input_size, output, output_size);
+hemisphere_train(left, input, target, size);  // Reward-based learning
+
+// Neuromodulator diffusion across hemispheres
+hemisphere_apply_neuromod_diffusion(left, NEUROMOD_DOPAMINE, 0.8f);
+
+// Cleanup
+hemispheric_brain_destroy(brain);
+```
+
+**Hemisphere Inference (Real Neural Network):**
+```c
+// hemisphere_infer uses brain_decide() internally
+brain_decision_t* decision = brain_decide(hemisphere->brain, input, input_size);
+memcpy(output, decision->output_vector, copy_size * sizeof(float));
+brain_free_decision(decision);
+```
+
+**Hemisphere Training (Reward-Based Learning):**
+```c
+// hemisphere_train uses three-factor learning
+hemisphere_infer(hemi, input, size, output, size);  // Activate neurons
+float loss = MSE(output, target);
+float reward = 2.0f * expf(-loss) - 1.0f;  // Convert loss to reward
+brain_apply_reward_learning(hemi->brain, reward);  // Hebbian + Reward + Dopamine
+```
+
+**Bio-async Integration:**
+```c
+// Module IDs (0x1300 - 0x130F)
+BIO_MODULE_HEMISPHERIC_BRAIN = 0x1300
+BIO_MODULE_LEFT_HEMISPHERE   = 0x1301
+BIO_MODULE_RIGHT_HEMISPHERE  = 0x1302
+BIO_MODULE_CORPUS_CALLOSUM   = 0x1303
+BIO_MODULE_LATERALIZATION    = 0x1304
+
+// Message Types (0x1100 - 0x110F)
+BIO_MSG_HEMISPHERE_ACTIVITY     = 0x1100
+BIO_MSG_HEMISPHERE_SYNC         = 0x1101
+BIO_MSG_CALLOSUM_TRANSFER       = 0x1102
+BIO_MSG_LATERALIZATION_SHIFT    = 0x1103
+BIO_MSG_HEMISPHERE_DOMINANCE    = 0x1104
+BIO_MSG_SPLIT_BRAIN_EVENT       = 0x1105
+```
+
+**Test Coverage:**
+```bash
+./test/unit/core/brain/hemispheric/unit_core_brain_hemispheric_test --gtest_filter="LateralizationTest.*"  # 7 tests
+./test/unit/core/brain/hemispheric/unit_core_brain_hemispheric_test --gtest_filter="*UtilTest*"           # 4 tests
+./test/unit/core/brain/hemispheric/unit_core_brain_hemispheric_test --gtest_filter="CorpusCallosumTest.*" # 7 tests
+```
+
+**Files:**
+- Headers: `include/core/brain/hemispheric/nimcp_*.h` (4 files)
+- Implementation: `src/core/brain/hemispheric/nimcp_*.c` (4 files)
+- Tests: `test/unit/core/brain/hemispheric/test_hemispheric_brain.cpp`
+- Build: Integrated in `src/lib/CMakeLists.txt`
+
+**GOTCHA**: `brain_t` creation is heavyweight (initializes 50+ subsystems). Hemisphere tests are resource-intensive.
+
+**GOTCHA**: Use `brain_decide()` for inference, `brain_apply_reward_learning()` for training. Simple `brain_update/infer/train` don't exist.
+
+**GOTCHA**: Platform tiers use `PLATFORM_TIER_FULL/MEDIUM/CONSTRAINED/MINIMAL`, not `PLATFORM_TIER_0/1/2/3`.
+
 ### Bio-Async Integration for Immune Bridges (Complete - Dec 2024)
 All 24+ immune bridge modules now have bio-async integration for inter-module messaging:
 
@@ -669,7 +844,8 @@ include/
 ├── perception/            # Speech cortex
 ├── security/              # Blood-brain barrier (BBB)
 ├── swarm/                 # Swarm signal, swarm immune
-└── core/brain/regions/    # Language production, predictive regions
+├── core/brain/regions/    # Language production, predictive regions
+└── core/brain/hemispheric/ # Bilateral brain (hemispheres, corpus callosum, lateralization)
 
 test/
 ├── unit/                  # Unit tests by module

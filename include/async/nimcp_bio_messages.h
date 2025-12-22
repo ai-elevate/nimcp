@@ -361,6 +361,18 @@ typedef enum {
     BIO_MSG_DIRECTIVE_STATS_UPDATE,               /**< Directive statistics update */
     BIO_MSG_DIRECTIVE_CONFIG_CHANGE,              /**< Directive configuration changed */
 
+    /* Hemispheric Brain messages (0x1100 - 0x110F) */
+    BIO_MSG_HEMISPHERE_ACTIVITY = 0x1100,         /**< Hemisphere activity level */
+    BIO_MSG_HEMISPHERE_SYNC,                      /**< Inter-hemisphere sync request */
+    BIO_MSG_CALLOSUM_TRANSFER,                    /**< Corpus callosum data transfer */
+    BIO_MSG_LATERALIZATION_SHIFT,                 /**< Dominance shift notification */
+    BIO_MSG_HEMISPHERE_DOMINANCE,                 /**< Dominant hemisphere changed */
+    BIO_MSG_SPLIT_BRAIN_EVENT,                    /**< Callosum disconnect/reconnect */
+    BIO_MSG_CALLOSUM_BANDWIDTH,                   /**< Bandwidth limit notification */
+    BIO_MSG_HEMISPHERE_TIER_CHANGE,               /**< Per-hemisphere tier change */
+    BIO_MSG_CONTRALATERAL_MOTOR,                  /**< Contralateral motor command */
+    BIO_MSG_CONTRALATERAL_SENSORY,                /**< Contralateral sensory input */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1047,6 +1059,14 @@ typedef enum {
     BIO_MODULE_SUBSTRATE_VISUAL = 0x1230,       /**< Visual substrate bridge */
     BIO_MODULE_SUBSTRATE_AUDIO,                 /**< Audio substrate bridge */
     BIO_MODULE_SUBSTRATE_SPEECH,                /**< Speech substrate bridge */
+
+    /* Hemispheric Brain modules (0x1300 - 0x130F) - Bilateral processing */
+    BIO_MODULE_HEMISPHERIC_BRAIN = 0x1300,      /**< Hemispheric brain orchestrator */
+    BIO_MODULE_LEFT_HEMISPHERE,                 /**< Left hemisphere processing */
+    BIO_MODULE_RIGHT_HEMISPHERE,                /**< Right hemisphere processing */
+    BIO_MODULE_CORPUS_CALLOSUM,                 /**< Inter-hemispheric bridge */
+    BIO_MODULE_LATERALIZATION,                  /**< Lateralization control */
+    BIO_MODULE_HEMISPHERIC_PORTIA,              /**< Per-hemisphere Portia integration */
 
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */

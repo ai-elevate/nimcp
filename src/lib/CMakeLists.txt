@@ -83,6 +83,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/information/nimcp_brain_shannon.c   # Shannon information theory (461 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/analysis/nimcp_brain_topology.c     # Topology and community detection (462 lines)
 
+    # Hemispheric Brain Architecture (Phase Dec 2024: Two-hemisphere bilateral processing)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_lateralization.c     # Hemisphere specialization profiles
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_corpus_callosum.c    # Inter-hemispheric bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_brain_hemisphere.c   # Single hemisphere wrapper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_brain.c  # Main bilateral brain
+
     # Brain processing modules (Phase 9.1: SRP Refactoring) - TODO: Enable when refactoring complete
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/sensory_extractor.c
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/multimodal_integrator.c
