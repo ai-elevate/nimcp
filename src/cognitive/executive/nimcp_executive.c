@@ -838,8 +838,8 @@ static bool broadcast_decision_to_workspace(
             snprintf(decision_msg.reasoning, sizeof(decision_msg.reasoning),
                      "Executive decision: %s", task->name);
 
-            bio_router_send(exec->bio_ctx, BIO_CHANNEL_SEROTONIN,
-                            &decision_msg, sizeof(decision_msg));
+            bio_router_send(exec->bio_ctx, &decision_msg,
+                            sizeof(decision_msg), 0);
         }
     }
 

@@ -685,6 +685,14 @@ int callosum_set_bandwidth_limit(corpus_callosum_t* cc, uint32_t msgs_per_second
     return 0;
 }
 
+uint32_t corpus_callosum_get_base_bandwidth(const corpus_callosum_t* cc) {
+    if (!cc) {
+        return 200;  // Default realistic bandwidth
+    }
+
+    return cc->max_messages_per_second;
+}
+
 int callosum_set_channel_bandwidth(
     corpus_callosum_t* cc,
     callosum_channel_type_t channel,

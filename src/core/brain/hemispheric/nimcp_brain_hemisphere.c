@@ -17,6 +17,7 @@
 
 #include "core/brain/hemispheric/nimcp_brain_hemisphere.h"
 #include "core/brain/hemispheric/nimcp_corpus_callosum.h"
+#include "core/brain/nimcp_brain_internal.h"  // For access to brain_struct fields
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -606,4 +607,28 @@ int hemisphere_disconnect_bio_async(brain_hemisphere_t* hemisphere) {
 
 bool hemisphere_is_bio_async_connected(const brain_hemisphere_t* hemisphere) {
     return hemisphere ? hemisphere->bio_async_enabled : false;
+}
+
+//=============================================================================
+// Learning Rate Control
+//=============================================================================
+
+float brain_hemisphere_get_learning_rate(const brain_hemisphere_t* hemisphere) {
+    if (!hemisphere) return 0.001f;  // Default
+
+    // Access the underlying brain's learning rate
+    return hemisphere->brain->base_learning_rate;
+}
+
+int brain_hemisphere_set_learning_rate(
+    brain_hemisphere_t* hemisphere,
+    float lr
+) {
+    if (!hemisphere) return -1;
+    if (lr < 0.0f || lr > 1.0f) return -2;
+
+    // Set the underlying brain's learning rate
+    hemisphere->brain->base_learning_rate = lr;
+
+    return 0;
 }

@@ -3,26 +3,24 @@
 #=============================================================================
 
 # Portia library sources
-# Core infrastructure file ONLY (user-requested - COMPLETE AND WORKING)
+# Core infrastructure + subsystem modules
 set(PORTIA_SOURCES
     nimcp_portia.c
     nimcp_portia_swarm_bridge.c
     nimcp_portia_swarm_logic_bridge.c
     nimcp_portia_logic_bridge.c
+    # Subsystem modules - enabled Dec 2024
+    nimcp_portia_tier_switch.c
+    nimcp_portia_sensor_fusion.c
+    nimcp_portia_classification.c
+    nimcp_portia_degradation.c
+    nimcp_portia_accelerator.c
+    nimcp_portia_attention.c
+    nimcp_portia_learning.c
+    nimcp_portia_planning.c
+    nimcp_portia_power.c
+    nimcp_portia_deception.c
 )
-
-# Additional subsystem files (to be integrated later)
-# TODO: Update these files to match new API patterns and bio-async standards
-#    nimcp_portia_sensor_fusion.c
-#    nimcp_portia_classification.c
-#    nimcp_portia_deception.c
-#    nimcp_portia_degradation.c
-#    nimcp_portia_accelerator.c
-#    nimcp_portia_attention.c
-#    nimcp_portia_learning.c
-#    nimcp_portia_planning.c
-#    nimcp_portia_power.c
-#    nimcp_portia_tier_switch.c
 
 # Create Portia library
 add_library(nimcp_portia STATIC ${PORTIA_SOURCES})
@@ -70,4 +68,4 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/portia
 )
 
 # Summary
-message(STATUS "Configured Portia Spider Adaptive Intelligence library (core infrastructure)")
+message(STATUS "Configured Portia Spider Adaptive Intelligence library (core + 10 subsystems)")

@@ -12,6 +12,7 @@
  */
 
 #include "swarm/sleep/nimcp_swarm_brain_sleep_bridge.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>

@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/fault_tolerance/nimcp_hierarchical_recovery.h"
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -630,12 +631,15 @@ int brain_immune_connect_swarm(brain_immune_system_t* system, NimcpSwarmImmuneSy
  * HOW:  Triggered by HR success, releases IL-10 cytokine
  */
 static void hr_completion_cb(
-    const void* request,
-    const void* response,
+    const hr_recovery_request_t* request,
+    const hr_recovery_response_t* response,
     void* user_data
 ) {
     brain_immune_system_t* system = (brain_immune_system_t*)user_data;
     if (!system) return;
+
+    (void)request;   /* Unused */
+    (void)response;  /* Unused */
 
     /* Release anti-inflammatory IL-10 cytokine */
     uint32_t cytokine_id = 0;
@@ -661,7 +665,6 @@ int brain_immune_connect_hierarchical_recovery(brain_immune_system_t* system, vo
     if (!system || !hr_context) return -1;
 
     /* Register completion callback for IL-10 release */
-    #include "utils/fault_tolerance/nimcp_hierarchical_recovery.h"
     hr_register_completion_callback((hr_context_t*)hr_context, hr_completion_cb, system);
 
     if (system->config.enable_logging) {

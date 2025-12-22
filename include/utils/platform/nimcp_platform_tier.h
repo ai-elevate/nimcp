@@ -69,26 +69,31 @@ extern "C" {
 /**
  * @brief Platform tier classification
  *
- * WHAT: Four-tier system from high-end to ultra-constrained
- * WHY:  Balance functionality vs resource constraints
- * HOW:  Detect RAM/cores and classify into appropriate tier
+ * WHAT: Seven-tier system from ultra-constrained to specialized hardware
+ * WHY:  Balance functionality vs resource constraints, support specialized hardware
+ * HOW:  Detect RAM/cores and classify into appropriate tier, or explicitly set for specialized hardware
+ *
+ * TIER HIERARCHY:
+ * - Standard tiers: BASIC < MINIMAL < CONSTRAINED < MEDIUM < FULL
+ * - Specialized tiers: NEUROMORPHIC, QUANTUM (orthogonal to standard tiers)
  */
 typedef enum {
     /**
-     * PLATFORM_TIER_FULL - High-end desktop/server
-     * Hardware: ≥8 cores, ≥8GB RAM
-     * Use cases: Research, development, training
-     * Cognitive: All modules enabled
+     * PLATFORM_TIER_BASIC - Arduino/ESP32/ultra-constrained MCU
+     * Hardware: 1 core, ≤32MB RAM, limited FPU
+     * Use cases: Sensor nodes, simple actuators, edge triggers
+     * Cognitive: None - pure reactive processing only
+     * Biological: Like Portia's simplest reflexes
      */
-    PLATFORM_TIER_FULL = 0,
+    PLATFORM_TIER_BASIC = 0,
 
     /**
-     * PLATFORM_TIER_MEDIUM - Laptop/tablet/dev board
-     * Hardware: ≥4 cores, ≥2GB RAM
-     * Use cases: Development, inference, edge AI
-     * Cognitive: Core modules (working memory, attention, emotions)
+     * PLATFORM_TIER_MINIMAL - IoT/MCU/ultra-constrained
+     * Hardware: ≥1 core, ≥64MB RAM
+     * Use cases: Sensors, actuators, minimal inference
+     * Cognitive: Reactive processing only (no complex cognition)
      */
-    PLATFORM_TIER_MEDIUM = 1,
+    PLATFORM_TIER_MINIMAL = 1,
 
     /**
      * PLATFORM_TIER_CONSTRAINED - Phone/drone/embedded
@@ -99,15 +104,76 @@ typedef enum {
     PLATFORM_TIER_CONSTRAINED = 2,
 
     /**
-     * PLATFORM_TIER_MINIMAL - IoT/MCU/ultra-constrained
-     * Hardware: ≥1 core, ≥64MB RAM
-     * Use cases: Sensors, actuators, minimal inference
-     * Cognitive: Reactive processing only (no complex cognition)
+     * PLATFORM_TIER_MEDIUM - Laptop/tablet/dev board
+     * Hardware: ≥4 cores, ≥2GB RAM
+     * Use cases: Development, inference, edge AI
+     * Cognitive: Core modules (working memory, attention, emotions)
      */
-    PLATFORM_TIER_MINIMAL = 3,
+    PLATFORM_TIER_MEDIUM = 3,
 
-    PLATFORM_TIER_COUNT = 4  /**< Number of tiers */
+    /**
+     * PLATFORM_TIER_FULL - High-end desktop/server
+     * Hardware: ≥8 cores, ≥8GB RAM
+     * Use cases: Research, development, training
+     * Cognitive: All modules enabled
+     */
+    PLATFORM_TIER_FULL = 4,
+
+    /**
+     * PLATFORM_TIER_NEUROMORPHIC - Spike-based neuromorphic hardware
+     * Hardware: Loihi, SpiNNaker, BrainScaleS, TrueNorth
+     * Characteristics:
+     *   - Native spike routing (no software simulation)
+     *   - Event-driven processing (ultra-low power)
+     *   - Massive parallelism (millions of neurons)
+     *   - On-chip plasticity (STDP hardware)
+     * Use cases: Real-time SNN inference, low-power edge AI, robotics
+     * Configuration is separate - not auto-detected
+     */
+    PLATFORM_TIER_NEUROMORPHIC = 5,
+
+    /**
+     * PLATFORM_TIER_QUANTUM - Hybrid quantum-classical systems
+     * Hardware: NISQ devices, quantum annealers, quantum simulators
+     * Characteristics:
+     *   - Quantum superposition for parallel state evaluation
+     *   - Entanglement for correlated decisions
+     *   - Quantum tunneling for optimization landscapes
+     *   - Classical fallback for non-quantum operations
+     * Use cases: Optimization, pattern matching, quantum consensus
+     * Configuration is separate - not auto-detected
+     */
+    PLATFORM_TIER_QUANTUM = 6,
+
+    PLATFORM_TIER_COUNT = 7  /**< Number of tiers (including specialized) */
 } platform_tier_t;
+
+/**
+ * @brief Neuromorphic hardware type
+ */
+typedef enum {
+    NEUROMORPHIC_HW_GENERIC = 0,    /**< Generic neuromorphic simulation */
+    NEUROMORPHIC_HW_LOIHI,          /**< Intel Loihi (1/2) */
+    NEUROMORPHIC_HW_SPINNAKER,      /**< SpiNNaker (Manchester) */
+    NEUROMORPHIC_HW_BRAINSCALES,    /**< BrainScaleS (Heidelberg) */
+    NEUROMORPHIC_HW_TRUENORTH,      /**< IBM TrueNorth */
+    NEUROMORPHIC_HW_DYNAPSE,        /**< Dynapse (INI Zurich) */
+    NEUROMORPHIC_HW_AKIDA,          /**< BrainChip Akida */
+    NEUROMORPHIC_HW_COUNT
+} neuromorphic_hardware_t;
+
+/**
+ * @brief Quantum backend type
+ */
+typedef enum {
+    QUANTUM_BACKEND_SIMULATOR = 0,  /**< Classical quantum simulator */
+    QUANTUM_BACKEND_IBMQ,           /**< IBM Quantum */
+    QUANTUM_BACKEND_RIGETTI,        /**< Rigetti */
+    QUANTUM_BACKEND_DWAVE,          /**< D-Wave (annealer) */
+    QUANTUM_BACKEND_IONQ,           /**< IonQ (trapped ion) */
+    QUANTUM_BACKEND_GOOGLE,         /**< Google Sycamore */
+    QUANTUM_BACKEND_COUNT
+} quantum_backend_t;
 
 //=============================================================================
 // Cognitive Module Flags (Bitmask)
@@ -246,6 +312,150 @@ typedef struct {
     uint32_t spike_buffer_size;              /**< Spike event buffer size */
     float sampling_rate;                     /**< State sampling rate (0-1) */
 } platform_tier_config_t;
+
+//=============================================================================
+// Neuromorphic Tier Configuration
+//=============================================================================
+
+/**
+ * @brief Neuromorphic hardware-specific configuration
+ *
+ * WHAT: Configuration for spike-based neuromorphic processors
+ * WHY:  These chips have unique constraints (spike routing, on-chip learning)
+ * HOW:  Hardware-specific parameters for different neuromorphic platforms
+ *
+ * BIOLOGICAL RELEVANCE:
+ * Neuromorphic chips are the closest to biological neural networks:
+ * - Event-driven processing (like real neurons)
+ * - On-chip plasticity (STDP in hardware)
+ * - Asynchronous spike routing
+ * - Ultra-low power (mW vs GW for GPUs)
+ */
+typedef struct {
+    neuromorphic_hardware_t hardware;        /**< Hardware type */
+
+    // Neuron configuration
+    uint32_t max_neurons;                    /**< Max neurons on chip */
+    uint32_t max_synapses_per_neuron;        /**< Fanout limit */
+    uint32_t cores;                          /**< Number of neuromorphic cores */
+    uint32_t neurons_per_core;               /**< Neurons per core */
+
+    // Spike routing
+    bool spike_native;                       /**< Native spike routing (no simulation) */
+    uint32_t spike_buffer_depth;             /**< Spike queue depth */
+    uint32_t max_spike_rate_hz;              /**< Max spike rate per neuron */
+    uint32_t routing_delay_timesteps;        /**< Synaptic delay granularity */
+
+    // On-chip plasticity
+    bool stdp_hardware;                      /**< On-chip STDP support */
+    bool homeostatic_hardware;               /**< On-chip homeostatic plasticity */
+    float learning_rate_granularity;         /**< Min LR step (hardware limited) */
+
+    // Power and timing
+    uint32_t timestep_ns;                    /**< Simulation timestep (ns) */
+    float power_budget_mw;                   /**< Power budget (milliwatts) */
+    bool async_events;                       /**< Event-driven (vs clock-driven) */
+
+    // Memory
+    uint32_t on_chip_memory_kb;              /**< On-chip SRAM (KB) */
+    uint32_t external_memory_mb;             /**< External memory (MB) */
+    bool weight_sharing;                     /**< Support weight sharing */
+
+    // Features enabled
+    bool enable_axon_delay;                  /**< Programmable axon delays */
+    bool enable_multi_compartment;           /**< Multi-compartment neurons */
+    bool enable_dendritic_computation;       /**< Dendritic processing */
+} neuromorphic_tier_config_t;
+
+//=============================================================================
+// Quantum Tier Configuration
+//=============================================================================
+
+/**
+ * @brief Quantum-classical hybrid configuration
+ *
+ * WHAT: Configuration for quantum computing backends
+ * WHY:  Quantum systems have unique capabilities and constraints
+ * HOW:  Define qubit counts, coherence times, supported operations
+ *
+ * QUANTUM ADVANTAGE IN NEURAL NETWORKS:
+ * - Superposition: Evaluate multiple states simultaneously
+ * - Entanglement: Correlate distant decisions
+ * - Interference: Amplify correct solutions
+ * - Tunneling: Escape local minima in optimization
+ *
+ * NOTE: These are software abstractions - actual hardware requires
+ *       specific SDK integration (Qiskit, Cirq, Ocean, etc.)
+ */
+typedef struct {
+    quantum_backend_t backend;               /**< Quantum backend type */
+
+    // Qubit configuration
+    uint32_t num_qubits;                     /**< Number of qubits available */
+    uint32_t num_logical_qubits;             /**< Logical qubits (after error correction) */
+    float connectivity;                      /**< Qubit connectivity [0-1] */
+
+    // Coherence and errors
+    float t1_coherence_us;                   /**< T1 relaxation time (microseconds) */
+    float t2_coherence_us;                   /**< T2 dephasing time (microseconds) */
+    float single_qubit_error;                /**< Single-qubit gate error rate */
+    float two_qubit_error;                   /**< Two-qubit gate error rate */
+    float readout_error;                     /**< Measurement error rate */
+
+    // Gate set
+    bool native_gates_clifford;              /**< Clifford gates native */
+    bool native_gates_t;                     /**< T gate native */
+    bool native_gates_rx_ry;                 /**< Arbitrary rotation gates */
+    uint32_t max_circuit_depth;              /**< Max circuit depth */
+
+    // Capabilities
+    bool quantum_consensus;                  /**< Use quantum for swarm consensus */
+    bool quantum_optimization;               /**< Use quantum for optimization (QAOA) */
+    bool quantum_sampling;                   /**< Use quantum for sampling (QML) */
+    bool superposition_states;               /**< Parallel state evaluation */
+
+    // Hybrid configuration
+    uint32_t classical_cores;                /**< Classical CPU cores for hybrid */
+    uint32_t classical_memory_gb;            /**< Classical memory for hybrid */
+    float quantum_classical_ratio;           /**< Fraction of work on quantum */
+
+    // Execution
+    uint32_t max_shots;                      /**< Max measurement shots */
+    uint32_t queue_depth;                    /**< Job queue depth */
+    bool real_hardware;                      /**< True if real quantum hardware */
+} quantum_tier_config_t;
+
+//=============================================================================
+// Basic Tier Configuration (Ultra-Constrained)
+//=============================================================================
+
+/**
+ * @brief Configuration for ultra-constrained MCU platforms
+ *
+ * WHAT: Minimal configuration for Arduino/ESP32/STM32 class devices
+ * WHY:  These devices have severe resource constraints
+ * HOW:  Disable all optional features, minimal memory footprint
+ */
+typedef struct {
+    // Core constraints
+    uint32_t max_neurons;                    /**< Very limited (100-1000) */
+    uint32_t max_synapses;                   /**< Total synapses (not per neuron) */
+    uint32_t memory_kb;                      /**< Total memory budget (KB) */
+
+    // Fixed-point arithmetic (no FPU on some MCUs)
+    bool use_fixed_point;                    /**< Use fixed-point instead of float */
+    uint8_t fixed_point_bits;                /**< Q-format bits (e.g., Q15) */
+
+    // Minimal features
+    bool spike_only;                         /**< Spike-based only (no rate coding) */
+    bool reactive_only;                      /**< Pure reactive (no learning) */
+    bool single_layer;                       /**< Single layer only */
+
+    // Power management
+    float power_budget_mw;                   /**< Power budget (milliwatts) */
+    uint32_t sleep_threshold_ms;             /**< Sleep after inactivity (ms) */
+    bool deep_sleep_enabled;                 /**< Deep sleep mode */
+} basic_tier_config_t;
 
 //=============================================================================
 // API Functions
@@ -404,6 +614,91 @@ bool platform_tier_validate_config(platform_tier_t tier,
                                     const platform_tier_config_t* config,
                                     char* error_msg,
                                     size_t error_msg_len);
+
+//=============================================================================
+// Specialized Tier API Functions
+//=============================================================================
+
+/**
+ * @brief Get default configuration for BASIC tier (ultra-constrained MCU)
+ *
+ * WHAT: Returns configuration for Arduino/ESP32 class devices
+ * WHY:  These platforms need specific handling due to extreme constraints
+ * HOW:  Pre-configured defaults for typical MCU capabilities
+ *
+ * @return Basic tier configuration with sensible defaults
+ *
+ * EXAMPLE:
+ * @code
+ * basic_tier_config_t config = platform_tier_get_basic_config();
+ * // max_neurons: 500, memory_kb: 32, use_fixed_point: true
+ * @endcode
+ */
+basic_tier_config_t platform_tier_get_basic_config(void);
+
+/**
+ * @brief Get default configuration for neuromorphic hardware
+ *
+ * WHAT: Returns configuration for specific neuromorphic chip
+ * WHY:  Each chip has unique constraints and capabilities
+ * HOW:  Pre-configured defaults based on known hardware specs
+ *
+ * @param hardware Neuromorphic hardware type
+ * @return Neuromorphic configuration for that hardware
+ *
+ * EXAMPLE:
+ * @code
+ * neuromorphic_tier_config_t config = platform_tier_get_neuromorphic_config(NEUROMORPHIC_HW_LOIHI);
+ * // max_neurons: 1M, spike_native: true, stdp_hardware: true
+ * @endcode
+ */
+neuromorphic_tier_config_t platform_tier_get_neuromorphic_config(neuromorphic_hardware_t hardware);
+
+/**
+ * @brief Get default configuration for quantum backend
+ *
+ * WHAT: Returns configuration for specific quantum platform
+ * WHY:  Each backend has different qubit counts and error rates
+ * HOW:  Pre-configured defaults based on known hardware/simulator specs
+ *
+ * @param backend Quantum backend type
+ * @return Quantum configuration for that backend
+ *
+ * EXAMPLE:
+ * @code
+ * quantum_tier_config_t config = platform_tier_get_quantum_config(QUANTUM_BACKEND_SIMULATOR);
+ * // num_qubits: 32, real_hardware: false, quantum_consensus: true
+ * @endcode
+ */
+quantum_tier_config_t platform_tier_get_quantum_config(quantum_backend_t backend);
+
+/**
+ * @brief Check if tier is a specialized (non-standard) tier
+ *
+ * WHAT: Test if tier is NEUROMORPHIC or QUANTUM (vs standard compute tiers)
+ * WHY:  Specialized tiers need different handling
+ * HOW:  Simple range check
+ *
+ * @param tier Platform tier to check
+ * @return true if NEUROMORPHIC or QUANTUM, false for standard tiers
+ */
+bool platform_tier_is_specialized(platform_tier_t tier);
+
+/**
+ * @brief Get human-readable name for neuromorphic hardware
+ *
+ * @param hardware Hardware type
+ * @return Hardware name string (e.g., "Loihi", "SpiNNaker")
+ */
+const char* platform_tier_neuromorphic_name(neuromorphic_hardware_t hardware);
+
+/**
+ * @brief Get human-readable name for quantum backend
+ *
+ * @param backend Backend type
+ * @return Backend name string (e.g., "IBM Quantum", "D-Wave")
+ */
+const char* platform_tier_quantum_name(quantum_backend_t backend);
 
 #ifdef __cplusplus
 }

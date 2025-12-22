@@ -37,10 +37,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "neural_logic_brain_integration"
-#define BIO_MODULE_ID 0x0136
-
-
-#define LOG_MODULE BIO_MODULE_LOGIC_CORE
+#define BIO_MODULE_ID BIO_MODULE_LOGIC_CORE
 
 //=============================================================================
 // Constants

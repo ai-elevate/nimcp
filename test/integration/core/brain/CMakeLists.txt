@@ -51,3 +51,8 @@ target_include_directories(integration_brain_coordinator_test
 )
 
 gtest_discover_tests(integration_brain_coordinator_test)
+
+# Add subcortical subdirectory
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/subcortical")
+    add_subdirectory(subcortical)
+endif()

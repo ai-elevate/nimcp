@@ -479,6 +479,14 @@ typedef enum {
     BIO_MODULE_BRAIN_RESIZE,                 /**< Brain resize operations */
     BIO_MODULE_DISTRIBUTED_COW,              /**< Distributed copy-on-write */
 
+    /* Subcortical brain structures */
+    BIO_MODULE_BASAL_GANGLIA,                /**< Basal ganglia action selection */
+    BIO_MODULE_STRIATUM,                     /**< Striatum D1/D2 pathways */
+    BIO_MODULE_GLOBUS_PALLIDUS,              /**< Globus pallidus (GPe/GPi) */
+    BIO_MODULE_SUBSTANTIA_NIGRA,             /**< Substantia nigra (SNc/SNr) */
+    BIO_MODULE_SUBTHALAMIC_NUCLEUS,          /**< Subthalamic nucleus */
+    BIO_MODULE_THALAMUS,                     /**< Thalamus relay nuclei */
+
     /* Cognitive modules */
     BIO_MODULE_INTROSPECTION = 0x0200,
     BIO_MODULE_ETHICS,
@@ -717,6 +725,9 @@ typedef enum {
     BIO_MODULE_SWARM_LOGIC_BRIDGE,
     BIO_MODULE_SWARM_NARRATIVE,
     BIO_MODULE_SWARM_PROTOCOL,
+    BIO_MODULE_SWARM_TASK,              /**< Swarm task allocation and scheduling */
+    BIO_MODULE_SWARM_TASK_QUEUE,        /**< Per-agent task queue management */
+    BIO_MODULE_SWARM_TASK_SCHEDULER,    /**< Capability-aware task scheduling */
     BIO_MODULE_COLLECTIVE_WORKSPACE,
     BIO_MODULE_EMOTIONAL_CONTAGION,
     BIO_MODULE_GOSSIP_BELIEFS,
@@ -1067,6 +1078,13 @@ typedef enum {
     BIO_MODULE_CORPUS_CALLOSUM,                 /**< Inter-hemispheric bridge */
     BIO_MODULE_LATERALIZATION,                  /**< Lateralization control */
     BIO_MODULE_HEMISPHERIC_PORTIA,              /**< Per-hemisphere Portia integration */
+    BIO_MODULE_HEMISPHERIC_IMMUNE,              /**< Hemispheric-immune bridge */
+    BIO_MODULE_HEMISPHERIC_SLEEP,               /**< Hemispheric-sleep bridge */
+    BIO_MODULE_HEMISPHERIC_FEP,                 /**< Hemispheric-FEP bridge */
+    BIO_MODULE_HEMISPHERIC_GLIAL,               /**< Hemispheric-glial bridge */
+    BIO_MODULE_HEMISPHERIC_CONTRALATERAL,       /**< Contralateral motor/sensory mapping */
+    BIO_MODULE_HEMISPHERIC_INJURY,              /**< Brain injury and recovery modeling */
+    BIO_MODULE_SPLIT_BRAIN_EXPERIMENTS,         /**< Split-brain experimental framework */
 
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */

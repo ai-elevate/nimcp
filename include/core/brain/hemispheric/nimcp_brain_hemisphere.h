@@ -446,6 +446,30 @@ int hemisphere_disconnect_bio_async(brain_hemisphere_t* hemisphere);
  */
 bool hemisphere_is_bio_async_connected(const brain_hemisphere_t* hemisphere);
 
+//=============================================================================
+// Learning Rate Control (for immune bridge modulation)
+//=============================================================================
+
+/**
+ * @brief Get current learning rate for hemisphere
+ *
+ * @param hemisphere Hemisphere
+ * @return Current learning rate
+ */
+float brain_hemisphere_get_learning_rate(const brain_hemisphere_t* hemisphere);
+
+/**
+ * @brief Set learning rate for hemisphere
+ *
+ * @param hemisphere Hemisphere
+ * @param lr New learning rate
+ * @return 0 on success
+ */
+int brain_hemisphere_set_learning_rate(
+    brain_hemisphere_t* hemisphere,
+    float lr
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -386,7 +386,7 @@ int autobio_immune_create_sickness_landmark(
              "Episode ongoing, experiencing sickness behavior");
 
     /* Store in autobiographical memory */
-    uint64_t mem_id = autobio_store(bridge->autobio_memory, &memory);
+    uint64_t mem_id = autobio_store(*bridge->autobio_memory, &memory);
     if (mem_id == 0) {
         pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
         return -1;
@@ -448,7 +448,7 @@ int autobio_immune_close_sickness_landmark(
 
     /* Update memory with outcome */
     autobiographical_memory_entry_t memory;
-    if (autobio_retrieve(bridge->autobio_memory, landmark_id, &memory)) {
+    if (autobio_retrieve(*bridge->autobio_memory, landmark_id, &memory)) {
         snprintf(memory.outcome, AUTOBIO_MAX_OUTCOME_LEN,
                  "Recovered from %s inflammation, immune system resolved threat",
                  brain_immune_inflammation_to_string(landmark->severity));

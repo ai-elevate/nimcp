@@ -79,7 +79,7 @@ extern "C" {
 //=============================================================================
 
 typedef struct hemispheric_brain_struct hemispheric_brain_t;
-typedef struct brain_immune_system_struct brain_immune_system_t;
+typedef struct brain_immune_system brain_immune_system_t;
 
 //=============================================================================
 // Enums
@@ -223,6 +223,7 @@ struct hemispheric_brain_struct {
     // === State ===
     bool callosum_intact;                // false = split-brain
     bool is_active;
+    bool bilateral_mode;                 // Emergency bilateral processing
     uint64_t creation_time;
     uint64_t update_count;
 
@@ -765,6 +766,50 @@ int hemispheric_brain_connect_immune(
 brain_immune_system_t* hemispheric_brain_get_immune(
     const hemispheric_brain_t* brain
 );
+
+//=============================================================================
+// Immune Bridge Integration
+//=============================================================================
+
+/**
+ * @brief Apply lateralization shift from immune modulation
+ *
+ * WHAT: Shift lateralization weights in response to immune signals
+ * WHY:  Inflammation can cause compensatory shifts between hemispheres
+ * HOW:  Adjust domain dominance weights based on shift magnitude
+ *
+ * @param brain Hemispheric brain
+ * @param shift Shift magnitude (+ve = toward right, -ve = toward left)
+ * @return 0 on success
+ */
+int hemispheric_brain_apply_lateralization_shift(
+    hemispheric_brain_t* brain,
+    float shift
+);
+
+/**
+ * @brief Set bilateral processing mode
+ *
+ * WHAT: Force both hemispheres to process all domains
+ * WHY:  Emergency response when lateralization fails
+ * HOW:  Override lateralization routing to use parallel processing
+ *
+ * @param brain Hemispheric brain
+ * @param bilateral true to enable bilateral mode, false for normal
+ * @return 0 on success
+ */
+int hemispheric_brain_set_bilateral_mode(
+    hemispheric_brain_t* brain,
+    bool bilateral
+);
+
+/**
+ * @brief Check if bilateral mode is active
+ *
+ * @param brain Hemispheric brain
+ * @return true if bilateral mode is active
+ */
+bool hemispheric_brain_is_bilateral_mode(const hemispheric_brain_t* brain);
 
 //=============================================================================
 // Utility Functions

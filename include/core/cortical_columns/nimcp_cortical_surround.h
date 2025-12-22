@@ -185,7 +185,7 @@ typedef struct {
     surround_field_t field;           /**< Spatial weight profiles */
 
     /* Orientation column integration */
-    struct orientation_hypercolumn_t* orientation_columns; /**< Connected hypercolumn */
+    struct orientation_hypercolumn_t** orientation_columns; /**< Connected hypercolumns */
     uint32_t num_hypercolumns;        /**< Number of connected hypercolumns */
 
     /* Modulation state */

@@ -17,3 +17,45 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_brain.cpp
     unit
 )
+
+# Test: Hemispheric Immune Bridge Tests
+add_test_binary(
+    unit_core_brain_hemispheric_immune_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_immune_bridge.cpp
+    unit
+)
+
+# Test: Hemispheric Sleep Bridge Tests
+add_test_binary(
+    unit_core_brain_hemispheric_sleep_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_sleep_bridge.cpp
+    unit
+)
+
+# Test: Hemispheric FEP Bridge Tests
+add_test_binary(
+    unit_core_brain_hemispheric_fep_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_fep_bridge.cpp
+    unit
+)
+
+# Test: Hemispheric Glial Bridge Tests
+add_test_binary(
+    unit_core_brain_hemispheric_glial_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_glial_bridge.cpp
+    unit
+)
+
+# Test: Hemispheric Injury and Recovery Tests
+add_test_binary(
+    unit_core_brain_hemispheric_injury_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_injury.cpp
+    unit
+)
+
+# Test: Split-Brain Experiments Tests
+add_test_binary(
+    unit_core_brain_split_brain_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_split_brain_experiments.cpp
+    unit
+)

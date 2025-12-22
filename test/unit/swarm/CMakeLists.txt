@@ -139,6 +139,13 @@ add_test_binary(
     unit
 )
 
+# Test 16: Swarm Task Allocation System
+add_test_binary(
+    test_swarm_task
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_task.cpp
+    unit
+)
+
 # ============================================================================
 # Subdirectories
 # ============================================================================

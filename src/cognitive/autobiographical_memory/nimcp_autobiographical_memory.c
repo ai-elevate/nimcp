@@ -685,7 +685,7 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
     query.sort_by_recency = true;
     query.max_results = 100;  // Limit to 100 memories
 
-    autobiographical_memory_t results[100];
+    autobiographical_memory_entry_t results[100];
     uint32_t found;
 
     if (!autobio_query(system, &query, results, 100, &found)) {

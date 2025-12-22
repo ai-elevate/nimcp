@@ -358,3 +358,30 @@ add_subdirectory(memory)
 
 # Theory of Mind tests (includes substrate bridge)
 add_subdirectory(tom)
+
+# ============================================================================
+# Self-Awareness Coordinator Tests (Phase 1: Self-Awareness Unification)
+# ============================================================================
+# WHAT: Unit tests for the Self-Awareness Coordinator and Feedback System
+# WHY:  Ensure unified self-awareness components work correctly
+# HOW:  Test coordinator lifecycle, feedback loops, coherence, phi monitoring
+# ============================================================================
+
+add_executable(unit_cognitive_self_awareness_coordinator
+    test_self_awareness_coordinator.cpp
+)
+target_link_libraries(unit_cognitive_self_awareness_coordinator
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_cognitive_self_awareness_coordinator
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_self_awareness_coordinator PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_self_awareness_coordinator
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;self-awareness;coordinator"
+        TIMEOUT 60
+)

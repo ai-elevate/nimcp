@@ -7,7 +7,7 @@
  * HOW:  Device enumeration, library probing, sysfs inspection
  *
  * DETECTION FLOW:
- * 1. Check device files (/dev/nvidia*, /dev/dri/*, etc.)
+ * 1. Check device files (/dev/nvidia*, /dev/dri, etc.)
  * 2. Try to dlopen vendor libraries (libcuda, libOpenCL, etc.)
  * 3. Query sysfs for device capabilities (/sys/class/...)
  * 4. Parse vendor-specific info
@@ -116,7 +116,9 @@ static bool detect_nvidia_cuda(accelerator_info_t* info) {
     // Get device name
     char name[256] = {0};
     if (cuDeviceGetName(name, sizeof(name), device) == 0) {
-        strncpy(info->name, name, sizeof(info->name) - 1);
+        name[sizeof(info->name) - 1] = '\0';  // Ensure null-termination
+        memcpy(info->name, name, sizeof(info->name) - 1);
+        info->name[sizeof(info->name) - 1] = '\0';
     }
 
     // Get memory
@@ -287,7 +289,7 @@ static bool detect_apple_neural_engine(accelerator_info_t* info) {
     // Apple ANE is typically not directly accessible
     // Would need vendor-specific APIs
 
-    #ifdef __APPLE__
+#ifdef __APPLE__
     // Check if running on Apple Silicon
     FILE* fp = popen("sysctl -n machdep.cpu.brand_string", "r");
     if (fp) {
@@ -310,7 +312,9 @@ static bool detect_apple_neural_engine(accelerator_info_t* info) {
         }
         pclose(fp);
     }
-    #endif
+#else
+    (void)info;  // Suppress unused parameter warning on non-Apple
+#endif
 
     return false;
 }
@@ -460,9 +464,13 @@ static bool registry_add(accelerator_registry_t* registry, const accelerator_inf
 
 /**
  * @brief Handle accelerator query messages
+ * @note Called by bio-async router when accelerator queries are received
  */
+__attribute__((unused))
 static void handle_accelerator_query(void* user_data, const void* msg_data, size_t msg_size) {
     portia_accelerator_system_t system = (portia_accelerator_system_t)user_data;
+    (void)msg_data;  // Will be used for query parsing in full implementation
+    (void)msg_size;  // Will be used for validation in full implementation
 
     if (!bbb_check_pointer(system, "handle_accelerator_query")) {
         return;

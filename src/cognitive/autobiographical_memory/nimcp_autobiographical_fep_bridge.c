@@ -32,6 +32,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <stdio.h>
 
 /* ============================================================================
  * Helper Functions

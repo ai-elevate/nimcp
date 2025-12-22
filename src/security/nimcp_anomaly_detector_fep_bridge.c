@@ -8,6 +8,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 /* ============================================================================
  * Default Configuration

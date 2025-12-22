@@ -12,6 +12,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <ctype.h>
+#include <stdio.h>
 
 /* ============================================================================
  * Internal Structure

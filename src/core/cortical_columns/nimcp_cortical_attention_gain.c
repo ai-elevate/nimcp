@@ -513,9 +513,11 @@ int cortical_attention_update_gains(cortical_attention_gain_t* attention) {
 
         /* WHAT: Get minicolumn stats
          * WHY:  Need tuning preference and receptive field
+         * NOTE: Placeholder - actual minicolumn access would require hypercolumn API
          */
         minicolumn_stats_t mc_stats;
-        minicolumn_t* minicolumn = attention->hypercolumn; /* Simplified - would need array access */
+        /* TODO: Get actual minicolumn from hypercolumn->minicolumns[i] when API available */
+        (void)mc_stats; /* Unused in simplified version */
 
         /* WHAT: Compute feature-based gain
          * WHY:  Feature attention boosts similar features

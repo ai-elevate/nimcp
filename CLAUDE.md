@@ -1,7 +1,113 @@
 # NIMCP Project Memory
 
+## Project Vision & Motivation
+
+### The Problem with Current AI
+
+Current AI trends favor large language models (LLMs) with ever-increasing parameter counts. This approach presents fundamental challenges:
+
+| Issue | Description |
+|-------|-------------|
+| **Resource Consumption** | Power and water requirements are growing exponentially, making AI environmentally unsustainable |
+| **Hallucinations** | LLMs continue to produce confident but incorrect outputs due to their stochastic nature |
+| **AGI Uncertainty** | It remains unclear whether transformer-based architectures can achieve true artificial general intelligence |
+
+### Our Solution: Biologically-Inspired Neural Computing
+
+Instead of scaling transformer neural networks, NIMCP (Neuro Inspired Modular Control Protocol) implements a **biologically-grounded model** based on human and other organism brain architectures. The core hypothesis is that evolution has already solved the problems of efficient, robust, and general intelligence—we need only to faithfully model these solutions.
+
+#### Key Design Principles
+
+1. **Universal Scalability**
+   - Run on any computing platform: IoT devices, smartphones, drones, robots, servers, supercomputers
+   - Adaptive resource management (Portia tier system) adjusts fidelity based on available compute
+   - No minimum hardware requirements—graceful degradation to simpler processing modes
+
+2. **Swarm Intelligence**
+   - Modeled after biological hive species: ants, bees, termites
+   - Distributed computing enables emergent collective intelligence
+   - Individual nodes contribute to larger cognitive processes
+   - Fault-tolerant through redundancy and consensus mechanisms
+
+3. **Dynamic Learning**
+   - Continuous, real-time learning (not just training-then-inference)
+   - Biological plasticity mechanisms: STDP, BCM, homeostatic regulation
+   - Memory consolidation during simulated sleep states
+   - Self-improvement through introspection and metacognition
+
+4. **Ethical Foundation**
+   - **Primary Directive**: Furthering and bettering the human condition
+   - Built-in ethical reasoning (Asimov-inspired directives with nuance)
+   - Empathy and compassion for all organisms
+   - Defensive capabilities when protection is necessary
+   - Golden Rule reciprocity evaluation
+
+5. **Self-Awareness**
+   - Consciousness metrics (IIT 3.0 Phi computation)
+   - Theory of Mind for understanding others' mental states
+   - Autobiographical memory for continuous identity
+   - Introspection capabilities for self-monitoring and improvement
+
+### Biological Systems Modeled
+
+| System | Biological Basis | NIMCP Implementation |
+|--------|------------------|---------------------|
+| **Neurons** | Action potentials, synaptic transmission | Spiking networks, LTC dynamics |
+| **Brain Regions** | Cortical columns, hippocampus, prefrontal cortex | Modular brain architecture |
+| **Plasticity** | LTP/LTD, STDP, metaplasticity | Multiple plasticity mechanisms |
+| **Neuromodulation** | Dopamine, serotonin, acetylcholine, norepinephrine | Spatial neuromodulator diffusion |
+| **Glial Cells** | Astrocytes, oligodendrocytes, microglia | Glial integration system |
+| **Immune System** | B cells, T cells, cytokines, inflammation | Brain immune system with BBB |
+| **Sleep/Wake** | Circadian rhythms, sleep stages, consolidation | Sleep-wake cycle with memory replay |
+| **Hemispheric** | Left/right brain, corpus callosum | Bilateral processing with lateralization |
+| **Swarm** | Ant colonies, bee hives, termite mounds | Distributed cognition, pheromone signaling |
+
+### Target Platforms
+
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                NIMCP (Neuro Inspired Modular Control Protocol)                │
+│                            PLATFORM SPECTRUM                                  │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  IoT      Smartphones   Drones/    Laptops    Servers    Super-    Neuromorphic│
+│ Devices                 Robots                           computers   Clusters │
+│    │          │           │          │           │          │           │     │
+│    ▼          ▼           ▼          ▼           ▼          ▼           ▼     │
+│ MINIMAL    BASIC      MEDIUM     STANDARD     FULL     QUANTUM    NEUROMORPHIC│
+│ (Reflex) (Reactive) (Cognitive) (Desktop) (Full Brain)(Enhanced)  (Native)   │
+│                                                                               │
+│ • Simple   • Pattern   • Working  • Full      • All      • Quantum  • Native  │
+│   responses  matching    memory     regions     regions    coherence  spiking │
+│ • No       • Basic     • Attention• Learning  • Full     • Maximum  • Ultra   │
+│   learning   learning  • Planning • Swarm       plasticity  fidelity   low    │
+│ • Lowest   • Moderate  • Learning   capable   • Swarm    • Research   power   │
+│   power      memory                           • Distrib.   grade    • Real-  │
+│                                                 compute             time     │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Supported Compute Hardware
+
+| Hardware Type | Description | NIMCP Optimization |
+|---------------|-------------|-------------------|
+| **CPU** | General-purpose processors | Baseline implementation, SIMD vectorization |
+| **GPU** | Graphics processing units | Parallel neuron/synapse updates, tensor operations |
+| **Neuromorphic** | Brain-inspired chips (Intel Loihi, IBM TrueNorth, SpiNNaker) | Native spiking neural networks, event-driven processing |
+| **FPGA** | Field-programmable gate arrays | Custom neuron models, ultra-low latency |
+| **TPU** | Tensor processing units | Accelerated plasticity computations |
+| **Quantum** | Quantum processors | Quantum-enhanced decision making, superposition states |
+
+**Neuromorphic Advantage**: Neuromorphic cores are particularly well-suited for NIMCP because they implement spiking neural networks in hardware, providing:
+- Orders of magnitude lower power consumption
+- Real-time, event-driven processing (no clock cycles wasted on inactive neurons)
+- Native support for STDP and other biological learning rules
+- Massive parallelism matching biological neural architectures
+
+---
+
 ## Project Overview
-NIMCP (Neural Information Management and Cognitive Processing) is a C-based neural simulation library with biologically-inspired components including brain regions, plasticity mechanisms, cognitive systems, and swarm intelligence.
+NIMCP (Neuro Inspired Modular Control Protocol) is a C-based neural simulation library with biologically-inspired components including brain regions, plasticity mechanisms, cognitive systems, and swarm intelligence.
 
 ## Build Commands
 ```bash
@@ -87,6 +193,172 @@ nimcp_tensor_destroy(t);
 - API: `nimcp_pos_encoder_create()`, `nimcp_pos_encode_position()`, `nimcp_pos_rope_apply()`, `nimcp_pos_alibi_get_bias()`
 
 ## Recent Completions
+
+### Hemispheric Brain Architecture (Complete - Dec 2024)
+Implemented biologically-inspired two-hemisphere brain architecture with inter-hemispheric communication via corpus callosum:
+
+| Component | Header | Purpose |
+|-----------|--------|---------|
+| Hemispheric Brain | `nimcp_hemispheric_brain.h` | Main bilateral brain orchestrator |
+| Brain Hemisphere | `nimcp_brain_hemisphere.h` | Single hemisphere wrapper around brain_t |
+| Corpus Callosum | `nimcp_corpus_callosum.h` | Inter-hemispheric communication bridge |
+| Lateralization | `nimcp_lateralization.h` | Hemisphere specialization profiles |
+
+**Integration Bridges:**
+
+| Bridge | Header | Biological Basis |
+|--------|--------|------------------|
+| Immune Bridge | `nimcp_hemispheric_immune_bridge.h` | Asymmetric cytokine effects, lateralized inflammation |
+| Sleep Bridge | `nimcp_hemispheric_sleep_bridge.h` | Unihemispheric sleep, callosum recovery during REM |
+| FEP Bridge | `nimcp_hemispheric_fep_bridge.h` | Per-hemisphere precision, cross-hemisphere predictions |
+| Portia Bridge | `nimcp_hemispheric_portia_bridge.h` | Per-hemisphere tier allocation, task-driven resources |
+| Glial Bridge | `nimcp_hemispheric_glial_bridge.h` | Cross-hemisphere calcium waves, metabolic support |
+| Contralateral Map | `nimcp_contralateral_mapping.h` | Motor/sensory body-side mapping |
+| Injury System | `nimcp_hemispheric_injury.h` | Lesions, diaschisis, recovery, rehabilitation |
+| Split-Brain | `nimcp_split_brain_experiments.h` | Experimental paradigms for callosotomy studies |
+
+**Lateralization Profile (Default):**
+```c
+// Domain weights [0.0 = right dominant, 1.0 = left dominant]
+language_dominance = 0.95    // Strongly left
+spatial_dominance = 0.20     // Right dominant
+motor_fine_dominance = 0.90  // Left for right hand
+emotion_processing = 0.30    // Right dominant
+attention_global = 0.25      // Right (forest)
+attention_local = 0.75       // Left (trees)
+logical_reasoning = 0.85     // Left dominant
+creative_thinking = 0.35     // Right dominant
+```
+
+**Callosum Communication Channels:**
+```c
+CALLOSUM_CHANNEL_MOTOR      // Fast motor coordination (ACh)
+CALLOSUM_CHANNEL_SENSORY    // Sensory integration (Glutamate)
+CALLOSUM_CHANNEL_COGNITIVE  // Working memory, attention (DA)
+CALLOSUM_CHANNEL_EMOTIONAL  // Emotional state sharing (5-HT)
+CALLOSUM_CHANNEL_INHIBITORY // Cross-hemisphere inhibition (GABA)
+```
+
+**API Examples:**
+```c
+// Create hemispheric brain
+hemispheric_brain_config_t config = hemispheric_brain_default_config();
+hemispheric_brain_t* hbrain = hemispheric_brain_create(&config);
+
+// Access hemispheres
+brain_hemisphere_t* left = hemispheric_brain_get_left(hbrain);
+brain_hemisphere_t* right = hemispheric_brain_get_right(hbrain);
+
+// Query lateralization
+hemisphere_id_t dom = hemispheric_brain_get_dominant_for(hbrain, COGNITIVE_DOMAIN_LANGUAGE);
+
+// Split-brain mode
+hemispheric_brain_disconnect_callosum(hbrain);
+bool intact = hemispheric_brain_is_callosum_intact(hbrain);  // false
+
+// Immune bridge
+hemispheric_immune_config_t im_cfg = hemispheric_immune_default_config();
+hemispheric_immune_bridge_t* im = hemispheric_immune_create(&im_cfg, hbrain, brain_immune);
+hemispheric_immune_update(im);
+hemispheric_immune_apply_modulation(im);
+
+// Sleep bridge
+hemispheric_sleep_config_t sl_cfg = hemispheric_sleep_default_config();
+hemispheric_sleep_bridge_t* sl = hemispheric_sleep_create(&sl_cfg, hbrain, fep_sleep);
+hemispheric_sleep_set_stage(sl, SLEEP_STAGE_REM);
+consolidation_mode_t mode = hemispheric_sleep_get_consolidation_mode(sl);
+
+// FEP bridge
+hemispheric_fep_config_t fep_cfg = hemispheric_fep_default_config();
+hemispheric_fep_bridge_t* fep = hemispheric_fep_create(&fep_cfg, hbrain, NULL);
+hemispheric_fep_inject_prediction_error(fep, HEMISPHERE_LEFT, 0.5f);
+float fe = hemispheric_fep_get_total_free_energy(fep);
+
+// Portia bridge
+hemispheric_portia_config_t pt_cfg = hemispheric_portia_default_config();
+hemispheric_portia_bridge_t* pt = hemispheric_portia_create(&pt_cfg, hbrain, NULL);
+hemispheric_portia_set_strategy(pt, ALLOCATION_LEFT_DOMINANT);
+hemispheric_portia_set_task(pt, TASK_TYPE_LANGUAGE);
+hemispheric_portia_apply_allocation(pt);
+
+// Glial bridge - cross-hemisphere coordination
+hemispheric_glial_config_t gl_cfg = hemispheric_glial_default_config();
+hemispheric_glial_bridge_t* gl = hemispheric_glial_create(&gl_cfg, hbrain, NULL, NULL);
+hemispheric_glial_trigger_cross_wave(gl, HEMISPHERE_LEFT, 0.8f);
+
+// Injury system - lesions and recovery
+hemispheric_injury_config_t inj_cfg = hemispheric_injury_default_config();
+hemispheric_injury_system_t* injury = hemispheric_injury_create(&inj_cfg, hbrain);
+uint32_t lesion_id;
+hemispheric_injury_induce_lesion(injury, INJURY_TYPE_STROKE_ISCHEMIC, SEVERITY_MODERATE,
+                                  HEMISPHERE_LEFT, INJURY_REGION_MOTOR_CORTEX, 0.5f, &lesion_id);
+hemispheric_injury_start_rehabilitation(injury, HEMISPHERE_LEFT, INJURY_REGION_MOTOR_CORTEX, 0.8f, 2.0f);
+hemispheric_injury_update(injury, 1.0f);  // Advance by 1 day
+
+// Split-brain experiments
+split_brain_session_t* exp = split_brain_create_chimeric_faces_experiment(hbrain, 50);
+split_brain_session_start(exp);
+split_brain_trial_t* trial = split_brain_trial_create(exp, PARADIGM_CHIMERIC_FACES);
+split_brain_trial_run(exp, trial);
+split_brain_session_end(exp);
+split_brain_session_stats_t stats;
+split_brain_session_get_stats(exp, &stats);
+```
+
+**Files:**
+- Headers: `include/core/brain/hemispheric/nimcp_*.h` (12 files)
+- Implementation: `src/core/brain/hemispheric/nimcp_*.c` (12 files)
+- Tests: `test/unit/core/brain/hemispheric/test_*.cpp` (7 files)
+
+**Bio-async Module IDs:**
+```c
+BIO_MODULE_HEMISPHERIC_BRAIN         = 0x1300
+BIO_MODULE_LEFT_HEMISPHERE           = 0x1301
+BIO_MODULE_RIGHT_HEMISPHERE          = 0x1302
+BIO_MODULE_CORPUS_CALLOSUM           = 0x1303
+BIO_MODULE_HEMISPHERIC_PORTIA        = 0x1304
+BIO_MODULE_HEMISPHERIC_IMMUNE        = 0x1305
+BIO_MODULE_HEMISPHERIC_SLEEP         = 0x1306
+BIO_MODULE_HEMISPHERIC_FEP           = 0x1307
+BIO_MODULE_HEMISPHERIC_GLIAL         = 0x1308
+BIO_MODULE_HEMISPHERIC_CONTRALATERAL = 0x1309
+BIO_MODULE_HEMISPHERIC_INJURY        = 0x130A
+BIO_MODULE_SPLIT_BRAIN_EXPERIMENTS   = 0x130B
+```
+
+**Injury Types and Recovery:**
+```c
+// Injury types
+INJURY_TYPE_STROKE_ISCHEMIC   // Blood clot, focal damage
+INJURY_TYPE_STROKE_HEMORRHAGIC // Bleeding, diffuse effects
+INJURY_TYPE_TBI_FOCAL         // Traumatic brain injury, localized
+INJURY_TYPE_TBI_DIFFUSE       // Diffuse axonal injury
+INJURY_TYPE_DEGENERATIVE      // Progressive (MS, Parkinson's)
+INJURY_TYPE_SURGICAL          // Callosotomy, lobectomy
+
+// Severity levels
+SEVERITY_MILD     // <25% region damage
+SEVERITY_MODERATE // 25-50% damage
+SEVERITY_SEVERE   // 50-75% damage
+SEVERITY_CRITICAL // >75% damage
+
+// Recovery phases (time-based progression)
+RECOVERY_PHASE_ACUTE      // 0-7 days: Diaschisis, edema
+RECOVERY_PHASE_SUBACUTE   // 7-30 days: Reorganization begins
+RECOVERY_PHASE_CHRONIC    // 30-180 days: Plasticity peak
+RECOVERY_PHASE_PLATEAU    // >180 days: Stable function
+```
+
+**Split-Brain Experimental Paradigms:**
+```c
+PARADIGM_CHIMERIC_FACES      // Different faces to each visual field
+PARADIGM_DICHOTIC_LISTENING  // Different audio to each ear
+PARADIGM_TACHISTOSCOPIC      // Brief visual presentation (<200ms)
+PARADIGM_CROSS_CUEING        // Detect information leakage
+PARADIGM_ALIEN_HAND          // Conflicting motor intentions
+PARADIGM_CONFABULATION       // Left hemisphere explains right's actions
+PARADIGM_SPATIAL_VERBAL      // Spatial vs verbal comparison
+```
 
 ### Pink Noise Domain Bridges (Complete - Dec 2024)
 Integrated 1/f pink noise across 12 neural subsystems for biologically realistic stochastic dynamics:

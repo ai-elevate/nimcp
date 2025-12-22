@@ -185,7 +185,7 @@ broca_immune_bridge_t* broca_immune_bridge_create(
     bridge->syntax_processor = broca_get_syntax_processor(broca_adapter);
     bridge->phonological_processor = broca_get_phonological_processor(broca_adapter);
     bridge->speech_motor_planner = broca_get_speech_motor_planner(broca_adapter);
-    bridge->language_bridge = lpb_get_broca_adapter(NULL); /* May be NULL */
+    bridge->language_bridge = NULL; /* Optional - set via separate connection API if available */
 
     /* Allocate error history */
     bridge->error_history.error_capacity = bridge->config.max_error_history;

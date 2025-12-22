@@ -121,7 +121,7 @@ typedef struct {
  */
 typedef struct {
     neural_substrate_t* substrate;          /* Neural substrate being monitored */
-    theory_of_mind_t* tom;                  /* ToM module being modulated */
+    theory_of_mind_t tom;                   /* ToM module being modulated */
 
     tom_substrate_config_t config;          /* Bridge configuration */
     tom_substrate_effects_t effects;        /* Current metabolic effects */

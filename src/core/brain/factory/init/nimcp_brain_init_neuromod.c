@@ -235,8 +235,9 @@ bool nimcp_brain_factory_init_spatial_neuromod_system(brain_t brain)
     }
 
     // Create spatial neuromod system
+    neural_network_t base_network = adaptive_network_get_base_network(brain->network);
     spatial_neuromod_system_t* spatial_neuromod =
-        spatial_neuromod_system_create(brain->network, enabled_types, configs);
+        spatial_neuromod_system_create(base_network, enabled_types, configs);
 
     if (!spatial_neuromod) {
         // Non-fatal: spatial neuromod is optional enhancement

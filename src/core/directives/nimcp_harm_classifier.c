@@ -16,6 +16,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <stdio.h>
 
 /* ============================================================================
  * Internal Constants

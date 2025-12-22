@@ -710,6 +710,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/hemispheric")
 endif()
 
 # ============================================================================
+# Subcortical Brain Tests (Basal Ganglia, Thalamus, etc.)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/subcortical")
+    message(STATUS "Adding subcortical brain unit tests...")
+    add_subdirectory(unit/core/brain/subcortical)
+endif()
+
+# ============================================================================
 # Utils Math Tests (Phase 0.5: Complex Number Support)
 # ============================================================================
 

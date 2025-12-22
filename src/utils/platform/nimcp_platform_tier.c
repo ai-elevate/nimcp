@@ -39,6 +39,9 @@
  * WHAT: Hardware thresholds for tier classification
  * WHY:  Clear, conservative boundaries for automatic detection
  * HOW:  Based on typical hardware capabilities and NIMCP resource needs
+ *
+ * NOTE: Standard tiers are auto-detected. Specialized tiers (NEUROMORPHIC,
+ *       QUANTUM) must be explicitly configured - they are not auto-detected.
  */
 
 // FULL tier: High-end workstation/server
@@ -53,8 +56,11 @@
 #define TIER_CONSTRAINED_MIN_RAM_MB 256     // 256MB RAM
 #define TIER_CONSTRAINED_MIN_CORES  2       // 2 cores
 
-// MINIMAL tier: IoT/MCU (everything below CONSTRAINED)
-// No minimums - anything that doesn't meet CONSTRAINED goes here
+// MINIMAL tier: IoT/MCU (64-256MB RAM)
+#define TIER_MINIMAL_MIN_RAM_MB     64      // 64MB RAM
+
+// BASIC tier: Arduino/ESP32/ultra-constrained MCU (below 64MB)
+// No minimums - anything that doesn't meet MINIMAL goes here
 
 //=============================================================================
 // Pre-configured Tier Settings
@@ -72,9 +78,246 @@
  * - Visual/audio configs scale with available compute
  */
 
+/**
+ * Standard tier configurations (BASIC through FULL)
+ * NOTE: Array indexed by platform_tier_t enum values
+ *       Specialized tiers (NEUROMORPHIC, QUANTUM) have separate configs
+ */
 static const platform_tier_config_t TIER_CONFIGS[PLATFORM_TIER_COUNT] = {
     // ========================================================================
-    // PLATFORM_TIER_FULL - High-end desktop/server
+    // [0] PLATFORM_TIER_BASIC - Arduino/ESP32/ultra-constrained MCU
+    // ========================================================================
+    {
+        .tier = PLATFORM_TIER_BASIC,
+
+        // Core neural network - Ultra-tiny (sub-Portia)
+        .max_neurons = 100,                  // 100 neurons maximum
+        .max_synapses_per_neuron = 5,        // Extremely sparse
+        .initial_neurons = 50,               // Start with 50 neurons
+
+        // Cognitive modules - NONE (pure reactive only)
+        .cognitive_modules_enabled = COGNITIVE_MODULE_NONE,
+
+        // Visual cortex - Bare minimum (if any)
+        .visual = {
+            .max_input_width = 32,
+            .max_input_height = 24,
+            .num_filters_conv1 = 4,
+            .num_filters_conv2 = 0,          // No second conv layer
+            .max_feature_maps = 8,
+            .enable_pooling = false,
+            .enable_attention = false,
+        },
+
+        // Audio cortex - Disabled
+        .audio = {
+            .max_sample_rate = 0,            // No audio processing
+            .num_mel_filters = 0,
+            .num_mfcc = 0,
+            .frame_size = 0,
+            .enable_attention = false,
+            .enable_memory = false,
+        },
+
+        // Resource budgets
+        .memory_budget_mb = 8,               // 8MB budget (some MCUs have only 32KB!)
+        .compute_budget_ops = 1000000ULL,    // 1 MFLOPS
+        .max_threads = 1,
+
+        // Feature flags - Absolutely nothing optional
+        .enable_gpu = false,
+        .enable_bio_async = false,
+        .enable_plasticity = false,
+        .enable_neuromodulation = false,
+        .enable_checkpointing = false,
+
+        // Performance tuning
+        .update_batch_size = 10,
+        .spike_buffer_size = 100,
+        .sampling_rate = 0.1F,               // 10% sampling
+    },
+
+    // ========================================================================
+    // [1] PLATFORM_TIER_MINIMAL - IoT/MCU/ultra-constrained
+    // ========================================================================
+    {
+        .tier = PLATFORM_TIER_MINIMAL,
+
+        // Core neural network - Tiny brain
+        .max_neurons = 1000,                 // 1K neurons (Portia-scale!)
+        .max_synapses_per_neuron = 10,       // Very sparse
+        .initial_neurons = 100,              // Start with 100 neurons
+
+        // Cognitive modules - Bare minimum
+        .cognitive_modules_enabled =
+            COGNITIVE_MODULE_ATTENTION |     // Basic attention only
+            COGNITIVE_MODULE_VISUAL_CORTEX,  // Minimal vision
+
+        // Visual cortex - Minimal resolution
+        .visual = {
+            .max_input_width = 64,
+            .max_input_height = 48,
+            .num_filters_conv1 = 8,
+            .num_filters_conv2 = 16,
+            .max_feature_maps = 32,
+            .enable_pooling = false,         // No pooling
+            .enable_attention = false,
+        },
+
+        // Audio cortex - Disabled (too expensive)
+        .audio = {
+            .max_sample_rate = 8000,         // Minimal
+            .num_mel_filters = 16,
+            .num_mfcc = 8,
+            .frame_size = 256,
+            .enable_attention = false,
+            .enable_memory = false,
+        },
+
+        // Resource budgets
+        .memory_budget_mb = 32,              // 32MB budget
+        .compute_budget_ops = 10000000ULL,   // 10 MFLOPS
+        .max_threads = 2,
+
+        // Feature flags - Absolutely minimal
+        .enable_gpu = false,
+        .enable_bio_async = false,           // Too expensive
+        .enable_plasticity = false,          // No learning
+        .enable_neuromodulation = false,
+        .enable_checkpointing = false,
+
+        // Performance tuning
+        .update_batch_size = 50,
+        .spike_buffer_size = 1000,
+        .sampling_rate = 0.25F,              // 25% sampling
+    },
+
+    // ========================================================================
+    // [2] PLATFORM_TIER_CONSTRAINED - Phone/drone/embedded
+    // ========================================================================
+    {
+        .tier = PLATFORM_TIER_CONSTRAINED,
+
+        // Core neural network - Small-scale brain
+        .max_neurons = 10000,                // 10K neurons
+        .max_synapses_per_neuron = 100,      // Sparse connectivity
+        .initial_neurons = 1000,             // Start with 1K neurons
+
+        // Cognitive modules - Essential only
+        .cognitive_modules_enabled =
+            COGNITIVE_MODULE_ATTENTION |
+            COGNITIVE_MODULE_WORKING_MEMORY |
+            COGNITIVE_MODULE_SALIENCE |
+            COGNITIVE_MODULE_EMOTIONS |
+            COGNITIVE_MODULE_VISUAL_CORTEX |
+            COGNITIVE_MODULE_AUDIO_CORTEX,
+
+        // Visual cortex - Low resolution
+        .visual = {
+            .max_input_width = 160,
+            .max_input_height = 120,
+            .num_filters_conv1 = 16,
+            .num_filters_conv2 = 32,
+            .max_feature_maps = 64,
+            .enable_pooling = true,
+            .enable_attention = false,       // Attention disabled
+        },
+
+        // Audio cortex - Low fidelity
+        .audio = {
+            .max_sample_rate = 16000,        // Phone quality
+            .num_mel_filters = 32,
+            .num_mfcc = 13,
+            .frame_size = 512,
+            .enable_attention = false,
+            .enable_memory = false,          // No auditory memory
+        },
+
+        // Resource budgets
+        .memory_budget_mb = 128,             // 128MB budget
+        .compute_budget_ops = 100000000ULL,  // 100 MFLOPS
+        .max_threads = 4,
+
+        // Feature flags - Minimal features
+        .enable_gpu = false,
+        .enable_bio_async = true,            // Bio-async efficient
+        .enable_plasticity = true,           // Basic learning
+        .enable_neuromodulation = false,     // No neuromodulation
+        .enable_checkpointing = false,       // No checkpoints
+
+        // Performance tuning
+        .update_batch_size = 100,
+        .spike_buffer_size = 10000,
+        .sampling_rate = 0.5F,               // 50% sampling
+    },
+
+    // ========================================================================
+    // [3] PLATFORM_TIER_MEDIUM - Laptop/tablet/dev board
+    // ========================================================================
+    {
+        .tier = PLATFORM_TIER_MEDIUM,
+
+        // Core neural network - Medium-scale brain
+        .max_neurons = 100000,               // 100K neurons
+        .max_synapses_per_neuron = 1000,     // Moderate connectivity
+        .initial_neurons = 5000,             // Start with 5K neurons
+
+        // Cognitive modules - Core cognition enabled
+        .cognitive_modules_enabled =
+            COGNITIVE_MODULE_ATTENTION |
+            COGNITIVE_MODULE_WORKING_MEMORY |
+            COGNITIVE_MODULE_SALIENCE |
+            COGNITIVE_MODULE_EMOTIONS |
+            COGNITIVE_MODULE_EMOTIONAL_TAG |
+            COGNITIVE_MODULE_SEMANTIC_MEMORY |
+            COGNITIVE_MODULE_EPISODIC_MEMORY |
+            COGNITIVE_MODULE_EXECUTIVE |
+            COGNITIVE_MODULE_REASONING |
+            COGNITIVE_MODULE_GLOBAL_WORKSPACE |
+            COGNITIVE_MODULE_VISUAL_CORTEX |
+            COGNITIVE_MODULE_AUDIO_CORTEX,
+
+        // Visual cortex - Medium resolution
+        .visual = {
+            .max_input_width = 320,
+            .max_input_height = 240,
+            .num_filters_conv1 = 32,
+            .num_filters_conv2 = 64,
+            .max_feature_maps = 128,
+            .enable_pooling = true,
+            .enable_attention = true,
+        },
+
+        // Audio cortex - Moderate fidelity
+        .audio = {
+            .max_sample_rate = 22050,        // Half CD quality
+            .num_mel_filters = 64,
+            .num_mfcc = 20,
+            .frame_size = 1024,
+            .enable_attention = true,
+            .enable_memory = true,
+        },
+
+        // Resource budgets
+        .memory_budget_mb = 1024,            // 1GB budget
+        .compute_budget_ops = 1000000000ULL, // 1 GFLOPS
+        .max_threads = 8,
+
+        // Feature flags - Most enabled
+        .enable_gpu = false,                 // GPU optional
+        .enable_bio_async = true,
+        .enable_plasticity = true,
+        .enable_neuromodulation = true,
+        .enable_checkpointing = true,
+
+        // Performance tuning
+        .update_batch_size = 500,
+        .spike_buffer_size = 50000,
+        .sampling_rate = 0.8F,               // 80% sampling
+    },
+
+    // ========================================================================
+    // [4] PLATFORM_TIER_FULL - High-end desktop/server
     // ========================================================================
     {
         .tier = PLATFORM_TIER_FULL,
@@ -149,182 +392,51 @@ static const platform_tier_config_t TIER_CONFIGS[PLATFORM_TIER_COUNT] = {
     },
 
     // ========================================================================
-    // PLATFORM_TIER_MEDIUM - Laptop/tablet/dev board
+    // [5] PLATFORM_TIER_NEUROMORPHIC - Placeholder (use specialized config)
     // ========================================================================
     {
-        .tier = PLATFORM_TIER_MEDIUM,
+        .tier = PLATFORM_TIER_NEUROMORPHIC,
+        .max_neurons = 1000000,              // Hardware-dependent
+        .max_synapses_per_neuron = 1000,
+        .initial_neurons = 10000,
+        .cognitive_modules_enabled = COGNITIVE_MODULE_ALL,  // Hardware determines
+        .visual = { .max_input_width = 640, .max_input_height = 480 },
+        .audio = { .max_sample_rate = 48000 },
+        .memory_budget_mb = 256,
+        .compute_budget_ops = 100000000000ULL,  // Event-driven, different metric
+        .max_threads = 128,                     // Neuromorphic cores
+        .enable_gpu = false,
+        .enable_bio_async = true,
+        .enable_plasticity = true,
+        .enable_neuromodulation = true,
+        .enable_checkpointing = false,
+        .update_batch_size = 0,                 // Event-driven
+        .spike_buffer_size = 1000000,
+        .sampling_rate = 1.0F,
+    },
 
-        // Core neural network - Medium-scale brain
-        .max_neurons = 100000,               // 100K neurons
-        .max_synapses_per_neuron = 1000,     // Moderate connectivity
-        .initial_neurons = 5000,             // Start with 5K neurons
-
-        // Cognitive modules - Core cognition enabled
-        .cognitive_modules_enabled =
-            COGNITIVE_MODULE_ATTENTION |
-            COGNITIVE_MODULE_WORKING_MEMORY |
-            COGNITIVE_MODULE_SALIENCE |
-            COGNITIVE_MODULE_EMOTIONS |
-            COGNITIVE_MODULE_EMOTIONAL_TAG |
-            COGNITIVE_MODULE_SEMANTIC_MEMORY |
-            COGNITIVE_MODULE_EPISODIC_MEMORY |
-            COGNITIVE_MODULE_EXECUTIVE |
-            COGNITIVE_MODULE_REASONING |
-            COGNITIVE_MODULE_GLOBAL_WORKSPACE |
-            COGNITIVE_MODULE_VISUAL_CORTEX |
-            COGNITIVE_MODULE_AUDIO_CORTEX,
-
-        // Visual cortex - Medium resolution
-        .visual = {
-            .max_input_width = 320,
-            .max_input_height = 240,
-            .num_filters_conv1 = 32,
-            .num_filters_conv2 = 64,
-            .max_feature_maps = 128,
-            .enable_pooling = true,
-            .enable_attention = true,
-        },
-
-        // Audio cortex - Moderate fidelity
-        .audio = {
-            .max_sample_rate = 22050,        // Half CD quality
-            .num_mel_filters = 64,
-            .num_mfcc = 20,
-            .frame_size = 1024,
-            .enable_attention = true,
-            .enable_memory = true,
-        },
-
-        // Resource budgets
-        .memory_budget_mb = 1024,            // 1GB budget
-        .compute_budget_ops = 1000000000ULL, // 1 GFLOPS
-        .max_threads = 8,
-
-        // Feature flags - Most enabled
-        .enable_gpu = false,                 // GPU optional
+    // ========================================================================
+    // [6] PLATFORM_TIER_QUANTUM - Placeholder (use specialized config)
+    // ========================================================================
+    {
+        .tier = PLATFORM_TIER_QUANTUM,
+        .max_neurons = 100000,               // Classical fallback
+        .max_synapses_per_neuron = 1000,
+        .initial_neurons = 5000,
+        .cognitive_modules_enabled = COGNITIVE_MODULE_ALL,
+        .visual = { .max_input_width = 320, .max_input_height = 240 },
+        .audio = { .max_sample_rate = 22050 },
+        .memory_budget_mb = 8192,
+        .compute_budget_ops = 100000000000ULL,  // Quantum ops different
+        .max_threads = 16,
+        .enable_gpu = true,
         .enable_bio_async = true,
         .enable_plasticity = true,
         .enable_neuromodulation = true,
         .enable_checkpointing = true,
-
-        // Performance tuning
         .update_batch_size = 500,
         .spike_buffer_size = 50000,
-        .sampling_rate = 0.8F,               // 80% sampling
-    },
-
-    // ========================================================================
-    // PLATFORM_TIER_CONSTRAINED - Phone/drone/embedded
-    // ========================================================================
-    {
-        .tier = PLATFORM_TIER_CONSTRAINED,
-
-        // Core neural network - Small-scale brain
-        .max_neurons = 10000,                // 10K neurons
-        .max_synapses_per_neuron = 100,      // Sparse connectivity
-        .initial_neurons = 1000,             // Start with 1K neurons
-
-        // Cognitive modules - Essential only
-        .cognitive_modules_enabled =
-            COGNITIVE_MODULE_ATTENTION |
-            COGNITIVE_MODULE_WORKING_MEMORY |
-            COGNITIVE_MODULE_SALIENCE |
-            COGNITIVE_MODULE_EMOTIONS |
-            COGNITIVE_MODULE_VISUAL_CORTEX |
-            COGNITIVE_MODULE_AUDIO_CORTEX,
-
-        // Visual cortex - Low resolution
-        .visual = {
-            .max_input_width = 160,
-            .max_input_height = 120,
-            .num_filters_conv1 = 16,
-            .num_filters_conv2 = 32,
-            .max_feature_maps = 64,
-            .enable_pooling = true,
-            .enable_attention = false,       // Attention disabled
-        },
-
-        // Audio cortex - Low fidelity
-        .audio = {
-            .max_sample_rate = 16000,        // Phone quality
-            .num_mel_filters = 32,
-            .num_mfcc = 13,
-            .frame_size = 512,
-            .enable_attention = false,
-            .enable_memory = false,          // No auditory memory
-        },
-
-        // Resource budgets
-        .memory_budget_mb = 128,             // 128MB budget
-        .compute_budget_ops = 100000000ULL,  // 100 MFLOPS
-        .max_threads = 4,
-
-        // Feature flags - Minimal features
-        .enable_gpu = false,
-        .enable_bio_async = true,            // Bio-async efficient
-        .enable_plasticity = true,           // Basic learning
-        .enable_neuromodulation = false,     // No neuromodulation
-        .enable_checkpointing = false,       // No checkpoints
-
-        // Performance tuning
-        .update_batch_size = 100,
-        .spike_buffer_size = 10000,
-        .sampling_rate = 0.5F,               // 50% sampling
-    },
-
-    // ========================================================================
-    // PLATFORM_TIER_MINIMAL - IoT/MCU/ultra-constrained
-    // ========================================================================
-    {
-        .tier = PLATFORM_TIER_MINIMAL,
-
-        // Core neural network - Tiny brain
-        .max_neurons = 1000,                 // 1K neurons (Portia-scale!)
-        .max_synapses_per_neuron = 10,       // Very sparse
-        .initial_neurons = 100,              // Start with 100 neurons
-
-        // Cognitive modules - Bare minimum
-        .cognitive_modules_enabled =
-            COGNITIVE_MODULE_ATTENTION |     // Basic attention only
-            COGNITIVE_MODULE_VISUAL_CORTEX,  // Minimal vision
-
-        // Visual cortex - Minimal resolution
-        .visual = {
-            .max_input_width = 64,
-            .max_input_height = 48,
-            .num_filters_conv1 = 8,
-            .num_filters_conv2 = 16,
-            .max_feature_maps = 32,
-            .enable_pooling = false,         // No pooling
-            .enable_attention = false,
-        },
-
-        // Audio cortex - Disabled (too expensive)
-        .audio = {
-            .max_sample_rate = 8000,         // Minimal
-            .num_mel_filters = 16,
-            .num_mfcc = 8,
-            .frame_size = 256,
-            .enable_attention = false,
-            .enable_memory = false,
-        },
-
-        // Resource budgets
-        .memory_budget_mb = 32,              // 32MB budget
-        .compute_budget_ops = 10000000ULL,   // 10 MFLOPS
-        .max_threads = 2,
-
-        // Feature flags - Absolutely minimal
-        .enable_gpu = false,
-        .enable_bio_async = false,           // Too expensive
-        .enable_plasticity = false,          // No learning
-        .enable_neuromodulation = false,
-        .enable_checkpointing = false,
-
-        // Performance tuning
-        .update_batch_size = 50,
-        .spike_buffer_size = 1000,
-        .sampling_rate = 0.25F,              // 25% sampling
+        .sampling_rate = 1.0F,
     },
 };
 
@@ -333,10 +445,32 @@ static const platform_tier_config_t TIER_CONFIGS[PLATFORM_TIER_COUNT] = {
 //=============================================================================
 
 static const char* TIER_NAMES[PLATFORM_TIER_COUNT] = {
-    "FULL",
-    "MEDIUM",
+    "BASIC",
+    "MINIMAL",
     "CONSTRAINED",
-    "MINIMAL"
+    "MEDIUM",
+    "FULL",
+    "NEUROMORPHIC",
+    "QUANTUM"
+};
+
+static const char* NEUROMORPHIC_HW_NAMES[NEUROMORPHIC_HW_COUNT] = {
+    "Generic",
+    "Loihi",
+    "SpiNNaker",
+    "BrainScaleS",
+    "TrueNorth",
+    "Dynapse",
+    "Akida"
+};
+
+static const char* QUANTUM_BACKEND_NAMES[QUANTUM_BACKEND_COUNT] = {
+    "Simulator",
+    "IBM Quantum",
+    "Rigetti",
+    "D-Wave",
+    "IonQ",
+    "Google"
 };
 
 //=============================================================================
@@ -354,10 +488,11 @@ platform_tier_t platform_tier_detect(void)
         return PLATFORM_TIER_MINIMAL;
     }
 
-    // Apply tier detection logic
+    // Apply tier detection logic (BASIC → FULL, descending from best)
     // WHAT: Classify based on RAM and core count thresholds
     // WHY:  Both memory and compute affect NIMCP performance
     // HOW:  Use AND logic (both must meet threshold for tier)
+    // NOTE: NEUROMORPHIC and QUANTUM are NOT auto-detected (require explicit config)
 
     // Check FULL tier (≥8GB RAM AND ≥8 cores)
     if (resources.total_ram_mb >= TIER_FULL_MIN_RAM_MB &&
@@ -386,11 +521,19 @@ platform_tier_t platform_tier_detect(void)
         return PLATFORM_TIER_CONSTRAINED;
     }
 
-    // Default to MINIMAL tier
-    LOG_INFO("Detected MINIMAL platform tier: %llu MB RAM, %u cores",
+    // Check MINIMAL tier (≥64MB RAM)
+    if (resources.total_ram_mb >= TIER_MINIMAL_MIN_RAM_MB) {
+        LOG_INFO("Detected MINIMAL platform tier: %llu MB RAM, %u cores",
+                 (unsigned long long)resources.total_ram_mb,
+                 resources.num_cpu_cores);
+        return PLATFORM_TIER_MINIMAL;
+    }
+
+    // Default to BASIC tier (ultra-constrained MCU)
+    LOG_INFO("Detected BASIC platform tier: %llu MB RAM, %u cores",
              (unsigned long long)resources.total_ram_mb,
              resources.num_cpu_cores);
-    return PLATFORM_TIER_MINIMAL;
+    return PLATFORM_TIER_BASIC;
 }
 
 platform_tier_config_t platform_tier_get_config(platform_tier_t tier)
@@ -670,4 +813,433 @@ void platform_tier_print_config(platform_tier_t tier)
     printf("\nCognitive Modules Enabled: 0x%08X\n", cfg->cognitive_modules_enabled);
 
     printf("=============================================\n\n");
+}
+
+//=============================================================================
+// Specialized Tier API Functions
+//=============================================================================
+
+/**
+ * @brief Get default configuration for BASIC tier (ultra-constrained MCU)
+ *
+ * WHAT: Returns configuration for Arduino/ESP32 class devices
+ * WHY:  These platforms need specific handling due to extreme constraints
+ * HOW:  Pre-configured defaults for typical MCU capabilities
+ */
+basic_tier_config_t platform_tier_get_basic_config(void)
+{
+    basic_tier_config_t config = {
+        // Core constraints - typical Arduino Mega/ESP32 class
+        .max_neurons = 500,                  // 500 neurons max
+        .max_synapses = 2500,                // 5 synapses per neuron average
+        .memory_kb = 32,                     // 32KB budget (ESP32 has 520KB SRAM)
+
+        // Fixed-point arithmetic for MCUs without FPU
+        .use_fixed_point = true,
+        .fixed_point_bits = 15,              // Q15 format
+
+        // Minimal features
+        .spike_only = true,                  // Spike-based only
+        .reactive_only = true,               // No learning (flash constraints)
+        .single_layer = true,                // Single layer feedforward
+
+        // Power management
+        .power_budget_mw = 50.0f,            // 50mW budget
+        .sleep_threshold_ms = 100,           // Sleep after 100ms idle
+        .deep_sleep_enabled = true           // Enable deep sleep
+    };
+
+    return config;
+}
+
+/**
+ * @brief Get default configuration for neuromorphic hardware
+ *
+ * WHAT: Returns configuration for specific neuromorphic chip
+ * WHY:  Each chip has unique constraints and capabilities
+ * HOW:  Pre-configured defaults based on known hardware specs
+ */
+neuromorphic_tier_config_t platform_tier_get_neuromorphic_config(neuromorphic_hardware_t hardware)
+{
+    neuromorphic_tier_config_t config = {0};
+
+    // Common defaults for all neuromorphic chips
+    config.hardware = hardware;
+    config.spike_native = true;
+    config.async_events = true;
+
+    switch (hardware) {
+        case NEUROMORPHIC_HW_LOIHI:
+            // Intel Loihi (1/2) specs
+            config.max_neurons = 131072;             // 128K neurons per chip
+            config.max_synapses_per_neuron = 4096;
+            config.cores = 128;
+            config.neurons_per_core = 1024;
+            config.spike_buffer_depth = 16384;
+            config.max_spike_rate_hz = 1000;
+            config.routing_delay_timesteps = 64;
+            config.stdp_hardware = true;
+            config.homeostatic_hardware = false;
+            config.learning_rate_granularity = 0.001f;
+            config.timestep_ns = 1000;               // 1µs timestep
+            config.power_budget_mw = 500.0f;         // ~500mW typical
+            config.on_chip_memory_kb = 2048;         // 2MB on-chip
+            config.external_memory_mb = 0;           // No external memory
+            config.weight_sharing = true;
+            config.enable_axon_delay = true;
+            config.enable_multi_compartment = true;
+            config.enable_dendritic_computation = false;
+            break;
+
+        case NEUROMORPHIC_HW_SPINNAKER:
+            // SpiNNaker specs (single board)
+            config.max_neurons = 1000000;            // 1M neurons per board
+            config.max_synapses_per_neuron = 1000;
+            config.cores = 864;                      // 48 chips × 18 cores
+            config.neurons_per_core = 1200;
+            config.spike_buffer_depth = 65536;
+            config.max_spike_rate_hz = 200;
+            config.routing_delay_timesteps = 16;
+            config.stdp_hardware = false;            // Software STDP
+            config.homeostatic_hardware = false;
+            config.learning_rate_granularity = 0.0001f;
+            config.timestep_ns = 1000000;            // 1ms timestep
+            config.power_budget_mw = 5000.0f;        // ~5W per board
+            config.on_chip_memory_kb = 128;          // 128KB per core
+            config.external_memory_mb = 128;         // SDRAM per chip
+            config.weight_sharing = false;
+            config.enable_axon_delay = true;
+            config.enable_multi_compartment = false;
+            config.enable_dendritic_computation = false;
+            break;
+
+        case NEUROMORPHIC_HW_BRAINSCALES:
+            // BrainScaleS-2 specs
+            config.max_neurons = 512;                // 512 neurons per chip
+            config.max_synapses_per_neuron = 256;
+            config.cores = 1;                        // Analog ASIC
+            config.neurons_per_core = 512;
+            config.spike_buffer_depth = 1024;
+            config.max_spike_rate_hz = 100000;       // Accelerated (1000x)
+            config.routing_delay_timesteps = 1;
+            config.stdp_hardware = true;
+            config.homeostatic_hardware = true;
+            config.learning_rate_granularity = 0.01f;
+            config.timestep_ns = 1;                  // ~1ns (accelerated)
+            config.power_budget_mw = 100.0f;         // ~100mW
+            config.on_chip_memory_kb = 64;
+            config.external_memory_mb = 0;
+            config.weight_sharing = false;
+            config.enable_axon_delay = false;
+            config.enable_multi_compartment = true;
+            config.enable_dendritic_computation = true;
+            break;
+
+        case NEUROMORPHIC_HW_TRUENORTH:
+            // IBM TrueNorth specs
+            config.max_neurons = 1048576;            // 1M neurons per chip
+            config.max_synapses_per_neuron = 256;
+            config.cores = 4096;
+            config.neurons_per_core = 256;
+            config.spike_buffer_depth = 4096;
+            config.max_spike_rate_hz = 1000;
+            config.routing_delay_timesteps = 1;
+            config.stdp_hardware = false;            // No on-chip learning
+            config.homeostatic_hardware = false;
+            config.learning_rate_granularity = 0.0f; // No learning
+            config.timestep_ns = 1000000;            // 1ms timestep
+            config.power_budget_mw = 70.0f;          // ~70mW ultra-low power
+            config.on_chip_memory_kb = 16384;        // 16MB SRAM total
+            config.external_memory_mb = 0;
+            config.weight_sharing = false;
+            config.enable_axon_delay = false;
+            config.enable_multi_compartment = false;
+            config.enable_dendritic_computation = false;
+            break;
+
+        case NEUROMORPHIC_HW_DYNAPSE:
+            // Dynapse specs (INI Zurich)
+            config.max_neurons = 1024;               // 1024 neurons per chip
+            config.max_synapses_per_neuron = 64;
+            config.cores = 4;
+            config.neurons_per_core = 256;
+            config.spike_buffer_depth = 512;
+            config.max_spike_rate_hz = 1000;
+            config.routing_delay_timesteps = 4;
+            config.stdp_hardware = true;
+            config.homeostatic_hardware = false;
+            config.learning_rate_granularity = 0.01f;
+            config.timestep_ns = 100;                // 100ns (analog)
+            config.power_budget_mw = 10.0f;          // ~10mW
+            config.on_chip_memory_kb = 4;
+            config.external_memory_mb = 0;
+            config.weight_sharing = true;
+            config.enable_axon_delay = true;
+            config.enable_multi_compartment = false;
+            config.enable_dendritic_computation = false;
+            break;
+
+        case NEUROMORPHIC_HW_AKIDA:
+            // BrainChip Akida specs
+            config.max_neurons = 1280000;            // 1.28M neurons per chip
+            config.max_synapses_per_neuron = 4096;
+            config.cores = 80;
+            config.neurons_per_core = 16000;
+            config.spike_buffer_depth = 8192;
+            config.max_spike_rate_hz = 10000;
+            config.routing_delay_timesteps = 1;
+            config.stdp_hardware = true;
+            config.homeostatic_hardware = false;
+            config.learning_rate_granularity = 0.001f;
+            config.timestep_ns = 1000;               // 1µs
+            config.power_budget_mw = 300.0f;         // ~300mW
+            config.on_chip_memory_kb = 1024;         // 1MB SRAM
+            config.external_memory_mb = 16;
+            config.weight_sharing = true;
+            config.enable_axon_delay = false;
+            config.enable_multi_compartment = false;
+            config.enable_dendritic_computation = false;
+            break;
+
+        case NEUROMORPHIC_HW_GENERIC:
+        default:
+            // Generic neuromorphic simulation defaults
+            config.max_neurons = 100000;
+            config.max_synapses_per_neuron = 1000;
+            config.cores = 16;
+            config.neurons_per_core = 6250;
+            config.spike_buffer_depth = 10000;
+            config.max_spike_rate_hz = 1000;
+            config.routing_delay_timesteps = 8;
+            config.stdp_hardware = false;
+            config.homeostatic_hardware = false;
+            config.learning_rate_granularity = 0.0001f;
+            config.timestep_ns = 1000000;            // 1ms
+            config.power_budget_mw = 1000.0f;        // Simulation, not real
+            config.on_chip_memory_kb = 4096;
+            config.external_memory_mb = 1024;
+            config.weight_sharing = true;
+            config.enable_axon_delay = true;
+            config.enable_multi_compartment = true;
+            config.enable_dendritic_computation = true;
+            break;
+    }
+
+    LOG_DEBUG("Created neuromorphic config for %s: %u neurons, %u cores",
+              NEUROMORPHIC_HW_NAMES[hardware],
+              config.max_neurons,
+              config.cores);
+
+    return config;
+}
+
+/**
+ * @brief Get default configuration for quantum backend
+ *
+ * WHAT: Returns configuration for specific quantum platform
+ * WHY:  Each backend has different qubit counts and error rates
+ * HOW:  Pre-configured defaults based on known hardware/simulator specs
+ */
+quantum_tier_config_t platform_tier_get_quantum_config(quantum_backend_t backend)
+{
+    quantum_tier_config_t config = {0};
+
+    // Common defaults
+    config.backend = backend;
+    config.native_gates_clifford = true;
+
+    switch (backend) {
+        case QUANTUM_BACKEND_IBMQ:
+            // IBM Quantum (e.g., IBM Eagle/Osprey class)
+            config.num_qubits = 127;                 // Eagle processor
+            config.num_logical_qubits = 10;          // After error correction
+            config.connectivity = 0.15f;             // Sparse heavy-hex
+            config.t1_coherence_us = 200.0f;
+            config.t2_coherence_us = 150.0f;
+            config.single_qubit_error = 0.0003f;
+            config.two_qubit_error = 0.01f;
+            config.readout_error = 0.01f;
+            config.native_gates_t = true;
+            config.native_gates_rx_ry = true;
+            config.max_circuit_depth = 100;
+            config.quantum_consensus = true;
+            config.quantum_optimization = true;
+            config.quantum_sampling = true;
+            config.superposition_states = true;
+            config.classical_cores = 8;
+            config.classical_memory_gb = 16;
+            config.quantum_classical_ratio = 0.3f;
+            config.max_shots = 8192;
+            config.queue_depth = 100;
+            config.real_hardware = true;
+            break;
+
+        case QUANTUM_BACKEND_RIGETTI:
+            // Rigetti (e.g., Aspen-M class)
+            config.num_qubits = 80;
+            config.num_logical_qubits = 6;
+            config.connectivity = 0.12f;             // Octagonal lattice
+            config.t1_coherence_us = 30.0f;
+            config.t2_coherence_us = 25.0f;
+            config.single_qubit_error = 0.001f;
+            config.two_qubit_error = 0.02f;
+            config.readout_error = 0.02f;
+            config.native_gates_t = false;
+            config.native_gates_rx_ry = true;
+            config.max_circuit_depth = 50;
+            config.quantum_consensus = true;
+            config.quantum_optimization = true;
+            config.quantum_sampling = true;
+            config.superposition_states = true;
+            config.classical_cores = 8;
+            config.classical_memory_gb = 16;
+            config.quantum_classical_ratio = 0.25f;
+            config.max_shots = 10000;
+            config.queue_depth = 50;
+            config.real_hardware = true;
+            break;
+
+        case QUANTUM_BACKEND_DWAVE:
+            // D-Wave (quantum annealer)
+            config.num_qubits = 5000;                // Advantage system
+            config.num_logical_qubits = 100;         // After embedding
+            config.connectivity = 0.06f;             // Pegasus topology
+            config.t1_coherence_us = 10.0f;          // Different metric for annealer
+            config.t2_coherence_us = 10.0f;
+            config.single_qubit_error = 0.05f;       // Not gate-based
+            config.two_qubit_error = 0.05f;
+            config.readout_error = 0.03f;
+            config.native_gates_clifford = false;    // Not gate-based
+            config.native_gates_t = false;
+            config.native_gates_rx_ry = false;
+            config.max_circuit_depth = 1;            // Single annealing operation
+            config.quantum_consensus = false;        // Not suitable
+            config.quantum_optimization = true;      // Primary use case
+            config.quantum_sampling = true;
+            config.superposition_states = true;
+            config.classical_cores = 4;
+            config.classical_memory_gb = 8;
+            config.quantum_classical_ratio = 0.8f;   // Heavy quantum use
+            config.max_shots = 10000;
+            config.queue_depth = 100;
+            config.real_hardware = true;
+            break;
+
+        case QUANTUM_BACKEND_IONQ:
+            // IonQ (trapped ion)
+            config.num_qubits = 32;
+            config.num_logical_qubits = 8;
+            config.connectivity = 1.0f;              // All-to-all
+            config.t1_coherence_us = 10000.0f;       // Excellent coherence
+            config.t2_coherence_us = 1000.0f;
+            config.single_qubit_error = 0.0001f;     // Very low error
+            config.two_qubit_error = 0.005f;
+            config.readout_error = 0.005f;
+            config.native_gates_t = true;
+            config.native_gates_rx_ry = true;
+            config.max_circuit_depth = 200;          // Deep circuits possible
+            config.quantum_consensus = true;
+            config.quantum_optimization = true;
+            config.quantum_sampling = true;
+            config.superposition_states = true;
+            config.classical_cores = 4;
+            config.classical_memory_gb = 8;
+            config.quantum_classical_ratio = 0.4f;
+            config.max_shots = 10000;
+            config.queue_depth = 50;
+            config.real_hardware = true;
+            break;
+
+        case QUANTUM_BACKEND_GOOGLE:
+            // Google (e.g., Sycamore)
+            config.num_qubits = 72;
+            config.num_logical_qubits = 8;
+            config.connectivity = 0.1f;              // 2D grid
+            config.t1_coherence_us = 15.0f;
+            config.t2_coherence_us = 10.0f;
+            config.single_qubit_error = 0.0015f;
+            config.two_qubit_error = 0.006f;
+            config.readout_error = 0.02f;
+            config.native_gates_t = false;
+            config.native_gates_rx_ry = true;
+            config.max_circuit_depth = 40;
+            config.quantum_consensus = true;
+            config.quantum_optimization = true;
+            config.quantum_sampling = true;
+            config.superposition_states = true;
+            config.classical_cores = 8;
+            config.classical_memory_gb = 16;
+            config.quantum_classical_ratio = 0.3f;
+            config.max_shots = 20000;
+            config.queue_depth = 20;
+            config.real_hardware = true;
+            break;
+
+        case QUANTUM_BACKEND_SIMULATOR:
+        default:
+            // Classical quantum simulator
+            config.num_qubits = 32;                  // Limited by RAM (~4GB for 32 qubits)
+            config.num_logical_qubits = 32;          // No error correction needed
+            config.connectivity = 1.0f;              // All-to-all
+            config.t1_coherence_us = 1000000.0f;     // Infinite (simulated)
+            config.t2_coherence_us = 1000000.0f;
+            config.single_qubit_error = 0.0f;        // Perfect simulation
+            config.two_qubit_error = 0.0f;
+            config.readout_error = 0.0f;
+            config.native_gates_t = true;
+            config.native_gates_rx_ry = true;
+            config.max_circuit_depth = 1000;         // Limited by RAM
+            config.quantum_consensus = true;
+            config.quantum_optimization = true;
+            config.quantum_sampling = true;
+            config.superposition_states = true;
+            config.classical_cores = 8;
+            config.classical_memory_gb = 16;
+            config.quantum_classical_ratio = 0.5f;
+            config.max_shots = 100000;
+            config.queue_depth = 1000;
+            config.real_hardware = false;
+            break;
+    }
+
+    LOG_DEBUG("Created quantum config for %s: %u qubits, real_hw=%s",
+              QUANTUM_BACKEND_NAMES[backend],
+              config.num_qubits,
+              config.real_hardware ? "yes" : "no");
+
+    return config;
+}
+
+/**
+ * @brief Check if tier is a specialized (non-standard) tier
+ *
+ * WHAT: Test if tier is NEUROMORPHIC or QUANTUM (vs standard compute tiers)
+ * WHY:  Specialized tiers need different handling
+ * HOW:  Simple range check
+ */
+bool platform_tier_is_specialized(platform_tier_t tier)
+{
+    return (tier == PLATFORM_TIER_NEUROMORPHIC || tier == PLATFORM_TIER_QUANTUM);
+}
+
+/**
+ * @brief Get human-readable name for neuromorphic hardware
+ */
+const char* platform_tier_neuromorphic_name(neuromorphic_hardware_t hardware)
+{
+    if (hardware >= NEUROMORPHIC_HW_COUNT) {
+        return "Unknown";
+    }
+    return NEUROMORPHIC_HW_NAMES[hardware];
+}
+
+/**
+ * @brief Get human-readable name for quantum backend
+ */
+const char* platform_tier_quantum_name(quantum_backend_t backend)
+{
+    if (backend >= QUANTUM_BACKEND_COUNT) {
+        return "Unknown";
+    }
+    return QUANTUM_BACKEND_NAMES[backend];
 }

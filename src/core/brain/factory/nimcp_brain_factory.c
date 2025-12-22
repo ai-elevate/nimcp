@@ -110,6 +110,8 @@
 // Sub-module headers
 #include "core/brain/factory/init/nimcp_brain_init.h"
 #include "core/brain/factory/init/nimcp_brain_init_plasticity.h"
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"

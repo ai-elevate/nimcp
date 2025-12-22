@@ -438,6 +438,14 @@ int callosum_set_bandwidth_limit(
 );
 
 /**
+ * @brief Get base bandwidth limit
+ *
+ * @param cc Callosum instance
+ * @return Base bandwidth in messages per second
+ */
+uint32_t corpus_callosum_get_base_bandwidth(const corpus_callosum_t* cc);
+
+/**
  * @brief Set per-channel bandwidth
  *
  * @param cc Callosum instance

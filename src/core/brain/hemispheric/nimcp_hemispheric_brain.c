@@ -943,6 +943,66 @@ brain_immune_system_t* hemispheric_brain_get_immune(
 }
 
 //=============================================================================
+// Immune Bridge Integration
+//=============================================================================
+
+int hemispheric_brain_apply_lateralization_shift(
+    hemispheric_brain_t* brain,
+    float shift
+) {
+    if (!brain) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    // Clamp shift to reasonable range
+    if (shift < -1.0f) shift = -1.0f;
+    if (shift > 1.0f) shift = 1.0f;
+
+    nimcp_mutex_lock(brain->mutex);
+
+    // Apply shift to all domains in the lateralization profile
+    // Positive shift = toward right, negative = toward left
+    // Use the lateralization API to shift each domain
+    for (int d = 0; d < COGNITIVE_DOMAIN_COUNT; d++) {
+        // Shift amount is scaled - positive shift moves toward right (negative shift param)
+        lateralization_shift_dominance(&brain->lateralization, (cognitive_domain_t)d, -shift * 0.1f);
+    }
+
+    nimcp_mutex_unlock(brain->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+int hemispheric_brain_set_bilateral_mode(
+    hemispheric_brain_t* brain,
+    bool bilateral
+) {
+    if (!brain) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_mutex_lock(brain->mutex);
+    brain->bilateral_mode = bilateral;
+
+    // In bilateral mode, switch to parallel processing
+    if (bilateral) {
+        brain->default_mode = HEMISPHERIC_MODE_PARALLEL;
+        NIMCP_LOGGING_WARN("Hemispheric brain entering bilateral mode");
+    } else {
+        brain->default_mode = HEMISPHERIC_MODE_LATERALIZED;
+        NIMCP_LOGGING_INFO("Hemispheric brain exiting bilateral mode");
+    }
+
+    nimcp_mutex_unlock(brain->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+bool hemispheric_brain_is_bilateral_mode(const hemispheric_brain_t* brain) {
+    return brain ? brain->bilateral_mode : false;
+}
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 

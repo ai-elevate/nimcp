@@ -582,7 +582,7 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
 
     // Verify checksums match
     if (stored_checksum != calculated_checksum) {
-        nimcp_network_destroy(network);
+        neural_network_destroy(network);
         if (decrypted_serializer) {
             nimcp_serializer_destroy(decrypted_serializer);
         }

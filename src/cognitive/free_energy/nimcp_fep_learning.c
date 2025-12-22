@@ -128,7 +128,7 @@ fep_transition_learner_t* fep_transition_learner_create(
     /* Initialize matrix to small random values (identity-ish) */
     for (uint32_t i = 0; i < state_dim; i++) {
         for (uint32_t j = 0; j < state_dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float val = (i == j) ? 0.8f : 0.2f / (float)(state_dim - 1);
             nimcp_tensor_set(learner->matrix, idx, val);
         }
@@ -234,7 +234,7 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
     /* Initialize matrix to small random values */
     for (uint32_t i = 0; i < observation_dim; i++) {
         for (uint32_t j = 0; j < state_dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float val = 1.0f / (float)state_dim;
             nimcp_tensor_set(learner->matrix, idx, val);
         }
@@ -329,7 +329,7 @@ int fep_learn_transition(
     for (size_t i = 0; i < dim; i++) {
         prediction[i] = 0.0f;
         for (size_t j = 0; j < dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float a_ij = nimcp_tensor_get(learner->matrix, idx);
             prediction[i] += a_ij * state_t[j];
         }
@@ -345,7 +345,7 @@ int fep_learn_transition(
     for (size_t i = 0; i < dim; i++) {
         float error = state_t1[i] - prediction[i];
         for (size_t j = 0; j < dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float current = nimcp_tensor_get(learner->matrix, idx);
             float grad = -error * state_t[j] + reg * current;
 
@@ -402,7 +402,7 @@ int fep_learn_transition_batch(
     size_t dims[2] = {dim, dim};
     nimcp_tensor_t* batch_grad = learner->batch_gradient;
     for (size_t i = 0; i < dim * dim; i++) {
-        size_t idx[2] = {i / dim, i % dim};
+        uint32_t idx[2] = {i / dim, i % dim};
         nimcp_tensor_set(batch_grad, idx, 0.0f);
     }
 
@@ -422,7 +422,7 @@ int fep_learn_transition_batch(
         for (size_t i = 0; i < dim; i++) {
             prediction[i] = 0.0f;
             for (size_t j = 0; j < dim; j++) {
-                size_t idx[2] = {i, j};
+                uint32_t idx[2] = {i, j};
                 float a_ij = nimcp_tensor_get(learner->matrix, idx);
                 prediction[i] += a_ij * state_t[j];
             }
@@ -435,7 +435,7 @@ int fep_learn_transition_batch(
         for (size_t i = 0; i < dim; i++) {
             float error = state_t1[i] - prediction[i];
             for (size_t j = 0; j < dim; j++) {
-                size_t idx[2] = {i, j};
+                uint32_t idx[2] = {i, j};
                 float current = nimcp_tensor_get(learner->matrix, idx);
                 float grad = -error * state_t[j] + reg * current;
                 float prev_grad = nimcp_tensor_get(batch_grad, idx);
@@ -452,7 +452,7 @@ int fep_learn_transition_batch(
 
     for (size_t i = 0; i < dim; i++) {
         for (size_t j = 0; j < dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float grad = nimcp_tensor_get(batch_grad, idx) * n_inv;
             float current = nimcp_tensor_get(learner->matrix, idx);
             nimcp_tensor_set(learner->matrix, idx, current - lr * grad);
@@ -492,7 +492,7 @@ int fep_learn_likelihood(
     for (size_t i = 0; i < obs_dim; i++) {
         prediction[i] = 0.0f;
         for (size_t j = 0; j < state_dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float b_ij = nimcp_tensor_get(learner->matrix, idx);
             prediction[i] += b_ij * state[j];
         }
@@ -508,7 +508,7 @@ int fep_learn_likelihood(
     for (size_t i = 0; i < obs_dim; i++) {
         float error = observation[i] - prediction[i];
         for (size_t j = 0; j < state_dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float current = nimcp_tensor_get(learner->matrix, idx);
             float grad = -error * state[j] + reg * current;
 
@@ -552,7 +552,7 @@ int fep_learn_likelihood_batch(
     /* Zero batch gradient */
     nimcp_tensor_t* batch_grad = learner->batch_gradient;
     for (size_t i = 0; i < obs_dim * state_dim; i++) {
-        size_t idx[2] = {i / state_dim, i % state_dim};
+        uint32_t idx[2] = {i / state_dim, i % state_dim};
         nimcp_tensor_set(batch_grad, idx, 0.0f);
     }
 
@@ -571,7 +571,7 @@ int fep_learn_likelihood_batch(
         for (size_t i = 0; i < obs_dim; i++) {
             prediction[i] = 0.0f;
             for (size_t j = 0; j < state_dim; j++) {
-                size_t idx[2] = {i, j};
+                uint32_t idx[2] = {i, j};
                 prediction[i] += nimcp_tensor_get(learner->matrix, idx) * state[j];
             }
         }
@@ -582,7 +582,7 @@ int fep_learn_likelihood_batch(
         for (size_t i = 0; i < obs_dim; i++) {
             float error = obs[i] - prediction[i];
             for (size_t j = 0; j < state_dim; j++) {
-                size_t idx[2] = {i, j};
+                uint32_t idx[2] = {i, j};
                 float current = nimcp_tensor_get(learner->matrix, idx);
                 float grad = -error * state[j] + reg * current;
                 float prev = nimcp_tensor_get(batch_grad, idx);
@@ -599,7 +599,7 @@ int fep_learn_likelihood_batch(
 
     for (size_t i = 0; i < obs_dim; i++) {
         for (size_t j = 0; j < state_dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             float grad = nimcp_tensor_get(batch_grad, idx) * n_inv;
             float current = nimcp_tensor_get(learner->matrix, idx);
             nimcp_tensor_set(learner->matrix, idx, current - lr * grad);
@@ -628,7 +628,7 @@ int fep_get_learned_transition(
 
     for (size_t i = 0; i < dim; i++) {
         for (size_t j = 0; j < dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             matrix[i * dim + j] = nimcp_tensor_get(learner->matrix, idx);
         }
     }
@@ -646,7 +646,7 @@ int fep_get_learned_likelihood(
 
     for (size_t i = 0; i < obs_dim; i++) {
         for (size_t j = 0; j < state_dim; j++) {
-            size_t idx[2] = {i, j};
+            uint32_t idx[2] = {i, j};
             matrix[i * state_dim + j] = nimcp_tensor_get(learner->matrix, idx);
         }
     }

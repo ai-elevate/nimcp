@@ -88,6 +88,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_corpus_callosum.c    # Inter-hemispheric bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_brain_hemisphere.c   # Single hemisphere wrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_brain.c  # Main bilateral brain
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_immune_bridge.c  # Immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_sleep_bridge.c   # Sleep integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_fep_bridge.c     # FEP integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_portia_bridge.c  # Portia integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_contralateral_mapping.c      # Motor/sensory body mapping
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_glial_bridge.c   # Glial integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_injury.c        # Injury and recovery
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_split_brain_experiments.c  # Split-brain experiments
 
     # Brain processing modules (Phase 9.1: SRP Refactoring) - TODO: Enable when refactoring complete
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/sensory_extractor.c
@@ -141,6 +149,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_language_production_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_immune.c  # Broca's region-immune integration
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # DISABLED: needs API updates  # Predictive coding brain region extension - DISABLED: needs refactoring
+
+    # Subcortical brain structures (basal ganglia, thalamus, etc.)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_striatum.c           # Striatum D1/D2 pathways
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_globus_pallidus.c    # Globus pallidus (GPe/GPi)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_substantia_nigra.c   # Substantia nigra (SNc/SNr)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_subthalamic.c        # Subthalamic nucleus
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia.c      # Basal ganglia action selection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_thalamus.c          # Thalamic nuclei relay
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
@@ -244,6 +260,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_detection.c  # Phase E6: Bias Detection (Racial, LGBTQ+, Gender, Misogyny, Age, Disability, Religious, Socioeconomic)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_extended.c  # Phase 12: Advanced Self-Awareness (metacognition, agency, safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind.c  # Phase 10.6: Theory of Mind
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_coordinator.c  # Self-Awareness Unification: Orchestrates introspection, self-model, autobio, ToM
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_feedback.c    # Self-Awareness Feedback: Policies, history, analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
 
@@ -1044,6 +1062,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_pheromone_immune_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_quorum_immune_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_signal_immune_bridge.c
+
+    # Swarm Task Allocation System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_task.c           # Task lifecycle management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_task_queue.c     # Per-agent task queues
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_task_scheduler.c # Capability-aware scheduling
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_protocol_metrics.c # Protocol metrics dashboard
 

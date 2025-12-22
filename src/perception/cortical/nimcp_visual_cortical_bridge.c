@@ -915,9 +915,12 @@ int visual_cortical_get_stats(
 {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    if (bridge->mutex_initialized) nimcp_mutex_lock(&mutable_bridge->mutex);
     memcpy(stats, &bridge->stats, sizeof(visual_cortical_stats_t));
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if (bridge->mutex_initialized) nimcp_mutex_unlock(&mutable_bridge->mutex);
 
     return NIMCP_SUCCESS;
 }

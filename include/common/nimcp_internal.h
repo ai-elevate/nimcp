@@ -191,10 +191,13 @@ extern "C" {
 
 /**
  * @brief Log an error message
+ * NOTE: Only define if not already defined (nimcp_common.h defines it as an error code)
  */
+#ifndef NIMCP_ERROR
 #define NIMCP_ERROR(fmt, ...)                                                  \
     fprintf(stderr, "[NIMCP ERROR] " fmt " at %s:%d\n", ##__VA_ARGS__,         \
             __FILE__, __LINE__)
+#endif
 
 /**
  * @brief Log a warning message

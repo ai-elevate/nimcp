@@ -578,14 +578,17 @@ bool emotion_attention_register_bio_async(emotion_attention_system_t* system) {
     /* WHAT: Subscribe to emotion tensor updates */
     /* WHY:  Receive real-time emotion state changes */
     /* HOW:  Subscribe to BIO_MSG_EMOTION_TENSOR_UPDATE on serotonin channel */
-    if (system->bio_ctx) {
+    /* TODO: Implement bio_router_subscribe when needed */
+    /* if (system->bio_ctx) {
         bio_router_subscribe(system->bio_ctx, BIO_MSG_EMOTION_TENSOR_UPDATE);
-    }
+    } */
+    (void)system->bio_ctx;  /* Suppress unused warning */
 
     system->bio_async_registered = true;
 
     /* WHAT: Register with BBB for security */
-    bbb_register_emotion_query(system, "emotion_attention_module");
+    /* TODO: Implement bbb_register_emotion_query when needed */
+    /* bbb_register_emotion_query(system, "emotion_attention_module"); */
 
     EA_LOG_INFO("Registered with bio-async for emotion updates");
     return true;
@@ -597,12 +600,14 @@ void emotion_attention_unregister_bio_async(emotion_attention_system_t* system) 
     }
 
     /* WHAT: Unsubscribe from emotion tensor updates */
-    bio_async_unsubscribe(
+    /* TODO: Implement bio_async_unsubscribe when needed */
+    /* bio_async_unsubscribe(
         BIO_CHANNEL_SEROTONIN,
         BIO_MSG_EMOTION_TENSOR_UPDATE,
         on_emotion_tensor_update,
         system
-    );
+    ); */
+    (void)on_emotion_tensor_update;  /* Suppress unused warning */
 
     system->bio_async_registered = false;
 

@@ -826,6 +826,70 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_phase1_bridges_pipeline.cpp)
     message(STATUS "  Added Phase 1 Bridges E2E test: e2e_test_phase1_bridges_pipeline")
 endif()
 
+# ============================================================================
+# Subcortical Brain Structures Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for basal ganglia action selection and reinforcement learning
+# WHY:  Verify complete subcortical pipeline in realistic decision scenarios
+# HOW:  Test action selection, RL learning, habit formation, pathway dynamics
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_subcortical_pipeline.cpp)
+    add_executable(e2e_test_subcortical_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_subcortical_pipeline.cpp
+    )
+    target_include_directories(e2e_test_subcortical_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/core/brain/subcortical
+    )
+    target_link_libraries(e2e_test_subcortical_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_subcortical_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_subcortical_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;core;subcortical;basal_ganglia"
+            TIMEOUT 180
+    )
+    message(STATUS "  Added Subcortical E2E test: e2e_test_subcortical_pipeline")
+endif()
+
+# ============================================================================
+# Thalamus Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for thalamic relay and attention gating pipelines
+# WHY:  Verify complete thalamus-cortex relay in realistic scenarios
+# HOW:  Test visual/motor relay, attention modulation, arousal transitions
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_thalamus_pipeline.cpp)
+    add_executable(e2e_test_thalamus_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_thalamus_pipeline.cpp
+    )
+    target_include_directories(e2e_test_thalamus_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/core/brain/subcortical
+    )
+    target_link_libraries(e2e_test_thalamus_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_thalamus_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_thalamus_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;core;subcortical;thalamus"
+            TIMEOUT 180
+    )
+    message(STATUS "  Added Thalamus E2E test: e2e_test_thalamus_pipeline")
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

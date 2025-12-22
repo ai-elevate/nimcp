@@ -106,3 +106,8 @@ set_tests_properties(regression_core_brain_coordinator_regression PROPERTIES LAB
 #     PROPERTIES TIMEOUT 300)
 # set_tests_properties(regression_core_brain_persistence_regression
 #     PROPERTIES TIMEOUT 300)
+
+# Add subcortical subdirectory
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/subcortical")
+    add_subdirectory(subcortical)
+endif()

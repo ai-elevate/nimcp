@@ -660,12 +660,9 @@ static void* heartbeat_thread_fn(void* arg)
         // Sleep for heartbeat interval using condition variable (can be interrupted)
         nimcp_mutex_lock(&cluster->heartbeat_lock);
         if (cluster->heartbeat_running) {
-            struct timespec ts;
-            clock_gettime(CLOCK_REALTIME, &ts);
-            uint64_t nanos = ts.tv_nsec + (cluster->config.heartbeat_interval_ms * 1000000UL);
-            ts.tv_sec += nanos / 1000000000UL;
-            ts.tv_nsec = nanos % 1000000000UL;
-            nimcp_cond_timedwait(&cluster->heartbeat_cond, &cluster->heartbeat_lock, &ts);
+            // nimcp_cond_timedwait expects timeout in milliseconds, not absolute timespec
+            nimcp_cond_timedwait(&cluster->heartbeat_cond, &cluster->heartbeat_lock,
+                                 cluster->config.heartbeat_interval_ms);
         }
         nimcp_mutex_unlock(&cluster->heartbeat_lock);
     }

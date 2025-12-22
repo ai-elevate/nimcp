@@ -7,7 +7,7 @@
  * HOW:  Platform-specific detection via /sys, /dev, and vendor libraries
  *
  * DETECTION METHODS:
- * - GPU: /dev/nvidia*, /dev/dri/*, dlopen libcuda/libOpenCL/libvulkan
+ * - GPU: /dev/nvidia*, /dev/dri, dlopen libcuda/libOpenCL/libvulkan
  * - NPU: /dev/npu*, vendor-specific paths (Intel/Qualcomm/Apple)
  * - DSP: /dev/dsp*, TI/Qualcomm specific devices
  * - FPGA: /dev/fpga*, Intel/Xilinx specific

@@ -349,7 +349,7 @@ bool nimcp_brain_factory_init_empathy_network_subsystem(brain_t brain)
 
     // Create empathy network configuration
     empathy_config_t config = {
-        .mirror_network = brain->mirror_neurons,  // Link to mirror neurons if available
+        .mirror_network = NULL,  // TODO: mirror_neurons_t is incompatible with neural_network_t
         .observation_window_ms = 1000,            // 1 second observation window
         .empathy_threshold = 0.5F                 // Minimum activation for empathy response
     };
