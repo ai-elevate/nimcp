@@ -157,6 +157,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_subthalamic.c        # Subthalamic nucleus
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia.c      # Basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_thalamus.c          # Thalamic nuclei relay
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala.c          # Amygdala emotion/fear processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_training_bridge.c  # Amygdala-training integration (Yerkes-Dodson)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_attention_bridge.c  # Amygdala-attention integration (threat salience)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_stress_bridge.c  # Amygdala-stress/wellbeing integration (stress-anxiety feedback)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_autobio_bridge.c  # Amygdala-autobiographical memory integration (emotional tagging, recall reactivation)
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c

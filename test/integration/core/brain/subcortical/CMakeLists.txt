@@ -61,3 +61,29 @@ add_test(NAME integration_core_brain_subcortical_thalamus_test
 set_tests_properties(integration_core_brain_subcortical_thalamus_test PROPERTIES LABELS "integration")
 
 gtest_discover_tests(integration_core_brain_subcortical_thalamus_test)
+
+# Amygdala Integration Tests
+add_executable(integration_core_brain_subcortical_amygdala_test
+    test_amygdala_integration.cpp
+)
+
+target_link_libraries(integration_core_brain_subcortical_amygdala_test
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_core_brain_subcortical_amygdala_test
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME integration_core_brain_subcortical_amygdala_test
+         COMMAND integration_core_brain_subcortical_amygdala_test)
+set_tests_properties(integration_core_brain_subcortical_amygdala_test PROPERTIES LABELS "integration")
+
+gtest_discover_tests(integration_core_brain_subcortical_amygdala_test)

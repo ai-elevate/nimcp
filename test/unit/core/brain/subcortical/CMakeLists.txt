@@ -23,3 +23,38 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_thalamus.cpp
     unit
 )
+
+# Test: Amygdala Comprehensive Tests
+add_test_binary(
+    unit_core_brain_subcortical_amygdala_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala.cpp
+    unit
+)
+
+# Test: Amygdala-Training Bridge Tests
+add_test_binary(
+    unit_core_brain_subcortical_amygdala_training_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala_training_bridge.cpp
+    unit
+)
+
+# Test: Amygdala-Attention Bridge Tests
+add_test_binary(
+    unit_core_brain_subcortical_amygdala_attention_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala_attention_bridge.cpp
+    unit
+)
+
+# Test: Amygdala-Autobiographical Memory Bridge Tests
+add_test_binary(
+    unit_core_brain_subcortical_amygdala_autobio_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala_autobio_bridge.cpp
+    unit
+)
+
+# Test: Amygdala-Stress/Wellbeing Bridge Tests
+add_test_binary(
+    unit_core_brain_subcortical_amygdala_stress_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala_stress_bridge.cpp
+    unit
+)

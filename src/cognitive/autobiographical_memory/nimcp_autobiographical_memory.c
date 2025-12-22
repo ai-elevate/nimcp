@@ -409,8 +409,8 @@ bool autobio_retrieve(autobiographical_memory_t system,
     bool found = false;
     for (uint32_t i = 0; i < system->count; i++) {
         if (system->memories[i].memory_id == memory_id) {
-            // Copy memory
-            memcpy(out_memory, &system->memories[i], sizeof(autobiographical_memory_t));
+            // Copy memory (use entry_t size, not the pointer typedef)
+            memcpy(out_memory, &system->memories[i], sizeof(autobiographical_memory_entry_t));
 
             // Update retrieval stats
             system->memories[i].times_recalled++;

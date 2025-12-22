@@ -486,6 +486,7 @@ typedef enum {
     BIO_MODULE_SUBSTANTIA_NIGRA,             /**< Substantia nigra (SNc/SNr) */
     BIO_MODULE_SUBTHALAMIC_NUCLEUS,          /**< Subthalamic nucleus */
     BIO_MODULE_THALAMUS,                     /**< Thalamus relay nuclei */
+    BIO_MODULE_AMYGDALA,                     /**< Amygdala emotion/fear processing */
 
     /* Cognitive modules */
     BIO_MODULE_INTROSPECTION = 0x0200,
@@ -871,6 +872,12 @@ typedef enum {
     BIO_MODULE_IMMUNE_SWARM_PHEROMONE,          /**< Swarm pheromone-immune bridge */
     BIO_MODULE_IMMUNE_SWARM_QUORUM,             /**< Swarm quorum-immune bridge */
     BIO_MODULE_IMMUNE_SWARM_SIGNAL,             /**< Swarm signal-immune bridge */
+
+    /* Subcortical/Amygdala bridges (0x0E8C - 0x0E8F) */
+    BIO_MODULE_AMYGDALA_TRAINING = 0x0E8C,      /**< Amygdala-training bridge (Yerkes-Dodson) */
+    BIO_MODULE_AMYGDALA_ATTENTION,              /**< Amygdala-attention bridge (threat salience) */
+    BIO_MODULE_AMYGDALA_STRESS,                 /**< Amygdala-stress/wellbeing bridge */
+    BIO_MODULE_AMYGDALA_AUTOBIO,                /**< Amygdala-autobiographical memory bridge */
 
     /* LNN (Liquid Neural Network) modules (0x0E90 - 0x0E9F) */
     BIO_MODULE_LNN_CORE = 0x0E90,               /**< LNN core network module */
