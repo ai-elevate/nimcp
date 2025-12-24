@@ -1412,10 +1412,138 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                 }
                 break;
 
-            case CNN_LAYER_CONV2D:
-                /* Simplified convolution backward - just accumulate weight gradients */
-                /* Full implementation would require im2col/col2im for efficiency */
+            case CNN_LAYER_CONV2D: {
+                /* Full convolution backward pass */
+                /* Computes: weight gradients, bias gradients, and input gradients */
+                const cnn_conv_config_t* cfg = &layer->config.conv;
+                const float* in_data = nimcp_tensor_data_const(layer_input);
+                float* w_grad = nimcp_tensor_data(layer->weight_grad);
+                float* b_grad = layer->bias_grad ? nimcp_tensor_data(layer->bias_grad) : NULL;
+
+                /* Get input shape: (batch, in_channels, in_h, in_w) */
+                nimcp_tensor_shape_t in_shape;
+                nimcp_tensor_get_shape(layer_input, &in_shape);
+                uint32_t batch = in_shape.dims[0];
+                uint32_t in_h = in_shape.dims[2];
+                uint32_t in_w = in_shape.dims[3];
+
+                /* Get output gradient shape: (batch, out_channels, out_h, out_w) */
+                nimcp_tensor_shape_t grad_shape;
+                nimcp_tensor_get_shape(grad, &grad_shape);
+                uint32_t out_h = grad_shape.dims[2];
+                uint32_t out_w = grad_shape.dims[3];
+                size_t out_spatial = out_h * out_w;
+
+                /* Group convolution parameters */
+                uint32_t groups = cfg->groups > 0 ? cfg->groups : 1;
+                uint32_t ic_per_group = cfg->in_channels / groups;
+                uint32_t oc_per_group = cfg->out_channels / groups;
+
+                /* 1. Accumulate weight gradients: dW[oc,ic,kh,kw] = sum_{b,oh,ow} grad[b,oc,oh,ow] * input[b,ic,ih,iw] */
+                for (uint32_t b = 0; b < batch; b++) {
+                    for (uint32_t g = 0; g < groups; g++) {
+                        for (uint32_t oc = 0; oc < oc_per_group; oc++) {
+                            uint32_t oc_abs = g * oc_per_group + oc;
+                            for (uint32_t oh = 0; oh < out_h; oh++) {
+                                for (uint32_t ow = 0; ow < out_w; ow++) {
+                                    size_t grad_idx = b * cfg->out_channels * out_spatial +
+                                                     oc_abs * out_spatial + oh * out_w + ow;
+                                    float grad_val = grad_data[grad_idx];
+
+                                    for (uint32_t ic = 0; ic < ic_per_group; ic++) {
+                                        uint32_t ic_abs = g * ic_per_group + ic;
+                                        for (uint32_t kh = 0; kh < cfg->kernel_h; kh++) {
+                                            for (uint32_t kw = 0; kw < cfg->kernel_w; kw++) {
+                                                int ih = (int)(oh * cfg->stride_h + kh * cfg->dilation_h) - (int)cfg->padding_h;
+                                                int iw = (int)(ow * cfg->stride_w + kw * cfg->dilation_w) - (int)cfg->padding_w;
+
+                                                if (ih >= 0 && ih < (int)in_h && iw >= 0 && iw < (int)in_w) {
+                                                    size_t in_idx = b * cfg->in_channels * in_h * in_w +
+                                                                   ic_abs * in_h * in_w + ih * in_w + iw;
+                                                    size_t w_idx = oc_abs * ic_per_group * cfg->kernel_h * cfg->kernel_w +
+                                                                  ic * cfg->kernel_h * cfg->kernel_w + kh * cfg->kernel_w + kw;
+                                                    w_grad[w_idx] += grad_val * in_data[in_idx];
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                /* 2. Accumulate bias gradients: db[oc] = sum_{b,oh,ow} grad[b,oc,oh,ow] */
+                if (b_grad) {
+                    for (uint32_t b = 0; b < batch; b++) {
+                        for (uint32_t oc = 0; oc < cfg->out_channels; oc++) {
+                            for (uint32_t oh = 0; oh < out_h; oh++) {
+                                for (uint32_t ow = 0; ow < out_w; ow++) {
+                                    size_t grad_idx = b * cfg->out_channels * out_spatial +
+                                                     oc * out_spatial + oh * out_w + ow;
+                                    b_grad[oc] += grad_data[grad_idx];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                /* 3. Compute input gradients for previous layer (transposed convolution) */
+                if (i > 0) {
+                    nimcp_tensor_t* new_grad = nimcp_tensor_zeros_like(layer_input);
+                    float* new_grad_data = nimcp_tensor_data(new_grad);
+                    const float* weight_data = nimcp_tensor_data_const(layer->weights);
+
+                    /* dX[b,ic,ih,iw] = sum_{oc,kh,kw} grad[b,oc,oh,ow] * W[oc,ic,kh,kw] */
+                    /* where oh = (ih + padding_h - kh*dilation_h) / stride_h */
+                    for (uint32_t b = 0; b < batch; b++) {
+                        for (uint32_t g = 0; g < groups; g++) {
+                            for (uint32_t ic = 0; ic < ic_per_group; ic++) {
+                                uint32_t ic_abs = g * ic_per_group + ic;
+                                for (uint32_t ih = 0; ih < in_h; ih++) {
+                                    for (uint32_t iw = 0; iw < in_w; iw++) {
+                                        float sum = 0.0f;
+                                        for (uint32_t oc = 0; oc < oc_per_group; oc++) {
+                                            uint32_t oc_abs = g * oc_per_group + oc;
+                                            for (uint32_t kh = 0; kh < cfg->kernel_h; kh++) {
+                                                for (uint32_t kw = 0; kw < cfg->kernel_w; kw++) {
+                                                    /* Reverse the forward mapping:
+                                                     * Forward: ih = oh * stride_h + kh * dilation_h - padding_h
+                                                     * Backward: oh = (ih + padding_h - kh * dilation_h) / stride_h
+                                                     * Must check divisibility by stride */
+                                                    int oh_offset = (int)ih + (int)cfg->padding_h - (int)(kh * cfg->dilation_h);
+                                                    if (oh_offset >= 0 && oh_offset % cfg->stride_h == 0) {
+                                                        uint32_t oh = oh_offset / cfg->stride_h;
+                                                        int ow_offset = (int)iw + (int)cfg->padding_w - (int)(kw * cfg->dilation_w);
+                                                        if (ow_offset >= 0 && ow_offset % cfg->stride_w == 0) {
+                                                            uint32_t ow = ow_offset / cfg->stride_w;
+                                                            if (oh < out_h && ow < out_w) {
+                                                                size_t grad_idx = b * cfg->out_channels * out_spatial +
+                                                                                 oc_abs * out_spatial + oh * out_w + ow;
+                                                                size_t w_idx = oc_abs * ic_per_group * cfg->kernel_h * cfg->kernel_w +
+                                                                              ic * cfg->kernel_h * cfg->kernel_w + kh * cfg->kernel_w + kw;
+                                                                sum += grad_data[grad_idx] * weight_data[w_idx];
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        size_t in_idx = b * cfg->in_channels * in_h * in_w +
+                                                       ic_abs * in_h * in_w + ih * in_w + iw;
+                                        new_grad_data[in_idx] = sum;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    nimcp_tensor_destroy(grad);
+                    grad = new_grad;
+                    grad_data = nimcp_tensor_data(grad);
+                }
                 break;
+            }
 
             default:
                 break;
