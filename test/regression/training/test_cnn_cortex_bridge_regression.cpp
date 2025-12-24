@@ -205,7 +205,7 @@ TEST_F(CNNCortexBridgeRegressionTest, GradientBufferMemoryStability) {
     ASSERT_NE(bridge, nullptr);
 
     // Create test gradient tensor
-    size_t dims[] = {128};
+    uint32_t dims[] = {128};
     nimcp_tensor_t* grad = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
     ASSERT_NE(grad, nullptr);
 
@@ -498,7 +498,7 @@ TEST_F(CNNCortexBridgeRegressionTest, DisabledGradientFeedbackNoOp) {
     ASSERT_NE(bridge, nullptr);
 
     // Create gradient tensor
-    size_t dims[] = {64};
+    uint32_t dims[] = {64};
     nimcp_tensor_t* grad = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
     ASSERT_NE(grad, nullptr);
 
