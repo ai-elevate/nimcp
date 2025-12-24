@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 
-#include "plasticity/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 
 class STDPModulationTest : public ::testing::Test {

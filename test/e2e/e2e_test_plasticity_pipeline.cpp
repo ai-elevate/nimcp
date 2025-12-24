@@ -45,7 +45,7 @@
 extern "C" {
 #include "nimcp.h"
 #include "plasticity/nimcp_plasticity_orchestrator.h"
-#include "plasticity/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/structural/nimcp_structural_plasticity.h"

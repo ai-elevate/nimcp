@@ -82,7 +82,7 @@
 #include <stddef.h>
 #include "utils/validation/nimcp_common.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
-#include "plasticity/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "middleware/training/nimcp_brain_training_integration.h"
 #include "utils/memory/nimcp_cow_manager.h"

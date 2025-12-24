@@ -26,7 +26,7 @@ extern "C" {
 #include "middleware/training/nimcp_brain_training_integration.h"
 #include "middleware/training/nimcp_training_callbacks.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
-#include "plasticity/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "utils/memory/nimcp_memory.h"
 }

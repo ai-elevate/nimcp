@@ -33,7 +33,7 @@ extern "C" {
 #include "snn/nimcp_snn_types.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
-#include "plasticity/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_stdp.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
