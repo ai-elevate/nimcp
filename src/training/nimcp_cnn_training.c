@@ -1396,21 +1396,279 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                 break;
             }
 
-            case CNN_LAYER_FLATTEN:
-            case CNN_LAYER_POOLING:
-            case CNN_LAYER_DROPOUT:
-            case CNN_LAYER_BATCH_NORM:
-                /* Simplified: just pass gradient through */
-                if (i > 0 && nimcp_tensor_numel(grad) != nimcp_tensor_numel(layer_input)) {
+            case CNN_LAYER_FLATTEN: {
+                /* WHAT: Reshape gradient back to input shape
+                 * WHY:  Flatten forward collapses spatial dims; backward must restore them
+                 * HOW:  Create tensor with input shape and copy gradient data (values unchanged)
+                 */
+                if (i > 0) {
+                    /* Gradient is currently flat [batch, features] */
+                    /* Need to reshape to original input shape [batch, C, H, W] */
                     nimcp_tensor_t* new_grad = nimcp_tensor_zeros_like(layer_input);
-                    size_t copy_size = nimcp_tensor_numel(grad) < nimcp_tensor_numel(layer_input)
-                                      ? nimcp_tensor_numel(grad) : nimcp_tensor_numel(layer_input);
+                    if (!new_grad) {
+                        nimcp_free(layer_stack);
+                        nimcp_tensor_destroy(grad);
+                        return NIMCP_ERROR_NO_MEMORY;
+                    }
+
+                    /* Copy gradient values (numel should match) */
+                    size_t numel_grad = nimcp_tensor_numel(grad);
+                    size_t numel_input = nimcp_tensor_numel(layer_input);
+                    size_t copy_size = (numel_grad < numel_input) ? numel_grad : numel_input;
+
                     memcpy(nimcp_tensor_data(new_grad), grad_data, copy_size * sizeof(float));
+
                     nimcp_tensor_destroy(grad);
                     grad = new_grad;
                     grad_data = nimcp_tensor_data(grad);
                 }
                 break;
+            }
+
+            case CNN_LAYER_POOLING: {
+                /* WHAT: Backpropagate gradient through pooling layer
+                 * WHY:  Route gradients to positions that contributed to pooling output
+                 * HOW:  Max pooling - gradient to max position; Avg pooling - uniform distribution
+                 *
+                 * BIOLOGICAL BASIS: Winner-take-all (max) vs distributed coding (average)
+                 */
+                if (i > 0) {
+                    const cnn_pool_config_t* cfg = &layer->config.pool;
+                    const float* in_data = nimcp_tensor_data_const(layer_input);
+
+                    /* Get input shape: (batch, channels, in_h, in_w) */
+                    nimcp_tensor_shape_t in_shape;
+                    nimcp_tensor_get_shape(layer_input, &in_shape);
+                    uint32_t batch = in_shape.dims[0];
+                    uint32_t channels = in_shape.dims[1];
+                    uint32_t in_h = in_shape.dims[2];
+                    uint32_t in_w = in_shape.dims[3];
+                    size_t in_spatial = in_h * in_w;
+
+                    /* Get output gradient shape: (batch, channels, out_h, out_w) */
+                    nimcp_tensor_shape_t grad_shape;
+                    nimcp_tensor_get_shape(grad, &grad_shape);
+                    uint32_t out_h = grad_shape.dims[2];
+                    uint32_t out_w = grad_shape.dims[3];
+                    size_t out_spatial = out_h * out_w;
+
+                    /* Create input gradient tensor (zeros) */
+                    nimcp_tensor_t* new_grad = nimcp_tensor_zeros_like(layer_input);
+                    if (!new_grad) {
+                        nimcp_free(layer_stack);
+                        nimcp_tensor_destroy(grad);
+                        return NIMCP_ERROR_NO_MEMORY;
+                    }
+                    float* new_grad_data = nimcp_tensor_data(new_grad);
+
+                    /* Backpropagate based on pooling type */
+                    if (cfg->type == CNN_POOL_MAX) {
+                        /* MAX POOLING: Route gradient only to max position in each window */
+                        for (uint32_t b = 0; b < batch; b++) {
+                            for (uint32_t c = 0; c < channels; c++) {
+                                for (uint32_t oh = 0; oh < out_h; oh++) {
+                                    for (uint32_t ow = 0; ow < out_w; ow++) {
+                                        /* Find max position in pooling window (recompute from forward) */
+                                        int ih_start = (int)(oh * cfg->stride_h) - (int)cfg->padding_h;
+                                        int iw_start = (int)(ow * cfg->stride_w) - (int)cfg->padding_w;
+
+                                        float max_val = -INFINITY;
+                                        uint32_t max_ih = 0, max_iw = 0;
+
+                                        for (uint32_t ph = 0; ph < cfg->pool_h; ph++) {
+                                            for (uint32_t pw = 0; pw < cfg->pool_w; pw++) {
+                                                int ih = ih_start + (int)ph;
+                                                int iw = iw_start + (int)pw;
+
+                                                if (ih >= 0 && ih < (int)in_h && iw >= 0 && iw < (int)in_w) {
+                                                    size_t in_idx = b * channels * in_spatial +
+                                                                   c * in_spatial + ih * in_w + iw;
+                                                    if (in_data[in_idx] > max_val) {
+                                                        max_val = in_data[in_idx];
+                                                        max_ih = ih;
+                                                        max_iw = iw;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        /* Route gradient to max position */
+                                        if (max_val != -INFINITY) {
+                                            size_t grad_idx = b * channels * out_spatial +
+                                                             c * out_spatial + oh * out_w + ow;
+                                            size_t in_idx = b * channels * in_spatial +
+                                                           c * in_spatial + max_ih * in_w + max_iw;
+                                            new_grad_data[in_idx] += grad_data[grad_idx];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if (cfg->type == CNN_POOL_AVERAGE) {
+                        /* AVERAGE POOLING: Distribute gradient uniformly across window */
+                        float pool_area = (float)(cfg->pool_h * cfg->pool_w);
+
+                        for (uint32_t b = 0; b < batch; b++) {
+                            for (uint32_t c = 0; c < channels; c++) {
+                                for (uint32_t oh = 0; oh < out_h; oh++) {
+                                    for (uint32_t ow = 0; ow < out_w; ow++) {
+                                        int ih_start = (int)(oh * cfg->stride_h) - (int)cfg->padding_h;
+                                        int iw_start = (int)(ow * cfg->stride_w) - (int)cfg->padding_w;
+
+                                        size_t grad_idx = b * channels * out_spatial +
+                                                         c * out_spatial + oh * out_w + ow;
+                                        float distributed_grad = grad_data[grad_idx] / pool_area;
+
+                                        for (uint32_t ph = 0; ph < cfg->pool_h; ph++) {
+                                            for (uint32_t pw = 0; pw < cfg->pool_w; pw++) {
+                                                int ih = ih_start + (int)ph;
+                                                int iw = iw_start + (int)pw;
+
+                                                if (ih >= 0 && ih < (int)in_h && iw >= 0 && iw < (int)in_w) {
+                                                    size_t in_idx = b * channels * in_spatial +
+                                                                   c * in_spatial + ih * in_w + iw;
+                                                    new_grad_data[in_idx] += distributed_grad;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        /* Other pooling types (global, stochastic, Lp): simplified pass-through */
+                        size_t copy_size = nimcp_tensor_numel(grad) < nimcp_tensor_numel(layer_input)
+                                          ? nimcp_tensor_numel(grad) : nimcp_tensor_numel(layer_input);
+                        memcpy(new_grad_data, grad_data, copy_size * sizeof(float));
+                    }
+
+                    nimcp_tensor_destroy(grad);
+                    grad = new_grad;
+                    grad_data = nimcp_tensor_data(grad);
+                }
+                break;
+            }
+
+            case CNN_LAYER_DROPOUT: {
+                /* WHAT: Backward pass through dropout layer
+                 * WHY:  Propagate gradients with same scaling as forward pass
+                 * HOW:  Scale gradient by 1/(1-dropout_rate) during training, unchanged during eval
+                 *
+                 * BIOLOGICAL BASIS: Models stochastic synaptic transmission failures.
+                 * During training, surviving connections are upscaled to maintain expected signal.
+                 */
+                if (i > 0) {
+                    const cnn_dropout_config_t* cfg = &layer->config.dropout;
+
+                    /* Create gradient for previous layer */
+                    nimcp_tensor_t* new_grad = nimcp_tensor_clone(grad);
+                    if (!new_grad) {
+                        nimcp_free(layer_stack);
+                        nimcp_tensor_destroy(grad);
+                        return NIMCP_ERROR_NO_MEMORY;
+                    }
+
+                    /* Apply scaling during training mode */
+                    if (trainer->training_mode && cfg->dropout_rate > 0.0f) {
+                        float scale = 1.0f / (1.0f - cfg->dropout_rate);
+                        float* grad_data_ptr = nimcp_tensor_data(new_grad);
+                        size_t numel = nimcp_tensor_numel(new_grad);
+
+                        for (size_t j = 0; j < numel; j++) {
+                            grad_data_ptr[j] *= scale;
+                        }
+                    }
+
+                    nimcp_tensor_destroy(grad);
+                    grad = new_grad;
+                    grad_data = nimcp_tensor_data(grad);
+                }
+                break;
+            }
+
+            case CNN_LAYER_BATCH_NORM: {
+                /* WHAT: BatchNorm backward - compute gamma/beta gradients and input gradient
+                 * WHY:  Enable learning of normalization parameters
+                 * HOW:  Recompute statistics, compute parameter gradients, backpropagate
+                 *
+                 * BIOLOGICAL BASIS: Normalization maintains homeostatic balance,
+                 * analogous to gain control mechanisms in biological circuits
+                 */
+                const cnn_batch_norm_config_t* cfg = &layer->config.batch_norm;
+                const float* in_data = nimcp_tensor_data_const(layer_input);
+
+                /* Get shape: (batch, channels, height, width) */
+                nimcp_tensor_shape_t in_shape;
+                nimcp_tensor_get_shape(layer_input, &in_shape);
+                uint32_t batch = in_shape.dims[0];
+                uint32_t channels = cfg->num_features;
+                size_t spatial = nimcp_tensor_numel(layer_input) / (batch * channels);
+                size_t batch_spatial = batch * spatial;
+
+                /* Gradient accumulators */
+                float* gamma_grad = layer->weight_grad ? nimcp_tensor_data(layer->weight_grad) : NULL;
+                float* beta_grad = layer->bias_grad ? nimcp_tensor_data(layer->bias_grad) : NULL;
+
+                /* Per-channel backward pass */
+                for (uint32_t c = 0; c < channels; c++) {
+                    /* 1. Recompute channel mean */
+                    float mean = 0.0f;
+                    for (uint32_t b = 0; b < batch; b++) {
+                        for (size_t s = 0; s < spatial; s++) {
+                            size_t idx = b * channels * spatial + c * spatial + s;
+                            mean += in_data[idx];
+                        }
+                    }
+                    mean /= (float)batch_spatial;
+
+                    /* 2. Recompute channel variance */
+                    float var = 0.0f;
+                    for (uint32_t b = 0; b < batch; b++) {
+                        for (size_t s = 0; s < spatial; s++) {
+                            size_t idx = b * channels * spatial + c * spatial + s;
+                            float diff = in_data[idx] - mean;
+                            var += diff * diff;
+                        }
+                    }
+                    var /= (float)batch_spatial;
+
+                    float std_inv = 1.0f / sqrtf(var + cfg->epsilon);
+                    float gamma_c = (layer->weights && cfg->affine) ?
+                                    nimcp_tensor_data_const(layer->weights)[c] : 1.0f;
+
+                    /* 3. Accumulate gamma gradient: dL/dgamma = sum(grad * normalized) */
+                    if (gamma_grad && cfg->affine) {
+                        for (uint32_t b = 0; b < batch; b++) {
+                            for (size_t s = 0; s < spatial; s++) {
+                                size_t idx = b * channels * spatial + c * spatial + s;
+                                float normalized = (in_data[idx] - mean) * std_inv;
+                                gamma_grad[c] += grad_data[idx] * normalized;
+                            }
+                        }
+                    }
+
+                    /* 4. Accumulate beta gradient: dL/dbeta = sum(grad) */
+                    if (beta_grad && cfg->affine) {
+                        for (uint32_t b = 0; b < batch; b++) {
+                            for (size_t s = 0; s < spatial; s++) {
+                                size_t idx = b * channels * spatial + c * spatial + s;
+                                beta_grad[c] += grad_data[idx];
+                            }
+                        }
+                    }
+
+                    /* 5. Scale input gradient: dx = gamma * grad / sqrt(var + eps) */
+                    if (i > 0) {
+                        for (uint32_t b = 0; b < batch; b++) {
+                            for (size_t s = 0; s < spatial; s++) {
+                                size_t idx = b * channels * spatial + c * spatial + s;
+                                grad_data[idx] *= gamma_c * std_inv;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
 
             case CNN_LAYER_CONV2D: {
                 /* Full convolution backward pass */
