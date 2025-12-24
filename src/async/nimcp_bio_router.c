@@ -261,8 +261,8 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
 
     nimcp_platform_mutex_lock(&queue->mutex);
 
-    // Wait for space if full
-    if (queue->count >= queue->capacity) {
+    // Wait for space if full (protect against spurious wakeups with while loop)
+    while (queue->count >= queue->capacity) {
         if (timeout_ms == 0) {
             nimcp_platform_mutex_unlock(&queue->mutex);
             return -1;  // Would block
@@ -276,10 +276,7 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
             return -1;  // Timeout or error
         }
 
-        if (queue->count >= queue->capacity) {
-            nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;  // Still full after wait
-        }
+        // Loop will re-check condition to handle spurious wakeups
     }
 
     // Copy message data

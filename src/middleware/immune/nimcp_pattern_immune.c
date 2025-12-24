@@ -194,13 +194,11 @@ pattern_immune_bridge_t* pattern_immune_bridge_create(
     memset(bridge->anomalies, 0, sizeof(pattern_anomaly_t) * bridge->anomaly_capacity);
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge->anomalies);
-        nimcp_free(bridge);
-        return NULL;
+        nimcp_free(bridge);    return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     /* Initialize accuracy factors to 1.0 (no degradation) */
     bridge->inflammation_effects.oscillation_accuracy_factor = 1.0f;

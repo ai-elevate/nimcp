@@ -14,6 +14,41 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <pthread.h>
+
+/*=============================================================================
+ * Thread-Local RNG State
+ *===========================================================================*/
+
+/* Thread-local RNG state */
+static __thread unsigned int tls_seed = 0;
+static __thread bool tls_seed_initialized = false;
+
+/**
+ * @brief Initialize thread-local RNG seed
+ *
+ * WHAT: One-time initialization of thread-local random seed
+ * WHY:  rand_r() requires per-thread seed for thread safety
+ * HOW:  Combine timestamp and thread ID for uniqueness
+ */
+static void ensure_rng_initialized(void) {
+    if (!tls_seed_initialized) {
+        tls_seed = (unsigned int)time(NULL) ^ (unsigned int)pthread_self();
+        tls_seed_initialized = true;
+    }
+}
+
+/**
+ * @brief Thread-safe random integer generator
+ *
+ * WHAT: Reentrant random number generator
+ * WHY:  rand() is not thread-safe, rand_r() is
+ * HOW:  Uses thread-local seed with rand_r()
+ */
+static int thread_safe_rand(void) {
+    ensure_rng_initialized();
+    return rand_r(&tls_seed);
+}
 
 /*=============================================================================
  * Internal Helper Functions
@@ -124,7 +159,7 @@ static float activation_derivative(float x, lnn_activation_t activation) {
  * WHY:  Weight initialization requires Gaussian samples
  * HOW:  Box-Muller transform of uniform samples
  *
- * THREAD SAFETY: Uses thread-local storage for cached spare value
+ * THREAD SAFETY: Uses thread-local storage for cached spare value and RNG
  */
 static float randn(void) {
     static __thread bool has_spare = false;
@@ -135,9 +170,9 @@ static float randn(void) {
         return spare;
     }
 
-    /* Box-Muller transform */
-    float u1 = (float)rand() / (float)RAND_MAX;
-    float u2 = (float)rand() / (float)RAND_MAX;
+    /* Box-Muller transform with thread-safe RNG */
+    float u1 = (float)thread_safe_rand() / (float)RAND_MAX;
+    float u2 = (float)thread_safe_rand() / (float)RAND_MAX;
 
     /* Avoid log(0) */
     if (u1 < 1e-10f) u1 = 1e-10f;
@@ -572,7 +607,9 @@ int lnn_neuron_accumulate_gradients(lnn_neuron_t* neuron,
 
     /* Gradient w.r.t. tau parameters (simplified) */
     /* ∂L/∂τ = ∂L/∂x * x/τ² */
-    float grad_tau = upstream_grad * neuron->x / (tau * tau);
+    /* Guard: prevent division by zero */
+    float tau_sq = fmaxf(tau * tau, 1e-8f);
+    float grad_tau = upstream_grad * neuron->x / tau_sq;
 
     /* ∂L/∂w_τ = ∂L/∂τ * ∂τ/∂w_τ = ∂L/∂τ * τ_base * σ'(z_τ) * [x; I] */
     float tau_input = neuron->b_tau;

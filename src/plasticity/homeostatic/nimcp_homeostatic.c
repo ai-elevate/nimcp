@@ -75,6 +75,9 @@ struct homeostatic_controller_struct {
 
     /* Sleep integration */
     sleep_state_t current_sleep_state;
+
+    /* Thread safety */
+    nimcp_mutex_t mutex;
 };
 
 //=============================================================================
@@ -625,6 +628,9 @@ homeostatic_controller_t homeostatic_controller_create(
     /* Initialize sleep state to awake */
     ctrl->current_sleep_state = SLEEP_STATE_AWAKE;
 
+    /* Initialize mutex for thread safety */
+    nimcp_mutex_init(&ctrl->mutex, NULL);
+
     NIMCP_LOGGING_INFO("Created homeostatic controller: neurons=%u, scaling=%d, ip=%d, meta=%d",
                        num_neurons,
                        config->enable_synaptic_scaling,
@@ -641,6 +647,9 @@ void homeostatic_controller_destroy(homeostatic_controller_t controller) {
 
     /* Guard: Validate input */
     if (!controller) return;
+
+    /* Destroy mutex */
+    nimcp_mutex_destroy(&controller->mutex);
 
     nimcp_free(controller->scaling_states);
     nimcp_free(controller->ip_states);
@@ -662,11 +671,15 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
     /* Guard: Validate inputs */
     if (!controller || !firing_rates) return;
 
+    /* Thread-safe update with mutex lock */
+    nimcp_mutex_lock(&controller->mutex);
+
     /* Accumulate time */
     controller->time_since_update += dt;
 
     /* Check if update interval reached */
     if (controller->time_since_update < controller->config.update_interval_ms) {
+        nimcp_mutex_unlock(&controller->mutex);
         return;
     }
     controller->time_since_update = 0.0F;
@@ -754,6 +767,8 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
     controller->stats.neurons_below_target = below;
     controller->stats.neurons_stable = stable;
     controller->stats.stability_score = (float)stable / controller->num_neurons;
+
+    nimcp_mutex_unlock(&controller->mutex);
 }
 
 bool homeostatic_controller_get_stats(homeostatic_controller_t controller,

@@ -101,7 +101,7 @@ cortical_neuromodulation_sleep_bridge_t cortical_neuromodulation_sleep_bridge_cr
     bridge->neuromodulation_module = neuromodulation_module;
     bridge->sleep_system = sleep;
 
-    bridge->base.mutex = nimcp_mutex_create();
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -127,7 +127,7 @@ void cortical_neuromodulation_sleep_bridge_destroy(cortical_neuromodulation_slee
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_neuromodulation_on_sleep_state_change, bridge);
     }
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 

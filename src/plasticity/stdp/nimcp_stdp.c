@@ -74,6 +74,9 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
 
     synapse->current_sleep_state = SLEEP_STATE_AWAKE;  /* Default to awake */
 
+    /* Initialize spinlock for thread safety */
+    nimcp_spinlock_init(&synapse->lock);
+
     synapse->pre_trace = 0.0F;
     synapse->post_trace = 0.0F;
 
@@ -109,6 +112,9 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     float modulated_a_minus = synapse->a_minus / ratio_factor;  /* Lower ratio = higher A- */
     float weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
 
+    /* Thread-safe weight modification */
+    nimcp_spinlock_lock(&synapse->lock);
+
     if (weight_change < 0.0F) {
         synapse->num_depression_events++;
         synapse->total_ltd += fabsf(weight_change);
@@ -121,6 +127,8 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
 
     /* Increment presynaptic trace */
     synapse->pre_trace += 1.0F;
+
+    nimcp_spinlock_unlock(&synapse->lock);
 
     return weight_change;
 }
@@ -137,6 +145,9 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     float modulated_a_plus = synapse->a_plus * ratio_factor;  /* Higher ratio = higher A+ */
     float weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
 
+    /* Thread-safe weight modification */
+    nimcp_spinlock_lock(&synapse->lock);
+
     if (weight_change > 0.0F) {
         synapse->num_potentiation_events++;
         synapse->total_ltp += weight_change;
@@ -149,6 +160,8 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
 
     /* Increment postsynaptic trace */
     synapse->post_trace += 1.0F;
+
+    nimcp_spinlock_unlock(&synapse->lock);
 
     return weight_change;
 }

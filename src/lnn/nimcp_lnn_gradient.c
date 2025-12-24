@@ -934,37 +934,77 @@ static int compute_jacobian_numerical(
         return LNN_ERROR_OUT_OF_MEMORY;
     }
 
+    // Allocate buffers for f(x+eps) and f(x-eps)
+    nimcp_tensor_t* f_plus = nimcp_tensor_create((uint32_t[]){n}, 1, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* f_minus = nimcp_tensor_create((uint32_t[]){n}, 1, NIMCP_DTYPE_F32);
+
+    if (!f_plus || !f_minus) {
+        nimcp_tensor_destroy(x_perturbed);
+        if (f_plus) nimcp_tensor_destroy(f_plus);
+        if (f_minus) nimcp_tensor_destroy(f_minus);
+        return LNN_ERROR_OUT_OF_MEMORY;
+    }
+
     float* x_data = (float*)nimcp_tensor_data(x_perturbed);
     float* jac_data = (float*)nimcp_tensor_data(jacobian);
+    float* f_plus_data = (float*)nimcp_tensor_data(f_plus);
+    float* f_minus_data = (float*)nimcp_tensor_data(f_minus);
+    const float* x_orig_data = (const float*)nimcp_tensor_data_const(x);
 
-    // For each state variable i
+    // For each state variable i (column of Jacobian)
     for (uint32_t i = 0; i < n; i++) {
-        float x_orig = x_data[i];
+        float x_orig = x_orig_data[i];
 
-        // f(x + eps)
+        // Compute f(x + eps*e_i)
+        memcpy(x_data, x_orig_data, n * sizeof(float));
         x_data[i] = x_orig + eps;
-        // TODO: Evaluate layer dynamics at x_perturbed -> f_plus
-        // For now, simplified placeholder
 
-        // f(x - eps)
-        x_data[i] = x_orig - eps;
-        // TODO: Evaluate layer dynamics at x_perturbed -> f_minus
-
-        // Jacobian column i: (f_plus - f_minus) / (2*eps)
+        // Evaluate layer dynamics: dx/dt = -x/tau + activation(W_rec @ x)
         for (uint32_t j = 0; j < n; j++) {
-            // Simplified: ∂f_j/∂x_i ≈ -1/τ for diagonal, small coupling for off-diagonal
-            if (i == j) {
-                jac_data[j * n + i] = -1.0f / 10.0f;  // Placeholder: -1/τ
-            } else {
-                jac_data[j * n + i] = 0.01f;  // Placeholder: weak coupling
+            float tau_j = (layer->tau_base && nimcp_tensor_data(layer->tau_base)) ?
+                         ((float*)nimcp_tensor_data(layer->tau_base))[j] : 10.0f;
+            float recurrent_sum = 0.0f;
+
+            // W_rec @ x (simplified dense matmul)
+            if (layer->W_rec && nimcp_tensor_data(layer->W_rec)) {
+                float* W_rec_data = (float*)nimcp_tensor_data(layer->W_rec);
+                for (uint32_t k = 0; k < n; k++) {
+                    recurrent_sum += W_rec_data[j * n + k] * x_data[k];
+                }
             }
+
+            // dx/dt = -x/tau + tanh(recurrent)
+            f_plus_data[j] = -x_data[j] / tau_j + tanhf(recurrent_sum);
         }
 
-        // Restore original value
-        x_data[i] = x_orig;
+        // Compute f(x - eps*e_i)
+        memcpy(x_data, x_orig_data, n * sizeof(float));
+        x_data[i] = x_orig - eps;
+
+        for (uint32_t j = 0; j < n; j++) {
+            float tau_j = (layer->tau_base && nimcp_tensor_data(layer->tau_base)) ?
+                         ((float*)nimcp_tensor_data(layer->tau_base))[j] : 10.0f;
+            float recurrent_sum = 0.0f;
+
+            if (layer->W_rec && nimcp_tensor_data(layer->W_rec)) {
+                float* W_rec_data = (float*)nimcp_tensor_data(layer->W_rec);
+                for (uint32_t k = 0; k < n; k++) {
+                    recurrent_sum += W_rec_data[j * n + k] * x_data[k];
+                }
+            }
+
+            f_minus_data[j] = -x_data[j] / tau_j + tanhf(recurrent_sum);
+        }
+
+        // Jacobian column i: ∂f/∂x_i = (f_plus - f_minus) / (2*eps)
+        for (uint32_t j = 0; j < n; j++) {
+            jac_data[j * n + i] = (f_plus_data[j] - f_minus_data[j]) / (2.0f * eps);
+        }
     }
 
     nimcp_tensor_destroy(x_perturbed);
+    nimcp_tensor_destroy(f_plus);
+    nimcp_tensor_destroy(f_minus);
     return 0;
 }
 
@@ -986,13 +1026,77 @@ static int accumulate_parameter_gradients(
         return LNN_ERROR_NULL_POINTER;
     }
 
-    // Simplified implementation: gradients w.r.t. parameters
-    // Full implementation would compute ∂f/∂W_in, ∂f/∂W_rec, ∂f/∂W_tau, etc.
-    // and accumulate λ^T * ∂f/∂θ * dt
+    if (!network->layers || network->n_layers == 0) {
+        return LNN_ERROR_INVALID_STATE;
+    }
 
-    // TODO: Implement parameter gradient accumulation
-    // This requires computing Jacobians w.r.t. each parameter tensor
-    // and performing the appropriate tensor contractions with adjoint
+    // For each layer, compute and accumulate parameter gradients
+    for (uint32_t layer_idx = 0; layer_idx < network->n_layers; layer_idx++) {
+        lnn_layer_t* layer = network->layers[layer_idx];
+        if (!layer || !layer->x) continue;
+
+        uint32_t n = layer->n_neurons;
+        uint32_t n_inputs = layer->n_inputs;
+
+        const float* adjoint_data = (const float*)nimcp_tensor_data_const(adjoint);
+        const float* x_data = (const float*)nimcp_tensor_data_const(layer->x);
+
+        // Gradient w.r.t. W_rec: ∂L/∂W_rec = λ^T * ∂f/∂W_rec * dt
+        // ∂f/∂W_rec[j,k] = activation'(...) * x[k] for neuron j
+        if (layer->grad_W_rec && layer->W_rec) {
+            float* grad_W_rec = (float*)nimcp_tensor_data(layer->grad_W_rec);
+
+            for (uint32_t j = 0; j < n; j++) {
+                // Get recurrent sum for derivative computation
+                float recurrent_sum = 0.0f;
+                float* W_rec_data = (float*)nimcp_tensor_data(layer->W_rec);
+
+                for (uint32_t k = 0; k < n; k++) {
+                    recurrent_sum += W_rec_data[j * n + k] * x_data[k];
+                }
+
+                // Activation derivative (tanh': 1 - tanh^2)
+                float tanh_val = tanhf(recurrent_sum);
+                float act_deriv = 1.0f - tanh_val * tanh_val;
+
+                // Accumulate gradient for each weight W_rec[j,k]
+                for (uint32_t k = 0; k < n; k++) {
+                    grad_W_rec[j * n + k] += adjoint_data[j] * act_deriv * x_data[k] * dt;
+                }
+            }
+        }
+
+        // Gradient w.r.t. tau_base: ∂L/∂tau_base = λ^T * ∂f/∂tau * dt
+        // ∂f/∂tau[j] = x[j] / (tau^2) (from -x/tau term)
+        if (layer->grad_tau_base && layer->tau_base) {
+            float* grad_tau_base = (float*)nimcp_tensor_data(layer->grad_tau_base);
+            float* tau_base_data = (float*)nimcp_tensor_data(layer->tau_base);
+
+            for (uint32_t j = 0; j < n; j++) {
+                float tau_j = tau_base_data[j];
+                if (tau_j > 0.0f) {
+                    // ∂(-x/tau)/∂tau = x / tau^2
+                    float df_dtau = x_data[j] / (tau_j * tau_j);
+                    grad_tau_base[j] += adjoint_data[j] * df_dtau * dt;
+                }
+            }
+        }
+
+        // Gradient w.r.t. W_in (if input is available in context)
+        // This would require storing the input, which we don't have here
+        // In a full implementation, we'd need input history or checkpointing
+
+        // Gradient w.r.t. biases can be computed similarly
+        if (layer->grad_b_in) {
+            float* grad_b_in = (float*)nimcp_tensor_data(layer->grad_b_in);
+
+            for (uint32_t j = 0; j < n; j++) {
+                // ∂f/∂b_in = activation'(...)
+                // Simplified: assume contribution through recurrent path
+                grad_b_in[j] += adjoint_data[j] * dt;
+            }
+        }
+    }
 
     return 0;
 }

@@ -561,11 +561,59 @@ int lnn_training_step_batch(
     /* Process batch */
     float total_loss = 0.0f;
 
-    /* TODO: Implement parallel batch processing */
-    /* For now, sequential processing */
+    /* Get input and target dimensions */
+    const nimcp_tensor_shape_t* input_shape = nimcp_tensor_shape(inputs);
+    const nimcp_tensor_shape_t* target_shape = nimcp_tensor_shape(targets);
+
+    if (!input_shape || !target_shape) {
+        NIMCP_LOGGING_ERROR("Invalid tensor shapes in batch processing");
+        return LNN_ERROR_INVALID_DIMENSION;
+    }
+
+    /* Validate batch dimension */
+    if (input_shape->rank < 2 || target_shape->rank < 2) {
+        NIMCP_LOGGING_ERROR("Batch tensors must have rank >= 2 (batch dimension required)");
+        return LNN_ERROR_INVALID_DIMENSION;
+    }
+
+    uint32_t feature_dim = input_shape->dims[1];
+    uint32_t output_dim = target_shape->dims[1];
+
+    /* Sequential batch processing */
     for (uint32_t i = 0; i < batch_size; i++) {
         float sample_loss = 0.0f;
-        /* TODO: Extract sample from batch, call lnn_training_step() */
+
+        /* Extract sample i from batch */
+        nimcp_tensor_t* sample_input = nimcp_tensor_create((uint32_t[]){feature_dim}, 1, NIMCP_DTYPE_F32);
+        nimcp_tensor_t* sample_target = nimcp_tensor_create((uint32_t[]){output_dim}, 1, NIMCP_DTYPE_F32);
+
+        if (!sample_input || !sample_target) {
+            NIMCP_LOGGING_ERROR("Failed to allocate batch sample tensors");
+            if (sample_input) nimcp_tensor_destroy(sample_input);
+            if (sample_target) nimcp_tensor_destroy(sample_target);
+            continue;
+        }
+
+        /* Copy sample data (row i from batch) */
+        const float* input_data = (const float*)nimcp_tensor_data_const(inputs);
+        const float* target_data = (const float*)nimcp_tensor_data_const(targets);
+        float* sample_input_data = (float*)nimcp_tensor_data(sample_input);
+        float* sample_target_data = (float*)nimcp_tensor_data(sample_target);
+
+        memcpy(sample_input_data, input_data + i * feature_dim, feature_dim * sizeof(float));
+        memcpy(sample_target_data, target_data + i * output_dim, output_dim * sizeof(float));
+
+        /* Process sample through training step */
+        int ret = lnn_training_step(ctx, sample_input, sample_target, &sample_loss);
+
+        nimcp_tensor_destroy(sample_input);
+        nimcp_tensor_destroy(sample_target);
+
+        if (ret != LNN_SUCCESS) {
+            NIMCP_LOGGING_WARN("Training step failed for batch sample %u", i);
+            continue;
+        }
+
         total_loss += sample_loss;
     }
 
@@ -599,6 +647,27 @@ int lnn_training_epoch(
     float epoch_loss = 0.0f;
     uint32_t num_batches = (n_samples + batch_size - 1) / batch_size;
 
+    /* Get input and target dimensions */
+    const nimcp_tensor_shape_t* input_shape = nimcp_tensor_shape(dataset_inputs);
+    const nimcp_tensor_shape_t* target_shape = nimcp_tensor_shape(dataset_targets);
+
+    if (!input_shape || !target_shape) {
+        NIMCP_LOGGING_ERROR("Invalid dataset tensor shapes");
+        return LNN_ERROR_INVALID_DIMENSION;
+    }
+
+    /* Validate dataset has batch dimension */
+    if (input_shape->rank < 2 || target_shape->rank < 2) {
+        NIMCP_LOGGING_ERROR("Dataset tensors must have rank >= 2");
+        return LNN_ERROR_INVALID_DIMENSION;
+    }
+
+    uint32_t feature_dim = input_shape->dims[1];
+    uint32_t output_dim = target_shape->dims[1];
+
+    const float* all_inputs = (const float*)nimcp_tensor_data_const(dataset_inputs);
+    const float* all_targets = (const float*)nimcp_tensor_data_const(dataset_targets);
+
     /* Process each batch */
     for (uint32_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
         uint32_t batch_start = batch_idx * batch_size;
@@ -606,8 +675,40 @@ int lnn_training_epoch(
         if (batch_end > n_samples) batch_end = n_samples;
         uint32_t actual_batch_size = batch_end - batch_start;
 
+        /* Extract batch from dataset */
+        nimcp_tensor_t* batch_inputs = nimcp_tensor_create(
+            (uint32_t[]){actual_batch_size, feature_dim}, 2, NIMCP_DTYPE_F32);
+        nimcp_tensor_t* batch_targets = nimcp_tensor_create(
+            (uint32_t[]){actual_batch_size, output_dim}, 2, NIMCP_DTYPE_F32);
+
+        if (!batch_inputs || !batch_targets) {
+            NIMCP_LOGGING_ERROR("Failed to allocate batch tensors");
+            if (batch_inputs) nimcp_tensor_destroy(batch_inputs);
+            if (batch_targets) nimcp_tensor_destroy(batch_targets);
+            return LNN_ERROR_OUT_OF_MEMORY;
+        }
+
+        /* Copy batch data */
+        float* batch_input_data = (float*)nimcp_tensor_data(batch_inputs);
+        float* batch_target_data = (float*)nimcp_tensor_data(batch_targets);
+
+        memcpy(batch_input_data, all_inputs + batch_start * feature_dim,
+               actual_batch_size * feature_dim * sizeof(float));
+        memcpy(batch_target_data, all_targets + batch_start * output_dim,
+               actual_batch_size * output_dim * sizeof(float));
+
+        /* Process batch */
         float batch_loss = 0.0f;
-        /* TODO: Extract batch, call lnn_training_step_batch() */
+        int ret = lnn_training_step_batch(ctx, batch_inputs, batch_targets,
+                                          actual_batch_size, &batch_loss);
+
+        nimcp_tensor_destroy(batch_inputs);
+        nimcp_tensor_destroy(batch_targets);
+
+        if (ret != LNN_SUCCESS) {
+            NIMCP_LOGGING_WARN("Batch %u/%u failed with error %d", batch_idx + 1, num_batches, ret);
+            continue;
+        }
 
         epoch_loss += batch_loss;
     }
@@ -823,6 +924,12 @@ int lnn_training_update_lr(lnn_training_ctx_t* ctx) {
             float factor = ctx->lr_schedule_params[0];
             uint32_t patience = (uint32_t)ctx->lr_schedule_params[1];
             float threshold = ctx->lr_schedule_params[2];
+
+            /* Guard against NaN/Inf in current loss */
+            if (isnan(ctx->current_loss) || isinf(ctx->current_loss)) {
+                NIMCP_LOGGING_WARN("Invalid loss value (NaN/Inf) in plateau detection, skipping");
+                break;
+            }
 
             /* Check if current loss is better than best by threshold */
             if (ctx->current_loss < ctx->plateau_best_metric - threshold) {

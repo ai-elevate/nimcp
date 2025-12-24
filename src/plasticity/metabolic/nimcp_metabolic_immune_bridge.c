@@ -151,12 +151,10 @@ metabolic_immune_bridge_t* metabolic_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        nimcp_free(bridge);
-        return NULL;
+        nimcp_free(bridge);    return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Metabolic-immune bridge created successfully");
     return bridge;

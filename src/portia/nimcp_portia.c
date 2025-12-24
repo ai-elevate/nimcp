@@ -164,10 +164,9 @@ static portia_context_t* g_portia_ctx = NULL;
 // Forward Declarations
 //=============================================================================
 
-/* TODO: Re-enable when bio-router integration is complete */
-/* static nimcp_error_t portia_message_handler(
+static nimcp_error_t portia_message_handler(
     const void* msg, size_t msg_size,
-    nimcp_bio_promise_t response_promise, void* user_data); */
+    nimcp_bio_promise_t response_promise, void* user_data);
 
 static nimcp_error_t portia_tier_manager_create(portia_tier_manager_t** out_mgr, const portia_tier_config_t* config);
 static void portia_tier_manager_destroy(portia_tier_manager_t* mgr);
@@ -385,7 +384,14 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         if (!ctx->bio_ctx) {
             LOG_WARN(LOG_MODULE, "Failed to register with bio-router (continuing anyway)");
         } else {
-            LOG_INFO(LOG_MODULE, "Registered with bio-router");
+            // Register message handler for Portia messages
+            bio_router_register_handler(ctx->bio_ctx,
+                                       (bio_message_type_t)BIO_MSG_TYPE_PORTIA_STATUS_QUERY,
+                                       portia_message_handler);
+            bio_router_register_handler(ctx->bio_ctx,
+                                       (bio_message_type_t)BIO_MSG_TYPE_PORTIA_TIER_QUERY,
+                                       portia_message_handler);
+            LOG_INFO(LOG_MODULE, "Registered with bio-router and message handlers");
         }
     }
 
@@ -761,8 +767,6 @@ nimcp_error_t portia_get_accelerators(
 // Bio-Async Message Handler
 //=============================================================================
 
-/* TODO: Implement message handler when bio-router integration is complete */
-/*
 static nimcp_error_t portia_message_handler(
     const void* msg, size_t msg_size,
     nimcp_bio_promise_t response_promise, void* user_data)
@@ -806,7 +810,6 @@ static nimcp_error_t portia_message_handler(
         return NIMCP_SUCCESS;
     }
 }
-*/
 
 //=============================================================================
 // Utility Functions

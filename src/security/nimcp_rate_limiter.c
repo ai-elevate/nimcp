@@ -654,7 +654,22 @@ uint64_t nimcp_rate_limiter_time_until_ready(
     uint64_t wait_ms = 0;
     if (bucket->tokens < 1.0F) {
         float tokens_needed = 1.0F - bucket->tokens;
-        wait_ms = (uint64_t)(tokens_needed / bucket->stats.current_rate * 1000.0F);
+
+        /* Guard against division by zero or very small rates */
+        if (bucket->stats.current_rate > 1e-6F) {
+            float wait_time = tokens_needed / bucket->stats.current_rate * 1000.0F;
+
+            /* Cap maximum wait time to prevent overflow (max 1 hour) */
+            const uint64_t MAX_WAIT_MS = 3600000ULL;  /* 1 hour in milliseconds */
+            if (wait_time > (float)MAX_WAIT_MS) {
+                wait_ms = MAX_WAIT_MS;
+            } else {
+                wait_ms = (uint64_t)wait_time;
+            }
+        } else {
+            /* Rate too small, cap at maximum wait */
+            wait_ms = 3600000ULL;  /* 1 hour */
+        }
     }
 
     nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);

@@ -526,4 +526,27 @@ typedef struct {
 #define NIMCP_ARRAY_MAX_ELEMENTS 100000
 #define NIMCP_ARRAY_ALIGNMENT 8
 
+/* ============================================================================
+ * Validation Macros
+ * ============================================================================ */
+
+/**
+ * @brief Validate that enum value is within valid range
+ *
+ * WHAT: Checks if enum value is non-negative and less than max count
+ * WHY:  Prevent array out-of-bounds access when using enums as array indices
+ * HOW:  Evaluates to true if value is in range [0, max), false otherwise
+ *
+ * @param val Enum value to validate
+ * @param max Maximum valid value (exclusive, typically ENUM_COUNT)
+ * @return true if valid, false otherwise
+ *
+ * EXAMPLE:
+ *   if (!NIMCP_VALIDATE_ENUM(threat->type, THREAT_COUNT)) {
+ *       LOG_ERROR("Invalid threat type: %d", threat->type);
+ *       return NIMCP_INVALID_PARAM;
+ *   }
+ */
+#define NIMCP_VALIDATE_ENUM(val, max) ((val) >= 0 && (val) < (max))
+
 #endif /* NIMCP_COMMON_H */

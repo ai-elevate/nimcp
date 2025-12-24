@@ -18,57 +18,88 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <pthread.h>
+
+/*=============================================================================
+ * Thread-Local RNG State
+ *===========================================================================*/
+
+/* Thread-local RNG state */
+static __thread unsigned int tls_seed = 0;
+static __thread bool tls_seed_initialized = false;
+
+/**
+ * @brief Initialize thread-local RNG seed
+ *
+ * WHAT: One-time initialization of thread-local random seed
+ * WHY:  rand_r() requires per-thread seed for thread safety
+ * HOW:  Combine timestamp and thread ID for uniqueness
+ */
+static void ensure_rng_initialized(void) {
+    if (!tls_seed_initialized) {
+        tls_seed = (unsigned int)time(NULL) ^ (unsigned int)pthread_self();
+        tls_seed_initialized = true;
+    }
+}
+
+/**
+ * @brief Thread-safe random integer generator
+ *
+ * WHAT: Reentrant random number generator
+ * WHY:  rand() is not thread-safe, rand_r() is
+ * HOW:  Uses thread-local seed with rand_r()
+ */
+static int thread_safe_rand(void) {
+    ensure_rng_initialized();
+    return rand_r(&tls_seed);
+}
 
 /*=============================================================================
  * Internal Helper Functions
  *===========================================================================*/
 
 /**
- * @brief Initialize pseudo-random number generator
+ * @brief Initialize thread-local pseudo-random number generator
  *
- * WHAT: Seed RNG for reproducible graph generation
- * WHY:  Tests need deterministic results
- * HOW:  Use provided seed or time(NULL) if seed is 0
+ * WHAT: Seed thread-local RNG for reproducible graph generation
+ * WHY:  Tests need deterministic results, multi-threading needs safety
+ * HOW:  Set thread-local seed or initialize from time + thread ID
  *
- * THREAD SAFETY: Note that rand() is not guaranteed to be thread-safe by C standard.
- *                For thread-safe RNG, consider using rand_r() or platform-specific APIs.
+ * THREAD SAFETY: Uses thread-local storage for per-thread RNG state
  *
- * @param seed Random seed (0 = use current time)
+ * @param seed Random seed (0 = use current time + thread ID)
  *
  * NOTE: 64-bit seed is XOR-folded to 32 bits to preserve entropy
  */
 static void lnn_wiring_seed_rng(uint64_t seed) {
-    unsigned int seed32;
-
     if (seed == 0) {
-        seed32 = (unsigned int)time(NULL);
+        ensure_rng_initialized();
     } else {
         /* XOR-fold 64-bit seed to 32 bits to preserve entropy */
-        seed32 = (unsigned int)(seed ^ (seed >> 32));
+        tls_seed = (unsigned int)(seed ^ (seed >> 32));
+        tls_seed_initialized = true;
     }
-
-    srand(seed32);
 }
 
 /**
- * @brief Generate random float in [0, 1)
+ * @brief Generate random float in [0, 1) (thread-safe)
  *
  * WHAT: Uniform random number generator
  * WHY:  Needed for probabilistic edge creation
- * HOW:  Use rand() and normalize
+ * HOW:  Use thread-safe rand_r() and normalize
  *
  * @return Random float in [0, 1)
  */
 static float lnn_wiring_randf(void) {
-    return (float)rand() / (float)RAND_MAX;
+    return (float)thread_safe_rand() / (float)RAND_MAX;
 }
 
 /**
- * @brief Generate random integer in [min, max)
+ * @brief Generate random integer in [min, max) (thread-safe)
  *
  * WHAT: Uniform random integer generator
  * WHY:  Needed for selecting random nodes
- * HOW:  Scale rand() to range
+ * HOW:  Scale thread-safe rand_r() to range
  *
  * @param min Minimum value (inclusive)
  * @param max Maximum value (exclusive)
@@ -76,7 +107,7 @@ static float lnn_wiring_randf(void) {
  */
 static uint32_t lnn_wiring_randi(uint32_t min, uint32_t max) {
     if (min >= max) return min;
-    return min + (uint32_t)(rand() % (max - min));
+    return min + (uint32_t)(thread_safe_rand() % (max - min));
 }
 
 /**

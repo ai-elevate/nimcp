@@ -564,7 +564,8 @@ nimcp_path_error_t nimcp_path_normalize(
     /* Guard: Empty path */
     if (*path == '\0') {
         if (max_len < 2) return NIMCP_PATH_ERROR_BUFFER_TOO_SMALL;
-        strcpy(normalized, ".");
+        normalized[0] = '.';
+        normalized[1] = '\0';
         return NIMCP_PATH_SUCCESS;
     }
 

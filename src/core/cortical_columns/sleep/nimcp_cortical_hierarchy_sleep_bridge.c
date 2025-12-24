@@ -97,7 +97,7 @@ cortical_hierarchy_sleep_bridge_t cortical_hierarchy_sleep_bridge_create(
     bridge->hierarchy = hierarchy;
     bridge->sleep_system = sleep;
 
-    bridge->base.mutex = nimcp_mutex_create();
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -123,7 +123,7 @@ void cortical_hierarchy_sleep_bridge_destroy(cortical_hierarchy_sleep_bridge_t b
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_hierarchy_on_sleep_state_change, bridge);
     }
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 

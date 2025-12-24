@@ -33,6 +33,9 @@
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/random.h>
 
 /*=============================================================================
  * INTERNAL CONSTANTS

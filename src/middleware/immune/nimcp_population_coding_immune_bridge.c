@@ -215,12 +215,10 @@ population_immune_bridge_t* population_immune_bridge_create(
     bridge->health_metrics.fully_recovered = true;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        nimcp_free(bridge);
-        return NULL;
+        nimcp_free(bridge);    return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("population_immune_bridge",
                   "Bridge created successfully");

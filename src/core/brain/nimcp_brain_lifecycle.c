@@ -138,6 +138,10 @@ static adaptive_spike_params_t build_spike_params(float sparsity_target)
 /**
  * @brief Build base network configuration
  * @complexity O(1) + memory allocation
+ *
+ * MEMORY SAFETY:
+ * - Caller MUST free config.layer_sizes if config.layer_sizes is non-NULL
+ * - On error (NULL layer_sizes), caller should check before using config
  */
 static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t num_outputs,
                                                   uint32_t num_neurons,
@@ -153,6 +157,7 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
     config.layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
     if (!config.layer_sizes) {
         set_error("Failed to allocate layer_sizes array");
+        /* Caller MUST check config.layer_sizes before use */
         return config;
     }
 

@@ -201,14 +201,12 @@ neuromod_immune_system_t* neuromod_immune_create(const neuromod_immune_config_t*
     system->next_imbalance_id = 1;
 
     /* Create mutex for thread safety */
-    pthread_mutex_t* mutex = (pthread_mutex_t*)nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!mutex) {
+    system->mutex = nimcp_platform_mutex_create();
+    if (!system->mutex) {
         nimcp_free(system->imbalances);
         nimcp_free(system);
         return NULL;
     }
-    pthread_mutex_init(mutex, NULL);
-    system->mutex = mutex;
 
     system->running = false;
 

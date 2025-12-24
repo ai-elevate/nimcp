@@ -544,11 +544,8 @@ cortical_training_bridge_t* cortical_training_create(
     memcpy(&bridge->config, config, sizeof(cortical_training_config_t));
 
     /* Create mutex for thread safety */
-    pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (mutex) {
-        pthread_mutex_init(mutex, NULL);
-        bridge->base.mutex = mutex;
-    } else {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;

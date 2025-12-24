@@ -753,12 +753,27 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
     nimcp_mutex_lock(&system->mutex);
 
     uintptr_t check_start = (uintptr_t)address;
+
+    /* Check for integer overflow in address + size */
+    if (size > UINTPTR_MAX - check_start) {
+        /* Overflow would occur - treat as invalid/quarantined */
+        nimcp_mutex_unlock(&system->mutex);
+        return true;
+    }
+
     uintptr_t check_end = check_start + size;
 
     for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
         if (!system->quarantine[i].active) continue;
 
         uintptr_t q_start = (uintptr_t)system->quarantine[i].address;
+
+        /* Check for integer overflow in quarantine region */
+        if (system->quarantine[i].size > UINTPTR_MAX - q_start) {
+            /* Overflow in quarantine region - skip it */
+            continue;
+        }
+
         uintptr_t q_end = q_start + system->quarantine[i].size;
 
         /* Check for overlap */
@@ -821,12 +836,12 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     system->stats.threats_quarantined++;
 
     /* Trigger killer T cell activation if immune system connected */
+    /* SECURITY FIX: Keep mutex locked until immune pointer is safely copied */
     brain_immune_system_t* immune = system->immune_system;
+    bool has_immune = (immune != NULL);
 
-    nimcp_mutex_unlock(&system->mutex);
-
-    /* Activate killer T cell to handle quarantined region */
-    if (immune) {
+    /* Activate killer T cell to handle quarantined region (while holding mutex) */
+    if (has_immune) {
         /* Create antigen for quarantine event */
         uint32_t antigen_id = 0;
         uint8_t epitope[32];
@@ -848,6 +863,8 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
         uint32_t t_cell_id = 0;
         brain_immune_activate_killer_t(immune, antigen_id, &t_cell_id);
     }
+
+    nimcp_mutex_unlock(&system->mutex);
 
     return true;
 }

@@ -748,6 +748,8 @@ static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
     nimcp_error_t error = (state == BIO_FUTURE_FAILED) ? shared->error : NIMCP_SUCCESS;
     const void* result = (state == BIO_FUTURE_COMPLETED) ? shared->result : NULL;
 
+    /* Thread-safe callback iteration - protect against concurrent modifications */
+    nimcp_mutex_lock(&shared->mutex);
     bio_callback_node_t* cb = shared->callbacks;
     while (cb) {
         if (cb->callback) {
@@ -755,6 +757,7 @@ static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
         }
         cb = cb->next;
     }
+    nimcp_mutex_unlock(&shared->mutex);
 }
 
 //=============================================================================

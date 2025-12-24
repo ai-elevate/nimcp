@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "cognitive/nimcp_sleep_wake.h"
+#include "utils/thread/nimcp_thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +62,9 @@ typedef struct {
 
     /* Sleep state modulation */
     sleep_state_t current_sleep_state;  /* Current sleep/wake state */
+
+    /* Thread safety */
+    nimcp_spinlock_t lock;      /* Spinlock for weight modifications */
 
     /* Statistics */
     uint64_t num_potentiation_events;

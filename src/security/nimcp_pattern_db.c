@@ -29,6 +29,8 @@
 #include <pthread.h>
 #include <time.h>
 #include <regex.h>
+#include <signal.h>
+#include <unistd.h>
 
 //=============================================================================
 // Internal Constants
@@ -123,10 +125,69 @@ static bool validate_db(nimcp_pattern_db_t db) {
 }
 
 /**
+ * @brief Check regex pattern complexity to prevent ReDoS
+ *
+ * WHAT: Detect potentially dangerous regex patterns
+ * WHY:  Prevent exponential backtracking attacks (ReDoS)
+ * HOW:  Count nested quantifiers and alternations
+ */
+static bool is_regex_safe(const char* pattern) {
+    if (!pattern) return false;
+
+    int nested_quantifiers = 0;
+    int max_nesting = 0;
+    int alternations = 0;
+    bool in_group = false;
+
+    for (const char* p = pattern; *p; p++) {
+        switch (*p) {
+            case '(':
+                if (in_group) nested_quantifiers++;
+                in_group = true;
+                if (nested_quantifiers > max_nesting) {
+                    max_nesting = nested_quantifiers;
+                }
+                break;
+            case ')':
+                if (nested_quantifiers > 0) nested_quantifiers--;
+                in_group = false;
+                break;
+            case '*':
+            case '+':
+            case '?':
+                /* Check for nested quantifiers */
+                if (nested_quantifiers > 2) {
+                    return false; /* Too much nesting */
+                }
+                break;
+            case '|':
+                alternations++;
+                if (alternations > 10) {
+                    return false; /* Too many alternations */
+                }
+                break;
+        }
+    }
+
+    /* Reject patterns with excessive nesting */
+    if (max_nesting > 3) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Compile regex pattern
  */
 static nimcp_error_t compile_pattern(pattern_slot_t* slot) {
     int regex_flags = REG_EXTENDED;
+
+    /* SECURITY: Check pattern complexity to prevent ReDoS */
+    if (!is_regex_safe(slot->pattern_copy)) {
+        fprintf(stderr, "Pattern rejected: complexity too high (ReDoS risk)\n");
+        return NIMCP_ERROR;
+    }
 
     // Apply flags
     if (slot->entry.flags & NIMCP_PATTERN_FLAG_CASE_INSENSITIVE) {
@@ -208,7 +269,9 @@ static nimcp_error_t create_snapshot(nimcp_pattern_db_t db, uint32_t* snapshot_i
             pattern_snapshot_t* oldest = db->snapshots;
             db->snapshots = oldest->next;
 
-            // Free patterns if ref count is 1
+            // MEMORY SAFETY: ref_count is currently always 1 (no sharing)
+            // Protected by write_lock, so no concurrent access.
+            // TODO: If snapshot sharing is added, use nimcp_atomic_uint32_t for ref_count
             oldest->ref_count--;
             if (oldest->ref_count == 0) {
                 for (size_t i = 0; i < oldest->pattern_count; i++) {
@@ -732,19 +795,22 @@ nimcp_error_t nimcp_pattern_db_rollback(
         return NIMCP_NOT_FOUND;
     }
 
+    // Allocate new patterns array BEFORE freeing old one (atomicity)
+    // MEMORY SAFETY: If allocation fails, db state remains consistent
+    pattern_slot_t* new_patterns = calloc(snapshot->capacity, sizeof(pattern_slot_t));
+    if (!new_patterns) {
+        pthread_rwlock_unlock(&db->write_lock);
+        return NIMCP_NO_MEMORY;
+    }
+
     // Free current patterns
     for (size_t i = 0; i < db->capacity; i++) {
         free_pattern(&db->patterns[i]);
     }
     free(db->patterns);
 
-    // Restore from snapshot
-    db->patterns = calloc(snapshot->capacity, sizeof(pattern_slot_t));
-    if (!db->patterns) {
-        pthread_rwlock_unlock(&db->write_lock);
-        return NIMCP_NO_MEMORY;
-    }
-
+    // Restore from snapshot (atomically - new_patterns already allocated)
+    db->patterns = new_patterns;
     db->capacity = snapshot->capacity;
     db->pattern_count = snapshot->pattern_count;
 

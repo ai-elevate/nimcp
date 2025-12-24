@@ -177,7 +177,7 @@ cortical_column_sleep_bridge_t cortical_column_sleep_bridge_create(
     bridge->sleep_system = sleep;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_mutex_create();
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for cortical column sleep bridge");
         nimcp_free(bridge);
@@ -230,7 +230,7 @@ void cortical_column_sleep_bridge_destroy(cortical_column_sleep_bridge_t bridge)
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */

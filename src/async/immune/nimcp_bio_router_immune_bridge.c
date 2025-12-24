@@ -280,16 +280,14 @@ router_immune_bridge_t* router_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge->recent_anomalies);
         nimcp_free(bridge->quarantined_nodes);
         nimcp_free(bridge->inflammation_impacts);
         nimcp_free(bridge->cytokine_states);
-        nimcp_free(bridge);
-        return NULL;
+        nimcp_free(bridge);    return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("router_immune_bridge", "Bridge created successfully");
     return bridge;

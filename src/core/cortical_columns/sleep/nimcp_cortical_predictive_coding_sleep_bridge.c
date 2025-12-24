@@ -95,7 +95,7 @@ cortical_predictive_coding_sleep_bridge_t cortical_predictive_coding_sleep_bridg
     bridge->predictive_coding_module = predictive_coding_module;
     bridge->sleep_system = sleep;
 
-    bridge->base.mutex = nimcp_mutex_create();
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -118,7 +118,7 @@ void cortical_predictive_coding_sleep_bridge_destroy(cortical_predictive_coding_
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_predictive_coding_on_sleep_state_change, bridge);
     }
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 

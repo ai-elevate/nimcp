@@ -41,8 +41,11 @@
 
 #define LOG_MODULE "swarm_consensus"
 
+/* Maximum drone ID for vote tracking (to limit memory footprint) */
+#define MAX_TRACKED_DRONE_ID 1024
+
 static bool g_bbb_registered = false;
-static uint32_t g_vote_counts_by_drone[1024] = {0};  // Track votes per drone
+static uint32_t g_vote_counts_by_drone[MAX_TRACKED_DRONE_ID] = {0};  // Track votes per drone
 
 /**
  * @brief Initialize BBB security for consensus
@@ -541,8 +544,8 @@ nimcp_error_t swarm_consensus_receive_vote(
             LOG_WARN("Duplicate vote from drone %u on proposal %u",
                      vote->voter_drone, vote->proposal_id);
 
-            // Track voting patterns
-            if (vote->voter_drone < 1024) {
+            // Track voting patterns (with bounds check)
+            if (vote->voter_drone < MAX_TRACKED_DRONE_ID) {
                 g_vote_counts_by_drone[vote->voter_drone]++;
                 if (g_vote_counts_by_drone[vote->voter_drone] > 100) {
                     bbb_audit_log(BBB_AUDIT_CRITICAL, "swarm_consensus", "byzantine_detect",
@@ -550,6 +553,9 @@ nimcp_error_t swarm_consensus_receive_vote(
                                  vote->voter_drone, g_vote_counts_by_drone[vote->voter_drone]);
                     // In production, this would call bbb_quarantine_peer(vote->voter_drone)
                 }
+            } else {
+                LOG_WARN("Drone ID %u exceeds tracking limit (%u), vote pattern not tracked",
+                         vote->voter_drone, MAX_TRACKED_DRONE_ID);
             }
 
             return NIMCP_ERROR_ALREADY_EXISTS;

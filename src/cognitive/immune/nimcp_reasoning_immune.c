@@ -343,9 +343,10 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
     bridge->current_impairment.effective_wm_capacity = REASONING_MAX_ACTIVE_INFERENCES;
     bridge->current_impairment.timeout_multiplier = 1.0f;
 
-    /* Initialize mutex */
-    if (pthread_mutex_init(bridge->base.mutex, NULL) != 0) {
-        LOG_MODULE_ERROR("reasoning_immune_bridge", "Mutex init failed");
+    /* Create mutex */
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
+        LOG_MODULE_ERROR("reasoning_immune_bridge", "Mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

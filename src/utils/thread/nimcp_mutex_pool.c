@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_mutex_pool.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <string.h>
 
 //=============================================================================
@@ -28,8 +29,12 @@
 typedef struct {
     nimcp_mutex_t mutexes[NIMCP_MUTEX_POOL_SIZE];   /**< The actual mutexes */
     uint32_t ref_counts[NIMCP_MUTEX_POOL_SIZE];     /**< Reference count per slot */
-    nimcp_mutex_pool_stats_t stats;                  /**< Usage statistics */
-    nimcp_mutex_t stats_lock;                        /**< Protects stats */
+    nimcp_atomic_uint32_t total_acquires;            /**< Total acquire calls (atomic) */
+    nimcp_atomic_uint32_t total_releases;            /**< Total release calls (atomic) */
+    nimcp_atomic_uint32_t total_locks;               /**< Total lock operations (atomic) */
+    nimcp_atomic_uint32_t total_unlocks;             /**< Total unlock operations (atomic) */
+    nimcp_atomic_uint32_t contention_events;         /**< Times a lock had to wait (atomic) */
+    nimcp_atomic_uint32_t slot_usage[NIMCP_MUTEX_POOL_SIZE];  /**< Usage count per slot (atomic) */
     bool initialized;                                /**< Init flag */
 } mutex_pool_t;
 
@@ -80,19 +85,15 @@ int nimcp_mutex_pool_init(void) {
             return -1;
         }
         g_pool.ref_counts[i] = 0;
+        nimcp_atomic_init_u32(&g_pool.slot_usage[i], 0);
     }
 
-    // Initialize stats lock
-    int rc = nimcp_platform_mutex_init(&g_pool.stats_lock, false);
-    if (rc != 0) {
-        for (int i = 0; i < NIMCP_MUTEX_POOL_SIZE; i++) {
-            nimcp_platform_mutex_destroy(&g_pool.mutexes[i]);
-        }
-        return -1;
-    }
-
-    // Clear statistics
-    memset(&g_pool.stats, 0, sizeof(g_pool.stats));
+    // Initialize atomic statistics
+    nimcp_atomic_init_u32(&g_pool.total_acquires, 0);
+    nimcp_atomic_init_u32(&g_pool.total_releases, 0);
+    nimcp_atomic_init_u32(&g_pool.total_locks, 0);
+    nimcp_atomic_init_u32(&g_pool.total_unlocks, 0);
+    nimcp_atomic_init_u32(&g_pool.contention_events, 0);
 
     g_pool.initialized = true;
     return 0;
@@ -108,7 +109,7 @@ int nimcp_mutex_pool_destroy(void) {
         nimcp_platform_mutex_destroy(&g_pool.mutexes[i]);
     }
 
-    nimcp_platform_mutex_destroy(&g_pool.stats_lock);
+    // No stats_lock to destroy (now using atomics)
 
     g_pool.initialized = false;
     return 0;
@@ -138,12 +139,11 @@ nimcp_mutex_slot_t nimcp_mutex_pool_acquire(const char* bridge_name) {
     uint32_t hash = fnv1a_hash(bridge_name);
     uint32_t slot = hash % NIMCP_MUTEX_POOL_SIZE;
 
-    // Update stats (thread-safe)
-    nimcp_platform_mutex_lock(&g_pool.stats_lock);
-    g_pool.ref_counts[slot]++;
-    g_pool.stats.total_acquires++;
-    g_pool.stats.slot_usage[slot]++;
-    nimcp_platform_mutex_unlock(&g_pool.stats_lock);
+    // Update ref count (still needs lock for correctness)
+    // Update stats atomically (lock-free)
+    __atomic_add_fetch(&g_pool.ref_counts[slot], 1, __ATOMIC_RELAXED);
+    nimcp_atomic_fetch_add_u32(&g_pool.total_acquires, 1, NIMCP_MEMORY_ORDER_RELAXED);
+    nimcp_atomic_fetch_add_u32(&g_pool.slot_usage[slot], 1, NIMCP_MEMORY_ORDER_RELAXED);
 
     return slot;
 }
@@ -157,11 +157,10 @@ nimcp_mutex_slot_t nimcp_mutex_pool_acquire_by_id(uint32_t bridge_id) {
 
     uint32_t slot = bridge_id % NIMCP_MUTEX_POOL_SIZE;
 
-    nimcp_platform_mutex_lock(&g_pool.stats_lock);
-    g_pool.ref_counts[slot]++;
-    g_pool.stats.total_acquires++;
-    g_pool.stats.slot_usage[slot]++;
-    nimcp_platform_mutex_unlock(&g_pool.stats_lock);
+    // Update ref count and stats atomically (lock-free)
+    __atomic_add_fetch(&g_pool.ref_counts[slot], 1, __ATOMIC_RELAXED);
+    nimcp_atomic_fetch_add_u32(&g_pool.total_acquires, 1, NIMCP_MEMORY_ORDER_RELAXED);
+    nimcp_atomic_fetch_add_u32(&g_pool.slot_usage[slot], 1, NIMCP_MEMORY_ORDER_RELAXED);
 
     return slot;
 }
@@ -171,12 +170,12 @@ void nimcp_mutex_pool_release(nimcp_mutex_slot_t slot) {
         return;
     }
 
-    nimcp_platform_mutex_lock(&g_pool.stats_lock);
-    if (g_pool.ref_counts[slot] > 0) {
-        g_pool.ref_counts[slot]--;
+    // Update ref count atomically (lock-free)
+    uint32_t old_count = __atomic_load_n(&g_pool.ref_counts[slot], __ATOMIC_RELAXED);
+    if (old_count > 0) {
+        __atomic_sub_fetch(&g_pool.ref_counts[slot], 1, __ATOMIC_RELAXED);
     }
-    g_pool.stats.total_releases++;
-    nimcp_platform_mutex_unlock(&g_pool.stats_lock);
+    nimcp_atomic_fetch_add_u32(&g_pool.total_releases, 1, NIMCP_MEMORY_ORDER_RELAXED);
 }
 
 //=============================================================================
@@ -190,10 +189,9 @@ int nimcp_mutex_pool_lock(nimcp_mutex_slot_t slot) {
 
     int rc = nimcp_platform_mutex_lock(&g_pool.mutexes[slot]);
 
-    // Update stats (best effort, don't lock stats during mutex operation)
+    // Update stats atomically (thread-safe)
     if (rc == 0) {
-        // Note: This is a race but acceptable for statistics
-        g_pool.stats.total_locks++;
+        nimcp_atomic_fetch_add_u32(&g_pool.total_locks, 1, NIMCP_MEMORY_ORDER_RELAXED);
     }
 
     return rc;
@@ -206,10 +204,11 @@ int nimcp_mutex_pool_trylock(nimcp_mutex_slot_t slot) {
 
     int rc = nimcp_platform_mutex_trylock(&g_pool.mutexes[slot]);
 
+    // Update stats atomically (thread-safe)
     if (rc == 0) {
-        g_pool.stats.total_locks++;
+        nimcp_atomic_fetch_add_u32(&g_pool.total_locks, 1, NIMCP_MEMORY_ORDER_RELAXED);
     } else if (rc == NIMCP_BUSY || rc > 0) {
-        g_pool.stats.contention_events++;
+        nimcp_atomic_fetch_add_u32(&g_pool.contention_events, 1, NIMCP_MEMORY_ORDER_RELAXED);
     }
 
     return rc;
@@ -222,8 +221,9 @@ int nimcp_mutex_pool_unlock(nimcp_mutex_slot_t slot) {
 
     int rc = nimcp_platform_mutex_unlock(&g_pool.mutexes[slot]);
 
+    // Update stats atomically (thread-safe)
     if (rc == 0) {
-        g_pool.stats.total_unlocks++;
+        nimcp_atomic_fetch_add_u32(&g_pool.total_unlocks, 1, NIMCP_MEMORY_ORDER_RELAXED);
     }
 
     return rc;
@@ -243,9 +243,16 @@ int nimcp_mutex_pool_get_stats(nimcp_mutex_pool_stats_t* stats) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock(&g_pool.stats_lock);
-    *stats = g_pool.stats;
-    nimcp_platform_mutex_unlock(&g_pool.stats_lock);
+    // Read atomic statistics (lock-free, thread-safe)
+    stats->total_acquires = nimcp_atomic_load_u32(&g_pool.total_acquires, NIMCP_MEMORY_ORDER_RELAXED);
+    stats->total_releases = nimcp_atomic_load_u32(&g_pool.total_releases, NIMCP_MEMORY_ORDER_RELAXED);
+    stats->total_locks = nimcp_atomic_load_u32(&g_pool.total_locks, NIMCP_MEMORY_ORDER_RELAXED);
+    stats->total_unlocks = nimcp_atomic_load_u32(&g_pool.total_unlocks, NIMCP_MEMORY_ORDER_RELAXED);
+    stats->contention_events = nimcp_atomic_load_u32(&g_pool.contention_events, NIMCP_MEMORY_ORDER_RELAXED);
+
+    for (int i = 0; i < NIMCP_MUTEX_POOL_SIZE; i++) {
+        stats->slot_usage[i] = nimcp_atomic_load_u32(&g_pool.slot_usage[i], NIMCP_MEMORY_ORDER_RELAXED);
+    }
 
     return 0;
 }
@@ -255,7 +262,14 @@ void nimcp_mutex_pool_reset_stats(void) {
         return;
     }
 
-    nimcp_platform_mutex_lock(&g_pool.stats_lock);
-    memset(&g_pool.stats, 0, sizeof(g_pool.stats));
-    nimcp_platform_mutex_unlock(&g_pool.stats_lock);
+    // Reset atomic statistics (lock-free)
+    nimcp_atomic_store_u32(&g_pool.total_acquires, 0, NIMCP_MEMORY_ORDER_RELAXED);
+    nimcp_atomic_store_u32(&g_pool.total_releases, 0, NIMCP_MEMORY_ORDER_RELAXED);
+    nimcp_atomic_store_u32(&g_pool.total_locks, 0, NIMCP_MEMORY_ORDER_RELAXED);
+    nimcp_atomic_store_u32(&g_pool.total_unlocks, 0, NIMCP_MEMORY_ORDER_RELAXED);
+    nimcp_atomic_store_u32(&g_pool.contention_events, 0, NIMCP_MEMORY_ORDER_RELAXED);
+
+    for (int i = 0; i < NIMCP_MUTEX_POOL_SIZE; i++) {
+        nimcp_atomic_store_u32(&g_pool.slot_usage[i], 0, NIMCP_MEMORY_ORDER_RELAXED);
+    }
 }

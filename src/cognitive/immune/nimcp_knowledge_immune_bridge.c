@@ -232,12 +232,10 @@ knowledge_immune_bridge_t* knowledge_immune_bridge_create(
     bridge->current_retrieval_latency_ms = bridge->baseline_retrieval_latency_ms;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        nimcp_free(bridge);
-        return NULL;
+        nimcp_free(bridge);    return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("knowledge_immune_bridge", "Bridge created successfully");
     return bridge;

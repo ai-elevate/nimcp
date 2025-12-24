@@ -133,40 +133,105 @@ static nimcp_error_t generate_spdx_sbom(nimcp_supply_chain_t sc, char** output) 
 
     /* SPDX 2.3 header */
     char* ptr = sbom;
-    ptr += sprintf(ptr, "SPDXVersion: SPDX-2.3\n");
-    ptr += sprintf(ptr, "DataLicense: CC0-1.0\n");
-    ptr += sprintf(ptr, "SPDXID: SPDXRef-DOCUMENT\n");
-    ptr += sprintf(ptr, "DocumentName: NIMCP-SBOM\n");
-    ptr += sprintf(ptr, "DocumentNamespace: https://nimcp.ai/sbom/%ld\n", time(NULL));
-    ptr += sprintf(ptr, "Creator: Tool: NIMCP Supply Chain Security\n");
-    ptr += sprintf(ptr, "Created: %s", ctime(&sc->stats.last_sbom_update));
-    ptr += sprintf(ptr, "\n");
+    size_t remaining = estimated_size;
+    int written;
+
+    written = snprintf(ptr, remaining, "SPDXVersion: SPDX-2.3\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "DataLicense: CC0-1.0\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "SPDXID: SPDXRef-DOCUMENT\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "DocumentName: NIMCP-SBOM\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "DocumentNamespace: https://nimcp.ai/sbom/%ld\n", time(NULL));
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "Creator: Tool: NIMCP Supply Chain Security\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "Created: %s", ctime(&sc->stats.last_sbom_update));
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
 
     /* Package information */
-    ptr += sprintf(ptr, "PackageName: NIMCP\n");
-    ptr += sprintf(ptr, "SPDXID: SPDXRef-Package-NIMCP\n");
-    ptr += sprintf(ptr, "PackageVersion: 1.0.0\n");
-    ptr += sprintf(ptr, "PackageSupplier: Organization: NIMCP Project\n");
-    ptr += sprintf(ptr, "\n");
+    written = snprintf(ptr, remaining, "PackageName: NIMCP\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "SPDXID: SPDXRef-Package-NIMCP\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "PackageVersion: 1.0.0\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "PackageSupplier: Organization: NIMCP Project\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
 
     /* Dependencies */
     for (size_t i = 0; i < sc->dependency_count; i++) {
         nimcp_dependency_t* dep = &sc->dependencies[i];
-        ptr += sprintf(ptr, "PackageName: %s\n", dep->name);
-        ptr += sprintf(ptr, "SPDXID: SPDXRef-Package-%zu\n", i);
-        ptr += sprintf(ptr, "PackageVersion: %s\n", dep->version);
-        ptr += sprintf(ptr, "PackageSupplier: %s\n", dep->supplier);
+
+        written = snprintf(ptr, remaining, "PackageName: %s\n", dep->name);
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
+        written = snprintf(ptr, remaining, "SPDXID: SPDXRef-Package-%zu\n", i);
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
+        written = snprintf(ptr, remaining, "PackageVersion: %s\n", dep->version);
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
+        written = snprintf(ptr, remaining, "PackageSupplier: %s\n", dep->supplier);
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
         if (dep->license[0] != '\0') {
-            ptr += sprintf(ptr, "PackageLicenseConcluded: %s\n", dep->license);
+            written = snprintf(ptr, remaining, "PackageLicenseConcluded: %s\n", dep->license);
+            if (written < 0 || (size_t)written >= remaining) goto overflow;
+            ptr += written; remaining -= written;
         }
         if (dep->hash_sha256[0] != '\0') {
-            ptr += sprintf(ptr, "PackageChecksum: SHA256: %s\n", dep->hash_sha256);
+            written = snprintf(ptr, remaining, "PackageChecksum: SHA256: %s\n", dep->hash_sha256);
+            if (written < 0 || (size_t)written >= remaining) goto overflow;
+            ptr += written; remaining -= written;
         }
-        ptr += sprintf(ptr, "\n");
+
+        written = snprintf(ptr, remaining, "\n");
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
     }
 
     *output = sbom;
     return NIMCP_OK;
+
+overflow:
+    LOG_ERROR("SBOM buffer overflow - increase estimated_size");
+    free(sbom);
+    return NIMCP_ERROR_NO_MEMORY;
 }
 
 static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** output) {
@@ -179,41 +244,109 @@ static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** out
 
     /* CycloneDX 1.5 JSON format */
     char* ptr = sbom;
-    ptr += sprintf(ptr, "{\n");
-    ptr += sprintf(ptr, "  \"bomFormat\": \"CycloneDX\",\n");
-    ptr += sprintf(ptr, "  \"specVersion\": \"1.5\",\n");
-    ptr += sprintf(ptr, "  \"version\": 1,\n");
-    ptr += sprintf(ptr, "  \"metadata\": {\n");
-    ptr += sprintf(ptr, "    \"timestamp\": \"%ld\",\n", time(NULL));
-    ptr += sprintf(ptr, "    \"tools\": [\n");
-    ptr += sprintf(ptr, "      {\"name\": \"NIMCP Supply Chain Security\"}\n");
-    ptr += sprintf(ptr, "    ]\n");
-    ptr += sprintf(ptr, "  },\n");
-    ptr += sprintf(ptr, "  \"components\": [\n");
+    size_t remaining = estimated_size;
+    int written;
+
+    written = snprintf(ptr, remaining, "{\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "  \"bomFormat\": \"CycloneDX\",\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "  \"specVersion\": \"1.5\",\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "  \"version\": 1,\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "  \"metadata\": {\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "    \"timestamp\": \"%ld\",\n", time(NULL));
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "    \"tools\": [\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "      {\"name\": \"NIMCP Supply Chain Security\"}\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "    ]\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "  },\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "  \"components\": [\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
 
     /* Components */
     for (size_t i = 0; i < sc->dependency_count; i++) {
         nimcp_dependency_t* dep = &sc->dependencies[i];
-        ptr += sprintf(ptr, "    {\n");
-        ptr += sprintf(ptr, "      \"type\": \"library\",\n");
-        ptr += sprintf(ptr, "      \"name\": \"%s\",\n", dep->name);
-        ptr += sprintf(ptr, "      \"version\": \"%s\",\n", dep->version);
+
+        written = snprintf(ptr, remaining, "    {\n");
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
+        written = snprintf(ptr, remaining, "      \"type\": \"library\",\n");
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
+        written = snprintf(ptr, remaining, "      \"name\": \"%s\",\n", dep->name);
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
+        written = snprintf(ptr, remaining, "      \"version\": \"%s\",\n", dep->version);
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
         if (dep->supplier[0] != '\0') {
-            ptr += sprintf(ptr, "      \"supplier\": {\"name\": \"%s\"},\n", dep->supplier);
+            written = snprintf(ptr, remaining, "      \"supplier\": {\"name\": \"%s\"},\n", dep->supplier);
+            if (written < 0 || (size_t)written >= remaining) goto overflow;
+            ptr += written; remaining -= written;
         }
         if (dep->hash_sha256[0] != '\0') {
-            ptr += sprintf(ptr, "      \"hashes\": [{\"alg\": \"SHA-256\", \"content\": \"%s\"}],\n",
-                          dep->hash_sha256);
+            written = snprintf(ptr, remaining, "      \"hashes\": [{\"alg\": \"SHA-256\", \"content\": \"%s\"}],\n",
+                              dep->hash_sha256);
+            if (written < 0 || (size_t)written >= remaining) goto overflow;
+            ptr += written; remaining -= written;
         }
-        ptr += sprintf(ptr, "      \"purl\": \"pkg:generic/%s@%s\"\n", dep->name, dep->version);
-        ptr += sprintf(ptr, "    }%s\n", (i < sc->dependency_count - 1) ? "," : "");
+
+        written = snprintf(ptr, remaining, "      \"purl\": \"pkg:generic/%s@%s\"\n", dep->name, dep->version);
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
+
+        written = snprintf(ptr, remaining, "    }%s\n", (i < sc->dependency_count - 1) ? "," : "");
+        if (written < 0 || (size_t)written >= remaining) goto overflow;
+        ptr += written; remaining -= written;
     }
 
-    ptr += sprintf(ptr, "  ]\n");
-    ptr += sprintf(ptr, "}\n");
+    written = snprintf(ptr, remaining, "  ]\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
+
+    written = snprintf(ptr, remaining, "}\n");
+    if (written < 0 || (size_t)written >= remaining) goto overflow;
+    ptr += written; remaining -= written;
 
     *output = sbom;
     return NIMCP_OK;
+
+overflow:
+    LOG_ERROR("SBOM buffer overflow - increase estimated_size");
+    free(sbom);
+    return NIMCP_ERROR_NO_MEMORY;
 }
 
 nimcp_error_t nimcp_sbom_generate(nimcp_supply_chain_t sc,

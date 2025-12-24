@@ -486,8 +486,18 @@ int structural_plasticity_update_activity(
     float alpha = 0.1f;  /* Smoothing factor */
     if (spine->last_active_time > 0) {
         float dt_sec = (current_time - spine->last_active_time) / 1000.0f;
-        if (dt_sec > 0) {
+
+        /* Guard against division by very small dt (cap at 1ms = 1000Hz max) */
+        const float MIN_DT_SEC = 0.001f;  /* 1 millisecond */
+        if (dt_sec >= MIN_DT_SEC) {
             float instant_rate = 1.0f / dt_sec;
+
+            /* Cap maximum instantaneous rate to prevent overflow (max 10kHz) */
+            const float MAX_RATE_HZ = 10000.0f;
+            if (instant_rate > MAX_RATE_HZ) {
+                instant_rate = MAX_RATE_HZ;
+            }
+
             spine->recent_activity_hz =
                 alpha * instant_rate + (1.0f - alpha) * spine->recent_activity_hz;
         }

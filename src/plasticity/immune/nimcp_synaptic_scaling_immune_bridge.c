@@ -329,7 +329,7 @@ void synaptic_scaling_immune_bridge_destroy(synaptic_scaling_immune_bridge_t* br
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge->base.mutex);
     }
 
@@ -348,7 +348,7 @@ int synaptic_scaling_immune_apply_tnf_effects(
     if (!bridge || !bridge->enable_tnf_scaling_modulation) return -1;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get TNF-α concentration */
     float tnf_conc = get_tnf_alpha_concentration(bridge->immune_system);
@@ -386,7 +386,7 @@ int synaptic_scaling_immune_apply_tnf_effects(
     /* Update statistics */
     bridge->tnf_modulations++;
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -398,7 +398,7 @@ int synaptic_scaling_immune_apply_il1_effects(
     if (!bridge || !bridge->enable_il1_threshold_modulation) return -1;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get IL-1β concentration */
     float il1_conc = get_il1_beta_concentration(bridge->immune_system);
@@ -423,7 +423,7 @@ int synaptic_scaling_immune_apply_il1_effects(
         1.0f - (il1_conc * 0.3f), 0.7f, 1.0f
     );
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -435,7 +435,7 @@ int synaptic_scaling_immune_apply_inflammation_effects(
     if (!bridge || !bridge->enable_inflammation_rate_modulation) return -1;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -481,7 +481,7 @@ int synaptic_scaling_immune_apply_inflammation_effects(
     bridge->inflammation_state.global_silencing =
         (bridge->inflammation_state.excitation_inhibition_balance < 0.25f);
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -502,7 +502,7 @@ int synaptic_scaling_immune_restore_from_il10(
     if (!bridge || !bridge->enable_il10_restoration) return -1;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get IL-10 concentration */
     float il10_conc = get_il10_concentration(bridge->immune_system);
@@ -536,7 +536,7 @@ int synaptic_scaling_immune_restore_from_il10(
         }
     }
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -552,7 +552,7 @@ int synaptic_scaling_immune_detect_aberrance(
     if (!bridge || !bridge->enable_aberrance_detection) return -1;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get effective scaling factor */
     float scaling_factor = bridge->tnf_effects.scaling_factor_modulation;
@@ -591,7 +591,7 @@ int synaptic_scaling_immune_detect_aberrance(
         bridge->aberrance_detections++;
     }
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -606,11 +606,11 @@ int synaptic_scaling_immune_trigger_from_aberrance(
     if (!synaptic_scaling_immune_is_aberrant(bridge)) return 0;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Guard: avoid repeat triggers */
     if (bridge->aberrance.immune_triggered) {
-        if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+        if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -651,7 +651,7 @@ int synaptic_scaling_immune_trigger_from_aberrance(
                   severity, antigen_id);
     }
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -663,7 +663,7 @@ int synaptic_scaling_immune_signal_recovery(
     if (!bridge || !bridge->enable_recovery_tracking) return -1;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if scaling is near normal */
     float current_factor = bridge->tnf_effects.scaling_factor_modulation;
@@ -709,7 +709,7 @@ int synaptic_scaling_immune_signal_recovery(
         1.0f - fabsf(current_factor - 1.0f) / 2.5f, 0.0f, 1.0f
     );
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -744,12 +744,12 @@ int synaptic_scaling_immune_bridge_update(
     if (!bridge) return -1;
 
     /* Lock for thread safety */
-    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update statistics */
     bridge->total_updates++;
 
-    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* IMMUNE → SCALING: Apply cytokine effects */
     if (bridge->enable_tnf_scaling_modulation) {

@@ -270,14 +270,13 @@ memory_immune_integration_t* memory_immune_integration_create(
     integration->memory_link_count = 0;
 
     /* Create mutex */
-    integration->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    integration->mutex = nimcp_platform_mutex_create();
     if (!integration->mutex) {
-        NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME, "Failed to allocate mutex");
+        NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME, "Failed to create mutex");
         nimcp_free(integration->memory_links);
         nimcp_free(integration);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)integration->mutex, NULL);
 
     /* Initialize timing */
     integration->last_update_time = get_current_time_ms();

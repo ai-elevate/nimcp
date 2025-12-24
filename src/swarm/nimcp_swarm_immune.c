@@ -23,6 +23,9 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+#include <sys/random.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 /* ============================================================================
  * Constants and Macros
@@ -152,11 +155,35 @@ static uint64_t get_current_time_ms(void) {
 }
 
 /**
- * @brief Generate unique ID
+ * @brief Generate cryptographically secure unique ID
+ *
+ * WHAT: Generate random ID using /dev/urandom
+ * WHY:  Prevent ID prediction attacks in swarm
+ * HOW:  Read from urandom, fall back to time+counter on failure
  */
 static uint32_t generate_unique_id(void) {
-    static uint32_t counter = 0;
-    return __sync_fetch_and_add(&counter, 1);
+    static uint64_t counter = 0;  /* 64-bit to prevent wraparound */
+    uint32_t id;
+
+    /* Try to read from /dev/urandom */
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd >= 0) {
+        ssize_t n = read(fd, &id, sizeof(id));
+        close(fd);
+        if (n == sizeof(id)) {
+            return id;
+        }
+    }
+
+    /* Fallback: combine time and counter */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    id = (uint32_t)(ts.tv_nsec ^ ts.tv_sec);
+
+    /* Use 64-bit counter with atomic increment to prevent wraparound */
+    uint64_t count = __sync_fetch_and_add(&counter, 1);
+    id ^= (uint32_t)(count ^ (count >> 32));  /* Mix upper and lower 32 bits */
+    return id;
 }
 
 /* ============================================================================
@@ -206,9 +233,24 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     system->bio_ctx = bio_ctx;
     system->self_drone_id = self_drone_id;
 
-    /* Generate self signature */
-    for (size_t i = 0; i < 32; i++) {
-        system->self_signature[i] = (uint8_t)(rand() % 256);
+    /* Generate self signature using cryptographically secure RNG */
+    ssize_t n = getrandom(system->self_signature, 32, 0);
+    if (n != 32) {
+        /* Fallback: read from /dev/urandom */
+        int fd = open("/dev/urandom", O_RDONLY);
+        if (fd >= 0) {
+            n = read(fd, system->self_signature, 32);
+            close(fd);
+        }
+        if (n != 32) {
+            /* Last resort: use time-based weak fallback */
+            LOG_WARN("Using weak RNG for self signature - secure RNG unavailable");
+            struct timespec ts;
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            for (size_t i = 0; i < 32; i++) {
+                system->self_signature[i] = (uint8_t)((ts.tv_nsec ^ ts.tv_sec ^ i) % 256);
+            }
+        }
     }
 
     /* Allocate memory cells */
@@ -380,6 +422,13 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
         threat->confirmed = false;
         threat->confirming_drones = 1;
 
+        /* Validate threat type before use */
+        if (!NIMCP_VALIDATE_ENUM(threat->type, THREAT_COUNT)) {
+            LOG_ERROR("Invalid threat type from memory cell: %d", threat->type);
+            nimcp_platform_mutex_unlock(system->mutex);
+            return NIMCP_INVALID_PARAM;
+        }
+
         /* Determine severity based on confidence and threat type */
         if (best_match > 0.9F || threat->type == THREAT_MALICIOUS_DRONE) {
             threat->severity = SWARM_SEVERITY_CRITICAL;
@@ -537,6 +586,16 @@ nimcp_result_t nimcp_swarm_immune_add_memory_cell(
 ) {
     if (!system || !signature) {
         LOG_ERROR("Invalid arguments for adding memory cell");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Validate enum parameters */
+    if (!NIMCP_VALIDATE_ENUM(signature->type, THREAT_COUNT)) {
+        LOG_ERROR("Invalid threat type: %d", signature->type);
+        return NIMCP_INVALID_PARAM;
+    }
+    if (!NIMCP_VALIDATE_ENUM(response, RESPONSE_COUNT)) {
+        LOG_ERROR("Invalid response type: %d", response);
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1387,6 +1446,12 @@ nimcp_result_t immune_add_threat_rule(
         return NIMCP_INVALID_PARAM;
     }
 
+    /* Validate enum parameter */
+    if (!NIMCP_VALIDATE_ENUM(rule->threat_type, THREAT_COUNT)) {
+        LOG_ERROR("Invalid threat type in rule: %d", rule->threat_type);
+        return NIMCP_INVALID_PARAM;
+    }
+
     /* Guard clause: Check capacity */
     if (immune->threat_rule_count >= immune->threat_rule_capacity) {
         LOG_WARN("Threat rule capacity reached");
@@ -1455,6 +1520,12 @@ nimcp_result_t immune_evaluate_threats(
     /* Evaluate each threat rule */
     for (size_t i = 0; i < immune->threat_rule_count; i++) {
         immune_threat_rule_t* rule = &immune->threat_rules[i];
+
+        /* Validate threat type before array access */
+        if (!NIMCP_VALIDATE_ENUM(rule->threat_type, THREAT_COUNT)) {
+            LOG_ERROR("Invalid threat type in rule %zu: %d", i, rule->threat_type);
+            continue;
+        }
 
         /* Guard clause: Skip rules with no sources */
         if (rule->num_sources == 0 || !rule->signal_sources) {
@@ -1671,6 +1742,13 @@ nimcp_result_t immune_send_bbb_threat_alert(
     if (!threat) {
         nimcp_platform_mutex_unlock(immune->mutex);
         return NIMCP_NOT_FOUND;
+    }
+
+    /* Validate threat type before array access */
+    if (!NIMCP_VALIDATE_ENUM(threat->type, THREAT_COUNT)) {
+        LOG_ERROR("Invalid threat type for BBB alert: %d", threat->type);
+        nimcp_platform_mutex_unlock(immune->mutex);
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Send via BBB (stubbed - requires full BBB integration) */

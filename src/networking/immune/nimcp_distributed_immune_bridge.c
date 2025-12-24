@@ -153,11 +153,7 @@ distributed_immune_bridge_t* distributed_immune_bridge_create(
     bridge->last_congestion_check_time = get_time_ms();
 
     /* Create mutex */
-    pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (mutex) {
-        pthread_mutex_init(mutex, NULL);
-        bridge->base.mutex = mutex;
-    }
+    bridge->base.mutex = nimcp_platform_mutex_create();
 
     NIMCP_LOGGING_INFO("distributed_immune_bridge: created successfully");
     return bridge;
@@ -175,7 +171,7 @@ void distributed_immune_bridge_destroy(distributed_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge->base.mutex);
     }
 
@@ -196,7 +192,7 @@ int distributed_immune_apply_cytokine_effects(distributed_immune_bridge_t* bridg
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get immune stats (simplified - would query actual cytokine levels) */
     brain_immune_stats_t stats;
@@ -227,7 +223,7 @@ int distributed_immune_apply_cytokine_effects(distributed_immune_bridge_t* bridg
 
     bridge->network_modulations++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -237,7 +233,7 @@ int distributed_immune_apply_inflammation_effects(distributed_immune_bridge_t* b
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get immune stats */
     brain_immune_stats_t stats;
@@ -251,7 +247,7 @@ int distributed_immune_apply_inflammation_effects(distributed_immune_bridge_t* b
     bridge->inflammation_state.emergency_mode = (level >= INFLAMMATION_SYSTEMIC);
     bridge->inflammation_state.partition_mode = (level == INFLAMMATION_STORM);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -272,12 +268,12 @@ int distributed_immune_update_congestion_metrics(distributed_immune_bridge_t* br
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get distributed cognition stats */
     distrib_cognition_stats_t dc_stats;
     if (!distrib_cognition_get_stats(bridge->distributed_cognition, &dc_stats)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -292,7 +288,7 @@ int distributed_immune_update_congestion_metrics(distributed_immune_bridge_t* br
 
     bridge->last_congestion_check_time = get_time_ms();
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -306,7 +302,7 @@ int distributed_immune_trigger_congestion_inflammation(distributed_immune_bridge
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute inflammation level from congestion */
     brain_inflammation_level_t level =
@@ -321,7 +317,7 @@ int distributed_immune_trigger_congestion_inflammation(distributed_immune_bridge
         bridge->network_modulation.congestion_triggered_inflammation = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -339,7 +335,7 @@ int distributed_immune_present_peer_failure(
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Create epitope from peer failure */
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
@@ -364,7 +360,7 @@ int distributed_immune_present_peer_failure(
         bridge->peer_failure_antigens++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -374,7 +370,7 @@ int distributed_immune_release_il10_from_recovery(distributed_immune_bridge_t* b
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if congestion has normalized */
     if (bridge->network_modulation.congestion.packet_loss_rate < CONGESTION_PACKET_LOSS_LOCAL &&
@@ -397,7 +393,7 @@ int distributed_immune_release_il10_from_recovery(distributed_immune_bridge_t* b
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -414,13 +410,13 @@ int distributed_immune_bridge_update(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update timing */
     bridge->last_update_time = get_time_ms();
     bridge->total_updates++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* NETWORK → IMMUNE pathways */
     distributed_immune_update_congestion_metrics(bridge);
@@ -446,9 +442,9 @@ int distributed_immune_get_cytokine_effects(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_network_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -461,9 +457,9 @@ int distributed_immune_get_inflammation_state(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_network_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -508,7 +504,7 @@ int distributed_immune_connect_bio_async(distributed_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Register with router */
     bridge->base.bio_ctx = bio_router_register_module(&info);
@@ -519,7 +515,7 @@ int distributed_immune_connect_bio_async(distributed_immune_bridge_t* bridge) {
         NIMCP_LOGGING_WARN("distributed_immune_bridge: Bio-async router not available, skipping registration");
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -534,7 +530,7 @@ int distributed_immune_disconnect_bio_async(distributed_immune_bridge_t* bridge)
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Unregister */
     bio_router_unregister_module(bridge->base.bio_ctx);
@@ -543,7 +539,7 @@ int distributed_immune_disconnect_bio_async(distributed_immune_bridge_t* bridge)
 
     NIMCP_LOGGING_INFO("distributed_immune_bridge: Disconnected from bio-async router");
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

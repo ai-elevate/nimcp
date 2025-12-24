@@ -130,11 +130,7 @@ attention_immune_bridge_t* attention_immune_bridge_create(
     bridge->last_update_time = get_time_ms();
 
     /* Create mutex */
-    pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (mutex) {
-        pthread_mutex_init(mutex, NULL);
-        bridge->base.mutex = mutex;
-    }
+    bridge->base.mutex = nimcp_platform_mutex_create();
 
     LOG_INFO("attention_immune_bridge: created successfully");
     return bridge;
@@ -152,7 +148,7 @@ void attention_immune_bridge_destroy(attention_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge->base.mutex);
     }
 
@@ -173,7 +169,7 @@ int attention_immune_apply_cytokine_effects(attention_immune_bridge_t* bridge) {
         return 0;  /* Feature disabled */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get immune stats */
     brain_immune_stats_t stats;
@@ -210,7 +206,7 @@ int attention_immune_apply_cytokine_effects(attention_immune_bridge_t* bridge) {
 
     bridge->cytokine_impairments++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -224,7 +220,7 @@ int attention_immune_apply_inflammation_effects(attention_immune_bridge_t* bridg
         return 0;  /* Feature disabled */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get immune stats */
     brain_immune_stats_t stats;
@@ -261,7 +257,7 @@ int attention_immune_apply_inflammation_effects(attention_immune_bridge_t* bridg
     bridge->inflammation_state.disengagement_difficulty =
         bridge->inflammation_state.width_narrowing * 0.85f;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -307,7 +303,7 @@ int attention_immune_boost_from_threat_focus(attention_immune_bridge_t* bridge) 
         return 0;  /* Feature disabled */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get attention state (from emotion-attention if available) */
     float threat_focus = 0.0f;
@@ -331,7 +327,7 @@ int attention_immune_boost_from_threat_focus(attention_immune_bridge_t* bridge) 
         bridge->attention_modulation.immune_surveillance_boost = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -345,7 +341,7 @@ int attention_immune_trigger_hypervigilance_inflammation(attention_immune_bridge
         return 0;  /* Feature disabled */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check vigilance level */
     float vigilance = bridge->attention_modulation.vigilance_level;
@@ -368,7 +364,7 @@ int attention_immune_trigger_hypervigilance_inflammation(attention_immune_bridge
         bridge->attention_modulation.hypervigilance_inflammation = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -382,7 +378,7 @@ int attention_immune_release_il10_from_mindfulness(attention_immune_bridge_t* br
         return 0;  /* Feature disabled */
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Detect mindful attention (calm, sustained focus) */
     float mindful = bridge->attention_modulation.mindful_attention_level;
@@ -413,7 +409,7 @@ int attention_immune_release_il10_from_mindfulness(attention_immune_bridge_t* br
         bridge->attention_modulation.inflammation_reduction = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -430,7 +426,7 @@ int attention_immune_bridge_update(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update timing */
     uint64_t current_time = get_time_ms();
@@ -445,7 +441,7 @@ int attention_immune_bridge_update(
         bridge->attention_modulation.sustained_duration_sec = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* IMMUNE → ATTENTION pathways */
     attention_immune_apply_cytokine_effects(bridge);
@@ -471,9 +467,9 @@ int attention_immune_get_cytokine_effects(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_attention_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -486,9 +482,9 @@ int attention_immune_get_inflammation_state(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_attention_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -544,7 +540,7 @@ int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Register with router */
     bridge->base.bio_ctx = bio_router_register_module(&info);
@@ -556,7 +552,7 @@ int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge) {
             "Bio-async router not available, skipping registration");
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -577,7 +573,7 @@ int attention_immune_disconnect_bio_async(attention_immune_bridge_t* bridge) {
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Unregister */
     bio_router_unregister_module(bridge->base.bio_ctx);
@@ -586,7 +582,7 @@ int attention_immune_disconnect_bio_async(attention_immune_bridge_t* bridge) {
 
     LOG_MODULE_INFO(ATTENTION_IMMUNE_MODULE_NAME, "Disconnected from bio-async router");
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

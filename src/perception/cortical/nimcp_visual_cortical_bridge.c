@@ -146,6 +146,15 @@ static float apply_immune_modulation(
 
 /**
  * @brief Compute orientation result from hypercolumn responses
+ *
+ * WHAT: Extracts orientation analysis from hypercolumn into result structure.
+ * WHY:  Provide caller with orientation data in convenient format.
+ * HOW:  Copies dominant orientation, selectivity, and allocates response array.
+ *
+ * MEMORY OWNERSHIP:
+ * - Allocates result->orientation_responses (caller must free with visual_cortical_free_result)
+ * - If allocation fails, result->orientation_responses will be NULL (safe)
+ * - Caller MUST call visual_cortical_free_result() to avoid leak
  */
 static void compute_orientation_result(
     orientation_hypercolumn_t* hcol,
@@ -161,7 +170,9 @@ static void compute_orientation_result(
     result->retino_x = retino_x;
     result->retino_y = retino_y;
 
-    /* Allocate and copy orientation responses */
+    /* Allocate and copy orientation responses
+     * MEMORY SAFETY: Caller must free with visual_cortical_free_result()
+     */
     if (hcol->num_orientations > 0) {
         result->orientation_responses = (float*)nimcp_malloc(
             hcol->num_orientations * sizeof(float)
