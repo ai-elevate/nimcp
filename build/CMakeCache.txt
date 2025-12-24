@@ -14,6 +14,12 @@
 # EXTERNAL cache entries
 ########################
 
+//Build networking immune tests (requires API fixes)
+BUILD_NETWORKING_IMMUNE_TESTS:BOOL=OFF
+
+//Build NLP immune tests (requires API fixes)
+BUILD_NLP_IMMUNE_TESTS:BOOL=OFF
+
 //Path to a program.
 CLANG_TIDY_EXE:FILEPATH=/usr/bin/clang-tidy
 
@@ -25,7 +31,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=
+CMAKE_BUILD_TYPE:STRING=Release
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -391,7 +397,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=207
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=210
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

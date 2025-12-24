@@ -126,90 +126,9 @@ static void normalize_synaptic_weights(neuron_t* neuron)
 }
 
 //=============================================================================
-// Public API Implementation
-//=============================================================================
-
-bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_id,
-                                     uint64_t timestamp)
-{
-    if (!network || neuron_id >= network->num_neurons) {
-        LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
-        return false;
-    }
-
-    neuron_t* neuron = &network->neurons[neuron_id];
-
-    update_calcium_dynamics(neuron, timestamp);
-    update_meta_plasticity(neuron, timestamp);
-    normalize_synaptic_weights(neuron);
-
-    float current_activity = neuron->avg_activity;
-    float factor = compute_homeostatic_factor(neuron, current_activity);
-
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        neuron->synapses[i].weight *= (1.0f + 0.001f * (factor - 1.0f));
-    }
-
-    LOG_DEBUG(LOG_MODULE, "Applied homeostasis to neuron %u, factor=%.3f", neuron_id, factor);
-    return true;
-}
-
-void neural_network_maintain_homeostasis(neural_network_t network, uint64_t timestamp)
-{
-    if (!network) {
-        LOG_ERROR(LOG_MODULE, "NULL network in maintain_homeostasis");
-        return;
-    }
-
-    for (uint32_t i = 0; i < network->num_neurons; i++) {
-        neural_network_apply_homeostasis(network, i, timestamp);
-    }
-
-    LOG_INFO(LOG_MODULE, "Maintained homeostasis for %u neurons", network->num_neurons);
-}
-
-bool neural_network_adapt_threshold_by_activity(neural_network_t network, uint32_t neuron_id,
-                                                float activity_level)
-{
-    if (!network || neuron_id >= network->num_neurons) {
-        LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
-        return false;
-    }
-
-    neuron_t* neuron = &network->neurons[neuron_id];
-    float target = neuron->homeostatic.target_activity;
-
-    if (activity_level > target * 1.5f) {
-        neuron->threshold *= 1.01f;
-    } else if (activity_level < target * 0.5f) {
-        neuron->threshold *= 0.99f;
-    }
-
-    if (neuron->threshold < 0.1f)
-        neuron->threshold = 0.1f;
-    if (neuron->threshold > 2.0f)
-        neuron->threshold = 2.0f;
-
-    return true;
-}
-
-void neural_network_maintain(neural_network_t network, uint64_t timestamp)
-{
-    if (!network)
-        return;
-
-    if (timestamp - network->last_maintenance < NORMALIZATION_INTERVAL) {
-        return;
-    }
-
-    neural_network_maintain_homeostasis(network, timestamp);
-    network->last_maintenance = timestamp;
-
-    LOG_INFO(LOG_MODULE, "Network maintenance completed at t=%lu", (unsigned long)timestamp);
-}
-
-//=============================================================================
 // Immune System Integration Implementation
+// NOTE: Base homeostasis functions (apply_homeostasis, maintain_homeostasis,
+//       adapt_threshold_by_activity, maintain) are defined in nimcp_neuralnet.c
 //=============================================================================
 
 bool neural_network_apply_immune_inflammation(neural_network_t network,

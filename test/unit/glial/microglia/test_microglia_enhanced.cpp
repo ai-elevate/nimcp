@@ -439,7 +439,7 @@ TEST_F(MicrogliaEnhancedTest, Cytokine_ActivatedProduction) {
     // Activated state: high pro-inflammatory
     float il1b = microglia_get_cytokine(mg, CYTOKINE_IL1B);
     float tnfa = microglia_get_cytokine(mg, CYTOKINE_TNFA);
-    float il6 = microglia_get_cytokine(mg, BRAIN_CYTOKINE_IL6);
+    float il6 = microglia_get_cytokine(mg, CYTOKINE_IL6);
 
     // Pro-inflammatory should increase
     float pro_inflammatory = il1b + tnfa + il6;
@@ -464,7 +464,7 @@ TEST_F(MicrogliaEnhancedTest, Cytokine_PhagocyticResolution) {
     }
 
     // Phagocytic state: high anti-inflammatory (resolution)
-    float il10 = microglia_get_cytokine(mg, BRAIN_CYTOKINE_IL10);
+    float il10 = microglia_get_cytokine(mg, CYTOKINE_IL10);
     float tgfb = microglia_get_cytokine(mg, CYTOKINE_TGFB);
 
     // Anti-inflammatory should be present
@@ -480,7 +480,7 @@ TEST_F(MicrogliaEnhancedTest, Cytokine_NetInflammation) {
 
     // Add some cytokines
     microglia_add_cytokine(mg, CYTOKINE_IL1B, 2.0f);
-    microglia_add_cytokine(mg, BRAIN_CYTOKINE_IL10, 1.0f);
+    microglia_add_cytokine(mg, CYTOKINE_IL10, 1.0f);
 
     // Net inflammation = (pro) - (anti)
     float net = microglia_get_net_inflammation(mg);
@@ -544,8 +544,8 @@ TEST_F(MicrogliaEnhancedTest, Cytokine_Decay) {
 TEST_F(MicrogliaEnhancedTest, Cytokine_TypeToString) {
     EXPECT_STREQ(cytokine_type_to_string(CYTOKINE_IL1B), "IL-1β");
     EXPECT_STREQ(cytokine_type_to_string(CYTOKINE_TNFA), "TNF-α");
-    EXPECT_STREQ(cytokine_type_to_string(BRAIN_CYTOKINE_IL6), "IL-6");
-    EXPECT_STREQ(cytokine_type_to_string(BRAIN_CYTOKINE_IL10), "IL-10");
+    EXPECT_STREQ(cytokine_type_to_string(CYTOKINE_IL6), "IL-6");
+    EXPECT_STREQ(cytokine_type_to_string(CYTOKINE_IL10), "IL-10");
     EXPECT_STREQ(cytokine_type_to_string(CYTOKINE_TGFB), "TGF-β");
 }
 
@@ -1064,7 +1064,7 @@ TEST_F(MicrogliaEnhancedTest, Stats_CytokineAggregation) {
     microglia_add_cytokine(mg1, CYTOKINE_TNFA, 1.0f);
 
     // Add anti-inflammatory to mg2
-    microglia_add_cytokine(mg2, BRAIN_CYTOKINE_IL10, 3.0f);
+    microglia_add_cytokine(mg2, CYTOKINE_IL10, 3.0f);
 
     microglia_network_add(network, mg1);
     microglia_network_add(network, mg2);

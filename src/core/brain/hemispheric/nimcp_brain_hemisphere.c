@@ -391,6 +391,8 @@ int hemisphere_get_stats(
         return -1;
     }
 
+    // Note: Must cast away const to lock mutex for thread-safe read
+    // This is safe because we only read stats, not modify hemisphere state
     nimcp_mutex_lock((nimcp_mutex_t*)hemisphere->mutex);
     memcpy(stats, &hemisphere->stats, sizeof(hemisphere_stats_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)hemisphere->mutex);

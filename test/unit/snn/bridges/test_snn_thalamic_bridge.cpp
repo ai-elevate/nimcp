@@ -7,7 +7,7 @@
 extern "C" {
 #include "snn/bridges/nimcp_snn_thalamic_bridge.h"
 #include "snn/nimcp_snn_config.h"
-#include "utils/nimcp_memory.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 class SNNThalamicBridgeTest : public ::testing::Test {
@@ -17,7 +17,8 @@ protected:
     snn_thalamic_bridge_t* bridge;
 
     void SetUp() override {
-        snn_config_t config = snn_config_default();
+        snn_config_t config;
+        snn_config_default(&config);
         config.n_inputs = 10;
         config.n_outputs = 5;
         config.n_populations = 2;

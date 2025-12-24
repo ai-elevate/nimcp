@@ -1,5 +1,26 @@
 # NIMCP Project Memory
 
+---
+## ⚠️ CRITICAL WARNING - PAST VIOLATIONS ⚠️
+
+**Claude has repeatedly ignored the MANDATORY Test Writing Protocol in this file.**
+
+In December 2024, Claude wrote numerous test files without reading header files first, resulting in:
+- Invented function names that don't exist (e.g., `attention_system_t` instead of `multihead_attention_t`)
+- Wrong parameter counts and types
+- Non-existent struct members
+- Mismatched enum types (e.g., `BRAIN_CYTOKINE_IL10` vs `cytokine_type_t`)
+- Hours of debugging compilation errors that should never have happened
+
+**Before Claude writes ANY test code, the user MUST require Claude to:**
+1. Show the complete header file content that was read
+2. List the exact function signatures to be used
+3. Only then approve test code writing
+
+**Do not trust Claude to follow the protocol without explicit verification.**
+
+---
+
 ## Project Vision & Motivation
 
 ### The Problem with Current AI
@@ -155,6 +176,8 @@ make <test_target> -j4            # Build specific test
 - Enum/constant names
 
 ## MANDATORY Test Writing Protocol
+
+> ⚠️ **VIOLATION HISTORY**: Claude has ignored this protocol multiple times, causing significant rework. User must verify compliance before any test code is written. See warning at top of file.
 
 **BEFORE writing ANY test code, you MUST:**
 1. Read the COMPLETE header file for the module being tested

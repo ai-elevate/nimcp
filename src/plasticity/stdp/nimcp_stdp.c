@@ -200,6 +200,9 @@ float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
     /* Apply modulation */
     float modulated_weight_change = base_weight_change * modulation;
 
+    /* Thread-safe weight modification */
+    nimcp_spinlock_lock(&synapse->lock);
+
     /* Update statistics */
     if (modulated_weight_change > 0.0F) {
         synapse->num_potentiation_events++;
@@ -215,6 +218,8 @@ float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
     /* Clamp to [w_min, w_max] */
     if (synapse->weight < synapse->w_min) synapse->weight = synapse->w_min;
     if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
+
+    nimcp_spinlock_unlock(&synapse->lock);
 
     return modulated_weight_change;
 }

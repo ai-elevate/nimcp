@@ -535,8 +535,8 @@ TEST_F(PlasticityRegressionTest, Metabolic_EnergyCostConsistency) {
     // WHY:  Cost changes would alter learning dynamics
     // EXPECTED: LTP costs 3.0 ATP, LTD costs 1.0 ATP
 
-    EXPECT_TRUE(IsClose(metabolic_get_event_cost(PLASTICITY_EVENT_LTP), 3.0f, 0.1f));
-    EXPECT_TRUE(IsClose(metabolic_get_event_cost(PLASTICITY_EVENT_LTD), 1.0f, 0.1f));
+    EXPECT_TRUE(IsClose(metabolic_get_event_cost(METABOLIC_EVENT_LTP), 3.0f, 0.1f));
+    EXPECT_TRUE(IsClose(metabolic_get_event_cost(METABOLIC_EVENT_LTD), 1.0f, 0.1f));
 }
 
 TEST_F(PlasticityRegressionTest, Metabolic_NumericalStabilityDepletion) {
@@ -551,7 +551,7 @@ TEST_F(PlasticityRegressionTest, Metabolic_NumericalStabilityDepletion) {
 
     // Consume ATP aggressively
     for (int i = 0; i < 100; i++) {
-        metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+        metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     }
 
     float atp = metabolic_plasticity_get_atp_level(metabolic);

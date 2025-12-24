@@ -336,7 +336,12 @@ static void step_sgd(
     float weight_decay = ctx->config.params.sgd.weight_decay;
     bool nesterov = ctx->config.params.sgd.nesterov;
 
-    if (momentum != 0.0F && ctx->state.momentum.velocity == NULL) {
+    /* Allocate or reallocate velocity buffer if needed */
+    if (momentum != 0.0F && (ctx->state.momentum.velocity == NULL || count > ctx->state.momentum.count)) {
+        /* Free old buffer if reallocating */
+        if (ctx->state.momentum.velocity != NULL) {
+            free_buffer(ctx, ctx->state.momentum.velocity);
+        }
         ctx->state.momentum.velocity = alloc_buffer(ctx, count);
         ctx->state.momentum.count = count;
         if (ctx->state.momentum.velocity) {
@@ -387,14 +392,22 @@ static void step_adam(
 
     optimizer_adam_state_t* state = &ctx->state.adam;
 
-    if (state->m == NULL) {
+    /* Allocate or reallocate state buffers if needed */
+    if (state->m == NULL || count > state->count) {
+        /* Free old buffers if reallocating */
+        if (state->m != NULL) {
+            free_buffer(ctx, state->m);
+            free_buffer(ctx, state->v);
+            if (state->v_max) free_buffer(ctx, state->v_max);
+            state->v_max = NULL;
+        }
         state->m = alloc_buffer(ctx, count);
         state->v = alloc_buffer(ctx, count);
         if (amsgrad) {
             state->v_max = alloc_buffer(ctx, count);
         }
         state->count = count;
-        state->t = 0;
+        if (state->t == 0) state->t = 0;  /* Only init t on first allocation */
 
         if (state->m) memset(state->m, 0, count * sizeof(float));
         if (state->v) memset(state->v, 0, count * sizeof(float));
@@ -448,14 +461,22 @@ static void step_adamw(
 
     optimizer_adam_state_t* state = &ctx->state.adam;
 
-    if (state->m == NULL) {
+    /* Allocate or reallocate state buffers if needed */
+    if (state->m == NULL || count > state->count) {
+        /* Free old buffers if reallocating */
+        if (state->m != NULL) {
+            free_buffer(ctx, state->m);
+            free_buffer(ctx, state->v);
+            if (state->v_max) free_buffer(ctx, state->v_max);
+            state->v_max = NULL;
+        }
         state->m = alloc_buffer(ctx, count);
         state->v = alloc_buffer(ctx, count);
         if (amsgrad) {
             state->v_max = alloc_buffer(ctx, count);
         }
         state->count = count;
-        state->t = 0;
+        if (state->t == 0) state->t = 0;  /* Only init t on first allocation */
 
         if (state->m) memset(state->m, 0, count * sizeof(float));
         if (state->v) memset(state->v, 0, count * sizeof(float));
@@ -508,11 +529,17 @@ static void step_nadam(
 
     optimizer_adam_state_t* state = &ctx->state.adam;
 
-    if (state->m == NULL) {
+    /* Allocate or reallocate state buffers if needed */
+    if (state->m == NULL || count > state->count) {
+        /* Free old buffers if reallocating */
+        if (state->m != NULL) {
+            free_buffer(ctx, state->m);
+            free_buffer(ctx, state->v);
+        }
         state->m = alloc_buffer(ctx, count);
         state->v = alloc_buffer(ctx, count);
         state->count = count;
-        state->t = 0;
+        if (state->t == 0) state->t = 0;  /* Only init t on first allocation */
 
         if (state->m) memset(state->m, 0, count * sizeof(float));
         if (state->v) memset(state->v, 0, count * sizeof(float));
@@ -558,7 +585,16 @@ static void step_rmsprop(
 
     optimizer_rmsprop_state_t* state = &ctx->state.rmsprop;
 
-    if (state->square_avg == NULL) {
+    /* Allocate or reallocate state buffers if needed */
+    if (state->square_avg == NULL || count > state->count) {
+        /* Free old buffers if reallocating */
+        if (state->square_avg != NULL) {
+            free_buffer(ctx, state->square_avg);
+            if (state->momentum_buffer) free_buffer(ctx, state->momentum_buffer);
+            if (state->grad_avg) free_buffer(ctx, state->grad_avg);
+            state->momentum_buffer = NULL;
+            state->grad_avg = NULL;
+        }
         state->square_avg = alloc_buffer(ctx, count);
         if (momentum != 0.0F) {
             state->momentum_buffer = alloc_buffer(ctx, count);
@@ -617,10 +653,15 @@ static void step_adagrad(
 
     optimizer_adagrad_state_t* state = &ctx->state.adagrad;
 
-    if (state->sum == NULL) {
+    /* Allocate or reallocate state buffers if needed */
+    if (state->sum == NULL || count > state->count) {
+        /* Free old buffer if reallocating */
+        if (state->sum != NULL) {
+            free_buffer(ctx, state->sum);
+        }
         state->sum = alloc_buffer(ctx, count);
         state->count = count;
-        state->step = 0;
+        if (state->step == 0) state->step = 0;  /* Only init step on first allocation */
 
         if (state->sum) {
             for (size_t i = 0; i < count; i++) {

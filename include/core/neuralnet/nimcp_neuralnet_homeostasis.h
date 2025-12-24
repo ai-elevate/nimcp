@@ -23,7 +23,6 @@
 
 // Forward declaration for immune system integration
 typedef struct brain_immune_system brain_immune_system_t;
-typedef struct brain_inflammation_site brain_inflammation_site_t;
 
 #ifdef __cplusplus
 extern "C" {

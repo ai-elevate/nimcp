@@ -101,7 +101,7 @@ TEST_F(BrainSwarmImmuneIntegrationTest, AutoSyncSwarmThreat_CreatesAntigen) {
      * WHY:  Ensure all swarm threats are processed by brain immune
      * HOW:  Create swarm threat, auto-sync, verify antigen created
      */
-    NimcpSwarmThreat threat = create_swarm_threat(100, SEVERITY_HIGH);
+    NimcpSwarmThreat threat = create_swarm_threat(100, SWARM_SEVERITY_HIGH);
 
     /* Auto-sync threat to brain immune */
     int result = brain_immune_auto_sync_swarm_threat(brain_immune, &threat);
@@ -120,7 +120,7 @@ TEST_F(BrainSwarmImmuneIntegrationTest, AutoSyncMultipleThreats_CreatesMultipleA
      * HOW:  Sync 5 threats, verify 5 antigens
      */
     for (uint32_t i = 0; i < 5; i++) {
-        NimcpSwarmThreat threat = create_swarm_threat(100 + i, SEVERITY_MEDIUM);
+        NimcpSwarmThreat threat = create_swarm_threat(100 + i, SWARM_SEVERITY_MEDIUM);
         int result = brain_immune_auto_sync_swarm_threat(brain_immune, &threat);
         EXPECT_EQ(result, 0);
     }
@@ -285,7 +285,7 @@ TEST_F(BrainSwarmImmuneIntegrationTest, ConsensusAssessment_AdjustsSeverity) {
      */
 
     /* Create swarm threat and detect it */
-    NimcpSwarmThreat threat = create_swarm_threat(200, SEVERITY_HIGH);
+    NimcpSwarmThreat threat = create_swarm_threat(200, SWARM_SEVERITY_HIGH);
     uint32_t threat_id = threat.id;
 
     /* Add threat to swarm immune */
@@ -378,7 +378,7 @@ TEST_F(BrainSwarmImmuneIntegrationTest, MultiNodeDetection_ConfirmsThreats) {
      * HOW:  Simulate 3 nodes detecting threat, verify confirmation
      */
 
-    NimcpSwarmThreat threat = create_swarm_threat(300, SEVERITY_CRITICAL);
+    NimcpSwarmThreat threat = create_swarm_threat(300, SWARM_SEVERITY_CRITICAL);
 
     /* Add threat to swarm */
     uint32_t threat_id = 0;
@@ -420,7 +420,7 @@ TEST_F(BrainSwarmImmuneIntegrationTest, NullSwarmImmune_ReturnsError) {
     brain_immune->swarm_immune = nullptr;
 
     /* Try to sync - should fail */
-    NimcpSwarmThreat threat = create_swarm_threat(400, SEVERITY_HIGH);
+    NimcpSwarmThreat threat = create_swarm_threat(400, SWARM_SEVERITY_HIGH);
     int result = brain_immune_auto_sync_swarm_threat(brain_immune, &threat);
     EXPECT_NE(result, 0);
 
@@ -452,7 +452,7 @@ TEST_F(BrainSwarmImmuneIntegrationTest, HighThreatLoad_HandlesMultipleAntigens) 
      */
 
     for (uint32_t i = 0; i < 50; i++) {
-        NimcpSwarmThreat threat = create_swarm_threat(500 + i, SEVERITY_MEDIUM);
+        NimcpSwarmThreat threat = create_swarm_threat(500 + i, SWARM_SEVERITY_MEDIUM);
         brain_immune_auto_sync_swarm_threat(brain_immune, &threat);
     }
 

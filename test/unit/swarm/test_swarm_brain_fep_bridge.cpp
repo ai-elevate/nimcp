@@ -31,8 +31,7 @@ protected:
         ASSERT_NE(fep, nullptr);
 
         /* Create swarm brain */
-        swarm_brain_config_t sb_config;
-        swarm_brain_default_config(&sb_config);
+        swarm_brain_config_t sb_config = swarm_brain_default_config();
         sb_config.drone_id = 1;
         swarm_brain = swarm_brain_create(&sb_config);
         ASSERT_NE(swarm_brain, nullptr);

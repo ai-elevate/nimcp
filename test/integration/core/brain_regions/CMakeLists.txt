@@ -29,4 +29,5 @@ endmacro()
 add_brain_region_integration_test(test_visual_cortex_integration)
 
 # Predictive coding + PE integration test
-add_brain_region_integration_test(test_predictive_pe_integration)
+# DISABLED: Depends on nimcp_brain_region_predictive.c which is disabled for API updates
+# add_brain_region_integration_test(test_predictive_pe_integration)

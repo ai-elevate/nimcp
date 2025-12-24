@@ -32,7 +32,36 @@
  * Platform-Specific Implementations
  * ============================================================================ */
 
-/* Use nimcp_platform_mutex_* instead of custom platform abstraction */
+/* Use standard NIMCP mutex API for consistency */
+#include "utils/thread/nimcp_thread.h"
+
+/* ============================================================================
+ * Helper Macros
+ * ============================================================================ */
+
+/**
+ * @brief Safe mutex lock with error logging
+ * @param mutex Pointer to mutex
+ * @param context Context string for error message
+ */
+#define SAFE_MUTEX_LOCK(mutex, context) \
+    do { \
+        if ((mutex) && nimcp_mutex_lock(mutex) != 0) { \
+            NIMCP_LOGGING_WARN("Mutex lock failed in %s", context); \
+        } \
+    } while(0)
+
+/**
+ * @brief Safe mutex unlock with error logging
+ * @param mutex Pointer to mutex
+ * @param context Context string for error message
+ */
+#define SAFE_MUTEX_UNLOCK(mutex, context) \
+    do { \
+        if ((mutex) && nimcp_mutex_unlock(mutex) != 0) { \
+            NIMCP_LOGGING_WARN("Mutex unlock failed in %s", context); \
+        } \
+    } while(0)
 
 /* ============================================================================
  * Helper Functions
@@ -234,10 +263,19 @@ training_immune_system_t* training_immune_create(
     system->best_loss = FLT_MAX;
     system->next_event_id = 1;
 
-    /* Create mutex */
-    system->mutex = nimcp_platform_mutex_create();
+    /* Create and initialize mutex */
+    system->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!system->mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        nimcp_free(system->events);
+        nimcp_free(system->history);
+        nimcp_free(system);
+        return NULL;
+    }
+
+    if (nimcp_mutex_init(system->mutex, NULL) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        nimcp_free(system->mutex);
         nimcp_free(system->events);
         nimcp_free(system->history);
         nimcp_free(system);
@@ -264,7 +302,7 @@ void training_immune_destroy(training_immune_system_t* system) {
 
     /* Destroy mutex */
     if (system->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)system->mutex);
+        nimcp_mutex_destroy(system->mutex);
         nimcp_free(system->mutex);
     }
 
@@ -283,13 +321,13 @@ int training_immune_start(training_immune_system_t* system) {
     if (!system) return -1;
     if (system->running) return 0;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    SAFE_MUTEX_LOCK(system->mutex, "training_immune_start");
 
     system->running = true;
     system->phase = TRAINING_IMMUNE_PHASE_MONITORING;
     system->start_time_ms = get_timestamp_ms();
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    SAFE_MUTEX_UNLOCK(system->mutex, "training_immune_start");
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -303,12 +341,12 @@ int training_immune_stop(training_immune_system_t* system) {
     if (!system) return -1;
     if (!system->running) return 0;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    SAFE_MUTEX_LOCK(system->mutex, "training_immune_stop");
 
     system->running = false;
     system->phase = TRAINING_IMMUNE_PHASE_RESOLVED;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    SAFE_MUTEX_UNLOCK(system->mutex, "training_immune_stop");
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -328,12 +366,12 @@ int training_immune_connect_brain_immune(
 ) {
     if (!system || !brain_immune) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     system->brain_immune = brain_immune;
     system->config.has_brain_immune = true;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -349,12 +387,12 @@ int training_immune_connect_optimizer(
 ) {
     if (!system || !optimizer) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     system->optimizer = optimizer;
     system->config.has_optimizer = true;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -370,12 +408,12 @@ int training_immune_connect_gradient_manager(
 ) {
     if (!system || !grad_manager) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     system->grad_manager = grad_manager;
     system->config.has_gradient_manager = true;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -391,12 +429,12 @@ int training_immune_connect_callbacks(
 ) {
     if (!system || !callbacks) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     system->callbacks = callbacks;
     system->config.has_callbacks = true;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -412,12 +450,12 @@ int training_immune_connect_perception_training(
 ) {
     if (!system) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     system->perception_training = perception_training;
     system->config.has_perception_training = (perception_training != NULL);
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         if (perception_training) {
@@ -438,12 +476,12 @@ int training_immune_connect_cortical_training(
 ) {
     if (!system) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     system->cortical_training = cortical_training;
     system->config.has_cortical_training = (cortical_training != NULL);
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         if (cortical_training) {
@@ -468,7 +506,7 @@ int training_immune_update_inflammation(
 ) {
     if (!system) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     brain_inflammation_level_t prev_inflammation = system->inflammation;
     system->inflammation = inflammation;
@@ -515,7 +553,7 @@ int training_immune_update_inflammation(
         system->stats.lr_modulations++;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging && inflammation != prev_inflammation) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -587,7 +625,7 @@ int training_immune_update_metrics(
 ) {
     if (!system) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     /* Update metrics */
     training_immune_metrics_t* m = &system->current_metrics;
@@ -630,7 +668,7 @@ int training_immune_update_metrics(
     /* Add to history */
     add_metrics_to_history(system, m);
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     return 0;
 }
@@ -640,7 +678,7 @@ training_instability_type_t training_immune_check_stability(
 ) {
     if (!system) return TRAINING_INSTABILITY_NONE;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     const training_immune_metrics_t* m = &system->current_metrics;
     training_instability_type_t instability = TRAINING_INSTABILITY_NONE;
@@ -661,7 +699,7 @@ training_instability_type_t training_immune_check_stability(
         instability = TRAINING_INSTABILITY_LOSS_PLATEAU;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     /* Auto-trigger immune response if enabled */
     if (instability != TRAINING_INSTABILITY_NONE &&
@@ -688,11 +726,11 @@ int training_immune_report_instability(
     if (!system || !event_id) return -1;
     if (type >= TRAINING_INSTABILITY_COUNT) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     /* Check capacity */
     if (system->event_count >= system->event_capacity) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -713,7 +751,7 @@ int training_immune_report_instability(
     system->stats.total_instabilities++;
     system->stats.instabilities_by_type[type]++;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         LOG_MODULE_WARN(TRAINING_IMMUNE_MODULE_NAME,
@@ -731,7 +769,7 @@ int training_immune_trigger_immune_response(
     if (!system) return -1;
     if (!system->config.has_brain_immune) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     /* Find event */
     training_instability_event_t* event = NULL;
@@ -743,7 +781,7 @@ int training_immune_trigger_immune_response(
     }
 
     if (!event) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -773,7 +811,7 @@ int training_immune_trigger_immune_response(
         system->phase = TRAINING_IMMUNE_PHASE_RESPONDING;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging && result == 0) {
         LOG_MODULE_INFO(TRAINING_IMMUNE_MODULE_NAME,
@@ -791,7 +829,7 @@ training_instability_type_t training_immune_check_perception_cortical_stability(
 
     training_instability_type_t instability = TRAINING_INSTABILITY_NONE;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     /* Check perception training bridge */
     if (system->perception_training) {
@@ -827,7 +865,7 @@ training_instability_type_t training_immune_check_perception_cortical_stability(
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     /* Auto-trigger immune response if enabled */
     if (instability != TRAINING_INSTABILITY_NONE &&
@@ -900,7 +938,7 @@ int training_immune_get_stats(
 ) {
     if (!system || !stats) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
 
     *stats = system->stats;
 
@@ -926,7 +964,7 @@ int training_immune_get_stats(
     stats->perception_training_connected = system->config.has_perception_training;
     stats->cortical_training_connected = system->config.has_cortical_training;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     return 0;
 }
@@ -937,9 +975,9 @@ int training_immune_get_current_metrics(
 ) {
     if (!system || !metrics) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_lock(system->mutex);
     *metrics = system->current_metrics;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     return 0;
 }

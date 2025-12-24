@@ -276,7 +276,13 @@ nimcp_tensor_t* nimcp_tensor_create(
     t->requires_grad = false;
     t->grad = NULL;
     t->refcount = 1;
-    pthread_mutex_init(&t->lock, NULL);
+
+    /* Initialize mutex with error checking */
+    if (nimcp_mutex_init(&t->lock, NULL) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize tensor mutex");
+        nimcp_free(t);
+        return NULL;
+    }
 
     /* Set dimensions */
     if (rank > 0 && dims) {
@@ -294,8 +300,8 @@ nimcp_tensor_t* nimcp_tensor_create(
         t->data = nimcp_aligned_alloc(NIMCP_TENSOR_ALIGN, t->shape.nbytes);
         if (!t->data) {
             LOG_ERROR(LOG_MODULE, "Failed to allocate %zu bytes for tensor data", t->shape.nbytes);
-            /* Clean up: mutex was initialized at line 279 */
-            pthread_mutex_destroy(&t->lock);
+            /* Clean up: mutex was initialized earlier */
+            nimcp_mutex_destroy(&t->lock);
             /* Clean up: struct was allocated at line 266 */
             nimcp_free(t);
             return NULL;
@@ -599,8 +605,8 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
     /* Invalidate magic BEFORE unlocking to prevent re-entry */
     t->magic = 0;
 
-    pthread_mutex_unlock(&t->lock);
-    pthread_mutex_destroy(&t->lock);
+    nimcp_mutex_unlock(&t->lock);
+    nimcp_mutex_destroy(&t->lock);
 
     nimcp_free(t);
 }
@@ -2349,7 +2355,12 @@ nimcp_autodiff_ctx_t* nimcp_autodiff_create(void)
     nimcp_autodiff_ctx_t* ctx = nimcp_calloc(1, sizeof(nimcp_autodiff_ctx_t));
     if (!ctx) return NULL;
 
-    pthread_mutex_init(&ctx->lock, NULL);
+    /* Initialize mutex with error checking */
+    if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize autodiff context mutex");
+        nimcp_free(ctx);
+        return NULL;
+    }
     return ctx;
 }
 
@@ -2366,7 +2377,7 @@ void nimcp_autodiff_destroy(nimcp_autodiff_ctx_t* ctx)
         node = next;
     }
 
-    pthread_mutex_destroy(&ctx->lock);
+    nimcp_mutex_destroy(&ctx->lock);
     nimcp_free(ctx);
 }
 

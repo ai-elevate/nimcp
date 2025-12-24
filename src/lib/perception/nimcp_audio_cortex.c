@@ -429,6 +429,12 @@ static void fft(float* real, float* imag, uint32_t n, bool inverse)
 {
     if (n <= 1) return;
 
+    // Guard: Validate n is power of 2 for radix-2 FFT
+    if ((n & (n - 1)) != 0) {
+        LOG_ERROR(AUDIO_LOG_MODULE, "FFT size must be power of 2, got %u", n);
+        return;
+    }
+
     // Bit-reversal permutation
     uint32_t j = 0;
     for (uint32_t i = 0; i < n - 1; i++) {
@@ -788,13 +794,23 @@ void audio_cortex_destroy(audio_cortex_t* cortex)
     // === Handle Copy-on-Write Reference Counting ===
     // If this is a shallow copy, decrement refcount
     if (cortex->_cow_refcount) {
-        uint32_t old_count = __atomic_sub_fetch(cortex->_cow_refcount, 1, __ATOMIC_SEQ_CST);
-        if (old_count > 0) {
-            // Other references exist; only free this cortex struct
+        // Load current count and attempt to decrement atomically
+        uint32_t old_count = __atomic_load_n(cortex->_cow_refcount, __ATOMIC_SEQ_CST);
+        do {
+            if (old_count == 0) {
+                // Already freed by another thread - just free our handle
+                nimcp_free(cortex);
+                return;
+            }
+        } while (!__atomic_compare_exchange_n(cortex->_cow_refcount, &old_count, old_count - 1,
+                                              false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+
+        if (old_count > 1) {
+            // Other references still exist - just free our handle
             nimcp_free(cortex);
             return;
         }
-        // Last reference: proceed with full cleanup
+        // We were the last reference (old_count == 1) - free the refcount and continue cleanup
         nimcp_free(cortex->_cow_refcount);
     }
 

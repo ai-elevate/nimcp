@@ -7,7 +7,7 @@
 
 extern "C" {
 #include "snn/bridges/nimcp_snn_scaling_bridge.h"
-#include "utils/memory/nimcp_malloc.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 class SNNScalingBridgeTest : public ::testing::Test {

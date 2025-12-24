@@ -27,6 +27,7 @@
 
 extern "C" {
     #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
+    #include "core/brain/regions/broca/nimcp_broca_adapter.h"
     #include "utils/encoding/nimcp_positional_encoding.h"
     #include "utils/memory/nimcp_memory.h"
 }
@@ -46,9 +47,9 @@ protected:
         srand(42);
         nimcp_memory_init();
 
-        // Create mock Broca adapter (minimal initialization)
-        broca = (broca_adapter_t*)nimcp_malloc(sizeof(broca_adapter_t));
-        memset(broca, 0, sizeof(broca_adapter_t));
+        // Create Broca adapter using proper API
+        broca_config_t broca_cfg = broca_default_config();
+        broca = broca_create(&broca_cfg);
     }
 
     void TearDown() override {
@@ -57,7 +58,7 @@ protected:
             bridge = nullptr;
         }
         if (broca) {
-            nimcp_free(broca);
+            broca_destroy(broca);
             broca = nullptr;
         }
     }

@@ -108,7 +108,7 @@ set(NIMCP_CORE_SOURCES
     # DISABLED: Agent-created files with duplicate functions (originals not cleaned up)
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_activation.c  # Activation functions (Strategy pattern)
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_learning.c   # STDP, Oja's rule, weight updates
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_homeostasis.c # Homeostatic plasticity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_homeostasis.c # Homeostatic plasticity
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neuron_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_brain_integration.c  # Phase 2.6.2: Neural Logic Brain Integration
@@ -248,7 +248,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_bridge.c  # Bridge to swarm emotional contagion
     # Emotion-Attention Integration (now with positional encoding support)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_emotion_attention.c  # Emotion-modulated attention system
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_emotion_consolidation.c  # Emotion-modulated consolidation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_emotion_consolidation.c  # Emotion-modulated consolidation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive.c  # Phase 10.3: Executive Functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health.c  # Phase 10.5: Mental Health Monitoring
@@ -997,6 +997,9 @@ set(NIMCP_CORE_SOURCES
 
     # Training - CNN-Cortex Bridge (Phase CNN-CORTEX: Integration with visual/audio cortex)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_cortex_bridge.c
+
+    # Training - CNN Training Module (Conv2D, Dense, Pool, BatchNorm, Dropout, full backprop)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_training.c
 
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)

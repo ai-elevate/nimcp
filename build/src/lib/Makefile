@@ -761,6 +761,30 @@ __/cognitive/consolidation/nimcp_consolidation_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/consolidation/nimcp_consolidation_fep_bridge.c.s
 .PHONY : __/cognitive/consolidation/nimcp_consolidation_fep_bridge.c.s
 
+__/cognitive/consolidation/nimcp_emotion_consolidation.o: __/cognitive/consolidation/nimcp_emotion_consolidation.c.o
+.PHONY : __/cognitive/consolidation/nimcp_emotion_consolidation.o
+
+# target to build an object file
+__/cognitive/consolidation/nimcp_emotion_consolidation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/consolidation/nimcp_emotion_consolidation.c.o
+.PHONY : __/cognitive/consolidation/nimcp_emotion_consolidation.c.o
+
+__/cognitive/consolidation/nimcp_emotion_consolidation.i: __/cognitive/consolidation/nimcp_emotion_consolidation.c.i
+.PHONY : __/cognitive/consolidation/nimcp_emotion_consolidation.i
+
+# target to preprocess a source file
+__/cognitive/consolidation/nimcp_emotion_consolidation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/consolidation/nimcp_emotion_consolidation.c.i
+.PHONY : __/cognitive/consolidation/nimcp_emotion_consolidation.c.i
+
+__/cognitive/consolidation/nimcp_emotion_consolidation.s: __/cognitive/consolidation/nimcp_emotion_consolidation.c.s
+.PHONY : __/cognitive/consolidation/nimcp_emotion_consolidation.s
+
+# target to generate assembly for a file
+__/cognitive/consolidation/nimcp_emotion_consolidation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/consolidation/nimcp_emotion_consolidation.c.s
+.PHONY : __/cognitive/consolidation/nimcp_emotion_consolidation.c.s
+
 __/cognitive/curiosity/nimcp_curiosity.o: __/cognitive/curiosity/nimcp_curiosity.c.o
 .PHONY : __/cognitive/curiosity/nimcp_curiosity.o
 
@@ -8248,6 +8272,30 @@ __/core/neuralnet/nimcp_neuralnet.s: __/core/neuralnet/nimcp_neuralnet.c.s
 __/core/neuralnet/nimcp_neuralnet.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet.c.s
 .PHONY : __/core/neuralnet/nimcp_neuralnet.c.s
+
+__/core/neuralnet/nimcp_neuralnet_homeostasis.o: __/core/neuralnet/nimcp_neuralnet_homeostasis.c.o
+.PHONY : __/core/neuralnet/nimcp_neuralnet_homeostasis.o
+
+# target to build an object file
+__/core/neuralnet/nimcp_neuralnet_homeostasis.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet_homeostasis.c.o
+.PHONY : __/core/neuralnet/nimcp_neuralnet_homeostasis.c.o
+
+__/core/neuralnet/nimcp_neuralnet_homeostasis.i: __/core/neuralnet/nimcp_neuralnet_homeostasis.c.i
+.PHONY : __/core/neuralnet/nimcp_neuralnet_homeostasis.i
+
+# target to preprocess a source file
+__/core/neuralnet/nimcp_neuralnet_homeostasis.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet_homeostasis.c.i
+.PHONY : __/core/neuralnet/nimcp_neuralnet_homeostasis.c.i
+
+__/core/neuralnet/nimcp_neuralnet_homeostasis.s: __/core/neuralnet/nimcp_neuralnet_homeostasis.c.s
+.PHONY : __/core/neuralnet/nimcp_neuralnet_homeostasis.s
+
+# target to generate assembly for a file
+__/core/neuralnet/nimcp_neuralnet_homeostasis.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet_homeostasis.c.s
+.PHONY : __/core/neuralnet/nimcp_neuralnet_homeostasis.c.s
 
 __/core/neuralnet/nimcp_sparse_synapse.o: __/core/neuralnet/nimcp_sparse_synapse.c.o
 .PHONY : __/core/neuralnet/nimcp_sparse_synapse.o
@@ -17081,6 +17129,54 @@ __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s
 .PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s
 
+__/training/nimcp_cnn_cortex_bridge.o: __/training/nimcp_cnn_cortex_bridge.c.o
+.PHONY : __/training/nimcp_cnn_cortex_bridge.o
+
+# target to build an object file
+__/training/nimcp_cnn_cortex_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cnn_cortex_bridge.c.o
+.PHONY : __/training/nimcp_cnn_cortex_bridge.c.o
+
+__/training/nimcp_cnn_cortex_bridge.i: __/training/nimcp_cnn_cortex_bridge.c.i
+.PHONY : __/training/nimcp_cnn_cortex_bridge.i
+
+# target to preprocess a source file
+__/training/nimcp_cnn_cortex_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cnn_cortex_bridge.c.i
+.PHONY : __/training/nimcp_cnn_cortex_bridge.c.i
+
+__/training/nimcp_cnn_cortex_bridge.s: __/training/nimcp_cnn_cortex_bridge.c.s
+.PHONY : __/training/nimcp_cnn_cortex_bridge.s
+
+# target to generate assembly for a file
+__/training/nimcp_cnn_cortex_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cnn_cortex_bridge.c.s
+.PHONY : __/training/nimcp_cnn_cortex_bridge.c.s
+
+__/training/nimcp_cnn_training.o: __/training/nimcp_cnn_training.c.o
+.PHONY : __/training/nimcp_cnn_training.o
+
+# target to build an object file
+__/training/nimcp_cnn_training.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cnn_training.c.o
+.PHONY : __/training/nimcp_cnn_training.c.o
+
+__/training/nimcp_cnn_training.i: __/training/nimcp_cnn_training.c.i
+.PHONY : __/training/nimcp_cnn_training.i
+
+# target to preprocess a source file
+__/training/nimcp_cnn_training.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cnn_training.c.i
+.PHONY : __/training/nimcp_cnn_training.c.i
+
+__/training/nimcp_cnn_training.s: __/training/nimcp_cnn_training.c.s
+.PHONY : __/training/nimcp_cnn_training.s
+
+# target to generate assembly for a file
+__/training/nimcp_cnn_training.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cnn_training.c.s
+.PHONY : __/training/nimcp_cnn_training.c.s
+
 __/utils/algorithms/nimcp_centrality.o: __/utils/algorithms/nimcp_centrality.c.o
 .PHONY : __/utils/algorithms/nimcp_centrality.o
 
@@ -17128,6 +17224,30 @@ __/utils/algorithms/nimcp_graph_metrics.s: __/utils/algorithms/nimcp_graph_metri
 __/utils/algorithms/nimcp_graph_metrics.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/algorithms/nimcp_graph_metrics.c.s
 .PHONY : __/utils/algorithms/nimcp_graph_metrics.c.s
+
+__/utils/bridge/nimcp_bridge_base.o: __/utils/bridge/nimcp_bridge_base.c.o
+.PHONY : __/utils/bridge/nimcp_bridge_base.o
+
+# target to build an object file
+__/utils/bridge/nimcp_bridge_base.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/bridge/nimcp_bridge_base.c.o
+.PHONY : __/utils/bridge/nimcp_bridge_base.c.o
+
+__/utils/bridge/nimcp_bridge_base.i: __/utils/bridge/nimcp_bridge_base.c.i
+.PHONY : __/utils/bridge/nimcp_bridge_base.i
+
+# target to preprocess a source file
+__/utils/bridge/nimcp_bridge_base.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/bridge/nimcp_bridge_base.c.i
+.PHONY : __/utils/bridge/nimcp_bridge_base.c.i
+
+__/utils/bridge/nimcp_bridge_base.s: __/utils/bridge/nimcp_bridge_base.c.s
+.PHONY : __/utils/bridge/nimcp_bridge_base.s
+
+# target to generate assembly for a file
+__/utils/bridge/nimcp_bridge_base.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/bridge/nimcp_bridge_base.c.s
+.PHONY : __/utils/bridge/nimcp_bridge_base.c.s
 
 __/utils/cache/nimcp_cache.o: __/utils/cache/nimcp_cache.c.o
 .PHONY : __/utils/cache/nimcp_cache.o
@@ -19447,6 +19567,9 @@ help:
 	@echo "... __/cognitive/consolidation/nimcp_consolidation_fep_bridge.o"
 	@echo "... __/cognitive/consolidation/nimcp_consolidation_fep_bridge.i"
 	@echo "... __/cognitive/consolidation/nimcp_consolidation_fep_bridge.s"
+	@echo "... __/cognitive/consolidation/nimcp_emotion_consolidation.o"
+	@echo "... __/cognitive/consolidation/nimcp_emotion_consolidation.i"
+	@echo "... __/cognitive/consolidation/nimcp_emotion_consolidation.s"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.o"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.i"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.s"
@@ -20383,6 +20506,9 @@ help:
 	@echo "... __/core/neuralnet/nimcp_neuralnet.o"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.i"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.s"
+	@echo "... __/core/neuralnet/nimcp_neuralnet_homeostasis.o"
+	@echo "... __/core/neuralnet/nimcp_neuralnet_homeostasis.i"
+	@echo "... __/core/neuralnet/nimcp_neuralnet_homeostasis.s"
 	@echo "... __/core/neuralnet/nimcp_sparse_synapse.o"
 	@echo "... __/core/neuralnet/nimcp_sparse_synapse.i"
 	@echo "... __/core/neuralnet/nimcp_sparse_synapse.s"
@@ -21487,12 +21613,21 @@ help:
 	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.o"
 	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.i"
 	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.s"
+	@echo "... __/training/nimcp_cnn_cortex_bridge.o"
+	@echo "... __/training/nimcp_cnn_cortex_bridge.i"
+	@echo "... __/training/nimcp_cnn_cortex_bridge.s"
+	@echo "... __/training/nimcp_cnn_training.o"
+	@echo "... __/training/nimcp_cnn_training.i"
+	@echo "... __/training/nimcp_cnn_training.s"
 	@echo "... __/utils/algorithms/nimcp_centrality.o"
 	@echo "... __/utils/algorithms/nimcp_centrality.i"
 	@echo "... __/utils/algorithms/nimcp_centrality.s"
 	@echo "... __/utils/algorithms/nimcp_graph_metrics.o"
 	@echo "... __/utils/algorithms/nimcp_graph_metrics.i"
 	@echo "... __/utils/algorithms/nimcp_graph_metrics.s"
+	@echo "... __/utils/bridge/nimcp_bridge_base.o"
+	@echo "... __/utils/bridge/nimcp_bridge_base.i"
+	@echo "... __/utils/bridge/nimcp_bridge_base.s"
 	@echo "... __/utils/cache/nimcp_cache.o"
 	@echo "... __/utils/cache/nimcp_cache.i"
 	@echo "... __/utils/cache/nimcp_cache.s"

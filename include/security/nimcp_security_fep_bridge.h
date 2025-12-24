@@ -151,6 +151,8 @@ int security_fep_report_threat(security_fep_bridge_t* bridge,
     nimcp_threat_level_t level);
 int security_fep_get_stats(const security_fep_bridge_t* bridge,
     security_fep_stats_t* stats);
+int security_fep_get_effects(const security_fep_bridge_t* bridge,
+    security_fep_effects_t* effects);
 int security_fep_connect_bio_async(security_fep_bridge_t* bridge);
 int security_fep_disconnect_bio_async(security_fep_bridge_t* bridge);
 bool security_fep_is_bio_async_connected(const security_fep_bridge_t* bridge);

@@ -462,7 +462,7 @@ TEST_F(WorkingMemoryPEIntegrationTest, PEWithEmotionalContext) {
         emotional_tag_t emotion = {};
         emotion.valence = (pos % 2 == 0) ? 0.8f : -0.6f;
         emotion.arousal = 0.7f;
-        emotion.dominant_emotion = EMOTION_JOY;
+        emotion.category = EMOTION_CAT_JOY;
 
         working_memory_add_with_emotion(wm, item, ITEM_SIZE, 0.5f, &emotion);
     }

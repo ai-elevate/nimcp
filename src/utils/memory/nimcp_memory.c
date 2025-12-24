@@ -457,9 +457,12 @@ static uint64_t timespec_diff_ms(const timespec_internal_t* end, const timespec_
  */
 static void init_if_needed(void)
 {
-    // Recursion guard: prevent infinite recursion during UMM initialization
-    // UMM create calls nimcp_calloc, which calls init_if_needed again
-    static bool g_umm_initializing = false;
+    /* Recursion guard: prevent infinite recursion during UMM initialization
+     * WHY: UMM create calls nimcp_calloc, which calls init_if_needed again
+     * HOW: Use thread-local flag to track per-thread initialization state
+     * THREAD SAFETY: _Thread_local ensures each thread has its own flag
+     */
+    static _Thread_local bool g_umm_initializing = false;
 
     if (!g_memory_state.initialized) {
         nimcp_mutex_init(&g_memory_state.lock, NULL);
@@ -470,8 +473,9 @@ static void init_if_needed(void)
         g_memory_state.patterns = NULL;
     }
 
-    // Initialize unified memory manager if not already done
-    // Use g_umm_initializing to prevent recursion
+    /* Initialize unified memory manager if not already done
+     * Use g_umm_initializing to prevent recursion (per-thread)
+     */
     if (!g_unified_initialized && !g_unified_manager && !g_umm_initializing) {
         g_umm_initializing = true;  // Set flag before creating UMM
         unified_mem_config_t config = unified_mem_default_config();
@@ -640,7 +644,13 @@ static size_t get_allocation_size(void* ptr)
     memory_block_t* current = g_memory_state.blocks;
     size_t size = 0;
 
-    // Add iteration counter to prevent infinite loop on corrupted list
+    /* Cycle detection using Floyd's tortoise-hare algorithm
+     * WHY: Prevents infinite loops on corrupted linked lists
+     * HOW: Fast pointer moves 2x speed, if it catches slow pointer = cycle
+     */
+    memory_block_t* slow = current;
+    memory_block_t* fast = current;
+    bool cycle_detected = false;
     uint32_t iterations = 0;
     const uint32_t MAX_ITERATIONS = 100000;
 
@@ -649,11 +659,25 @@ static size_t get_allocation_size(void* ptr)
             size = current->size;
             break;
         }
+
+        /* Cycle detection: advance tortoise and hare */
+        if (slow) slow = slow->next;
+        if (fast) {
+            fast = fast->next;
+            if (fast) fast = fast->next;
+        }
+        if (slow && fast && slow == fast) {
+            cycle_detected = true;
+            break;
+        }
+
         current = current->next;
         iterations++;
     }
 
-    if (iterations >= MAX_ITERATIONS) {
+    if (cycle_detected) {
+        NIMCP_LOGGING_ERROR("Memory tracking list contains cycle (corrupted data structure)");
+    } else if (iterations >= MAX_ITERATIONS) {
         NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted (exceeded max iterations)");
     }
 
@@ -684,7 +708,10 @@ static size_t get_guard_size(void* ptr)
     size_t guard_size = 0;  // 0 means not found or no guards
     bool found = false;
 
-    // Add iteration counter to prevent infinite loop on corrupted list
+    /* Cycle detection using Floyd's tortoise-hare algorithm */
+    memory_block_t* slow = current;
+    memory_block_t* fast = current;
+    bool cycle_detected = false;
     uint32_t iterations = 0;
     const uint32_t MAX_ITERATIONS = 100000;
 
@@ -694,11 +721,25 @@ static size_t get_guard_size(void* ptr)
             found = true;
             break;
         }
+
+        /* Cycle detection: advance tortoise and hare */
+        if (slow) slow = slow->next;
+        if (fast) {
+            fast = fast->next;
+            if (fast) fast = fast->next;
+        }
+        if (slow && fast && slow == fast) {
+            cycle_detected = true;
+            break;
+        }
+
         current = current->next;
         iterations++;
     }
 
-    if (iterations >= MAX_ITERATIONS) {
+    if (cycle_detected) {
+        NIMCP_LOGGING_ERROR("Memory tracking list contains cycle in get_guard_size (corrupted data structure)");
+    } else if (iterations >= MAX_ITERATIONS) {
         NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_guard_size (exceeded max iterations)");
     } else if (!found) {
         fprintf(stderr, "[DEBUG] get_guard_size: ptr=%p NOT FOUND in tracking list\n", ptr);
@@ -740,7 +781,10 @@ static uint64_t get_allocation_lifetime_ms(void* ptr)
     memory_block_t* current = g_memory_state.blocks;
     uint64_t lifetime = 0;
 
-    // Add iteration counter to prevent infinite loop on corrupted list
+    /* Cycle detection using Floyd's tortoise-hare algorithm */
+    memory_block_t* slow = current;
+    memory_block_t* fast = current;
+    bool cycle_detected = false;
     uint32_t iterations = 0;
     const uint32_t MAX_ITERATIONS = 100000;
 
@@ -751,11 +795,25 @@ static uint64_t get_allocation_lifetime_ms(void* ptr)
             lifetime = timespec_diff_ms(&now, &current->allocation_time);
             break;
         }
+
+        /* Cycle detection: advance tortoise and hare */
+        if (slow) slow = slow->next;
+        if (fast) {
+            fast = fast->next;
+            if (fast) fast = fast->next;
+        }
+        if (slow && fast && slow == fast) {
+            cycle_detected = true;
+            break;
+        }
+
         current = current->next;
         iterations++;
     }
 
-    if (iterations >= MAX_ITERATIONS) {
+    if (cycle_detected) {
+        NIMCP_LOGGING_ERROR("Memory tracking list contains cycle in get_allocation_lifetime_ms (corrupted data structure)");
+    } else if (iterations >= MAX_ITERATIONS) {
         NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_allocation_lifetime_ms (exceeded max iterations)");
     }
 

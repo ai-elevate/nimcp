@@ -18,7 +18,7 @@ extern "C" {
 class SNNAttentionBridgeTest : public ::testing::Test {
 protected:
     snn_network_t* snn;
-    multihead_attention_t* attention;
+    multihead_attention_t attention_obj;  /* Opaque pointer */
     snn_attention_bridge_t* bridge;
 
     void SetUp() override {
@@ -38,8 +38,8 @@ protected:
         attn_config.input_dim = 64;
         attn_config.output_dim = 64;
         attn_config.sequence_length = 10;
-        attention = multihead_attention_create(&attn_config);
-        ASSERT_NE(attention, nullptr);
+        attention_obj = multihead_attention_create(&attn_config);
+        ASSERT_NE(attention_obj, nullptr);
 
         bridge = nullptr;
     }
@@ -48,8 +48,8 @@ protected:
         if (bridge) {
             snn_attention_bridge_destroy(bridge);
         }
-        if (attention) {
-            multihead_attention_destroy(attention);
+        if (attention_obj) {
+            multihead_attention_destroy(attention_obj);
         }
         if (snn) {
             snn_network_destroy(snn);
@@ -74,7 +74,7 @@ TEST_F(SNNAttentionBridgeTest, BridgeCreation) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 }
 
@@ -83,8 +83,8 @@ TEST_F(SNNAttentionBridgeTest, BridgeCreationNullParams) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    EXPECT_EQ(snn_attention_bridge_create(nullptr, snn, attention), nullptr);
-    EXPECT_EQ(snn_attention_bridge_create(&config, nullptr, attention), nullptr);
+    EXPECT_EQ(snn_attention_bridge_create(nullptr, snn, &attention_obj), nullptr);
+    EXPECT_EQ(snn_attention_bridge_create(&config, nullptr, &attention_obj), nullptr);
     EXPECT_EQ(snn_attention_bridge_create(&config, snn, nullptr), nullptr);
 }
 
@@ -93,7 +93,7 @@ TEST_F(SNNAttentionBridgeTest, BridgeDestruction) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     snn_attention_bridge_destroy(bridge);
@@ -105,7 +105,7 @@ TEST_F(SNNAttentionBridgeTest, ComputeGateSignal) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     // Test min rate
@@ -127,7 +127,7 @@ TEST_F(SNNAttentionBridgeTest, GammaStateInitialization) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     snn_gamma_state_t gamma;
@@ -142,7 +142,7 @@ TEST_F(SNNAttentionBridgeTest, GetGateSignal) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     float gate = snn_attention_get_gate_signal(bridge);
@@ -155,7 +155,7 @@ TEST_F(SNNAttentionBridgeTest, CheckGammaSynchronization) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     bool synced = snn_attention_is_gamma_synchronized(bridge);
@@ -167,7 +167,7 @@ TEST_F(SNNAttentionBridgeTest, GetBridgeState) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     snn_attention_state_t state;
@@ -181,7 +181,7 @@ TEST_F(SNNAttentionBridgeTest, GetStatistics) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     uint32_t sync_count;
@@ -198,7 +198,7 @@ TEST_F(SNNAttentionBridgeTest, ResetStatistics) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     snn_attention_reset_stats(bridge);
@@ -214,7 +214,7 @@ TEST_F(SNNAttentionBridgeTest, BioAsyncConnectionStatus) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     bool connected = snn_attention_bridge_is_bio_async_connected(bridge);
@@ -226,7 +226,7 @@ TEST_F(SNNAttentionBridgeTest, BioAsyncConnect) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     // Connection may fail if router not available, that's OK
@@ -240,7 +240,7 @@ TEST_F(SNNAttentionBridgeTest, BioAsyncDisconnect) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     int ret = snn_attention_bridge_disconnect_bio_async(bridge);
@@ -252,7 +252,7 @@ TEST_F(SNNAttentionBridgeTest, ProcessFunction) {
     snn_attention_config_t config;
     snn_attention_config_default(&config);
 
-    bridge = snn_attention_bridge_create(&config, snn, attention);
+    bridge = snn_attention_bridge_create(&config, snn, &attention_obj);
     ASSERT_NE(bridge, nullptr);
 
     float output[2] = {0.0f, 0.0f};

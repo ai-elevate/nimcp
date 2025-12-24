@@ -322,7 +322,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_Basic) {
     float item_data[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     uint32_t request_id = meta_controller_request_wm_slot(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         item_data,
         4,
         0.8f,  // priority
@@ -336,7 +336,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_NullController) {
     float item_data[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     uint32_t request_id = meta_controller_request_wm_slot(
         nullptr,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         item_data,
         4,
         0.8f,
@@ -351,7 +351,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_NullItemData) {
 
     uint32_t request_id = meta_controller_request_wm_slot(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         nullptr,  // Invalid
         4,
         0.8f,
@@ -367,7 +367,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_ZeroSize) {
 
     uint32_t request_id = meta_controller_request_wm_slot(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         item_data,
         0,  // Invalid
         0.8f,
@@ -383,7 +383,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_ExcessiveSize) {
 
     uint32_t request_id = meta_controller_request_wm_slot(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         item_data,
         WORKING_MEMORY_MAX_ITEM_SIZE + 1,  // Too large
         0.8f,
@@ -400,7 +400,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_PriorityClampingLow) {
     float item_data[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     uint32_t request_id = meta_controller_request_wm_slot(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         item_data,
         4,
         -1.0f,  // Should clamp to 0.0
@@ -417,7 +417,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_PriorityClampingHigh) {
     float item_data[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     uint32_t request_id = meta_controller_request_wm_slot(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         item_data,
         4,
         2.0f,  // Should clamp to 1.0
@@ -435,9 +435,9 @@ TEST_F(CognitiveMetaControllerTest, RequestWMSlot_MultipleRequests) {
     float item2[2] = {3.0f, 4.0f};
 
     uint32_t req1 = meta_controller_request_wm_slot(
-        controller, COGNITIVE_MODULE_ATTENTION, item1, 2, 0.8f, 0.9f);
+        controller, META_CTRL_MODULE_ATTENTION, item1, 2, 0.8f, 0.9f);
     uint32_t req2 = meta_controller_request_wm_slot(
-        controller, COGNITIVE_MODULE_CURIOSITY, item2, 2, 0.7f, 0.8f);
+        controller, META_CTRL_MODULE_CURIOSITY, item2, 2, 0.7f, 0.8f);
 
     EXPECT_GT(req1, 0);
     EXPECT_GT(req2, 0);
@@ -453,7 +453,7 @@ TEST_F(CognitiveMetaControllerTest, RequestAttention_Basic) {
 
     uint32_t request_id = meta_controller_request_attention(
         controller,
-        COGNITIVE_MODULE_EMOTION,
+        META_CTRL_MODULE_EMOTION,
         0.8f,  // salience
         0.6f,  // urgency
         nullptr
@@ -465,7 +465,7 @@ TEST_F(CognitiveMetaControllerTest, RequestAttention_Basic) {
 TEST_F(CognitiveMetaControllerTest, RequestAttention_NullController) {
     uint32_t request_id = meta_controller_request_attention(
         nullptr,
-        COGNITIVE_MODULE_EMOTION,
+        META_CTRL_MODULE_EMOTION,
         0.8f,
         0.6f,
         nullptr
@@ -479,12 +479,12 @@ TEST_F(CognitiveMetaControllerTest, RequestAttention_SalienceClamping) {
 
     // Test low clamp
     uint32_t req1 = meta_controller_request_attention(
-        controller, COGNITIVE_MODULE_EMOTION, -0.5f, 0.6f, nullptr);
+        controller, META_CTRL_MODULE_EMOTION, -0.5f, 0.6f, nullptr);
     EXPECT_GT(req1, 0);
 
     // Test high clamp
     uint32_t req2 = meta_controller_request_attention(
-        controller, COGNITIVE_MODULE_EMOTION, 1.5f, 0.6f, nullptr);
+        controller, META_CTRL_MODULE_EMOTION, 1.5f, 0.6f, nullptr);
     EXPECT_GT(req2, 0);
 }
 
@@ -492,11 +492,11 @@ TEST_F(CognitiveMetaControllerTest, RequestAttention_MultipleRequests) {
     CreateAndStartController();
 
     uint32_t req1 = meta_controller_request_attention(
-        controller, COGNITIVE_MODULE_EMOTION, 0.8f, 0.9f, nullptr);
+        controller, META_CTRL_MODULE_EMOTION, 0.8f, 0.9f, nullptr);
     uint32_t req2 = meta_controller_request_attention(
-        controller, COGNITIVE_MODULE_CURIOSITY, 0.7f, 0.5f, nullptr);
+        controller, META_CTRL_MODULE_CURIOSITY, 0.7f, 0.5f, nullptr);
     uint32_t req3 = meta_controller_request_attention(
-        controller, COGNITIVE_MODULE_INTROSPECTION, 0.9f, 0.8f, nullptr);
+        controller, META_CTRL_MODULE_INTROSPECTION, 0.9f, 0.8f, nullptr);
 
     EXPECT_GT(req1, 0);
     EXPECT_GT(req2, 0);
@@ -514,7 +514,7 @@ TEST_F(CognitiveMetaControllerTest, RequestLearningRate_Basic) {
 
     float lr = meta_controller_request_learning_rate(
         controller,
-        COGNITIVE_MODULE_WORKING_MEMORY,
+        META_CTRL_MODULE_WORKING_MEMORY,
         0.5f,  // uncertainty
         0.7f,  // confidence
         0.01f  // desired_lr
@@ -527,7 +527,7 @@ TEST_F(CognitiveMetaControllerTest, RequestLearningRate_Basic) {
 TEST_F(CognitiveMetaControllerTest, RequestLearningRate_NullController) {
     float lr = meta_controller_request_learning_rate(
         nullptr,
-        COGNITIVE_MODULE_WORKING_MEMORY,
+        META_CTRL_MODULE_WORKING_MEMORY,
         0.5f,
         0.7f,
         0.01f
@@ -541,7 +541,7 @@ TEST_F(CognitiveMetaControllerTest, RequestLearningRate_HighUncertainty) {
 
     float lr = meta_controller_request_learning_rate(
         controller,
-        COGNITIVE_MODULE_WORKING_MEMORY,
+        META_CTRL_MODULE_WORKING_MEMORY,
         0.9f,  // High uncertainty
         0.7f,
         0.01f
@@ -556,7 +556,7 @@ TEST_F(CognitiveMetaControllerTest, RequestLearningRate_LowConfidence) {
 
     float lr = meta_controller_request_learning_rate(
         controller,
-        COGNITIVE_MODULE_WORKING_MEMORY,
+        META_CTRL_MODULE_WORKING_MEMORY,
         0.5f,
         0.1f,  // Low confidence
         0.01f
@@ -572,11 +572,11 @@ TEST_F(CognitiveMetaControllerTest, RequestLearningRate_UncertaintyClamping) {
 
     // Test clamping to [0, 1]
     float lr1 = meta_controller_request_learning_rate(
-        controller, COGNITIVE_MODULE_WORKING_MEMORY, -0.5f, 0.7f, 0.01f);
+        controller, META_CTRL_MODULE_WORKING_MEMORY, -0.5f, 0.7f, 0.01f);
     EXPECT_GE(lr1, META_CONTROLLER_LR_MIN);
 
     float lr2 = meta_controller_request_learning_rate(
-        controller, COGNITIVE_MODULE_WORKING_MEMORY, 1.5f, 0.7f, 0.01f);
+        controller, META_CTRL_MODULE_WORKING_MEMORY, 1.5f, 0.7f, 0.01f);
     EXPECT_LE(lr2, META_CONTROLLER_LR_MAX);
 }
 
@@ -590,7 +590,7 @@ TEST_F(CognitiveMetaControllerTest, RequestExecutivePriority_Basic) {
 
     int result = meta_controller_request_executive_priority(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         1,     // task_id
         0.9f   // priority
     );
@@ -601,7 +601,7 @@ TEST_F(CognitiveMetaControllerTest, RequestExecutivePriority_Basic) {
 TEST_F(CognitiveMetaControllerTest, RequestExecutivePriority_NullController) {
     int result = meta_controller_request_executive_priority(
         nullptr,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         1,
         0.9f
     );
@@ -615,7 +615,7 @@ TEST_F(CognitiveMetaControllerTest, RequestExecutivePriority_NoExecutive) {
 
     int result = meta_controller_request_executive_priority(
         controller,
-        COGNITIVE_MODULE_ATTENTION,
+        META_CTRL_MODULE_ATTENTION,
         1,
         0.9f
     );
@@ -636,7 +636,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWorkspaceAccess_Basic) {
 
     bool granted = meta_controller_request_workspace_access(
         controller,
-        COGNITIVE_MODULE_EMOTION,
+        META_CTRL_MODULE_EMOTION,
         content,
         64,
         0.8f  // strength
@@ -652,7 +652,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWorkspaceAccess_NullController) {
 
     bool granted = meta_controller_request_workspace_access(
         nullptr,
-        COGNITIVE_MODULE_EMOTION,
+        META_CTRL_MODULE_EMOTION,
         content,
         64,
         0.8f
@@ -667,7 +667,7 @@ TEST_F(CognitiveMetaControllerTest, RequestWorkspaceAccess_NullContent) {
 
     bool granted = meta_controller_request_workspace_access(
         controller,
-        COGNITIVE_MODULE_EMOTION,
+        META_CTRL_MODULE_EMOTION,
         nullptr,
         64,
         0.8f
@@ -681,19 +681,19 @@ TEST_F(CognitiveMetaControllerTest, RequestWorkspaceAccess_ModuleWeighting) {
     CreateGlobalWorkspaceIntegration();
 
     // Set different module weights
-    meta_controller_set_module_weight(controller, COGNITIVE_MODULE_EMOTION, 0.9f);
-    meta_controller_set_module_weight(controller, COGNITIVE_MODULE_CURIOSITY, 0.3f);
+    meta_controller_set_module_weight(controller, META_CTRL_MODULE_EMOTION, 0.9f);
+    meta_controller_set_module_weight(controller, META_CTRL_MODULE_CURIOSITY, 0.3f);
 
     float content[64];
     for (int i = 0; i < 64; i++) content[i] = (float)i;
 
     // High weight module
     bool granted1 = meta_controller_request_workspace_access(
-        controller, COGNITIVE_MODULE_EMOTION, content, 64, 0.5f);
+        controller, META_CTRL_MODULE_EMOTION, content, 64, 0.5f);
 
     // Low weight module
     bool granted2 = meta_controller_request_workspace_access(
-        controller, COGNITIVE_MODULE_CURIOSITY, content, 64, 0.5f);
+        controller, META_CTRL_MODULE_CURIOSITY, content, 64, 0.5f);
 
     // Just verify no crashes
     EXPECT_TRUE(granted1 || !granted1);
@@ -717,11 +717,11 @@ TEST_F(CognitiveMetaControllerTest, Arbitration_WinnerTakeAll) {
     float item3[2] = {5.0f, 6.0f};
 
     // Submit requests with different priorities
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item1, 2, 0.5f, 0.5f);
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_EMOTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_EMOTION,
                                     item2, 2, 0.9f, 0.9f);  // Highest priority
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_CURIOSITY,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_CURIOSITY,
                                     item3, 2, 0.3f, 0.3f);
 
     // Wait for update interval to elapse
@@ -745,15 +745,15 @@ TEST_F(CognitiveMetaControllerTest, Arbitration_PriorityWeighted) {
     meta_controller_start(controller);
 
     // Set different module weights
-    meta_controller_set_module_weight(controller, COGNITIVE_MODULE_ATTENTION, 0.9f);
-    meta_controller_set_module_weight(controller, COGNITIVE_MODULE_EMOTION, 0.5f);
+    meta_controller_set_module_weight(controller, META_CTRL_MODULE_ATTENTION, 0.9f);
+    meta_controller_set_module_weight(controller, META_CTRL_MODULE_EMOTION, 0.5f);
 
     float item1[2] = {1.0f, 2.0f};
     float item2[2] = {3.0f, 4.0f};
 
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item1, 2, 0.5f, 0.5f);
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_EMOTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_EMOTION,
                                     item2, 2, 0.6f, 0.6f);
 
     // Wait for update interval to elapse
@@ -808,7 +808,7 @@ TEST_F(CognitiveMetaControllerTest, Update_WithRequests) {
     CreateWorkingMemoryIntegration();
 
     float item[2] = {1.0f, 2.0f};
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item, 2, 0.8f, 0.9f);
 
     // Wait for update interval
@@ -869,7 +869,7 @@ TEST_F(CognitiveMetaControllerTest, GetStats_AfterRequests) {
     CreateWorkingMemoryIntegration();
 
     float item[2] = {1.0f, 2.0f};
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item, 2, 0.8f, 0.9f);
 
     meta_controller_stats_t stats;
@@ -898,7 +898,7 @@ TEST_F(CognitiveMetaControllerTest, ResetStats_Valid) {
     CreateWorkingMemoryIntegration();
 
     float item[2] = {1.0f, 2.0f};
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item, 2, 0.8f, 0.9f);
 
     meta_controller_reset_stats(controller);
@@ -919,16 +919,16 @@ TEST_F(CognitiveMetaControllerTest, GetModulePerformance_Valid) {
 
     module_performance_t perf;
     int result = meta_controller_get_module_performance(
-        controller, COGNITIVE_MODULE_ATTENTION, &perf);
+        controller, META_CTRL_MODULE_ATTENTION, &perf);
 
     EXPECT_EQ(result, NIMCP_SUCCESS);
-    EXPECT_EQ(perf.module, COGNITIVE_MODULE_ATTENTION);
+    EXPECT_EQ(perf.module, META_CTRL_MODULE_ATTENTION);
 }
 
 TEST_F(CognitiveMetaControllerTest, GetModulePerformance_NullController) {
     module_performance_t perf;
     int result = meta_controller_get_module_performance(
-        nullptr, COGNITIVE_MODULE_ATTENTION, &perf);
+        nullptr, META_CTRL_MODULE_ATTENTION, &perf);
 
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
@@ -995,7 +995,7 @@ TEST_F(CognitiveMetaControllerTest, AllocationObserver_CallbackInvoked) {
         controller, allocation_callback, nullptr);
 
     float item[2] = {1.0f, 2.0f};
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item, 2, 0.8f, 0.9f);
 
     // Wait and update
@@ -1046,14 +1046,14 @@ TEST_F(CognitiveMetaControllerTest, SetModuleWeight_Valid) {
     CreateController();
 
     int result = meta_controller_set_module_weight(
-        controller, COGNITIVE_MODULE_ATTENTION, 0.8f);
+        controller, META_CTRL_MODULE_ATTENTION, 0.8f);
 
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(CognitiveMetaControllerTest, SetModuleWeight_NullController) {
     int result = meta_controller_set_module_weight(
-        nullptr, COGNITIVE_MODULE_ATTENTION, 0.8f);
+        nullptr, META_CTRL_MODULE_ATTENTION, 0.8f);
 
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
@@ -1071,7 +1071,7 @@ TEST_F(CognitiveMetaControllerTest, SetModuleWeight_ClampingLow) {
     CreateController();
 
     int result = meta_controller_set_module_weight(
-        controller, COGNITIVE_MODULE_ATTENTION, -0.5f);
+        controller, META_CTRL_MODULE_ATTENTION, -0.5f);
 
     EXPECT_EQ(result, NIMCP_SUCCESS);  // Should clamp to 0.0
 }
@@ -1080,7 +1080,7 @@ TEST_F(CognitiveMetaControllerTest, SetModuleWeight_ClampingHigh) {
     CreateController();
 
     int result = meta_controller_set_module_weight(
-        controller, COGNITIVE_MODULE_ATTENTION, 2.0f);
+        controller, META_CTRL_MODULE_ATTENTION, 2.0f);
 
     EXPECT_EQ(result, NIMCP_SUCCESS);  // Should clamp to 1.0
 }
@@ -1185,11 +1185,11 @@ TEST_F(CognitiveMetaControllerTest, DisconnectBioAsync_NotConnected) {
 //=============================================================================
 
 TEST_F(CognitiveMetaControllerTest, ModuleIdToString_Valid) {
-    EXPECT_STREQ(cognitive_module_id_to_string(COGNITIVE_MODULE_WORKING_MEMORY),
+    EXPECT_STREQ(cognitive_module_id_to_string(META_CTRL_MODULE_WORKING_MEMORY),
                  "WORKING_MEMORY");
-    EXPECT_STREQ(cognitive_module_id_to_string(COGNITIVE_MODULE_ATTENTION),
+    EXPECT_STREQ(cognitive_module_id_to_string(META_CTRL_MODULE_ATTENTION),
                  "ATTENTION");
-    EXPECT_STREQ(cognitive_module_id_to_string(COGNITIVE_MODULE_EMOTION),
+    EXPECT_STREQ(cognitive_module_id_to_string(META_CTRL_MODULE_EMOTION),
                  "EMOTION");
 }
 
@@ -1235,7 +1235,7 @@ TEST_F(CognitiveMetaControllerTest, ThreadSafety_ConcurrentRequests) {
         for (int i = 0; i < 10; i++) {
             float item[2] = {(float)i, (float)(i+1)};
             meta_controller_request_wm_slot(
-                controller, COGNITIVE_MODULE_ATTENTION, item, 2, 0.5f, 0.5f);
+                controller, META_CTRL_MODULE_ATTENTION, item, 2, 0.5f, 0.5f);
         }
     };
 
@@ -1287,7 +1287,7 @@ TEST_F(CognitiveMetaControllerTest, EdgeCase_QueueFull) {
     float item[2] = {1.0f, 2.0f};
     for (int i = 0; i < META_CONTROLLER_MAX_REQUESTS + 10; i++) {
         uint32_t req_id = meta_controller_request_wm_slot(
-            controller, COGNITIVE_MODULE_ATTENTION, item, 2, 0.5f, 0.5f);
+            controller, META_CTRL_MODULE_ATTENTION, item, 2, 0.5f, 0.5f);
 
         if (i < META_CONTROLLER_MAX_REQUESTS) {
             EXPECT_GT(req_id, 0);
@@ -1302,7 +1302,7 @@ TEST_F(CognitiveMetaControllerTest, EdgeCase_MultipleUpdates) {
     CreateWorkingMemoryIntegration();
 
     float item[2] = {1.0f, 2.0f};
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item, 2, 0.8f, 0.9f);
 
     // Multiple updates
@@ -1331,11 +1331,11 @@ TEST_F(CognitiveMetaControllerTest, EdgeCase_AllIntegrationsConnected) {
 
     // Submit requests to all resource types
     float item[2] = {1.0f, 2.0f};
-    meta_controller_request_wm_slot(controller, COGNITIVE_MODULE_ATTENTION,
+    meta_controller_request_wm_slot(controller, META_CTRL_MODULE_ATTENTION,
                                     item, 2, 0.8f, 0.9f);
-    meta_controller_request_attention(controller, COGNITIVE_MODULE_EMOTION,
+    meta_controller_request_attention(controller, META_CTRL_MODULE_EMOTION,
                                      0.7f, 0.8f, nullptr);
-    meta_controller_request_learning_rate(controller, COGNITIVE_MODULE_WORKING_MEMORY,
+    meta_controller_request_learning_rate(controller, META_CTRL_MODULE_WORKING_MEMORY,
                                          0.5f, 0.7f, 0.01f);
 
     std::this_thread::sleep_for(

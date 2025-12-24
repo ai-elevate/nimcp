@@ -298,14 +298,31 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
     for (uint32_t i = 0; i < num_filtered; i++) {
         uint32_t dest_id = filtered_dests[i];
 
-        // Find callback for destination
+        // Find callback for destination (copy under mutex protection)
         signal_delivery_callback_t callback = NULL;
         void* user_data = NULL;
+
+        // WHAT: Thread-safe callback lookup with mutex protection
+        // WHY:  Callback array can be modified by registration calls, causing race condition
+        // HOW:  Copy callback pointer under mutex, then invoke outside mutex to avoid deadlock
+        if (router->queue_mutex) {
+            int lock_result = nimcp_mutex_lock(router->queue_mutex);
+            if (lock_result != 0) {
+                LOG_WARN(LOG_MODULE, "Mutex lock failed in callback lookup");
+            }
+        }
 
         // Look up callback by dest_id (callbacks array is indexed by destination ID)
         if (dest_id < router->num_callbacks) {
             callback = router->callbacks[dest_id].callback;
             user_data = router->callbacks[dest_id].user_data;
+        }
+
+        if (router->queue_mutex) {
+            int unlock_result = nimcp_mutex_unlock(router->queue_mutex);
+            if (unlock_result != 0) {
+                LOG_WARN(LOG_MODULE, "Mutex unlock failed in callback lookup");
+            }
         }
 
         if (callback) {
@@ -687,7 +704,11 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
 
     // Lock mutex for thread-safe callback modification
     if (router->queue_mutex) {
-        nimcp_mutex_lock(router->queue_mutex);
+        int lock_result = nimcp_mutex_lock(router->queue_mutex);
+        if (lock_result != 0) {
+            LOG_WARN(LOG_MODULE, "Mutex lock failed in set_callback");
+            return false;
+        }
     }
 
     // Extend callbacks array if needed
@@ -700,7 +721,10 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
 
     // Unlock mutex
     if (router->queue_mutex) {
-        nimcp_mutex_unlock(router->queue_mutex);
+        int unlock_result = nimcp_mutex_unlock(router->queue_mutex);
+        if (unlock_result != 0) {
+            LOG_WARN(LOG_MODULE, "Mutex unlock failed in set_callback");
+        }
     }
 
     return true;

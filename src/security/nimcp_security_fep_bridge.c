@@ -173,6 +173,13 @@ int security_fep_get_stats(const security_fep_bridge_t* bridge,
     return 0;
 }
 
+int security_fep_get_effects(const security_fep_bridge_t* bridge,
+    security_fep_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    *effects = bridge->fep_effects;
+    return 0;
+}
+
 int security_fep_connect_bio_async(security_fep_bridge_t* bridge) {
     if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {

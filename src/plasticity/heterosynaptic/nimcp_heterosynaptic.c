@@ -232,11 +232,13 @@ int hetero_add_synapse(
     /* Resize if needed */
     if (system->num_synapses >= system->synapse_capacity) {
         size_t new_capacity = system->synapse_capacity == 0 ? 64 : system->synapse_capacity * 2;
+        hetero_synapse_t* old_synapses = system->synapses;  /* Save for rollback */
         hetero_synapse_t* new_synapses = nimcp_realloc(
             system->synapses,
             new_capacity * sizeof(hetero_synapse_t)
         );
         if (!new_synapses) {
+            system->synapses = old_synapses;  /* Restore on failure */
             nimcp_platform_mutex_unlock(system->mutex);
             NIMCP_LOGGING_ERROR("Failed to resize synapse array");
             return NIMCP_ERROR_NO_MEMORY;
@@ -429,8 +431,9 @@ int hetero_apply_depression(
         float depression = -factor * ltp_amount;
 
         nimcp_platform_mutex_lock(&neighbor->lock);
-        neighbor->weight += depression;
-        neighbor->weight = fmaxf(neighbor->w_min, fminf(neighbor->w_max, neighbor->weight));
+        /* Compute new weight and clamp atomically to avoid race window */
+        float new_weight = neighbor->weight + depression;
+        neighbor->weight = fmaxf(neighbor->w_min, fminf(neighbor->w_max, new_weight));
         neighbor->last_depression = -depression;  /* Store absolute value */
         neighbor->num_neighbor_depressions++;
         neighbor->total_hetero_ltd += -depression;

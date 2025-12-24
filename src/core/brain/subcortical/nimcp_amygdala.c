@@ -521,6 +521,8 @@ int amygdala_step(amygdala_t* amyg, float dt_ms) {
 int amygdala_get_response(const amygdala_t* amyg, amyg_fear_response_t* response) {
     if (!amyg || !response) return NIMCP_ERROR_NULL_POINTER;
 
+    // Note: Must cast away const to lock mutex for thread-safe read
+    // This is safe because we only read response data, not modify amygdala state
     nimcp_mutex_lock(((amygdala_t*)amyg)->mutex);
     *response = amyg->last_response;
     nimcp_mutex_unlock(((amygdala_t*)amyg)->mutex);
@@ -714,6 +716,8 @@ int amygdala_get_fear_memory(const amygdala_t* amyg,
                              amyg_fear_memory_t* memory) {
     if (!amyg || !memory) return NIMCP_ERROR_NULL_POINTER;
 
+    // Note: Must cast away const to lock mutex for thread-safe read
+    // This is safe because we only read memory data, not modify amygdala state
     nimcp_mutex_lock(((amygdala_t*)amyg)->mutex);
 
     for (uint32_t i = 0; i < amyg->fear_memory_count; i++) {

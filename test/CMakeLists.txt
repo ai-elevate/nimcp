@@ -1221,3 +1221,30 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/quantum")
     add_subdirectory(regression/quantum)
 endif()
 
+# ============================================================================
+# CNN Training Regression Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/training")
+    message(STATUS "Adding CNN training regression tests...")
+    add_subdirectory(regression/training)
+endif()
+
+# ============================================================================
+# CNN Training Unit Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/training")
+    message(STATUS "Adding CNN training unit tests...")
+    add_subdirectory(unit/training)
+endif()
+
+# ============================================================================
+# CNN Training Integration Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/training")
+    message(STATUS "Adding CNN training integration tests...")
+    add_subdirectory(integration/training)
+endif()
+

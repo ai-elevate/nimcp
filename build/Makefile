@@ -6815,6 +6815,32 @@ e2e_test_unified_training_integration/fast:
 .PHONY : e2e_test_unified_training_integration/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_cnn_cortex_bridge
+
+# Build rule for target.
+e2e_test_cnn_cortex_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_cnn_cortex_bridge
+.PHONY : e2e_test_cnn_cortex_bridge
+
+# fast build rule for target.
+e2e_test_cnn_cortex_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_cnn_cortex_bridge.dir/build.make test/e2e/CMakeFiles/e2e_test_cnn_cortex_bridge.dir/build
+.PHONY : e2e_test_cnn_cortex_bridge/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_cnn_backprop
+
+# Build rule for target.
+e2e_test_cnn_backprop: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_cnn_backprop
+.PHONY : e2e_test_cnn_backprop
+
+# fast build rule for target.
+e2e_test_cnn_backprop/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_cnn_backprop.dir/build.make test/e2e/CMakeFiles/e2e_test_cnn_backprop.dir/build
+.PHONY : e2e_test_cnn_backprop/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_snn_pipeline
 
 # Build rule for target.
@@ -10793,32 +10819,6 @@ unit_networking_distributed_test_distributed_cognition_refactored/fast:
 .PHONY : unit_networking_distributed_test_distributed_cognition_refactored/fast
 
 #=============================================================================
-# Target rules for targets named unit_networking_immune_bridges
-
-# Build rule for target.
-unit_networking_immune_bridges: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_networking_immune_bridges
-.PHONY : unit_networking_immune_bridges
-
-# fast build rule for target.
-unit_networking_immune_bridges/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/networking/immune/CMakeFiles/unit_networking_immune_bridges.dir/build.make test/unit/networking/immune/CMakeFiles/unit_networking_immune_bridges.dir/build
-.PHONY : unit_networking_immune_bridges/fast
-
-#=============================================================================
-# Target rules for targets named unit_nlp_immune_bridges
-
-# Build rule for target.
-unit_nlp_immune_bridges: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_nlp_immune_bridges
-.PHONY : unit_nlp_immune_bridges
-
-# fast build rule for target.
-unit_nlp_immune_bridges/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/nlp/immune/CMakeFiles/unit_nlp_immune_bridges.dir/build.make test/unit/nlp/immune/CMakeFiles/unit_nlp_immune_bridges.dir/build
-.PHONY : unit_nlp_immune_bridges/fast
-
-#=============================================================================
 # Target rules for targets named unit_core_brain_factory_test_brain_create
 
 # Build rule for target.
@@ -12483,19 +12483,6 @@ integration_brain_regions_test_visual_cortex_integration/fast:
 .PHONY : integration_brain_regions_test_visual_cortex_integration/fast
 
 #=============================================================================
-# Target rules for targets named integration_brain_regions_test_predictive_pe_integration
-
-# Build rule for target.
-integration_brain_regions_test_predictive_pe_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_regions_test_predictive_pe_integration
-.PHONY : integration_brain_regions_test_predictive_pe_integration
-
-# fast build rule for target.
-integration_brain_regions_test_predictive_pe_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_predictive_pe_integration.dir/build.make test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_predictive_pe_integration.dir/build
-.PHONY : integration_brain_regions_test_predictive_pe_integration/fast
-
-#=============================================================================
 # Target rules for targets named unit_glial_oligodendrocytes_enhanced
 
 # Build rule for target.
@@ -12951,32 +12938,6 @@ test_cortical_neuromodulation/fast:
 .PHONY : test_cortical_neuromodulation/fast
 
 #=============================================================================
-# Target rules for targets named test_cortical_oscillations_integration
-
-# Build rule for target.
-test_cortical_oscillations_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_oscillations_integration
-.PHONY : test_cortical_oscillations_integration
-
-# fast build rule for target.
-test_cortical_oscillations_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_oscillations_integration.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_oscillations_integration.dir/build
-.PHONY : test_cortical_oscillations_integration/fast
-
-#=============================================================================
-# Target rules for targets named test_cortical_plasticity_bridge
-
-# Build rule for target.
-test_cortical_plasticity_bridge: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_plasticity_bridge
-.PHONY : test_cortical_plasticity_bridge
-
-# fast build rule for target.
-test_cortical_plasticity_bridge/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_plasticity_bridge.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_plasticity_bridge.dir/build
-.PHONY : test_cortical_plasticity_bridge/fast
-
-#=============================================================================
 # Target rules for targets named test_cortical_dendritic
 
 # Build rule for target.
@@ -12988,19 +12949,6 @@ test_cortical_dendritic: cmake_check_build_system
 test_cortical_dendritic/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_dendritic.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_dendritic.dir/build
 .PHONY : test_cortical_dendritic/fast
-
-#=============================================================================
-# Target rules for targets named test_cortical_surround
-
-# Build rule for target.
-test_cortical_surround: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cortical_surround
-.PHONY : test_cortical_surround
-
-# fast build rule for target.
-test_cortical_surround/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_cortical_surround.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_cortical_surround.dir/build
-.PHONY : test_cortical_surround/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_cortical_columns_substrate_bridge
@@ -17345,6 +17293,84 @@ regression_quantum_bridges/fast:
 .PHONY : regression_quantum_bridges/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_test_cnn_backprop_regression
+
+# Build rule for target.
+regression_training_test_cnn_backprop_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_test_cnn_backprop_regression
+.PHONY : regression_training_test_cnn_backprop_regression
+
+# fast build rule for target.
+regression_training_test_cnn_backprop_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_test_cnn_backprop_regression.dir/build.make test/regression/training/CMakeFiles/regression_training_test_cnn_backprop_regression.dir/build
+.PHONY : regression_training_test_cnn_backprop_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_test_cnn_cortex_bridge_regression
+
+# Build rule for target.
+regression_training_test_cnn_cortex_bridge_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_test_cnn_cortex_bridge_regression
+.PHONY : regression_training_test_cnn_cortex_bridge_regression
+
+# fast build rule for target.
+regression_training_test_cnn_cortex_bridge_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_test_cnn_cortex_bridge_regression.dir/build.make test/regression/training/CMakeFiles/regression_training_test_cnn_cortex_bridge_regression.dir/build
+.PHONY : regression_training_test_cnn_cortex_bridge_regression/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_cnn_backprop
+
+# Build rule for target.
+unit_training_test_cnn_backprop: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_cnn_backprop
+.PHONY : unit_training_test_cnn_backprop
+
+# fast build rule for target.
+unit_training_test_cnn_backprop/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_cnn_backprop.dir/build.make test/unit/training/CMakeFiles/unit_training_test_cnn_backprop.dir/build
+.PHONY : unit_training_test_cnn_backprop/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_cnn_cortex_bridge
+
+# Build rule for target.
+unit_training_test_cnn_cortex_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_cnn_cortex_bridge
+.PHONY : unit_training_test_cnn_cortex_bridge
+
+# fast build rule for target.
+unit_training_test_cnn_cortex_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_cnn_cortex_bridge.dir/build.make test/unit/training/CMakeFiles/unit_training_test_cnn_cortex_bridge.dir/build
+.PHONY : unit_training_test_cnn_cortex_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_training_test_cnn_backprop_integration
+
+# Build rule for target.
+integration_training_test_cnn_backprop_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_training_test_cnn_backprop_integration
+.PHONY : integration_training_test_cnn_backprop_integration
+
+# fast build rule for target.
+integration_training_test_cnn_backprop_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_test_cnn_backprop_integration.dir/build.make test/integration/training/CMakeFiles/integration_training_test_cnn_backprop_integration.dir/build
+.PHONY : integration_training_test_cnn_backprop_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_training_test_cnn_cortex_integration
+
+# Build rule for target.
+integration_training_test_cnn_cortex_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_training_test_cnn_cortex_integration
+.PHONY : integration_training_test_cnn_cortex_integration
+
+# fast build rule for target.
+integration_training_test_cnn_cortex_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_test_cnn_cortex_integration.dir/build.make test/integration/training/CMakeFiles/integration_training_test_cnn_cortex_integration.dir/build
+.PHONY : integration_training_test_cnn_cortex_integration/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -17751,6 +17777,8 @@ help:
 	@echo "... e2e_test_brain_immune_plasticity_pipeline"
 	@echo "... e2e_test_brain_pipeline"
 	@echo "... e2e_test_bridge_pipelines"
+	@echo "... e2e_test_cnn_backprop"
+	@echo "... e2e_test_cnn_cortex_bridge"
 	@echo "... e2e_test_cognitive_bio_async"
 	@echo "... e2e_test_cognitive_pipeline"
 	@echo "... e2e_test_cognitive_training_pipeline"
@@ -17823,7 +17851,6 @@ help:
 	@echo "... integration_brain_bio_async_test"
 	@echo "... integration_brain_coordinator_test"
 	@echo "... integration_brain_persistence_test"
-	@echo "... integration_brain_regions_test_predictive_pe_integration"
 	@echo "... integration_brain_regions_test_visual_cortex_integration"
 	@echo "... integration_cognitive_bio_async_test"
 	@echo "... integration_cognitive_consolidation_test_systems_consolidation_integration"
@@ -17997,6 +18024,8 @@ help:
 	@echo "... integration_test_kdtree_brain_integration"
 	@echo "... integration_test_network_analyzer_quantum_routing"
 	@echo "... integration_test_neural_logic_circuits"
+	@echo "... integration_training_test_cnn_backprop_integration"
+	@echo "... integration_training_test_cnn_cortex_integration"
 	@echo "... integration_utils_containers_test_queue_integration"
 	@echo "... integration_utils_encoding_test_pe_attention_integration"
 	@echo "... integration_utils_fault_tolerance_test_async_checkpoint_integration"
@@ -18248,6 +18277,8 @@ help:
 	@echo "... regression_test_performance_regression"
 	@echo "... regression_test_quantum_routing_efficiency"
 	@echo "... regression_test_routing_efficiency_regression"
+	@echo "... regression_training_test_cnn_backprop_regression"
+	@echo "... regression_training_test_cnn_cortex_bridge_regression"
 	@echo "... regression_utils_containers_test_queue_regression"
 	@echo "... regression_utils_encoding_pe_stability"
 	@echo "... regression_utils_fault_tolerance_test_checkpoint_format"
@@ -18289,12 +18320,9 @@ help:
 	@echo "... test_cortical_immune"
 	@echo "... test_cortical_layers"
 	@echo "... test_cortical_neuromodulation"
-	@echo "... test_cortical_oscillations_integration"
-	@echo "... test_cortical_plasticity_bridge"
 	@echo "... test_cortical_portia_swarm_integration"
 	@echo "... test_cortical_predictive_coding"
 	@echo "... test_cortical_sparse_coding"
-	@echo "... test_cortical_surround"
 	@echo "... test_cortical_temporal"
 	@echo "... test_dendritic_bioasync"
 	@echo "... test_end_to_end_reasoning"
@@ -18828,7 +18856,6 @@ help:
 	@echo "... unit_networking_distributed_test_distributed_cognition_refactored"
 	@echo "... unit_networking_events_test_events"
 	@echo "... unit_networking_events_test_spike_event_real"
-	@echo "... unit_networking_immune_bridges"
 	@echo "... unit_networking_nlp_test_nlp_crypto"
 	@echo "... unit_networking_nlp_test_nlp_header"
 	@echo "... unit_networking_nlp_test_nlp_message"
@@ -18836,7 +18863,6 @@ help:
 	@echo "... unit_networking_nlp_test_nlp_session"
 	@echo "... unit_networking_p2p_test_p2pnode"
 	@echo "... unit_networking_replication_test_replication"
-	@echo "... unit_nlp_immune_bridges"
 	@echo "... unit_nlp_test_brain_multimodal_features"
 	@echo "... unit_nlp_test_brain_multimodal_initialization"
 	@echo "... unit_nlp_test_brain_multimodal_processing"
@@ -18958,6 +18984,8 @@ help:
 	@echo "... unit_swarm_sleep_bridges"
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"
+	@echo "... unit_training_test_cnn_backprop"
+	@echo "... unit_training_test_cnn_cortex_bridge"
 	@echo "... unit_utils_algorithms_test_centrality"
 	@echo "... unit_utils_algorithms_test_community_detection"
 	@echo "... unit_utils_algorithms_test_graph_metrics"

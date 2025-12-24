@@ -46,6 +46,7 @@
 
 static bool g_bbb_registered = false;
 static uint32_t g_vote_counts_by_drone[MAX_TRACKED_DRONE_ID] = {0};  // Track votes per drone
+static nimcp_mutex_t g_vote_tracking_mutex = NIMCP_MUTEX_INITIALIZER;  // Protect vote tracking
 
 /**
  * @brief Initialize BBB security for consensus
@@ -511,6 +512,15 @@ nimcp_error_t swarm_consensus_receive_vote(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* SECURITY FIX: Early rejection of high drone IDs to prevent bypass */
+    if (vote->voter_drone >= MAX_TRACKED_DRONE_ID) {
+        bbb_audit_log(BBB_AUDIT_CRITICAL, "swarm_consensus", "byzantine_detect",
+                     "Vote from drone ID %u rejected - exceeds MAX_TRACKED_DRONE_ID (%u)",
+                     vote->voter_drone, MAX_TRACKED_DRONE_ID);
+        LOG_ERROR("Vote from drone %u rejected - ID exceeds tracking limit", vote->voter_drone);
+        return NIMCP_ERROR_OUT_OF_RANGE;
+    }
+
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_consensus", "vote_received",
                  "Vote received: proposal=%u, drone=%u, choice=%s, confidence=%.2f",
                  vote->proposal_id, vote->voter_drone,
@@ -544,7 +554,8 @@ nimcp_error_t swarm_consensus_receive_vote(
             LOG_WARN("Duplicate vote from drone %u on proposal %u",
                      vote->voter_drone, vote->proposal_id);
 
-            // Track voting patterns (with bounds check)
+            // Track voting patterns with mutex protection and high-ID rejection
+            nimcp_mutex_lock(&g_vote_tracking_mutex);
             if (vote->voter_drone < MAX_TRACKED_DRONE_ID) {
                 g_vote_counts_by_drone[vote->voter_drone]++;
                 if (g_vote_counts_by_drone[vote->voter_drone] > 100) {
@@ -553,9 +564,15 @@ nimcp_error_t swarm_consensus_receive_vote(
                                  vote->voter_drone, g_vote_counts_by_drone[vote->voter_drone]);
                     // In production, this would call bbb_quarantine_peer(vote->voter_drone)
                 }
+                nimcp_mutex_unlock(&g_vote_tracking_mutex);
             } else {
-                LOG_WARN("Drone ID %u exceeds tracking limit (%u), vote pattern not tracked",
-                         vote->voter_drone, MAX_TRACKED_DRONE_ID);
+                nimcp_mutex_unlock(&g_vote_tracking_mutex);
+                // SECURITY FIX: Reject votes from drones with IDs >= MAX_TRACKED_DRONE_ID
+                // This prevents bypass of double-voting detection by using high drone IDs
+                bbb_audit_log(BBB_AUDIT_CRITICAL, "swarm_consensus", "byzantine_detect",
+                             "Drone ID %u exceeds tracking limit (%u) - vote rejected as potential attack",
+                             vote->voter_drone, MAX_TRACKED_DRONE_ID);
+                LOG_ERROR("Drone ID %u exceeds tracking limit, vote rejected", vote->voter_drone);
             }
 
             return NIMCP_ERROR_ALREADY_EXISTS;

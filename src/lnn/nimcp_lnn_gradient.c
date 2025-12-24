@@ -914,6 +914,10 @@ static void free_checkpoints(lnn_gradient_ctx_t* ctx) {
  * WHAT: Numerical Jacobian via finite differences
  * WHY:  Simple implementation (can be optimized to analytical)
  * HOW:  Perturb each state element, measure derivative
+ *
+ * NOTE: Uses fixed epsilon (JACOBIAN_EPSILON = 1e-5f)
+ * LIMITATION: Fixed epsilon may not be optimal for all state magnitudes
+ * FUTURE: Consider making epsilon configurable or adaptive (scaled by state magnitude)
  */
 static int compute_jacobian_numerical(
     const lnn_layer_t* layer,
@@ -926,6 +930,10 @@ static int compute_jacobian_numerical(
     }
 
     uint32_t n = layer->n_neurons;
+    /* Fixed epsilon for finite differences
+     * Known limitation: Not scaled by state magnitude
+     * Could be made configurable for improved numerical accuracy
+     */
     float eps = JACOBIAN_EPSILON;
 
     // Clone state for perturbation

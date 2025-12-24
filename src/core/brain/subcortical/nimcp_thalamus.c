@@ -905,6 +905,8 @@ const thal_nucleus_t* thalamus_get_nucleus_const(
     const thalamus_t* thal,
     thal_nucleus_type_t type
 ) {
+    // Note: Must cast away const to call non-const getter
+    // This is safe because thalamus_get_nucleus only returns a pointer, doesn't modify state
     return thalamus_get_nucleus((thalamus_t*)thal, type);
 }
 

@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <stdatomic.h>
+#include <sched.h>  /* For sched_yield() */
 
 // Cache line size for alignment (typical x86-64)
 #define CACHE_LINE_SIZE 64
@@ -180,9 +181,13 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
                 break;
 
             case OVERFLOW_BLOCK:
-                // Wait for space (spin - use with care!)
+                // WHAT: Wait for space in buffer using spin-wait with yield
+                // WHY:  Blocking strategy requires waiting for consumer to free space
+                // HOW:  Busy-wait with sched_yield() to reduce CPU waste
+                // NOTE: This is inefficient compared to condition variables, but maintains
+                //       lock-free design. Consider using semaphores for production use.
                 while (next_write == atomic_load(&buffer->read_pos)) {
-                    // Could add yield here for better behavior
+                    sched_yield();  // Yield CPU to allow consumer to run
                 }
                 break;
 

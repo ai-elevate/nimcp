@@ -25,6 +25,43 @@
 #include <float.h>
 
 //=============================================================================
+// Tensor API Helpers (work around opaque tensor type)
+//=============================================================================
+
+/**
+ * @brief Fill tensor with a constant value
+ */
+static inline void nimcp_tensor_fill(nimcp_tensor_t* t, float value) {
+    if (!t) return;
+    float* data = (float*)nimcp_tensor_data(t);
+    size_t numel = nimcp_tensor_numel(t);
+    for (size_t i = 0; i < numel; i++) {
+        data[i] = value;
+    }
+}
+
+/**
+ * @brief Create a zeros tensor with the same shape as another tensor
+ */
+static inline nimcp_tensor_t* nimcp_tensor_zeros_like(const nimcp_tensor_t* t) {
+    if (!t) return NULL;
+    const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(t);
+    if (!shape) return NULL;
+    return nimcp_tensor_zeros(shape->dims, shape->rank, NIMCP_DTYPE_F32);
+}
+
+/**
+ * @brief Get shape of tensor into a separate shape struct
+ */
+static inline void nimcp_tensor_get_shape(const nimcp_tensor_t* t, nimcp_tensor_shape_t* out_shape) {
+    if (!t || !out_shape) return;
+    const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(t);
+    if (shape) {
+        memcpy(out_shape, shape, sizeof(nimcp_tensor_shape_t));
+    }
+}
+
+//=============================================================================
 // Internal Structures
 //=============================================================================
 
@@ -68,9 +105,9 @@ struct cnn_trainer_s {
     uint32_t num_layers;
 
     /* Training infrastructure */
-    nimcp_optimizer_ctx_t* optimizer;
+    nimcp_optimizer_context_t* optimizer;
     nimcp_gradient_manager_ctx_t* grad_manager;
-    nimcp_loss_ctx_t* loss_fn;
+    nimcp_loss_context_t* loss_fn;
 
     /* Configuration */
     cnn_trainer_config_t config;
@@ -152,7 +189,7 @@ nimcp_error_t cnn_trainer_default_config(cnn_trainer_config_t* config) {
 
     /* Optimizer: Adam with standard hyperparameters */
     config->optimizer_config.type = NIMCP_OPTIMIZER_ADAM;
-    config->optimizer_config.config.adam = (nimcp_adam_config_t){
+    config->optimizer_config.params.adam = (nimcp_adam_config_t){
         .learning_rate = 0.001f,
         .beta1 = 0.9f,
         .beta2 = 0.999f,
@@ -233,8 +270,8 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
     /* Copy configuration */
     memcpy(&trainer->config, config, sizeof(cnn_trainer_config_t));
 
-    /* Initialize optimizer */
-    trainer->optimizer = nimcp_optimizer_create(&config->optimizer_config);
+    /* Initialize optimizer (NULL security ctx and memory mgr for now) */
+    trainer->optimizer = nimcp_optimizer_create(&config->optimizer_config, NULL, NULL);
     if (!trainer->optimizer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_create: Failed to create optimizer");
         nimcp_free(trainer);
@@ -778,6 +815,37 @@ cnn_layer_t* cnn_trainer_add_flatten_layer(cnn_trainer_t* trainer) {
     return layer;
 }
 
+cnn_layer_t* cnn_trainer_add_activation_layer(cnn_trainer_t* trainer,
+                                               cnn_activation_t activation) {
+    /* Guard clause */
+    if (!trainer) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_add_activation_layer: NULL trainer");
+        return NULL;
+    }
+    if (trainer->num_layers >= CNN_MAX_LAYERS) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_add_activation_layer: Max layers exceeded");
+        return NULL;
+    }
+
+    /* Allocate layer (no weights for activation) */
+    cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
+    if (!layer) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_add_activation_layer: Allocation failed");
+        return NULL;
+    }
+    memset(layer, 0, sizeof(cnn_layer_t));
+
+    layer->type = CNN_LAYER_ACTIVATION;
+    /* Store activation type in config - reuse conv struct's activation field */
+    layer->config.conv.activation = activation;
+
+    /* Append to trainer */
+    cnn_append_layer(trainer, layer);
+
+    NIMCP_LOGGING_INFO("Added activation layer (type=%d)", (int)activation);
+    return layer;
+}
+
 //=============================================================================
 // Layer Forward Operations (Internal Helpers)
 //=============================================================================
@@ -833,6 +901,61 @@ static void cnn_apply_activation(nimcp_tensor_t* tensor, cnn_activation_t activa
                 data[i] = data[i] / (1.0f + expf(-data[i]));
             }
             break;
+        case CNN_ACTIVATION_GELU: {
+            /* GELU: x * Phi(x) where Phi is standard normal CDF */
+            /* Approximation: 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3))) */
+            const float sqrt_2_pi = 0.7978845608f;
+            for (size_t i = 0; i < numel; i++) {
+                float x = data[i];
+                float cdf = 0.5f * (1.0f + tanhf(sqrt_2_pi * (x + 0.044715f * x * x * x)));
+                data[i] = x * cdf;
+            }
+            break;
+        }
+        case CNN_ACTIVATION_SOFTMAX: {
+            /* Softmax applied per batch along last dimension */
+            /* Tensor is (batch, features) or higher rank - apply along last dim */
+            nimcp_tensor_shape_t shape;
+            nimcp_tensor_get_shape(tensor, &shape);
+
+            /* Get batch size and feature size */
+            uint32_t batch_size = 1;
+            uint32_t feature_size = 1;
+            if (shape.rank >= 2) {
+                feature_size = shape.dims[shape.rank - 1];
+                for (uint32_t d = 0; d < shape.rank - 1; d++) {
+                    batch_size *= shape.dims[d];
+                }
+            } else {
+                feature_size = shape.numel;
+            }
+
+            /* Apply softmax per row with numerical stability */
+            for (uint32_t b = 0; b < batch_size; b++) {
+                float* row = data + b * feature_size;
+
+                /* Find max for numerical stability */
+                float max_val = row[0];
+                for (uint32_t f = 1; f < feature_size; f++) {
+                    if (row[f] > max_val) max_val = row[f];
+                }
+
+                /* Compute exp(x - max) and sum */
+                float sum = 0.0f;
+                for (uint32_t f = 0; f < feature_size; f++) {
+                    row[f] = expf(row[f] - max_val);
+                    sum += row[f];
+                }
+
+                /* Normalize */
+                if (sum > 0.0f) {
+                    for (uint32_t f = 0; f < feature_size; f++) {
+                        row[f] /= sum;
+                    }
+                }
+            }
+            break;
+        }
         case CNN_ACTIVATION_NONE:
         default:
             break;
@@ -878,9 +1001,10 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
 
     /* Initialize output with bias */
     size_t out_spatial = out_h * out_w;
+    const float* bias_data = layer->bias ? (const float*)nimcp_tensor_data_const(layer->bias) : NULL;
     for (uint32_t b = 0; b < batch; b++) {
         for (uint32_t oc = 0; oc < cfg->out_channels; oc++) {
-            float bias_val = layer->bias ? nimcp_tensor_data_const(layer->bias)[oc] : 0.0f;
+            float bias_val = bias_data ? bias_data[oc] : 0.0f;
             for (size_t s = 0; s < out_spatial; s++) {
                 out_data[b * cfg->out_channels * out_spatial + oc * out_spatial + s] = bias_val;
             }
@@ -1148,9 +1272,10 @@ static nimcp_tensor_t* cnn_forward_dense(const cnn_layer_t* layer, const nimcp_t
     float* out_data = nimcp_tensor_data(output);
 
     /* Matrix multiplication: out = input @ weight.T + bias */
+    const float* dense_bias_data = layer->bias ? (const float*)nimcp_tensor_data_const(layer->bias) : NULL;
     for (uint32_t b = 0; b < batch; b++) {
         for (uint32_t o = 0; o < cfg->out_features; o++) {
-            float sum = layer->bias ? nimcp_tensor_data_const(layer->bias)[o] : 0.0f;
+            float sum = dense_bias_data ? dense_bias_data[o] : 0.0f;
             for (uint32_t i = 0; i < in_features && i < cfg->in_features; i++) {
                 sum += in_data[b * in_features + i] * weight_data[o * cfg->in_features + i];
             }
@@ -1258,6 +1383,14 @@ nimcp_error_t cnn_trainer_forward(cnn_trainer_t* trainer,
                 break;
             case CNN_LAYER_FLATTEN:
                 next = cnn_forward_flatten(current);
+                break;
+            case CNN_LAYER_ACTIVATION:
+                /* Standalone activation layer - clone and apply activation */
+                /* Note: activation type stored in config.conv.activation */
+                next = nimcp_tensor_clone(current);
+                if (next) {
+                    cnn_apply_activation(next, layer->config.conv.activation);
+                }
                 break;
             default:
                 NIMCP_LOGGING_WARN("cnn_trainer_forward: Unknown layer type %d", layer->type);
@@ -1417,6 +1550,68 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                     size_t copy_size = (numel_grad < numel_input) ? numel_grad : numel_input;
 
                     memcpy(nimcp_tensor_data(new_grad), grad_data, copy_size * sizeof(float));
+
+                    nimcp_tensor_destroy(grad);
+                    grad = new_grad;
+                    grad_data = nimcp_tensor_data(grad);
+                }
+                break;
+            }
+
+            case CNN_LAYER_ACTIVATION: {
+                /* WHAT: Backward pass through standalone activation layer
+                 * WHY:  Compute gradient of activation function
+                 * HOW:  Multiply by derivative of activation at each position
+                 *
+                 * NOTE: For softmax, the gradient is special - we assume the loss function
+                 * (cross-entropy) already computes combined gradient (softmax + CE)
+                 */
+                if (i > 0) {
+                    cnn_activation_t act_type = layer->config.conv.activation;
+
+                    /* Create gradient tensor */
+                    nimcp_tensor_t* new_grad = nimcp_tensor_clone(grad);
+                    if (!new_grad) {
+                        nimcp_free(layer_stack);
+                        nimcp_tensor_destroy(grad);
+                        return NIMCP_ERROR_NO_MEMORY;
+                    }
+
+                    float* new_grad_data = nimcp_tensor_data(new_grad);
+                    const float* in_data = nimcp_tensor_data_const(layer_input);
+                    size_t numel = nimcp_tensor_numel(new_grad);
+
+                    switch (act_type) {
+                        case CNN_ACTIVATION_RELU:
+                            for (size_t j = 0; j < numel; j++) {
+                                new_grad_data[j] *= (in_data[j] > 0.0f) ? 1.0f : 0.0f;
+                            }
+                            break;
+                        case CNN_ACTIVATION_LEAKY_RELU:
+                            for (size_t j = 0; j < numel; j++) {
+                                new_grad_data[j] *= (in_data[j] > 0.0f) ? 1.0f : 0.01f;
+                            }
+                            break;
+                        case CNN_ACTIVATION_SIGMOID:
+                            for (size_t j = 0; j < numel; j++) {
+                                float s = 1.0f / (1.0f + expf(-in_data[j]));
+                                new_grad_data[j] *= s * (1.0f - s);
+                            }
+                            break;
+                        case CNN_ACTIVATION_TANH:
+                            for (size_t j = 0; j < numel; j++) {
+                                float t = tanhf(in_data[j]);
+                                new_grad_data[j] *= (1.0f - t * t);
+                            }
+                            break;
+                        case CNN_ACTIVATION_SOFTMAX:
+                            /* Softmax gradient typically combined with cross-entropy loss */
+                            /* If used standalone, gradient passes through unchanged */
+                            break;
+                        default:
+                            /* No gradient modification for unknown activations */
+                            break;
+                    }
 
                     nimcp_tensor_destroy(grad);
                     grad = new_grad;
@@ -1633,8 +1828,11 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                     var /= (float)batch_spatial;
 
                     float std_inv = 1.0f / sqrtf(var + cfg->epsilon);
-                    float gamma_c = (layer->weights && cfg->affine) ?
-                                    nimcp_tensor_data_const(layer->weights)[c] : 1.0f;
+                    float gamma_c = 1.0f;
+                    if (layer->weights && cfg->affine) {
+                        const float* gamma_data = (const float*)nimcp_tensor_data_const(layer->weights);
+                        if (gamma_data) gamma_c = gamma_data[c];
+                    }
 
                     /* 3. Accumulate gamma gradient: dL/dgamma = sum(grad * normalized) */
                     if (gamma_grad && cfg->affine) {
@@ -1748,8 +1946,9 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
 
                 /* 3. Compute input gradients for previous layer (transposed convolution) */
                 if (i > 0) {
-                    nimcp_tensor_t* new_grad = nimcp_tensor_zeros_like(layer_input);
-                    float* new_grad_data = nimcp_tensor_data(new_grad);
+                    const nimcp_tensor_shape_t* input_shape = nimcp_tensor_shape(layer_input);
+                    nimcp_tensor_t* new_grad = nimcp_tensor_zeros(input_shape->dims, input_shape->rank, NIMCP_DTYPE_F32);
+                    float* new_grad_data = (float*)nimcp_tensor_data(new_grad);
                     const float* weight_data = nimcp_tensor_data_const(layer->weights);
 
                     /* dX[b,ic,ih,iw] = sum_{oc,kh,kw} grad[b,oc,oh,ow] * W[oc,ic,kh,kw] */
@@ -1841,13 +2040,19 @@ nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
     while (layer) {
         if (layer->weights && layer->weight_grad) {
             /* Apply gradient with optimizer */
-            nimcp_optimizer_step(trainer->optimizer, layer->weights, layer->weight_grad);
+            float* w_data = (float*)nimcp_tensor_data(layer->weights);
+            const float* wg_data = (const float*)nimcp_tensor_data_const(layer->weight_grad);
+            size_t w_numel = nimcp_tensor_numel(layer->weights);
+            nimcp_optimizer_step(trainer->optimizer, w_data, wg_data, w_numel);
 
             /* Clear gradient for next iteration */
             nimcp_tensor_fill(layer->weight_grad, 0.0f);
         }
         if (layer->bias && layer->bias_grad) {
-            nimcp_optimizer_step(trainer->optimizer, layer->bias, layer->bias_grad);
+            float* b_data = (float*)nimcp_tensor_data(layer->bias);
+            const float* bg_data = (const float*)nimcp_tensor_data_const(layer->bias_grad);
+            size_t b_numel = nimcp_tensor_numel(layer->bias);
+            nimcp_optimizer_step(trainer->optimizer, b_data, bg_data, b_numel);
             nimcp_tensor_fill(layer->bias_grad, 0.0f);
         }
         layer = layer->next;
@@ -1855,6 +2060,32 @@ nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
 
     trainer->global_step++;
     (void)lr_scale;  /* Used for future perception-modulated LR */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Zero all gradients in the network
+ *
+ * WHAT: Reset all weight and bias gradients to zero
+ * WHY:  Prevent gradient accumulation between backward passes
+ * HOW:  Fill gradient tensors with zeros
+ */
+nimcp_error_t cnn_trainer_zero_grad(cnn_trainer_t* trainer) {
+    if (!trainer) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    cnn_layer_t* layer = trainer->layers_head;
+    while (layer) {
+        if (layer->weight_grad) {
+            nimcp_tensor_fill(layer->weight_grad, 0.0f);
+        }
+        if (layer->bias_grad) {
+            nimcp_tensor_fill(layer->bias_grad, 0.0f);
+        }
+        layer = layer->next;
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -2544,7 +2775,8 @@ static nimcp_error_t cnn_collect_activation_stats(cnn_to_snn_converter_t* conver
                         max_val = fabsf(act_data[j]);
                     }
                 }
-                nimcp_tensor_data(converter->activation_stats[i])[0] = max_val;
+                float* stats_data = (float*)nimcp_tensor_data(converter->activation_stats[i]);
+                if (stats_data) stats_data[0] = max_val;
             }
         }
     }
@@ -2600,7 +2832,8 @@ nimcp_error_t cnn_to_snn_convert(cnn_to_snn_converter_t* converter,
     for (uint32_t i = 0; i < trainer->num_layers; i++) {
         float max_activation = 1.0f;
         if (converter->activation_stats && converter->activation_stats[i]) {
-            max_activation = nimcp_tensor_data(converter->activation_stats[i])[0];
+            float* stats_data = (float*)nimcp_tensor_data(converter->activation_stats[i]);
+            if (stats_data) max_activation = stats_data[0];
             if (max_activation < 0.001f) max_activation = 1.0f;
         }
 
@@ -2624,8 +2857,11 @@ nimcp_error_t cnn_to_snn_convert(cnn_to_snn_converter_t* converter,
             case CNN_LAYER_CONV2D:
             case CNN_LAYER_DENSE:
                 if (layer->weights) {
-                    total_neurons += layer->weights->shape.dims[0];
-                    total_synapses += layer->weights->shape.numel;
+                    const nimcp_tensor_shape_t* w_shape = nimcp_tensor_shape(layer->weights);
+                    if (w_shape) {
+                        total_neurons += w_shape->dims[0];
+                        total_synapses += nimcp_tensor_numel(layer->weights);
+                    }
                 }
                 break;
             default:
@@ -2959,10 +3195,10 @@ size_t cnn_count_parameters(const cnn_trainer_t* trainer) {
 
     while (layer) {
         if (layer->weights) {
-            total += layer->weights->shape.numel;
+            total += nimcp_tensor_numel(layer->weights);
         }
         if (layer->bias) {
-            total += layer->bias->shape.numel;
+            total += nimcp_tensor_numel(layer->bias);
         }
         layer = layer->next;
     }
@@ -2986,4 +3222,39 @@ cnn_layer_t* cnn_get_layer(const cnn_trainer_t* trainer, uint32_t layer_idx) {
 
 uint32_t cnn_get_layer_count(const cnn_trainer_t* trainer) {
     return trainer ? trainer->num_layers : 0;
+}
+
+nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
+                                         uint32_t layer_idx,
+                                         float** out_grad,
+                                         size_t* out_size) {
+    if (!trainer || !out_grad || !out_size) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    *out_grad = NULL;
+    *out_size = 0;
+
+    cnn_layer_t* layer = cnn_get_layer(trainer, layer_idx);
+    if (!layer) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    if (!layer->weight_grad) {
+        return NIMCP_SUCCESS;  /* No gradients available */
+    }
+
+    size_t numel = nimcp_tensor_numel(layer->weight_grad);
+    float* grad_copy = (float*)nimcp_malloc(numel * sizeof(float));
+    if (!grad_copy) {
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    const float* src = (const float*)nimcp_tensor_data_const(layer->weight_grad);
+    memcpy(grad_copy, src, numel * sizeof(float));
+
+    *out_grad = grad_copy;
+    *out_size = numel;
+
+    return NIMCP_SUCCESS;
 }

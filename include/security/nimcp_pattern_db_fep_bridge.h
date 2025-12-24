@@ -141,6 +141,7 @@ int pattern_fep_update(pattern_fep_bridge_t* bridge);
 int pattern_fep_match(pattern_fep_bridge_t* bridge, const char* input,
     nimcp_pattern_match_result_t* result);
 int pattern_fep_apply_modulation(pattern_fep_bridge_t* bridge);
+int pattern_fep_get_effects(const pattern_fep_bridge_t* bridge, pattern_fep_effects_t* effects);
 int pattern_fep_get_stats(const pattern_fep_bridge_t* bridge, pattern_fep_stats_t* stats);
 int pattern_fep_connect_bio_async(pattern_fep_bridge_t* bridge);
 int pattern_fep_disconnect_bio_async(pattern_fep_bridge_t* bridge);

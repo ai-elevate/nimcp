@@ -308,6 +308,13 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
      */
     float modulation = clamp_f(neuromodulator_level, 0.0F, 1.0F);
 
+    /* WHAT: Acquire spinlock for atomic weight update
+     * WHY:  Prevent race conditions when multiple threads access same synapse
+     * PERFORMANCE: ~10-20ns overhead (acceptable for per-synapse lock)
+     * NOTE: Only contends if threads share synapses (rare in typical use)
+     */
+    nimcp_spinlock_lock(&synapse->lock);
+
     /* WHAT: Get sleep modulation factor for learning rate
      * WHY:  Sleep state modulates learning rate (e.g., reduced during sleep)
      */
@@ -342,6 +349,12 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
      * BIOLOGICAL: Eligibility traces represent recent plasticity, should be bounded
      */
     synapse->eligibility = clamp_f(synapse->eligibility, -2.0F, 2.0F);
+
+    /* WHAT: Release spinlock
+     * WHY:  Allow other threads to access synapse
+     * PERFORMANCE: ~10-20ns
+     */
+    nimcp_spinlock_unlock(&synapse->lock);
 }
 
 //=============================================================================

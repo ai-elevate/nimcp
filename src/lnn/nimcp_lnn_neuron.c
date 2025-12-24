@@ -24,6 +24,9 @@
 static __thread unsigned int tls_seed = 0;
 static __thread bool tls_seed_initialized = false;
 
+/* Forward declaration for randn_reset (used in set_rng_seed) */
+static void randn_reset(void);
+
 /**
  * @brief Initialize thread-local RNG seed
  *
@@ -48,6 +51,8 @@ static void ensure_rng_initialized(void) {
 static void set_rng_seed(unsigned int seed) {
     tls_seed = seed;
     tls_seed_initialized = true;
+    /* Clear any cached Box-Muller spare value from previous seed */
+    randn_reset();
 }
 
 /**
@@ -341,9 +346,13 @@ int lnn_neuron_init_weights(lnn_neuron_t* neuron, float std, uint64_t seed) {
         neuron->w_in[i] = randn() * std;
     }
 
-    /* Initialize recurrent weights */
+    /* Initialize recurrent weights with separate variance
+     * Use 1/sqrt(n_recurrent) for proper scaling of recurrent connections
+     */
+    float rec_std = (neuron->n_recurrent > 0) ?
+                    1.0f / sqrtf((float)neuron->n_recurrent) : std;
     for (uint32_t i = 0; i < neuron->n_recurrent; i++) {
-        neuron->w_rec[i] = randn() * std;
+        neuron->w_rec[i] = randn() * rec_std;
     }
 
     /* Initialize tau weights (smaller std for stability) */
@@ -540,14 +549,16 @@ int lnn_neuron_step(lnn_neuron_t* neuron,
     float x_new = lnn_ode_step(method, 0.0f, neuron->x, dt,
                                neuron_derivative, &params);
 
-    /* Update state */
-    neuron->x = x_new;
-
-    /* Check for numerical issues */
-    if (isnan(neuron->x) || isinf(neuron->x)) {
-        NIMCP_LOGGING_ERROR("Numerical instability detected (NaN/Inf)");
+    /* Check for numerical issues BEFORE updating state
+     * This preserves the previous valid state if NaN/Inf detected
+     */
+    if (isnan(x_new) || isinf(x_new)) {
+        NIMCP_LOGGING_ERROR("Numerical instability detected (NaN/Inf), preserving previous state");
         return LNN_ERROR_ODE_DIVERGENCE;
     }
+
+    /* Update state only if x_new is valid */
+    neuron->x = x_new;
 
     return LNN_SUCCESS;
 }
@@ -631,8 +642,12 @@ int lnn_neuron_accumulate_gradients(lnn_neuron_t* neuron,
 
     /* Gradient w.r.t. tau parameters (simplified) */
     /* ∂L/∂τ = ∂L/∂x * x/τ² */
-    /* Guard: prevent division by zero */
-    float tau_sq = fmaxf(tau * tau, 1e-8f);
+    /* Guard: prevent gradient explosion from small tau values
+     * Use tau_safe to ensure tau >= 1e-4 before squaring
+     * This prevents tau_sq from becoming too small (e.g., tau=1e-4 gives tau_sq=1e-8)
+     */
+    float tau_safe = fmaxf(tau, 1e-4f);
+    float tau_sq = tau_safe * tau_safe;
     float grad_tau = upstream_grad * neuron->x / tau_sq;
 
     /* ∂L/∂w_τ = ∂L/∂τ * ∂τ/∂w_τ = ∂L/∂τ * τ_base * σ'(z_τ) * [x; I] */

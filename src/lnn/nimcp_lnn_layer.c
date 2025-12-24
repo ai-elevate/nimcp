@@ -692,8 +692,12 @@ int lnn_layer_backward(lnn_layer_t* layer, const nimcp_tensor_t* upstream_grad)
 
     for (uint32_t j = 0; j < n; j++) {
         float tau_j = tau_data[j];
-        /* Guard against division by zero */
-        float tau_sq = fmaxf(tau_j * tau_j, 1e-8f);
+        /* Guard against gradient explosion from small tau values
+         * Use tau_safe to ensure tau >= 1e-4 before squaring
+         * This prevents tau_sq from becoming too small (e.g., tau=1e-4 gives tau_sq=1e-8)
+         */
+        float tau_safe = fmaxf(tau_j, 1e-4f);
+        float tau_sq = tau_safe * tau_safe;
 
         /* ∂L/∂tau = upstream * x / tau^2 (decay term gradient) */
         float grad_tau = upstream_data[j] * x_data[j] / tau_sq;

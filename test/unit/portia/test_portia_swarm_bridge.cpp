@@ -88,13 +88,8 @@ struct swarm_energy_gossip_t {
     bool enabled;
 };
 
-/**
- * @brief Mock bio_module_context_t
- */
-struct bio_module_context_t {
-    uint32_t module_id;
-    bool connected;
-};
+/* NOTE: bio_module_context_t is already defined in nimcp_bio_router.h
+ * as an opaque pointer type - no mock needed */
 
 //=============================================================================
 // Test Fixture

@@ -59,10 +59,10 @@ protected:
         // WHAT: Initialize systems and RNG
         // WHY:  PE tests need bio-async and reproducible randomness
         // HOW:  Standard initialization with fixed seed
-        bio_async_init();
+        nimcp_bio_async_config_t async_cfg = {0};
+        nimcp_bio_async_init(&async_cfg);
         bio_router_config_t cfg = {0};
         bio_router_init(&cfg);
-        nimcp_unified_memory_init();
 
         encoder = nullptr;
         rng.seed(42);  // Fixed seed for reproducibility
@@ -78,8 +78,7 @@ protected:
         }
 
         bio_router_shutdown();
-        bio_async_shutdown();
-        nimcp_unified_memory_shutdown();
+        nimcp_bio_async_shutdown();
     }
 
     // WHAT: Check if values match within tolerance
@@ -226,7 +225,7 @@ TEST_F(PEStabilityTest, Sinusoidal_StressTest) {
             << "Corruption at iteration " << i << ", position " << pos;
 
         if (i % 100 == 0) {
-            bio_router_process_messages();
+            nimcp_bio_async_step(1.0f);
         }
     }
 }

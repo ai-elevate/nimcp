@@ -315,10 +315,11 @@ TEST_F(EnhancedWellbeingIntegrationTest, ImmuneWellbeingBidirectional) {
     brain_immune_activate_b_cell(immune, antigen_id, &b_cell_id);
     brain_immune_activate_helper_t(immune, antigen_id, &helper_id);
 
-    // Release pro-inflammatory cytokines (correct signature with all params)
+    // Release pro-inflammatory cytokines
+    // Signature: (system, type, source_cell, concentration, target_region, cytokine_id_out)
     uint32_t cytokine_id;
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, 0, helper_id, 0.8f, 0, &cytokine_id);
-    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, 0, helper_id, 0.7f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_IL6, helper_id, 0.8f, 0, &cytokine_id);
+    brain_immune_release_cytokine(immune, BRAIN_CYTOKINE_TNF, helper_id, 0.7f, 0, &cytokine_id);
 
     // Update immune to process inflammation
     brain_immune_update(immune, 1000);

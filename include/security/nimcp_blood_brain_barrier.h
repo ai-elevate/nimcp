@@ -406,6 +406,24 @@ NIMCP_EXPORT bool bbb_remove_trusted_key(bbb_system_t system, const char* key_id
  */
 NIMCP_EXPORT bool bbb_calculate_hash(const void* data, size_t size, uint8_t* hash);
 
+/**
+ * @brief Set HMAC signing key for code signing
+ * @param key_data Key material (must remain valid for lifetime of use)
+ * @param key_size Size of key in bytes (minimum 16, maximum 256)
+ * @return true on success
+ *
+ * SECURITY: Must be called before bbb_sign_code() or bbb_verify_signature()
+ * Key should be loaded from secure storage (HSM/TPM/encrypted config)
+ */
+NIMCP_EXPORT bool bbb_set_signing_key(const uint8_t* key_data, size_t key_size);
+
+/**
+ * @brief Clear HMAC signing key
+ *
+ * SECURITY: Call during shutdown or key rotation
+ */
+NIMCP_EXPORT void bbb_clear_signing_key(void);
+
 //=============================================================================
 // Memory Boundary API
 //=============================================================================

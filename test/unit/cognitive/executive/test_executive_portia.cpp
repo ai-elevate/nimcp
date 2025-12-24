@@ -77,7 +77,7 @@ TEST_F(ExecutivePortiaTest, InitializationWithPortiaEnabled) {
     // Verify Portia integration is enabled
     // Note: We'd need getter functions for testing, or test via observable behavior
     uint32_t tier = executive_get_portia_tier(exec);
-    EXPECT_NE(tier, PLATFORM_PLATFORM_TIER_MINIMAL);
+    EXPECT_NE(tier, PLATFORM_TIER_MINIMAL);
 
     // Should not be in resource-aware mode initially (assuming optimal tier)
     bool resource_aware = executive_is_resource_aware(exec);
@@ -93,7 +93,7 @@ TEST_F(ExecutivePortiaTest, InitializationWithPortiaDisabled) {
 
     // Verify Portia integration is disabled
     uint32_t tier = executive_get_portia_tier(exec);
-    EXPECT_EQ(tier, PLATFORM_PLATFORM_TIER_MINIMAL);
+    EXPECT_EQ(tier, PLATFORM_TIER_MINIMAL);
 
     bool resource_aware = executive_is_resource_aware(exec);
     EXPECT_FALSE(resource_aware);
@@ -107,7 +107,7 @@ TEST_F(ExecutivePortiaTest, InitializationWithDefaultConfig) {
     ASSERT_NE(exec, nullptr);
 
     uint32_t tier = executive_get_portia_tier(exec);
-    // Should not return PLATFORM_PLATFORM_TIER_MINIMAL if Portia enabled by default
+    // Should not return PLATFORM_TIER_MINIMAL if Portia enabled by default
     // (actual value depends on system state)
     (void)tier;
 
@@ -195,7 +195,7 @@ TEST_F(ExecutivePortiaTest, GetPortiaTier) {
 
 TEST_F(ExecutivePortiaTest, GetPortiaTierNullExec) {
     uint32_t tier = executive_get_portia_tier(nullptr);
-    EXPECT_EQ(tier, PLATFORM_PLATFORM_TIER_MINIMAL);
+    EXPECT_EQ(tier, PLATFORM_TIER_MINIMAL);
 }
 
 TEST_F(ExecutivePortiaTest, GetRecommendedPlanDepthNullExec) {

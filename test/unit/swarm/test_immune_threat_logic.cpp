@@ -358,19 +358,19 @@ TEST_F(ImmuneThreatLogicTest, BbbThreatAlertBasic) {
     nimcp_result_t result = immune_send_bbb_threat_alert(
         immune,
         threat_id,
-        SEVERITY_HIGH
+        SWARM_SEVERITY_HIGH
     );
 
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(ImmuneThreatLogicTest, BbbThreatAlertNullSystem) {
-    nimcp_result_t result = immune_send_bbb_threat_alert(nullptr, 1, SEVERITY_HIGH);
+    nimcp_result_t result = immune_send_bbb_threat_alert(nullptr, 1, SWARM_SEVERITY_HIGH);
     EXPECT_EQ(result, NIMCP_INVALID_PARAM);
 }
 
 TEST_F(ImmuneThreatLogicTest, BbbThreatAlertNonexistentThreat) {
-    nimcp_result_t result = immune_send_bbb_threat_alert(immune, 9999, SEVERITY_HIGH);
+    nimcp_result_t result = immune_send_bbb_threat_alert(immune, 9999, SWARM_SEVERITY_HIGH);
     EXPECT_EQ(result, NIMCP_NOT_FOUND);
 }
 

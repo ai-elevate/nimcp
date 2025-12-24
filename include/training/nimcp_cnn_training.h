@@ -596,6 +596,20 @@ cnn_layer_t* cnn_trainer_add_dense_layer(cnn_trainer_t* trainer,
  */
 cnn_layer_t* cnn_trainer_add_flatten_layer(cnn_trainer_t* trainer);
 
+/**
+ * @brief Add standalone activation layer
+ *
+ * WHAT: Apply activation function without learned parameters
+ * WHY:  Allow activation after non-conv layers (e.g., batch norm)
+ * HOW:  Apply element-wise activation (ReLU, etc.)
+ *
+ * @param trainer Trainer context
+ * @param activation Activation function type
+ * @return Layer handle or NULL on failure
+ */
+cnn_layer_t* cnn_trainer_add_activation_layer(cnn_trainer_t* trainer,
+                                               cnn_activation_t activation);
+
 //=============================================================================
 // Training API
 //=============================================================================
@@ -643,6 +657,20 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
  * @return NIMCP_SUCCESS on success
  */
 nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer);
+
+/**
+ * @brief Zero all gradients in the network
+ *
+ * WHAT: Reset all weight and bias gradients to zero
+ * WHY:  Prevent gradient accumulation between backward passes
+ * HOW:  Fill gradient tensors with zeros
+ *
+ * BIOLOGICAL ANALOGY: Synaptic plasticity reset before new learning trial
+ *
+ * @param trainer Trainer context
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_error_t cnn_trainer_zero_grad(cnn_trainer_t* trainer);
 
 /**
  * @brief Train CNN for one epoch
@@ -937,6 +965,24 @@ cnn_layer_t* cnn_get_layer(const cnn_trainer_t* trainer, uint32_t layer_idx);
  * @return Number of layers
  */
 uint32_t cnn_get_layer_count(const cnn_trainer_t* trainer);
+
+/**
+ * @brief Get layer weight gradients
+ *
+ * WHAT: Access weight gradient tensor for a layer
+ * WHY:  Debugging, gradient visualization, custom training loops
+ * HOW:  Clone internal gradient tensor
+ *
+ * @param trainer CNN trainer
+ * @param layer_idx Layer index
+ * @param out_grad Output: pointer to receive gradient copy (caller must free with nimcp_free)
+ * @param out_size Output: number of gradient elements
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
+                                         uint32_t layer_idx,
+                                         float** out_grad,
+                                         size_t* out_size);
 
 #ifdef __cplusplus
 }

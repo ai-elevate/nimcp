@@ -520,14 +520,16 @@ int callosum_send(
     }
 
     // Create message
+    // Note: Use explicit masking to prevent uint64_t overflow when casting to uint32_t
+    uint64_t total_msgs = cc->stats.total_messages_left_to_right +
+                          cc->stats.total_messages_right_to_left;
     callosum_message_t msg = {
         .source = from,
         .destination = (from == HEMISPHERE_LEFT) ? HEMISPHERE_RIGHT : HEMISPHERE_LEFT,
         .channel = channel,
         .priority = priority,
         .timestamp = now,
-        .sequence_num = (uint32_t)(cc->stats.total_messages_left_to_right +
-                                   cc->stats.total_messages_right_to_left),
+        .sequence_num = (uint32_t)(total_msgs & 0xFFFFFFFF),
         .message_type = message_type,
         .data = (void*)data,
         .data_size = size,
@@ -893,6 +895,8 @@ int callosum_get_stats(const corpus_callosum_t* cc, callosum_stats_t* stats) {
         return -1;
     }
 
+    // Note: Must cast away const to lock mutex for thread-safe read
+    // This is safe because we only read stats, not modify callosum state
     nimcp_mutex_lock((nimcp_mutex_t*)cc->mutex);
     memcpy(stats, &cc->stats, sizeof(callosum_stats_t));
     stats->current_bandwidth_utilization = callosum_get_bandwidth_utilization(cc);

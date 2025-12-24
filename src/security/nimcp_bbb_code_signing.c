@@ -100,18 +100,18 @@ static struct {
 };
 
 /**
- * WHAT: Static HMAC key for placeholder signing
- * WHY:  Production systems should use HSM/TPM; this is for development
- * HOW:  256-bit key derived from constant (NOT SECURE - placeholder only)
+ * WHAT: Global HMAC key pointer (must be set before use)
+ * WHY:  Force runtime key configuration, prevent hardcoded keys
+ * HOW:  Pointer initialized to NULL, must call bbb_set_signing_key()
  *
- * WARNING: Replace with proper key management in production!
+ * SECURITY: Key must be loaded from secure source (HSM/TPM/config)
  */
-static const uint8_t g_placeholder_key[32] = {
-    0x4E, 0x49, 0x4D, 0x43, 0x50, 0x2D, 0x42, 0x42,  /* "NIMCP-BB" */
-    0x42, 0x2D, 0x53, 0x49, 0x47, 0x4E, 0x2D, 0x4B,  /* "B-SIGN-K" */
-    0x45, 0x59, 0x2D, 0x50, 0x4C, 0x41, 0x43, 0x45,  /* "EY-PLACE" */
-    0x48, 0x4F, 0x4C, 0x44, 0x45, 0x52, 0x21, 0x21   /* "HOLDER!!" */
-};
+static const uint8_t* g_signing_key = NULL;
+static size_t g_signing_key_len = 0;
+
+#ifdef NIMCP_BBB_PLACEHOLDER_KEY_WARNING
+#warning "BBB code signing key is not configured - calls will fail at runtime"
+#endif
 
 //=============================================================================
 // SHA256 Implementation (Simplified)
@@ -442,10 +442,16 @@ ssize_t bbb_sign_code(bbb_system_t system, const void* data,
         return -1;
     }
 
+    /* Guard: Signing key not configured */
+    if (!g_signing_key || g_signing_key_len == 0) {
+        LOG_ERROR("BBB signing key not configured - call bbb_set_signing_key() first");
+        return -1;
+    }
+
     (void)system;  /* Available for future configuration */
 
     /* Compute HMAC-SHA256 signature */
-    hmac_sha256(g_placeholder_key, sizeof(g_placeholder_key),
+    hmac_sha256(g_signing_key, g_signing_key_len,
                 (const uint8_t*)data, size, signature);
 
     return SIGNATURE_SIZE;
@@ -478,11 +484,17 @@ bool bbb_verify_signature(bbb_system_t system, const void* data,
         return false;
     }
 
+    /* Guard: Signing key not configured */
+    if (!g_signing_key || g_signing_key_len == 0) {
+        LOG_ERROR("BBB signing key not configured - call bbb_set_signing_key() first");
+        return false;
+    }
+
     (void)system;  /* Available for future configuration */
 
     /* Compute expected signature */
     uint8_t expected[SIGNATURE_SIZE];
-    hmac_sha256(g_placeholder_key, sizeof(g_placeholder_key),
+    hmac_sha256(g_signing_key, g_signing_key_len,
                 (const uint8_t*)data, size, expected);
 
     /* Constant-time comparison to prevent timing attacks */
@@ -607,6 +619,59 @@ bool bbb_remove_trusted_key(bbb_system_t system, const char* key_id)
     nimcp_mutex_unlock(&g_key_store.mutex);
 
     return true;
+}
+
+/**
+ * @brief Set HMAC signing key (must be called before signing/verification)
+ *
+ * WHAT: Configure the HMAC key used for code signing
+ * WHY:  Prevent hardcoded keys, require runtime configuration
+ * HOW:  Stores pointer and length, validates input
+ *
+ * @param key_data Key material (must remain valid for lifetime of use)
+ * @param key_size Size of key in bytes
+ * @return true on success
+ */
+bool bbb_set_signing_key(const uint8_t* key_data, size_t key_size)
+{
+    /* Guard: Invalid parameters */
+    if (!key_data || key_size == 0) {
+        LOG_ERROR("Invalid key parameters");
+        return false;
+    }
+
+    /* Guard: Key too short (minimum 16 bytes for security) */
+    if (key_size < 16) {
+        LOG_ERROR("Key too short (minimum 16 bytes required)");
+        return false;
+    }
+
+    /* Guard: Key too long */
+    if (key_size > MAX_KEY_SIZE) {
+        LOG_ERROR("Key too long (maximum %u bytes)", MAX_KEY_SIZE);
+        return false;
+    }
+
+    /* Store key pointer (caller must ensure key remains valid) */
+    g_signing_key = key_data;
+    g_signing_key_len = key_size;
+
+    LOG_INFO("BBB signing key configured (%zu bytes)", key_size);
+    return true;
+}
+
+/**
+ * @brief Clear HMAC signing key
+ *
+ * WHAT: Remove configured signing key
+ * WHY:  Security cleanup or key rotation
+ * HOW:  Clears global key pointer
+ */
+void bbb_clear_signing_key(void)
+{
+    g_signing_key = NULL;
+    g_signing_key_len = 0;
+    LOG_INFO("BBB signing key cleared");
 }
 
 /**

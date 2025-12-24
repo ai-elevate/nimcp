@@ -157,27 +157,35 @@ static uint64_t get_current_time_ms(void) {
 /**
  * @brief Generate cryptographically secure unique ID
  *
- * WHAT: Generate random ID using /dev/urandom
- * WHY:  Prevent ID prediction attacks in swarm
- * HOW:  Read from urandom, fall back to time+counter on failure
+ * WHAT: Generate random ID using getrandom() syscall
+ * WHY:  Prevent ID prediction attacks and race conditions
+ * HOW:  Use getrandom() (thread-safe syscall), fall back to secure /dev/urandom
  *
- * THREAD SAFETY: Static counter uses atomic operations (__sync_fetch_and_add)
+ * THREAD SAFETY: getrandom() is thread-safe, no file descriptors needed
+ * SECURITY FIX: Eliminates race condition from file-based /dev/urandom approach
  */
 static uint32_t generate_unique_id(void) {
     static uint64_t counter = 0;  /* 64-bit to prevent wraparound, accessed atomically */
     uint32_t id;
 
-    /* Try to read from /dev/urandom */
+    /* Try getrandom() syscall (thread-safe, no file descriptor race) */
+    ssize_t n = getrandom(&id, sizeof(id), GRND_NONBLOCK);
+    if (n == sizeof(id)) {
+        return id;
+    }
+
+    /* Fallback: try /dev/urandom with proper error handling */
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd >= 0) {
-        ssize_t n = read(fd, &id, sizeof(id));
+        n = read(fd, &id, sizeof(id));
         close(fd);
         if (n == sizeof(id)) {
             return id;
         }
     }
 
-    /* Fallback: combine time and counter */
+    /* Last resort fallback: combine time and atomic counter */
+    LOG_WARN("Using weak RNG for ID generation - secure RNG unavailable");
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     id = (uint32_t)(ts.tv_nsec ^ ts.tv_sec);

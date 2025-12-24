@@ -12,9 +12,13 @@
 #include <cstring>
 
 extern "C" {
+#include "security/nimcp_anomaly_detector.h"
 #include "security/nimcp_anomaly_detector_fep_bridge.h"
+#include "security/nimcp_blood_brain_barrier.h"
 #include "security/nimcp_blood_brain_barrier_fep_bridge.h"
+#include "security/nimcp_pattern_db.h"
 #include "security/nimcp_pattern_db_fep_bridge.h"
+#include "security/nimcp_rate_limiter.h"
 #include "security/nimcp_rate_limiter_fep_bridge.h"
 #include "security/nimcp_security_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
@@ -45,19 +49,27 @@ protected:
 
 class AnomalyDetectorFepBridgeTest : public SecurityFepBridgesTestBase {
 protected:
-    anomaly_detector_fep_bridge_t* bridge = nullptr;
+    anomaly_fep_bridge_t* bridge = nullptr;
+    nimcp_anomaly_detector_t detector = nullptr;
 
     void SetUp() override {
         SecurityFepBridgesTestBase::SetUp();
-        anomaly_detector_fep_config_t config;
-        anomaly_detector_fep_default_config(&config);
-        bridge = anomaly_detector_fep_create(&config, fep);
+        nimcp_anomaly_config_t detector_config = nimcp_anomaly_detector_default_config();
+        detector = nimcp_anomaly_detector_create(&detector_config);
+        ASSERT_NE(detector, nullptr);
+        anomaly_fep_config_t config;
+        anomaly_fep_default_config(&config);
+        bridge = anomaly_fep_create(&config, detector, fep);
     }
 
     void TearDown() override {
         if (bridge) {
-            anomaly_detector_fep_destroy(bridge);
+            anomaly_fep_destroy(bridge);
             bridge = nullptr;
+        }
+        if (detector) {
+            nimcp_anomaly_detector_destroy(detector);
+            detector = nullptr;
         }
         SecurityFepBridgesTestBase::TearDown();
     }
@@ -68,47 +80,54 @@ TEST_F(AnomalyDetectorFepBridgeTest, CreateDestroy) {
 }
 
 TEST_F(AnomalyDetectorFepBridgeTest, CreateWithNullConfig) {
-    anomaly_detector_fep_bridge_t* br = anomaly_detector_fep_create(nullptr, fep);
+    anomaly_fep_bridge_t* br = anomaly_fep_create(nullptr, detector, fep);
+    EXPECT_EQ(br, nullptr);
+}
+
+TEST_F(AnomalyDetectorFepBridgeTest, CreateWithNullDetector) {
+    anomaly_fep_config_t config;
+    anomaly_fep_default_config(&config);
+    anomaly_fep_bridge_t* br = anomaly_fep_create(&config, nullptr, fep);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(AnomalyDetectorFepBridgeTest, CreateWithNullFep) {
-    anomaly_detector_fep_config_t config;
-    anomaly_detector_fep_default_config(&config);
-    anomaly_detector_fep_bridge_t* br = anomaly_detector_fep_create(&config, nullptr);
+    anomaly_fep_config_t config;
+    anomaly_fep_default_config(&config);
+    anomaly_fep_bridge_t* br = anomaly_fep_create(&config, detector, nullptr);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(AnomalyDetectorFepBridgeTest, DestroyNull) {
-    anomaly_detector_fep_destroy(nullptr);
+    anomaly_fep_destroy(nullptr);
 }
 
 TEST_F(AnomalyDetectorFepBridgeTest, DefaultConfig) {
-    anomaly_detector_fep_config_t config;
-    int ret = anomaly_detector_fep_default_config(&config);
+    anomaly_fep_config_t config;
+    int ret = anomaly_fep_default_config(&config);
     EXPECT_EQ(ret, 0);
-    EXPECT_GT(config.anomaly_surprise_threshold, 0.0f);
-    EXPECT_TRUE(config.enable_predictive_detection);
+    EXPECT_GT(config.anomaly_fe_threshold, 0.0f);
+    EXPECT_TRUE(config.use_fep_scoring);
 }
 
 TEST_F(AnomalyDetectorFepBridgeTest, Update) {
-    int ret = anomaly_detector_fep_update(bridge);
+    int ret = anomaly_fep_update(bridge);
     EXPECT_EQ(ret, 0);
 }
 
 TEST_F(AnomalyDetectorFepBridgeTest, GetEffects) {
-    anomaly_detector_fep_update(bridge);
-    anomaly_detector_fep_effects_t effects;
-    int ret = anomaly_detector_fep_get_effects(bridge, &effects);
+    anomaly_fep_update(bridge);
+    anomaly_fep_effects_t effects;
+    int ret = anomaly_fep_get_effects(bridge, &effects);
     EXPECT_EQ(ret, 0);
 }
 
 TEST_F(AnomalyDetectorFepBridgeTest, BioAsync) {
-    EXPECT_FALSE(anomaly_detector_fep_is_bio_async_connected(bridge));
-    anomaly_detector_fep_connect_bio_async(bridge);
-    EXPECT_TRUE(anomaly_detector_fep_is_bio_async_connected(bridge));
-    anomaly_detector_fep_disconnect_bio_async(bridge);
-    EXPECT_FALSE(anomaly_detector_fep_is_bio_async_connected(bridge));
+    EXPECT_FALSE(anomaly_fep_is_bio_async_connected(bridge));
+    anomaly_fep_connect_bio_async(bridge);
+    EXPECT_TRUE(anomaly_fep_is_bio_async_connected(bridge));
+    anomaly_fep_disconnect_bio_async(bridge);
+    EXPECT_FALSE(anomaly_fep_is_bio_async_connected(bridge));
 }
 
 /* ============================================================================
@@ -117,19 +136,27 @@ TEST_F(AnomalyDetectorFepBridgeTest, BioAsync) {
 
 class BloodBrainBarrierFepBridgeTest : public SecurityFepBridgesTestBase {
 protected:
-    blood_brain_barrier_fep_bridge_t* bridge = nullptr;
+    bbb_fep_bridge_t* bridge = nullptr;
+    bbb_system_t bbb = nullptr;
 
     void SetUp() override {
         SecurityFepBridgesTestBase::SetUp();
-        blood_brain_barrier_fep_config_t config;
-        blood_brain_barrier_fep_default_config(&config);
-        bridge = blood_brain_barrier_fep_create(&config, fep);
+        bbb_config_t bbb_config = bbb_default_config();
+        bbb = bbb_system_create(&bbb_config);
+        ASSERT_NE(bbb, nullptr);
+        bbb_fep_config_t config;
+        bbb_fep_default_config(&config);
+        bridge = bbb_fep_create(&config, bbb, fep);
     }
 
     void TearDown() override {
         if (bridge) {
-            blood_brain_barrier_fep_destroy(bridge);
+            bbb_fep_destroy(bridge);
             bridge = nullptr;
+        }
+        if (bbb) {
+            bbb_system_destroy(bbb);
+            bbb = nullptr;
         }
         SecurityFepBridgesTestBase::TearDown();
     }
@@ -140,44 +167,51 @@ TEST_F(BloodBrainBarrierFepBridgeTest, CreateDestroy) {
 }
 
 TEST_F(BloodBrainBarrierFepBridgeTest, CreateWithNullConfig) {
-    blood_brain_barrier_fep_bridge_t* br = blood_brain_barrier_fep_create(nullptr, fep);
+    bbb_fep_bridge_t* br = bbb_fep_create(nullptr, bbb, fep);
+    EXPECT_EQ(br, nullptr);
+}
+
+TEST_F(BloodBrainBarrierFepBridgeTest, CreateWithNullBbb) {
+    bbb_fep_config_t config;
+    bbb_fep_default_config(&config);
+    bbb_fep_bridge_t* br = bbb_fep_create(&config, nullptr, fep);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(BloodBrainBarrierFepBridgeTest, CreateWithNullFep) {
-    blood_brain_barrier_fep_config_t config;
-    blood_brain_barrier_fep_default_config(&config);
-    blood_brain_barrier_fep_bridge_t* br = blood_brain_barrier_fep_create(&config, nullptr);
+    bbb_fep_config_t config;
+    bbb_fep_default_config(&config);
+    bbb_fep_bridge_t* br = bbb_fep_create(&config, bbb, nullptr);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(BloodBrainBarrierFepBridgeTest, DestroyNull) {
-    blood_brain_barrier_fep_destroy(nullptr);
+    bbb_fep_destroy(nullptr);
 }
 
 TEST_F(BloodBrainBarrierFepBridgeTest, DefaultConfig) {
-    blood_brain_barrier_fep_config_t config;
-    int ret = blood_brain_barrier_fep_default_config(&config);
+    bbb_fep_config_t config;
+    int ret = bbb_fep_default_config(&config);
     EXPECT_EQ(ret, 0);
-    EXPECT_GT(config.permeability_precision_coupling, 0.0f);
+    EXPECT_GT(config.threat_free_energy_threshold, 0.0f);
 }
 
 TEST_F(BloodBrainBarrierFepBridgeTest, Update) {
-    int ret = blood_brain_barrier_fep_update(bridge);
+    int ret = bbb_fep_update(bridge);
     EXPECT_EQ(ret, 0);
 }
 
 TEST_F(BloodBrainBarrierFepBridgeTest, GetEffects) {
-    blood_brain_barrier_fep_update(bridge);
-    blood_brain_barrier_fep_effects_t effects;
-    int ret = blood_brain_barrier_fep_get_effects(bridge, &effects);
+    bbb_fep_update(bridge);
+    bbb_fep_effects_t effects;
+    int ret = bbb_fep_get_effects(bridge, &effects);
     EXPECT_EQ(ret, 0);
 }
 
 TEST_F(BloodBrainBarrierFepBridgeTest, BioAsync) {
-    EXPECT_FALSE(blood_brain_barrier_fep_is_bio_async_connected(bridge));
-    blood_brain_barrier_fep_connect_bio_async(bridge);
-    EXPECT_TRUE(blood_brain_barrier_fep_is_bio_async_connected(bridge));
+    EXPECT_FALSE(bbb_fep_is_bio_async_connected(bridge));
+    bbb_fep_connect_bio_async(bridge);
+    EXPECT_TRUE(bbb_fep_is_bio_async_connected(bridge));
 }
 
 /* ============================================================================
@@ -186,19 +220,27 @@ TEST_F(BloodBrainBarrierFepBridgeTest, BioAsync) {
 
 class PatternDbFepBridgeTest : public SecurityFepBridgesTestBase {
 protected:
-    pattern_db_fep_bridge_t* bridge = nullptr;
+    pattern_fep_bridge_t* bridge = nullptr;
+    nimcp_pattern_db_t pattern_db = nullptr;
 
     void SetUp() override {
         SecurityFepBridgesTestBase::SetUp();
-        pattern_db_fep_config_t config;
-        pattern_db_fep_default_config(&config);
-        bridge = pattern_db_fep_create(&config, fep);
+        nimcp_pattern_db_config_t db_config = nimcp_pattern_db_default_config();
+        pattern_db = nimcp_pattern_db_create(&db_config);
+        ASSERT_NE(pattern_db, nullptr);
+        pattern_fep_config_t config;
+        pattern_fep_default_config(&config);
+        bridge = pattern_fep_create(&config, pattern_db, fep);
     }
 
     void TearDown() override {
         if (bridge) {
-            pattern_db_fep_destroy(bridge);
+            pattern_fep_destroy(bridge);
             bridge = nullptr;
+        }
+        if (pattern_db) {
+            nimcp_pattern_db_destroy(pattern_db);
+            pattern_db = nullptr;
         }
         SecurityFepBridgesTestBase::TearDown();
     }
@@ -209,26 +251,33 @@ TEST_F(PatternDbFepBridgeTest, CreateDestroy) {
 }
 
 TEST_F(PatternDbFepBridgeTest, CreateWithNullConfig) {
-    pattern_db_fep_bridge_t* br = pattern_db_fep_create(nullptr, fep);
+    pattern_fep_bridge_t* br = pattern_fep_create(nullptr, pattern_db, fep);
+    EXPECT_EQ(br, nullptr);
+}
+
+TEST_F(PatternDbFepBridgeTest, CreateWithNullPatternDb) {
+    pattern_fep_config_t config;
+    pattern_fep_default_config(&config);
+    pattern_fep_bridge_t* br = pattern_fep_create(&config, nullptr, fep);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(PatternDbFepBridgeTest, CreateWithNullFep) {
-    pattern_db_fep_config_t config;
-    pattern_db_fep_default_config(&config);
-    pattern_db_fep_bridge_t* br = pattern_db_fep_create(&config, nullptr);
+    pattern_fep_config_t config;
+    pattern_fep_default_config(&config);
+    pattern_fep_bridge_t* br = pattern_fep_create(&config, pattern_db, nullptr);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(PatternDbFepBridgeTest, Update) {
-    int ret = pattern_db_fep_update(bridge);
+    int ret = pattern_fep_update(bridge);
     EXPECT_EQ(ret, 0);
 }
 
 TEST_F(PatternDbFepBridgeTest, GetEffects) {
-    pattern_db_fep_update(bridge);
-    pattern_db_fep_effects_t effects;
-    int ret = pattern_db_fep_get_effects(bridge, &effects);
+    pattern_fep_update(bridge);
+    pattern_fep_effects_t effects;
+    int ret = pattern_fep_get_effects(bridge, &effects);
     EXPECT_EQ(ret, 0);
 }
 
@@ -238,19 +287,27 @@ TEST_F(PatternDbFepBridgeTest, GetEffects) {
 
 class RateLimiterFepBridgeTest : public SecurityFepBridgesTestBase {
 protected:
-    rate_limiter_fep_bridge_t* bridge = nullptr;
+    rate_fep_bridge_t* bridge = nullptr;
+    nimcp_rate_limiter_t limiter = nullptr;
 
     void SetUp() override {
         SecurityFepBridgesTestBase::SetUp();
-        rate_limiter_fep_config_t config;
-        rate_limiter_fep_default_config(&config);
-        bridge = rate_limiter_fep_create(&config, fep);
+        nimcp_rate_limit_config_t limiter_config = nimcp_rate_limiter_default_config();
+        limiter = nimcp_rate_limiter_create(&limiter_config);
+        ASSERT_NE(limiter, nullptr);
+        rate_fep_config_t config;
+        rate_fep_default_config(&config);
+        bridge = rate_fep_create(&config, limiter, fep);
     }
 
     void TearDown() override {
         if (bridge) {
-            rate_limiter_fep_destroy(bridge);
+            rate_fep_destroy(bridge);
             bridge = nullptr;
+        }
+        if (limiter) {
+            nimcp_rate_limiter_destroy(limiter);
+            limiter = nullptr;
         }
         SecurityFepBridgesTestBase::TearDown();
     }
@@ -261,26 +318,33 @@ TEST_F(RateLimiterFepBridgeTest, CreateDestroy) {
 }
 
 TEST_F(RateLimiterFepBridgeTest, CreateWithNullConfig) {
-    rate_limiter_fep_bridge_t* br = rate_limiter_fep_create(nullptr, fep);
+    rate_fep_bridge_t* br = rate_fep_create(nullptr, limiter, fep);
+    EXPECT_EQ(br, nullptr);
+}
+
+TEST_F(RateLimiterFepBridgeTest, CreateWithNullLimiter) {
+    rate_fep_config_t config;
+    rate_fep_default_config(&config);
+    rate_fep_bridge_t* br = rate_fep_create(&config, nullptr, fep);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(RateLimiterFepBridgeTest, CreateWithNullFep) {
-    rate_limiter_fep_config_t config;
-    rate_limiter_fep_default_config(&config);
-    rate_limiter_fep_bridge_t* br = rate_limiter_fep_create(&config, nullptr);
+    rate_fep_config_t config;
+    rate_fep_default_config(&config);
+    rate_fep_bridge_t* br = rate_fep_create(&config, limiter, nullptr);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(RateLimiterFepBridgeTest, Update) {
-    int ret = rate_limiter_fep_update(bridge);
+    int ret = rate_fep_update(bridge);
     EXPECT_EQ(ret, 0);
 }
 
 TEST_F(RateLimiterFepBridgeTest, GetEffects) {
-    rate_limiter_fep_update(bridge);
-    rate_limiter_fep_effects_t effects;
-    int ret = rate_limiter_fep_get_effects(bridge, &effects);
+    rate_fep_update(bridge);
+    rate_fep_effects_t effects;
+    int ret = rate_fep_get_effects(bridge, &effects);
     EXPECT_EQ(ret, 0);
 }
 

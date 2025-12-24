@@ -244,7 +244,7 @@ TEST_F(AmygdalaTrainingBridgeTest, Instability_NaN) {
 
     /* Trigger NaN instability */
     int result = amygdala_training_on_instability(
-        bridge, LOGIC_INSTABILITY_LOSS_NAN, 10.0f
+        bridge, TRAINING_INSTABILITY_LOSS_NAN, 10.0f
     );
     EXPECT_EQ(result, 0);
 
@@ -275,7 +275,7 @@ TEST_F(AmygdalaTrainingBridgeTest, Instability_GradExplosion) {
     amygdala_training_connect_training(bridge, mock_training);
 
     amygdala_training_on_instability(
-        bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 6.0f
+        bridge, TRAINING_INSTABILITY_GRAD_EXPLOSION, 6.0f
     );
 
     float fear = amygdala_get_fear_level(amygdala);
@@ -402,7 +402,7 @@ TEST_F(AmygdalaTrainingBridgeTest, PhaseTransition_MonitoringToResponding) {
     amygdala_training_connect_training(bridge, mock_training);
 
     /* Trigger instability */
-    amygdala_training_on_instability(bridge, LOGIC_INSTABILITY_LOSS_NAN, 10.0f);
+    amygdala_training_on_instability(bridge, TRAINING_INSTABILITY_LOSS_NAN, 10.0f);
 
     EXPECT_EQ(amygdala_training_get_phase(bridge), AMYGDALA_TRAINING_PHASE_RESPONDING);
 }
@@ -426,7 +426,7 @@ TEST_F(AmygdalaTrainingBridgeTest, EdgeCase_UpdateWithoutConnection) {
 
 TEST_F(AmygdalaTrainingBridgeTest, EdgeCase_InstabilityWithoutConnection) {
     int result = amygdala_training_on_instability(
-        bridge, LOGIC_INSTABILITY_LOSS_NAN, 10.0f
+        bridge, TRAINING_INSTABILITY_LOSS_NAN, 10.0f
     );
     EXPECT_NE(result, 0);  /* Should fail - no amygdala connected */
 }

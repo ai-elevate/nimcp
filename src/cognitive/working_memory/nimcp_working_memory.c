@@ -2222,3 +2222,46 @@ bool working_memory_get_salience(
 
     return true;
 }
+
+/**
+ * @brief Set salience of item at index
+ *
+ * WHAT: Update importance score for an item
+ * WHY:  Allow dynamic priority adjustment based on relevance
+ * HOW:  Direct array access with bounds checking and clamping
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param index Item index [0, current_size)
+ * @param new_salience New salience value (clamped to [0.0, 1.0])
+ * @return true on success, false on invalid index or NULL params
+ */
+bool working_memory_set_salience(
+    working_memory_t* wm,
+    uint32_t index,
+    float new_salience
+)
+{
+    // Guard: NULL working memory
+    if (!wm) {
+        return false;
+    }
+
+    // Guard: Invalid index
+    if (index >= wm->current_size) {
+        return false;
+    }
+
+    // Clamp salience to valid range
+    if (new_salience < 0.0f) {
+        new_salience = 0.0f;
+    } else if (new_salience > 1.0f) {
+        new_salience = 1.0f;
+    }
+
+    // Thread-safe write
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    wm->salience[index] = new_salience;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    return true;
+}

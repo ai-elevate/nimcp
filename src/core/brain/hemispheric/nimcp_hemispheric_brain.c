@@ -399,9 +399,19 @@ int hemispheric_brain_process_competitive(
         return -1;
     }
 
+    int ret = 0;
+
     // Process both hemispheres
-    hemisphere_infer(brain->left, input, input_size, left_out, output_size);
-    hemisphere_infer(brain->right, input, input_size, right_out, output_size);
+    if (hemisphere_infer(brain->left, input, input_size, left_out, output_size) != 0) {
+        NIMCP_LOGGING_ERROR("Left hemisphere inference failed");
+        ret = -1;
+        goto cleanup;
+    }
+    if (hemisphere_infer(brain->right, input, input_size, right_out, output_size) != 0) {
+        NIMCP_LOGGING_ERROR("Right hemisphere inference failed");
+        ret = -1;
+        goto cleanup;
+    }
 
     // Determine winner based on activation strength
     float left_strength = 0.0f, right_strength = 0.0f;
@@ -420,13 +430,13 @@ int hemispheric_brain_process_competitive(
         brain->stats.right_wins++;
     }
 
-    nimcp_free(left_out);
-    nimcp_free(right_out);
-
     brain->stats.competitive_operations++;
 
+cleanup:
+    nimcp_free(left_out);
+    nimcp_free(right_out);
     nimcp_mutex_unlock(brain->mutex);
-    return 0;
+    return ret;
 }
 
 int hemispheric_brain_process_cooperative(
@@ -455,9 +465,19 @@ int hemispheric_brain_process_cooperative(
         return -1;
     }
 
+    int ret = 0;
+
     // Process both hemispheres
-    hemisphere_infer(brain->left, input, input_size, left_out, output_size);
-    hemisphere_infer(brain->right, input, input_size, right_out, output_size);
+    if (hemisphere_infer(brain->left, input, input_size, left_out, output_size) != 0) {
+        NIMCP_LOGGING_ERROR("Left hemisphere inference failed");
+        ret = -1;
+        goto cleanup;
+    }
+    if (hemisphere_infer(brain->right, input, input_size, right_out, output_size) != 0) {
+        NIMCP_LOGGING_ERROR("Right hemisphere inference failed");
+        ret = -1;
+        goto cleanup;
+    }
 
     // Combine based on cooperation strategy
     switch (brain->cooperation_strategy) {
@@ -530,13 +550,13 @@ int hemispheric_brain_process_cooperative(
         }
     }
 
-    nimcp_free(left_out);
-    nimcp_free(right_out);
-
     brain->stats.cooperative_operations++;
 
+cleanup:
+    nimcp_free(left_out);
+    nimcp_free(right_out);
     nimcp_mutex_unlock(brain->mutex);
-    return 0;
+    return ret;
 }
 
 int hemispheric_brain_infer(
@@ -866,6 +886,8 @@ int hemispheric_brain_get_stats(
 ) {
     if (!brain || !stats) return -1;
 
+    // Note: Must cast away const to lock mutex for thread-safe read
+    // This is safe because we only read stats, not modify brain state
     nimcp_mutex_lock((nimcp_mutex_t*)brain->mutex);
 
     memcpy(stats, &brain->stats, sizeof(hemispheric_brain_stats_t));

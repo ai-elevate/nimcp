@@ -110,6 +110,12 @@ int pattern_fep_apply_modulation(pattern_fep_bridge_t* bridge) {
     return 0;
 }
 
+int pattern_fep_get_effects(const pattern_fep_bridge_t* bridge, pattern_fep_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    *effects = bridge->fep_effects;
+    return 0;
+}
+
 int pattern_fep_get_stats(const pattern_fep_bridge_t* bridge, pattern_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
     *stats = bridge->stats;

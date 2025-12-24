@@ -65,7 +65,7 @@ TEST_F(PlasticityBioAsyncIntegrationTest, MultiModuleRegistration) {
     auto attention_ctx = RegisterModule(BIO_MODULE_ATTENTION, "attention");
     auto dendritic_ctx = RegisterModule(BIO_MODULE_DENDRITIC, "dendritic");
     auto adaptive_ctx = RegisterModule(BIO_MODULE_ADAPTIVE, "adaptive");
-    auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE, "predictive");
+    auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE_CODING, "predictive");
 
     ASSERT_NE(attention_ctx, nullptr);
     ASSERT_NE(dendritic_ctx, nullptr);
@@ -91,12 +91,12 @@ TEST_F(PlasticityBioAsyncIntegrationTest, STDPToNeuromodulatorFlow) {
                         sizeof(msg));
     msg.salience_score = 0.7f;
 
-    nimcp_error_t result = bio_router_send(stdp_ctx, &msg, sizeof(msg));
+    nimcp_error_t result = bio_router_send(stdp_ctx, &msg, sizeof(msg), 0);
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, PredictiveErrorToDopamine) {
-    auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE, "predictive");
+    auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE_CODING, "predictive");
     auto neuromod_ctx = RegisterModule(BIO_MODULE_NEUROMODULATOR, "neuromodulator");
 
     ASSERT_NE(predictive_ctx, nullptr);
@@ -161,7 +161,7 @@ TEST_F(PlasticityBioAsyncIntegrationTest, AttentionModulatesLearning) {
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, MultiChannelBroadcast) {
-    auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE, "predictive");
+    auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE_CODING, "predictive");
     auto dendritic_ctx = RegisterModule(BIO_MODULE_DENDRITIC, "dendritic");
     auto attention_ctx = RegisterModule(BIO_MODULE_ATTENTION, "attention");
 
@@ -205,7 +205,7 @@ TEST_F(PlasticityBioAsyncIntegrationTest, MultiChannelBroadcast) {
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, ReceptorSubtypeModulation) {
-    auto receptor_ctx = RegisterModule(BIO_MODULE_RECEPTOR, "receptor");
+    auto receptor_ctx = RegisterModule(BIO_MODULE_NEUROMODULATOR_RECEPTOR, "receptor");
     auto neuromod_ctx = RegisterModule(BIO_MODULE_NEUROMODULATOR, "neuromodulator");
 
     ASSERT_NE(receptor_ctx, nullptr);
@@ -220,7 +220,7 @@ TEST_F(PlasticityBioAsyncIntegrationTest, ReceptorSubtypeModulation) {
                         sizeof(msg));
     msg.salience_score = 0.75f;
 
-    nimcp_error_t result = bio_router_send(neuromod_ctx, &msg, sizeof(msg));
+    nimcp_error_t result = bio_router_send(neuromod_ctx, &msg, sizeof(msg), 0);
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 

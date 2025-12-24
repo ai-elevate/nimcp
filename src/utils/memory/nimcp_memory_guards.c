@@ -13,6 +13,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +33,7 @@ typedef struct allocation_header {
     const char* file;          /**< Source file */
     int line;                  /**< Source line */
     uint64_t alloc_id;         /**< Unique allocation ID */
-    bool is_freed;             /**< Freed flag for double-free detection */
+    nimcp_atomic_bool_t is_freed; /**< Atomic freed flag for double-free detection */
     struct allocation_header* next; /**< Next in tracking list */
 } allocation_header_t;
 
@@ -203,7 +204,7 @@ void* nimcp_malloc_guarded(size_t size, const char* file, int line) {
     header->size = size;
     header->file = file;
     header->line = line;
-    header->is_freed = false;
+    nimcp_atomic_init_bool(&header->is_freed, false);
 
     // Setup footer
     allocation_footer_t* footer = get_footer(header);
@@ -286,19 +287,27 @@ void nimcp_free_guarded(void* ptr, const char* file, int line) {
 
     allocation_header_t* header = get_header(ptr);
 
-    // Check if already freed (double-free)
-    if (g_config.enable_double_free_detection && header->is_freed) {
-        fprintf(stderr, "\n*** DOUBLE-FREE DETECTED ***\n");
-        fprintf(stderr, "Attempted to free %p at %s:%d\n", ptr,
-                file ? file : "unknown", line);
-        fprintf(stderr, "Originally allocated at %s:%d\n",
-                header->file ? header->file : "unknown", header->line);
-        g_stats.double_frees_detected++;
+    /* Check if already freed (double-free) using atomic CAS
+     * WHY: Prevent race conditions where two threads free same pointer
+     * HOW: Atomic compare-and-swap ensures only one thread can transition false→true
+     */
+    if (g_config.enable_double_free_detection) {
+        bool expected = false;
+        bool was_freed = !nimcp_atomic_compare_exchange_bool(&header->is_freed, &expected, true,
+                                                               NIMCP_MEMORY_ORDER_ACQ_REL);
+        if (was_freed) {
+            fprintf(stderr, "\n*** DOUBLE-FREE DETECTED ***\n");
+            fprintf(stderr, "Attempted to free %p at %s:%d\n", ptr,
+                    file ? file : "unknown", line);
+            fprintf(stderr, "Originally allocated at %s:%d\n",
+                    header->file ? header->file : "unknown", header->line);
+            g_stats.double_frees_detected++;
 
-        if (g_config.abort_on_error) {
-            abort();
+            if (g_config.abort_on_error) {
+                abort();
+            }
+            return; // Don't actually free again
         }
-        return; // Don't actually free again
     }
 
     // Check canaries
@@ -330,8 +339,12 @@ void nimcp_free_guarded(void* ptr, const char* file, int line) {
 
     unlock_guards();
 
-    // Mark as freed
-    header->is_freed = true;
+    /* Mark as freed (if not already done by double-free check above)
+     * NOTE: If double_free_detection is disabled, we still need to mark it
+     */
+    if (!g_config.enable_double_free_detection) {
+        nimcp_atomic_store_bool(&header->is_freed, true, NIMCP_MEMORY_ORDER_RELEASE);
+    }
 
     // Poison memory for use-after-free detection
     if (g_config.enable_use_after_free_detection) {
@@ -409,7 +422,9 @@ uint32_t memory_guards_report_leaks(void) {
     }
 
     while (current) {
-        if (!current->is_freed) {
+        /* Use NIMCP atomic wrapper for consistency */
+        bool is_freed = nimcp_atomic_load_bool(&current->is_freed, NIMCP_MEMORY_ORDER_ACQUIRE);
+        if (!is_freed) {
             leak_count++;
             fprintf(stderr, "LEAK #%u: %zu bytes at %s:%d (alloc_id=%lu)\n",
                     leak_count, current->size,

@@ -139,8 +139,14 @@ nimcp_mutex_slot_t nimcp_mutex_pool_acquire(const char* bridge_name) {
     uint32_t hash = fnv1a_hash(bridge_name);
     uint32_t slot = hash % NIMCP_MUTEX_POOL_SIZE;
 
-    // Update ref count (still needs lock for correctness)
-    // Update stats atomically (lock-free)
+    /* Update ref count and stats atomically (lock-free)
+     * WHY: Atomic operations avoid mutex overhead for statistics
+     * HOW: GCC __atomic_add_fetch provides lock-free increment
+     * NOTE: This is correct without additional locking because:
+     *   - ref_counts only incremented here, decremented in release
+     *   - Atomicity guarantees no lost updates
+     *   - Slot assignment is deterministic (hash-based)
+     */
     __atomic_add_fetch(&g_pool.ref_counts[slot], 1, __ATOMIC_RELAXED);
     nimcp_atomic_fetch_add_u32(&g_pool.total_acquires, 1, NIMCP_MEMORY_ORDER_RELAXED);
     nimcp_atomic_fetch_add_u32(&g_pool.slot_usage[slot], 1, NIMCP_MEMORY_ORDER_RELAXED);

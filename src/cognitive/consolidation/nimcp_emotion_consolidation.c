@@ -14,6 +14,7 @@
 #include "cognitive/consolidation/nimcp_emotion_consolidation.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/time/nimcp_time.h"
@@ -454,26 +455,24 @@ bool emotion_consolidation_register_bio_async(emotion_consolidation_system_t* sy
         return true;
     }
 
-    /* WHAT: Initialize bio module context */
-    system->bio_ctx.module_id = BIO_MODULE_CONSOLIDATION;
-    system->bio_ctx.context = system;
+    /* WHAT: Register with bio-async router */
+    /* WHY:  Enable inter-module communication for emotion updates */
+    /* HOW:  Use bio_router_register_module API */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_CONSOLIDATION,
+        .module_name = "emotion_consolidation",
+        .inbox_capacity = 32,
+        .user_data = system
+    };
 
-    /* WHAT: Register callback for emotion tensor updates */
-    /* WHY:  Receive real-time emotion state changes */
-    /* HOW:  Subscribe to BIO_MSG_EMOTION_TENSOR_UPDATE on serotonin channel */
-    bio_async_subscribe(
-        BIO_CHANNEL_SEROTONIN,
-        BIO_MSG_EMOTION_TENSOR_UPDATE,
-        on_emotion_tensor_update,
-        system
-    );
+    system->bio_ctx = bio_router_register_module(&info);
+    if (system->bio_ctx) {
+        system->bio_async_registered = true;
+        EC_LOG_INFO("Registered with bio-async for emotion updates");
+    } else {
+        EC_LOG_WARN("Bio-async router not available, skipping registration");
+    }
 
-    system->bio_async_registered = true;
-
-    /* WHAT: Register with BBB for security */
-    bbb_register_emotion_query(system, "emotion_consolidation_module");
-
-    EC_LOG_INFO("Registered with bio-async for emotion updates");
     return true;
 }
 
@@ -482,13 +481,11 @@ void emotion_consolidation_unregister_bio_async(emotion_consolidation_system_t* 
         return;
     }
 
-    /* WHAT: Unsubscribe from emotion tensor updates */
-    bio_async_unsubscribe(
-        BIO_CHANNEL_SEROTONIN,
-        BIO_MSG_EMOTION_TENSOR_UPDATE,
-        on_emotion_tensor_update,
-        system
-    );
+    /* WHAT: Unregister from bio-async router */
+    if (system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+    }
 
     system->bio_async_registered = false;
 

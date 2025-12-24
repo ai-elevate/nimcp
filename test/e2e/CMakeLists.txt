@@ -640,6 +640,11 @@ add_e2e_test(e2e_test_cnn_cortex_bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cnn_cortex_bridge.cpp
 )
 
+# CNN Backpropagation E2E Test (CNN Training Convergence and Inference)
+add_e2e_test(e2e_test_cnn_backprop
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cnn_backprop.cpp
+)
+
 # SNN Pipeline E2E Test (Spiking Neural Network Full Integration)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_snn_pipeline.cpp)
     add_executable(e2e_test_snn_pipeline
