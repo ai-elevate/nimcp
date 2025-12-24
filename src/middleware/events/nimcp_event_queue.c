@@ -18,27 +18,24 @@
 #include <stdio.h>
 #include "security/nimcp_blood_brain_barrier.h"
 
-// Global BBB security system
+// Global BBB security system (singleton with thread-safe initialization)
 static bbb_system_t g_bbb_system = NULL;
-
-
+static pthread_once_t g_bbb_init_once = PTHREAD_ONCE_INIT;
 
 //=============================================================================
 // Security Initialization
 //=============================================================================
 
 /**
- * @brief Initialize security subsystem for event_queue
+ * @brief Initialize security subsystem for event_queue (pthread_once callback)
  *
  * WHAT: Create and configure BBB system for input validation
  * WHY: Protect against malicious external input
  * HOW: Initialize with conservative security settings
+ *
+ * NOTE: This function is called exactly once via pthread_once() to avoid race conditions
  */
-static void event_queue_security_init(void) {
-    if (g_bbb_system) {
-        return;  // Already initialized
-    }
-
+static void event_queue_security_init_impl(void) {
     bbb_config_t config = bbb_default_config();
     config.strict_mode = false;  // Don't block, just log
     config.default_action = BBB_ACTION_LOG;
@@ -52,6 +49,17 @@ static void event_queue_security_init(void) {
     } else {
         LOG_INFO("event_queue: Security subsystem initialized");
     }
+}
+
+/**
+ * @brief Thread-safe initialization of BBB security subsystem
+ *
+ * WHAT: Ensure BBB system is initialized exactly once
+ * WHY: Prevent race conditions on global singleton
+ * HOW: Use pthread_once() for atomic one-time initialization
+ */
+static void event_queue_security_init(void) {
+    pthread_once(&g_bbb_init_once, event_queue_security_init_impl);
 }
 
 /**

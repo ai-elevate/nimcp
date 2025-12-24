@@ -668,6 +668,7 @@ struct visual_cortex_struct {
 
     // === Memory Pool for O(1) Visual Memory Allocation ===
     memory_pool_t memory_pool;            /**< Pool for visual memory entries */
+    nimcp_mutex_t* memory_pool_mutex;     /**< Mutex for memory pool thread safety */
 
     // === Copy-on-Write Support ===
     uint32_t* _cow_refcount;              /**< Reference count for CoW (NULL if owned) */
@@ -918,6 +919,16 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
         LOG_WARN(VISUAL_LOG_MODULE, "Failed to create memory pool, using malloc fallback");
     }
 
+    // Initialize memory pool mutex for thread safety
+    cortex->memory_pool_mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (cortex->memory_pool_mutex) {
+        nimcp_mutex_init(cortex->memory_pool_mutex, NULL);
+    } else {
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate memory pool mutex");
+        visual_cortex_destroy(cortex);
+        return NULL;
+    }
+
     // Initialize CoW fields (owned by default)
     cortex->_cow_refcount = NULL;
     cortex->_cow_is_shallow = false;
@@ -1021,13 +1032,23 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
     // === CoW Reference Counting ===
     // If this is a shallow copy with shared data, decrement refcount
     if (cortex->_cow_refcount) {
-        uint32_t old_count = __atomic_sub_fetch(cortex->_cow_refcount, 1, __ATOMIC_SEQ_CST);
-        if (old_count > 0) {
-            // Other references exist - just free our handle
+        // Load current count and attempt to decrement atomically
+        uint32_t old_count = __atomic_load_n(cortex->_cow_refcount, __ATOMIC_SEQ_CST);
+        do {
+            if (old_count == 0) {
+                // Already freed by another thread - just free our handle
+                nimcp_free(cortex);
+                return;
+            }
+        } while (!__atomic_compare_exchange_n(cortex->_cow_refcount, &old_count, old_count - 1,
+                                              false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+
+        if (old_count > 1) {
+            // Other references still exist - just free our handle
             nimcp_free(cortex);
             return;
         }
-        // We're the last reference - free the refcount and continue cleanup
+        // We were the last reference (old_count == 1) - free the refcount and continue cleanup
         nimcp_free(cortex->_cow_refcount);
     }
 
@@ -1043,17 +1064,23 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
         nimcp_free(cortex->feature_weights);
     }
 
-    // Free visual memories (use pool if available)
+    // Free visual memories (use pool if available, with mutex protection)
     for (uint32_t i = 0; i < cortex->num_memories; i++) {
         if (cortex->memories[i]) {
             if (cortex->memories[i]->features) {
                 nimcp_free(cortex->memories[i]->features);
             }
-            // Check if memory came from pool or malloc
+            // Thread-safe check and release using mutex
+            if (cortex->memory_pool_mutex) {
+                nimcp_mutex_lock(cortex->memory_pool_mutex);
+            }
             if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, cortex->memories[i])) {
                 memory_pool_release(cortex->memory_pool, cortex->memories[i]);
             } else {
                 nimcp_free(cortex->memories[i]);
+            }
+            if (cortex->memory_pool_mutex) {
+                nimcp_mutex_unlock(cortex->memory_pool_mutex);
             }
         }
     }
@@ -1061,6 +1088,12 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
     // === Destroy Memory Pool ===
     if (cortex->memory_pool) {
         memory_pool_destroy(cortex->memory_pool);
+    }
+
+    // === Destroy Memory Pool Mutex ===
+    if (cortex->memory_pool_mutex) {
+        nimcp_mutex_destroy(cortex->memory_pool_mutex);
+        nimcp_free(cortex->memory_pool_mutex);
     }
 
     // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network
@@ -1105,7 +1138,8 @@ bool visual_cortex_process(
         return false;
     }
 
-    clock_t start = clock();
+    struct timespec start_ts;
+    clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
     // Convert uint8 image to float (normalize to 0-1)
     uint32_t input_size = width * height;
@@ -1227,8 +1261,11 @@ bool visual_cortex_process(
 
     // Update statistics
     cortex->images_processed++;
-    clock_t end = clock();
-    cortex->total_processing_time += ((double)(end - start)) / CLOCKS_PER_SEC * 1000.0;
+    struct timespec end_ts;
+    clock_gettime(CLOCK_MONOTONIC, &end_ts);
+    double elapsed_ms = (end_ts.tv_sec - start_ts.tv_sec) * 1000.0 +
+                        (end_ts.tv_nsec - start_ts.tv_nsec) / 1000000.0;
+    cortex->total_processing_time += elapsed_ms;
 
     nimcp_free(input_float);
     nimcp_free(v1_output);

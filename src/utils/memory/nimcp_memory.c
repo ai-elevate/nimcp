@@ -640,12 +640,21 @@ static size_t get_allocation_size(void* ptr)
     memory_block_t* current = g_memory_state.blocks;
     size_t size = 0;
 
-    while (current) {
+    // Add iteration counter to prevent infinite loop on corrupted list
+    uint32_t iterations = 0;
+    const uint32_t MAX_ITERATIONS = 100000;
+
+    while (current && iterations < MAX_ITERATIONS) {
         if (current->ptr == ptr) {
             size = current->size;
             break;
         }
         current = current->next;
+        iterations++;
+    }
+
+    if (iterations >= MAX_ITERATIONS) {
+        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted (exceeded max iterations)");
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -675,16 +684,23 @@ static size_t get_guard_size(void* ptr)
     size_t guard_size = 0;  // 0 means not found or no guards
     bool found = false;
 
-    while (current) {
+    // Add iteration counter to prevent infinite loop on corrupted list
+    uint32_t iterations = 0;
+    const uint32_t MAX_ITERATIONS = 100000;
+
+    while (current && iterations < MAX_ITERATIONS) {
         if (current->ptr == ptr) {
             guard_size = current->guard_size;
             found = true;
             break;
         }
         current = current->next;
+        iterations++;
     }
 
-    if (!found) {
+    if (iterations >= MAX_ITERATIONS) {
+        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_guard_size (exceeded max iterations)");
+    } else if (!found) {
         fprintf(stderr, "[DEBUG] get_guard_size: ptr=%p NOT FOUND in tracking list\n", ptr);
     }
 
@@ -724,7 +740,11 @@ static uint64_t get_allocation_lifetime_ms(void* ptr)
     memory_block_t* current = g_memory_state.blocks;
     uint64_t lifetime = 0;
 
-    while (current) {
+    // Add iteration counter to prevent infinite loop on corrupted list
+    uint32_t iterations = 0;
+    const uint32_t MAX_ITERATIONS = 100000;
+
+    while (current && iterations < MAX_ITERATIONS) {
         if (current->ptr == ptr) {
             timespec_internal_t now;
             get_current_time(&now);
@@ -732,6 +752,11 @@ static uint64_t get_allocation_lifetime_ms(void* ptr)
             break;
         }
         current = current->next;
+        iterations++;
+    }
+
+    if (iterations >= MAX_ITERATIONS) {
+        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_allocation_lifetime_ms (exceeded max iterations)");
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -955,12 +980,21 @@ static unified_mem_handle_t get_umm_handle(void* ptr)
     nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
 
-    while (current) {
+    // Add iteration counter to prevent infinite loop on corrupted list
+    uint32_t iterations = 0;
+    const uint32_t MAX_ITERATIONS = 100000;
+
+    while (current && iterations < MAX_ITERATIONS) {
         if (current->ptr == ptr) {
             handle = current->umm_handle;
             break;
         }
         current = current->next;
+        iterations++;
+    }
+
+    if (iterations >= MAX_ITERATIONS) {
+        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_umm_handle (exceeded max iterations)");
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -1169,12 +1203,32 @@ void* nimcp_malloc(size_t size)
     }
 
     // Fallback to direct malloc if UMM not available
-    void* ptr = malloc(size);
-    if (ptr) {
-        track_allocation(ptr, size, 0, __FILE__, __LINE__, __func__);
+    // Add guards for consistency with aligned allocations
+    const size_t guard_size = 8;  // Minimum guard size
+    size_t total_size = size + (2 * guard_size);
+
+    void* real_ptr = malloc(total_size);
+    if (real_ptr) {
+        // Fill guard regions with canary pattern
+        uint64_t pattern = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
+
+        // Head guard
+        ((uint64_t*)real_ptr)[0] = pattern;
+
+        // Tail guard
+        uint64_t* tail = (uint64_t*)((char*)real_ptr + total_size - guard_size);
+        tail[0] = pattern;
+
+        // User pointer (after head guard)
+        void* user_ptr = (char*)real_ptr + guard_size;
+
+        // Track with guard size so nimcp_free can compute real_ptr correctly
+        track_allocation(user_ptr, size, guard_size, __FILE__, __LINE__, __func__);
+
         if (g_memory_state.debug_output) {
-            printf("[MEMORY] Allocated via malloc: %zu bytes at %p\n", size, ptr);
+            printf("[MEMORY] Allocated via malloc: %zu bytes at %p (with guards)\n", size, user_ptr);
         }
+        return user_ptr;
     } else {
         nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
@@ -1182,9 +1236,8 @@ void* nimcp_malloc(size_t size)
         if (g_memory_state.debug_output) {
             fprintf(stderr, "[MEMORY] Allocation failed: %zu bytes\n", size);
         }
+        return NULL;
     }
-
-    return ptr;
 }
 
 /**
@@ -1636,6 +1689,13 @@ void nimcp_memory_cleanup(void)
     nimcp_mutex_unlock(&g_memory_state.lock);
     nimcp_mutex_destroy(&g_memory_state.lock);
     g_memory_state.initialized = false;
+
+    // Destroy unified memory manager if it was created
+    if (g_unified_manager) {
+        unified_mem_destroy(g_unified_manager);
+        g_unified_manager = NULL;
+        g_unified_initialized = false;
+    }
 }
 
 /**

@@ -147,7 +147,15 @@ void eligibility_trace_update(
     // OPTIMIZATION: Could use lookup table for common Δt values
     if (delta_t > 0) {
         float decay_factor = powf(config->decay_lambda, (float)delta_t);
-        trace->trace *= decay_factor;
+        // NUMERICAL STABILITY: Early cutoff for large delta_t
+        // WHAT: Zero out trace if decay becomes negligible
+        // WHY: Avoid denormal floats and numerical errors
+        // HOW: Threshold at 1e-6 (0.0001% of original value)
+        if (decay_factor < 1e-6f) {
+            trace->trace = 0.0f;
+        } else {
+            trace->trace *= decay_factor;
+        }
     }
 
     // STEP 3: Add spike contribution
@@ -201,7 +209,15 @@ void eligibility_trace_decay(
 
     if (delta_t > 0) {
         float decay_factor = powf(config->decay_lambda, (float)delta_t);
-        trace->trace *= decay_factor;
+        // NUMERICAL STABILITY: Early cutoff for large delta_t
+        // WHAT: Zero out trace if decay becomes negligible
+        // WHY: Avoid denormal floats and numerical errors
+        // HOW: Threshold at 1e-6 (0.0001% of original value)
+        if (decay_factor < 1e-6f) {
+            trace->trace = 0.0f;
+        } else {
+            trace->trace *= decay_factor;
+        }
         trace->last_update = current_time;
     }
 
@@ -287,8 +303,11 @@ float eligibility_apply_reward(
     // HOW: w_new = w_old + Δw
     synapse->weight += delta_w;
 
-    // NOTE: No hard weight bounds here - caller can apply if needed
-    // This allows flexibility in weight range constraints
+    // STEP 4: Clamp weight to physiological range [0, 1]
+    // WHAT: Bound weight updates to prevent unbounded growth
+    // WHY: Synaptic weights must stay in valid range
+    // HOW: Use fminf/fmaxf for branchless clamping
+    synapse->weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
 
     return delta_w;
 }
@@ -453,6 +472,12 @@ float eligibility_consolidate_on_burst(
         // Update synapse weight
         synapse->weight += delta_w;
 
+        // Clamp weight to physiological range [0, 1]
+        // WHAT: Bound weight updates to prevent unbounded growth
+        // WHY: Synaptic weights must stay in valid range
+        // HOW: Use fminf/fmaxf for branchless clamping
+        synapse->weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+
         return delta_w;
 
     } else {
@@ -471,6 +496,12 @@ float eligibility_consolidate_on_burst(
         }
 
         synapse->weight += delta_w;
+
+        // Clamp weight to physiological range [0, 1]
+        // WHAT: Bound weight updates to prevent unbounded growth
+        // WHY: Synaptic weights must stay in valid range
+        // HOW: Use fminf/fmaxf for branchless clamping
+        synapse->weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
 
         return delta_w;
     }

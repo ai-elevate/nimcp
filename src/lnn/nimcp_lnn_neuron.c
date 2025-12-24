@@ -39,6 +39,18 @@ static void ensure_rng_initialized(void) {
 }
 
 /**
+ * @brief Set the thread-local RNG seed for reproducibility
+ *
+ * WHAT: Override the thread-local seed
+ * WHY:  Enable deterministic weight initialization with user-provided seed
+ * HOW:  Set tls_seed directly and mark as initialized
+ */
+static void set_rng_seed(unsigned int seed) {
+    tls_seed = seed;
+    tls_seed_initialized = true;
+}
+
+/**
  * @brief Thread-safe random integer generator
  *
  * WHAT: Reentrant random number generator
@@ -161,13 +173,22 @@ static float activation_derivative(float x, lnn_activation_t activation) {
  *
  * THREAD SAFETY: Uses thread-local storage for cached spare value and RNG
  */
-static float randn(void) {
-    static __thread bool has_spare = false;
-    static __thread float spare;
+/* Thread-local Box-Muller state */
+static __thread bool g_randn_has_spare = false;
+static __thread float g_randn_spare = 0.0f;
 
-    if (has_spare) {
-        has_spare = false;
-        return spare;
+/**
+ * @brief Reset the Box-Muller state (call when reseeding)
+ */
+static void randn_reset(void) {
+    g_randn_has_spare = false;
+    g_randn_spare = 0.0f;
+}
+
+static float randn(void) {
+    if (g_randn_has_spare) {
+        g_randn_has_spare = false;
+        return g_randn_spare;
     }
 
     /* Box-Muller transform with thread-safe RNG */
@@ -180,8 +201,8 @@ static float randn(void) {
     float r = sqrtf(-2.0f * logf(u1));
     float theta = 2.0f * M_PI * u2;
 
-    spare = r * sinf(theta);
-    has_spare = true;
+    g_randn_spare = r * sinf(theta);
+    g_randn_has_spare = true;
 
     return r * cosf(theta);
 }
@@ -300,12 +321,15 @@ int lnn_neuron_init_weights(lnn_neuron_t* neuron, float std, uint64_t seed) {
         return LNN_ERROR_NULL_POINTER;
     }
 
-    /* Set random seed */
+    /* Set random seed and reset Box-Muller state for reproducibility */
     if (seed == 0) {
-        srand((unsigned int)time(NULL));
+        /* Use time-based seed */
+        set_rng_seed((unsigned int)time(NULL) ^ (unsigned int)pthread_self());
     } else {
-        srand((unsigned int)seed);
+        /* Use user-provided seed for deterministic results */
+        set_rng_seed((unsigned int)seed);
     }
+    randn_reset();  /* Clear any cached spare value from previous calls */
 
     /* Use default std if not provided: 1/sqrt(n_inputs) */
     if (std <= 0.0f) {

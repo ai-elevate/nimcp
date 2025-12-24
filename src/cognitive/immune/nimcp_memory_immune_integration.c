@@ -304,7 +304,7 @@ void memory_immune_integration_destroy(memory_immune_integration_t* integration)
 
     /* Destroy mutex */
     if (integration->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)integration->mutex);
+        nimcp_platform_mutex_destroy(integration->mutex);
         nimcp_free(integration->mutex);
     }
 

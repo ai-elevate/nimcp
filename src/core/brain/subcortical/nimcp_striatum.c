@@ -181,8 +181,8 @@ striatum_t* striatum_create(const striatum_config_t* config) {
 void striatum_destroy(striatum_t* striatum) {
     if (!striatum) return;
 
-    nimcp_mutex_lock(striatum->mutex);
-
+    // Don't lock mutex during destruction - object is being destroyed
+    // Other threads should not be accessing a dying object
     destroy_pathway(&striatum->direct);
     destroy_pathway(&striatum->indirect);
 
@@ -190,7 +190,6 @@ void striatum_destroy(striatum_t* striatum) {
         nimcp_free(striatum->inhibition_matrix);
     }
 
-    nimcp_mutex_unlock(striatum->mutex);
     nimcp_mutex_destroy(striatum->mutex);
     nimcp_free(striatum->mutex);
 

@@ -1036,7 +1036,7 @@ static int accumulate_parameter_gradients(
         if (!layer || !layer->x) continue;
 
         uint32_t n = layer->n_neurons;
-        uint32_t n_inputs = layer->n_inputs;
+        /* n_inputs can be derived from W_in->shape.dims[1] if needed */
 
         const float* adjoint_data = (const float*)nimcp_tensor_data_const(adjoint);
         const float* x_data = (const float*)nimcp_tensor_data_const(layer->x);

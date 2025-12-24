@@ -243,7 +243,10 @@ int hemispheric_brain_update(hemispheric_brain_t* brain, float dt) {
         return -1;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
 
     uint64_t start_time = nimcp_time_get_us();
 
@@ -307,7 +310,10 @@ int hemispheric_brain_process_lateralized(
         return -1;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
 
     // Determine dominant hemisphere
     hemisphere_id_t dominant = lateralization_get_dominant_hemisphere(
@@ -344,7 +350,10 @@ int hemispheric_brain_process_parallel(
         return -1;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
 
     // Process both hemispheres
     int result = hemisphere_infer(brain->left, input, input_size,
@@ -375,7 +384,10 @@ int hemispheric_brain_process_competitive(
         return -1;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
 
     // Allocate temporary buffers
     float* left_out = nimcp_malloc(output_size * sizeof(float));
@@ -428,7 +440,10 @@ int hemispheric_brain_process_cooperative(
         return -1;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
 
     // Allocate temporary buffers
     float* left_out = nimcp_malloc(output_size * sizeof(float));
@@ -579,7 +594,10 @@ float hemispheric_brain_train(
         return -1.0f;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1.0f;
+    }
 
     // Train both hemispheres
     float left_loss = hemisphere_train(brain->left, input, target, size);
@@ -650,7 +668,12 @@ int hemispheric_brain_shift_dominance(
     float shift
 ) {
     if (!brain) return -1;
-    nimcp_mutex_lock(brain->mutex);
+
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
+
     int result = lateralization_shift_dominance(&brain->lateralization,
                                                 domain, shift);
     nimcp_mutex_unlock(brain->mutex);
@@ -662,7 +685,12 @@ int hemispheric_brain_set_lateralization(
     const lateralization_profile_t* profile
 ) {
     if (!brain || !profile) return -1;
-    nimcp_mutex_lock(brain->mutex);
+
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
+
     memcpy(&brain->lateralization, profile, sizeof(lateralization_profile_t));
     nimcp_mutex_unlock(brain->mutex);
     return 0;
@@ -688,7 +716,11 @@ corpus_callosum_t* hemispheric_brain_get_callosum(hemispheric_brain_t* brain) {
 int hemispheric_brain_disconnect_callosum(hemispheric_brain_t* brain) {
     if (!brain || !brain->callosum) return -1;
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
+
     callosum_disconnect(brain->callosum);
     brain->callosum_intact = false;
     brain->stats.callosum_stats.disconnection_events++;
@@ -701,7 +733,11 @@ int hemispheric_brain_disconnect_callosum(hemispheric_brain_t* brain) {
 int hemispheric_brain_reconnect_callosum(hemispheric_brain_t* brain) {
     if (!brain || !brain->callosum) return -1;
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
+
     callosum_reconnect(brain->callosum);
     brain->callosum_intact = true;
     brain->stats.callosum_stats.reconnection_events++;
@@ -759,7 +795,10 @@ int hemispheric_brain_set_asymmetric_resources(
         return -1;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
 
     brain->left_resource_fraction = left_fraction;
     brain->asymmetric_resources = (fabsf(left_fraction - 0.5f) > 0.01f);
@@ -848,7 +887,11 @@ int hemispheric_brain_get_stats(
 int hemispheric_brain_reset_stats(hemispheric_brain_t* brain) {
     if (!brain) return -1;
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return -1;
+    }
+
     memset(&brain->stats, 0, sizeof(hemispheric_brain_stats_t));
     nimcp_mutex_unlock(brain->mutex);
 
@@ -958,7 +1001,10 @@ int hemispheric_brain_apply_lateralization_shift(
     if (shift < -1.0f) shift = -1.0f;
     if (shift > 1.0f) shift = 1.0f;
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
 
     // Apply shift to all domains in the lateralization profile
     // Positive shift = toward right, negative = toward left
@@ -981,7 +1027,11 @@ int hemispheric_brain_set_bilateral_mode(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(brain->mutex);
+    if (nimcp_mutex_lock(brain->mutex) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
     brain->bilateral_mode = bilateral;
 
     // In bilateral mode, switch to parallel processing

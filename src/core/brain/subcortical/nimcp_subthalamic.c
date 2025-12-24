@@ -134,8 +134,8 @@ subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
 void subthalamic_destroy(subthalamic_nucleus_t* stn) {
     if (!stn) return;
 
-    nimcp_mutex_lock(stn->mutex);
-
+    // Don't lock mutex during destruction - object is being destroyed
+    // Other threads should not be accessing a dying object
     nimcp_free(stn->neurons);
     nimcp_free(stn->output);
     nimcp_free(stn->cortical_input);
@@ -143,7 +143,6 @@ void subthalamic_destroy(subthalamic_nucleus_t* stn) {
     if (stn->hyperdirect_buffer) nimcp_free(stn->hyperdirect_buffer);
     if (stn->indirect_buffer) nimcp_free(stn->indirect_buffer);
 
-    nimcp_mutex_unlock(stn->mutex);
     nimcp_mutex_destroy(stn->mutex);
     nimcp_free(stn->mutex);
 

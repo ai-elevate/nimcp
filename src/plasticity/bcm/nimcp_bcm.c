@@ -270,6 +270,13 @@ void bcm_apply_rule(bcm_synapse_t* synapse, float pre_activity, float post_activ
     float eligibility_decay = 0.95F;  // Fast decay (~20ms time constant)
     synapse->eligibility = synapse->eligibility * eligibility_decay + delta_w;
 
+    /* WHAT: Clamp eligibility to reasonable bounds [-2, 2]
+     * WHY:  Prevent unbounded accumulation of eligibility
+     * HOW:  Use clamp_f helper function
+     * BIOLOGICAL: Eligibility traces represent recent plasticity, should be bounded
+     */
+    synapse->eligibility = clamp_f(synapse->eligibility, -2.0F, 2.0F);
+
     /* WHAT: Release spinlock
      * WHY:  Allow other threads to access synapse
      * PERFORMANCE: ~10-20ns
@@ -328,6 +335,13 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
      */
     float eligibility_decay = 0.95F;
     synapse->eligibility = synapse->eligibility * eligibility_decay + delta_w;
+
+    /* WHAT: Clamp eligibility to reasonable bounds [-2, 2]
+     * WHY:  Prevent unbounded accumulation of eligibility
+     * HOW:  Use clamp_f helper function
+     * BIOLOGICAL: Eligibility traces represent recent plasticity, should be bounded
+     */
+    synapse->eligibility = clamp_f(synapse->eligibility, -2.0F, 2.0F);
 }
 
 //=============================================================================

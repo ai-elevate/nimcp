@@ -17,12 +17,12 @@
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <pthread.h>
 #include <float.h>
 
 //=============================================================================
@@ -81,7 +81,7 @@ struct nimcp_autodiff_ctx_s {
 //=============================================================================
 
 static nimcp_tensor_stats_t g_stats = {0};
-static pthread_mutex_t g_stats_lock = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_stats_lock = NIMCP_MUTEX_INITIALIZER;
 static bool g_initialized = false;
 
 //=============================================================================
@@ -101,10 +101,10 @@ static inline bool tensor_is_valid(const nimcp_tensor_t* t)
  */
 static void stats_update_op(uint64_t* counter)
 {
-    pthread_mutex_lock(&g_stats_lock);
+    nimcp_mutex_lock(&g_stats_lock);
     (*counter)++;
     g_stats.operations_total++;
-    pthread_mutex_unlock(&g_stats_lock);
+    nimcp_mutex_unlock(&g_stats_lock);
 }
 
 //=============================================================================
@@ -304,13 +304,13 @@ nimcp_tensor_t* nimcp_tensor_create(
     }
 
     /* Update stats */
-    pthread_mutex_lock(&g_stats_lock);
+    nimcp_mutex_lock(&g_stats_lock);
     g_stats.tensors_created++;
     g_stats.memory_current += t->shape.nbytes + sizeof(nimcp_tensor_t);
     if (g_stats.memory_current > g_stats.memory_peak) {
         g_stats.memory_peak = g_stats.memory_current;
     }
-    pthread_mutex_unlock(&g_stats_lock);
+    nimcp_mutex_unlock(&g_stats_lock);
 
     return t;
 }
@@ -579,10 +579,10 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
     }
 
     /* Update stats before freeing */
-    pthread_mutex_lock(&g_stats_lock);
+    nimcp_mutex_lock(&g_stats_lock);
     g_stats.tensors_destroyed++;
     g_stats.memory_current -= t->shape.nbytes + sizeof(nimcp_tensor_t);
-    pthread_mutex_unlock(&g_stats_lock);
+    nimcp_mutex_unlock(&g_stats_lock);
 
     /* Free gradient if exists (recursive destroy) */
     if (t->grad) {
@@ -2409,18 +2409,18 @@ int nimcp_tensor_get_stats(nimcp_tensor_stats_t* stats)
 {
     if (!stats) return NIMCP_TENSOR_ERR_NULL;
 
-    pthread_mutex_lock(&g_stats_lock);
+    nimcp_mutex_lock(&g_stats_lock);
     *stats = g_stats;
-    pthread_mutex_unlock(&g_stats_lock);
+    nimcp_mutex_unlock(&g_stats_lock);
 
     return NIMCP_TENSOR_OK;
 }
 
 void nimcp_tensor_reset_stats(void)
 {
-    pthread_mutex_lock(&g_stats_lock);
+    nimcp_mutex_lock(&g_stats_lock);
     memset(&g_stats, 0, sizeof(g_stats));
-    pthread_mutex_unlock(&g_stats_lock);
+    nimcp_mutex_unlock(&g_stats_lock);
 }
 
 const char* nimcp_dtype_name(nimcp_dtype_t dtype)

@@ -45,7 +45,7 @@ protected:
 
     // Helper: Simulate unstable training
     void SimulateUnstableTraining() {
-        training_logic_signal_instability(bridge, TRAINING_INSTABILITY_GRAD_EXPLOSION, 8);
+        training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 8);
         training_logic_update_metrics(bridge, 1e6f, 1e5f, 0.001f, 100);
     }
 
@@ -132,7 +132,7 @@ TEST_F(TrainingLogicE2ETest, AdaptiveLearningRate) {
     }
 
     // Phase 2: Instability detected (LR should decrease)
-    EXPECT_EQ(training_logic_signal_instability(bridge, TRAINING_INSTABILITY_GRAD_EXPLOSION, 8), 0);
+    EXPECT_EQ(training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 8), 0);
 
     bool needs_intervention = training_logic_needs_intervention(bridge);
     EXPECT_TRUE(needs_intervention);
@@ -207,7 +207,7 @@ TEST_F(TrainingLogicE2ETest, GradientExplosionRecovery) {
     SimulateStableTraining(10);
 
     // Gradient explosion
-    EXPECT_EQ(training_logic_signal_instability(bridge, TRAINING_INSTABILITY_GRAD_EXPLOSION, 9), 0);
+    EXPECT_EQ(training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 9), 0);
     EXPECT_EQ(training_logic_update_metrics(bridge, 1e6f, 1e5f, 0.001f, 11), 0);
 
     // Check intervention needed
@@ -246,7 +246,7 @@ TEST_F(TrainingLogicE2ETest, LossNaNRecovery) {
     SimulateStableTraining(15);
 
     // NaN loss detected
-    EXPECT_EQ(training_logic_signal_instability(bridge, TRAINING_INSTABILITY_LOSS_NAN, 10), 0);
+    EXPECT_EQ(training_logic_signal_instability(bridge, LOGIC_INSTABILITY_LOSS_NAN, 10), 0);
     EXPECT_EQ(training_logic_update_metrics(bridge, NAN, 0.3f, 0.001f, 16), 0);
 
     // Should need intervention
@@ -283,7 +283,7 @@ TEST_F(TrainingLogicE2ETest, DivergenceDetectionAndPause) {
     }
 
     // Signal divergence
-    EXPECT_EQ(training_logic_signal_instability(bridge, TRAINING_INSTABILITY_OSCILLATION, 6), 0);
+    EXPECT_EQ(training_logic_signal_instability(bridge, LOGIC_INSTABILITY_OSCILLATION, 6), 0);
 
     // Should need intervention
     bool needs_intervention = training_logic_needs_intervention(bridge);

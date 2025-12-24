@@ -251,7 +251,41 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
     }
 
     /* Initialize loss function (requires loss-specific config) */
-    /* TODO: Create loss function based on config->loss_type */
+    nimcp_loss_config_t loss_cfg = {0};
+    loss_cfg.type = config->loss_type;
+    loss_cfg.use_memory_pool = false;
+
+    switch (config->loss_type) {
+        case NIMCP_LOSS_CROSS_ENTROPY:
+            loss_cfg.params.cross_entropy.reduction = NIMCP_LOSS_REDUCE_MEAN;
+            loss_cfg.params.cross_entropy.compute_gradient = true;
+            loss_cfg.params.cross_entropy.class_weights = NULL;
+            loss_cfg.params.cross_entropy.num_classes = 0;  /* Set by user */
+            loss_cfg.params.cross_entropy.label_smoothing = 0.0f;
+            loss_cfg.params.cross_entropy.ignore_index = -1;
+            break;
+        case NIMCP_LOSS_MSE:
+            loss_cfg.params.mse.reduction = NIMCP_LOSS_REDUCE_MEAN;
+            loss_cfg.params.mse.compute_gradient = true;
+            break;
+        case NIMCP_LOSS_BINARY_CROSS_ENTROPY:
+            loss_cfg.params.cross_entropy.reduction = NIMCP_LOSS_REDUCE_MEAN;
+            loss_cfg.params.cross_entropy.compute_gradient = true;
+            loss_cfg.params.cross_entropy.class_weights = NULL;
+            loss_cfg.params.cross_entropy.num_classes = 2;
+            loss_cfg.params.cross_entropy.label_smoothing = 0.0f;
+            loss_cfg.params.cross_entropy.ignore_index = -1;
+            break;
+        default:
+            loss_cfg.params.mse.reduction = NIMCP_LOSS_REDUCE_MEAN;
+            loss_cfg.params.mse.compute_gradient = true;
+            break;
+    }
+
+    trainer->loss_fn = nimcp_loss_create(&loss_cfg, NULL, NULL);
+    if (!trainer->loss_fn) {
+        NIMCP_LOGGING_WARN("cnn_trainer_create: Failed to create loss function, continuing without it");
+    }
 
     /* Initialize state */
     trainer->current_epoch = 0;
@@ -822,6 +856,13 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
     uint32_t in_h = in_shape.dims[2];
     uint32_t in_w = in_shape.dims[3];
 
+    /* Validate strides to prevent division by zero */
+    if (cfg->stride_h == 0 || cfg->stride_w == 0) {
+        NIMCP_LOGGING_ERROR("cnn_forward_conv: Invalid stride (stride_h=%u, stride_w=%u)",
+                            cfg->stride_h, cfg->stride_w);
+        return NULL;
+    }
+
     /* Compute output dimensions */
     uint32_t out_h = (in_h + 2 * cfg->padding_h - cfg->dilation_h * (cfg->kernel_h - 1) - 1) / cfg->stride_h + 1;
     uint32_t out_w = (in_w + 2 * cfg->padding_w - cfg->dilation_w * (cfg->kernel_w - 1) - 1) / cfg->stride_w + 1;
@@ -902,6 +943,13 @@ static nimcp_tensor_t* cnn_forward_pool(const cnn_layer_t* layer, const nimcp_te
     uint32_t channels = in_shape.dims[1];
     uint32_t in_h = in_shape.dims[2];
     uint32_t in_w = in_shape.dims[3];
+
+    /* Validate strides to prevent division by zero */
+    if (cfg->stride_h == 0 || cfg->stride_w == 0) {
+        NIMCP_LOGGING_ERROR("cnn_forward_pool: Invalid stride (stride_h=%u, stride_w=%u)",
+                            cfg->stride_h, cfg->stride_w);
+        return NULL;
+    }
 
     /* Compute output dimensions */
     uint32_t out_h = (in_h + 2 * cfg->padding_h - cfg->pool_h) / cfg->stride_h + 1;

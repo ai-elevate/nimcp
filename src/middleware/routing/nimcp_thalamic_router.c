@@ -302,12 +302,10 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
         signal_delivery_callback_t callback = NULL;
         void* user_data = NULL;
 
-        for (uint32_t j = 0; j < router->num_callbacks; j++) {
-            if (j == dest_id) {
-                callback = router->callbacks[j].callback;
-                user_data = router->callbacks[j].user_data;
-                break;
-            }
+        // Look up callback by dest_id (callbacks array is indexed by destination ID)
+        if (dest_id < router->num_callbacks) {
+            callback = router->callbacks[dest_id].callback;
+            user_data = router->callbacks[dest_id].user_data;
         }
 
         if (callback) {
@@ -687,6 +685,11 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
         return false;
     }
 
+    // Lock mutex for thread-safe callback modification
+    if (router->queue_mutex) {
+        nimcp_mutex_lock(router->queue_mutex);
+    }
+
     // Extend callbacks array if needed
     if (dest_id >= router->num_callbacks) {
         router->num_callbacks = dest_id + 1;
@@ -694,6 +697,11 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
 
     router->callbacks[dest_id].callback = callback;
     router->callbacks[dest_id].user_data = user_data;
+
+    // Unlock mutex
+    if (router->queue_mutex) {
+        nimcp_mutex_unlock(router->queue_mutex);
+    }
 
     return true;
 }
@@ -771,10 +779,15 @@ routed_signal_t* thalamic_router_create_signal(uint32_t source_id,
     if (!signal) return NULL;
 
     signal->dest_ids = (uint32_t*)nimcp_malloc(num_dests * sizeof(uint32_t));
-    signal->signal_data = (float*)nimcp_malloc(signal_size * sizeof(float));
+    if (!signal->dest_ids) {
+        nimcp_free(signal);
+        return NULL;
+    }
 
-    if (!signal->dest_ids || !signal->signal_data) {
-        thalamic_router_free_signal(signal);
+    signal->signal_data = (float*)nimcp_malloc(signal_size * sizeof(float));
+    if (!signal->signal_data) {
+        nimcp_free(signal->dest_ids);
+        nimcp_free(signal);
         return NULL;
     }
 

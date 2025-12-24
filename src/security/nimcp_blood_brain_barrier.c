@@ -835,12 +835,17 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     /* Update statistics */
     system->stats.threats_quarantined++;
 
-    /* Trigger killer T cell activation if immune system connected */
-    /* SECURITY FIX: Keep mutex locked until immune pointer is safely copied */
+    /* THREAD SAFETY FIX: Copy immune pointer while holding mutex, use after unlock
+     * This prevents nested locking (BBB mutex -> immune mutex) which could deadlock.
+     * We safely copy the pointer while holding our mutex, then release our mutex
+     * before calling immune functions that acquire their own mutex. */
     brain_immune_system_t* immune = system->immune_system;
     bool has_immune = (immune != NULL);
 
-    /* Activate killer T cell to handle quarantined region (while holding mutex) */
+    /* Release BBB mutex BEFORE calling immune functions */
+    nimcp_mutex_unlock(&system->mutex);
+
+    /* Activate killer T cell to handle quarantined region (without holding BBB mutex) */
     if (has_immune) {
         /* Create antigen for quarantine event */
         uint32_t antigen_id = 0;
@@ -863,8 +868,6 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
         uint32_t t_cell_id = 0;
         brain_immune_activate_killer_t(immune, antigen_id, &t_cell_id);
     }
-
-    nimcp_mutex_unlock(&system->mutex);
 
     return true;
 }

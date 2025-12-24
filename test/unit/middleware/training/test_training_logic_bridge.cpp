@@ -335,7 +335,7 @@ TEST_F(TrainingLogicBridgeTest, InterventionAfterRecovery) {
 
 TEST_F(TrainingLogicBridgeTest, InterventionSeverityLevels) {
     /* Signal different instabilities */
-    training_logic_signal_instability(bridge, TRAINING_INSTABILITY_GRAD_EXPLOSION, 8);
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 8);
     bool needs_intervention = training_logic_needs_intervention(bridge);
     EXPECT_TRUE(needs_intervention);
 
@@ -534,7 +534,7 @@ TEST_F(TrainingLogicBridgeTest, UpdateBatchMetrics) {
 }
 
 TEST_F(TrainingLogicBridgeTest, SignalInstability) {
-    int result = training_logic_signal_instability(bridge, TRAINING_INSTABILITY_GRAD_EXPLOSION, 8);
+    int result = training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 8);
     EXPECT_EQ(result, 0);
 
     /* Verify intervention is needed */

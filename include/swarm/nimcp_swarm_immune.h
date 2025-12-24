@@ -220,6 +220,9 @@ typedef struct {
     size_t threat_rule_count;
     size_t threat_rule_capacity;
 
+    /* Maturation tracking (thread-safe, protected by mutex) */
+    uint64_t last_maturation_time;  /**< Last affinity maturation timestamp */
+
     /* Thread safety */
     nimcp_platform_mutex_t* mutex;  /**< Mutex for thread safety */
 } NimcpSwarmImmuneSystem;

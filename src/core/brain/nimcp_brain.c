@@ -899,12 +899,16 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
 
     // Resize input buffer if needed (defensive: handle size changes)
     if (!brain->last_input || brain->input_size != num_features) {
-        nimcp_free(brain->last_input);  // Free old buffer (safe if NULL)
-        brain->last_input = nimcp_malloc(num_features * sizeof(float));
-        if (!brain->last_input) {
+        // Allocate new buffer BEFORE freeing old one to maintain consistency
+        float* new_input = nimcp_malloc(num_features * sizeof(float));
+        if (!new_input) {
             set_error("Failed to allocate cache input buffer");
             return;
         }
+
+        // Free old buffer after successful allocation
+        nimcp_free(brain->last_input);
+        brain->last_input = new_input;
         brain->input_size = num_features;
     }
 

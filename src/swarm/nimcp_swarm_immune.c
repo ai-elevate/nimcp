@@ -160,9 +160,11 @@ static uint64_t get_current_time_ms(void) {
  * WHAT: Generate random ID using /dev/urandom
  * WHY:  Prevent ID prediction attacks in swarm
  * HOW:  Read from urandom, fall back to time+counter on failure
+ *
+ * THREAD SAFETY: Static counter uses atomic operations (__sync_fetch_and_add)
  */
 static uint32_t generate_unique_id(void) {
-    static uint64_t counter = 0;  /* 64-bit to prevent wraparound */
+    static uint64_t counter = 0;  /* 64-bit to prevent wraparound, accessed atomically */
     uint32_t id;
 
     /* Try to read from /dev/urandom */
@@ -330,6 +332,9 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
         nimcp_free(system);
         return NULL;
     }
+
+    /* Initialize maturation timestamp */
+    system->last_maturation_time = 0;
 
     LOG_INFO("Swarm immune system created (drone_id=%u, version=%s)",
                    self_drone_id, NIMCP_SWARM_IMMUNE_VERSION);
@@ -705,17 +710,17 @@ nimcp_result_t nimcp_swarm_immune_update_effectiveness(
     return NIMCP_NOT_FOUND;
 }
 
-nimcp_result_t nimcp_swarm_immune_decay_memory(
+/**
+ * @brief Internal helper for memory decay (caller must hold mutex)
+ *
+ * WHAT: Apply decay to memory cells without acquiring mutex
+ * WHY:  Allow calling from other functions that already hold mutex
+ * HOW:  Same logic as public function but no mutex operations
+ */
+static nimcp_result_t nimcp_swarm_immune_decay_memory_unlocked(
     NimcpSwarmImmuneSystem* system,
     uint64_t current_time
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
-
-    nimcp_platform_mutex_lock(system->mutex);
-
     size_t removed = 0;
 
     /* Apply decay and remove weak memory cells */
@@ -744,8 +749,22 @@ nimcp_result_t nimcp_swarm_immune_decay_memory(
         LOG_INFO("Memory decay removed %zu weak cells", removed);
     }
 
-    nimcp_platform_mutex_unlock(system->mutex);
     return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_swarm_immune_decay_memory(
+    NimcpSwarmImmuneSystem* system,
+    uint64_t current_time
+) {
+    if (!system) {
+        LOG_ERROR("Invalid system pointer");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+    nimcp_result_t result = nimcp_swarm_immune_decay_memory_unlocked(system, current_time);
+    nimcp_platform_mutex_unlock(system->mutex);
+    return result;
 }
 
 /* ============================================================================
@@ -1377,14 +1396,13 @@ nimcp_result_t nimcp_swarm_immune_update(
         }
     }
 
-    /* Apply memory decay */
-    nimcp_swarm_immune_decay_memory(system, current_time);
+    /* Apply memory decay - use unlocked version since we already hold mutex */
+    nimcp_swarm_immune_decay_memory_unlocked(system, current_time);
 
-    /* Perform affinity maturation periodically */
-    static uint64_t last_maturation = 0;
-    if (current_time - last_maturation > 60000) { /* Every minute */
+    /* Perform affinity maturation periodically - move static to system state */
+    if (current_time - system->last_maturation_time > 60000) { /* Every minute */
         nimcp_swarm_immune_affinity_maturation(system);
-        last_maturation = current_time;
+        system->last_maturation_time = current_time;
     }
 
     nimcp_platform_mutex_unlock(system->mutex);

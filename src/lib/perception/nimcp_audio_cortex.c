@@ -97,6 +97,7 @@ struct audio_cortex {
     // WHY:  Memory storage is hot path; avoid malloc overhead
     // HOW:  Pool with block_size = sizeof(auditory_memory_t)
     memory_pool_t memory_pool;            /**< Pool for auditory memory entries */
+    nimcp_mutex_t* memory_pool_mutex;     /**< Mutex for memory pool thread safety */
 
     // === Copy-on-Write Support ===
     // WHAT: Enable shallow copy of cortex with lazy duplication
@@ -619,6 +620,16 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
         }
     }
 
+    // Initialize memory pool mutex for thread safety
+    cortex->memory_pool_mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (cortex->memory_pool_mutex) {
+        nimcp_mutex_init(cortex->memory_pool_mutex, NULL);
+    } else {
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate memory pool mutex");
+        audio_cortex_destroy(cortex);
+        return NULL;
+    }
+
     // === Initialize Copy-on-Write Fields ===
     cortex->_cow_refcount = NULL;
     cortex->_cow_is_shallow = false;
@@ -796,16 +807,22 @@ void audio_cortex_destroy(audio_cortex_t* cortex)
     // Free temporal buffers
     nimcp_free(cortex->prev_frame);
 
-    // Free memories
+    // Free memories (with mutex protection for pool operations)
     if (cortex->memories) {
         for (uint32_t i = 0; i < cortex->num_memories; i++) {
             if (cortex->memories[i]) {
                 nimcp_free(cortex->memories[i]->features);
-                // Use pool release if pool exists and owns this memory
+                // Thread-safe check and release using mutex
+                if (cortex->memory_pool_mutex) {
+                    nimcp_mutex_lock(cortex->memory_pool_mutex);
+                }
                 if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, cortex->memories[i])) {
                     memory_pool_release(cortex->memory_pool, cortex->memories[i]);
                 } else {
                     nimcp_free(cortex->memories[i]);
+                }
+                if (cortex->memory_pool_mutex) {
+                    nimcp_mutex_unlock(cortex->memory_pool_mutex);
                 }
             }
         }
@@ -816,6 +833,12 @@ void audio_cortex_destroy(audio_cortex_t* cortex)
     if (cortex->memory_pool) {
         memory_pool_destroy(cortex->memory_pool);
         cortex->memory_pool = NULL;
+    }
+
+    // === Destroy Memory Pool Mutex ===
+    if (cortex->memory_pool_mutex) {
+        nimcp_mutex_destroy(cortex->memory_pool_mutex);
+        nimcp_free(cortex->memory_pool_mutex);
     }
 
     // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network
@@ -1199,7 +1222,13 @@ bool audio_cortex_store_memory(
     // === Allocate Memory Entry from Pool (O(1)) or Fallback to calloc ===
     auditory_memory_t* memory = NULL;
     if (cortex->memory_pool) {
+        if (cortex->memory_pool_mutex) {
+            nimcp_mutex_lock(cortex->memory_pool_mutex);
+        }
         memory = (auditory_memory_t*)memory_pool_acquire(cortex->memory_pool);
+        if (cortex->memory_pool_mutex) {
+            nimcp_mutex_unlock(cortex->memory_pool_mutex);
+        }
         if (memory) {
             memset(memory, 0, sizeof(auditory_memory_t));  // Pool doesn't zero memory
         }
@@ -1216,11 +1245,17 @@ bool audio_cortex_store_memory(
     memory->features = (float*)nimcp_calloc(cortex->config.feature_dim, sizeof(float));
     if (!nimcp_validate_pointer(memory->features, "memory->features")) {
         LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate auditory memory features");
-        // Use pool release if pool owns this memory
+        // Thread-safe check and release using mutex
+        if (cortex->memory_pool_mutex) {
+            nimcp_mutex_lock(cortex->memory_pool_mutex);
+        }
         if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, memory)) {
             memory_pool_release(cortex->memory_pool, memory);
         } else {
             nimcp_free(memory);
+        }
+        if (cortex->memory_pool_mutex) {
+            nimcp_mutex_unlock(cortex->memory_pool_mutex);
         }
         return false;
     }
