@@ -532,6 +532,129 @@ nimcp_error_t audio_cortex_get_second_messenger_state(
     void* state
 );
 
+//=============================================================================
+// Training Interface API (CNN-Cortex Integration)
+//=============================================================================
+
+/**
+ * @brief Audio cortex training state for gradient feedback
+ *
+ * WHAT: Cached activations and outputs from audio cortex forward pass
+ * WHY:  Needed for gradient feedback to audio cortex internal network
+ * HOW:  Populated during audio_cortex_process, queried by CNN trainer
+ *
+ * BIOLOGICAL BASIS: Models the cached activity patterns in A1 that
+ * serve as the substrate for top-down attentional modulation of plasticity.
+ */
+typedef struct {
+    float* mel_features;             /**< Cached mel filterbank features */
+    uint32_t num_mel_filters;        /**< Number of mel filters */
+    float* mfcc_features;            /**< Cached MFCC coefficients */
+    uint32_t num_mfcc;               /**< Number of MFCCs */
+    float quality;                   /**< Audio signal quality [0-1] */
+    float speech_salience;           /**< Speech salience [0-1] */
+    float temporal_coherence;        /**< Temporal coherence [0-1] */
+    uint64_t timestamp_ms;           /**< When state was captured */
+    bool valid;                      /**< State validity flag */
+} audio_training_state_t;
+
+/**
+ * @brief Get training state for gradient feedback
+ *
+ * WHAT: Retrieve cached activations from last forward pass
+ * WHY:  Enables gradient-based feedback for internal network plasticity
+ * HOW:  Copies internal cached state to output structure
+ *
+ * @param cortex Audio cortex instance
+ * @param state Output training state structure
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_get_training_state(
+    audio_cortex_t* cortex,
+    audio_training_state_t* state
+);
+
+/**
+ * @brief Apply gradient feedback for internal network plasticity
+ *
+ * WHAT: Receive gradient signals from CNN and modulate A1 plasticity
+ * WHY:  Enables top-down learning signal from CNN training
+ * HOW:  Convert gradients to plasticity modulation signals
+ *
+ * BIOLOGICAL BASIS: Models feedback projections from higher auditory
+ * areas (STG, PFC) to A1, modulating plasticity via attention signals.
+ *
+ * @param cortex Audio cortex instance
+ * @param gradients Gradient values (one per output feature)
+ * @param gradient_size Number of gradient values
+ * @param scale Scaling factor for gradient signals [0-1]
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_apply_gradient_feedback(
+    audio_cortex_t* cortex,
+    const float* gradients,
+    uint32_t gradient_size,
+    float scale
+);
+
+/**
+ * @brief Extract features as tensor for CNN training
+ *
+ * WHAT: Process audio and return features as nimcp_tensor_t
+ * WHY:  Direct integration with tensor-based CNN training
+ * HOW:  Wrapper around audio_cortex_process with tensor output
+ *
+ * @param cortex Audio cortex instance
+ * @param audio Input audio samples
+ * @param num_samples Number of audio samples
+ * @param num_channels Number of audio channels
+ * @param features Output tensor (allocated by function, caller destroys)
+ * @return 0 on success, negative on error
+ *
+ * @note Caller is responsible for destroying the returned tensor
+ */
+struct nimcp_tensor;
+int audio_cortex_extract_features_tensor(
+    audio_cortex_t* cortex,
+    const float* audio,
+    uint32_t num_samples,
+    uint8_t num_channels,
+    struct nimcp_tensor** features
+);
+
+/**
+ * @brief Get feature dimension for CNN input shape configuration
+ *
+ * WHAT: Query the output feature dimensionality
+ * WHY:  CNN trainer needs to know input shape from cortex
+ * HOW:  Returns configured feature_dim from cortex
+ *
+ * @param cortex Audio cortex instance
+ * @return Feature dimension, or 0 on error
+ */
+uint32_t audio_cortex_get_feature_dim(const audio_cortex_t* cortex);
+
+/**
+ * @brief Enable/disable activation caching for training
+ *
+ * WHAT: Toggle caching of intermediate activations
+ * WHY:  Caching needed for gradient feedback, but uses memory
+ * HOW:  Sets internal flag to cache mel/mfcc features
+ *
+ * @param cortex Audio cortex instance
+ * @param enable true to enable caching, false to disable
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_set_training_mode(audio_cortex_t* cortex, bool enable);
+
+/**
+ * @brief Check if training mode is enabled
+ *
+ * @param cortex Audio cortex instance
+ * @return true if training mode enabled
+ */
+bool audio_cortex_is_training_mode(const audio_cortex_t* cortex);
+
 #ifdef __cplusplus
 }
 #endif

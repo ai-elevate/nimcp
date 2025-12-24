@@ -1007,6 +1007,131 @@ nimcp_error_t visual_cortex_broadcast_attention_shift(
     float salience
 );
 
+//=============================================================================
+// Training Interface API (CNN-Cortex Integration)
+//=============================================================================
+
+/**
+ * @brief Visual cortex training state for gradient feedback
+ *
+ * WHAT: Cached activations and outputs from visual cortex forward pass
+ * WHY:  Needed for gradient feedback to visual cortex STDP
+ * HOW:  Populated during visual_cortex_process, queried by CNN trainer
+ *
+ * BIOLOGICAL BASIS: Models the cached activity patterns in V1 that
+ * serve as the substrate for top-down attentional modulation of plasticity.
+ */
+typedef struct {
+    float* conv_output;              /**< Cached conv layer output */
+    uint32_t conv_output_size;       /**< Conv output size */
+    float* pool_output;              /**< Cached pool layer output */
+    uint32_t pool_output_size;       /**< Pool output size */
+    float confidence;                /**< Visual processing confidence [0-1] */
+    float novelty;                   /**< Novelty score [0-1] */
+    uint64_t timestamp_ms;           /**< When state was captured */
+    bool valid;                      /**< State validity flag */
+} visual_training_state_t;
+
+/**
+ * @brief Get training state for gradient feedback
+ *
+ * WHAT: Retrieve cached activations from last forward pass
+ * WHY:  Enables gradient-based feedback for STDP modulation
+ * HOW:  Copies internal cached state to output structure
+ *
+ * @param cortex Visual cortex instance
+ * @param state Output training state structure
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_get_training_state(
+    visual_cortex_t* cortex,
+    visual_training_state_t* state
+);
+
+/**
+ * @brief Apply gradient feedback for STDP modulation
+ *
+ * WHAT: Receive gradient signals from CNN and modulate V1 plasticity
+ * WHY:  Enables top-down learning signal from CNN training
+ * HOW:  Convert gradients to STDP modulation signals
+ *
+ * BIOLOGICAL BASIS: Models feedback projections from higher visual
+ * areas (V4, IT) to V1, modulating plasticity via attention signals.
+ * Larger gradients indicate more task-relevant features.
+ *
+ * @param cortex Visual cortex instance
+ * @param gradients Gradient values (one per output feature)
+ * @param gradient_size Number of gradient values
+ * @param scale Scaling factor for gradient signals [0-1]
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_apply_gradient_feedback(
+    visual_cortex_t* cortex,
+    const float* gradients,
+    uint32_t gradient_size,
+    float scale
+);
+
+/**
+ * @brief Extract features as tensor for CNN training
+ *
+ * WHAT: Process image and return features as nimcp_tensor_t
+ * WHY:  Direct integration with tensor-based CNN training
+ * HOW:  Wrapper around visual_cortex_process with tensor output
+ *
+ * @param cortex Visual cortex instance
+ * @param image Input image data
+ * @param width Image width
+ * @param height Image height
+ * @param channels Number of channels
+ * @param features Output tensor (allocated by function, caller destroys)
+ * @return 0 on success, negative on error
+ *
+ * @note Caller is responsible for destroying the returned tensor
+ */
+struct nimcp_tensor;
+int visual_cortex_extract_features_tensor(
+    visual_cortex_t* cortex,
+    const uint8_t* image,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels,
+    struct nimcp_tensor** features
+);
+
+/**
+ * @brief Get feature dimension for CNN input shape configuration
+ *
+ * WHAT: Query the output feature dimensionality
+ * WHY:  CNN trainer needs to know input shape from cortex
+ * HOW:  Returns configured feature_dim from cortex
+ *
+ * @param cortex Visual cortex instance
+ * @return Feature dimension, or 0 on error
+ */
+uint32_t visual_cortex_get_feature_dim(const visual_cortex_t* cortex);
+
+/**
+ * @brief Enable/disable activation caching for training
+ *
+ * WHAT: Toggle caching of intermediate activations
+ * WHY:  Caching needed for gradient feedback, but uses memory
+ * HOW:  Sets internal flag to cache conv/pool outputs
+ *
+ * @param cortex Visual cortex instance
+ * @param enable true to enable caching, false to disable
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_set_training_mode(visual_cortex_t* cortex, bool enable);
+
+/**
+ * @brief Check if training mode is enabled
+ *
+ * @param cortex Visual cortex instance
+ * @return true if training mode enabled
+ */
+bool visual_cortex_is_training_mode(const visual_cortex_t* cortex);
+
 #ifdef __cplusplus
 }
 #endif

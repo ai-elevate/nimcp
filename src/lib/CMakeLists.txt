@@ -807,6 +807,8 @@ set(NIMCP_CORE_SOURCES
     # Utils - Other
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/time/nimcp_time.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/validation/nimcp_validate.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor/nimcp_tensor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/bridge/nimcp_bridge_base.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/queue_manager/nimcp_queue_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/json/nimcp_json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config.c
@@ -992,6 +994,9 @@ set(NIMCP_CORE_SOURCES
 
     # Middleware - Brain Training Integration (Phase TM-3: Brain-Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_brain_training_integration.c
+
+    # Training - CNN-Cortex Bridge (Phase CNN-CORTEX: Integration with visual/audio cortex)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_cortex_bridge.c
 
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)

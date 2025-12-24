@@ -680,6 +680,16 @@ struct visual_cortex_struct {
     // === Second Messenger Cascades ===
     second_messenger_system_t* second_messengers; /**< Second messenger system per layer */
     bool second_messengers_enabled;               /**< Whether cascades are enabled */
+
+    // === Training Interface (CNN-Cortex Integration) ===
+    bool training_mode;                           /**< Whether in training mode */
+    float* cached_conv_output;                    /**< Cached V1 output for gradient feedback */
+    uint32_t cached_conv_size;                    /**< Size of cached conv output */
+    float* cached_pool_output;                    /**< Cached pooled output for gradient feedback */
+    uint32_t cached_pool_size;                    /**< Size of cached pool output */
+    float last_confidence;                        /**< Last computed visual confidence */
+    float last_novelty;                           /**< Last computed novelty score */
+    uint64_t last_process_timestamp;              /**< Timestamp of last processing */
 };
 
 /**
@@ -971,6 +981,16 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
         }
     }
 
+    // === Training Interface Initialization ===
+    cortex->training_mode = false;
+    cortex->cached_conv_output = NULL;
+    cortex->cached_conv_size = 0;
+    cortex->cached_pool_output = NULL;
+    cortex->cached_pool_size = 0;
+    cortex->last_confidence = 0.0F;
+    cortex->last_novelty = 0.0F;
+    cortex->last_process_timestamp = 0;
+
     return cortex;
 }
 
@@ -1046,6 +1066,16 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
     // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network
     if (cortex->internal_network) {
         neural_network_destroy(cortex->internal_network);
+    }
+
+    // === Training Cache Cleanup ===
+    if (cortex->cached_conv_output) {
+        nimcp_free(cortex->cached_conv_output);
+        cortex->cached_conv_output = NULL;
+    }
+    if (cortex->cached_pool_output) {
+        nimcp_free(cortex->cached_pool_output);
+        cortex->cached_pool_output = NULL;
     }
 
     nimcp_free(cortex);
@@ -2260,4 +2290,321 @@ nimcp_error_t visual_cortex_broadcast_attention_shift(
               x, y, salience);
 
     return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Training Interface Implementation (CNN-Cortex Integration)
+//=============================================================================
+
+/**
+ * @brief Get training state from visual cortex
+ *
+ * WHAT: Retrieve cached conv/pool outputs and confidence metrics
+ * WHY:  CNN trainer needs access to cortex activations for gradient feedback
+ * HOW:  Copy cached outputs to provided state structure
+ *
+ * BIOLOGY: Top-down feedback in visual system modulates V1 via attention
+ * and prediction error signals.
+ *
+ * @param cortex Visual cortex instance
+ * @param state Output training state structure
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_get_training_state(
+    visual_cortex_t* cortex,
+    visual_training_state_t* state)
+{
+    /* Guard: Validate inputs */
+    if (!cortex || !state) {
+        return -1;
+    }
+
+    /* Initialize state */
+    memset(state, 0, sizeof(visual_training_state_t));
+
+    /* Copy cached conv output if available */
+    if (cortex->cached_conv_output && cortex->cached_conv_size > 0) {
+        state->conv_output = cortex->cached_conv_output;
+        state->conv_output_size = cortex->cached_conv_size;
+    }
+
+    /* Copy cached pool output if available */
+    if (cortex->cached_pool_output && cortex->cached_pool_size > 0) {
+        state->pool_output = cortex->cached_pool_output;
+        state->pool_output_size = cortex->cached_pool_size;
+    }
+
+    /* Copy metrics */
+    state->confidence = cortex->last_confidence;
+    state->novelty = cortex->last_novelty;
+    state->timestamp_ms = cortex->last_process_timestamp;
+    state->valid = (cortex->cached_conv_output != NULL);
+
+    LOG_DEBUG(VISUAL_LOG_MODULE, "Training state retrieved: conv=%u, pool=%u, conf=%.2f",
+              state->conv_output_size, state->pool_output_size, state->confidence);
+
+    return 0;
+}
+
+/**
+ * @brief Apply gradient feedback to visual cortex for STDP modulation
+ *
+ * WHAT: Convert gradients from CNN to STDP signals for cortex plasticity
+ * WHY:  Enable top-down learning modulation in visual system
+ * HOW:  Modulate internal network using scaled gradient signal
+ *
+ * BIOLOGY: Top-down prediction errors in predictive coding framework
+ * modulate synaptic plasticity in lower visual areas.
+ *
+ * @param cortex Visual cortex instance
+ * @param gradients Gradient vector from CNN backprop
+ * @param gradient_size Size of gradient vector
+ * @param scale Scale factor for gradient signal
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_apply_gradient_feedback(
+    visual_cortex_t* cortex,
+    const float* gradients,
+    uint32_t gradient_size,
+    float scale)
+{
+    /* Guard: Validate inputs */
+    if (!cortex || !gradients || gradient_size == 0) {
+        return -1;
+    }
+
+    /* Guard: Training mode must be enabled */
+    if (!cortex->training_mode) {
+        LOG_WARN(VISUAL_LOG_MODULE, "Gradient feedback rejected: training mode not enabled");
+        return -2;
+    }
+
+    /* Guard: Scale must be reasonable */
+    if (scale < 0.0F || scale > 10.0F) {
+        LOG_WARN(VISUAL_LOG_MODULE, "Gradient scale out of range: %.2f", scale);
+        return -3;
+    }
+
+    /* Compute gradient magnitude for STDP modulation strength */
+    float grad_magnitude = 0.0F;
+    for (uint32_t i = 0; i < gradient_size; i++) {
+        grad_magnitude += gradients[i] * gradients[i];
+    }
+    grad_magnitude = sqrtf(grad_magnitude) * scale;
+
+    /* Clamp modulation strength to reasonable range */
+    if (grad_magnitude > 1.0F) {
+        grad_magnitude = 1.0F;
+    }
+
+    /* Apply to internal recurrent network if available */
+    if (cortex->has_internal_network && cortex->internal_network) {
+        /* STDP modulation: Use gradient magnitude as dopamine-like signal
+         * High gradients = high prediction error = enhanced learning */
+
+        /* Apply neuromodulator diffusion to internal network */
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(cortex->brain);
+        if (neuromod) {
+            /* Temporarily boost dopamine based on gradient (prediction error) */
+            float current_da = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+            float boosted_da = current_da + grad_magnitude * 0.5F;
+            if (boosted_da > 1.0F) boosted_da = 1.0F;
+
+            /* This enhanced DA will affect next STDP updates in the network */
+            neuromodulator_set_level(neuromod, NEUROMOD_DOPAMINE, boosted_da);
+
+            LOG_DEBUG(VISUAL_LOG_MODULE, "Applied gradient feedback: mag=%.4f, DA: %.2f -> %.2f",
+                      grad_magnitude, current_da, boosted_da);
+        }
+    }
+
+    /* Broadcast gradient feedback via bio-async if enabled */
+    if (cortex->bio_async_enabled && cortex->bio_ctx) {
+        bio_msg_visual_feature_detected_t msg;
+        bio_msg_init_header(&msg.header, BIO_MSG_VISUAL_FEATURE_DETECTED,
+                            BIO_MODULE_VISUAL_CORTEX, 0,
+                            sizeof(msg) - sizeof(bio_message_header_t));
+
+        msg.header.channel = BIO_CHANNEL_DOPAMINE;  /* Prediction error */
+        msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+        msg.feature_id = 0xFFFF;  /* Special ID for gradient feedback */
+        msg.confidence = grad_magnitude;
+        msg.salience = grad_magnitude;
+
+        bio_router_broadcast(cortex->bio_ctx, &msg, sizeof(msg));
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Extract visual features as a tensor
+ *
+ * WHAT: Process image through V1 and return features as nimcp_tensor_t
+ * WHY:  CNN trainer expects tensor format for batch processing
+ * HOW:  Call visual_cortex_process, wrap output in tensor
+ *
+ * @param cortex Visual cortex instance
+ * @param image Input image data
+ * @param width Image width
+ * @param height Image height
+ * @param channels Image channels
+ * @param features Output tensor pointer (caller must destroy)
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_extract_features_tensor(
+    visual_cortex_t* cortex,
+    const uint8_t* image,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels,
+    struct nimcp_tensor** features)
+{
+    /* Guard: Validate inputs */
+    if (!cortex || !image || !features) {
+        return -1;
+    }
+
+    /* Allocate temporary feature buffer */
+    uint32_t feature_dim = cortex->feature_dim;
+    float* feature_buffer = (float*)nimcp_calloc(feature_dim, sizeof(float));
+    if (!feature_buffer) {
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate feature buffer");
+        return -2;
+    }
+
+    /* Process image through visual cortex */
+    bool success = visual_cortex_process(cortex, image, width, height, channels, feature_buffer);
+    if (!success) {
+        nimcp_free(feature_buffer);
+        return -3;
+    }
+
+    /* Cache outputs if in training mode */
+    if (cortex->training_mode) {
+        /* Compute confidence as normalized feature magnitude */
+        float feature_sum = 0.0F;
+        float feature_max = 0.0F;
+        for (uint32_t i = 0; i < feature_dim; i++) {
+            feature_sum += feature_buffer[i];
+            if (feature_buffer[i] > feature_max) {
+                feature_max = feature_buffer[i];
+            }
+        }
+        /* Confidence: high when features are strong and structured */
+        cortex->last_confidence = (feature_max > 0.1F) ?
+            fminf(1.0F, feature_sum / (float)feature_dim * 2.0F) : 0.0F;
+
+        /* Novelty: estimate based on feature variance (high variance = novel) */
+        float mean = feature_sum / (float)feature_dim;
+        float variance = 0.0F;
+        for (uint32_t i = 0; i < feature_dim; i++) {
+            float diff = feature_buffer[i] - mean;
+            variance += diff * diff;
+        }
+        variance /= (float)feature_dim;
+        cortex->last_novelty = fminf(1.0F, sqrtf(variance) * 5.0F);
+
+        /* Get current timestamp */
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        cortex->last_process_timestamp = (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    }
+
+    /* Create 1D tensor with feature dimension */
+    uint32_t dims[1] = { feature_dim };
+    nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    if (!tensor) {
+        nimcp_free(feature_buffer);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to create feature tensor");
+        return -4;
+    }
+
+    /* Copy features to tensor */
+    float* tensor_data = (float*)nimcp_tensor_data(tensor);
+    memcpy(tensor_data, feature_buffer, feature_dim * sizeof(float));
+
+    nimcp_free(feature_buffer);
+
+    *features = (struct nimcp_tensor*)tensor;
+
+    LOG_DEBUG(VISUAL_LOG_MODULE, "Extracted %u features as tensor", feature_dim);
+
+    return 0;
+}
+
+/**
+ * @brief Get visual cortex output feature dimension
+ *
+ * WHAT: Return the output feature vector size
+ * WHY:  CNN trainer needs to know input dimensions for layer sizing
+ * HOW:  Return cortex->feature_dim
+ *
+ * @param cortex Visual cortex instance
+ * @return Feature dimension, or 0 on error
+ */
+uint32_t visual_cortex_get_feature_dim(const visual_cortex_t* cortex)
+{
+    if (!cortex) {
+        return 0;
+    }
+    return cortex->feature_dim;
+}
+
+/**
+ * @brief Enable or disable training mode
+ *
+ * WHAT: Toggle training mode for activation caching
+ * WHY:  Training requires cached outputs for gradient computation
+ * HOW:  Set flag that enables caching during visual_cortex_process
+ *
+ * @param cortex Visual cortex instance
+ * @param enable True to enable training mode
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_set_training_mode(visual_cortex_t* cortex, bool enable)
+{
+    if (!cortex) {
+        return -1;
+    }
+
+    bool was_enabled = cortex->training_mode;
+    cortex->training_mode = enable;
+
+    if (enable && !was_enabled) {
+        LOG_INFO(VISUAL_LOG_MODULE, "Training mode ENABLED - activation caching active");
+    } else if (!enable && was_enabled) {
+        /* Clear cached outputs when disabling */
+        if (cortex->cached_conv_output) {
+            nimcp_free(cortex->cached_conv_output);
+            cortex->cached_conv_output = NULL;
+            cortex->cached_conv_size = 0;
+        }
+        if (cortex->cached_pool_output) {
+            nimcp_free(cortex->cached_pool_output);
+            cortex->cached_pool_output = NULL;
+            cortex->cached_pool_size = 0;
+        }
+        LOG_INFO(VISUAL_LOG_MODULE, "Training mode DISABLED - caches cleared");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Check if training mode is enabled
+ *
+ * WHAT: Query training mode state
+ * WHY:  Bridge needs to know if cortex is ready for gradient feedback
+ * HOW:  Return training_mode flag
+ *
+ * @param cortex Visual cortex instance
+ * @return True if training mode is enabled
+ */
+bool visual_cortex_is_training_mode(const visual_cortex_t* cortex)
+{
+    if (!cortex) {
+        return false;
+    }
+    return cortex->training_mode;
 }

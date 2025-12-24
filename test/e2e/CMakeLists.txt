@@ -635,6 +635,11 @@ add_e2e_test(e2e_test_unified_training_integration
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_unified_training_integration.cpp
 )
 
+# CNN-Cortex Bridge E2E Test (CNN Training with A/V Cortex Feature Extraction)
+add_e2e_test(e2e_test_cnn_cortex_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cnn_cortex_bridge.cpp
+)
+
 # SNN Pipeline E2E Test (Spiking Neural Network Full Integration)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_snn_pipeline.cpp)
     add_executable(e2e_test_snn_pipeline

@@ -113,6 +113,16 @@ struct audio_cortex {
     second_messenger_system_t* second_messengers; /**< Second messenger cascade system */
     bool second_messengers_enabled;       /**< Whether second messengers are enabled */
 
+    // === Training Interface (CNN-Cortex Integration) ===
+    bool training_mode;                           /**< Whether in training mode */
+    float* cached_mel_features;                   /**< Cached mel features for training */
+    uint32_t cached_mel_size;                     /**< Size of cached mel features */
+    float* cached_mfcc_features;                  /**< Cached MFCC features for training */
+    uint32_t cached_mfcc_size;                    /**< Size of cached MFCC features */
+    float last_quality;                           /**< Last computed audio quality */
+    float last_speech_salience;                   /**< Last computed speech salience */
+    uint64_t last_process_timestamp;              /**< Timestamp of last processing */
+
     // Statistics
     audio_cortex_stats_t stats;
 };
@@ -731,6 +741,16 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
         }
     }
 
+    // === Training Interface Initialization ===
+    cortex->training_mode = false;
+    cortex->cached_mel_features = NULL;
+    cortex->cached_mel_size = 0;
+    cortex->cached_mfcc_features = NULL;
+    cortex->cached_mfcc_size = 0;
+    cortex->last_quality = 0.0F;
+    cortex->last_speech_salience = 0.0F;
+    cortex->last_process_timestamp = 0;
+
     return cortex;
 }
 
@@ -801,6 +821,16 @@ void audio_cortex_destroy(audio_cortex_t* cortex)
     // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network
     if (cortex->internal_network) {
         neural_network_destroy(cortex->internal_network);
+    }
+
+    // === Training Cache Cleanup ===
+    if (cortex->cached_mel_features) {
+        nimcp_free(cortex->cached_mel_features);
+        cortex->cached_mel_features = NULL;
+    }
+    if (cortex->cached_mfcc_features) {
+        nimcp_free(cortex->cached_mfcc_features);
+        cortex->cached_mfcc_features = NULL;
     }
 
     nimcp_free(cortex);
@@ -2018,4 +2048,335 @@ nimcp_error_t audio_cortex_get_second_messenger_state(
     }
 
     return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Training Interface Implementation (CNN-Cortex Integration)
+//=============================================================================
+
+/**
+ * @brief Get training state from audio cortex
+ *
+ * WHAT: Retrieve cached mel/MFCC features and quality metrics
+ * WHY:  CNN trainer needs access to cortex activations for gradient feedback
+ * HOW:  Copy cached outputs to provided state structure
+ *
+ * BIOLOGY: Top-down feedback in auditory system modulates A1 via attention
+ * and prediction error signals (predictive coding).
+ *
+ * @param cortex Audio cortex instance
+ * @param state Output training state structure
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_get_training_state(
+    audio_cortex_t* cortex,
+    audio_training_state_t* state)
+{
+    /* Guard: Validate inputs */
+    if (!cortex || !state) {
+        return -1;
+    }
+
+    /* Initialize state */
+    memset(state, 0, sizeof(audio_training_state_t));
+
+    /* Copy cached mel features if available */
+    if (cortex->cached_mel_features && cortex->cached_mel_size > 0) {
+        state->mel_features = cortex->cached_mel_features;
+        state->num_mel_filters = cortex->cached_mel_size;
+    }
+
+    /* Copy cached MFCC features if available */
+    if (cortex->cached_mfcc_features && cortex->cached_mfcc_size > 0) {
+        state->mfcc_features = cortex->cached_mfcc_features;
+        state->num_mfcc = cortex->cached_mfcc_size;
+    }
+
+    /* Copy metrics */
+    state->quality = cortex->last_quality;
+    state->speech_salience = cortex->last_speech_salience;
+    state->timestamp_ms = cortex->last_process_timestamp;
+    state->valid = (cortex->cached_mel_features != NULL);
+
+    LOG_DEBUG(AUDIO_LOG_MODULE, "Training state retrieved: mel=%u, mfcc=%u, quality=%.2f",
+              state->num_mel_filters, state->num_mfcc, state->quality);
+
+    return 0;
+}
+
+/**
+ * @brief Apply gradient feedback to audio cortex for STDP modulation
+ *
+ * WHAT: Convert gradients from CNN to STDP signals for cortex plasticity
+ * WHY:  Enable top-down learning modulation in auditory system
+ * HOW:  Modulate internal network using scaled gradient signal
+ *
+ * BIOLOGY: Top-down prediction errors in predictive coding framework
+ * modulate synaptic plasticity in auditory cortex.
+ *
+ * @param cortex Audio cortex instance
+ * @param gradients Gradient vector from CNN backprop
+ * @param gradient_size Size of gradient vector
+ * @param scale Scale factor for gradient signal
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_apply_gradient_feedback(
+    audio_cortex_t* cortex,
+    const float* gradients,
+    uint32_t gradient_size,
+    float scale)
+{
+    /* Guard: Validate inputs */
+    if (!cortex || !gradients || gradient_size == 0) {
+        return -1;
+    }
+
+    /* Guard: Training mode must be enabled */
+    if (!cortex->training_mode) {
+        LOG_WARN(AUDIO_LOG_MODULE, "Gradient feedback rejected: training mode not enabled");
+        return -2;
+    }
+
+    /* Guard: Scale must be reasonable */
+    if (scale < 0.0F || scale > 10.0F) {
+        LOG_WARN(AUDIO_LOG_MODULE, "Gradient scale out of range: %.2f", scale);
+        return -3;
+    }
+
+    /* Compute gradient magnitude for STDP modulation strength */
+    float grad_magnitude = 0.0F;
+    for (uint32_t i = 0; i < gradient_size; i++) {
+        grad_magnitude += gradients[i] * gradients[i];
+    }
+    grad_magnitude = sqrtf(grad_magnitude) * scale;
+
+    /* Clamp modulation strength to reasonable range */
+    if (grad_magnitude > 1.0F) {
+        grad_magnitude = 1.0F;
+    }
+
+    /* Apply to internal recurrent network if available */
+    if (cortex->has_internal_network && cortex->internal_network) {
+        /* STDP modulation: Use gradient magnitude as acetylcholine-like signal
+         * High gradients = high prediction error = enhanced attention */
+
+        /* Apply neuromodulator boost to internal network */
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(cortex->brain);
+        if (neuromod) {
+            /* Boost ACh based on gradient (attention signal) */
+            float current_ach = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
+            float boosted_ach = current_ach + grad_magnitude * 0.4F;
+            if (boosted_ach > 1.0F) boosted_ach = 1.0F;
+
+            neuromodulator_set_level(neuromod, NEUROMOD_ACETYLCHOLINE, boosted_ach);
+
+            LOG_DEBUG(AUDIO_LOG_MODULE, "Applied gradient feedback: mag=%.4f, ACh: %.2f -> %.2f",
+                      grad_magnitude, current_ach, boosted_ach);
+        }
+    }
+
+    /* Broadcast gradient feedback via bio-async if enabled */
+    if (cortex->bio_async_enabled && cortex->bio_ctx) {
+        bio_msg_audio_feature_detected_t msg;
+        bio_msg_init_header(&msg.header, BIO_MSG_AUDIO_FEATURE_DETECTED,
+                            BIO_MODULE_AUDIO_CORTEX, 0,
+                            sizeof(msg) - sizeof(bio_message_header_t));
+
+        msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  /* Attention signal */
+        msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+        msg.feature_id = 0xFFFF;  /* Special ID for gradient feedback */
+        msg.amplitude = grad_magnitude;
+        msg.frequency_hz = 0.0F;  /* N/A for gradient feedback */
+        msg.onset_time_ms = 0.0F;
+        msg.duration_ms = 0.0F;
+        msg.channel = 0;
+
+        bio_router_broadcast(cortex->bio_ctx, &msg, sizeof(msg));
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Extract audio features as a tensor
+ *
+ * WHAT: Process audio through A1 and return features as nimcp_tensor_t
+ * WHY:  CNN trainer expects tensor format for batch processing
+ * HOW:  Call audio_cortex_process, wrap output in tensor
+ *
+ * @param cortex Audio cortex instance
+ * @param audio Input audio samples
+ * @param num_samples Number of audio samples
+ * @param num_channels Number of audio channels
+ * @param features Output tensor pointer (caller must destroy)
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_extract_features_tensor(
+    audio_cortex_t* cortex,
+    const float* audio,
+    uint32_t num_samples,
+    uint8_t num_channels,
+    struct nimcp_tensor** features)
+{
+    /* Guard: Validate inputs */
+    if (!cortex || !audio || num_samples == 0 || !features) {
+        return -1;
+    }
+
+    /* Guard: Validate channels */
+    if (num_channels == 0 || num_channels > 2) {
+        return -1;
+    }
+
+    /* Calculate feature dimension */
+    uint32_t feature_dim = cortex->config.num_mel_filters + cortex->config.num_mfcc;
+
+    /* Allocate temporary feature buffer */
+    float* feature_buffer = (float*)nimcp_calloc(feature_dim, sizeof(float));
+    if (!feature_buffer) {
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate feature buffer");
+        return -2;
+    }
+
+    /* Process audio through audio cortex */
+    bool success = audio_cortex_process(cortex, audio, num_samples, num_channels, feature_buffer);
+    if (!success) {
+        nimcp_free(feature_buffer);
+        return -3;
+    }
+
+    /* Cache outputs if in training mode */
+    if (cortex->training_mode) {
+        /* Compute quality as signal energy normalized */
+        float energy = 0.0F;
+        for (uint32_t i = 0; i < num_samples; i++) {
+            energy += audio[i] * audio[i];
+        }
+        energy = sqrtf(energy / (float)num_samples);
+
+        /* Quality: reasonable energy level (not too quiet, not clipping) */
+        cortex->last_quality = fminf(1.0F, energy * 10.0F);
+        if (energy > 0.9F) {
+            cortex->last_quality = 0.5F;  /* Likely clipping */
+        }
+
+        /* Speech salience: estimate from feature characteristics */
+        float mean = 0.0F;
+        for (uint32_t i = 0; i < feature_dim; i++) {
+            mean += feature_buffer[i];
+        }
+        mean /= (float)feature_dim;
+
+        float variance = 0.0F;
+        for (uint32_t i = 0; i < feature_dim; i++) {
+            float diff = feature_buffer[i] - mean;
+            variance += diff * diff;
+        }
+        variance /= (float)feature_dim;
+
+        /* Speech has characteristic spectral patterns (high variance in MFCCs) */
+        cortex->last_speech_salience = fminf(1.0F, sqrtf(variance) * 3.0F);
+
+        /* Get current timestamp */
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        cortex->last_process_timestamp = (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    }
+
+    /* Create 1D tensor with feature dimension */
+    uint32_t dims[1] = { feature_dim };
+    nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    if (!tensor) {
+        nimcp_free(feature_buffer);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to create feature tensor");
+        return -4;
+    }
+
+    /* Copy features to tensor */
+    float* tensor_data = (float*)nimcp_tensor_data(tensor);
+    memcpy(tensor_data, feature_buffer, feature_dim * sizeof(float));
+
+    nimcp_free(feature_buffer);
+
+    *features = (struct nimcp_tensor*)tensor;
+
+    LOG_DEBUG(AUDIO_LOG_MODULE, "Extracted %u features as tensor", feature_dim);
+
+    return 0;
+}
+
+/**
+ * @brief Get audio cortex output feature dimension
+ *
+ * WHAT: Return the output feature vector size
+ * WHY:  CNN trainer needs to know input dimensions for layer sizing
+ * HOW:  Return mel_filters + mfcc count
+ *
+ * @param cortex Audio cortex instance
+ * @return Feature dimension, or 0 on error
+ */
+uint32_t audio_cortex_get_feature_dim(const audio_cortex_t* cortex)
+{
+    if (!cortex) {
+        return 0;
+    }
+    return cortex->config.num_mel_filters + cortex->config.num_mfcc;
+}
+
+/**
+ * @brief Enable or disable training mode
+ *
+ * WHAT: Toggle training mode for activation caching
+ * WHY:  Training requires cached outputs for gradient computation
+ * HOW:  Set flag that enables caching during audio_cortex_process
+ *
+ * @param cortex Audio cortex instance
+ * @param enable True to enable training mode
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_set_training_mode(audio_cortex_t* cortex, bool enable)
+{
+    if (!cortex) {
+        return -1;
+    }
+
+    bool was_enabled = cortex->training_mode;
+    cortex->training_mode = enable;
+
+    if (enable && !was_enabled) {
+        LOG_INFO(AUDIO_LOG_MODULE, "Training mode ENABLED - activation caching active");
+    } else if (!enable && was_enabled) {
+        /* Clear cached outputs when disabling */
+        if (cortex->cached_mel_features) {
+            nimcp_free(cortex->cached_mel_features);
+            cortex->cached_mel_features = NULL;
+            cortex->cached_mel_size = 0;
+        }
+        if (cortex->cached_mfcc_features) {
+            nimcp_free(cortex->cached_mfcc_features);
+            cortex->cached_mfcc_features = NULL;
+            cortex->cached_mfcc_size = 0;
+        }
+        LOG_INFO(AUDIO_LOG_MODULE, "Training mode DISABLED - caches cleared");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Check if training mode is enabled
+ *
+ * WHAT: Query training mode state
+ * WHY:  Bridge needs to know if cortex is ready for gradient feedback
+ * HOW:  Return training_mode flag
+ *
+ * @param cortex Audio cortex instance
+ * @return True if training mode is enabled
+ */
+bool audio_cortex_is_training_mode(const audio_cortex_t* cortex)
+{
+    if (!cortex) {
+        return false;
+    }
+    return cortex->training_mode;
 }

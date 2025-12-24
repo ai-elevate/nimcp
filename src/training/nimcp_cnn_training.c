@@ -15,6 +15,10 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
+/* Cortex integration for CNN-Cortex Bridge */
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -81,6 +85,14 @@ struct cnn_trainer_s {
     /* Bio-async integration */
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    /* Cortex integration (CNN-Cortex Bridge) */
+    void* visual_cortex;            /**< Connected visual cortex (NULL if none) */
+    void* audio_cortex;             /**< Connected audio cortex (NULL if none) */
+    uint32_t visual_feature_dim;    /**< Visual cortex output dimension */
+    uint32_t audio_feature_dim;     /**< Audio cortex output dimension */
+    bool input_from_cortex;         /**< True if using cortex as input source */
+    float current_perception_confidence;  /**< Perception confidence for LR modulation */
 
     /* Statistics */
     uint64_t total_forward_calls;
@@ -639,31 +651,101 @@ nimcp_error_t cnn_to_snn_finetune_stdp(cnn_to_snn_result_t* result,
 }
 
 //=============================================================================
-// NIMCP Integration Stubs
+// Cortex Integration (CNN-Cortex Bridge)
 //=============================================================================
 
+/**
+ * @brief Connect visual cortex as feature extractor
+ *
+ * WHAT: Link visual cortex to CNN trainer for perception-based input
+ * WHY:  Enable transfer learning from visual cortex to CNN head
+ * HOW:  Store reference, query feature dimensions, enable cortex input mode
+ *
+ * BIOLOGY: V1 provides hierarchical feature extraction (edges, textures, etc.)
+ * that serve as preprocessed input for higher cognitive processing.
+ *
+ * @param trainer CNN trainer instance
+ * @param visual_cortex Visual cortex instance (cast from visual_cortex_t*)
+ * @return NIMCP_SUCCESS or error code
+ */
 nimcp_error_t cnn_connect_visual_cortex(cnn_trainer_t* trainer,
                                          void* visual_cortex) {
+    /* Guard: Null pointer check */
     if (!trainer || !visual_cortex) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    /* TODO: Integrate with visual cortex module */
+    /* Cast to proper type */
+    visual_cortex_t* vc = (visual_cortex_t*)visual_cortex;
 
-    NIMCP_LOGGING_WARN("cnn_connect_visual_cortex: Not yet implemented");
-    return NIMCP_ERROR_NOT_IMPLEMENTED;
+    /* Store reference */
+    trainer->visual_cortex = vc;
+
+    /* Get visual feature dimensions */
+    trainer->visual_feature_dim = visual_cortex_get_feature_dim(vc);
+    if (trainer->visual_feature_dim == 0) {
+        NIMCP_LOGGING_ERROR("Visual cortex has zero feature dimension");
+        trainer->visual_cortex = NULL;
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Enable cortex input mode */
+    trainer->input_from_cortex = true;
+
+    /* Enable training mode on cortex for gradient feedback */
+    visual_cortex_set_training_mode(vc, true);
+
+    NIMCP_LOGGING_INFO("Connected visual cortex (feature_dim=%u)",
+                       trainer->visual_feature_dim);
+
+    return NIMCP_SUCCESS;
 }
 
+/**
+ * @brief Connect audio cortex as feature extractor
+ *
+ * WHAT: Link audio cortex to CNN trainer for perception-based input
+ * WHY:  Enable transfer learning from audio cortex to CNN head
+ * HOW:  Store reference, query feature dimensions, enable cortex input mode
+ *
+ * BIOLOGY: A1 provides mel/MFCC feature extraction (spectral, temporal)
+ * that serve as preprocessed input for higher auditory processing.
+ *
+ * @param trainer CNN trainer instance
+ * @param audio_cortex Audio cortex instance (cast from audio_cortex_t*)
+ * @return NIMCP_SUCCESS or error code
+ */
 nimcp_error_t cnn_connect_audio_cortex(cnn_trainer_t* trainer,
                                         void* audio_cortex) {
+    /* Guard: Null pointer check */
     if (!trainer || !audio_cortex) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    /* TODO: Integrate with audio cortex module */
+    /* Cast to proper type */
+    audio_cortex_t* ac = (audio_cortex_t*)audio_cortex;
 
-    NIMCP_LOGGING_WARN("cnn_connect_audio_cortex: Not yet implemented");
-    return NIMCP_ERROR_NOT_IMPLEMENTED;
+    /* Store reference */
+    trainer->audio_cortex = ac;
+
+    /* Get audio feature dimensions */
+    trainer->audio_feature_dim = audio_cortex_get_feature_dim(ac);
+    if (trainer->audio_feature_dim == 0) {
+        NIMCP_LOGGING_ERROR("Audio cortex has zero feature dimension");
+        trainer->audio_cortex = NULL;
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Enable cortex input mode */
+    trainer->input_from_cortex = true;
+
+    /* Enable training mode on cortex for gradient feedback */
+    audio_cortex_set_training_mode(ac, true);
+
+    NIMCP_LOGGING_INFO("Connected audio cortex (feature_dim=%u)",
+                       trainer->audio_feature_dim);
+
+    return NIMCP_SUCCESS;
 }
 
 nimcp_error_t cnn_connect_bio_async(cnn_trainer_t* trainer) {
