@@ -26,6 +26,7 @@
 #define NIMCP_SEMANTIC_COMPRESSION_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "async/nimcp_semantic_compression.h"
 #include "async/nimcp_bio_async.h"
@@ -178,6 +179,8 @@ typedef struct {
  * @brief Semantic compression FEP bridge
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* Configuration */
     semantic_compression_fep_config_t config;
 
@@ -195,13 +198,7 @@ typedef struct {
     /* Statistics */
     semantic_compression_fep_stats_t stats;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;
-} semantic_compression_fep_bridge_t;
+    } semantic_compression_fep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

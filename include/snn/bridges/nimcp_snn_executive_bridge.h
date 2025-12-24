@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "cognitive/nimcp_executive.h"
 
@@ -59,6 +60,8 @@ typedef struct snn_executive_state_s {
 } snn_executive_state_t;
 
 typedef struct snn_executive_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     executive_controller_t* executive;
     snn_executive_config_t config;

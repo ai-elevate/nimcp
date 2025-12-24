@@ -81,6 +81,7 @@
 #define NIMCP_HEMISPHERIC_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
 #include "async/nimcp_bio_async.h"
@@ -197,6 +198,8 @@ typedef struct {
  * @brief Hemispheric FEP bridge structure
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     // Connected systems
     hemispheric_brain_t* brain;       /**< Hemispheric brain */
     fep_orchestrator_t* fep_system;   /**< FEP orchestrator (optional) */
@@ -214,12 +217,7 @@ typedef struct {
     hemispheric_fep_stats_t stats;
 
     // Bio-async
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     // Thread safety
-    nimcp_mutex_t* mutex;
-
     // State
     bool initialized;
 } hemispheric_fep_bridge_t;

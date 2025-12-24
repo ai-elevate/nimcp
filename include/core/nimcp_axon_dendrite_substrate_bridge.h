@@ -164,6 +164,7 @@
 #define NIMCP_AXON_DENDRITE_SUBSTRATE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -348,6 +349,8 @@ typedef struct {
  * @brief Complete axon-dendrite substrate bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     neural_substrate_t* substrate;
     axon_t* axon;                     /**< Optional: single axon integration */
@@ -366,16 +369,10 @@ typedef struct {
     float accumulated_atp_debt;
     float accumulated_ion_imbalance;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     /* Statistics */
     axon_dendrite_substrate_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-} axon_dendrite_substrate_bridge_t;
+    } axon_dendrite_substrate_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

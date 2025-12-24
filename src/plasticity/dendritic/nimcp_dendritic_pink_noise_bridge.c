@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/dendritic/nimcp_dendritic_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -137,13 +138,13 @@ dendritic_pink_noise_bridge_t* dendritic_pink_noise_bridge_create(
     bridge->noise_effects.effective_alpha = bridge->config.pink_noise_alpha;
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("Failed to allocate mutex, continuing without thread safety");
-    } else if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+    } else if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_WARN("Failed to initialize mutex, continuing without thread safety");
-        nimcp_free(bridge->mutex);
-        bridge->mutex = NULL;
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     NIMCP_LOGGING_INFO("Created dendritic-pink noise bridge");
@@ -155,7 +156,7 @@ void dendritic_pink_noise_bridge_destroy(dendritic_pink_noise_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         dendritic_pink_noise_disconnect_bio_async(bridge);
     }
 
@@ -165,9 +166,9 @@ void dendritic_pink_noise_bridge_destroy(dendritic_pink_noise_bridge_t* bridge) 
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -188,12 +189,12 @@ int dendritic_pink_noise_update_modulation(dendritic_pink_noise_bridge_t* bridge
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get dendritic tree statistics */
     dendritic_tree_stats_t stats;
     if (!dendritic_tree_get_stats(bridge->dendritic_tree, &stats)) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -246,7 +247,7 @@ int dendritic_pink_noise_update_modulation(dendritic_pink_noise_bridge_t* bridge
         bridge->dendritic_modulation.combined_noise_scale;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -292,12 +293,12 @@ int dendritic_pink_noise_apply_voltage_noise(
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Generate pink noise sample */
     float noise_sample = 0.0f;
     if (!pink_noise_generate_sample(bridge->noise_generator, &noise_sample)) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -316,7 +317,7 @@ int dendritic_pink_noise_apply_voltage_noise(
     bridge->voltage_noise_applications++;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -339,12 +340,12 @@ int dendritic_pink_noise_apply_nmda_noise(
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Generate pink noise sample */
     float noise_sample = 0.0f;
     if (!pink_noise_generate_sample(bridge->noise_generator, &noise_sample)) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -365,7 +366,7 @@ int dendritic_pink_noise_apply_nmda_noise(
     bridge->nmda_noise_applications++;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -388,12 +389,12 @@ int dendritic_pink_noise_apply_synapse_noise(
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Generate pink noise sample */
     float noise_sample = 0.0f;
     if (!pink_noise_generate_sample(bridge->noise_generator, &noise_sample)) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -414,7 +415,7 @@ int dendritic_pink_noise_apply_synapse_noise(
     bridge->synapse_noise_applications++;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -437,12 +438,12 @@ int dendritic_pink_noise_apply_calcium_noise(
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Generate pink noise sample */
     float noise_sample = 0.0f;
     if (!pink_noise_generate_sample(bridge->noise_generator, &noise_sample)) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -463,7 +464,7 @@ int dendritic_pink_noise_apply_calcium_noise(
     bridge->calcium_noise_applications++;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -516,13 +517,13 @@ int dendritic_pink_noise_get_modulation(
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy modulation state */
     *modulation = bridge->dendritic_modulation;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -538,13 +539,13 @@ int dendritic_pink_noise_get_effects(
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy effects state */
     *effects = bridge->noise_effects;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -581,7 +582,7 @@ int dendritic_pink_noise_set_enables(
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update configuration */
     bridge->config.enable_voltage_noise = enable_voltage;
@@ -590,7 +591,7 @@ int dendritic_pink_noise_set_enables(
     bridge->config.enable_calcium_noise = enable_calcium;
 
     /* Unlock */
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Updated noise channel enables");
     return 0;
@@ -608,7 +609,7 @@ int dendritic_pink_noise_connect_bio_async(dendritic_pink_noise_bridge_t* bridge
     }
 
     /* Guard: Already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_INFO("Already connected to bio-async");
         return 0;
     }
@@ -621,9 +622,9 @@ int dendritic_pink_noise_connect_bio_async(dendritic_pink_noise_bridge_t* bridge
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected dendritic-pink noise bridge to bio-async router");
         return 0;
     }
@@ -640,17 +641,17 @@ int dendritic_pink_noise_disconnect_bio_async(dendritic_pink_noise_bridge_t* bri
     }
 
     /* Guard: Not connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected dendritic-pink noise bridge from bio-async router");
     return 0;
 }
@@ -661,5 +662,5 @@ bool dendritic_pink_noise_is_bio_async_connected(
     /* Guard: Validate input */
     if (!bridge) return false;
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

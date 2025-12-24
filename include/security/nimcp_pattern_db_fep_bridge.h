@@ -61,6 +61,7 @@
 #define NIMCP_PATTERN_DB_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 
 #include "security/nimcp_pattern_db.h"
@@ -118,17 +119,15 @@ typedef struct {
 } pattern_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     pattern_fep_config_t config;
     fep_system_t* fep_system;
     nimcp_pattern_db_t pattern_db;
     pattern_fep_effects_t fep_effects;
     fep_pattern_effects_t pattern_effects;
     pattern_fep_state_t state;
-    pattern_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} pattern_fep_bridge_t;
+    pattern_fep_stats_t stats;} pattern_fep_bridge_t;
 
 /* ============================================================================
  * API

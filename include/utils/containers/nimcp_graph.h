@@ -15,6 +15,7 @@
 #define NIMCP_GRAPH_H
 
 #include "utils/validation/nimcp_common.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 
 /* Constants */

@@ -122,6 +122,7 @@
 #define NIMCP_WELLBEING_SLEEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -190,10 +191,10 @@ typedef struct {
  * enhanced_wellbeing_system_t. We define the struct here.
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     sleep_wellbeing_bridge_config_t config;  /**< Configuration */
-    sleep_system_t sleep_system;             /**< Connected sleep system */
-    nimcp_mutex_t* mutex;                    /**< Thread safety */
-} sleep_wellbeing_bridge_t;
+    sleep_system_t sleep_system;             /**< Connected sleep system */} sleep_wellbeing_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

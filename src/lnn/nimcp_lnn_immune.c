@@ -6,6 +6,7 @@
  */
 
 #include "lnn/nimcp_lnn_immune.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_common.h"
 #include <string.h>
@@ -281,9 +282,9 @@ lnn_immune_bridge_t* lnn_immune_bridge_create(
     bridge->stats.current_lr_factor = 1.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (bridge->mutex) {
-        nimcp_mutex_init(bridge->mutex, NULL);
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (bridge->base.mutex) {
+        nimcp_mutex_init(bridge->base.mutex, NULL);
     } else {
         NIMCP_LOGGING_WARN("Failed to create mutex for LNN immune bridge");
     }
@@ -300,9 +301,9 @@ void lnn_immune_bridge_destroy(lnn_immune_bridge_t* bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -329,14 +330,14 @@ int lnn_immune_connect_brain_immune(
     }
 
     /* Thread-safe update */
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->brain_immune = brain_immune;
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     NIMCP_LOGGING_INFO("Connected LNN immune bridge to brain immune system");
@@ -358,14 +359,14 @@ int lnn_immune_connect_training_immune(
     }
 
     /* Thread-safe update */
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->training_immune = training_immune;
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     NIMCP_LOGGING_INFO("Connected LNN immune bridge to training immune system");
@@ -444,8 +445,8 @@ int lnn_immune_report_instability(
     }
 
     /* Thread-safe update */
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Update statistics */
@@ -466,8 +467,8 @@ int lnn_immune_report_instability(
     /* Get severity for this type */
     uint32_t severity = bridge->config.instability_severity[type];
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     /* Present to brain immune if connected */
@@ -487,12 +488,12 @@ int lnn_immune_report_instability(
             NIMCP_LOGGING_INFO("Reported LNN instability as antigen %u (type=%s, severity=%u)",
                                antigen_id, lnn_instability_type_to_string(type), severity);
 
-            if (bridge->mutex) {
-                nimcp_mutex_lock(bridge->mutex);
+            if (bridge->base.mutex) {
+                nimcp_mutex_lock(bridge->base.mutex);
             }
             bridge->stats.antigens_presented++;
-            if (bridge->mutex) {
-                nimcp_mutex_unlock(bridge->mutex);
+            if (bridge->base.mutex) {
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
         } else {
             NIMCP_LOGGING_ERROR("Failed to present instability as antigen");
@@ -538,8 +539,8 @@ int lnn_immune_update_effects(lnn_immune_bridge_t* bridge)
     float lr_factor = inflammation_to_lr_factor(inflammation, &bridge->config);
 
     /* Thread-safe update */
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->cytokine_effects.inflammation = inflammation;
@@ -556,8 +557,8 @@ int lnn_immune_update_effects(lnn_immune_bridge_t* bridge)
     bridge->stats.current_tau_scale = tau_scale;
     bridge->stats.current_lr_factor = lr_factor;
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return NIMCP_SUCCESS;
@@ -600,12 +601,12 @@ int lnn_immune_apply_effects(lnn_immune_bridge_t* bridge)
             }
         }
 
-        if (bridge->mutex) {
-            nimcp_mutex_lock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_mutex_lock(bridge->base.mutex);
         }
         bridge->stats.tau_modulations++;
-        if (bridge->mutex) {
-            nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 
@@ -615,12 +616,12 @@ int lnn_immune_apply_effects(lnn_immune_bridge_t* bridge)
         /* This requires optimizer handle, which we don't have here */
         /* Mark that modulation is needed */
 
-        if (bridge->mutex) {
-            nimcp_mutex_lock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_mutex_lock(bridge->base.mutex);
         }
         bridge->stats.lr_modulations++;
-        if (bridge->mutex) {
-            nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 
@@ -636,12 +637,12 @@ int lnn_immune_apply_effects(lnn_immune_bridge_t* bridge)
             }
         }
 
-        if (bridge->mutex) {
-            nimcp_mutex_lock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_mutex_lock(bridge->base.mutex);
         }
         bridge->stats.state_dampings++;
-        if (bridge->mutex) {
-            nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 
@@ -663,14 +664,14 @@ int lnn_immune_get_effects(
     }
 
     /* Thread-safe copy */
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     memcpy(effects, &bridge->cytokine_effects, sizeof(lnn_cytokine_effects_t));
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return NIMCP_SUCCESS;
@@ -695,14 +696,14 @@ int lnn_immune_get_stats(
     }
 
     /* Thread-safe copy */
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     memcpy(stats, &bridge->stats, sizeof(lnn_immune_stats_t));
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return NIMCP_SUCCESS;

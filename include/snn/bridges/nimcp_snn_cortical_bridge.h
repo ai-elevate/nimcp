@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "core/brain_regions/nimcp_brain_regions.h"
@@ -119,6 +120,8 @@ typedef struct minicolumn_spike_pattern_s {
  * HOW:  Store references and spike patterns
  */
 typedef struct snn_cortical_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;                 /**< SNN network */
     cortical_column_pool_t* pool;           /**< Cortical column pool */
     hypercolumn_t* hypercolumn;             /**< Hypercolumn being bridged */

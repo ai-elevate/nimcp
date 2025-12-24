@@ -6,6 +6,7 @@
  */
 
 #include "middleware/features/nimcp_feature_extractor_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -60,8 +61,8 @@ feature_extractor_fep_bridge_t* feature_extractor_fep_bridge_create(
     bridge->effects.enabled_feature_count = FEP_PRECISION_MED_FEATURE_COUNT;
     bridge->effects.extract_rate_features = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         feature_extractor_fep_bridge_destroy(bridge);
         return NULL;
     }
@@ -75,13 +76,13 @@ void feature_extractor_fep_bridge_destroy(
 ) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         feature_extractor_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -94,9 +95,9 @@ int feature_extractor_fep_bridge_connect_extractor(
 ) {
     if (!bridge || !extractor) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->feature_extractor = extractor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Feature extractor connected to FEP bridge");
     return 0;
@@ -108,9 +109,9 @@ int feature_extractor_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("FEP system connected to feature bridge");
     return 0;
@@ -121,10 +122,10 @@ int feature_extractor_fep_bridge_disconnect(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->feature_extractor = NULL;
     bridge->fep_system = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Feature-FEP bridge disconnected");
     return 0;
@@ -137,7 +138,7 @@ int feature_extractor_fep_select_hierarchical_features(
     if (!bridge) return -1;
     if (!bridge->config.enable_hierarchical_selection) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->state.fep_hierarchy_level = hierarchy_level;
     bridge->effects.active_hierarchy_level = hierarchy_level;
@@ -148,7 +149,7 @@ int feature_extractor_fep_select_hierarchical_features(
 
     bridge->stats.hierarchical_adjustments++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Hierarchical features selected: level %u", hierarchy_level);
     return 0;
@@ -161,7 +162,7 @@ int feature_extractor_fep_gate_by_precision(
     if (!bridge) return -1;
     if (!bridge->config.enable_precision_gating) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->state.fep_precision = precision;
 
@@ -178,7 +179,7 @@ int feature_extractor_fep_gate_by_precision(
         (bridge->stats.avg_precision * (bridge->stats.precision_updates - 1) +
          precision) / bridge->stats.precision_updates;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Precision gating: %.3f → %u features",
                         precision, bridge->effects.enabled_feature_count);
@@ -192,9 +193,9 @@ int feature_extractor_fep_set_expected_features(
     if (!bridge) return -1;
     if (!bridge->config.enable_prediction_gating) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->effects.expected_rate = expected_rate;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Expected rate set: %.3f Hz", expected_rate);
     return 0;
@@ -206,10 +207,10 @@ int feature_extractor_fep_report_features(
 ) {
     if (!bridge || !features) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.current_features = *features;
     bridge->stats.feature_extractions++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Features reported to FEP");
     return 0;
@@ -222,7 +223,7 @@ int feature_extractor_fep_update_uncertainty_from_entropy(
     if (!bridge) return -1;
     if (!bridge->config.enable_entropy_feedback) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->state.feature_entropy = entropy;
 
@@ -240,7 +241,7 @@ int feature_extractor_fep_update_uncertainty_from_entropy(
         (bridge->stats.avg_entropy * bridge->stats.feature_extractions + entropy) /
         (bridge->stats.feature_extractions + 1);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Entropy → uncertainty: %.3f → %.3f", entropy, uncertainty);
     return 0;
@@ -255,7 +256,7 @@ int feature_extractor_fep_infer_state_from_oscillations(
     if (!bridge) return -1;
     if (!bridge->config.enable_oscillation_state) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     float inferred_precision;
     if (gamma_power > GAMMA_HIGH_PRECISION_THRESHOLD) {
@@ -277,7 +278,7 @@ int feature_extractor_fep_infer_state_from_oscillations(
         (bridge->stats.avg_alpha_power * (bridge->stats.oscillation_state_updates - 1) +
          alpha_power) / bridge->stats.oscillation_state_updates;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Oscillations → precision: γ=%.3f,β=%.3f,α=%.3f → %.3f",
                         gamma_power, beta_power, alpha_power, inferred_precision);
@@ -298,9 +299,9 @@ int feature_extractor_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
 
     return 0;
 }
@@ -311,9 +312,9 @@ int feature_extractor_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
 
     return 0;
 }
@@ -322,7 +323,7 @@ int feature_extractor_fep_bridge_connect_bio_async(
     feature_extractor_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_FEATURE_EXTRACTOR_BRIDGE,
@@ -331,9 +332,9 @@ int feature_extractor_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -346,11 +347,11 @@ int feature_extractor_fep_bridge_disconnect_bio_async(
     feature_extractor_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -360,5 +361,5 @@ bool feature_extractor_fep_bridge_is_bio_async_connected(
     const feature_extractor_fep_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

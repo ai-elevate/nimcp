@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "async/nimcp_bio_async.h"
 
@@ -54,6 +55,8 @@ typedef struct snn_introspection_state_s {
 } snn_introspection_state_t;
 
 typedef struct snn_introspection_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     introspection_context_t introspection;
     snn_introspection_config_t config;

@@ -6,16 +6,18 @@
  */
 
 #include "cognitive/mental_health/nimcp_mental_health_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct mental_health_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     mental_health_sleep_config_t config;
     sleep_system_t sleep_system;
     mental_health_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -44,7 +46,7 @@ static void mental_health_on_sleep_state_change(sleep_state_t new_state, void* u
 
     NIMCP_LOGGING_DEBUG("Mental health bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -74,7 +76,7 @@ static void mental_health_on_sleep_state_change(sleep_state_t new_state, void* u
     bridge->effects.restoration_active = (new_state == SLEEP_STATE_DEEP_NREM ||
                                           new_state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mental health modulated: stability=%.2f, risk=%.2f, restoration=%d",
                         bridge->effects.psychiatric_stability_factor,
@@ -112,8 +114,8 @@ mental_health_sleep_bridge_t mental_health_sleep_bridge_create(
     bridge->effects.reality_testing_factor = 1.0f;
     bridge->effects.restoration_active = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -150,14 +152,14 @@ void mental_health_sleep_bridge_destroy(mental_health_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int mental_health_sleep_update(mental_health_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -200,31 +202,31 @@ int mental_health_sleep_update(mental_health_sleep_bridge_t bridge) {
     bridge->effects.restoration_active = (state == SLEEP_STATE_DEEP_NREM ||
                                           state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int mental_health_sleep_get_effects(const mental_health_sleep_bridge_t bridge, mental_health_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float mental_health_sleep_get_stability(const mental_health_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.psychiatric_stability_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 bool mental_health_sleep_is_restoration_active(const mental_health_sleep_bridge_t bridge) {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.restoration_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

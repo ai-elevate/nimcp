@@ -11,6 +11,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_training_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_types.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -109,7 +110,7 @@ void snn_training_bridge_destroy(snn_training_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_training_bridge_disconnect_bio_async(bridge);
     }
 
@@ -119,8 +120,8 @@ void snn_training_bridge_destroy(snn_training_bridge_t* bridge) {
     }
 
     /* Free mutex if allocated */
-    if (bridge->mutex) {
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -197,10 +198,10 @@ int snn_training_bridge_connect_sleep(
 
 int snn_training_bridge_connect_bio_async(snn_training_bridge_t* bridge) {
     if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     /* Bio-async router not available in test environment */
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Bio-async not available for training bridge");
     return 0;
 }
@@ -208,14 +209,14 @@ int snn_training_bridge_connect_bio_async(snn_training_bridge_t* bridge) {
 int snn_training_bridge_disconnect_bio_async(snn_training_bridge_t* bridge) {
     if (!bridge) return SNN_ERROR_NULL_POINTER;
 
-    bridge->bio_async_enabled = false;
-    memset(&bridge->bio_ctx, 0, sizeof(bio_module_context_t));
+    bridge->base.bio_async_enabled = false;
+    memset(&bridge->base.bio_ctx, 0, sizeof(bio_module_context_t));
     return 0;
 }
 
 bool snn_training_bridge_is_bio_async_connected(const snn_training_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================

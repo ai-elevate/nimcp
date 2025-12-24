@@ -6,6 +6,7 @@
  */
 
 #include "middleware/routing/nimcp_thalamic_router_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -50,8 +51,8 @@ thalamic_router_fep_bridge_t* thalamic_router_fep_bridge_create(
     bridge->effects.pe_priority_level = PRIORITY_NORMAL;
     bridge->state.current_precision = 0.5f;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         thalamic_router_fep_bridge_destroy(bridge);
         return NULL;
     }
@@ -63,13 +64,13 @@ thalamic_router_fep_bridge_t* thalamic_router_fep_bridge_create(
 void thalamic_router_fep_bridge_destroy(thalamic_router_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         thalamic_router_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -81,9 +82,9 @@ int thalamic_router_fep_bridge_connect_router(
     thalamic_router_t* router
 ) {
     if (!bridge || !router) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->thalamic_router = router;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Thalamic router connected to FEP bridge");
     return 0;
 }
@@ -93,19 +94,19 @@ int thalamic_router_fep_bridge_connect_fep(
     fep_system_t* fep
 ) {
     if (!bridge || !fep) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("FEP system connected to thalamic bridge");
     return 0;
 }
 
 int thalamic_router_fep_bridge_disconnect(thalamic_router_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->thalamic_router = NULL;
     bridge->fep_system = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Thalamic-FEP bridge disconnected");
     return 0;
 }
@@ -117,7 +118,7 @@ int thalamic_router_fep_apply_precision_gain(
     if (!bridge) return -1;
     if (!bridge->config.enable_precision_gain) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     float gain = (precision > 0.7f) ? FEP_PRECISION_HIGH_GAIN :
                  (precision > 0.3f) ? 1.0f : FEP_PRECISION_LOW_GAIN;
@@ -130,7 +131,7 @@ int thalamic_router_fep_apply_precision_gain(
         (bridge->stats.avg_routing_gain * (bridge->stats.precision_adjustments - 1) +
          gain) / bridge->stats.precision_adjustments;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Precision gain applied: %.3f → %.3f", precision, gain);
     return 0;
@@ -143,9 +144,9 @@ int thalamic_router_fep_route_prediction(
     if (!bridge) return -1;
     if (!bridge->config.enable_prediction_routing) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->effects.prediction_routing_weight = prediction;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Prediction routing: %.3f", prediction);
     return 0;
@@ -158,7 +159,7 @@ int thalamic_router_fep_boost_pe_priority(
     if (!bridge) return -1;
     if (!bridge->config.enable_pe_priority_boost) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     signal_priority_t priority = (prediction_error > FEP_PE_HIGH_PRIORITY_THRESHOLD) ?
                                  PRIORITY_HIGH : PRIORITY_NORMAL;
@@ -174,7 +175,7 @@ int thalamic_router_fep_boost_pe_priority(
         (bridge->stats.avg_pe * bridge->stats.precision_adjustments + prediction_error) /
         (bridge->stats.precision_adjustments + 1);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("PE priority boost: %.3f → %d", prediction_error, priority);
     return 0;
@@ -186,9 +187,9 @@ int thalamic_router_fep_report_routed_signal(
 ) {
     if (!bridge || !signal) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.signals_routed++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Signal routed to FEP");
     return 0;
@@ -201,9 +202,9 @@ int thalamic_router_fep_update_confidence_from_routing(
     if (!bridge) return -1;
     if (!bridge->config.enable_synchrony_confidence) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.routing_synchrony = synchrony;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Routing synchrony: %.3f", synchrony);
     return 0;
@@ -222,9 +223,9 @@ int thalamic_router_fep_bridge_get_state(
     thalamic_router_fep_state_t* state
 ) {
     if (!bridge || !state) return -1;
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
     return 0;
 }
 
@@ -233,9 +234,9 @@ int thalamic_router_fep_bridge_get_stats(
     thalamic_router_fep_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
     return 0;
 }
 
@@ -243,7 +244,7 @@ int thalamic_router_fep_bridge_connect_bio_async(
     thalamic_router_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_THALAMIC_ROUTER_BRIDGE,
@@ -252,9 +253,9 @@ int thalamic_router_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -267,11 +268,11 @@ int thalamic_router_fep_bridge_disconnect_bio_async(
     thalamic_router_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -281,5 +282,5 @@ bool thalamic_router_fep_bridge_is_bio_async_connected(
     const thalamic_router_fep_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

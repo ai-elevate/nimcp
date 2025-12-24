@@ -55,6 +55,7 @@
 #define NIMCP_VESICLE_PACKAGING_PINK_NOISE_BRIDGE_H
 
 #include "plasticity/neuromodulators/nimcp_vesicle_packaging.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/memory/nimcp_memory.h"

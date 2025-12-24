@@ -61,6 +61,7 @@
 #define NIMCP_BCM_QUANTUM_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -317,6 +318,8 @@ typedef struct {
  * WHY:  Encapsulate quantum annealer and tracking
  */
 struct bcm_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     bcm_quantum_config_t config;
     quantum_annealer_t annealer;
     bcm_quantum_stats_t stats;

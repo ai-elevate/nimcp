@@ -10,6 +10,7 @@
  */
 
 #include "core/neural_substrate/nimcp_substrate_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -142,15 +143,15 @@ substrate_immune_bridge_t* substrate_immune_bridge_create(
     bridge->immune_system = immune_system;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         substrate_immune_bridge_destroy(bridge);
         return NULL;
     }
 
     /* Try bio-async connection */
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     if (config->enable_bio_async) {
         substrate_immune_connect_bio_async(bridge);
     }
@@ -162,13 +163,13 @@ substrate_immune_bridge_t* substrate_immune_bridge_create(
 void substrate_immune_bridge_destroy(substrate_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         substrate_immune_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -181,7 +182,7 @@ void substrate_immune_bridge_destroy(substrate_immune_bridge_t* bridge) {
 
 int substrate_immune_connect_bio_async(substrate_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SUBSTRATE,
@@ -190,9 +191,9 @@ int substrate_immune_connect_bio_async(substrate_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -203,20 +204,20 @@ int substrate_immune_connect_bio_async(substrate_immune_bridge_t* bridge) {
 
 int substrate_immune_disconnect_bio_async(substrate_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     return 0;
 }
 
 bool substrate_immune_is_bio_async_connected(const substrate_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -227,7 +228,7 @@ int substrate_immune_apply_fever(substrate_immune_bridge_t* bridge) {
     if (!bridge || !bridge->config.enable_fever_response) return -1;
     if (!bridge->immune_system) return 0;  /* No immune = no fever */
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get cytokine levels */
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -272,7 +273,7 @@ int substrate_immune_apply_fever(substrate_immune_bridge_t* bridge) {
         bridge->stats.max_temperature = new_temp;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -280,7 +281,7 @@ int substrate_immune_apply_metabolic_effects(substrate_immune_bridge_t* bridge) 
     if (!bridge || !bridge->config.enable_metabolic_effects) return -1;
     if (!bridge->immune_system) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get cytokine levels */
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -330,7 +331,7 @@ int substrate_immune_apply_metabolic_effects(substrate_immune_bridge_t* bridge) 
         substrate_set_oxygen(bridge->substrate, new_o2);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -338,7 +339,7 @@ int substrate_immune_apply_damage(substrate_immune_bridge_t* bridge) {
     if (!bridge || !bridge->config.enable_damage_effects) return -1;
     if (!bridge->immune_system) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     float tnf = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_TNF);
     float sens = bridge->config.damage_sensitivity;
@@ -389,7 +390,7 @@ int substrate_immune_apply_damage(substrate_immune_bridge_t* bridge) {
         substrate_set_ion_balance(bridge->substrate, new_ion);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -399,7 +400,7 @@ int substrate_immune_apply_il10_recovery(
 ) {
     if (!bridge || !bridge->config.enable_il10_recovery) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     float recovery = clamp_f(il10_concentration, 0.0f, 1.0f);
 
@@ -430,7 +431,7 @@ int substrate_immune_apply_il10_recovery(
         bridge->stats.il10_recoveries++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -441,7 +442,7 @@ int substrate_immune_apply_il10_recovery(
 bool substrate_immune_check_stress(substrate_immune_bridge_t* bridge) {
     if (!bridge || !bridge->config.enable_substrate_immune_trigger) return false;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get alerts from substrate */
     substrate_alert_type_t alerts[8];
@@ -485,20 +486,20 @@ bool substrate_immune_check_stress(substrate_immune_bridge_t* bridge) {
                           bridge->config.alert_persistence_threshold) &&
                          !bridge->trigger_state.immune_triggered;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return should_trigger;
 }
 
 int substrate_immune_trigger_response(substrate_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Create DAMP epitope */
     uint8_t epitope[32];
     size_t epitope_len = create_damp_epitope(bridge->substrate, epitope, sizeof(epitope));
     if (epitope_len == 0) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -523,7 +524,7 @@ int substrate_immune_trigger_response(substrate_immune_bridge_t* bridge) {
                           bridge->trigger_state.computed_severity);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

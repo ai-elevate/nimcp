@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_emotion_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -160,12 +161,12 @@ emotion_immune_bridge_t* emotion_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("emotion_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -175,9 +176,9 @@ void emotion_immune_bridge_destroy(emotion_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -195,7 +196,7 @@ int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_emotion_modulation) return 0;
     if (!bridge->immune_system || !bridge->emotion_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_emotion_effects_t* effects = &bridge->cytokine_effects;
@@ -247,7 +248,7 @@ int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
     }
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -257,7 +258,7 @@ int emotion_immune_apply_inflammation_effects(emotion_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_anhedonia) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_emotion_state_t* state = &bridge->inflammation_state;
 
@@ -285,7 +286,7 @@ int emotion_immune_apply_inflammation_effects(emotion_immune_bridge_t* bridge) {
     state->fatigue_severity = clamp_f(inflammation_intensity * 0.9f, 0.0f, 1.0f);
     state->motivation_impairment = clamp_f(inflammation_intensity * 0.6f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -311,14 +312,14 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
     if (!bridge->enable_emotion_immune_trigger) return 0;
     if (!bridge->emotion_system || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     emotion_immune_trigger_t* trigger = &bridge->emotion_trigger;
 
     /* Get current emotional state */
     emotion_state_t emotion;
     if (!emotion_system_get_state(bridge->emotion_system, &emotion)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -346,7 +347,7 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
         trigger->inflammatory_rebound = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -356,11 +357,11 @@ int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
     if (!bridge->enable_grief_inflammation_coupling) return 0;
     if (!bridge->grief_system || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check if currently grieving */
     if (!grief_is_grieving(bridge->grief_system)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
@@ -377,7 +378,7 @@ int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
     bridge->inflammation_state.grief_amplification = amplification;
     bridge->inflammation_state.grief_prolongation = grief_pain * 0.5f;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -387,7 +388,7 @@ int emotion_immune_boost_from_positive_affect(emotion_immune_bridge_t* bridge) {
     if (!bridge->enable_positive_immune_boost) return 0;
     if (!bridge->joy_system || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     positive_emotion_immune_boost_t* boost = &bridge->positive_boost;
 
@@ -426,7 +427,7 @@ int emotion_immune_boost_from_positive_affect(emotion_immune_bridge_t* bridge) {
         bridge->positive_boosts++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -465,9 +466,9 @@ int emotion_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_emotion_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -478,9 +479,9 @@ int emotion_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_emotion_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -512,7 +513,7 @@ float emotion_immune_get_anhedonia_severity(const emotion_immune_bridge_t* bridg
  */
 int emotion_immune_connect_bio_async(emotion_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_EMOTION,
@@ -521,9 +522,9 @@ int emotion_immune_connect_bio_async(emotion_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Emotion-immune bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -541,13 +542,13 @@ int emotion_immune_connect_bio_async(emotion_immune_bridge_t* bridge) {
  */
 int emotion_immune_disconnect_bio_async(emotion_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("Emotion-immune bridge disconnected from bio-async router");
     return 0;
@@ -558,5 +559,5 @@ int emotion_immune_disconnect_bio_async(emotion_immune_bridge_t* bridge) {
  */
 bool emotion_immune_is_bio_async_connected(const emotion_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

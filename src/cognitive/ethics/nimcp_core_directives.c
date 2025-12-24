@@ -18,6 +18,7 @@
  */
 
 #include "cognitive/ethics/nimcp_core_directives.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -61,9 +62,6 @@ struct core_directives_system {
     core_directives_stats_t stats;
 
     // Integration
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     brain_immune_system_t* immune_system;
     directive_immune_bridge_t* immune_bridge;
 
@@ -78,6 +76,8 @@ struct core_directives_system {
  * @brief Directive-immune bridge (placeholder)
  */
 struct directive_immune_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     core_directives_system_t* directives;
     brain_immune_system_t* immune_system;
     bool enabled;
@@ -87,6 +87,8 @@ struct directive_immune_bridge {
  * @brief Directive-FEP bridge (placeholder)
  */
 struct directive_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     core_directives_system_t* directives;
     fep_orchestrator_t* fep_orchestrator;
     bool enabled;

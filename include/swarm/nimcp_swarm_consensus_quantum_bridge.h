@@ -16,6 +16,7 @@
 #define NIMCP_SWARM_CONSENSUS_QUANTUM_BRIDGE_H
 
 #include "swarm/nimcp_quantum_consensus.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -104,6 +105,8 @@ void swarm_quantum_reset_stats(swarm_quantum_bridge_t* bridge);
 #include <string.h>
 
 struct swarm_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_quantum_config_t config;
     quantum_consensus_t qconsensus;  /* Direct handle */
     swarm_quantum_stats_t stats;

@@ -28,6 +28,7 @@
 #define LOG_MODULE "working_memory"
 
 #include "cognitive/nimcp_working_memory.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/nimcp_second_messengers.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"

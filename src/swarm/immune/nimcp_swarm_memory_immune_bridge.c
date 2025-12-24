@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_memory_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -21,13 +22,14 @@
 #include <string.h>
 
 struct swarm_memory_immune_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_memory_immune_config_t config;
     brain_immune_system_t* immune_system;
     void* swarm_memory;
     cytokine_memory_effects_t cytokine_effects;
     inflammation_memory_state_t inflammation_state;
     memory_immune_modulation_t modulation;
-    nimcp_mutex_t* mutex;
     void* bio_ctx;
     bool bio_async_connected;
 };
@@ -91,8 +93,8 @@ swarm_memory_immune_bridge_t* swarm_memory_immune_create(
     bridge->immune_system = immune_system;
     bridge->swarm_memory = swarm_memory;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm memory immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -120,8 +122,8 @@ void swarm_memory_immune_destroy(swarm_memory_immune_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -133,7 +135,7 @@ int swarm_memory_immune_apply_cytokine_effects(swarm_memory_immune_bridge_t* bri
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_cytokine_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sensitivity = bridge->config.cytokine_sensitivity;
 
@@ -148,7 +150,7 @@ int swarm_memory_immune_apply_cytokine_effects(swarm_memory_immune_bridge_t* bri
     bridge->cytokine_effects.replay_strength_reduction =
         -bridge->cytokine_effects.consolidation_deficit * 0.5f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine memory effects: deficit=%.2f",
                         bridge->cytokine_effects.consolidation_deficit);
@@ -160,11 +162,11 @@ int swarm_memory_immune_apply_inflammation_effects(swarm_memory_immune_bridge_t*
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_inflammation_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -174,7 +176,7 @@ int swarm_memory_immune_apply_inflammation_effects(swarm_memory_immune_bridge_t*
     bridge->inflammation_state.consolidation_efficiency =
         bridge->inflammation_state.capacity_factor;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation memory effects: level=%d, capacity=%.2f",
                         level, bridge->inflammation_state.capacity_factor);
@@ -186,7 +188,7 @@ int swarm_memory_immune_trigger_stress_from_load(swarm_memory_immune_bridge_t* b
     if (!bridge) return -1;
     if (!bridge->config.enable_load_stress) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->modulation.memory_load > 0.9f) {
         bridge->modulation.stress_triggered = true;
@@ -194,7 +196,7 @@ int swarm_memory_immune_trigger_stress_from_load(swarm_memory_immune_bridge_t* b
                           bridge->modulation.memory_load);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -203,7 +205,7 @@ int swarm_memory_immune_activate_cleanup(swarm_memory_immune_bridge_t* bridge, u
     if (!bridge) return -1;
     if (!bridge->config.enable_corruption_cleanup) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.corruptions += corruptions;
     if (bridge->modulation.corruptions > 5) {
@@ -212,7 +214,7 @@ int swarm_memory_immune_activate_cleanup(swarm_memory_immune_bridge_t* bridge, u
                           bridge->modulation.corruptions);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -231,9 +233,9 @@ float swarm_memory_immune_get_capacity_factor(const swarm_memory_immune_bridge_t
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->inflammation_state.capacity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -242,9 +244,9 @@ float swarm_memory_immune_get_consolidation_efficiency(const swarm_memory_immune
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float efficiency = bridge->inflammation_state.consolidation_efficiency;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return efficiency;
 }
@@ -253,10 +255,10 @@ float swarm_memory_immune_compute_forgetting_multiplier(const swarm_memory_immun
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float mult = bridge->inflammation_state.forgetting_multiplier *
                  bridge->cytokine_effects.forgetting_rate_multiplier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return mult;
 }
@@ -265,9 +267,9 @@ bool swarm_memory_immune_has_memory_impairment(const swarm_memory_immune_bridge_
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool impaired = (bridge->inflammation_state.current_level >= INFLAMMATION_REGIONAL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return impaired;
 }
@@ -291,8 +293,8 @@ int swarm_memory_immune_connect_bio_async(swarm_memory_immune_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_INFO("Swarm memory-immune bridge connected to bio-async router");
     } else {
@@ -313,9 +315,9 @@ int swarm_memory_immune_disconnect_bio_async(swarm_memory_immune_bridge_t* bridg
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/bcm/nimcp_bcm_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -37,8 +38,8 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
         bcm_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -51,36 +52,36 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
 
 void bcm_fep_bridge_destroy(bcm_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) bcm_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) bcm_fep_bridge_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("BCM-FEP bridge destroyed");
 }
 
 int bcm_fep_bridge_connect_fep(bcm_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int bcm_fep_bridge_connect_bcm(bcm_fep_bridge_t* bridge, bcm_synapse_t* bcm, uint32_t num) {
     if (!bridge || !bcm || num == 0) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->bcm_system = bcm;
     bridge->num_synapses = num;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int bcm_fep_bridge_disconnect(bcm_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->bcm_system = NULL;
     bridge->num_synapses = 0;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -113,9 +114,9 @@ float bcm_fep_get_effective_lr(const bcm_fep_bridge_t* bridge, float base_lr) {
 
 int bcm_fep_report_threshold_changes(bcm_fep_bridge_t* bridge, float threshold_delta) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.complexity_adjustments++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -130,15 +131,15 @@ float bcm_fep_compute_sparsity(const bcm_fep_bridge_t* bridge) {
 
 int bcm_fep_report_sparsity(bcm_fep_bridge_t* bridge, uint32_t active_count) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.sparsity_level = active_count;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->fep_system) {
         float complexity_scaling = bcm_fep_apply_complexity_regularization(bridge, bridge->effects.complexity_value);
@@ -158,7 +159,7 @@ int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
 
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -175,29 +176,29 @@ int bcm_fep_bridge_get_stats(const bcm_fep_bridge_t* bridge, bcm_fep_stats_t* st
 }
 
 int bcm_fep_bridge_connect_bio_async(bcm_fep_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_enabled) return 0;
+    if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_BCM_BRIDGE,
         .module_name = "bcm_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge
     };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
     return 0;
 }
 
 int bcm_fep_bridge_disconnect_bio_async(bcm_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return -1;
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool bcm_fep_bridge_is_bio_async_connected(const bcm_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

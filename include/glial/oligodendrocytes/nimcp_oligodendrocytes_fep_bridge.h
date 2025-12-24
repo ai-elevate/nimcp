@@ -34,6 +34,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
@@ -86,17 +87,15 @@ typedef struct {
 } oligodendrocytes_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     oligodendrocytes_fep_config_t config;
     fep_system_t* fep_system;
     oligodendrocyte_network_t* oligodendrocyte_network;
     fep_oligodendrocyte_effects_t fep_effects;
     oligodendrocyte_fep_effects_t oligo_effects;
     oligodendrocytes_fep_state_t state;
-    oligodendrocytes_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} oligodendrocytes_fep_bridge_t;
+    oligodendrocytes_fep_stats_t stats;} oligodendrocytes_fep_bridge_t;
 
 int oligodendrocytes_fep_default_config(oligodendrocytes_fep_config_t* config);
 oligodendrocytes_fep_bridge_t* oligodendrocytes_fep_create(

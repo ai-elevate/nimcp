@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/shadow_emotions/nimcp_shadow_emotions_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -35,90 +36,90 @@ shadow_emotions_fep_bridge_t* shadow_emotions_fep_bridge_create(const shadow_emo
     memset(bridge, 0, sizeof(shadow_emotions_fep_bridge_t));
     if (config) bridge->config = *config;
     else shadow_emotions_fep_bridge_default_config(&bridge->config);
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
 
 void shadow_emotions_fep_bridge_destroy(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) shadow_emotions_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) shadow_emotions_fep_bridge_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int shadow_emotions_fep_bridge_connect_fep(shadow_emotions_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_bridge_connect_shadow(shadow_emotions_fep_bridge_t* bridge, shadow_emotion_system_t* shadow) {
     if (!bridge || !shadow) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->shadow_system = shadow;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_bridge_disconnect(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->shadow_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_detect_dysregulation(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->shadow_effects.shadow_pattern_detected = true;
     bridge->stats.pattern_detections++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_trigger_intervention(shadow_emotions_fep_bridge_t* bridge, shadow_emotion_type_t emotion) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_precision_interventions) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.intervention_triggered = true;
     bridge->state.intervention_active = true;
     bridge->state.target_emotion = emotion;
     bridge->stats.intervention_events++;
     NIMCP_LOGGING_INFO("Shadow emotion intervention triggered");
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_recalibrate_precision(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_calibration) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.recalibration_active = true;
     bridge->stats.calibration_events++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_apply_shadow_diagnostic(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_diagnostic_mode) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->shadow_effects.fep_diagnostic_active = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_update_beliefs_from_correction(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_self_correction) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.successful_corrections++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -132,45 +133,45 @@ int shadow_emotions_fep_bridge_update(shadow_emotions_fep_bridge_t* bridge, uint
 
 int shadow_emotions_fep_bridge_get_state(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_state_t* state) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_bridge_get_stats(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_emotions_fep_bridge_connect_bio_async(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SHADOW_BRIDGE,
         .module_name = "shadow_emotions_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge
     };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
     return 0;
 }
 
 int shadow_emotions_fep_bridge_disconnect_bio_async(shadow_emotions_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool shadow_emotions_fep_bridge_is_bio_async_connected(const shadow_emotions_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

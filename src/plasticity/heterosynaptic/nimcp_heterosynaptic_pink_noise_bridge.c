@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/heterosynaptic/nimcp_heterosynaptic_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -175,7 +176,7 @@ hetero_pink_noise_bridge_t* hetero_pink_noise_bridge_create(
     bridge->adaptive_amplitude = bridge->config.pink_config.amplitude;
 
     /* Initialize mutex */
-    nimcp_platform_mutex_init(&bridge->mutex, false);
+    nimcp_platform_mutex_init(bridge->base.mutex, false);
 
     /* Not enabled by default */
     bridge->enabled = false;
@@ -198,7 +199,7 @@ void hetero_pink_noise_bridge_destroy(hetero_pink_noise_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    nimcp_platform_mutex_destroy(&bridge->mutex);
+    nimcp_platform_mutex_destroy(bridge->base.mutex);
 
     /* Free bridge */
     nimcp_free(bridge);
@@ -220,7 +221,7 @@ int hetero_pink_noise_connect_hetero(
 {
     if (!bridge || !hetero_system) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->hetero_system = hetero_system;
 
     /* Extract base parameters from heterosynaptic config */
@@ -229,7 +230,7 @@ int hetero_pink_noise_connect_hetero(
     bridge->noise_state.base_wta_threshold = hetero_system->config.wta_threshold;
     bridge->noise_state.base_delay = hetero_system->config.delay_ms;
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -244,7 +245,7 @@ int hetero_pink_noise_connect_generator(
 {
     if (!bridge || !pink_generator) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Destroy old generator if we owned it */
     if (bridge->pink_generator_owned && bridge->pink_generator) {
@@ -254,7 +255,7 @@ int hetero_pink_noise_connect_generator(
     bridge->pink_generator = pink_generator;
     bridge->pink_generator_owned = false;
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -266,7 +267,7 @@ int hetero_pink_noise_connect_generator(
 int hetero_pink_noise_disconnect(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Disable modulation */
     bridge->enabled = false;
@@ -277,7 +278,7 @@ int hetero_pink_noise_disconnect(hetero_pink_noise_bridge_t* bridge) {
     bridge->noise_state.effective_wta_threshold = bridge->noise_state.base_wta_threshold;
     bridge->noise_state.effective_delay = bridge->noise_state.base_delay;
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -293,9 +294,9 @@ int hetero_pink_noise_disconnect(hetero_pink_noise_bridge_t* bridge) {
 int hetero_pink_noise_enable(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->enabled = true;
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Enabled heterosynaptic pink noise modulation");
     return 0;
@@ -309,7 +310,7 @@ int hetero_pink_noise_enable(hetero_pink_noise_bridge_t* bridge) {
 int hetero_pink_noise_disable(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->enabled = false;
 
     /* Restore base parameters */
@@ -318,7 +319,7 @@ int hetero_pink_noise_disable(hetero_pink_noise_bridge_t* bridge) {
     bridge->noise_state.effective_wta_threshold = bridge->noise_state.base_wta_threshold;
     bridge->noise_state.effective_delay = bridge->noise_state.base_delay;
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disabled heterosynaptic pink noise modulation");
     return 0;
@@ -344,12 +345,12 @@ int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge || !bridge->enabled) return -1;
     if (!bridge->pink_generator) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Generate pink noise sample */
     float noise;
     if (!pink_noise_generate_sample(bridge->pink_generator, &noise)) {
-        nimcp_platform_mutex_unlock(&bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -412,7 +413,7 @@ int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
         (bridge->avg_effective_radius * 0.99f) +
         (bridge->noise_state.effective_radius * 0.01f);
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -464,7 +465,7 @@ float hetero_pink_noise_get_effective_delay(
 int hetero_pink_noise_update_feedback(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge || !bridge->hetero_system) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     hetero_system_t* hetero = bridge->hetero_system;
     hetero_pink_noise_feedback_t* fb = &bridge->feedback;
@@ -494,7 +495,7 @@ int hetero_pink_noise_update_feedback(hetero_pink_noise_bridge_t* bridge) {
         (fb->competition_rate >= HETERO_PINK_BALANCED_COMPETITION_MIN) &&
         (fb->competition_rate <= HETERO_PINK_BALANCED_COMPETITION_MAX);
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -507,9 +508,9 @@ int hetero_pink_noise_get_feedback(
 {
     if (!bridge || !feedback) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *feedback = bridge->feedback;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -525,7 +526,7 @@ float hetero_pink_noise_adapt_amplitude(
 {
     if (!bridge) return 0.0f;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Adjust amplitude */
     float delta = bridge->config.feedback_gain * adaptation_factor;
@@ -539,7 +540,7 @@ float hetero_pink_noise_adapt_amplitude(
     );
 
     float result = bridge->adaptive_amplitude;
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -607,9 +608,9 @@ int hetero_pink_noise_get_state(
 {
     if (!bridge || !state) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->noise_state;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -651,7 +652,7 @@ int hetero_pink_noise_get_statistics(
 int hetero_pink_noise_reset(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Reset statistics */
     bridge->total_updates = 0;
@@ -670,7 +671,7 @@ int hetero_pink_noise_reset(hetero_pink_noise_bridge_t* bridge) {
         pink_noise_reset(bridge->pink_generator, 0);
     }
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -686,10 +687,10 @@ int hetero_pink_noise_reset(hetero_pink_noise_bridge_t* bridge) {
 int hetero_pink_noise_connect_bio_async(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    if (bridge->bio_async_enabled) {
-        nimcp_platform_mutex_unlock(&bridge->mutex);
+    if (bridge->base.bio_async_enabled) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already connected */
     }
 
@@ -700,15 +701,15 @@ int hetero_pink_noise_connect_bio_async(hetero_pink_noise_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
     }
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -720,16 +721,16 @@ int hetero_pink_noise_connect_bio_async(hetero_pink_noise_bridge_t* bridge) {
 int hetero_pink_noise_disconnect_bio_async(hetero_pink_noise_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    if (bridge->bio_async_enabled && bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
-        bridge->bio_async_enabled = false;
+    if (bridge->base.bio_async_enabled && bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
+        bridge->base.bio_async_enabled = false;
         NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     }
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -739,5 +740,5 @@ int hetero_pink_noise_disconnect_bio_async(hetero_pink_noise_bridge_t* bridge) {
 bool hetero_pink_noise_is_bio_async_connected(
     const hetero_pink_noise_bridge_t* bridge)
 {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

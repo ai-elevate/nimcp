@@ -16,6 +16,7 @@
 #define NIMCP_SYMBOLIC_LOGIC_QUANTUM_BRIDGE_H
 
 #include "cognitive/nimcp_symbolic_logic.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -161,6 +162,8 @@ void symbolic_quantum_reset_stats(symbolic_quantum_bridge_t* bridge);
 #include <string.h>
 
 struct symbolic_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     symbolic_quantum_config_t config;
     symbolic_logic_t* logic;
     qreason_t reasoner;

@@ -7,6 +7,7 @@
  */
 
 #include "plasticity/stdp/nimcp_triplet_stdp.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.h"
 #include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
 #include "utils/memory/nimcp_memory.h"

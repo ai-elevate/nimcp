@@ -57,6 +57,7 @@ protected:
 TEST_F(AmygdalaAutobioTest, CreateDestroy) {
     /* Bridge created in SetUp, destroyed in TearDown */
     EXPECT_NE(bridge, nullptr);
+    EXPECT_NE(bridge->base.mutex, nullptr);
 }
 
 TEST_F(AmygdalaAutobioTest, DefaultConfig) {
@@ -91,11 +92,13 @@ TEST_F(AmygdalaAutobioTest, CreateWithCustomConfig) {
 TEST_F(AmygdalaAutobioTest, ConnectAmygdala) {
     int result = amygdala_autobio_connect_amygdala(bridge, amygdala);
     EXPECT_EQ(result, 0);
+    EXPECT_TRUE(bridge->base.system_a_connected);
 }
 
 TEST_F(AmygdalaAutobioTest, ConnectMemory) {
     int result = amygdala_autobio_connect_memory(bridge, autobio);
     EXPECT_EQ(result, 0);
+    EXPECT_TRUE(bridge->base.system_b_connected);
 }
 
 TEST_F(AmygdalaAutobioTest, ConnectBoth) {
@@ -104,6 +107,7 @@ TEST_F(AmygdalaAutobioTest, ConnectBoth) {
 
     EXPECT_EQ(result1, 0);
     EXPECT_EQ(result2, 0);
+    EXPECT_TRUE(bridge->base.bridge_active);
 }
 
 TEST_F(AmygdalaAutobioTest, ConnectNullPointers) {
@@ -411,6 +415,10 @@ TEST_F(AmygdalaAutobioTest, GetStatistics) {
     amygdala_autobio_connect_amygdala(bridge, amygdala);
     amygdala_autobio_connect_memory(bridge, autobio);
 
+    /* Perform an update to increment total_updates */
+    amygdala_set_anxiety(amygdala, 0.5f);
+    amygdala_autobio_update(bridge);
+
     uint64_t total_updates = 0;
     uint32_t memories_tagged = 0;
     uint32_t trauma_reactivations = 0;
@@ -421,6 +429,8 @@ TEST_F(AmygdalaAutobioTest, GetStatistics) {
                                                   &trauma_reactivations);
 
     EXPECT_EQ(result, 0);
+    EXPECT_GT(total_updates, 0);  /* Should be > 0 after update */
+    EXPECT_EQ(bridge->base.total_updates, total_updates);
 }
 
 /* ============================================================================

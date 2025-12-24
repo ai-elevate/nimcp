@@ -8,6 +8,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_amygdala_training_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <math.h>
@@ -129,13 +130,13 @@ amygdala_training_bridge_t* amygdala_training_create(
     bridge->threat_learning_boost_active = 1.0f;
 
     /* Allocate and initialize mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     /* Record creation time */
     bridge->creation_time_ms = nimcp_get_current_time_ms();
@@ -155,14 +156,14 @@ void amygdala_training_destroy(amygdala_training_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         amygdala_training_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     NIMCP_LOGGING_INFO("Destroyed amygdala-training bridge");
@@ -181,17 +182,19 @@ int amygdala_training_connect_amygdala(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!amygdala) return NIMCP_ERROR_INVALID_PARAMETER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->amygdala = amygdala;
     bridge->amygdala_connected = true;
+    bridge->base.system_a_connected = true;
 
     /* Update phase if all connections ready */
     if (bridge->amygdala_connected && bridge->training_connected) {
         bridge->phase = AMYGDALA_TRAINING_PHASE_MONITORING;
+        bridge->base.bridge_active = true;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Connected amygdala to training bridge");
@@ -207,17 +210,19 @@ int amygdala_training_connect_training(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!training) return NIMCP_ERROR_INVALID_PARAMETER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_system = training;
     bridge->training_connected = true;
+    bridge->base.system_b_connected = true;
 
     /* Update phase if all connections ready */
     if (bridge->amygdala_connected && bridge->training_connected) {
         bridge->phase = AMYGDALA_TRAINING_PHASE_MONITORING;
+        bridge->base.bridge_active = true;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Connected training system to amygdala bridge");
@@ -233,12 +238,12 @@ int amygdala_training_connect_optimizer(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!optimizer) return NIMCP_ERROR_INVALID_PARAMETER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->optimizer = optimizer;
     bridge->optimizer_connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Connected optimizer to amygdala-training bridge");
@@ -250,11 +255,11 @@ int amygdala_training_connect_optimizer(
 int amygdala_training_disconnect_amygdala(amygdala_training_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = NULL;
     bridge->amygdala_connected = false;
     bridge->phase = AMYGDALA_TRAINING_PHASE_INACTIVE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -262,11 +267,11 @@ int amygdala_training_disconnect_amygdala(amygdala_training_bridge_t* bridge) {
 int amygdala_training_disconnect_training(amygdala_training_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->training_system = NULL;
     bridge->training_connected = false;
     bridge->phase = AMYGDALA_TRAINING_PHASE_INACTIVE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -274,10 +279,10 @@ int amygdala_training_disconnect_training(amygdala_training_bridge_t* bridge) {
 int amygdala_training_disconnect_optimizer(amygdala_training_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->optimizer = NULL;
     bridge->optimizer_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -290,7 +295,7 @@ int amygdala_training_update(amygdala_training_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->amygdala_connected) return NIMCP_ERROR_INVALID_STATE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query amygdala state */
     float fear = amygdala_get_fear_level(bridge->amygdala);
@@ -332,6 +337,7 @@ int amygdala_training_update(amygdala_training_bridge_t* bridge) {
 
     /* Update statistics */
     bridge->total_updates++;
+    bridge->base.total_updates++;
     bridge->avg_arousal = (bridge->avg_arousal * (bridge->total_updates - 1) + arousal) /
                           bridge->total_updates;
     bridge->avg_lr_modulation = (bridge->avg_lr_modulation * (bridge->total_updates - 1) +
@@ -346,7 +352,7 @@ int amygdala_training_update(amygdala_training_bridge_t* bridge) {
 
     bridge->last_update_ms = nimcp_get_current_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -368,14 +374,14 @@ int amygdala_training_apply_lr_modulation(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->optimizer_connected) return NIMCP_ERROR_INVALID_STATE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float effective_lr = base_lr * bridge->lr_modulation;
 
     /* Set via optimizer API (void return) */
     nimcp_optimizer_set_lr(bridge->optimizer, effective_lr);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Applied LR modulation: %.4f (base=%.4f, factor=%.4f)",
@@ -398,7 +404,7 @@ int amygdala_training_on_instability(
     if (!bridge->amygdala_connected) return NIMCP_ERROR_INVALID_STATE;
     if (!bridge->config.enable_instability_response) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float fear_increase = 0.0f;
     float anxiety_increase = 0.0f;
@@ -454,7 +460,7 @@ int amygdala_training_on_instability(
     bridge->last_instability_ms = nimcp_get_current_time_ms();
     bridge->phase = AMYGDALA_TRAINING_PHASE_RESPONDING;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_WARN("Training instability type=%d severity=%.2f → fear+=%.3f anxiety+=%.3f",
@@ -470,7 +476,7 @@ int amygdala_training_on_instability(
 
 int amygdala_training_connect_bio_async(amygdala_training_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;  /* Already connected */
+    if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_AMYGDALA_TRAINING,
@@ -479,9 +485,9 @@ int amygdala_training_connect_bio_async(amygdala_training_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -492,14 +498,14 @@ int amygdala_training_connect_bio_async(amygdala_training_bridge_t* bridge) {
 
 int amygdala_training_disconnect_bio_async(amygdala_training_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -507,7 +513,7 @@ int amygdala_training_disconnect_bio_async(amygdala_training_bridge_t* bridge) {
 
 bool amygdala_training_is_bio_async_connected(const amygdala_training_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -542,7 +548,7 @@ int amygdala_training_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Current state */
     stats->current_phase = bridge->phase;
@@ -570,13 +576,13 @@ int amygdala_training_get_stats(
     stats->amygdala_connected = bridge->amygdala_connected;
     stats->training_connected = bridge->training_connected;
     stats->optimizer_connected = bridge->optimizer_connected;
-    stats->bio_async_connected = bridge->bio_async_enabled;
+    stats->bio_async_connected = bridge->base.bio_async_enabled;
 
     /* Timing */
     uint64_t now = nimcp_get_current_time_ms();
     stats->uptime_ms = now - bridge->creation_time_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

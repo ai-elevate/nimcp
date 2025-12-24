@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/bridges/nimcp_synapse_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -144,15 +145,15 @@ synapse_plasticity_bridge_t* synapse_plasticity_create(
     bridge->orch = orch;
 
     /* Allocate mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,14 +170,14 @@ void synapse_plasticity_destroy(synapse_plasticity_bridge_t* bridge)
     if (!bridge) return;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         synapse_plasticity_disconnect_bio_async(bridge);
     }
 
     /* Free mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -190,170 +191,170 @@ void synapse_plasticity_destroy(synapse_plasticity_bridge_t* bridge)
 int synapse_plasticity_connect_stdp(synapse_plasticity_bridge_t* bridge, stdp_synapse_t* stdp)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stdp = stdp;
     bridge->contributions[PLASTICITY_STDP].active = (stdp != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_bcm(synapse_plasticity_bridge_t* bridge, bcm_state_t* bcm)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bcm = bcm;
     bridge->contributions[PLASTICITY_BCM].active = (bcm != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_homeostatic(synapse_plasticity_bridge_t* bridge, homeostatic_state_t* h)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->homeostatic = h;
     bridge->contributions[PLASTICITY_HOMEOSTATIC].active = (h != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_stp(synapse_plasticity_bridge_t* bridge, stp_state_t* stp)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stp = stp;
     bridge->contributions[PLASTICITY_STP].active = (stp != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_metaplasticity(synapse_plasticity_bridge_t* bridge, metaplasticity_state_t* m)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->meta = m;
     bridge->contributions[PLASTICITY_METAPLASTICITY].active = (m != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_eligibility(synapse_plasticity_bridge_t* bridge, eligibility_state_t* e)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->eligibility = e;
     bridge->contributions[PLASTICITY_ELIGIBILITY].active = (e != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_heterosynaptic(synapse_plasticity_bridge_t* bridge, heterosynaptic_state_t* h)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hetero = h;
     bridge->contributions[PLASTICITY_HETEROSYNAPTIC].active = (h != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_scaling(synapse_plasticity_bridge_t* bridge, synaptic_scaling_state_t* s)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->scaling = s;
     bridge->contributions[PLASTICITY_SCALING].active = (s != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_tagging(synapse_plasticity_bridge_t* bridge, synaptic_tagging_state_t* t)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->tagging = t;
     bridge->contributions[PLASTICITY_TAGGING].active = (t != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_calcium(synapse_plasticity_bridge_t* bridge, calcium_dynamics_state_t* c)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->calcium = c;
     bridge->contributions[PLASTICITY_CALCIUM].active = (c != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_neuromod(synapse_plasticity_bridge_t* bridge, neuromodulator_state_t* n)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->neuromod = n;
     bridge->contributions[PLASTICITY_NEUROMODULATOR].active = (n != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_metabolic(synapse_plasticity_bridge_t* bridge, metabolic_state_t* m)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metabolic = m;
     bridge->contributions[PLASTICITY_METABOLIC].active = (m != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_structural(synapse_plasticity_bridge_t* bridge, structural_state_t* s)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->structural = s;
     bridge->contributions[PLASTICITY_STRUCTURAL].active = (s != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_glial(synapse_plasticity_bridge_t* bridge, gliotransmission_state_t* g)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->glial = g;
     bridge->contributions[PLASTICITY_GLIOTRANSMISSION].active = (g != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_sfa(synapse_plasticity_bridge_t* bridge, spike_frequency_adaptation_state_t* s)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->sfa = s;
     bridge->contributions[PLASTICITY_SFA].active = (s != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_intrinsic(synapse_plasticity_bridge_t* bridge, intrinsic_excitability_state_t* i)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->intrinsic = i;
     bridge->contributions[PLASTICITY_INTRINSIC].active = (i != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int synapse_plasticity_connect_dendritic(synapse_plasticity_bridge_t* bridge, dendritic_plasticity_state_t* d)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dendritic = d;
     bridge->contributions[PLASTICITY_DENDRITIC].active = (d != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -372,7 +373,7 @@ int synapse_plasticity_connect_all(
 int synapse_plasticity_connect_bio_async(synapse_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SYNAPSE,
@@ -381,9 +382,9 @@ int synapse_plasticity_connect_bio_async(synapse_plasticity_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected synapse-plasticity to bio-async");
     }
 
@@ -393,13 +394,13 @@ int synapse_plasticity_connect_bio_async(synapse_plasticity_bridge_t* bridge)
 int synapse_plasticity_disconnect_bio_async(synapse_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     return 0;
 }
@@ -407,7 +408,7 @@ int synapse_plasticity_disconnect_bio_async(synapse_plasticity_bridge_t* bridge)
 bool synapse_plasticity_is_bio_async_connected(const synapse_plasticity_bridge_t* bridge)
 {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -420,7 +421,7 @@ float synapse_plasticity_on_pre_spike(
 {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float total_delta = 0.0f;
 
@@ -450,7 +451,7 @@ float synapse_plasticity_on_pre_spike(
         bridge->stats.total_potentiation += total_delta;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_delta;
 }
 
@@ -460,7 +461,7 @@ float synapse_plasticity_on_post_spike(
 {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float total_delta = 0.0f;
 
@@ -490,7 +491,7 @@ float synapse_plasticity_on_post_spike(
         bridge->stats.total_depression += fabsf(total_delta);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_delta;
 }
 
@@ -502,7 +503,7 @@ float synapse_plasticity_apply_accumulated(synapse_plasticity_bridge_t* bridge)
 {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current weight */
     float current_weight = 0.5f; /* Default if no synapse connected */
@@ -530,7 +531,7 @@ float synapse_plasticity_apply_accumulated(synapse_plasticity_bridge_t* bridge)
     bridge->stats.weight_updates++;
     bridge->stats.net_weight_change += (new_weight - current_weight);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return new_weight;
 }
 
@@ -538,7 +539,7 @@ float synapse_plasticity_get_effective_weight(synapse_plasticity_bridge_t* bridg
 {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float weight = 0.5f;
     if (bridge->synapse) {
@@ -552,7 +553,7 @@ float synapse_plasticity_get_effective_weight(synapse_plasticity_bridge_t* bridg
         weight *= 1.1f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return weight;
 }
 
@@ -576,7 +577,7 @@ int synapse_plasticity_update(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay accumulator */
     bridge->weight_delta_accumulator *= bridge->config.accumulator_decay;
@@ -608,7 +609,7 @@ int synapse_plasticity_update(
 
     bridge->stats.last_update_time = (float)nimcp_time_get_us() / 1000.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -626,9 +627,9 @@ void synapse_plasticity_reset_stats(synapse_plasticity_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 bool synapse_plasticity_is_mechanism_connected(

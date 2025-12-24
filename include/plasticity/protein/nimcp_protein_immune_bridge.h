@@ -80,6 +80,7 @@
 #define NIMCP_PROTEIN_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -183,6 +184,8 @@ typedef struct {
  * @brief Complete protein-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     protein_synthesis_system_t protein_system;
@@ -200,13 +203,7 @@ typedef struct {
     uint32_t consolidation_failures;
     uint32_t restoration_events;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;
-} protein_immune_bridge_t;
+    } protein_immune_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

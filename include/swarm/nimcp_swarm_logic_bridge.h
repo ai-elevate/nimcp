@@ -41,6 +41,7 @@
 #define NIMCP_SWARM_LOGIC_BRIDGE_H
 
 #include "utils/validation/nimcp_common.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "core/neuron_types/nimcp_neural_logic.h"

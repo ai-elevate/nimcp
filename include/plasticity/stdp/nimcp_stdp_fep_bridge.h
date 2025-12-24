@@ -65,6 +65,7 @@
 #define NIMCP_STDP_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -208,6 +209,8 @@ typedef struct {
  * @brief STDP-FEP bridge state
  */
 struct stdp_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     stdp_fep_config_t config;
 
@@ -223,16 +226,10 @@ struct stdp_fep_bridge {
     /* Statistics */
     stdp_fep_stats_t stats;
 
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     /* Quantum optimization */
     void* quantum_bridge;                /**< Quantum STDP optimizer bridge */
     uint64_t quantum_optimizations;      /**< Number of quantum-optimized updates */
 
-    /* Thread safety */
-    void* mutex;                         /**< Mutex for thread safety */
 };
 
 /* ============================================================================

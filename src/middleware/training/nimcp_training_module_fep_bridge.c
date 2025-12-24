@@ -4,6 +4,7 @@
  */
 
 #include "middleware/training/nimcp_training_module_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <math.h>
@@ -13,6 +14,8 @@
  * ============================================================================ */
 
 struct training_module_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     training_module_fep_config_t config;
     fep_system_t* fep_system;
     nimcp_training_context_t* training_module;
@@ -24,13 +27,6 @@ struct training_module_fep_bridge {
     /* State */
     training_module_fep_state_t state;
     training_module_fep_stats_t stats;
-
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Flags */
     bool owns_fep_system;
@@ -123,8 +119,8 @@ training_module_fep_bridge_t* training_module_fep_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("training_module_fep_create: Failed to create mutex");
     }
 
@@ -149,7 +145,7 @@ void training_module_fep_destroy(training_module_fep_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         training_module_fep_disconnect_bio_async(bridge);
     }
 
@@ -159,8 +155,8 @@ void training_module_fep_destroy(training_module_fep_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -180,8 +176,8 @@ int training_module_fep_update(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Update training effects */
@@ -198,8 +194,8 @@ int training_module_fep_update(
     int result = fep_process_observation(bridge->fep_system, observation, 2);
     if (result != 0) {
         NIMCP_LOGGING_ERROR("training_module_fep_update: FEP observation processing failed");
-        if (bridge->mutex) {
-            nimcp_platform_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
         }
         return result;
     }
@@ -247,8 +243,8 @@ int training_module_fep_update(
         bridge->stats.max_free_energy = free_energy;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -259,8 +255,8 @@ int training_module_fep_compute_effects(training_module_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Get current FEP state */
@@ -312,8 +308,8 @@ int training_module_fep_compute_effects(training_module_fep_bridge_t* bridge) {
         bridge->fep_effects.should_stop_early = false;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -426,13 +422,13 @@ int training_module_fep_connect_bio_async(training_module_fep_bridge_t* bridge) 
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
     }
 
     /* Note: BIO_MODULE_FEP_TRAINING_MODULE would need to be added to nimcp_bio_messages.h */
     /* For now, we mark it as enabled without actual registration */
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
     NIMCP_LOGGING_INFO("Training module FEP bridge connected to bio-async");
 
     return 0;
@@ -443,11 +439,11 @@ int training_module_fep_disconnect_bio_async(training_module_fep_bridge_t* bridg
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;  /* Not connected */
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Training module FEP bridge disconnected from bio-async");
 
     return 0;
@@ -457,5 +453,5 @@ bool training_module_fep_is_bio_async_connected(const training_module_fep_bridge
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

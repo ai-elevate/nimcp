@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/immune/nimcp_brain_immune_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -182,8 +183,8 @@ brain_immune_fep_bridge_t* brain_immune_fep_create(
     bridge->fep_system = fep_system;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -200,13 +201,13 @@ void brain_immune_fep_destroy(brain_immune_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         brain_immune_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -223,7 +224,7 @@ int brain_immune_fep_update(brain_immune_fep_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute immune -> FEP effects */
     if (bridge->config.enable_precision_modulation) {
@@ -284,7 +285,7 @@ int brain_immune_fep_update(brain_immune_fep_bridge_t* bridge) {
 
     bridge->state.total_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -292,13 +293,13 @@ int brain_immune_fep_update(brain_immune_fep_bridge_t* bridge) {
 int brain_immune_fep_apply_to_immune(brain_immune_fep_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* FEP-guided response modulation would be applied here */
     /* Currently the effects are computed and stored in fep_effects */
     /* External code can query these to modulate immune responses */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -306,13 +307,13 @@ int brain_immune_fep_apply_to_immune(brain_immune_fep_bridge_t* bridge) {
 int brain_immune_fep_apply_to_fep(brain_immune_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Cytokine-driven precision modulation would be applied here */
     /* Currently the effects are computed and stored in immune_effects */
     /* External code can query these to modulate FEP precision */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -324,9 +325,9 @@ int brain_immune_fep_apply_to_fep(brain_immune_fep_bridge_t* bridge) {
 float brain_immune_fep_get_precision_modulation(const brain_immune_fep_bridge_t* bridge) {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float precision = bridge->immune_effects.precision_modulation;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return precision;
 }
@@ -334,9 +335,9 @@ float brain_immune_fep_get_precision_modulation(const brain_immune_fep_bridge_t*
 float brain_immune_fep_get_prediction_error(const brain_immune_fep_bridge_t* bridge) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float error = bridge->immune_effects.prediction_error_magnitude;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return error;
 }
@@ -349,7 +350,7 @@ int brain_immune_fep_assess_threat(
     if (!bridge || !threat_prob) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current free energy as basis for threat assessment */
     float fe = fep_get_free_energy(bridge->fep_system);
@@ -370,7 +371,7 @@ int brain_immune_fep_assess_threat(
         *threat_prob = fmaxf(*threat_prob, antigen->severity / 10.0f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -381,7 +382,7 @@ int brain_immune_fep_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     stats->total_updates = bridge->state.total_updates;
     stats->precision_modulations = bridge->state.cytokine_modulations;
@@ -390,7 +391,7 @@ int brain_immune_fep_get_stats(
     stats->current_precision_modulation = bridge->immune_effects.precision_modulation;
     stats->current_prediction_error = bridge->immune_effects.prediction_error_magnitude;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -401,7 +402,7 @@ int brain_immune_fep_get_stats(
 
 int brain_immune_fep_connect_bio_async(brain_immune_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_IMMUNE_BRIDGE,
@@ -410,9 +411,9 @@ int brain_immune_fep_connect_bio_async(brain_immune_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         if (bridge->config.enable_logging) {
             NIMCP_LOGGING_INFO("Connected brain immune FEP bridge to bio-async router");
         }
@@ -422,14 +423,14 @@ int brain_immune_fep_connect_bio_async(brain_immune_fep_bridge_t* bridge) {
 }
 
 int brain_immune_fep_disconnect_bio_async(brain_immune_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Disconnected brain immune FEP bridge from bio-async router");
     }
@@ -439,5 +440,5 @@ int brain_immune_fep_disconnect_bio_async(brain_immune_fep_bridge_t* bridge) {
 
 bool brain_immune_fep_is_bio_async_connected(const brain_immune_fep_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

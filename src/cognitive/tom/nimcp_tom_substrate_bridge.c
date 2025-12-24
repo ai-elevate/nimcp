@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/tom/nimcp_tom_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -329,20 +330,20 @@ tom_substrate_bridge_t* tom_substrate_bridge_create(
     bridge->stats.avg_mentalizing = 1.0f;
 
     /* Initialize bio-async context */
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     /* Create mutex for thread safety */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for ToM substrate bridge");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for ToM substrate bridge");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -361,14 +362,14 @@ void tom_substrate_bridge_destroy(tom_substrate_bridge_t* bridge) {
     }
 
     /* Disconnect from bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         tom_substrate_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -385,7 +386,7 @@ int tom_substrate_connect_bio_async(tom_substrate_bridge_t* bridge) {
     }
 
     /* Guard: check if already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("ToM substrate bridge already connected to bio-async");
         return NIMCP_SUCCESS;
     }
@@ -398,9 +399,9 @@ int tom_substrate_connect_bio_async(tom_substrate_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected ToM substrate bridge to bio-async router");
         return NIMCP_SUCCESS;
     } else {
@@ -417,17 +418,17 @@ int tom_substrate_disconnect_bio_async(tom_substrate_bridge_t* bridge) {
     }
 
     /* Guard: check if connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_DEBUG("Disconnected ToM substrate bridge from bio-async");
     return NIMCP_SUCCESS;
 }
@@ -438,7 +439,7 @@ bool tom_substrate_is_bio_async_connected(const tom_substrate_bridge_t* bridge) 
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 int tom_substrate_update(tom_substrate_bridge_t* bridge) {
@@ -449,8 +450,8 @@ int tom_substrate_update(tom_substrate_bridge_t* bridge) {
     }
 
     /* Lock for thread safety */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Check update interval */
@@ -458,8 +459,8 @@ int tom_substrate_update(tom_substrate_bridge_t* bridge) {
     if (bridge->last_update_time_ms > 0 &&
         (current_time - bridge->last_update_time_ms) < bridge->config.update_interval_ms) {
         /* Too soon, skip update */
-        if (bridge->mutex) {
-            nimcp_platform_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
         }
         return NIMCP_SUCCESS;
     }
@@ -469,8 +470,8 @@ int tom_substrate_update(tom_substrate_bridge_t* bridge) {
     int ret = substrate_get_metabolic_state(bridge->substrate, &metabolic);
     if (ret != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to get substrate metabolic state");
-        if (bridge->mutex) {
-            nimcp_platform_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) {
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
         }
         return ret;
     }
@@ -526,8 +527,8 @@ int tom_substrate_update(tom_substrate_bridge_t* bridge) {
     bridge->last_update_time_ms = current_time;
 
     /* Unlock */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return NIMCP_SUCCESS;

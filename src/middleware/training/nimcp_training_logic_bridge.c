@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "middleware/training/nimcp_training_logic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/training/nimcp_perception_training_bridge.h"
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/logging/nimcp_logging.h"
@@ -89,6 +90,8 @@ typedef struct {
  * HOW:  Single struct with all subsystems
  */
 struct training_logic_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Neural logic network */
     neural_logic_network_t logic_network;
 
@@ -113,13 +116,6 @@ struct training_logic_bridge {
     portia_swarm_logic_bridge_t* unified_bridge;
     perception_training_bridge_t* perception_training;
     cortical_training_bridge_t* cortical_training;
-
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Statistics */
     training_logic_stats_t stats;
@@ -538,7 +534,7 @@ training_logic_bridge_t* training_logic_create(
     pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -551,7 +547,7 @@ training_logic_bridge_t* training_logic_create(
     );
     if (!bridge->history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -569,7 +565,7 @@ training_logic_bridge_t* training_logic_create(
     if (!bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
         nimcp_free(bridge->history);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -579,7 +575,7 @@ training_logic_bridge_t* training_logic_create(
         NIMCP_LOGGING_ERROR("Failed to initialize decision gates");
         neural_logic_destroy(bridge->logic_network);
         nimcp_free(bridge->history);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -604,7 +600,7 @@ void training_logic_destroy(training_logic_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         training_logic_disconnect_bio_async(bridge);
     }
 
@@ -619,8 +615,8 @@ void training_logic_destroy(training_logic_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -634,10 +630,10 @@ int training_logic_start(training_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect to bio-async if enabled */
-    if (bridge->config.enable_bio_async && !bridge->bio_async_enabled) {
+    if (bridge->config.enable_bio_async && !bridge->base.bio_async_enabled) {
         int result = training_logic_connect_bio_async(bridge);
         if (result != NIMCP_SUCCESS) {
             NIMCP_LOGGING_WARN("Bio-async connection failed, continuing without it");
@@ -649,7 +645,7 @@ int training_logic_start(training_logic_bridge_t* bridge) {
         update_conditions_internal(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Started Training-Logic bridge");
 
@@ -661,14 +657,14 @@ int training_logic_stop(training_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         training_logic_disconnect_bio_async(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Stopped Training-Logic bridge");
 
@@ -687,14 +683,14 @@ int training_logic_connect_brain_training(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_ctx = training_ctx;
     if (training_ctx) {
         NIMCP_LOGGING_INFO("Connected brain training context to Training-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -707,14 +703,14 @@ int training_logic_connect_training_immune(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->immune_system = immune_system;
     if (immune_system) {
         NIMCP_LOGGING_INFO("Connected training immune system to Training-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -727,14 +723,14 @@ int training_logic_connect_portia_logic(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->portia_logic = portia_logic;
     if (portia_logic) {
         NIMCP_LOGGING_INFO("Connected Portia-logic bridge to Training-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -747,14 +743,14 @@ int training_logic_connect_swarm_logic(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->swarm_logic = swarm_logic;
     if (swarm_logic) {
         NIMCP_LOGGING_INFO("Connected swarm-logic bridge to Training-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -767,14 +763,14 @@ int training_logic_connect_unified(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->unified_bridge = unified_bridge;
     if (unified_bridge) {
         NIMCP_LOGGING_INFO("Connected unified bridge to Training-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -787,7 +783,7 @@ int training_logic_connect_perception_training(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->perception_training = perception_training;
 
@@ -797,7 +793,7 @@ int training_logic_connect_perception_training(
         NIMCP_LOGGING_INFO("Disconnected perception-training bridge from Training-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -810,7 +806,7 @@ int training_logic_connect_cortical_training(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->cortical_training = cortical_training;
 
@@ -820,7 +816,7 @@ int training_logic_connect_cortical_training(
         NIMCP_LOGGING_INFO("Disconnected cortical-training bridge from Training-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -840,7 +836,7 @@ int training_logic_update_metrics(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update numeric conditions */
     bridge->conditions.loss_current = loss;
@@ -861,7 +857,7 @@ int training_logic_update_metrics(
         update_conditions_internal(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -876,7 +872,7 @@ int training_logic_update_batch_metrics(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update numeric conditions */
     bridge->conditions.memory_usage = memory_usage;
@@ -888,7 +884,7 @@ int training_logic_update_batch_metrics(
         update_conditions_internal(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -906,7 +902,7 @@ int training_logic_signal_instability(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Map instability type to conditions */
     switch (instability_type) {
@@ -947,7 +943,7 @@ int training_logic_signal_instability(
     NIMCP_LOGGING_WARN("Training instability signaled: type=%u severity=%u",
                        instability_type, severity);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -961,7 +957,7 @@ bool training_logic_check_stability(training_logic_bridge_t* bridge) {
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -977,7 +973,7 @@ bool training_logic_check_stability(training_logic_bridge_t* bridge) {
         bridge->stats.stability_passed++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return stable;
 }
@@ -987,7 +983,7 @@ bool training_logic_needs_intervention(training_logic_bridge_t* bridge) {
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -1002,7 +998,7 @@ bool training_logic_needs_intervention(training_logic_bridge_t* bridge) {
         bridge->stats.intervention_triggers++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return needs_intervention;
 }
@@ -1012,7 +1008,7 @@ bool training_logic_can_increase_lr(training_logic_bridge_t* bridge) {
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -1027,7 +1023,7 @@ bool training_logic_can_increase_lr(training_logic_bridge_t* bridge) {
         bridge->stats.lr_increase_allowed++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return can_increase;
 }
@@ -1040,7 +1036,7 @@ bool training_logic_should_adjust_batch(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -1053,7 +1049,7 @@ bool training_logic_should_adjust_batch(
     /* Update stats */
     bridge->stats.batch_adjustments++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -1063,7 +1059,7 @@ bool training_logic_should_checkpoint(training_logic_bridge_t* bridge) {
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -1080,7 +1076,7 @@ bool training_logic_should_checkpoint(training_logic_bridge_t* bridge) {
         bridge->conditions.steps_since_checkpoint = 0;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -1093,7 +1089,7 @@ int training_logic_get_decision(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time = get_time_us();
 
@@ -1212,7 +1208,7 @@ int training_logic_get_decision(
         bridge->stats.max_decision_time_us = (float)decision->evaluation_time_us;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1273,11 +1269,11 @@ int training_logic_apply_decision(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Only apply if in AUTOMATIC mode */
     if (bridge->config.mode != TRAINING_LOGIC_MODE_AUTOMATIC) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_SUCCESS;  /* Advisory mode - don't apply */
     }
 
@@ -1310,7 +1306,7 @@ int training_logic_apply_decision(
                        training_logic_decision_type_to_string(decision->type),
                        decision->modulation_factor);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1324,9 +1320,9 @@ int training_logic_update_conditions(training_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int result = update_conditions_internal(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -1357,7 +1353,7 @@ int training_logic_set_condition(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     switch (condition) {
         case TRAINING_COND_LOSS_STABLE:
@@ -1412,11 +1408,11 @@ int training_logic_set_condition(
             bridge->conditions.predictions_ok = value;
             break;
         default:
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1430,7 +1426,7 @@ int training_logic_set_numeric_condition(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (strcmp(name, "loss") == 0) {
         bridge->conditions.loss_current = value;
@@ -1446,11 +1442,11 @@ int training_logic_set_numeric_condition(
         bridge->conditions.loss_trend = value;
     } else {
         NIMCP_LOGGING_ERROR("Unknown numeric condition: %s", name);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1473,7 +1469,7 @@ int training_logic_add_custom_gate(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Simple expression parsing - support basic patterns */
     logic_gate_type_t gate_type = LOGIC_GATE_AND;
@@ -1489,7 +1485,7 @@ int training_logic_add_custom_gate(
         gate_type = LOGIC_GATE_IMPLIES;
     } else {
         NIMCP_LOGGING_ERROR("Unsupported gate expression: %s", expression);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -1502,7 +1498,7 @@ int training_logic_add_custom_gate(
 
     if (new_gate_id == UINT32_MAX) {
         NIMCP_LOGGING_ERROR("Failed to create custom gate");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -1513,7 +1509,7 @@ int training_logic_add_custom_gate(
     NIMCP_LOGGING_INFO("Created custom gate %u (internal: %u): %s",
                        *gate_id, new_gate_id, expression);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1526,7 +1522,7 @@ bool training_logic_evaluate_gate(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions */
     if (!bridge->config.disable_auto_update) {
@@ -1554,7 +1550,7 @@ bool training_logic_evaluate_gate(
         &output
     );
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return success && (output >= bridge->config.confidence_threshold);
 }
@@ -1568,7 +1564,7 @@ int training_logic_get_gate_decision(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions */
     if (!bridge->config.disable_auto_update) {
@@ -1609,7 +1605,7 @@ int training_logic_get_gate_decision(
              "Gate %u evaluated to %.2f (threshold %.2f)",
              gate_id, output, bridge->config.confidence_threshold);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1623,7 +1619,7 @@ int training_logic_connect_bio_async(training_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
     }
 
@@ -1634,9 +1630,9 @@ int training_logic_connect_bio_async(training_logic_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -1650,16 +1646,16 @@ int training_logic_disconnect_bio_async(training_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return NIMCP_SUCCESS;
@@ -1670,7 +1666,7 @@ bool training_logic_is_bio_async_connected(const training_logic_bridge_t* bridge
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 int training_logic_process_inbox(training_logic_bridge_t* bridge) {
@@ -1678,11 +1674,11 @@ int training_logic_process_inbox(training_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;  /* No messages to process */
     }
 
-    return bio_router_process_inbox(bridge->bio_ctx, 10);
+    return bio_router_process_inbox(bridge->base.bio_ctx, 10);
 }
 
 int training_logic_broadcast_decision(
@@ -1693,14 +1689,14 @@ int training_logic_broadcast_decision(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;  /* Bio-async not connected */
     }
 
     /* Create bio-async message with proper header */
     bio_msg_logic_gate_result_t msg = {0};
     bio_msg_init_header(&msg.header, BIO_MSG_LOGIC_GATE_RESULT,
-                        bio_module_context_get_id(bridge->bio_ctx), 0, sizeof(msg));
+                        bio_module_context_get_id(bridge->base.bio_ctx), 0, sizeof(msg));
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
 
     /* Map decision to gate result */
@@ -1712,7 +1708,7 @@ int training_logic_broadcast_decision(
     msg.threshold_used = decision->confidence;
 
     /* Broadcast to subscribers */
-    bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    bio_router_broadcast(bridge->base.bio_ctx, &msg, sizeof(msg));
 
     NIMCP_LOGGING_DEBUG("Broadcast decision: type=%s approved=%d",
                         training_logic_decision_type_to_string(decision->type),
@@ -1743,7 +1739,7 @@ int training_logic_reset_stats(training_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Preserve mode and custom gate count */
     training_logic_mode_t mode = bridge->stats.current_mode;
@@ -1754,7 +1750,7 @@ int training_logic_reset_stats(training_logic_bridge_t* bridge) {
     bridge->stats.current_mode = mode;
     bridge->stats.custom_gate_count = custom_gates;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset Training-Logic statistics");
 

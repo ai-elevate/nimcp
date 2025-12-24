@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "core/brain_regions/nimcp_brain_regions.h"
 
@@ -146,6 +147,8 @@ typedef struct ripple_event_s {
  * HOW:  Store place cells, episodes, theta state
  */
 typedef struct snn_hippocampus_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;             /**< SNN network */
     brain_region_t* hippocampus_region; /**< Hippocampus brain region */
     snn_hippocampus_config_t config;    /**< Bridge configuration */

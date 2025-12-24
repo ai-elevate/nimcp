@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/executive/nimcp_executive_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -38,57 +39,57 @@ executive_fep_bridge_t* executive_fep_bridge_create(const executive_fep_config_t
     memset(bridge, 0, sizeof(executive_fep_bridge_t));
     if (config) bridge->config = *config;
     else executive_fep_bridge_default_config(&bridge->config);
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
 
 void executive_fep_bridge_destroy(executive_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) executive_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) executive_fep_bridge_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int executive_fep_bridge_connect_fep(executive_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_bridge_connect_executive(executive_fep_bridge_t* bridge, executive_controller_t* executive) {
     if (!bridge || !executive) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive_system = executive;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_bridge_disconnect(executive_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->executive_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_select_policy_by_efe(executive_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_efe_policy_selection) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.selected_policy = 0;
     bridge->stats.policy_selections++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_modulate_exploration(executive_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_precision_exploration) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float precision = bridge->state.current_precision;
     if (precision < bridge->config.precision_exploration_threshold) {
         bridge->fep_effects.exploration_mode = true;
@@ -99,14 +100,14 @@ int executive_fep_modulate_exploration(executive_fep_bridge_t* bridge) {
         bridge->fep_effects.exploration_probability = 1.0f - EXECUTIVE_FEP_HIGH_PRECISION_EXPLOIT;
     }
     bridge->state.exploration_mode = bridge->fep_effects.exploration_mode;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_trigger_cognitive_control(executive_fep_bridge_t* bridge, float pe_magnitude) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_cognitive_control) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (pe_magnitude > bridge->config.pe_control_threshold) {
         bridge->fep_effects.control_active = true;
         bridge->fep_effects.control_signal = EXECUTIVE_FEP_CONTROL_BOOST;
@@ -116,39 +117,39 @@ int executive_fep_trigger_cognitive_control(executive_fep_bridge_t* bridge, floa
         bridge->fep_effects.control_signal = 1.0f;
     }
     bridge->state.control_active = bridge->fep_effects.control_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_apply_goal_priors(executive_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_goal_priors) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive_effects.goal_prior_bias = bridge->config.goal_prior_strength;
     bridge->executive_effects.goal_prior_active = true;
     bridge->stats.goal_prior_applications++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_maintain_wm_beliefs(executive_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_wm_belief_maintenance) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive_effects.wm_belief_strength = bridge->config.wm_belief_persistence;
     bridge->executive_effects.wm_maintenance_active = true;
     bridge->stats.wm_maintenance_events++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_apply_inhibition_precision(executive_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_inhibition_precision) return 0;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive_effects.precision_suppression = bridge->config.inhibition_precision_reduction;
     bridge->stats.inhibition_events++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -164,42 +165,42 @@ int executive_fep_bridge_update(executive_fep_bridge_t* bridge, uint64_t delta_m
 
 int executive_fep_bridge_get_state(const executive_fep_bridge_t* bridge, executive_fep_state_t* state) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_bridge_get_stats(const executive_fep_bridge_t* bridge, executive_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int executive_fep_bridge_connect_bio_async(executive_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_EXECUTIVE_BRIDGE,
         .module_name = "executive_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge
     };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) bridge->base.bio_async_enabled = true;
     return 0;
 }
 
 int executive_fep_bridge_disconnect_bio_async(executive_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool executive_fep_bridge_is_bio_async_connected(const executive_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

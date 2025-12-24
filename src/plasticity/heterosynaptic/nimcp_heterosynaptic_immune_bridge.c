@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -87,8 +88,8 @@ hetero_immune_bridge_t* hetero_immune_bridge_create(
     bridge->inflammation_state.is_chronic = false;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -101,11 +102,11 @@ hetero_immune_bridge_t* hetero_immune_bridge_create(
 void hetero_immune_bridge_destroy(hetero_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         hetero_immune_disconnect_bio_async(bridge);
     }
 
-    nimcp_platform_mutex_destroy(bridge->mutex);
+    nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 
     NIMCP_LOGGING_INFO("Destroyed hetero-immune bridge");
@@ -119,7 +120,7 @@ int hetero_immune_apply_cytokine_effects(hetero_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->enable_cytokine_modulation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get cytokine levels from immune system */
     float il1 = brain_immune_get_cytokine_level(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -148,7 +149,7 @@ int hetero_immune_apply_cytokine_effects(hetero_immune_bridge_t* bridge) {
     bridge->cytokine_effects.radius_factor = competition;      /* Radius scales with competition */
 
     bridge->cytokine_modulations++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -157,7 +158,7 @@ int hetero_immune_apply_inflammation_effects(hetero_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->enable_inflammation_suppression) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation level */
     bridge->inflammation_state.current_level =
@@ -190,7 +191,7 @@ int hetero_immune_apply_inflammation_effects(hetero_immune_bridge_t* bridge) {
             bridge->inflammation_state.radius_narrowing = 1.0f;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -212,7 +213,7 @@ int hetero_immune_get_modulation_state(
 {
     if (!bridge || !modulation) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     modulation->competition_modulation = bridge->cytokine_effects.competition_factor *
                                         bridge->inflammation_state.competition_suppression;
@@ -225,7 +226,7 @@ int hetero_immune_get_modulation_state(
     modulation->effective_depression = bridge->base_depression * modulation->depression_modulation;
     modulation->effective_radius = bridge->base_radius * modulation->radius_modulation;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -235,7 +236,7 @@ int hetero_immune_restore_competition(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Interpolate toward baseline */
     float current_competition = bridge->cytokine_effects.competition_factor;
@@ -246,7 +247,7 @@ int hetero_immune_restore_competition(
     bridge->cytokine_effects.radius_factor = restored;
 
     bridge->competition_restorations++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -259,7 +260,7 @@ int hetero_immune_detect_instability(hetero_immune_bridge_t* bridge) {
     if (!bridge || !bridge->hetero_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->enable_instability_detection) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get heterosynaptic statistics */
     uint64_t total_competitions, total_depressions;
@@ -303,7 +304,7 @@ int hetero_immune_detect_instability(hetero_immune_bridge_t* bridge) {
         bridge->instability_state.instability_severity = 0.3f;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -457,7 +458,7 @@ float hetero_immune_get_competition_reduction(const hetero_immune_bridge_t* brid
 
 int hetero_immune_connect_bio_async(hetero_immune_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = 0x0D40,  /* BIO_MODULE_IMMUNE_HETEROSYNAPTIC */
@@ -466,9 +467,9 @@ int hetero_immune_connect_bio_async(hetero_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected hetero-immune bridge to bio-async router");
         return 0;
     } else {
@@ -478,18 +479,18 @@ int hetero_immune_connect_bio_async(hetero_immune_bridge_t* bridge) {
 }
 
 int hetero_immune_disconnect_bio_async(hetero_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected hetero-immune bridge from bio-async router");
     return 0;
 }
 
 bool hetero_immune_is_bio_async_connected(const hetero_immune_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

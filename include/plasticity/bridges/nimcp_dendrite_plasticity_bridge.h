@@ -40,6 +40,7 @@
 #define NIMCP_DENDRITE_PLASTICITY_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -173,6 +174,8 @@ typedef struct {
  * Connects dendritic compartments to all relevant plasticity mechanisms
  */
 struct dendrite_plasticity_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     dendrite_plasticity_config_t config;
 
@@ -188,13 +191,6 @@ struct dendrite_plasticity_bridge {
 
     /* Statistics */
     dendrite_plasticity_stats_t stats;
-
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* State */
     bool initialized;

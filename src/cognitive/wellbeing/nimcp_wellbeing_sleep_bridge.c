@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/wellbeing/nimcp_wellbeing_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
@@ -85,8 +86,8 @@ sleep_wellbeing_bridge_t* sleep_wellbeing_bridge_create(
     bridge->sleep_system = sleep_system;
 
     // Create mutex
-    bridge->mutex = nimcp_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("sleep_wellbeing_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -106,8 +107,8 @@ void sleep_wellbeing_bridge_destroy(sleep_wellbeing_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

@@ -12,6 +12,7 @@
  */
 
 #include "glial/sleep/nimcp_astrocytes_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -26,19 +27,17 @@
  * HOW:  Store config, effects, sleep system, and synchronization
  */
 struct astro_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     astro_sleep_config_t config;           /**< Configuration parameters */
     sleep_system_t sleep_system;           /**< Sleep system handle */
     astro_sleep_effects_t effects;         /**< Current modulation effects */
-    nimcp_mutex_t* mutex;                  /**< Thread safety */
     bool callback_registered;              /**< Track callback for cleanup */
 
     /* Adenosine accumulation state */
     float adenosine_accumulation_rate;     /**< Current accumulation rate */
     float last_activity_level;             /**< Last neural activity level */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;          /**< Bio-async module context */
-    bool bio_async_enabled;                /**< Whether bio-async is active */
 };
 
 /* Forward declarations */
@@ -77,7 +76,7 @@ static void astro_on_sleep_state_change(sleep_state_t new_state, void* user_data
 
     NIMCP_LOGGING_DEBUG("Astrocyte bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current sleep pressure */
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -85,7 +84,7 @@ static void astro_on_sleep_state_change(sleep_state_t new_state, void* user_data
     /* Recompute all effects for new state */
     compute_effects(bridge, new_state, pressure);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Astrocyte modulated: adenosine=%.2f, glymphatic=%.2f, calcium=%.2f",
                         bridge->effects.adenosine_level,
@@ -348,15 +347,15 @@ astro_sleep_bridge_t astro_sleep_create(
      * WHY:  Start with bio-async disabled
      * HOW:  Set fields to NULL/false
      */
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     /* WHAT: Create thread safety mutex
      * WHY:  Protect concurrent access to effects
      * HOW:  Platform-agnostic mutex creation
      */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for astrocyte-sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -397,7 +396,7 @@ void astro_sleep_destroy(astro_sleep_bridge_t bridge)
      * WHY:  Clean shutdown of messaging
      * HOW:  Call disconnect function
      */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         astro_sleep_disconnect_bio_async(bridge);
     }
 
@@ -420,8 +419,8 @@ void astro_sleep_destroy(astro_sleep_bridge_t bridge)
      * WHY:  Free synchronization resources
      * HOW:  Platform-agnostic mutex destruction
      */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* WHAT: Free bridge structure
@@ -454,7 +453,7 @@ float astro_sleep_accumulate_adenosine(
      * - High adenosine activates A1 receptors → sleep pressure
      * - Accumulation rate modulated by current sleep state
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float accumulation = activity_level * bridge->adenosine_accumulation_rate * 0.01f;
     bridge->effects.adenosine_level += accumulation;
@@ -468,7 +467,7 @@ float astro_sleep_accumulate_adenosine(
 
     float result = bridge->effects.adenosine_level;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -490,7 +489,7 @@ float astro_sleep_clear_adenosine(
      * - Deep sleep has fastest clearance
      * - Caffeine blocks A1 receptors, masking adenosine effects
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate decay rate based on sleep state */
     float decay_rate = bridge->config.adenosine_decay_rate;
@@ -529,7 +528,7 @@ float astro_sleep_clear_adenosine(
 
     float result = bridge->effects.adenosine_level;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -539,9 +538,9 @@ float astro_sleep_get_adenosine_level(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return 0.3f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.adenosine_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -565,7 +564,7 @@ float astro_sleep_enable_glymphatic(astro_sleep_bridge_t bridge)
      * - CSF flow through perivascular channels increases
      * - Peak clearance during deep NREM (10-20x waking levels)
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = bridge->effects.current_state;
     float clearance = get_glymphatic_factor_for_state(state) *
@@ -574,7 +573,7 @@ float astro_sleep_enable_glymphatic(astro_sleep_bridge_t bridge)
     bridge->effects.glymphatic_clearance_factor = clearance;
     bridge->effects.glymphatic_active = (clearance > 1.5f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return clearance;
 }
@@ -584,9 +583,9 @@ float astro_sleep_get_clearance_rate(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.glymphatic_clearance_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -596,9 +595,9 @@ bool astro_sleep_is_glymphatic_active(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return false if NULL */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.glymphatic_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -623,7 +622,7 @@ float astro_sleep_initiate_downscaling(astro_sleep_bridge_t bridge)
      * - Deep NREM provides optimal conditions for downscaling
      * - Preserves relative synaptic strengths while reducing total
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = bridge->effects.current_state;
     float factor = get_downscale_factor_for_state(state) *
@@ -632,7 +631,7 @@ float astro_sleep_initiate_downscaling(astro_sleep_bridge_t bridge)
     bridge->effects.synaptic_renormalization_factor = factor;
     bridge->effects.downscaling_active = (factor > 0.5f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -642,9 +641,9 @@ float astro_sleep_get_renormalization_factor(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return 0 if NULL */
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.synaptic_renormalization_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -654,9 +653,9 @@ bool astro_sleep_is_downscaling_active(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return false if NULL */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.downscaling_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -670,9 +669,9 @@ float astro_sleep_get_calcium_factor(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return ASTRO_SLEEP_CALCIUM_AWAKE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.calcium_wave_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -682,9 +681,9 @@ float astro_sleep_get_coupling_factor(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return ASTRO_SLEEP_COUPLING_AWAKE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.gap_junction_coupling_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -711,9 +710,9 @@ int astro_sleep_get_effects(
      * WHY:  Allow caller to use effects without holding lock
      * HOW:  Lock, copy, unlock
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -730,7 +729,7 @@ int astro_sleep_update(astro_sleep_bridge_t bridge, float dt_ms)
      * WHY:  Evolve adenosine, clearance, and modulations
      * HOW:  Called each simulation step
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query current sleep state */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -770,7 +769,7 @@ int astro_sleep_update(astro_sleep_bridge_t bridge, float dt_ms)
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -788,7 +787,7 @@ int astro_sleep_connect_bio_async(astro_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected for astrocyte-sleep bridge");
         return 0;
     }
@@ -804,9 +803,9 @@ int astro_sleep_connect_bio_async(astro_sleep_bridge_t bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Astrocyte-sleep bridge connected to bio-async router");
         return 0;
     } else {
@@ -824,7 +823,7 @@ int astro_sleep_disconnect_bio_async(astro_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Not connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -832,12 +831,12 @@ int astro_sleep_disconnect_bio_async(astro_sleep_bridge_t bridge)
      * WHY:  Clean shutdown of messaging
      * HOW:  Unregister and clear context
      */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Astrocyte-sleep bridge disconnected from bio-async router");
 
     return 0;
@@ -848,5 +847,5 @@ bool astro_sleep_is_bio_async_connected(const astro_sleep_bridge_t bridge)
     /* Guard clause: Return false if NULL */
     if (!bridge) return false;
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

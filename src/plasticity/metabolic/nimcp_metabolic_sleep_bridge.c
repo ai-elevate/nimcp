@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/metabolic/nimcp_metabolic_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -16,6 +17,8 @@
  * ============================================================================ */
 
 struct metabolic_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     metabolic_sleep_config_t config;
     sleep_system_t sleep_system;
     metabolic_plasticity_t* metabolic;
@@ -45,7 +48,7 @@ static void metabolic_on_sleep_state_change(sleep_state_t new_state, void* user_
 
     NIMCP_LOGGING_DEBUG("Metabolic bridge received sleep state: %d", new_state);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -79,7 +82,7 @@ static void metabolic_on_sleep_state_change(sleep_state_t new_state, void* user_
         metabolic_plasticity_set_recovery_rate(bridge->metabolic, new_rate);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Metabolic modulated: recovery=%.2fx, cost=%.2fx",
                         bridge->effects.recovery_rate_factor,
@@ -136,8 +139,8 @@ metabolic_sleep_bridge_t metabolic_sleep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to create metabolic sleep bridge mutex");
         return NULL;
@@ -170,8 +173,8 @@ void metabolic_sleep_bridge_destroy(metabolic_sleep_bridge_t bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free structure (don't destroy linked systems - we don't own them) */
@@ -188,7 +191,7 @@ int metabolic_sleep_update(metabolic_sleep_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->sleep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query current sleep state */
     sleep_state_t current_state = sleep_get_current_state(bridge->sleep_system);
@@ -222,7 +225,7 @@ int metabolic_sleep_update(metabolic_sleep_bridge_t bridge) {
         metabolic_plasticity_set_recovery_rate(bridge->metabolic, effective_rate);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -230,9 +233,9 @@ int metabolic_sleep_get_effects(const metabolic_sleep_bridge_t bridge,
                                  metabolic_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(metabolic_sleep_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

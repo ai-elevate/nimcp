@@ -115,7 +115,7 @@ TEST_F(FeatureImmuneIntegrationTest, CreateDestroyTest) {
     EXPECT_NE(bridge, nullptr);
     EXPECT_NE(bridge->immune_system, nullptr);
     EXPECT_NE(bridge->feature_extractor, nullptr);
-    EXPECT_NE(bridge->mutex, nullptr);
+    EXPECT_NE(bridge->base.mutex, nullptr);
 
     EXPECT_TRUE(bridge->enable_cytokine_feature_modulation);
     EXPECT_TRUE(bridge->enable_inflammation_precision_reduction);

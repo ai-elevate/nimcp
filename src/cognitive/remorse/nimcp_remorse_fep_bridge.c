@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/remorse/nimcp_remorse_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -69,8 +70,8 @@ remorse_fep_bridge_t* remorse_fep_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -89,13 +90,13 @@ void remorse_fep_destroy(remorse_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         remorse_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -112,9 +113,9 @@ int remorse_fep_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to remorse bridge");
     return 0;
@@ -126,9 +127,9 @@ int remorse_fep_connect_remorse(
 ) {
     if (!bridge || !remorse) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->remorse_system = remorse;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected remorse system to FEP bridge");
     return 0;
@@ -137,10 +138,10 @@ int remorse_fep_connect_remorse(
 int remorse_fep_disconnect(remorse_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->remorse_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from remorse FEP bridge");
     return 0;
@@ -158,7 +159,7 @@ int remorse_fep_compute_counterfactual_pe(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_counterfactual_pe) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Counterfactual PE = what could have been - what actually happened
      * Positive counterfactual PE = we could have done better -> remorse
@@ -206,7 +207,7 @@ int remorse_fep_compute_counterfactual_pe(
     bridge->stats.avg_counterfactual_pe =
         (bridge->stats.avg_counterfactual_pe * 0.9f) + (fabsf(counterfactual_pe) * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Computed counterfactual PE: %f, remorse=%f, moral_precision=%f",
                         counterfactual_pe, remorse_intensity, moral_precision);
@@ -219,7 +220,7 @@ int remorse_fep_modulate_policy_learning(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_remorse_policy_learning) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Remorse strongly affects policy learning
      * The brain learns to avoid actions that led to remorse
@@ -240,7 +241,7 @@ int remorse_fep_modulate_policy_learning(
     float avoidance_precision = 1.0f + (remorse_level * 0.5f) + (guilt_level * 0.5f);
     bridge->emotion_effects.avoidance_precision = avoidance_precision;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated policy learning: modifier=%f, aversion=%f, avoidance=%f",
                         policy_modifier, aversion, avoidance_precision);
@@ -260,7 +261,7 @@ int remorse_fep_update(
     /* Apply policy learning modulation */
     remorse_fep_modulate_policy_learning(bridge);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Remorse decays moderately - lessons are remembered */
     float remorse_decay = 0.998f;
@@ -273,7 +274,7 @@ int remorse_fep_update(
         bridge->state.remorseful = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -288,9 +289,9 @@ int remorse_fep_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -301,9 +302,9 @@ int remorse_fep_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -316,7 +317,7 @@ int remorse_fep_connect_bio_async(
     remorse_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_REMORSE_BRIDGE,
@@ -325,9 +326,9 @@ int remorse_fep_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -340,14 +341,14 @@ int remorse_fep_disconnect_bio_async(
     remorse_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -356,5 +357,5 @@ int remorse_fep_disconnect_bio_async(
 bool remorse_fep_is_bio_async_connected(
     const remorse_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

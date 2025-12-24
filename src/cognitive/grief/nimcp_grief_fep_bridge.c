@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/grief/nimcp_grief_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -69,8 +70,8 @@ grief_fep_bridge_t* grief_fep_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -88,13 +89,13 @@ void grief_fep_destroy(grief_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         grief_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -111,9 +112,9 @@ int grief_fep_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to grief bridge");
     return 0;
@@ -125,9 +126,9 @@ int grief_fep_connect_grief(
 ) {
     if (!bridge || !grief) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->grief_system = grief;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected grief system to FEP bridge");
     return 0;
@@ -136,10 +137,10 @@ int grief_fep_connect_grief(
 int grief_fep_disconnect(grief_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->grief_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from grief FEP bridge");
     return 0;
@@ -157,7 +158,7 @@ int grief_fep_process_persistent_pe(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_grief_generation) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Grief = massive, persistent prediction error
      * The brain expects the person but they are absent
@@ -211,7 +212,7 @@ int grief_fep_process_persistent_pe(
     bridge->stats.avg_emotional_pain =
         (bridge->stats.avg_emotional_pain * 0.9f) + (emotional_pain * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Processed persistent PE: grief=%f, pain=%f, duration=%lums",
                         grief_intensity, emotional_pain, (unsigned long)duration_ms);
@@ -224,7 +225,7 @@ int grief_fep_modulate_learning_rate(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_grief_learning_slowdown) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Grief slows learning rate
      * This models the biological phenomenon where grief suppresses
@@ -248,7 +249,7 @@ int grief_fep_modulate_learning_rate(
                                    bridge->config.emotional_pain_precision_gain);
     bridge->emotion_effects.pain_precision_weight = pain_precision;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated learning rate: modifier=%f, resistance=%f",
                         learning_modifier, bridge->emotion_effects.model_update_resistance);
@@ -268,7 +269,7 @@ int grief_fep_update(
     /* Apply learning rate modulation */
     grief_fep_modulate_learning_rate(bridge);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Grief naturally decays over time (healthy grief resolution)
      * But decay is slow - grief persists
@@ -281,7 +282,7 @@ int grief_fep_update(
         bridge->state.grieving = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -296,9 +297,9 @@ int grief_fep_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -309,9 +310,9 @@ int grief_fep_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -324,7 +325,7 @@ int grief_fep_connect_bio_async(
     grief_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_GRIEF_BRIDGE,
@@ -333,9 +334,9 @@ int grief_fep_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -348,14 +349,14 @@ int grief_fep_disconnect_bio_async(
     grief_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -364,5 +365,5 @@ int grief_fep_disconnect_bio_async(
 bool grief_fep_is_bio_async_connected(
     const grief_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

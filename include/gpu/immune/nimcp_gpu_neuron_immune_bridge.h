@@ -118,6 +118,7 @@
 #define NIMCP_GPU_NEURON_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -243,6 +244,8 @@ typedef struct {
  * @brief Complete GPU neuron-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     gpu_neural_network_t gpu_network;
@@ -275,11 +278,6 @@ typedef struct {
     uint32_t batch_reductions;
     uint32_t thermal_throttle_events;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;     /**< Bio-async module context */
-    bool bio_async_enabled;            /**< Whether bio-async is active */
-
-    /* Thread safety */
     nimcp_platform_mutex_t* mutex;
 } gpu_neuron_immune_bridge_t;
 

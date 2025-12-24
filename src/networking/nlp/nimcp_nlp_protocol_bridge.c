@@ -29,6 +29,7 @@
  */
 
 #include "networking/nlp/nimcp_neural_link_protocol.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "networking/nlp/nimcp_neural_language.h"
 #include "utils/serialization/nimcp_serialization.h"
 #include "utils/logging/nimcp_logging.h"
@@ -65,6 +66,8 @@ extern int nlp_decompress(const uint8_t* input, size_t input_len,
  * and the underlying NLP transport protocol.
  */
 typedef struct nlp_protocol_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     nlp_node_t node;                    // Underlying NLP node
     nlang_shared_context_t context;     // Shared context for compression
     bool use_nlp_compression;           // Use NLP-specific compression

@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "async/nimcp_bio_async.h"
 
@@ -77,6 +78,8 @@ typedef struct snn_love_state_s {
 } snn_love_state_t;
 
 typedef struct snn_love_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     love_system_t* love_system;
     snn_love_config_t config;

@@ -74,6 +74,7 @@
 #define NIMCP_LNN_IMMUNE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -246,6 +247,8 @@ typedef struct {
  * WHY:  Bidirectional integration for stability and modulation
  */
 struct lnn_immune_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* LNN network */
     lnn_network_t* network;
 
@@ -262,12 +265,6 @@ struct lnn_immune_bridge {
     /* Statistics */
     lnn_immune_stats_t stats;
 
-    /* Bio-async */
-    bool bio_async_enabled;
-    bio_module_context_t bio_ctx;
-
-    /* Thread safety */
-    void* mutex;
 };
 
 /* ============================================================================

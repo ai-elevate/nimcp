@@ -6,6 +6,7 @@
  */
 
 #include "lnn/nimcp_lnn_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -19,15 +20,14 @@
  * HOW:  Opaque pointer pattern for information hiding
  */
 struct lnn_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     lnn_sleep_config_t config;          /**< Configuration */
     sleep_system_t sleep_system;        /**< Handle to sleep system */
     lnn_sleep_effects_t effects;        /**< Current modulation effects */
     nimcp_platform_mutex_t* mutex;      /**< Thread safety */
     bool callback_registered;           /**< Track callback for cleanup */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
 };
 
 /* Forward declarations */
@@ -56,7 +56,7 @@ static void lnn_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 
     NIMCP_LOGGING_DEBUG("LNN bridge received sleep state: %d", new_state);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -85,7 +85,7 @@ static void lnn_on_sleep_state_change(sleep_state_t new_state, void* user_data)
     bridge->effects.dynamics_slowed =
         (bridge->effects.tau_factor > 1.0f) || (bridge->effects.dt_factor > 1.0f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("LNN modulated: tau=%.2f, dt=%.2f, lr=%.2f, slowed=%d",
                         bridge->effects.tau_factor,
@@ -137,8 +137,8 @@ lnn_sleep_bridge_t lnn_sleep_bridge_create(
     bridge->effects.dynamics_slowed = false;
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -179,18 +179,18 @@ void lnn_sleep_bridge_destroy(lnn_sleep_bridge_t bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         lnn_sleep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int lnn_sleep_update(lnn_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query current sleep state and pressure */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -222,16 +222,16 @@ int lnn_sleep_update(lnn_sleep_bridge_t bridge) {
     bridge->effects.dynamics_slowed =
         (bridge->effects.tau_factor > 1.0f) || (bridge->effects.dt_factor > 1.0f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int lnn_sleep_get_effects(const lnn_sleep_bridge_t bridge, lnn_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -239,9 +239,9 @@ int lnn_sleep_get_effects(const lnn_sleep_bridge_t bridge, lnn_sleep_effects_t* 
 float lnn_sleep_get_tau_factor(const lnn_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.tau_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -249,9 +249,9 @@ float lnn_sleep_get_tau_factor(const lnn_sleep_bridge_t bridge) {
 float lnn_sleep_get_dt_factor(const lnn_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.dt_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -259,9 +259,9 @@ float lnn_sleep_get_dt_factor(const lnn_sleep_bridge_t bridge) {
 float lnn_sleep_get_lr_factor(const lnn_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.learning_rate_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -314,7 +314,7 @@ int lnn_sleep_bridge_connect_bio_async(lnn_sleep_bridge_t bridge)
 {
     /* Guard clauses */
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;  /* Already connected */
+    if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
     bio_module_info_t info = {
@@ -324,9 +324,9 @@ int lnn_sleep_bridge_connect_bio_async(lnn_sleep_bridge_t bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("LNN-sleep bridge connected to bio-async router");
         return 0;
     }
@@ -346,15 +346,15 @@ int lnn_sleep_bridge_disconnect_bio_async(lnn_sleep_bridge_t bridge)
 {
     /* Guard clauses */
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;  /* Not connected */
+    if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("LNN-sleep bridge disconnected from bio-async router");
 
     return 0;
@@ -372,5 +372,5 @@ bool lnn_sleep_bridge_is_bio_async_connected(const lnn_sleep_bridge_t bridge)
     /* Guard clause */
     if (!bridge) return false;
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

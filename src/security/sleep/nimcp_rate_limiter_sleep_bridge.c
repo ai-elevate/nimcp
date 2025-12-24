@@ -12,6 +12,7 @@
  */
 
 #include "security/sleep/nimcp_rate_limiter_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -19,10 +20,11 @@
 #include <string.h>
 
 struct rate_limiter_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     rate_limiter_sleep_config_t config;
     sleep_system_t sleep_system;
     rate_limiter_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -55,7 +57,7 @@ static void rate_limiter_on_sleep_state_change(sleep_state_t new_state, void* us
     rate_limiter_sleep_bridge_t bridge = (rate_limiter_sleep_bridge_t)user_data;
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
     bridge->effects.rate_limit_factor = rate_limiter_sleep_get_rate_factor(new_state);
@@ -67,7 +69,7 @@ static void rate_limiter_on_sleep_state_change(sleep_state_t new_state, void* us
                         new_state, bridge->effects.rate_limit_factor,
                         bridge->effects.burst_capacity_factor);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 int rate_limiter_sleep_default_config(rate_limiter_sleep_config_t* config)
@@ -101,8 +103,8 @@ rate_limiter_sleep_bridge_t rate_limiter_sleep_bridge_create(
     memcpy(&bridge->config, config, sizeof(rate_limiter_sleep_config_t));
     bridge->sleep_system = sleep_system;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for rate limiter sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -136,8 +138,8 @@ void rate_limiter_sleep_bridge_destroy(rate_limiter_sleep_bridge_t bridge)
                                         rate_limiter_on_sleep_state_change, bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -148,9 +150,9 @@ int rate_limiter_sleep_update(rate_limiter_sleep_bridge_t bridge)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.sleep_pressure = sleep_get_pressure(bridge->sleep_system);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -160,9 +162,9 @@ int rate_limiter_sleep_get_effects(const rate_limiter_sleep_bridge_t bridge,
 {
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(rate_limiter_sleep_effects_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -171,11 +173,11 @@ float rate_limiter_sleep_get_effective_rate(const rate_limiter_sleep_bridge_t br
 {
     if (!bridge) return base;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->config.enable_rate_modulation ?
         bridge->effects.rate_limit_factor : 1.0f;
     float modulated = 1.0f + (factor - 1.0f) * bridge->config.modulation_strength;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return base * modulated;
 }
@@ -184,11 +186,11 @@ float rate_limiter_sleep_get_burst_capacity(const rate_limiter_sleep_bridge_t br
 {
     if (!bridge) return base;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->config.enable_burst_modulation ?
         bridge->effects.burst_capacity_factor : 1.0f;
     float modulated = 1.0f + (factor - 1.0f) * bridge->config.modulation_strength;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return base * modulated;
 }
@@ -197,9 +199,9 @@ bool rate_limiter_sleep_is_relaxed(const rate_limiter_sleep_bridge_t bridge)
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool relaxed = bridge->effects.limits_relaxed;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return relaxed;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/heterosynaptic/nimcp_heterosynaptic_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -16,6 +17,8 @@
  * ============================================================================ */
 
 struct hetero_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     sleep_system_t sleep_system;
     hetero_system_t* hetero_system;
     hetero_sleep_config_t config;
@@ -76,8 +79,8 @@ hetero_sleep_bridge_t hetero_sleep_bridge_create(
     bridge->effects.competition_enabled = true;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -90,7 +93,7 @@ hetero_sleep_bridge_t hetero_sleep_bridge_create(
 void hetero_sleep_bridge_destroy(hetero_sleep_bridge_t bridge) {
     if (!bridge) return;
 
-    nimcp_platform_mutex_destroy(bridge->mutex);
+    nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 
     NIMCP_LOGGING_INFO("Destroyed hetero-sleep bridge");
@@ -158,7 +161,7 @@ float hetero_sleep_get_radius_factor_for_state(sleep_state_t state) {
 int hetero_sleep_update(hetero_sleep_bridge_t bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current sleep state */
     sleep_state_t state = SLEEP_STATE_AWAKE;
@@ -201,16 +204,16 @@ int hetero_sleep_update(hetero_sleep_bridge_t bridge) {
         hetero_set_sleep_state(bridge->hetero_system, state);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int hetero_sleep_get_effects(const hetero_sleep_bridge_t bridge, hetero_sleep_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(hetero_sleep_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

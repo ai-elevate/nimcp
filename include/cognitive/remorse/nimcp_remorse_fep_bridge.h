@@ -22,6 +22,7 @@
 #define NIMCP_REMORSE_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/nimcp_remorse_regret.h"
@@ -72,17 +73,15 @@ typedef struct {
 } remorse_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     remorse_fep_config_t config;
     fep_system_t* fep_system;
     remorse_regret_system_t* remorse_system;
     remorse_fep_effects_t fep_effects;
     fep_remorse_effects_t emotion_effects;
     remorse_fep_state_t state;
-    remorse_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} remorse_fep_bridge_t;
+    remorse_fep_stats_t stats;} remorse_fep_bridge_t;
 
 int remorse_fep_default_config(remorse_fep_config_t* config);
 remorse_fep_bridge_t* remorse_fep_create(const remorse_fep_config_t* config);

@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_autobiographical_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -189,13 +190,13 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->sickness_landmarks);
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("autobio_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -205,9 +206,9 @@ void autobio_immune_bridge_destroy(autobio_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free sickness landmarks */
@@ -230,7 +231,7 @@ int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* brid
     if (!bridge->enable_cytokine_encoding_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine concentrations */
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -269,7 +270,7 @@ int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* brid
     bridge->cytokine_effects.consolidation_impairment = impairment;
 
     bridge->encoding_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -282,7 +283,7 @@ int autobio_immune_apply_inflammation_consolidation_effects(
     if (!bridge->enable_inflammation_consolidation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -320,7 +321,7 @@ int autobio_immune_apply_inflammation_consolidation_effects(
         bridge->inflammation_state.hippocampal_impairment = severity * 0.2f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -357,11 +358,11 @@ int autobio_immune_create_sickness_landmark(
     if (!bridge->autobio_memory) return -1;
     if (severity < INFLAMMATION_SYSTEMIC) return 0; /* Only create for systemic+ */
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->sickness_landmark_count >= bridge->sickness_landmark_capacity) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -388,7 +389,7 @@ int autobio_immune_create_sickness_landmark(
     /* Store in autobiographical memory */
     uint64_t mem_id = autobio_store(*bridge->autobio_memory, &memory);
     if (mem_id == 0) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -411,7 +412,7 @@ int autobio_immune_create_sickness_landmark(
 
     *landmark_id = mem_id;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     LOG_MODULE_INFO("autobio_immune_bridge",
                   "Created sickness landmark: %s", landmark->description);
 
@@ -427,7 +428,7 @@ int autobio_immune_close_sickness_landmark(
     if (!bridge->autobio_memory) return -1;
     if (landmark_id == 0) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Find landmark */
     sickness_landmark_t* landmark = NULL;
@@ -439,7 +440,7 @@ int autobio_immune_close_sickness_landmark(
     }
 
     if (!landmark) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -462,7 +463,7 @@ int autobio_immune_close_sickness_landmark(
         bridge->active_sickness_landmark_id = 0;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     LOG_MODULE_INFO("autobio_immune_bridge",
               "Closed sickness landmark: %llu", (unsigned long long)landmark_id);
 
@@ -495,7 +496,7 @@ int autobio_immune_trigger_from_trauma_recall(
 
     if (!is_trauma) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update trigger state */
     bridge->memory_trigger.memory_type = memory->type;
@@ -521,7 +522,7 @@ int autobio_immune_trigger_from_trauma_recall(
                   memory->importance);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -534,7 +535,7 @@ int autobio_immune_ruminate_on_negative_memory(
     if (!bridge->enable_rumination_tracking) return 0;
     if (!bridge->autobio_memory) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Track rumination */
     bridge->memory_trigger.rumination_count++;
@@ -550,7 +551,7 @@ int autobio_immune_ruminate_on_negative_memory(
                   "Chronic rumination detected, escalating inflammation");
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -569,7 +570,7 @@ int autobio_immune_boost_from_positive_memory(
 
     if (!is_positive) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Track positive memory types */
     if (memory->type == AUTOBIO_ACHIEVEMENT) {
@@ -594,7 +595,7 @@ int autobio_immune_boost_from_positive_memory(
 
     bridge->positive_boosts++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -620,7 +621,7 @@ int autobio_immune_bridge_update(
     /* Guard clauses */
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update inflammation state */
     autobio_immune_apply_inflammation_consolidation_effects(bridge);
@@ -655,7 +656,7 @@ int autobio_immune_bridge_update(
     }
 
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -670,9 +671,9 @@ int autobio_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_memory_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -683,9 +684,9 @@ int autobio_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_memory_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -705,7 +706,7 @@ int autobio_immune_get_sickness_landmarks(
 ) {
     if (!bridge || !landmarks || !num_found) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     uint32_t count = bridge->sickness_landmark_count;
     if (count > max_landmarks) count = max_landmarks;
@@ -714,7 +715,7 @@ int autobio_immune_get_sickness_landmarks(
            count * sizeof(sickness_landmark_t));
     *num_found = count;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -741,7 +742,7 @@ float autobio_immune_get_memory_decline_rate(const autobio_immune_bridge_t* brid
  */
 int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_AUTOBIOGRAPHICAL,
@@ -750,9 +751,9 @@ int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("autobiographical_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -766,13 +767,13 @@ int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge) {
  */
 int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("autobiographical_immune_bridge disconnected from bio-async router");
     return 0;
@@ -783,5 +784,5 @@ int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge
  */
 bool autobiographical_immune_is_bio_async_connected(const autobio_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

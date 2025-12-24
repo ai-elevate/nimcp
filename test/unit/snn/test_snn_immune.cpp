@@ -135,7 +135,7 @@ TEST_F(SNNImmuneTest, BridgeInitialState) {
     ASSERT_NE(nullptr, bridge);
 
     EXPECT_TRUE(bridge->connected);
-    EXPECT_FALSE(bridge->bio_async_enabled);
+    EXPECT_FALSE(bridge->base.bio_async_enabled);
     EXPECT_EQ(0u, bridge->instability_count);
     EXPECT_EQ(0u, bridge->immune_reports);
 }

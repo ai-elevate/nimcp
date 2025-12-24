@@ -34,6 +34,7 @@
 //=============================================================================
 
 #include "core/brain/nimcp_brain.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"

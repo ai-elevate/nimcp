@@ -4,6 +4,7 @@
  */
 
 #include "security/nimcp_pattern_db_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
@@ -35,8 +36,8 @@ pattern_fep_bridge_t* pattern_fep_create(const pattern_fep_config_t* config,
 
     bridge->fep_system = fep_system;
     bridge->pattern_db = pattern_db;
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -49,15 +50,15 @@ pattern_fep_bridge_t* pattern_fep_create(const pattern_fep_config_t* config,
 
 void pattern_fep_destroy(pattern_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) pattern_fep_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) pattern_fep_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int pattern_fep_update(pattern_fep_bridge_t* bridge) {
     if (!bridge || !bridge->state.active) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     bridge->fep_effects.match_score = 1.0f - (fe / bridge->config.match_fe_threshold);
     if (bridge->fep_effects.match_score < 0.0f) bridge->fep_effects.match_score = 0.0f;
@@ -65,7 +66,7 @@ int pattern_fep_update(pattern_fep_bridge_t* bridge) {
     bridge->fep_effects.match_threshold = bridge->state.current_precision;
     bridge->state.update_count++;
     bridge->stats.avg_free_energy = fe;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -73,10 +74,10 @@ int pattern_fep_match(pattern_fep_bridge_t* bridge, const char* input,
     nimcp_pattern_match_result_t* result) {
     if (!bridge || !input || !result) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     nimcp_error_t err = nimcp_pattern_db_match(bridge->pattern_db, input, result);
     if (err != NIMCP_SUCCESS) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -90,14 +91,14 @@ int pattern_fep_match(pattern_fep_bridge_t* bridge, const char* input,
         bridge->pattern_effects.mismatches++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int pattern_fep_apply_modulation(pattern_fep_bridge_t* bridge) {
     if (!bridge || !bridge->config.enable_adaptive_matching) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float match_rate = (float)bridge->pattern_effects.patterns_matched /
                       (float)(bridge->state.match_count + 1);
     float target_precision = (match_rate > 0.5f) ? 2.0f : 0.5f;
@@ -105,7 +106,7 @@ int pattern_fep_apply_modulation(pattern_fep_bridge_t* bridge) {
     bridge->state.current_precision =
         (1.0f - alpha) * bridge->state.current_precision + alpha * target_precision;
     bridge->stats.current_precision = bridge->state.current_precision;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -116,29 +117,29 @@ int pattern_fep_get_stats(const pattern_fep_bridge_t* bridge, pattern_fep_stats_
 }
 
 int pattern_fep_connect_bio_async(pattern_fep_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_enabled) return 0;
+    if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SECURITY_PATTERN_FEP,
         .module_name = "pattern_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge
     };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Pattern DB FEP bridge connected to bio-async");
     }
     return 0;
 }
 
 int pattern_fep_disconnect_bio_async(pattern_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
     return 0;
 }
 
 bool pattern_fep_is_bio_async_connected(const pattern_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

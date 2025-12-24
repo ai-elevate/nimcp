@@ -42,6 +42,7 @@
 #define NIMCP_CURIOSITY_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
@@ -129,6 +130,8 @@ typedef struct {
  * @brief Curiosity-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System references */
     brain_immune_system_t* immune_system;
     curiosity_engine_t curiosity_engine;
@@ -154,15 +157,7 @@ typedef struct {
     uint64_t novelty_triggers;              /**< Novelty-based immune triggers */
     uint64_t chronic_suppression_duration;  /**< Total chronic suppression time */
     float max_suppression_observed;         /**< Peak suppression recorded */
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-
-
-    /* Thread safety */
-    void* mutex;
-} curiosity_immune_bridge_t;
+    } curiosity_immune_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

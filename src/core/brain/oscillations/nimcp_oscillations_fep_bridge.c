@@ -10,6 +10,7 @@
  */
 
 #include "core/brain/oscillations/nimcp_oscillations_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -88,8 +89,8 @@ oscillations_fep_bridge_t* oscillations_fep_bridge_create(
     bridge->state.effective_precision = 1.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         oscillations_fep_bridge_destroy(bridge);
         return NULL;
     }
@@ -103,13 +104,13 @@ void oscillations_fep_bridge_destroy(
 ) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         oscillations_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -126,9 +127,9 @@ int oscillations_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Oscillations-FEP bridge connected to FEP system");
     return 0;
@@ -140,9 +141,9 @@ int oscillations_fep_bridge_connect_oscillations(
 ) {
     if (!bridge || !osc_state) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->osc_state = osc_state;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Oscillations-FEP bridge connected to oscillation state");
     return 0;
@@ -153,10 +154,10 @@ int oscillations_fep_bridge_disconnect(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->osc_state = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -171,7 +172,7 @@ int oscillations_fep_modulate_gamma_from_pe(
     if (!bridge || !bridge->fep_system) return -1;
     if (!bridge->config.enable_pe_gamma_coupling) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -205,7 +206,7 @@ int oscillations_fep_modulate_gamma_from_pe(
     bridge->state.current_gamma = gamma_modulation;
     bridge->stats.gamma_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -215,7 +216,7 @@ int oscillations_fep_modulate_beta_from_predictions(
     if (!bridge || !bridge->fep_system) return -1;
     if (!bridge->config.enable_prediction_beta_coupling) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -251,7 +252,7 @@ int oscillations_fep_modulate_beta_from_predictions(
     bridge->state.current_beta = beta_modulation;
     bridge->stats.beta_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -261,7 +262,7 @@ int oscillations_fep_modulate_alpha_from_precision(
     if (!bridge || !bridge->fep_system) return -1;
     if (!bridge->config.enable_precision_alpha_coupling) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -298,7 +299,7 @@ int oscillations_fep_modulate_alpha_from_precision(
         1.0f);
     bridge->state.effective_precision = bridge->state.gamma_alpha_ratio;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -308,7 +309,7 @@ int oscillations_fep_generate_theta_gamma_pac(
     if (!bridge || !bridge->fep_system) return -1;
     if (!bridge->config.enable_theta_gamma_pac) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Theta modulates gamma based on hierarchy level */
     /* Higher hierarchy levels → stronger theta modulation */
@@ -332,7 +333,7 @@ int oscillations_fep_generate_theta_gamma_pac(
         bridge->stats.pac_detections++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -346,12 +347,12 @@ int oscillations_fep_derive_precision_from_ratio(
 ) {
     if (!bridge || !precision) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Precision = gamma/alpha ratio */
     *precision = bridge->state.gamma_alpha_ratio;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -360,7 +361,7 @@ int oscillations_fep_weight_errors_by_gamma(
 ) {
     if (!bridge || !bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
     float gamma_weight = bridge->state.current_gamma;
@@ -376,7 +377,7 @@ int oscillations_fep_weight_errors_by_gamma(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -385,7 +386,7 @@ int oscillations_fep_bind_beliefs_via_coherence(
 ) {
     if (!bridge || !bridge->osc_state) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute phase coherence from oscillation state */
     /* Note: This is a placeholder - actual implementation would use
@@ -397,7 +398,7 @@ int oscillations_fep_bind_beliefs_via_coherence(
 
     bridge->state.cross_regional_coherence = coherence;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -411,7 +412,7 @@ int oscillations_fep_compute_band_power(
 ) {
     if (!bridge || !band_power) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Extract current band power from state */
     band_power->delta = 1.0f; /* Placeholder */
@@ -422,7 +423,7 @@ int oscillations_fep_compute_band_power(
 
     bridge->state.band_power = *band_power;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -433,12 +434,12 @@ int oscillations_fep_detect_pac(
 ) {
     if (!bridge || !pac_strength || !preferred_phase) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     *pac_strength = bridge->state.theta_gamma_pac_strength;
     *preferred_phase = bridge->state.pac_preferred_phase;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -453,7 +454,7 @@ int oscillations_fep_bridge_update(
     if (!bridge) return -1;
     (void)delta_ms; /* Unused for now */
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* 1. FEP → Oscillations: Modulate oscillatory power */
     if (bridge->config.enable_pe_gamma_coupling) {
@@ -505,7 +506,7 @@ int oscillations_fep_bridge_update(
         (bridge->stats.avg_coherence * 0.99f) +
         (bridge->state.cross_regional_coherence * 0.01f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -539,7 +540,7 @@ int oscillations_fep_bridge_connect_bio_async(
     oscillations_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_OSCILLATIONS_BRIDGE,
@@ -548,9 +549,9 @@ int oscillations_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Oscillations-FEP bridge connected to bio-async");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -562,18 +563,18 @@ int oscillations_fep_bridge_disconnect_bio_async(
     oscillations_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool oscillations_fep_bridge_is_bio_async_connected(
     const oscillations_fep_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

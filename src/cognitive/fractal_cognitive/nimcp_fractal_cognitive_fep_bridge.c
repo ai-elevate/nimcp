@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -55,8 +56,8 @@ fractal_cognitive_fep_bridge_t* fractal_cognitive_fep_bridge_create(
         fractal_cognitive_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -72,12 +73,12 @@ fractal_cognitive_fep_bridge_t* fractal_cognitive_fep_bridge_create(
 void fractal_cognitive_fep_bridge_destroy(fractal_cognitive_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         fractal_cognitive_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -94,9 +95,9 @@ int fractal_cognitive_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -112,9 +113,9 @@ int fractal_cognitive_fep_bridge_connect_fractal(
 ) {
     if (!bridge || !fractal_cache) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fractal_cache = fractal_cache;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -127,10 +128,10 @@ int fractal_cognitive_fep_bridge_connect_fractal(
 int fractal_cognitive_fep_bridge_disconnect(fractal_cognitive_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->fractal_cache = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -147,7 +148,7 @@ int fractal_cognitive_fep_trigger_hub_discovery(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_exploration) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->fep_effects.current_prediction_error = pe_magnitude;
 
@@ -158,7 +159,7 @@ int fractal_cognitive_fep_trigger_hub_discovery(
         NIMCP_LOGGING_INFO("Hub discovery triggered (PE=%.2f)", pe_magnitude);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -173,7 +174,7 @@ int fractal_cognitive_fep_weight_hubs_by_precision(
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_hub_precision) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Simplified: set uniform hub weights (real implementation would query FEP precision)
     bridge->fep_effects.num_hubs_weighted = 0;
@@ -183,7 +184,7 @@ int fractal_cognitive_fep_weight_hubs_by_precision(
 
     bridge->stats.precision_applications++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -197,12 +198,12 @@ int fractal_cognitive_fep_trigger_hierarchy_update(
 ) {
     if (!bridge || !bridge->fractal_cache) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->fep_effects.hierarchy_update_active = true;
     bridge->stats.structure_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -215,13 +216,13 @@ int fractal_cognitive_fep_apply_hub_priors(fractal_cognitive_fep_bridge_t* bridg
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_hub_beliefs) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->fractal_effects.hub_precision_bias = bridge->config.centrality_prior_strength;
     bridge->fractal_effects.hubs_constraining_model = true;
     bridge->stats.constraint_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -234,14 +235,14 @@ int fractal_cognitive_fep_map_hierarchy_to_fep(fractal_cognitive_fep_bridge_t* b
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_hierarchy_mapping) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Simplified: would extract actual hierarchy depth from fractal cache
     bridge->fractal_effects.num_hierarchy_levels = 3;  // Default depth
     bridge->state.num_hierarchy_levels = bridge->fractal_effects.num_hierarchy_levels;
     bridge->stats.hierarchy_mappings++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -256,12 +257,12 @@ int fractal_cognitive_fep_update_model_structure(
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_structure_updates) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->fractal_effects.model_structure_updated = true;
     bridge->stats.structure_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -295,9 +296,9 @@ int fractal_cognitive_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -313,9 +314,9 @@ int fractal_cognitive_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -329,7 +330,7 @@ int fractal_cognitive_fep_bridge_connect_bio_async(
     fractal_cognitive_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SOCIAL_BRIDGE + 1,  // Next in sequence
@@ -338,9 +339,9 @@ int fractal_cognitive_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
 
@@ -355,14 +356,14 @@ int fractal_cognitive_fep_bridge_connect_bio_async(
 int fractal_cognitive_fep_bridge_disconnect_bio_async(
     fractal_cognitive_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
     }
 
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     return 0;
 }
@@ -375,5 +376,5 @@ int fractal_cognitive_fep_bridge_disconnect_bio_async(
 bool fractal_cognitive_fep_bridge_is_bio_async_connected(
     const fractal_cognitive_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

@@ -37,6 +37,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_encoding.h"
 #include "perception/nimcp_speech_cortex.h"
@@ -135,6 +136,8 @@ typedef struct snn_speech_decode_stats_s {
  * HOW:  Store SNN, speech cortex, encoders/decoders, buffers
  */
 typedef struct snn_speech_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     /* Connected systems */
     snn_network_t* snn;                 /**< SNN network */
     speech_cortex_t* speech_cortex;     /**< Speech cortex module */

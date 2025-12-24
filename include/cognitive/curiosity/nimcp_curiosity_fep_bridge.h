@@ -54,6 +54,7 @@
 #define NIMCP_CURIOSITY_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -119,15 +120,14 @@ typedef struct {
 } curiosity_fep_stats_t;
 
 struct curiosity_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     curiosity_fep_config_t config;
     fep_system_t* fep_system;
     curiosity_engine_t curiosity_engine;
     curiosity_fep_effects_t effects;
     curiosity_fep_state_t state;
     curiosity_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 /* ============================================================================

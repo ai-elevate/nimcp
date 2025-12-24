@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/neuromodulators/nimcp_vesicle_packaging_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/thread/nimcp_thread.h"
@@ -23,6 +24,8 @@
  * HOW:  Stores config, generators, state, statistics, pool pointer
  */
 struct vesicle_pink_noise_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     // Configuration
     vesicle_pink_noise_config_t config;
 
@@ -46,7 +49,6 @@ struct vesicle_pink_noise_bridge {
     bool connected;
 
     // Thread safety
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -54,10 +56,10 @@ struct vesicle_pink_noise_bridge {
 //=============================================================================
 
 #define LOCK(bridge) \
-    if ((bridge) && (bridge)->mutex) { nimcp_mutex_lock((bridge)->mutex); }
+    if ((bridge) && (bridge)->base.mutex) { nimcp_mutex_lock((bridge)->base.mutex); }
 
 #define UNLOCK(bridge) \
-    if ((bridge) && (bridge)->mutex) { nimcp_mutex_unlock((bridge)->mutex); }
+    if ((bridge) && (bridge)->base.mutex) { nimcp_mutex_unlock((bridge)->base.mutex); }
 
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
@@ -197,14 +199,14 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
 
     // Create mutex if threading enabled
     if (cfg->enable_threading) {
-        bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-        if (!bridge->mutex) {
+        bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+        if (!bridge->base.mutex) {
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
-        if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
-            nimcp_free(bridge->mutex);
-            bridge->mutex = NULL;
+        if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+            nimcp_free(bridge->base.mutex);
+            bridge->base.mutex = NULL;
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
@@ -240,9 +242,9 @@ void vesicle_pink_noise_destroy(vesicle_pink_noise_bridge_t* bridge) {
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     // Free bridge structure

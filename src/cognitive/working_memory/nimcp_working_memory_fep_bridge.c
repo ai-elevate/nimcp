@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/working_memory/nimcp_working_memory_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -69,8 +70,8 @@ working_memory_fep_bridge_t* working_memory_fep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -84,7 +85,7 @@ void working_memory_fep_bridge_destroy(working_memory_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         working_memory_fep_bridge_disconnect_bio_async(bridge);
     }
 
@@ -97,8 +98,8 @@ void working_memory_fep_bridge_destroy(working_memory_fep_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -115,9 +116,9 @@ int working_memory_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to working memory bridge");
     return 0;
@@ -129,9 +130,9 @@ int working_memory_fep_bridge_connect_working_memory(
 ) {
     if (!bridge || !wm) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->working_memory = wm;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected working memory to FEP bridge");
     return 0;
@@ -140,10 +141,10 @@ int working_memory_fep_bridge_connect_working_memory(
 int working_memory_fep_bridge_disconnect(working_memory_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->working_memory = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from working memory FEP bridge");
     return 0;
@@ -164,7 +165,7 @@ int working_memory_fep_apply_precision_capacity_modulation(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current precision from FEP system */
     float precision = bridge->state.current_precision;
@@ -195,7 +196,7 @@ int working_memory_fep_apply_precision_capacity_modulation(
          (bridge->stats.precision_capacity_adjustments - 1) +
          (float)adjustment) / bridge->stats.precision_capacity_adjustments;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied precision capacity modulation: %d", adjustment);
     return 0;
@@ -211,7 +212,7 @@ int working_memory_fep_pe_auto_refresh(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if PE exceeds threshold */
     if (pe_magnitude > bridge->config.pe_refresh_threshold) {
@@ -242,7 +243,7 @@ int working_memory_fep_pe_auto_refresh(
     bridge->fep_effects.current_prediction_error = pe_magnitude;
     bridge->state.current_prediction_error = pe_magnitude;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -255,7 +256,7 @@ int working_memory_fep_efe_item_selection(working_memory_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current EFE from FEP system */
     float efe = bridge->fep_effects.current_efe;
@@ -266,7 +267,7 @@ int working_memory_fep_efe_item_selection(working_memory_fep_bridge_t* bridge) {
     /* Update stats */
     bridge->stats.efe_item_selections++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("EFE-guided item selection (EFE: %f, salience: %f)",
                        efe, efe_salience);
@@ -288,7 +289,7 @@ int working_memory_fep_apply_context_modulation(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Extract context from working memory content */
     uint32_t count = working_memory_get_count(bridge->working_memory);
@@ -306,7 +307,7 @@ int working_memory_fep_apply_context_modulation(
         (bridge->stats.avg_context_strength * (bridge->stats.context_modulations - 1) +
          context_strength) / bridge->stats.context_modulations;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied context modulation: %f", context_strength);
     return 0;
@@ -323,7 +324,7 @@ int working_memory_fep_signal_capacity_pressure(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get capacity utilization */
     float utilization = working_memory_get_utilization(bridge->working_memory);
@@ -351,7 +352,7 @@ int working_memory_fep_signal_capacity_pressure(
     bridge->wm_effects.capacity_utilization = utilization;
     bridge->wm_effects.precision_cost_multiplier = cost_mult;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Capacity pressure signaled: utilization=%f, cost=%f",
                        utilization, cost_mult);
@@ -365,7 +366,7 @@ int working_memory_fep_signal_eviction(working_memory_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Signal strength proportional to number of evictions */
     float signal = (float)bridge->wm_effects.items_evicted * 0.1f;
@@ -379,7 +380,7 @@ int working_memory_fep_signal_eviction(working_memory_fep_bridge_t* bridge) {
         bridge->stats.eviction_signals++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Eviction signal: %u items, signal=%f",
                        bridge->wm_effects.items_evicted, signal);
@@ -406,7 +407,7 @@ int working_memory_fep_bridge_update(
     working_memory_fep_signal_eviction(bridge);
 
     /* Update average stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->stats.avg_precision =
         (bridge->stats.avg_precision * 0.9f) +
@@ -422,7 +423,7 @@ int working_memory_fep_bridge_update(
         (bridge->stats.avg_prediction_error * 0.9f) +
         (bridge->state.current_prediction_error * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -437,9 +438,9 @@ int working_memory_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -450,9 +451,9 @@ int working_memory_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -465,7 +466,7 @@ int working_memory_fep_bridge_connect_bio_async(
     working_memory_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_WORKING_MEMORY_BRIDGE,
@@ -474,9 +475,9 @@ int working_memory_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -489,14 +490,14 @@ int working_memory_fep_bridge_disconnect_bio_async(
     working_memory_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -505,5 +506,5 @@ int working_memory_fep_bridge_disconnect_bio_async(
 bool working_memory_fep_bridge_is_bio_async_connected(
     const working_memory_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

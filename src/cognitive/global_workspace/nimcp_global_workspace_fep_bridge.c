@@ -50,6 +50,7 @@
  */
 
 #include "cognitive/global_workspace/nimcp_global_workspace_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -166,8 +167,8 @@ global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
     memset(&bridge->stats, 0, sizeof(global_workspace_fep_stats_t));
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for global workspace FEP bridge");
         global_workspace_fep_bridge_destroy(bridge);
         return NULL;
@@ -185,13 +186,13 @@ global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
 void global_workspace_fep_bridge_destroy(global_workspace_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         global_workspace_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -213,9 +214,9 @@ int global_workspace_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Global workspace FEP bridge connected to FEP system");
     return 0;
@@ -232,9 +233,9 @@ int global_workspace_fep_bridge_connect_workspace(
 ) {
     if (!bridge || !workspace) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->workspace = workspace;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Global workspace FEP bridge connected to workspace");
     return 0;
@@ -267,7 +268,7 @@ int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bri
     if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
     if (!bridge->config.enable_evidence_competition) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -306,7 +307,7 @@ int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bri
 
     /* Check if evidence exceeds threshold */
     if (evidence < bridge->config.belief_evidence_threshold) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Below threshold, don't compete */
     }
 
@@ -320,7 +321,7 @@ int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bri
         memcpy(belief_content, top_level->beliefs.mean, content_dim * sizeof(float));
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* Compete for workspace access */
     bool won = global_workspace_compete(
@@ -331,12 +332,12 @@ int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bri
         strength
     );
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.belief_in_workspace = won;
     if (won) {
         bridge->stats.total_competitions_won++;
     }
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return won ? 1 : 0;
 }
@@ -357,7 +358,7 @@ int global_workspace_fep_broadcast_winning_belief(global_workspace_fep_bridge_t*
     /* Compete with beliefs (includes broadcast if win) */
     int result = global_workspace_fep_compete_with_beliefs(bridge);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (result > 0) {
         bridge->state.broadcasts_from_beliefs++;
         bridge->stats.total_belief_broadcasts++;
@@ -368,7 +369,7 @@ int global_workspace_fep_broadcast_winning_belief(global_workspace_fep_bridge_t*
             alpha * bridge->state.current_belief_evidence +
             (1.0f - alpha) * bridge->stats.avg_broadcast_evidence;
     }
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -432,7 +433,7 @@ int global_workspace_fep_update_priors_from_broadcast(
         return 0;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -472,7 +473,7 @@ int global_workspace_fep_update_priors_from_broadcast(
     bridge->stats.total_prior_updates++;
     bridge->effects.broadcast_prior_boost = prior_weight;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -527,9 +528,9 @@ int global_workspace_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -545,9 +546,9 @@ int global_workspace_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -565,7 +566,7 @@ int global_workspace_fep_bridge_connect_bio_async(
     global_workspace_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_GLOBAL_WORKSPACE_BRIDGE,
@@ -574,9 +575,9 @@ int global_workspace_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Global workspace FEP bridge connected to bio-async");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -594,14 +595,14 @@ int global_workspace_fep_bridge_disconnect_bio_async(
     global_workspace_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Global workspace FEP bridge disconnected from bio-async");
 
     return 0;
@@ -615,5 +616,5 @@ int global_workspace_fep_bridge_disconnect_bio_async(
 bool global_workspace_fep_bridge_is_bio_async_connected(
     const global_workspace_fep_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

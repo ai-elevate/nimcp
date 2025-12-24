@@ -47,6 +47,7 @@ extern "C" {
 #endif
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
@@ -190,6 +191,8 @@ typedef struct {
  *      applies modulation to introspection module, and tracks statistics.
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* Component pointers */
     neural_substrate_t* substrate;        /**< Neural substrate being monitored */
     nimcp_introspection_t* introspection; /**< Introspection module being modulated */
@@ -199,13 +202,7 @@ typedef struct {
     introspection_substrate_effects_t effects; /**< Current substrate effects */
     introspection_substrate_stats_t stats;     /**< Bridge statistics */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;         /**< Bio-async module context */
-    bool bio_async_enabled;               /**< Whether bio-async is active */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;                 /**< Mutex for thread-safe access */
-} introspection_substrate_bridge_t;
+    } introspection_substrate_bridge_t;
 
 /* ============================================================================
  * API Functions

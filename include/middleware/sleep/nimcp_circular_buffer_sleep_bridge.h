@@ -60,6 +60,7 @@
 #define NIMCP_CIRCULAR_BUFFER_SLEEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/nimcp_sleep_wake.h"
 #include "middleware/buffering/nimcp_circular_buffer.h"

@@ -12,6 +12,7 @@
  */
 
 #include "perception/cortical/nimcp_visual_cortical_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,8 @@
  * @brief Internal structure for visual-cortical bridge
  */
 struct visual_cortical_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Connected modules */
     visual_cortex_t* visual_cortex;
     topographic_map_t* retinotopic_map;
@@ -50,10 +53,6 @@ struct visual_cortical_bridge {
     /* State */
     visual_cortical_state_t state;
     visual_cortical_stats_t stats;
-
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
 
     /* UMM */
     bool umm_enabled;
@@ -238,11 +237,10 @@ visual_cortical_bridge_t* visual_cortical_bridge_create(
     bridge->state = VISUAL_CORTICAL_STATE_UNINITIALIZED;
     bridge->immune_modulation_factor = 0.0f;
     bridge->umm_enabled = config->use_umm;
-    bridge->mutex_initialized = false;
 
     /* Initialize mutex */
-    if (nimcp_mutex_init(&bridge->mutex, NULL) == NIMCP_SUCCESS) {
-        bridge->mutex_initialized = true;
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (bridge->base.mutex && nimcp_mutex_init(bridge->base.mutex, NULL) == 0) {
     } else {
         NIMCP_LOGGING_WARN("Failed to initialize mutex, continuing without thread safety");
     }
@@ -350,7 +348,7 @@ void visual_cortical_bridge_destroy(visual_cortical_bridge_t* bridge)
     if (!bridge) return;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         visual_cortical_disconnect_bio_async(bridge);
     }
 
@@ -380,8 +378,10 @@ void visual_cortical_bridge_destroy(visual_cortical_bridge_t* bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_destroy(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -399,11 +399,11 @@ int visual_cortical_connect_visual_cortex(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->visual_cortex = visual_cortex;
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Connected to visual cortex");
     return NIMCP_SUCCESS;
@@ -415,7 +415,7 @@ int visual_cortical_connect_immune(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->cortical_immune = immune;
 
@@ -430,7 +430,7 @@ int visual_cortical_connect_immune(
         }
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Connected to cortical immune system");
     return NIMCP_SUCCESS;
@@ -440,7 +440,7 @@ int visual_cortical_connect_bio_async(visual_cortical_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
     }
 
@@ -451,9 +451,9 @@ int visual_cortical_connect_bio_async(visual_cortical_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Visual-cortical bridge connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -466,23 +466,23 @@ int visual_cortical_disconnect_bio_async(visual_cortical_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_DEBUG("Disconnected from bio-async router");
     return NIMCP_SUCCESS;
 }
 
 bool visual_cortical_is_bio_async_connected(const visual_cortical_bridge_t* bridge)
 {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -504,7 +504,7 @@ int visual_cortical_process(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = VISUAL_CORTICAL_STATE_PROCESSING;
     uint64_t start_time = get_time_ns();
@@ -664,7 +664,7 @@ int visual_cortical_process(
     bridge->last_process_time_ns = end_time;
     bridge->state = VISUAL_CORTICAL_STATE_READY;
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -686,26 +686,26 @@ int visual_cortical_process_patch(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     memset(result, 0, sizeof(visual_cortical_orientation_result_t));
 
     /* Find hypercolumn for this position */
     uint32_t hcol_idx = compute_hypercolumn_index(bridge, retino_x, retino_y);
     if (hcol_idx >= bridge->num_hypercolumns) {
-        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     orientation_hypercolumn_t* hcol = bridge->hypercolumns[hcol_idx];
     if (!hcol) {
-        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Process through hypercolumn */
     if (!orientation_hypercolumn_process(hcol, patch, patch_width, patch_height)) {
-        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -724,7 +724,7 @@ int visual_cortical_process_patch(
         }
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -756,7 +756,7 @@ int visual_cortical_get_orientation_map(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t grid_size = (uint32_t)sqrtf((float)bridge->num_hypercolumns);
     if (grid_size == 0) grid_size = 1;
@@ -811,7 +811,7 @@ int visual_cortical_get_orientation_map(
         }
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -858,7 +858,7 @@ int visual_cortical_update_immune_modulation(visual_cortical_bridge_t* bridge)
         return NIMCP_SUCCESS;  /* No immune system connected */
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get cortical immune statistics */
     cortical_immune_stats_t stats;
@@ -878,7 +878,7 @@ int visual_cortical_update_immune_modulation(visual_cortical_bridge_t* bridge)
         }
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -892,10 +892,10 @@ int visual_cortical_set_immune_factor(
     if (factor < 0.0f) factor = 0.0f;
     if (factor > 1.0f) factor = 1.0f;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_modulation_factor = factor;
     bridge->stats.current_immune_modulation = factor;
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -918,9 +918,9 @@ int visual_cortical_get_stats(
     /* Cast away const for mutex operations - mutex is logically const but physically modified */
     visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&mutable_bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(visual_cortical_stats_t));
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&mutable_bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -929,9 +929,9 @@ int visual_cortical_reset_stats(visual_cortical_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(visual_cortical_stats_t));
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -956,7 +956,7 @@ uint32_t visual_cortical_process_bio_messages(
     visual_cortical_bridge_t* bridge,
     uint32_t max_messages)
 {
-    if (!bridge || !bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge || !bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;
     }
 
@@ -974,7 +974,7 @@ int visual_cortical_broadcast_orientation(
 {
     if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 

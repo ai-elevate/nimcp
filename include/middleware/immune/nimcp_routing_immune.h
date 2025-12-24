@@ -6,6 +6,7 @@
 #define NIMCP_ROUTING_IMMUNE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "middleware/routing/nimcp_thalamic_router.h"
 #include "middleware/routing/nimcp_attention_gate.h"

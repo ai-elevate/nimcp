@@ -7,6 +7,7 @@
  */
 
 #include "swarm/nimcp_swarm_consensus.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "swarm/nimcp_swarm_quorum.h"
 #include "swarm/nimcp_swarm_emergence.h"
 #include "swarm/nimcp_swarm_logic_bridge.h"
@@ -48,6 +49,8 @@ typedef struct {
  * @brief Logic-swarm bridge internal structure
  */
 struct swarm_logic_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     // Configuration
     swarm_logic_bridge_config_t config;
 
@@ -65,9 +68,6 @@ struct swarm_logic_bridge {
     neural_logic_network_t logic_network;
 
     // Bio-async integration
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     // Statistics
     swarm_logic_bridge_stats_t stats;
 
@@ -367,8 +367,8 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     }
 
     // Create mutex
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create mutex");
         nimcp_free(bridge->cache);
         nimcp_free(bridge->rules);
@@ -390,7 +390,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
         LOG_ERROR("Failed to create neural logic network");
-        nimcp_platform_mutex_destroy(bridge->mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge->cache);
         nimcp_free(bridge->rules);
         nimcp_free(bridge);
@@ -406,17 +406,17 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
         module_info.inbox_capacity = 0; // Use default
         module_info.user_data = bridge;
 
-        bridge->bio_ctx = bio_router_register_module(&module_info);
-        if (bridge->bio_ctx) {
+        bridge->base.bio_ctx = bio_router_register_module(&module_info);
+        if (bridge->base.bio_ctx) {
             // Register message handlers
-            bio_router_register_handler(bridge->bio_ctx,
+            bio_router_register_handler(bridge->base.bio_ctx,
                                        BIO_MSG_LOGIC_GATE_EVALUATE,
                                        logic_bridge_message_handler);
-            bio_router_register_handler(bridge->bio_ctx,
+            bio_router_register_handler(bridge->base.bio_ctx,
                                        BIO_MSG_SWARM_QUORUM_VOTE,
                                        logic_bridge_message_handler);
 
-            bridge->bio_async_enabled = true;
+            bridge->base.bio_async_enabled = true;
             LOG_INFO("Logic bridge registered with bio-async router");
         } else {
             LOG_WARN("Failed to register with bio-async router");
@@ -441,8 +441,8 @@ void swarm_logic_bridge_destroy(swarm_logic_bridge_t* bridge) {
     LOG_INFO("Destroying logic-swarm bridge");
 
     // Unregister from bio-async
-    if (bridge->bio_async_enabled && bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
+    if (bridge->base.bio_async_enabled && bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
     }
 
     // Destroy neural logic network
@@ -466,8 +466,8 @@ void swarm_logic_bridge_destroy(swarm_logic_bridge_t* bridge) {
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -495,19 +495,19 @@ nimcp_error_t swarm_logic_bridge_add_rule(swarm_logic_bridge_t* bridge,
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Check capacity
     if (bridge->rule_count >= bridge->rule_capacity) {
         LOG_ERROR("Rule capacity exceeded: %u/%u", bridge->rule_count, bridge->rule_capacity);
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_NO_MEMORY;
     }
 
     // Check for duplicate rule ID
     if (find_rule(bridge, rule->rule_id) != NULL) {
         LOG_ERROR("Rule ID %u already exists", rule->rule_id);
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_INVALID_PARAM;
     }
 
@@ -519,7 +519,7 @@ nimcp_error_t swarm_logic_bridge_add_rule(swarm_logic_bridge_t* bridge,
     new_rule->input_agent_ids = (uint32_t*)nimcp_malloc(rule->num_inputs * sizeof(uint32_t));
     if (!new_rule->input_agent_ids) {
         LOG_ERROR("Failed to allocate input agent IDs");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_NO_MEMORY;
     }
 
@@ -529,7 +529,7 @@ nimcp_error_t swarm_logic_bridge_add_rule(swarm_logic_bridge_t* bridge,
     bridge->rule_count++;
     bridge->stats.active_rules = bridge->rule_count;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("Added rule %u: gate=%d, inputs=%u", rule->rule_id,
              rule->gate_type, rule->num_inputs);
@@ -543,7 +543,7 @@ nimcp_error_t swarm_logic_bridge_remove_rule(swarm_logic_bridge_t* bridge,
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Find rule
     int index = -1;
@@ -555,7 +555,7 @@ nimcp_error_t swarm_logic_bridge_remove_rule(swarm_logic_bridge_t* bridge,
     }
 
     if (index < 0) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         LOG_ERROR("Rule %u not found", rule_id);
         return NIMCP_NOT_FOUND;
     }
@@ -574,7 +574,7 @@ nimcp_error_t swarm_logic_bridge_remove_rule(swarm_logic_bridge_t* bridge,
     bridge->rule_count--;
     bridge->stats.active_rules = bridge->rule_count;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("Removed rule %u", rule_id);
     return NIMCP_SUCCESS;
@@ -596,14 +596,14 @@ uint32_t swarm_logic_bridge_get_all_rules(swarm_logic_bridge_t* bridge,
         return 0;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     uint32_t count = bridge->rule_count < max_rules ? bridge->rule_count : max_rules;
     for (uint32_t i = 0; i < count; i++) {
         rules[i] = &bridge->rules[i];
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return count;
 }
@@ -622,7 +622,7 @@ int swarm_logic_bridge_evaluate(swarm_logic_bridge_t* bridge,
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     uint64_t state_hash = calculate_state_hash(agent_states, num_agents);
     uint32_t result_count = 0;
@@ -699,7 +699,7 @@ int swarm_logic_bridge_evaluate(swarm_logic_bridge_t* bridge,
         bridge->stats.avg_evaluation_time_us = (float)total_time / result_count;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Evaluated %u rules with %u agents", result_count, num_agents);
     return (int)result_count;
@@ -714,26 +714,26 @@ nimcp_error_t swarm_logic_bridge_evaluate_rule(swarm_logic_bridge_t* bridge,
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Find rule
     swarm_logic_rule_t* rule = find_rule(bridge, rule_id);
     if (!rule) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_NOT_FOUND;
     }
 
     // Check cache
     uint64_t state_hash = calculate_state_hash(agent_states, num_agents);
     if (check_cache(bridge, rule_id, state_hash, result)) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_SUCCESS;
     }
 
     // Collect input values
     float* input_values = (float*)nimcp_malloc(rule->num_inputs * sizeof(float));
     if (!input_values) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_NO_MEMORY;
     }
 
@@ -750,7 +750,7 @@ nimcp_error_t swarm_logic_bridge_evaluate_rule(swarm_logic_bridge_t* bridge,
 
     if (valid_inputs == 0) {
         nimcp_free(input_values);
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_NOT_FOUND;
     }
 
@@ -780,7 +780,7 @@ nimcp_error_t swarm_logic_bridge_evaluate_rule(swarm_logic_bridge_t* bridge,
     bridge->stats.total_evaluations++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -803,7 +803,7 @@ nimcp_error_t swarm_logic_bridge_validate_consensus(swarm_logic_bridge_t* bridge
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time = nimcp_time_get_us();
     float gate_output = evaluate_logic_gate(consensus_type, votes, num_votes, 0.5F);
@@ -824,7 +824,7 @@ nimcp_error_t swarm_logic_bridge_validate_consensus(swarm_logic_bridge_t* bridge
     bridge->stats.total_evaluations++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("Consensus validation: %s with %u votes = %s",
              consensus_str, num_votes, result->result ? "TRUE" : "FALSE");
@@ -841,7 +841,7 @@ int swarm_logic_bridge_detect_contradiction(swarm_logic_bridge_t* bridge,
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     uint32_t contradiction_count = 0;
 
@@ -873,7 +873,7 @@ int swarm_logic_bridge_detect_contradiction(swarm_logic_bridge_t* bridge,
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return (int)contradiction_count;
 }
@@ -888,7 +888,7 @@ nimcp_error_t swarm_logic_bridge_validate_implication(swarm_logic_bridge_t* brid
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Find agents
     float antecedent_value = 0.0F;
@@ -908,7 +908,7 @@ nimcp_error_t swarm_logic_bridge_validate_implication(swarm_logic_bridge_t* brid
     }
 
     if (!found_antecedent || !found_consequent) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_NOT_FOUND;
     }
 
@@ -933,7 +933,7 @@ nimcp_error_t swarm_logic_bridge_validate_implication(swarm_logic_bridge_t* brid
     bridge->stats.total_evaluations++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -943,18 +943,18 @@ nimcp_error_t swarm_logic_bridge_validate_implication(swarm_logic_bridge_t* brid
  *============================================================================*/
 
 int swarm_logic_bridge_process_inbox(swarm_logic_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    uint32_t processed = bio_router_process_inbox(bridge->bio_ctx, 10);
+    uint32_t processed = bio_router_process_inbox(bridge->base.bio_ctx, 10);
     return (int)processed;
 }
 
 nimcp_error_t swarm_logic_bridge_send_result(swarm_logic_bridge_t* bridge,
                                               bio_module_id_t target_module,
                                               const swarm_logic_result_t* result) {
-    if (!bridge || !result || !bridge->bio_async_enabled) {
+    if (!bridge || !result || !bridge->base.bio_async_enabled) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -963,7 +963,7 @@ nimcp_error_t swarm_logic_bridge_send_result(swarm_logic_bridge_t* bridge,
     memset(&msg, 0, sizeof(msg));
 
     bio_msg_init_header(&msg.header, BIO_MSG_LOGIC_GATE_RESULT,
-                       bio_module_context_get_id(bridge->bio_ctx),
+                       bio_module_context_get_id(bridge->base.bio_ctx),
                        target_module, sizeof(msg));
 
     msg.gate_id = result->rule_id;
@@ -973,12 +973,12 @@ nimcp_error_t swarm_logic_bridge_send_result(swarm_logic_bridge_t* bridge,
     msg.spike_time_us = result->evaluation_time_us;
     msg.threshold_used = 0.5F;
 
-    return bio_router_send(bridge->bio_ctx, &msg, sizeof(msg), 0);
+    return bio_router_send(bridge->base.bio_ctx, &msg, sizeof(msg), 0);
 }
 
 nimcp_error_t swarm_logic_bridge_broadcast_consensus(swarm_logic_bridge_t* bridge,
                                                       const swarm_logic_result_t* result) {
-    if (!bridge || !result || !bridge->bio_async_enabled) {
+    if (!bridge || !result || !bridge->base.bio_async_enabled) {
         return NIMCP_INVALID_PARAM;
     }
 
@@ -987,7 +987,7 @@ nimcp_error_t swarm_logic_bridge_broadcast_consensus(swarm_logic_bridge_t* bridg
     memset(&msg, 0, sizeof(msg));
 
     bio_msg_init_header(&msg.header, BIO_MSG_LOGIC_GATE_RESULT,
-                       bio_module_context_get_id(bridge->bio_ctx),
+                       bio_module_context_get_id(bridge->base.bio_ctx),
                        BIO_MODULE_ALL, sizeof(msg));
 
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
@@ -995,7 +995,7 @@ nimcp_error_t swarm_logic_bridge_broadcast_consensus(swarm_logic_bridge_t* bridg
     msg.output = result->confidence;
     msg.spiked = result->result;
 
-    return bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    return bio_router_broadcast(bridge->base.bio_ctx, &msg, sizeof(msg));
 }
 
 /*=============================================================================
@@ -1008,9 +1008,9 @@ nimcp_error_t swarm_logic_bridge_get_stats(swarm_logic_bridge_t* bridge,
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(swarm_logic_bridge_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1020,7 +1020,7 @@ void swarm_logic_bridge_reset_stats(swarm_logic_bridge_t* bridge) {
         return;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->stats.total_evaluations = 0;
     bridge->stats.successful_evaluations = 0;
@@ -1031,7 +1031,7 @@ void swarm_logic_bridge_reset_stats(swarm_logic_bridge_t* bridge) {
 
     // Keep active counts
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 }
 
 void swarm_logic_bridge_clear_cache(swarm_logic_bridge_t* bridge) {
@@ -1039,7 +1039,7 @@ void swarm_logic_bridge_clear_cache(swarm_logic_bridge_t* bridge) {
         return;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->cache_size; i++) {
         bridge->cache[i].valid = false;
@@ -1047,7 +1047,7 @@ void swarm_logic_bridge_clear_cache(swarm_logic_bridge_t* bridge) {
 
     bridge->cache_next_index = 0;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Logic bridge cache cleared");
 }
@@ -1065,7 +1065,7 @@ nimcp_error_t swarm_logic_validate_consensus_votes(swarm_logic_bridge_t* bridge,
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Count vote choices
     uint32_t agree_count = 0;
@@ -1109,7 +1109,7 @@ nimcp_error_t swarm_logic_validate_consensus_votes(swarm_logic_bridge_t* bridge,
     bridge->stats.total_evaluations++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Validated consensus: %u votes, result=%s",
                        vote_count, result->result ? "PASS" : "FAIL");
@@ -1127,7 +1127,7 @@ nimcp_error_t swarm_logic_detect_byzantine_pattern(swarm_logic_bridge_t* bridge,
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     *byzantine_count = 0;
 
@@ -1163,7 +1163,7 @@ nimcp_error_t swarm_logic_detect_byzantine_pattern(swarm_logic_bridge_t* bridge,
         bridge->stats.successful_evaluations++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1181,12 +1181,12 @@ nimcp_error_t swarm_logic_validate_quorum_signals(swarm_logic_bridge_t* bridge,
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Collect signal concentrations
     float* concentrations = (float*)nimcp_malloc(signal_count * sizeof(float));
     if (!concentrations) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -1220,7 +1220,7 @@ nimcp_error_t swarm_logic_validate_quorum_signals(swarm_logic_bridge_t* bridge,
     bridge->stats.total_evaluations++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1265,7 +1265,7 @@ nimcp_error_t swarm_logic_validate_tier_transition(swarm_logic_bridge_t* bridge,
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     *valid = false;
 
@@ -1304,7 +1304,7 @@ nimcp_error_t swarm_logic_validate_tier_transition(swarm_logic_bridge_t* bridge,
         bridge->stats.failed_evaluations++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Tier transition validation: %d -> %d = %s (drones=%u, coherence=%.2f)",
                        current_tier, target_tier, *valid ? "VALID" : "INVALID",
@@ -1322,9 +1322,9 @@ nimcp_error_t swarm_logic_connect_brain(swarm_logic_bridge_t* bridge, void* brai
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->brain = brain;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Logic bridge connected to brain");
     return NIMCP_SUCCESS;
@@ -1335,9 +1335,9 @@ nimcp_error_t swarm_logic_connect_immune(swarm_logic_bridge_t* bridge, void* imm
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune_system;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Logic bridge connected to immune system");
     return NIMCP_SUCCESS;
@@ -1348,9 +1348,9 @@ nimcp_error_t swarm_logic_connect_umm(swarm_logic_bridge_t* bridge, void* umm) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->umm = umm;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Logic bridge connected to UMM");
     return NIMCP_SUCCESS;
@@ -1365,12 +1365,12 @@ nimcp_error_t swarm_logic_evaluate_with_modulation(swarm_logic_bridge_t* bridge,
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Find rule
     swarm_logic_rule_t* rule = find_rule(bridge, rule_id);
     if (!rule) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -1409,7 +1409,7 @@ nimcp_error_t swarm_logic_evaluate_with_modulation(swarm_logic_bridge_t* bridge,
     bridge->stats.total_evaluations++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }

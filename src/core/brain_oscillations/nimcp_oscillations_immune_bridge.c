@@ -10,6 +10,7 @@
  */
 
 #include "core/brain_oscillations/nimcp_oscillations_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
@@ -213,12 +214,12 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
     bridge->persistence_threshold = config->persistence_threshold;
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("oscillations_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -228,9 +229,9 @@ void oscillations_immune_bridge_destroy(oscillations_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -243,12 +244,12 @@ int oscillations_immune_establish_baseline(oscillations_immune_bridge_t* bridge)
     if (!bridge) return -1;
     if (!bridge->oscillation_analyzer) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get current oscillation state */
     oscillation_analysis_t analysis;
     if (!brain_oscillation_analyze(bridge->oscillation_analyzer, &analysis)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -261,7 +262,7 @@ int oscillations_immune_establish_baseline(oscillations_immune_bridge_t* bridge)
     bridge->baseline.baseline_established = true;
     bridge->baseline.baseline_timestamp = 0; /* Would use actual timestamp */
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     LOG_MODULE_INFO("oscillations_immune_bridge", "Baseline established");
     return 0;
@@ -277,7 +278,7 @@ int oscillations_immune_apply_cytokine_effects(oscillations_immune_bridge_t* bri
     if (!bridge->enable_cytokine_oscillation_modulation) return 0;
     if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     cytokine_oscillation_effects_t* effects = &bridge->cytokine_effects;
 
@@ -337,7 +338,7 @@ int oscillations_immune_apply_cytokine_effects(oscillations_immune_bridge_t* bri
     brain_oscillation_apply_immune_effects(bridge->oscillation_analyzer, &osc_effects);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -347,7 +348,7 @@ int oscillations_immune_apply_inflammation_effects(oscillations_immune_bridge_t*
     if (!bridge->enable_inflammation_power_shift) return 0;
     if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_oscillation_state_t* state = &bridge->inflammation_state;
 
@@ -422,7 +423,7 @@ int oscillations_immune_apply_inflammation_effects(oscillations_immune_bridge_t*
     state->state_shift_severity = state->inflammation_intensity;
 
     bridge->power_spectrum_shifts++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -435,7 +436,7 @@ int oscillations_immune_restore_with_il10(
     if (!bridge->enable_il10_restoration) return 0;
     if (!bridge->baseline.baseline_established) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* IL-10 gradually restores oscillations toward baseline */
     float restoration_rate = il10_concentration * CYTOKINE_IL10_RESTORATION_RATE;
@@ -444,7 +445,7 @@ int oscillations_immune_restore_with_il10(
     /* This would interpolate current state toward baseline state */
 
     bridge->il10_restorations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -466,14 +467,14 @@ bool oscillations_immune_detect_abnormality(oscillations_immune_bridge_t* bridge
     if (!bridge->enable_abnormality_surveillance) return false;
     if (!bridge->oscillation_analyzer) return false;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     oscillation_immune_trigger_t* trigger = &bridge->immune_trigger;
 
     /* Get current oscillation analysis */
     oscillation_analysis_t analysis;
     if (!brain_oscillation_analyze(bridge->oscillation_analyzer, &analysis)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return false;
     }
 
@@ -515,7 +516,7 @@ bool oscillations_immune_detect_abnormality(oscillations_immune_bridge_t* bridge
     trigger->abnormality_score *= bridge->abnormality_sensitivity;
     trigger->abnormality_score = clamp_f(trigger->abnormality_score, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return any_abnormal;
 }
 
@@ -525,26 +526,26 @@ int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* b
     if (!bridge->enable_oscillation_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     oscillation_immune_trigger_t* trigger = &bridge->immune_trigger;
 
     /* Only trigger if abnormality persists */
     if (trigger->consecutive_abnormal < bridge->persistence_threshold) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
     /* Prevent duplicate triggers */
     if (trigger->antigen_presented) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
     /* Get current oscillation state for epitope */
     oscillation_analysis_t analysis;
     if (!brain_oscillation_analyze(bridge->oscillation_analyzer, &analysis)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -559,7 +560,7 @@ int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* b
     );
 
     if (epitope_len == 0) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -590,7 +591,7 @@ int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* b
                   trigger->immune_severity, trigger->abnormality_score);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return result;
 }
 
@@ -613,7 +614,7 @@ int oscillations_immune_bridge_update(
     /* Guard clauses */
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Immune → Oscillations pathway */
     if (bridge->enable_cytokine_oscillation_modulation) {
@@ -643,7 +644,7 @@ int oscillations_immune_bridge_update(
     }
 
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -657,9 +658,9 @@ int oscillations_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -669,9 +670,9 @@ int oscillations_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -681,9 +682,9 @@ int oscillations_immune_get_trigger_state(
 ) {
     if (!bridge || !trigger) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *trigger = bridge->immune_trigger;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -720,7 +721,7 @@ float oscillations_immune_get_gamma_suppression(
 
 int oscillations_immune_connect_bio_async(oscillations_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_OSCILLATIONS,
@@ -729,9 +730,9 @@ int oscillations_immune_connect_bio_async(oscillations_immune_bridge_t* bridge) 
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Oscillations-immune bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -742,13 +743,13 @@ int oscillations_immune_connect_bio_async(oscillations_immune_bridge_t* bridge) 
 
 int oscillations_immune_disconnect_bio_async(oscillations_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("Oscillations-immune bridge disconnected from bio-async router");
     return 0;
@@ -756,5 +757,5 @@ int oscillations_immune_disconnect_bio_async(oscillations_immune_bridge_t* bridg
 
 bool oscillations_immune_is_bio_async_connected(const oscillations_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

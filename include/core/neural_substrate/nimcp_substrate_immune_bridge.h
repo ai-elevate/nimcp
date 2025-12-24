@@ -102,6 +102,7 @@
 #define NIMCP_SUBSTRATE_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -241,6 +242,8 @@ typedef struct {
  * @brief Complete substrate-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     neural_substrate_t* substrate;
     brain_immune_system_t* immune_system;
@@ -252,16 +255,10 @@ typedef struct {
     /* Configuration */
     substrate_immune_config_t config;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     /* Statistics */
     substrate_immune_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-} substrate_immune_bridge_t;
+    } substrate_immune_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

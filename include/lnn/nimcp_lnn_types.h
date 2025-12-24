@@ -35,6 +35,7 @@
 #define NIMCP_LNN_TYPES_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "utils/tensor/nimcp_tensor.h"

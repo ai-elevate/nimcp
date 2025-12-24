@@ -96,6 +96,7 @@
 #define NIMCP_REASONING_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -173,6 +174,8 @@ typedef struct {
 } reasoning_fep_stats_t;
 
 struct reasoning_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     reasoning_fep_config_t config;
     fep_system_t* fep_system;
     reasoning_integration_t* reasoning_system;
@@ -180,9 +183,6 @@ struct reasoning_fep_bridge {
     fep_reasoning_effects_t reasoning_effects;
     reasoning_fep_state_t state;
     reasoning_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 int reasoning_fep_bridge_default_config(reasoning_fep_config_t* config);

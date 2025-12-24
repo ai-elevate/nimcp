@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_training.h"
 #include "async/nimcp_bio_async.h"
@@ -208,6 +209,8 @@ typedef struct snn_training_bridge_state_s {
  * HOW:  Store references and state
  */
 typedef struct snn_training_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     /* Core components */
     snn_network_t* snn;                 /**< SNN network */
     snn_training_ctx_t* training_ctx;   /**< Training context */

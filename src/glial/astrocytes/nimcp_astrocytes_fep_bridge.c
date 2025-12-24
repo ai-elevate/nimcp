@@ -4,6 +4,7 @@
  */
 
 #include "glial/astrocytes/nimcp_astrocytes_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <string.h>
 #include <math.h>
 
@@ -53,14 +54,14 @@ astrocytes_fep_bridge_t* astrocytes_fep_create(
     bridge->astrocyte_network = astrocyte_network;
     bridge->fep_system = fep_system;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("astrocytes_fep_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Astrocytes-FEP bridge created");
     return bridge;
@@ -71,12 +72,12 @@ void astrocytes_fep_destroy(astrocytes_fep_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         astrocytes_fep_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -240,7 +241,7 @@ int astrocytes_fep_connect_bio_async(astrocytes_fep_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0; // Already connected
     }
 
@@ -251,9 +252,9 @@ int astrocytes_fep_connect_bio_async(astrocytes_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Astrocytes-FEP bridge connected to bio-async");
         return 0;
     }
@@ -263,20 +264,20 @@ int astrocytes_fep_connect_bio_async(astrocytes_fep_bridge_t* bridge) {
 }
 
 int astrocytes_fep_disconnect_bio_async(astrocytes_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Astrocytes-FEP bridge disconnected from bio-async");
     return 0;
 }
 
 bool astrocytes_fep_is_bio_async_connected(const astrocytes_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

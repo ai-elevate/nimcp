@@ -21,6 +21,7 @@
 #define NIMCP_SWARM_IMMUNE_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "swarm/nimcp_swarm_immune.h"

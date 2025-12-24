@@ -6,6 +6,7 @@
  */
 
 #include "core/brain_oscillations/nimcp_oscillations_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -140,15 +141,15 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
     bridge->oscillation_analyzer = oscillation_analyzer;
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -167,8 +168,8 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
     bridge->pink_noise_gen = pink_noise_create(&bridge->noise_config);
     if (!bridge->pink_noise_gen) {
         NIMCP_LOGGING_ERROR("Failed to create pink noise generator");
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -221,9 +222,9 @@ void oscillations_pink_noise_bridge_destroy(oscillations_pink_noise_bridge_t* br
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free structure */
@@ -246,13 +247,13 @@ int oscillations_pink_noise_enable(oscillations_pink_noise_bridge_t* bridge)
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->enabled = true;
 
     /* Reset noise generator for fresh start */
     pink_noise_reset(bridge->pink_noise_gen, 0);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Enabled pink noise injection");
     return 0;
@@ -269,9 +270,9 @@ int oscillations_pink_noise_disable(oscillations_pink_noise_bridge_t* bridge)
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->enabled = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disabled pink noise injection");
     return 0;
@@ -308,13 +309,13 @@ int oscillations_pink_noise_inject(oscillations_pink_noise_bridge_t* bridge)
         return 0; /* Not an error, just skip */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Generate pink noise sample */
     float noise_sample = 0.0f;
     if (!pink_noise_generate_sample(bridge->pink_noise_gen, &noise_sample)) {
         NIMCP_LOGGING_ERROR("Failed to generate pink noise sample");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -345,7 +346,7 @@ int oscillations_pink_noise_inject(oscillations_pink_noise_bridge_t* bridge)
         bridge->peak_noise_amplitude = abs_noise;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -367,7 +368,7 @@ int oscillations_pink_noise_apply_effects(
         return 0; /* No effects if disabled */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reduce coherence */
     float coherence_factor = 1.0f - bridge->injection_params.coherence_reduction;
@@ -384,7 +385,7 @@ int oscillations_pink_noise_apply_effects(
      * on phase-locking and coherence measures
      */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -401,7 +402,7 @@ int oscillations_pink_noise_bridge_update(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update timestamp */
     bridge->last_update_ms += delta_ms;
@@ -411,13 +412,13 @@ int oscillations_pink_noise_bridge_update(
     if (bridge->last_update_ms >= PINK_NOISE_UPDATE_INTERVAL_MS) {
         bridge->last_update_ms = 0;
 
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         /* Inject noise (this will lock/unlock internally) */
         return oscillations_pink_noise_inject(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -442,9 +443,9 @@ int oscillations_pink_noise_set_amplitude(
     if (amplitude < 0.0f) amplitude = 0.0f;
     if (amplitude > 0.5f) amplitude = 0.5f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->injection_params.global_amplitude = amplitude;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -467,7 +468,7 @@ int oscillations_pink_noise_set_band_amplitude(
     if (amplitude < 0.0f) amplitude = 0.0f;
     if (amplitude > 0.2f) amplitude = 0.2f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update appropriate band */
     switch (band) {
@@ -488,11 +489,11 @@ int oscillations_pink_noise_set_band_amplitude(
             break;
         default:
             NIMCP_LOGGING_ERROR("Invalid brain wave band");
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -513,7 +514,7 @@ int oscillations_pink_noise_set_alpha(
     if (alpha < 0.5f) alpha = 0.5f;
     if (alpha > 2.0f) alpha = 2.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update config */
     bridge->noise_config.alpha = alpha;
@@ -525,11 +526,11 @@ int oscillations_pink_noise_set_alpha(
 
     if (!bridge->pink_noise_gen) {
         NIMCP_LOGGING_ERROR("Failed to recreate pink noise generator");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -550,9 +551,9 @@ int oscillations_pink_noise_get_params(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *params = bridge->injection_params;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -566,9 +567,9 @@ float oscillations_pink_noise_get_current_sample(
      */
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float sample = bridge->injection_params.current_noise_sample;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return sample;
 }
@@ -588,7 +589,7 @@ int oscillations_pink_noise_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (total_injections) {
         *total_injections = bridge->noise_injections;
@@ -602,6 +603,6 @@ int oscillations_pink_noise_get_stats(
         *peak_amplitude = bridge->peak_noise_amplitude;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }

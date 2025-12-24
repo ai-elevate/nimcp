@@ -175,7 +175,7 @@ TEST_F(PlasticitySubstrateBridgeTest, CreateBridge)
 
     ASSERT_NE(bridge, nullptr);
     EXPECT_EQ(bridge->substrate, substrate);
-    EXPECT_FALSE(bridge->bio_async_enabled);
+    EXPECT_FALSE(bridge->base.bio_async_enabled);
 
     // Check neutral initial effects
     EXPECT_FLOAT_EQ(bridge->effects.global_learning_rate, 1.0f);
@@ -288,7 +288,7 @@ TEST_F(PlasticitySubstrateBridgeTest, BioAsyncConnect)
     // May succeed or fail depending on bio-async availability
     // Either way, should not crash
     if (result == 0) {
-        EXPECT_TRUE(bridge->bio_async_enabled);
+        EXPECT_TRUE(bridge->base.bio_async_enabled);
     }
 }
 
@@ -316,7 +316,7 @@ TEST_F(PlasticitySubstrateBridgeTest, BioAsyncDisconnect)
     int result = plasticity_substrate_disconnect_bio_async(bridge);
 
     // Should succeed if was connected, or fail if not
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         EXPECT_EQ(result, 0);
         EXPECT_FALSE(plasticity_substrate_is_bio_async_connected(bridge));
     }

@@ -4,6 +4,7 @@
  */
 
 #include "security/nimcp_anomaly_detector_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
@@ -66,8 +67,8 @@ anomaly_fep_bridge_t* anomaly_fep_create(
     bridge->fep_system = fep_system;
     bridge->detector = detector;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Anomaly FEP bridge: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -75,7 +76,7 @@ anomaly_fep_bridge_t* anomaly_fep_create(
 
     bridge->state.active = true;
     bridge->state.current_precision = ANOMALY_FEP_DEFAULT_PRECISION;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Anomaly FEP bridge created");
     return bridge;
@@ -86,12 +87,12 @@ void anomaly_fep_destroy(anomaly_fep_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         anomaly_fep_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -111,7 +112,7 @@ int anomaly_fep_update(anomaly_fep_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Get current FEP state
     float current_fe = fep_get_free_energy(bridge->fep_system);
@@ -146,7 +147,7 @@ int anomaly_fep_update(anomaly_fep_bridge_t* bridge) {
     bridge->stats.avg_free_energy = current_fe;
     bridge->stats.avg_surprise = bridge->state.avg_surprise;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -160,12 +161,12 @@ int anomaly_fep_detect(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Run standard Bayesian detection
     nimcp_error_t err = nimcp_anomaly_detect(bridge->detector, input, input_len, result);
     if (err != NIMCP_SUCCESS) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -215,7 +216,7 @@ int anomaly_fep_detect(
         bridge->stats.fep_based_detections++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -228,7 +229,7 @@ int anomaly_fep_apply_modulation(anomaly_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Adapt precision based on detection performance
     float anomaly_rate = (float)bridge->anomaly_effects.anomalies_detected /
@@ -251,7 +252,7 @@ int anomaly_fep_apply_modulation(anomaly_fep_bridge_t* bridge) {
     bridge->stats.precision_adaptations++;
     bridge->stats.current_precision = bridge->state.current_precision;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -264,7 +265,7 @@ int anomaly_fep_report_detection(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Update effects
     if (is_anomaly) {
@@ -291,7 +292,7 @@ int anomaly_fep_report_detection(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -300,7 +301,7 @@ int anomaly_fep_report_false_positive(anomaly_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->anomaly_effects.false_positives++;
 
@@ -314,7 +315,7 @@ int anomaly_fep_report_false_positive(anomaly_fep_bridge_t* bridge) {
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -375,7 +376,7 @@ int anomaly_fep_connect_bio_async(anomaly_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -386,9 +387,9 @@ int anomaly_fep_connect_bio_async(anomaly_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Anomaly FEP bridge connected to bio-async");
     }
 
@@ -396,18 +397,18 @@ int anomaly_fep_connect_bio_async(anomaly_fep_bridge_t* bridge) {
 }
 
 int anomaly_fep_disconnect_bio_async(anomaly_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     NIMCP_LOGGING_INFO("Anomaly FEP bridge disconnected from bio-async");
     return 0;
 }
 
 bool anomaly_fep_is_bio_async_connected(const anomaly_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

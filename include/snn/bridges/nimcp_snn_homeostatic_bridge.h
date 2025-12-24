@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "async/nimcp_bio_async.h"
@@ -91,6 +92,8 @@ typedef struct neuron_homeostatic_state_s {
  * @brief SNN-Homeostatic bridge structure
  */
 typedef struct snn_homeostatic_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;              /**< SNN network */
     homeostatic_controller_t controller; /**< Homeostatic controller */
     uint32_t n_neurons;                  /**< Number of neurons */

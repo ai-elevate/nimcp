@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/nimcp_executive.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_sleep_wake.h"
 #include "cognitive/executive/nimcp_executive_sleep_bridge.h"

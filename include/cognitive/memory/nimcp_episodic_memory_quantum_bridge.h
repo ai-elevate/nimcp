@@ -38,6 +38,7 @@
 #define NIMCP_EPISODIC_MEMORY_QUANTUM_BRIDGE_H
 
 #include "cognitive/fault_tolerance/nimcp_recovery_episodic_memory.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/patterns/nimcp_quantum_sequence_matcher.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -274,6 +275,8 @@ uint32_t episodic_quantum_get_episode_count(const episodic_quantum_bridge_t* bri
  * WHY:  Encapsulation and efficient storage
  */
 struct episodic_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     episodic_quantum_config_t config;
     episodic_memory_t* memory;
     qseq_matcher_t matcher;           /* Quantum sequence matcher */

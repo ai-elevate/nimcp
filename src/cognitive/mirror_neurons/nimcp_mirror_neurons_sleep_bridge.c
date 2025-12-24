@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -19,15 +20,12 @@
  * HOW:  Holds config, effects, sleep system reference, and synchronization
  */
 struct mirror_neurons_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     mirror_neurons_sleep_config_t config;      /**< Bridge configuration */
     sleep_system_t sleep_system;               /**< Reference to sleep system */
     mirror_neurons_sleep_effects_t effects;    /**< Current sleep effects */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;              /**< Bio-async module context */
-    bool bio_async_enabled;                     /**< Whether bio-async is active */
-
-    nimcp_mutex_t* mutex;                      /**< Thread safety */
     bool callback_registered;                  /**< Whether callback is active */
 };
 
@@ -57,9 +55,9 @@ static void mirror_neurons_on_sleep_state_change(sleep_state_t new_state, void* 
 
     NIMCP_LOGGING_DEBUG("Mirror neurons bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     update_effects_for_state(bridge, new_state);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mirror modulated: activity=%.2f, empathy=%.2f, replay=%.2f, replay_active=%d",
                         bridge->effects.mirroring_activity_factor,
@@ -173,8 +171,8 @@ mirror_neurons_sleep_bridge_t mirror_neurons_sleep_bridge_create(
     bridge->sleep_system = sleep;
 
     /* Initialize bio-async fields */
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     /* Initialize effects to awake defaults */
     bridge->effects.mirroring_activity_factor = 1.0f;
@@ -187,8 +185,8 @@ mirror_neurons_sleep_bridge_t mirror_neurons_sleep_bridge_create(
     bridge->effects.replay_active = false;
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -219,7 +217,7 @@ void mirror_neurons_sleep_bridge_destroy(mirror_neurons_sleep_bridge_t bridge)
     if (!bridge) return;
 
     /* Disconnect from bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         mirror_neurons_sleep_disconnect_bio_async(bridge);
     }
 
@@ -236,8 +234,8 @@ void mirror_neurons_sleep_bridge_destroy(mirror_neurons_sleep_bridge_t bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -249,7 +247,7 @@ int mirror_neurons_sleep_update(mirror_neurons_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query current sleep state and pressure */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -268,7 +266,7 @@ int mirror_neurons_sleep_update(mirror_neurons_sleep_bridge_t bridge)
         bridge->effects.action_observation_factor *= (1.0f - pressure_penalty);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -279,9 +277,9 @@ int mirror_neurons_sleep_get_effects(
     /* Guard clause: Validate inputs */
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -291,9 +289,9 @@ float mirror_neurons_sleep_get_activity(const mirror_neurons_sleep_bridge_t brid
     /* Guard clause: Handle NULL */
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.mirroring_activity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -303,9 +301,9 @@ bool mirror_neurons_sleep_is_replay_active(const mirror_neurons_sleep_bridge_t b
     /* Guard clause: Handle NULL */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.replay_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -377,12 +375,12 @@ int mirror_neurons_sleep_connect_bio_async(mirror_neurons_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected for mirror neurons sleep bridge");
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Register with bio-async router */
     bio_module_info_t info = {
@@ -392,15 +390,15 @@ int mirror_neurons_sleep_connect_bio_async(mirror_neurons_sleep_bridge_t bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected mirror neurons sleep bridge to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -418,23 +416,23 @@ int mirror_neurons_sleep_disconnect_bio_async(mirror_neurons_sleep_bridge_t brid
     }
 
     /* Guard clause: Not connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async not connected for mirror neurons sleep bridge");
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected mirror neurons sleep bridge from bio-async router");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -448,9 +446,9 @@ bool mirror_neurons_sleep_is_bio_async_connected(const mirror_neurons_sleep_brid
     /* Guard clause: Handle NULL */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
-    bool connected = bridge->bio_async_enabled;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
+    bool connected = bridge->base.bio_async_enabled;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

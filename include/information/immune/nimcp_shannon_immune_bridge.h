@@ -130,6 +130,7 @@
 #define NIMCP_SHANNON_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -275,6 +276,8 @@ typedef struct {
  * @brief Complete Shannon-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     shannon_channel_t* shannon_channel;  /**< Optional Shannon channel */
@@ -297,11 +300,6 @@ typedef struct {
     uint32_t anomaly_detections;
     uint32_t capacity_stress_events;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;      /**< Bio-async module context */
-    bool bio_async_enabled;             /**< Whether bio-async is active */
-
-    /* Thread safety */
     nimcp_platform_mutex_t* mutex;
 } shannon_immune_bridge_t;
 

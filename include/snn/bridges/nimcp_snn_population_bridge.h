@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "middleware/encoding/nimcp_population_coding.h"
 #include "async/nimcp_bio_async.h"
@@ -95,6 +96,8 @@ typedef struct snn_population_stats_s {
  * HOW:  Store references and encoding state
  */
 typedef struct snn_population_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;              /**< SNN network being encoded */
     population_coding_encoder_t encoder; /**< Population coding encoder */
     snn_population_config_t config;      /**< Bridge configuration */

@@ -10,6 +10,7 @@
  */
 
 #include "middleware/features/nimcp_population_coding_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -104,8 +105,8 @@ population_coding_fep_bridge_t* population_coding_fep_bridge_create(
     bridge->effects.noise_correlation_reduction = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         population_coding_fep_bridge_destroy(bridge);
         return NULL;
     }
@@ -119,13 +120,13 @@ void population_coding_fep_bridge_destroy(
 ) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         population_coding_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -142,9 +143,9 @@ int population_coding_fep_bridge_connect_encoder(
 ) {
     if (!bridge || !encoder) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->population_encoder = encoder;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Population encoder connected to FEP bridge");
     return 0;
@@ -156,9 +157,9 @@ int population_coding_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("FEP system connected to population bridge");
     return 0;
@@ -169,10 +170,10 @@ int population_coding_fep_bridge_disconnect(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->population_encoder = NULL;
     bridge->fep_system = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Population-FEP bridge disconnected");
     return 0;
@@ -189,7 +190,7 @@ int population_coding_fep_apply_precision_tuning(
     if (!bridge) return -1;
     if (!bridge->config.enable_precision_tuning) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map precision to tuning width */
     float base_tuning = map_precision_to_tuning(precision);
@@ -216,7 +217,7 @@ int population_coding_fep_apply_precision_tuning(
         (bridge->stats.avg_precision * (bridge->stats.tuning_adjustments - 1) +
          precision) / bridge->stats.tuning_adjustments;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Precision tuning applied: %.3f → width %.3f",
                         precision, tuning_width);
@@ -230,7 +231,7 @@ int population_coding_fep_set_baseline(
     if (!bridge) return -1;
     if (!bridge->config.enable_prediction_baseline) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Scale prediction to baseline activation */
     float baseline = prediction * bridge->config.baseline_sensitivity;
@@ -249,7 +250,7 @@ int population_coding_fep_set_baseline(
              baseline) / bridge->stats.baseline_activations;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Baseline set from prediction: %.3f → %.3f",
                         prediction, baseline);
@@ -263,7 +264,7 @@ int population_coding_fep_adjust_synchrony_threshold(
     if (!bridge) return -1;
     if (!bridge->config.enable_synchrony_confidence) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* High PE increases threshold (require stronger synchrony) */
     float threshold = bridge->config.min_synchrony_threshold +
@@ -274,7 +275,7 @@ int population_coding_fep_adjust_synchrony_threshold(
     bridge->state.prediction_error = prediction_error;
     bridge->effects.synchrony_threshold = threshold;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Synchrony threshold adjusted: PE=%.3f → θ=%.3f",
                         prediction_error, threshold);
@@ -292,7 +293,7 @@ int population_coding_fep_report_observation(
     if (!bridge || !vector) return -1;
     if (!bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Store population vector as observation */
     bridge->state.population_vector = *vector;
@@ -300,7 +301,7 @@ int population_coding_fep_report_observation(
     /* TODO: Convert vector to FEP observation format and report */
     /* This would require FEP system API for observation updates */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Population vector reported: (%.3f, %.3f, %.3f)",
                         vector->x, vector->y, vector->z);
@@ -315,7 +316,7 @@ int population_coding_fep_update_precision_from_synchrony(
     if (!bridge->config.enable_synchrony_confidence) return 0;
     if (!bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map synchrony to confidence/precision */
     float confidence = map_synchrony_to_confidence(synchrony);
@@ -336,7 +337,7 @@ int population_coding_fep_update_precision_from_synchrony(
 
     /* TODO: Update FEP precision (requires FEP system API) */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Precision updated from synchrony: %.3f → %.3f",
                         synchrony, confidence);
@@ -350,7 +351,7 @@ int population_coding_fep_report_sparsity(
     if (!bridge) return -1;
     if (!bridge->config.enable_sparsity_optimization) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Calculate free energy bonus for sparse codes */
     float sparsity_bonus = 0.0f;
@@ -370,7 +371,7 @@ int population_coding_fep_report_sparsity(
 
     /* TODO: Report sparsity bonus to FEP system */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Sparsity reported: %.3f (bonus: %.3f)",
                         sparsity, sparsity_bonus);
@@ -415,9 +416,9 @@ int population_coding_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
 
     return 0;
 }
@@ -428,9 +429,9 @@ int population_coding_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
 
     return 0;
 }
@@ -441,9 +442,9 @@ int population_coding_fep_get_tuning_width(
 ) {
     if (!bridge || !tuning_width) return -1;
 
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *tuning_width = bridge->state.effective_tuning_width;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
 
     return 0;
 }
@@ -454,9 +455,9 @@ int population_coding_fep_get_baseline(
 ) {
     if (!bridge || !baseline) return -1;
 
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *baseline = bridge->state.effective_baseline;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
 
     return 0;
 }
@@ -469,7 +470,7 @@ int population_coding_fep_bridge_connect_bio_async(
     population_coding_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_POPULATION_CODING_BRIDGE,
@@ -478,9 +479,9 @@ int population_coding_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -493,11 +494,11 @@ int population_coding_fep_bridge_disconnect_bio_async(
     population_coding_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -507,5 +508,5 @@ bool population_coding_fep_bridge_is_bio_async_connected(
     const population_coding_fep_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

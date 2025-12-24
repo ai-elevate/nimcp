@@ -60,6 +60,7 @@
 #define NIMCP_THALAMIC_ROUTER_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -109,15 +110,14 @@ typedef struct {
 } thalamic_router_fep_stats_t;
 
 struct thalamic_router_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     thalamic_router_fep_config_t config;
     thalamic_router_t* thalamic_router;
     fep_system_t* fep_system;
     thalamic_router_fep_effects_t effects;
     thalamic_router_fep_state_t state;
     thalamic_router_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 /* Lifecycle */

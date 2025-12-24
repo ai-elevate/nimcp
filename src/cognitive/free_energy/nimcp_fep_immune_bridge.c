@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/free_energy/nimcp_fep_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -112,8 +113,8 @@ fep_immune_bridge_t* fep_immune_bridge_create(const fep_immune_config_t* config)
     memset(&bridge->cytokine_effects, 0, sizeof(fep_cytokine_effects_t));
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         fep_immune_bridge_destroy(bridge);
         return NULL;
     }
@@ -125,13 +126,13 @@ fep_immune_bridge_t* fep_immune_bridge_create(const fep_immune_config_t* config)
 void fep_immune_bridge_destroy(fep_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         fep_immune_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -148,9 +149,9 @@ int fep_immune_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("FEP-immune bridge connected to FEP system");
     return 0;
@@ -162,9 +163,9 @@ int fep_immune_bridge_connect_immune(
 ) {
     if (!bridge || !immune) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("FEP-immune bridge connected to immune system");
     return 0;
@@ -173,10 +174,10 @@ int fep_immune_bridge_connect_immune(
 int fep_immune_bridge_disconnect(fep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->immune_system = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -192,7 +193,7 @@ int fep_immune_report_prediction_failure(
     if (!bridge) return -1;
     if (!bridge->config.enable_pe_immune_activation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if magnitude exceeds threshold */
     float scaled_magnitude = magnitude * bridge->config.pe_sensitivity;
@@ -220,7 +221,7 @@ int fep_immune_report_prediction_failure(
     bridge->state.prediction_failures_reported++;
     bridge->state.last_pe_report_time = get_time_ms();
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -232,7 +233,7 @@ int fep_immune_report_model_violation(
     if (!bridge || !pattern || len == 0) return -1;
     if (!bridge->config.enable_pe_immune_activation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Present pattern as antigen to immune system */
     if (bridge->immune_system) {
@@ -243,7 +244,7 @@ int fep_immune_report_model_violation(
 
     bridge->stats.model_violations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -251,7 +252,7 @@ int fep_immune_transfer_belief_to_memory(fep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_immune_memory_transfer) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Transfer FEP belief patterns to immune memory */
     if (bridge->fep_system && bridge->immune_system) {
@@ -273,7 +274,7 @@ int fep_immune_transfer_belief_to_memory(fep_immune_bridge_t* bridge) {
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -281,7 +282,7 @@ int fep_immune_convergence_il10_release(fep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_convergence_il10) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Release anti-inflammatory IL-10 when beliefs converge */
     if (bridge->immune_system && bridge->state.converged) {
@@ -292,7 +293,7 @@ int fep_immune_convergence_il10_release(fep_immune_bridge_t* bridge) {
         bridge->stats.convergence_il10_releases++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -303,7 +304,7 @@ int fep_immune_convergence_il10_release(fep_immune_bridge_t* bridge) {
 int fep_immune_apply_inflammation_effects(fep_immune_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation level from immune system via stats */
     brain_inflammation_level_t level = INFLAMMATION_NONE;
@@ -351,7 +352,7 @@ int fep_immune_apply_inflammation_effects(fep_immune_bridge_t* bridge) {
     bridge->stats.total_precision_reduction += bridge->state.precision_reduction;
     bridge->stats.total_learning_impairment += bridge->state.learning_impairment;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -397,7 +398,7 @@ int fep_immune_get_learning_modifier(
 int fep_immune_update_cytokine_effects(fep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update cytokine effects based on inflammation level */
     /* Note: This is a simplified implementation - full implementation would
@@ -443,7 +444,7 @@ int fep_immune_update_cytokine_effects(fep_immune_bridge_t* bridge) {
             bridge->cytokine_effects.il10_learning_boost;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -457,7 +458,7 @@ int fep_immune_bridge_update(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* 1. Update cytokine effects (inlined to avoid deadlock) */
     if (bridge->immune_system) {
@@ -595,7 +596,7 @@ int fep_immune_bridge_update(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -637,7 +638,7 @@ brain_inflammation_level_t fep_immune_get_inflammation_level(
 
 int fep_immune_bridge_connect_bio_async(fep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_IMMUNE_BRIDGE,
@@ -646,9 +647,9 @@ int fep_immune_bridge_connect_bio_async(fep_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("FEP-immune bridge connected to bio-async");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -658,18 +659,18 @@ int fep_immune_bridge_connect_bio_async(fep_immune_bridge_t* bridge) {
 
 int fep_immune_bridge_disconnect_bio_async(fep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool fep_immune_bridge_is_bio_async_connected(
     const fep_immune_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

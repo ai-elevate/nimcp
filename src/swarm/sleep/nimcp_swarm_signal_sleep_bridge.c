@@ -12,6 +12,7 @@
  */
 
 #include "swarm/sleep/nimcp_swarm_signal_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
@@ -19,10 +20,11 @@
 #include <string.h>
 
 struct swarm_signal_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_signal_sleep_config_t config;
     sleep_system_t sleep_system;
     swarm_signal_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -31,7 +33,7 @@ static void swarm_signal_on_sleep_state_change(sleep_state_t new_state, void* us
     swarm_signal_sleep_bridge_t bridge = (swarm_signal_sleep_bridge_t)user_data;
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.current_state = new_state;
 
     if (bridge->config.enable_power_modulation) {
@@ -44,7 +46,7 @@ static void swarm_signal_on_sleep_state_change(sleep_state_t new_state, void* us
         bridge->effects.latency_tolerance_factor = swarm_signal_sleep_get_latency_factor(new_state);
     }
     bridge->effects.signaling_enabled = (new_state != SLEEP_STATE_DEEP_NREM);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 int swarm_signal_sleep_default_config(swarm_signal_sleep_config_t* config)
@@ -75,8 +77,8 @@ swarm_signal_sleep_bridge_t swarm_signal_sleep_bridge_create(
     bridge->effects.latency_tolerance_factor = 1.0f;
     bridge->effects.signaling_enabled = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     bridge->callback_registered = sleep_register_state_callback(
         sleep_system, swarm_signal_on_sleep_state_change, bridge);
@@ -95,7 +97,7 @@ void swarm_signal_sleep_bridge_destroy(swarm_signal_sleep_bridge_t bridge)
         sleep_unregister_state_callback(bridge->sleep_system,
             swarm_signal_on_sleep_state_change, bridge);
     }
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
@@ -111,36 +113,36 @@ int swarm_signal_sleep_get_effects(const swarm_signal_sleep_bridge_t bridge,
                                     swarm_signal_sleep_effects_t* effects)
 {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float swarm_signal_sleep_get_transmission_power(const swarm_signal_sleep_bridge_t bridge, float base)
 {
     if (!bridge) return base;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base * bridge->effects.transmission_power_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float swarm_signal_sleep_get_reception_sensitivity(const swarm_signal_sleep_bridge_t bridge, float base)
 {
     if (!bridge) return base;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base * bridge->effects.reception_sensitivity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float swarm_signal_sleep_get_latency_tolerance(const swarm_signal_sleep_bridge_t bridge, float base)
 {
     if (!bridge) return base;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base * bridge->effects.latency_tolerance_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

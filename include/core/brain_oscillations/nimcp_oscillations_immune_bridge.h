@@ -131,6 +131,7 @@
 #define NIMCP_OSCILLATIONS_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -277,6 +278,8 @@ typedef struct {
  * @brief Complete oscillations-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_oscillation_analyzer_t* oscillation_analyzer;
     brain_immune_system_t* immune_system;
@@ -312,13 +315,7 @@ typedef struct {
     uint32_t antigens_presented;
     uint32_t il10_restorations;
 
-    /* Thread safety */
-    void* mutex;
-
-    /* Bio-async integration */
-    void* bio_ctx;                      /**< Bio-async module context */
-    bool bio_async_enabled;             /**< Whether bio-async is active */
-} oscillations_immune_bridge_t;
+    void* bio_ctx;                      /**< Bio-async module context */} oscillations_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

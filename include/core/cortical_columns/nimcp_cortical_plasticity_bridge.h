@@ -174,6 +174,7 @@
 #define NIMCP_CORTICAL_PLASTICITY_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -308,6 +309,8 @@ typedef struct {
  * @brief Cortical plasticity bridge state
  */
 struct cortical_plasticity_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     cortical_plasticity_config_t config;
 
@@ -326,18 +329,12 @@ struct cortical_plasticity_bridge {
     uint32_t homeostatic_mechanism_id; /**< Registered homeostatic mechanism ID */
     uint32_t eligibility_mechanism_id; /**< Registered eligibility mechanism ID */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;   /**< Bio-async module context */
-    bool bio_async_enabled;         /**< Whether bio-async is active */
-
     /* Statistics */
     uint64_t total_stdp_updates;
     uint64_t total_bcm_updates;
     uint64_t total_homeostatic_updates;
     uint64_t total_eligibility_updates;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================

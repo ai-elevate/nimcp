@@ -62,6 +62,7 @@ extern "C" {
 #endif
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
@@ -170,6 +171,8 @@ typedef struct {
  * HOW: Holds pointers to both systems, computed effects, and state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     neural_substrate_t* substrate;                  /* Neural substrate system */
     void* columns;                                  /* Cortical column pool (optional) */
     void* laminar;                                  /* Laminar structure (optional) */
@@ -177,11 +180,7 @@ typedef struct {
     void* sparse;                                   /* Sparse coding system (optional) */
     cortical_substrate_effects_t effects;           /* Current effects */
     cortical_substrate_config_t config;             /* Configuration */
-    cortical_substrate_stats_t stats;               /* Statistics */
-    bio_module_context_t bio_ctx;                   /* Bio-async context */
-    bool bio_async_enabled;                         /* Bio-async active flag */
-    nimcp_mutex_t* mutex;                           /* Thread safety */
-} cortical_substrate_bridge_t;
+    cortical_substrate_stats_t stats;               /* Statistics */} cortical_substrate_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

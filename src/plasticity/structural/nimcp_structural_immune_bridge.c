@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/structural/nimcp_structural_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -69,8 +70,8 @@ structural_immune_bridge_t* structural_immune_bridge_create(
     bridge->structural_system = structural_system;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -86,12 +87,12 @@ structural_immune_bridge_t* structural_immune_bridge_create(
 void structural_immune_bridge_destroy(structural_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         structural_immune_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -114,7 +115,7 @@ int structural_immune_apply_cytokine_effects(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine levels from immune system */
     /* Note: This would query brain_immune_get_cytokine_level() for each type */
@@ -175,7 +176,7 @@ int structural_immune_apply_cytokine_effects(
     bridge->cytokine_effects.stabilization_impairment =
         fabs(formation_impairment) * 0.5f;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -191,7 +192,7 @@ int structural_immune_apply_inflammation_effects(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Query inflammation level */
     /* Would use: brain_immune_get_inflammation_level(bridge->immune_system) */
@@ -234,7 +235,7 @@ int structural_immune_apply_inflammation_effects(
             MICROGLIA_BASELINE_PRUNING_RATE;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -248,7 +249,7 @@ int structural_immune_microglia_prune(structural_immune_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get complement-tagged synapses */
     uint32_t tagged_ids[256];
@@ -278,7 +279,7 @@ int structural_immune_microglia_prune(structural_immune_bridge_t* bridge) {
     bridge->microglia_state.spines_pruned_today += pruned;
     bridge->microglia_prunings += pruned;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     if (pruned > 0) {
         NIMCP_LOGGING_DEBUG("Microglia pruned %u tagged synapses", pruned);
@@ -298,7 +299,7 @@ uint32_t structural_immune_tag_weak_spines(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get all spines and tag weak ones */
     uint32_t total_spines =
@@ -331,7 +332,7 @@ uint32_t structural_immune_tag_weak_spines(
     bridge->microglia_state.total_complement_tags += tagged;
     bridge->complement_tags_applied += tagged;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     if (tagged > 0) {
         NIMCP_LOGGING_DEBUG("Tagged %u weak spines with complement", tagged);
@@ -350,7 +351,7 @@ int structural_immune_signal_density(structural_immune_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     uint32_t total_spines =
         structural_plasticity_get_total_spines(bridge->structural_system);
@@ -366,7 +367,7 @@ int structural_immune_signal_density(structural_immune_bridge_t* bridge) {
         bridge->microglia_state.complement_tagging_rate = 0.01f;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -407,7 +408,7 @@ int structural_immune_bridge_update(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Apply immune → structural effects */
     structural_immune_apply_cytokine_effects(bridge);
@@ -427,7 +428,7 @@ int structural_immune_bridge_update(
     bridge->total_updates++;
     bridge->last_update_time += delta_ms;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -443,9 +444,9 @@ int structural_immune_get_cytokine_effects(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -458,9 +459,9 @@ int structural_immune_get_microglia_state(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     *state = bridge->microglia_state;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -470,9 +471,9 @@ float structural_immune_get_formation_factor(
 ) {
     if (!bridge) return 1.0f;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     float factor = bridge->cytokine_effects.total_formation_factor;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return factor;
 }
@@ -482,9 +483,9 @@ float structural_immune_get_pruning_factor(
 ) {
     if (!bridge) return 1.0f;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     float factor = bridge->cytokine_effects.total_pruning_factor;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return factor;
 }
@@ -498,7 +499,7 @@ int structural_immune_connect_bio_async(structural_immune_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
     }
 
@@ -509,9 +510,9 @@ int structural_immune_connect_bio_async(structural_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -523,13 +524,13 @@ int structural_immune_connect_bio_async(structural_immune_bridge_t* bridge) {
 int structural_immune_disconnect_bio_async(
     structural_immune_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -538,5 +539,5 @@ int structural_immune_disconnect_bio_async(
 bool structural_immune_is_bio_async_connected(
     const structural_immune_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

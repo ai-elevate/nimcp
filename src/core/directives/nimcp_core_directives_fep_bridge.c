@@ -4,6 +4,7 @@
  */
 
 #include "core/directives/nimcp_core_directives_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -96,8 +97,8 @@ directive_fep_bridge_t* directive_fep_bridge_create(
     bridge->state.precision = bridge->config.precision_default;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE_DIRECTIVE_FEP " Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -119,12 +120,12 @@ void directive_fep_bridge_destroy(directive_fep_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         directive_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -146,7 +147,7 @@ int directive_fep_bridge_update(directive_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update average free energy (EMA) */
     if (bridge->stats.total_actions_evaluated > 0) {
@@ -163,7 +164,7 @@ int directive_fep_bridge_update(directive_fep_bridge_t* bridge) {
             EMA_ALPHA * bridge->state.surprise;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -184,7 +185,7 @@ int directive_fep_bridge_compute_free_energy(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Blocked action = high free energy */
     if (result == 1) {  /* Blocked */
@@ -198,7 +199,7 @@ int directive_fep_bridge_compute_free_energy(
     *free_energy_out *= (1.0f + bridge->config.prediction_error_weight *
                          bridge->state.prediction_error);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -218,7 +219,7 @@ int directive_fep_bridge_compute_expected_outcome(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Use historical block rate as prediction */
     if (bridge->stats.total_actions_evaluated > 0) {
@@ -232,7 +233,7 @@ int directive_fep_bridge_compute_expected_outcome(
         *expected_blocked = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -255,9 +256,9 @@ int directive_fep_bridge_update_precision(
     if (precision < 0.0f) precision = 0.0f;
     if (precision > 1.0f) precision = 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.precision = precision;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -282,7 +283,7 @@ int directive_fep_bridge_on_action_blocked(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update counters */
     bridge->stats.total_actions_evaluated++;
@@ -321,7 +322,7 @@ int directive_fep_bridge_on_action_blocked(
         action, reason, bridge->state.prediction_error,
         bridge->state.surprise, bridge->state.free_energy);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -340,7 +341,7 @@ int directive_fep_bridge_on_action_allowed(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update counters */
     bridge->stats.total_actions_evaluated++;
@@ -361,7 +362,7 @@ int directive_fep_bridge_on_action_allowed(
         action, bridge->state.prediction_error,
         bridge->state.surprise, bridge->state.free_energy);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -384,9 +385,9 @@ int directive_fep_bridge_get_state(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -406,9 +407,9 @@ int directive_fep_bridge_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -429,7 +430,7 @@ int directive_fep_bridge_connect_bio_async(directive_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
     }
 
@@ -440,9 +441,9 @@ int directive_fep_bridge_connect_bio_async(directive_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO(LOG_MODULE_DIRECTIVE_FEP " Connected to bio-async");
         return NIMCP_SUCCESS;
     }
@@ -463,16 +464,16 @@ int directive_fep_bridge_disconnect_bio_async(directive_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO(LOG_MODULE_DIRECTIVE_FEP " Disconnected from bio-async");
 
     return NIMCP_SUCCESS;
@@ -491,5 +492,5 @@ bool directive_fep_bridge_is_bio_async_connected(
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

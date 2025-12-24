@@ -23,6 +23,7 @@
 //=============================================================================
 
 #include "middleware/training/nimcp_perception_training_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
 #include "middleware/training/nimcp_training_logic_bridge.h"
 #include "utils/logging/nimcp_logging.h"
@@ -91,6 +92,8 @@ static uint64_t get_time_ms(void) {
  * HOW:  Single struct with all subsystems
  */
 struct perception_training_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     perception_training_config_t config;
 
     /* Connected perception cortices (may be NULL) */
@@ -117,13 +120,6 @@ struct perception_training_bridge {
 
     /* Statistics */
     perception_training_stats_t stats;
-
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* State */
     bool running;
@@ -524,7 +520,7 @@ perception_training_bridge_t* perception_training_create(
     pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -537,7 +533,7 @@ perception_training_bridge_t* perception_training_create(
     );
     if (!bridge->loss_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -559,7 +555,7 @@ void perception_training_destroy(perception_training_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         perception_training_disconnect_bio_async(bridge);
     }
 
@@ -569,8 +565,8 @@ void perception_training_destroy(perception_training_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -584,10 +580,10 @@ int perception_training_start(perception_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect to bio-async if enabled */
-    if (bridge->config.enable_bio_async && !bridge->bio_async_enabled) {
+    if (bridge->config.enable_bio_async && !bridge->base.bio_async_enabled) {
         int result = perception_training_connect_bio_async(bridge);
         if (result != NIMCP_SUCCESS) {
             NIMCP_LOGGING_WARN("Bio-async connection failed, continuing without it");
@@ -602,7 +598,7 @@ int perception_training_start(perception_training_bridge_t* bridge) {
     bridge->running = true;
     bridge->last_update_ms = get_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Started Perception-Training bridge");
 
@@ -614,16 +610,16 @@ int perception_training_stop(perception_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->running = false;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         perception_training_disconnect_bio_async(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Stopped Perception-Training bridge");
 
@@ -642,7 +638,7 @@ int perception_training_connect_visual_cortex(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->visual_cortex = visual_cortex;
     if (visual_cortex) {
@@ -652,7 +648,7 @@ int perception_training_connect_visual_cortex(
         bridge->stats.visual_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -665,7 +661,7 @@ int perception_training_connect_audio_cortex(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->audio_cortex = audio_cortex;
     if (audio_cortex) {
@@ -675,7 +671,7 @@ int perception_training_connect_audio_cortex(
         bridge->stats.audio_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -688,7 +684,7 @@ int perception_training_connect_speech_cortex(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->speech_cortex = speech_cortex;
     if (speech_cortex) {
@@ -698,7 +694,7 @@ int perception_training_connect_speech_cortex(
         bridge->stats.speech_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -715,14 +711,14 @@ int perception_training_connect_training_context(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_ctx = training_ctx;
     if (training_ctx) {
         NIMCP_LOGGING_INFO("Connected brain training context to Perception-Training bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -735,7 +731,7 @@ int perception_training_connect_cognitive_training(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->cognitive_training = cognitive_training;
     if (cognitive_training) {
@@ -745,7 +741,7 @@ int perception_training_connect_cognitive_training(
         bridge->stats.cognitive_training_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -758,7 +754,7 @@ int perception_training_connect_training_logic(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_logic = training_logic;
     if (training_logic) {
@@ -768,7 +764,7 @@ int perception_training_connect_training_logic(
         bridge->stats.training_logic_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -781,7 +777,7 @@ int perception_training_connect_training_plasticity(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_plasticity = training_plasticity;
     if (training_plasticity) {
@@ -791,7 +787,7 @@ int perception_training_connect_training_plasticity(
         bridge->stats.training_plasticity_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -804,7 +800,7 @@ int perception_training_connect_training_immune(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_immune = training_immune;
     if (training_immune) {
@@ -814,7 +810,7 @@ int perception_training_connect_training_immune(
         bridge->stats.training_immune_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -829,12 +825,12 @@ int perception_training_update(perception_training_bridge_t* bridge, uint64_t de
     }
     (void)delta_ms;  /* Currently unused, for future time-based updates */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Extract current perception state */
     int result = extract_perception_state(bridge);
     if (result != NIMCP_SUCCESS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return result;
     }
 
@@ -876,7 +872,7 @@ int perception_training_update(perception_training_bridge_t* bridge, uint64_t de
 
     bridge->last_update_ms = get_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -889,9 +885,9 @@ int perception_training_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->perception_effects, sizeof(perception_training_effects_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -945,7 +941,7 @@ int perception_training_get_attention_scaling(
         return NIMCP_SUCCESS;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Use visual attention weights if available, otherwise uniform scaling */
     if (bridge->config.enable_attention_scaling &&
@@ -963,7 +959,7 @@ int perception_training_get_attention_scaling(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -980,7 +976,7 @@ int perception_training_update_metrics(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Add to history */
     add_loss_to_history(bridge, loss);
@@ -1011,7 +1007,7 @@ int perception_training_update_metrics(
     /* Update stats */
     bridge->stats.total_modulations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1029,7 +1025,7 @@ int perception_training_signal_event(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update stats */
     bridge->stats.total_feedback_events++;
@@ -1067,7 +1063,7 @@ int perception_training_signal_event(
 
     (void)magnitude;  /* For future use in scaling feedback intensity */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -1078,9 +1074,9 @@ int perception_training_update_perception_state(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int result = extract_perception_state(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -1121,7 +1117,7 @@ int perception_training_connect_bio_async(perception_training_bridge_t* bridge) 
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
     }
 
@@ -1132,9 +1128,9 @@ int perception_training_connect_bio_async(perception_training_bridge_t* bridge) 
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         bridge->stats.bio_async_connected = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
@@ -1149,16 +1145,16 @@ int perception_training_disconnect_bio_async(perception_training_bridge_t* bridg
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     bridge->stats.bio_async_connected = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
@@ -1172,7 +1168,7 @@ bool perception_training_is_bio_async_connected(
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 int perception_training_process_inbox(perception_training_bridge_t* bridge) {
@@ -1180,11 +1176,11 @@ int perception_training_process_inbox(perception_training_bridge_t* bridge) {
         return -1;  /* Return negative for null pointer */
     }
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;  /* No messages to process */
     }
 
-    return bio_router_process_inbox(bridge->bio_ctx, 10);
+    return bio_router_process_inbox(bridge->base.bio_ctx, 10);
 }
 
 /*=============================================================================
@@ -1199,9 +1195,9 @@ int perception_training_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(perception_training_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1211,7 +1207,7 @@ int perception_training_reset_stats(perception_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Preserve connection status */
     bool visual_conn = bridge->stats.visual_connected;
@@ -1235,7 +1231,7 @@ int perception_training_reset_stats(perception_training_bridge_t* bridge) {
     bridge->stats.training_immune_connected = immune_conn;
     bridge->stats.bio_async_connected = bio_conn;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset Perception-Training statistics");
 
@@ -1359,7 +1355,7 @@ int perception_training_set_effects_for_testing(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy the provided effects, preserving attention pointer handling */
     float* existing_attention = bridge->perception_effects.visual_attention_weights;
@@ -1375,7 +1371,7 @@ int perception_training_set_effects_for_testing(
 
     bridge->perception_effects.valid = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }

@@ -9,6 +9,7 @@
  */
 
 #include "cognitive/joy/nimcp_joy_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -68,8 +69,8 @@ joy_fep_bridge_t* joy_fep_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -88,13 +89,13 @@ void joy_fep_destroy(joy_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         joy_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -111,9 +112,9 @@ int joy_fep_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to joy bridge");
     return 0;
@@ -125,9 +126,9 @@ int joy_fep_connect_joy(
 ) {
     if (!bridge || !joy) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->joy_system = joy;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected joy system to FEP bridge");
     return 0;
@@ -136,10 +137,10 @@ int joy_fep_connect_joy(
 int joy_fep_disconnect(joy_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->joy_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from joy FEP bridge");
     return 0;
@@ -156,7 +157,7 @@ int joy_fep_process_positive_pe(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_positive_pe_joy) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Positive prediction error = better than expected = joy
      * PE > 0: outcome better than predicted -> positive affect
@@ -201,7 +202,7 @@ int joy_fep_process_positive_pe(
     bridge->stats.avg_positive_pe =
         (bridge->stats.avg_positive_pe * 0.9f) + (bridge->state.current_positive_pe * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Processed positive PE: joy=%f, valence=%f, euphoria=%s",
                         joy_intensity, positive_valence, euphoria ? "yes" : "no");
@@ -214,7 +215,7 @@ int joy_fep_boost_learning_rate(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_joy_learning_boost) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Joy enhances learning rate
      * Positive affect facilitates encoding of successful behaviors
@@ -233,7 +234,7 @@ int joy_fep_boost_learning_rate(
     float value_gain = 1.0f + (joy_intensity * 0.5f);
     bridge->emotion_effects.value_update_gain = value_gain;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Boosted learning: rate=%f, dopamine=%f, value_gain=%f",
                         learning_boost, dopamine, value_gain);
@@ -253,7 +254,7 @@ int joy_fep_update(
     /* Apply learning rate boost */
     joy_fep_boost_learning_rate(bridge);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Joy decays relatively quickly compared to grief
      * This models the transient nature of positive affect
@@ -269,7 +270,7 @@ int joy_fep_update(
         bridge->state.euphoric = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -284,9 +285,9 @@ int joy_fep_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -297,9 +298,9 @@ int joy_fep_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -312,7 +313,7 @@ int joy_fep_connect_bio_async(
     joy_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_JOY_BRIDGE,
@@ -321,9 +322,9 @@ int joy_fep_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -336,14 +337,14 @@ int joy_fep_disconnect_bio_async(
     joy_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -352,5 +353,5 @@ int joy_fep_disconnect_bio_async(
 bool joy_fep_is_bio_async_connected(
     const joy_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

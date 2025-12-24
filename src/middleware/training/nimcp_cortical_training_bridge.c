@@ -23,6 +23,7 @@
 //=============================================================================
 
 #include "middleware/training/nimcp_cortical_training_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
 #include "middleware/training/nimcp_training_logic_bridge.h"
 #include "utils/logging/nimcp_logging.h"
@@ -86,6 +87,8 @@ static uint64_t get_time_ms(void) {
  * HOW:  Single struct with all subsystems
  */
 struct cortical_training_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     cortical_training_config_t config;
 
     /* Connected cortical modules (may be NULL) */
@@ -110,13 +113,6 @@ struct cortical_training_bridge {
 
     /* Statistics */
     cortical_training_stats_t stats;
-
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* State */
     bool running;
@@ -551,7 +547,7 @@ cortical_training_bridge_t* cortical_training_create(
     pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -564,7 +560,7 @@ cortical_training_bridge_t* cortical_training_create(
     );
     if (!bridge->fe_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -577,7 +573,7 @@ cortical_training_bridge_t* cortical_training_create(
     if (!bridge->cortical_effects.precision_weights) {
         NIMCP_LOGGING_ERROR("Failed to allocate precision weights");
         nimcp_free(bridge->fe_history);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -601,7 +597,7 @@ void cortical_training_destroy(cortical_training_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         cortical_training_disconnect_bio_async(bridge);
     }
 
@@ -616,8 +612,8 @@ void cortical_training_destroy(cortical_training_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -631,10 +627,10 @@ int cortical_training_start(cortical_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect to bio-async if enabled */
-    if (bridge->config.enable_bio_async && !bridge->bio_async_enabled) {
+    if (bridge->config.enable_bio_async && !bridge->base.bio_async_enabled) {
         int result = cortical_training_connect_bio_async(bridge);
         if (result != NIMCP_SUCCESS) {
             NIMCP_LOGGING_WARN("Bio-async connection failed, continuing without it");
@@ -649,7 +645,7 @@ int cortical_training_start(cortical_training_bridge_t* bridge) {
     bridge->running = true;
     bridge->last_update_ms = get_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Started Cortical-Training bridge");
 
@@ -661,16 +657,16 @@ int cortical_training_stop(cortical_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->running = false;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         cortical_training_disconnect_bio_async(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Stopped Cortical-Training bridge");
 
@@ -689,7 +685,7 @@ int cortical_training_connect_predictive_coding(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->predictive_coding = predictive_coding;
     if (predictive_coding) {
@@ -699,7 +695,7 @@ int cortical_training_connect_predictive_coding(
         bridge->stats.predictive_coding_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -712,7 +708,7 @@ int cortical_training_connect_dendritic(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->dendritic = dendritic;
     if (dendritic) {
@@ -722,7 +718,7 @@ int cortical_training_connect_dendritic(
         bridge->stats.dendritic_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -735,7 +731,7 @@ int cortical_training_connect_columns(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->columns = columns;
     if (columns) {
@@ -745,7 +741,7 @@ int cortical_training_connect_columns(
         bridge->stats.columns_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -762,7 +758,7 @@ int cortical_training_connect_cognitive_training(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->cognitive_training = cognitive_training;
     if (cognitive_training) {
@@ -772,7 +768,7 @@ int cortical_training_connect_cognitive_training(
         bridge->stats.cognitive_training_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -785,7 +781,7 @@ int cortical_training_connect_training_logic(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_logic = training_logic;
     if (training_logic) {
@@ -795,7 +791,7 @@ int cortical_training_connect_training_logic(
         bridge->stats.training_logic_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -808,7 +804,7 @@ int cortical_training_connect_training_immune(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_immune = training_immune;
     if (training_immune) {
@@ -818,7 +814,7 @@ int cortical_training_connect_training_immune(
         bridge->stats.training_immune_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -831,7 +827,7 @@ int cortical_training_connect_training_plasticity(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training_plasticity = training_plasticity;
     if (training_plasticity) {
@@ -841,7 +837,7 @@ int cortical_training_connect_training_plasticity(
         bridge->stats.training_plasticity_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -856,12 +852,12 @@ int cortical_training_update(cortical_training_bridge_t* bridge, uint64_t delta_
     }
     (void)delta_ms;  /* Currently unused, for future time-based updates */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Extract current cortical state */
     int result = extract_cortical_state(bridge);
     if (result != NIMCP_SUCCESS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return result;
     }
 
@@ -896,7 +892,7 @@ int cortical_training_update(cortical_training_bridge_t* bridge, uint64_t delta_
         (bridge->stats.avg_prediction_error * 0.9f) + (bridge->cortical_effects.prediction_error_mag * 0.1f);
     bridge->last_update_ms = get_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -958,7 +954,7 @@ int cortical_training_get_precision_weights(
         return NIMCP_SUCCESS;  /* Nothing to copy */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t copy_count = (num_layers < bridge->cortical_effects.num_layers)
                          ? num_layers
@@ -974,7 +970,7 @@ int cortical_training_get_precision_weights(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -994,7 +990,7 @@ int cortical_training_update_metrics(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update training effects */
     bridge->training_effects.loss_current = loss;
@@ -1014,7 +1010,7 @@ int cortical_training_update_metrics(
     bridge->stats.total_modulations++;
     bridge->stats.current_training_step = step;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1032,7 +1028,7 @@ int cortical_training_signal_event(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update stats */
     bridge->stats.total_feedback_events++;
@@ -1073,7 +1069,7 @@ int cortical_training_signal_event(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1087,7 +1083,7 @@ int cortical_training_connect_bio_async(cortical_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
     }
 
@@ -1098,9 +1094,9 @@ int cortical_training_connect_bio_async(cortical_training_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         bridge->stats.bio_async_connected = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
@@ -1115,16 +1111,16 @@ int cortical_training_disconnect_bio_async(cortical_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     bridge->stats.bio_async_connected = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
@@ -1138,7 +1134,7 @@ bool cortical_training_is_bio_async_connected(
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /*=============================================================================
@@ -1163,7 +1159,7 @@ int cortical_training_reset_stats(cortical_training_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Preserve connection status */
     bool predictive_connected = bridge->stats.predictive_coding_connected;
@@ -1189,7 +1185,7 @@ int cortical_training_reset_stats(cortical_training_bridge_t* bridge) {
     bridge->stats.bio_async_connected = bio_connected;
     bridge->stats.current_mode = mode;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset Cortical-Training statistics");
 
@@ -1312,7 +1308,7 @@ int cortical_training_set_effects_for_testing(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Preserve precision_weights pointer */
     float* existing_precision_weights = bridge->cortical_effects.precision_weights;
@@ -1328,7 +1324,7 @@ int cortical_training_set_effects_for_testing(
 
     bridge->cortical_effects.valid = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }

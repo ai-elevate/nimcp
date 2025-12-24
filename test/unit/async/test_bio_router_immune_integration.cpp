@@ -97,7 +97,7 @@ TEST_F(RouterImmuneBridgeTest, CreateDestroyTest) {
     EXPECT_NE(bridge->recent_anomalies, nullptr);
 
     /* Verify mutex created */
-    EXPECT_NE(bridge->mutex, nullptr);
+    EXPECT_NE(bridge->base.mutex, nullptr);
 
     /* Destroy should not crash */
     router_immune_bridge_destroy(bridge);

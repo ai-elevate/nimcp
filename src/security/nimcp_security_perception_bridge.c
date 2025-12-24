@@ -6,6 +6,7 @@
  */
 
 #include "security/nimcp_security_perception_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -19,6 +20,8 @@
  * @brief Security-perception bridge internal state
  */
 struct security_perception_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     sec_percept_config_t config;       /**< Configuration */
     sec_percept_state_t state;         /**< Current state */
 
@@ -47,9 +50,6 @@ struct security_perception_bridge {
     /* Bio-async */
     bio_module_context_t bio_context;  /**< Bio-async context */
     bool bio_async_connected;          /**< Bio-async connected */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;              /**< Thread-safe operations */
 
     /* Runtime state */
     uint64_t start_time_us;            /**< Start time (microseconds) */
@@ -269,8 +269,8 @@ security_perception_bridge_t* sec_percept_create(const sec_percept_config_t* con
     memset(bridge->signatures, 0, bridge->signature_capacity * sizeof(attack_signature_t));
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge->signatures);
         nimcp_free(bridge->quarantine);
@@ -315,8 +315,8 @@ void sec_percept_destroy(security_perception_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -330,10 +330,10 @@ int sec_percept_start(security_perception_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->state == SEC_PERCEPT_STATE_RUNNING) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already running */
     }
 
@@ -345,7 +345,7 @@ int sec_percept_start(security_perception_bridge_t* bridge) {
     bridge->state = SEC_PERCEPT_STATE_RUNNING;
     bridge->stats.state = SEC_PERCEPT_STATE_RUNNING;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Started security-perception bridge");
     return 0;
 }
@@ -357,10 +357,10 @@ int sec_percept_stop(security_perception_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->state == SEC_PERCEPT_STATE_STOPPED) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already stopped */
     }
 
@@ -372,7 +372,7 @@ int sec_percept_stop(security_perception_bridge_t* bridge) {
     bridge->state = SEC_PERCEPT_STATE_STOPPED;
     bridge->stats.state = SEC_PERCEPT_STATE_STOPPED;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Stopped security-perception bridge");
     return 0;
 }
@@ -395,9 +395,9 @@ int sec_percept_connect_bbb(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->bbb = bbb;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected BBB to security-perception bridge");
     return 0;
@@ -417,9 +417,9 @@ int sec_percept_connect_anomaly_detector(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->anomaly = detector;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected anomaly detector to security-perception bridge");
     return 0;
@@ -439,9 +439,9 @@ int sec_percept_connect_immune(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->immune = immune;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected immune system to security-perception bridge");
     return 0;
@@ -461,9 +461,9 @@ int sec_percept_connect_visual_cortex(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->visual_cortex = cortex;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected visual cortex to security-perception bridge");
     return 0;
@@ -483,9 +483,9 @@ int sec_percept_connect_audio_cortex(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->audio_cortex = cortex;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected audio cortex to security-perception bridge");
     return 0;
@@ -509,7 +509,7 @@ int sec_percept_analyze_visual(
 
     uint64_t start_time = get_time_us();
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Initialize result */
     memset(result, 0, sizeof(sensory_threat_result_t));
@@ -595,7 +595,7 @@ int sec_percept_analyze_visual(
          analysis_time) / bridge->stats.total_visual_inputs;
     bridge->stats.max_analysis_time_us = fmaxf(bridge->stats.max_analysis_time_us, analysis_time);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -613,7 +613,7 @@ int sec_percept_analyze_audio(
 
     uint64_t start_time = get_time_us();
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Initialize result */
     memset(result, 0, sizeof(sensory_threat_result_t));
@@ -689,7 +689,7 @@ int sec_percept_analyze_audio(
          analysis_time) / bridge->stats.total_audio_inputs;
     bridge->stats.max_analysis_time_us = fmaxf(bridge->stats.max_analysis_time_us, analysis_time);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -715,7 +715,7 @@ int sec_percept_analyze_multimodal(
     sec_percept_analyze_audio(bridge, audio_features, audio_dim, &audio_result);
 
     /* Now lock for combining results */
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Initialize result */
     memset(result, 0, sizeof(sensory_threat_result_t));
@@ -776,7 +776,7 @@ int sec_percept_analyze_multimodal(
          analysis_time) / bridge->stats.total_multimodal_inputs;
     bridge->stats.max_analysis_time_us = fmaxf(bridge->stats.max_analysis_time_us, analysis_time);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -836,7 +836,7 @@ int sec_percept_quarantine_input(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->quarantine_count >= bridge->quarantine_capacity) {
@@ -857,7 +857,7 @@ int sec_percept_quarantine_input(
     entry->feature_dim = feature_dim;
     entry->features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!entry->features) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     memcpy(entry->features, features, feature_dim * sizeof(float));
@@ -873,7 +873,7 @@ int sec_percept_quarantine_input(
     bridge->stats.inputs_quarantined++;
     bridge->stats.current_quarantine_count = bridge->quarantine_count;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Quarantined input %u (threat score: %.2f)",
                       entry->id, threat->threat_score);
@@ -912,7 +912,7 @@ int sec_percept_release_quarantine(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Find entry */
     for (uint32_t i = 0; i < bridge->quarantine_count; i++) {
@@ -928,20 +928,20 @@ int sec_percept_release_quarantine(
             bridge->quarantine_count--;
             bridge->stats.current_quarantine_count = bridge->quarantine_count;
 
-            nimcp_platform_mutex_unlock(bridge->mutex);
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             NIMCP_LOGGING_INFO("Released quarantine %u", quarantine_id);
             return 0;
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return -1;  /* Not found */
 }
 
 void sec_percept_clear_quarantine(security_perception_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->quarantine_count; i++) {
         if (bridge->quarantine[i].features) {
@@ -952,7 +952,7 @@ void sec_percept_clear_quarantine(security_perception_bridge_t* bridge) {
     bridge->quarantine_count = 0;
     bridge->stats.current_quarantine_count = 0;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Cleared quarantine");
 }
 
@@ -976,12 +976,12 @@ int sec_percept_learn_signature(
         return 0;  /* Learning disabled */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->signature_count >= bridge->signature_capacity) {
         NIMCP_LOGGING_WARN("Signature database full");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1001,7 +1001,7 @@ int sec_percept_learn_signature(
     bridge->signature_count++;
     bridge->stats.signatures_learned++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Learned attack signature %u (type: %s)",
                       sig->id, sec_percept_threat_type_name(threat->threat_type));
@@ -1084,10 +1084,10 @@ int sec_percept_get_signature(
 void sec_percept_clear_signatures(security_perception_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->signature_count = 0;
     bridge->stats.signatures_learned = 0;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Cleared attack signatures");
 }
@@ -1171,7 +1171,7 @@ int sec_percept_get_stats(
 void sec_percept_reset_stats(security_perception_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Preserve state, reset counters */
     sec_percept_state_t state = bridge->stats.state;
@@ -1181,7 +1181,7 @@ void sec_percept_reset_stats(security_perception_bridge_t* bridge) {
     bridge->stats.state = state;
     bridge->stats.current_quarantine_count = current_quarantine;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Reset statistics");
 }
 

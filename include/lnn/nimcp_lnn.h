@@ -30,6 +30,7 @@ extern "C" {
 
 /* Include all LNN module headers */
 #include "lnn/nimcp_lnn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "lnn/nimcp_lnn_config.h"
 #include "lnn/nimcp_lnn_neuron.h"
 #include "lnn/nimcp_lnn_layer.h"

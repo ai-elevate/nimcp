@@ -11,6 +11,7 @@
  */
 
 #include "plasticity/protein/nimcp_protein_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -138,16 +139,16 @@ protein_immune_bridge_t* protein_immune_bridge_create(
     bridge->restoration_events = 0;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Bio-async disabled by default */
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Created protein-immune bridge");
     return bridge;
@@ -157,13 +158,13 @@ void protein_immune_bridge_destroy(protein_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         protein_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -179,12 +180,12 @@ void protein_immune_bridge_destroy(protein_immune_bridge_t* bridge) {
 int protein_immune_apply_cytokine_effects(protein_immune_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query immune system for cytokine levels */
     brain_immune_stats_t immune_stats;
     if (brain_immune_get_stats(bridge->immune_system, &immune_stats) != 0) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -241,7 +242,7 @@ int protein_immune_apply_cytokine_effects(protein_immune_bridge_t* bridge) {
         bridge->synthesis_suppressions++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine effects: modulation=%.2f", total);
     return 0;
@@ -252,12 +253,12 @@ int protein_immune_apply_inflammation_effects(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query immune system for inflammation state */
     brain_immune_stats_t immune_stats;
     if (brain_immune_get_stats(bridge->immune_system, &immune_stats) != 0) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -302,7 +303,7 @@ int protein_immune_apply_inflammation_effects(
         bridge->inflammation_state.tag_decay_acceleration = 1.0f;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation effects: suppression=%.2f",
                         inflam_factor);
@@ -315,14 +316,14 @@ float protein_immune_get_effective_synthesis_rate(
 ) {
     if (!bridge) return base_rate;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Combine cytokine and inflammation effects */
     float effective_rate = base_rate;
     effective_rate *= bridge->cytokine_effects.total_modulation;
     effective_rate *= bridge->inflammation_state.synthesis_suppression;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return effective_rate;
 }
@@ -336,7 +337,7 @@ int protein_immune_restore_synthesis(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Interpolate suppression back to normal */
     float target_modulation = 1.0f;
@@ -351,7 +352,7 @@ int protein_immune_restore_synthesis(
 
     bridge->restoration_events++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Restored synthesis (recovery=%.2f)", recovery_factor);
     return 0;
@@ -367,11 +368,11 @@ int protein_immune_bridge_update(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->total_updates++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* Apply both effect pathways */
     protein_immune_apply_cytokine_effects(bridge);
@@ -390,9 +391,9 @@ int protein_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -403,9 +404,9 @@ int protein_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->inflammation_state;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -415,12 +416,12 @@ bool protein_immune_is_synthesis_impaired(
 ) {
     if (!bridge) return false;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bool impaired = (bridge->cytokine_effects.total_modulation < 1.0f) ||
                     (bridge->inflammation_state.synthesis_suppression < 1.0f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return impaired;
 }
@@ -430,7 +431,7 @@ float protein_immune_get_synthesis_reduction(
 ) {
     if (!bridge) return 0.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute combined suppression */
     float combined_factor = bridge->cytokine_effects.total_modulation *
@@ -439,7 +440,7 @@ float protein_immune_get_synthesis_reduction(
     float reduction = (1.0f - combined_factor) * 100.0f;
     reduction = fmaxf(0.0f, reduction);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return reduction;
 }
@@ -451,10 +452,10 @@ float protein_immune_get_synthesis_reduction(
 int protein_immune_connect_bio_async(protein_immune_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    if (bridge->bio_async_enabled) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.bio_async_enabled) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already connected */
     }
 
@@ -465,36 +466,36 @@ int protein_immune_connect_bio_async(protein_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int protein_immune_disconnect_bio_async(protein_immune_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    if (!bridge->bio_async_enabled) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (!bridge->base.bio_async_enabled) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -505,9 +506,9 @@ bool protein_immune_is_bio_async_connected(
 ) {
     if (!bridge) return false;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
-    bool connected = bridge->bio_async_enabled;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    bool connected = bridge->base.bio_async_enabled;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

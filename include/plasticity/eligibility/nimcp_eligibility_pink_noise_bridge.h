@@ -25,6 +25,7 @@
 #define NIMCP_ELIGIBILITY_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"
 #include "plasticity/noise/nimcp_pink_noise.h"
@@ -57,6 +58,8 @@ typedef struct {
 } elig_pink_noise_config_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     elig_pink_noise_config_t config;
     void* eligibility_state;
     pink_noise_generator_t noise_gen;

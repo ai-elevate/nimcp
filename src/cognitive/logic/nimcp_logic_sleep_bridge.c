@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/logic/nimcp_logic_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -40,7 +41,7 @@ static void logic_on_sleep_state_change(sleep_state_t new_state, void* user_data
 
     NIMCP_LOGGING_DEBUG("Logic bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -82,7 +83,7 @@ static void logic_on_sleep_state_change(sleep_state_t new_state, void* user_data
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Logic modulated: inference=%.2f, accuracy=%.2f, consistency=%.2f, offline=%d",
                         bridge->effects.inference_capacity_factor,
@@ -166,8 +167,8 @@ logic_sleep_bridge_t* logic_sleep_bridge_create(
     bridge->effects.pressure_accuracy_penalty = 0.0f;
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for logic-sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -218,13 +219,13 @@ void logic_sleep_bridge_destroy(logic_sleep_bridge_t* bridge)
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         logic_sleep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -245,7 +246,7 @@ int logic_sleep_update(logic_sleep_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current sleep state and pressure */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -329,7 +330,7 @@ int logic_sleep_update(logic_sleep_bridge_t* bridge)
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -345,9 +346,9 @@ int logic_sleep_get_effects(
     /* Guard clauses */
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -362,9 +363,9 @@ float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.inference_capacity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -379,9 +380,9 @@ bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.logic_offline;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -396,9 +397,9 @@ bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.consolidation_mode;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -471,7 +472,7 @@ int logic_sleep_connect_bio_async(logic_sleep_bridge_t* bridge)
 {
     /* Guard clauses */
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;  /* Already connected */
+    if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
     bio_module_info_t info = {
@@ -481,9 +482,9 @@ int logic_sleep_connect_bio_async(logic_sleep_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Logic-sleep bridge connected to bio-async router");
         return 0;
     }
@@ -501,15 +502,15 @@ int logic_sleep_disconnect_bio_async(logic_sleep_bridge_t* bridge)
 {
     /* Guard clauses */
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;  /* Not connected */
+    if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Logic-sleep bridge disconnected from bio-async router");
 
     return 0;
@@ -525,5 +526,5 @@ bool logic_sleep_is_bio_async_connected(const logic_sleep_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return false;
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

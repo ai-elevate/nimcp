@@ -15,6 +15,7 @@
  */
 
 #include "cognitive/epistemic/nimcp_epistemic_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -76,8 +77,8 @@ epistemic_fep_bridge_t* epistemic_fep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -94,13 +95,13 @@ void epistemic_fep_bridge_destroy(epistemic_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         epistemic_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -117,9 +118,9 @@ int epistemic_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to epistemic bridge");
     return 0;
@@ -131,9 +132,9 @@ int epistemic_fep_bridge_connect_epistemic(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->epistemic_filter = filter;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected epistemic filter to FEP bridge");
     return 0;
@@ -142,10 +143,10 @@ int epistemic_fep_bridge_connect_epistemic(
 int epistemic_fep_bridge_disconnect(epistemic_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     memset(&bridge->epistemic_filter, 0, sizeof(epistemic_filter_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from epistemic FEP bridge");
     return 0;
@@ -161,7 +162,7 @@ int epistemic_fep_compute_epistemic_value(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_uncertainty_seeking) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Epistemic value = expected information gain
      * High uncertainty -> high epistemic value (seek information)
@@ -198,7 +199,7 @@ int epistemic_fep_compute_epistemic_value(
     bridge->stats.avg_uncertainty =
         (bridge->stats.avg_uncertainty * 0.9f) + (uncertainty * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Computed epistemic value: %f, uncertainty: %f, seeking: %s",
                         epistemic_value, uncertainty,
@@ -212,7 +213,7 @@ int epistemic_fep_detect_bias_from_precision(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_bias_detection) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Bias = mismatch between prior precision and evidence precision
      * If we're very confident but evidence is weak, that's a bias indicator
@@ -235,7 +236,7 @@ int epistemic_fep_detect_bias_from_precision(
         bridge->fep_effects.bias_detected_magnitude = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -245,14 +246,14 @@ int epistemic_fep_trigger_information_seeking(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Force information seeking mode */
     bridge->fep_effects.information_seeking_active = true;
     bridge->state.seeking_information = true;
     bridge->stats.information_seeking_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Triggered information seeking mode");
     return 0;
@@ -269,7 +270,7 @@ int epistemic_fep_update_evidence_precision(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_quality_updates) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Evidence quality determines precision update
      * High quality evidence -> high precision
@@ -290,7 +291,7 @@ int epistemic_fep_update_evidence_precision(
     /* Update stats */
     bridge->stats.precision_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Updated evidence precision: %f, new uncertainty: %f",
                         precision_update, bridge->state.current_uncertainty);
@@ -303,7 +304,7 @@ int epistemic_fep_revise_priors_from_bias(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_bias_detection) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* If bias was detected, revise priors */
     float bias_magnitude = bridge->fep_effects.bias_detected_magnitude;
@@ -323,7 +324,7 @@ int epistemic_fep_revise_priors_from_bias(
         bridge->epistemic_effects.prior_revision_magnitude = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -335,7 +336,7 @@ int epistemic_fep_weight_by_source_reliability(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_source_precision) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Source reliability modulates precision weighting
      * Reliable sources get higher precision weight
@@ -347,7 +348,7 @@ int epistemic_fep_weight_by_source_reliability(
 
     bridge->epistemic_effects.source_reliability_weight = weight;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Weighted by source reliability: weight = %f", weight);
     return 0;
@@ -372,7 +373,7 @@ int epistemic_fep_bridge_update(
     /* Revise priors if bias detected */
     epistemic_fep_revise_priors_from_bias(bridge);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Uncertainty naturally increases over time (world changes) */
     float uncertainty_increase = 0.0001f * (float)delta_ms;
@@ -384,7 +385,7 @@ int epistemic_fep_bridge_update(
     /* Update timestamp */
     bridge->state.last_information_seek_time += delta_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -399,9 +400,9 @@ int epistemic_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -412,9 +413,9 @@ int epistemic_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -427,7 +428,7 @@ int epistemic_fep_bridge_connect_bio_async(
     epistemic_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_EPISTEMIC_BRIDGE,
@@ -436,9 +437,9 @@ int epistemic_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -451,14 +452,14 @@ int epistemic_fep_bridge_disconnect_bio_async(
     epistemic_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -467,5 +468,5 @@ int epistemic_fep_bridge_disconnect_bio_async(
 bool epistemic_fep_bridge_is_bio_async_connected(
     const epistemic_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

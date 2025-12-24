@@ -59,6 +59,7 @@
 #define NIMCP_LOVE_LOYALTY_FRIENDSHIP_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -159,6 +160,8 @@ typedef struct {
  * @brief Complete bridge structure
  */
 struct social_bond_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     social_bond_fep_config_t config;
     fep_system_t* fep_system;
     social_bond_system_t* social_system;
@@ -166,9 +169,6 @@ struct social_bond_fep_bridge {
     fep_social_bond_effects_t social_effects;
     social_bond_fep_state_t state;
     social_bond_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 /* ============================================================================

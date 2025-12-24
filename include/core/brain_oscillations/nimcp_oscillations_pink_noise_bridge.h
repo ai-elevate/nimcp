@@ -125,6 +125,7 @@
 #define NIMCP_OSCILLATIONS_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -194,6 +195,8 @@ typedef struct {
  * @brief Complete oscillations-pink noise bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_oscillation_analyzer_t* oscillation_analyzer;
     pink_noise_generator_t pink_noise_gen;
@@ -217,9 +220,7 @@ typedef struct {
     float avg_noise_amplitude;      /**< Running average of noise amplitude */
     float peak_noise_amplitude;     /**< Peak noise amplitude observed */
 
-    /* Thread safety */
-    void* mutex;
-} oscillations_pink_noise_bridge_t;
+    } oscillations_pink_noise_bridge_t;
 
 /**
  * @brief Bridge configuration

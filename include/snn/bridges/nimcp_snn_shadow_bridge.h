@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "async/nimcp_bio_async.h"
 
@@ -78,6 +79,8 @@ typedef struct snn_shadow_state_s {
 } snn_shadow_state_t;
 
 typedef struct snn_shadow_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     shadow_system_t* shadow_system;
     snn_shadow_config_t config;

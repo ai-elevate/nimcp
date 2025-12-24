@@ -6,16 +6,18 @@
  */
 
 #include "perception/sleep/nimcp_retina_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct retina_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     retina_sleep_config_t config;
     sleep_system_t sleep_system;
     retina_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -45,7 +47,7 @@ static void retina_on_sleep_state_change(sleep_state_t new_state, void* user_dat
 
     NIMCP_LOGGING_DEBUG("Retina bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -71,7 +73,7 @@ static void retina_on_sleep_state_change(sleep_state_t new_state, void* user_dat
                                                    (new_state == SLEEP_STATE_DROWSY) ||
                                                    bridge->effects.light_sensitivity_factor > 0.3f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Retina modulated: pupil=%.2f, sensitivity=%.2f, adaptation=%.2f",
                         bridge->effects.pupil_response_factor,
@@ -115,8 +117,8 @@ retina_sleep_bridge_t retina_sleep_bridge_create(
     bridge->effects.adaptation_rate_factor = 1.0f;
     bridge->effects.retinal_processing_enabled = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -156,14 +158,14 @@ void retina_sleep_bridge_destroy(retina_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int retina_sleep_update(retina_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -193,39 +195,39 @@ int retina_sleep_update(retina_sleep_bridge_t bridge) {
                                                    (state == SLEEP_STATE_DROWSY) ||
                                                    bridge->effects.light_sensitivity_factor > 0.3f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int retina_sleep_get_effects(const retina_sleep_bridge_t bridge, retina_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float retina_sleep_get_pupil_response(const retina_sleep_bridge_t bridge, float base_response) {
     if (!bridge) return base_response;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_response * bridge->effects.pupil_response_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float retina_sleep_get_light_sensitivity(const retina_sleep_bridge_t bridge, float base_sensitivity) {
     if (!bridge) return base_sensitivity;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_sensitivity * bridge->effects.light_sensitivity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float retina_sleep_get_adaptation_rate(const retina_sleep_bridge_t bridge, float base_rate) {
     if (!bridge) return base_rate;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_rate * bridge->effects.adaptation_rate_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

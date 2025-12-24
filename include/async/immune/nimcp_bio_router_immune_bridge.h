@@ -138,6 +138,7 @@
 #define NIMCP_BIO_ROUTER_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -259,6 +260,8 @@ typedef struct {
  * @brief Complete bio-router immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     bio_router_t router;              /**< Bio-async router */
     bio_module_context_t module_ctx;  /**< Module context for this bridge */
@@ -301,9 +304,7 @@ typedef struct {
     uint32_t immune_triggers;
     uint32_t nodes_quarantined;
 
-    /* Thread safety */
-    void* mutex;
-} router_immune_bridge_t;
+    } router_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

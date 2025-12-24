@@ -21,6 +21,7 @@
 #define NIMCP_SWARM_CONSCIOUSNESS_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "async/nimcp_bio_router.h"

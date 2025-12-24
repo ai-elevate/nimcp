@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "plasticity/attention/nimcp_attention.h"
 
@@ -120,6 +121,8 @@ typedef struct snn_attention_state_s {
  * HOW:  Store references and cached state
  */
 typedef struct snn_attention_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;                 /**< SNN network */
     multihead_attention_t* attention;   /**< Multihead attention system */
     snn_attention_config_t config;      /**< Bridge configuration */

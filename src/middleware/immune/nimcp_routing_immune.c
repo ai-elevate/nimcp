@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "middleware/immune/nimcp_routing_immune.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -18,6 +19,8 @@
 //=============================================================================
 
 struct routing_immune_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Component handles */
     brain_immune_system_t* immune_system;
     thalamic_router_t* thalamic_router;
@@ -43,8 +46,6 @@ struct routing_immune_bridge {
     /* Timing */
     uint64_t last_update_ms;
 
-    /* Thread safety */
-    void* mutex;
 };
 
 //=============================================================================
@@ -115,8 +116,8 @@ routing_immune_bridge_t* routing_immune_create(
     bridge->cytokine_attention_mod = 1.0f;
     bridge->strategy = ROUTING_STRATEGY_NORMAL;
 
-    bridge->mutex = nimcp_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->anomalies);
         nimcp_free(bridge);
         return NULL;
@@ -130,8 +131,8 @@ void routing_immune_destroy(routing_immune_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge->anomalies);
@@ -150,7 +151,7 @@ bool routing_immune_apply_inflammation_effect(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float boost = 1.0f;
     switch (inflammation_level) {
@@ -175,7 +176,7 @@ bool routing_immune_apply_inflammation_effect(
     bridge->stats.immune_modulations_applied++;
     bridge->stats.current_inflammation_boost = boost;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Routing immune: Applied inflammation boost %.2f for level %d",
                     boost, inflammation_level);
@@ -195,7 +196,7 @@ bool routing_immune_apply_cytokine_effect(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float modifier = 1.0f;
     bool is_pro_inflammatory = false;
@@ -217,7 +218,7 @@ bool routing_immune_apply_cytokine_effect(
             break;
 
         default:
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return false;
     }
 
@@ -225,7 +226,7 @@ bool routing_immune_apply_cytokine_effect(
     bridge->stats.cytokine_effects_applied++;
     bridge->stats.current_cytokine_attention_mod = modifier;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Routing immune: Applied cytokine modifier %.2f (type %d, conc %.2f)",
                     modifier, cytokine_type, concentration);
@@ -240,7 +241,7 @@ bool routing_immune_set_strategy_from_phase(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     routing_immune_strategy_t strategy;
     switch (immune_phase) {
@@ -270,7 +271,7 @@ bool routing_immune_set_strategy_from_phase(
     bridge->strategy = strategy;
     bridge->stats.current_strategy = strategy;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Routing immune: Set strategy to %s for phase %d",
                     routing_immune_strategy_name(strategy), immune_phase);
@@ -377,7 +378,7 @@ bool routing_immune_record_anomaly(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // If full, replace oldest
     uint32_t index;
@@ -398,7 +399,7 @@ bool routing_immune_record_anomaly(
     bridge->anomalies[index] = *anomaly;
     bridge->anomalies[index].id = bridge->next_anomaly_id++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return true;
 }
 
@@ -516,12 +517,12 @@ bool routing_immune_update(
                 uint32_t antigen_id;
                 if (routing_immune_present_anomaly(bridge, &anomaly, &antigen_id)) {
                     // Mark as presented
-                    nimcp_mutex_lock(bridge->mutex);
+                    nimcp_mutex_lock(bridge->base.mutex);
                     if (bridge->anomaly_count > 0) {
                         bridge->anomalies[bridge->anomaly_count - 1].presented_to_immune = true;
                         bridge->anomalies[bridge->anomaly_count - 1].antigen_id = antigen_id;
                     }
-                    nimcp_mutex_unlock(bridge->mutex);
+                    nimcp_mutex_unlock(bridge->base.mutex);
                 }
             }
         }
@@ -538,9 +539,9 @@ bool routing_immune_get_stats(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }

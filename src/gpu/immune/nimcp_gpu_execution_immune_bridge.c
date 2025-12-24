@@ -6,6 +6,7 @@
  */
 
 #include "gpu/immune/nimcp_gpu_execution_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -137,7 +138,7 @@ execution_immune_bridge_t* execution_immune_create(
     bridge->last_update_time = get_time_ms();
     bridge->error_window_start = bridge->last_update_time;
 
-    bridge->mutex = nimcp_platform_mutex_create();
+    bridge->base.mutex = nimcp_platform_mutex_create();
 
     NIMCP_LOGGING_INFO("execution_immune_bridge: created successfully");
     return bridge;
@@ -148,12 +149,12 @@ void execution_immune_destroy(execution_immune_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         execution_immune_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -172,7 +173,7 @@ int execution_immune_apply_cytokine_effects(execution_immune_bridge_t* bridge) {
         return NIMCP_SUCCESS;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
@@ -195,7 +196,7 @@ int execution_immune_apply_cytokine_effects(execution_immune_bridge_t* bridge) {
     bridge->cytokine_effects.enable_aggressive_fallback =
         (level >= INFLAMMATION_SYSTEMIC);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -410,7 +411,7 @@ int execution_immune_connect_bio_async(execution_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
@@ -421,9 +422,9 @@ int execution_immune_connect_bio_async(execution_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("execution_immune: connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -433,21 +434,21 @@ int execution_immune_connect_bio_async(execution_immune_bridge_t* bridge) {
 }
 
 int execution_immune_disconnect_bio_async(execution_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("execution_immune: disconnected from bio-async router");
 
     return NIMCP_SUCCESS;
 }
 
 bool execution_immune_is_bio_async_connected(const execution_immune_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

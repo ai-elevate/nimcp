@@ -49,6 +49,7 @@
 #define NIMCP_POPULATION_CODING_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "middleware/encoding/nimcp_population_coding.h"
@@ -153,6 +154,8 @@ typedef struct {
  * @brief Population pink noise bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     population_pink_config_t config;
     population_coding_encoder_t encoder;
     pink_noise_generator_t global_generator;
@@ -168,7 +171,6 @@ typedef struct {
     uint64_t update_count;
 
     // Thread safety
-    void* mutex;
 } population_pink_bridge_t;
 
 //=============================================================================

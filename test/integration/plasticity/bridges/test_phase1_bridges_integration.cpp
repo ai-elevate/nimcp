@@ -90,12 +90,12 @@ TEST_F(Phase1BridgesIntegrationTest, AllBridgesCreatedSuccessfully) {
 }
 
 TEST_F(Phase1BridgesIntegrationTest, AllBridgesHaveMutex) {
-    EXPECT_NE(dendrite_bridge->mutex, nullptr);
-    EXPECT_NE(synapse_bridge->mutex, nullptr);
-    EXPECT_NE(axon_bridge->mutex, nullptr);
-    EXPECT_NE(astro_bridge->mutex, nullptr);
-    EXPECT_NE(oligo_bridge->mutex, nullptr);
-    EXPECT_NE(myelin_bridge->mutex, nullptr);
+    EXPECT_NE(dendrite_bridge->base.mutex, nullptr);
+    EXPECT_NE(synapse_bridge->base.mutex, nullptr);
+    EXPECT_NE(axon_bridge->base.mutex, nullptr);
+    EXPECT_NE(astro_bridge->base.mutex, nullptr);
+    EXPECT_NE(oligo_bridge->base.mutex, nullptr);
+    EXPECT_NE(myelin_bridge->base.mutex, nullptr);
 }
 
 TEST_F(Phase1BridgesIntegrationTest, AllBridgesCanUpdate) {

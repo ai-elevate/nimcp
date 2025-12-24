@@ -129,6 +129,7 @@
 #define NIMCP_VISUAL_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -259,6 +260,8 @@ typedef struct {
  * @brief Complete visual-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     visual_cortex_t* visual_cortex;
@@ -283,15 +286,7 @@ typedef struct {
     uint32_t visual_triggered_responses;
     uint32_t threat_detections;
     uint32_t anomaly_detections;
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-
-
-    /* Thread safety */
-    void* mutex;
-} visual_immune_bridge_t;
+    } visual_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

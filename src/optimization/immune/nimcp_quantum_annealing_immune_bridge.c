@@ -12,6 +12,7 @@
  */
 
 #include "optimization/immune/nimcp_quantum_annealing_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <string.h>
@@ -166,8 +167,8 @@ qa_immune_bridge_t* qa_immune_create(
     bridge->immune_system = immune_system;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -180,7 +181,7 @@ qa_immune_bridge_t* qa_immune_create(
     );
     if (!bridge->history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_platform_mutex_destroy(bridge->mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -193,7 +194,7 @@ qa_immune_bridge_t* qa_immune_create(
     if (!bridge->events) {
         NIMCP_LOGGING_ERROR("Failed to allocate event buffer");
         nimcp_free(bridge->history);
-        nimcp_platform_mutex_destroy(bridge->mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -205,7 +206,7 @@ qa_immune_bridge_t* qa_immune_create(
     bridge->current_iter_factor = 1.0f;
     bridge->best_energy = FLT_MAX;
     bridge->running = false;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     bridge->start_time_ms = nimcp_time_get_ms();
 
     if (bridge->config.enable_logging) {
@@ -219,7 +220,7 @@ void qa_immune_destroy(qa_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         qa_immune_disconnect_bio_async(bridge);
     }
 
@@ -232,8 +233,8 @@ void qa_immune_destroy(qa_immune_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -248,7 +249,7 @@ void qa_immune_destroy(qa_immune_bridge_t* bridge) {
 
 int qa_immune_connect_bio_async(qa_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_QUANTUM_ANNEALING,
@@ -257,9 +258,9 @@ int qa_immune_connect_bio_async(qa_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         if (bridge->config.enable_logging) {
             NIMCP_LOGGING_INFO("Connected to bio-async router");
         }
@@ -274,14 +275,14 @@ int qa_immune_connect_bio_async(qa_immune_bridge_t* bridge) {
 
 int qa_immune_disconnect_bio_async(qa_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Disconnected from bio-async router");
@@ -292,7 +293,7 @@ int qa_immune_disconnect_bio_async(qa_immune_bridge_t* bridge) {
 
 bool qa_immune_is_bio_async_connected(const qa_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -302,7 +303,7 @@ bool qa_immune_is_bio_async_connected(const qa_immune_bridge_t* bridge) {
 int qa_immune_update(qa_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation from brain immune */
     brain_immune_stats_t immune_stats;
@@ -335,7 +336,7 @@ int qa_immune_update(qa_immune_bridge_t* bridge) {
     bridge->stats.current_inflammation = bridge->inflammation;
     bridge->stats.current_temp_factor = bridge->current_temp_factor;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -343,7 +344,7 @@ int qa_immune_update(qa_immune_bridge_t* bridge) {
 int qa_immune_apply_modulation(qa_immune_bridge_t* bridge) {
     if (!bridge || !bridge->annealer) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Note: Actual modulation would require annealer API to modify config */
     /* For now, we store the factors for use during optimization */
@@ -355,7 +356,7 @@ int qa_immune_apply_modulation(qa_immune_bridge_t* bridge) {
 
     bridge->stats.temp_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -368,7 +369,7 @@ int qa_immune_update_metrics(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update current metrics */
     bridge->current_metrics.iteration = iteration;
@@ -403,7 +404,7 @@ int qa_immune_update_metrics(
         bridge->history_index = (bridge->history_index + 1) % bridge->history_capacity;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -418,7 +419,7 @@ qa_problem_type_t qa_immune_check_convergence(
 ) {
     if (!bridge) return QA_PROBLEM_NONE;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     qa_problem_type_t problem = QA_PROBLEM_NONE;
 
@@ -475,7 +476,7 @@ done:
     bridge->stats.success_rate = bridge->stats.optimizations_run > 0 ?
         (float)bridge->stats.successful_optimizations / bridge->stats.optimizations_run : 0.0f;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* Auto-trigger immune response if enabled */
     if (problem != QA_PROBLEM_NONE && bridge->config.enable_auto_immune_response) {
@@ -496,12 +497,12 @@ int qa_immune_report_problem(
 ) {
     if (!bridge || !event_id) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->event_count >= bridge->event_capacity) {
         NIMCP_LOGGING_WARN("Event buffer full, cannot record problem");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -530,7 +531,7 @@ int qa_immune_report_problem(
                           qa_problem_type_to_string(type), severity);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -541,7 +542,7 @@ int qa_immune_trigger_immune_response(
 ) {
     if (!bridge || !bridge->immune_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Find event */
     qa_immune_problem_event_t* event = NULL;
@@ -553,7 +554,7 @@ int qa_immune_trigger_immune_response(
     }
 
     if (!event) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -594,7 +595,7 @@ int qa_immune_trigger_immune_response(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -635,9 +636,9 @@ int qa_immune_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(qa_immune_stats_t));
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -648,9 +649,9 @@ int qa_immune_get_current_metrics(
 ) {
     if (!bridge || !metrics) return -1;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     memcpy(metrics, &bridge->current_metrics, sizeof(qa_immune_metrics_t));
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

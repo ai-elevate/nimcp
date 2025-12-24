@@ -123,6 +123,7 @@
 #define NIMCP_WELLBEING_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -255,6 +256,8 @@ typedef struct {
  * @brief Complete wellbeing-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     introspection_context_t introspection_ctx; /**< For distress assessment */
@@ -279,15 +282,7 @@ typedef struct {
     uint32_t positive_boosts;
     uint32_t distress_events_logged;
     uint32_t flourishing_memory_formations;
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-
-
-    /* Thread safety */
-    void* mutex;
-} wellbeing_immune_bridge_t;
+    } wellbeing_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

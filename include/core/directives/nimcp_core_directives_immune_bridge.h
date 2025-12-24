@@ -131,6 +131,7 @@
 #define NIMCP_CORE_DIRECTIVES_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -249,6 +250,8 @@ typedef struct {
  * @brief Complete directive-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     core_directives_system_t* core_directives;
@@ -277,11 +280,6 @@ typedef struct {
     float threat_severity_threshold;    /**< Min severity to trigger immune [3.0-10.0] */
     float chronic_inflammation_duration_sec; /**< Duration for chronic state */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-    /* Thread safety */
     nimcp_platform_mutex_t* mutex;
 } directive_immune_bridge_t;
 

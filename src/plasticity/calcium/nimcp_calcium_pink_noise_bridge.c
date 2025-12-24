@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/calcium/nimcp_calcium_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -113,16 +114,16 @@ calcium_pink_noise_bridge_t* calcium_pink_noise_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         pink_noise_destroy(bridge->noise_gen);
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         pink_noise_destroy(bridge->noise_gen);
         nimcp_free(bridge);
         return NULL;
@@ -152,9 +153,9 @@ void calcium_pink_noise_bridge_destroy(calcium_pink_noise_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -180,13 +181,13 @@ int calcium_pink_noise_connect_calcium(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Store calcium pointer */
     bridge->calcium = calcium;
     bridge->calcium_connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Calcium system connected to pink noise bridge");
     return 0;
@@ -196,12 +197,12 @@ int calcium_pink_noise_disconnect_calcium(calcium_pink_noise_bridge_t* bridge) {
     /* Guard clause */
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->calcium = NULL;
     bridge->calcium_connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Calcium system disconnected from pink noise bridge");
     return 0;
@@ -218,9 +219,9 @@ int calcium_pink_noise_enable(calcium_pink_noise_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->noise_enabled = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Pink noise modulation enabled");
     return 0;
@@ -233,7 +234,7 @@ int calcium_pink_noise_disable(calcium_pink_noise_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->noise_enabled = false;
 
@@ -242,7 +243,7 @@ int calcium_pink_noise_disable(calcium_pink_noise_bridge_t* bridge) {
     bridge->effects.transient_modulation = 1.0f;
     bridge->effects.decay_modulation = 1.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Pink noise modulation disabled");
     return 0;
@@ -348,11 +349,11 @@ int calcium_pink_noise_update(calcium_pink_noise_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Skip if noise disabled */
     if (!bridge->noise_enabled) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -360,7 +361,7 @@ int calcium_pink_noise_update(calcium_pink_noise_bridge_t* bridge) {
     float noise_sample;
     if (!pink_noise_generate_sample(bridge->noise_gen, &noise_sample)) {
         NIMCP_LOGGING_ERROR("Failed to generate pink noise sample");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -376,7 +377,7 @@ int calcium_pink_noise_update(calcium_pink_noise_bridge_t* bridge) {
     compute_modulation_factors(bridge, noise_sample);
     update_statistics(bridge, noise_sample);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -475,9 +476,9 @@ int calcium_pink_noise_get_effects(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(calcium_pink_noise_effects_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -492,9 +493,9 @@ int calcium_pink_noise_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(calcium_pink_noise_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -517,11 +518,11 @@ int calcium_pink_noise_connect_bio_async(calcium_pink_noise_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Skip if already connected */
-    if (bridge->bio_async_enabled) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.bio_async_enabled) {
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -533,15 +534,15 @@ int calcium_pink_noise_connect_bio_async(calcium_pink_noise_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -549,16 +550,16 @@ int calcium_pink_noise_disconnect_bio_async(calcium_pink_noise_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
-    if (bridge->bio_async_enabled && bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
-        bridge->bio_async_enabled = false;
+    if (bridge->base.bio_async_enabled && bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
+        bridge->base.bio_async_enabled = false;
         NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -566,7 +567,7 @@ bool calcium_pink_noise_is_bio_async_connected(
     const calcium_pink_noise_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -587,20 +588,20 @@ int calcium_pink_noise_reset(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset pink noise generator */
     uint32_t seed = (new_seed == 0) ? bridge->config.pink_noise_seed : new_seed;
     if (!pink_noise_reset(bridge->noise_gen, seed)) {
         NIMCP_LOGGING_ERROR("Failed to reset pink noise generator");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(calcium_pink_noise_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Pink noise generator reset");
     return 0;

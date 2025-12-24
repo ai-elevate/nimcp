@@ -108,6 +108,7 @@
 #define NIMCP_SPIKE_NLP_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -246,6 +247,8 @@ typedef struct {
  * @brief Complete spike NLP-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     neural_network_t network;
@@ -267,13 +270,7 @@ typedef struct {
     uint32_t anomaly_triggers;
     uint32_t healthy_boosts;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;
-} spike_nlp_immune_bridge_t;
+    } spike_nlp_immune_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

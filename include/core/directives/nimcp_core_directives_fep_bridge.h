@@ -131,6 +131,7 @@
 #define NIMCP_CORE_DIRECTIVES_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -228,6 +229,8 @@ typedef struct {
  * HOW:  Maintains connections to both systems, computes FEP metrics
  */
 struct directive_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     directive_fep_config_t config;    /**< Configuration */
     directive_fep_state_t state;      /**< Current FEP state */
     directive_fep_stats_t stats;      /**< Statistics */
@@ -236,12 +239,6 @@ struct directive_fep_bridge {
     core_directives_t* core_directives; /**< Core directives system */
     fep_system_t* fep_orchestrator;     /**< FEP orchestrator */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;     /**< Bio-async context */
-    bool bio_async_enabled;           /**< Bio-async connected flag */
-
-    /* Thread safety */
-    void* mutex;                      /**< Thread-safe operations (nimcp_mutex_t*) */
 };
 
 /* ============================================================================

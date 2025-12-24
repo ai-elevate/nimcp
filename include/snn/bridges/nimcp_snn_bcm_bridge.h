@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "async/nimcp_bio_async.h"
@@ -113,6 +114,8 @@ typedef struct spike_rate_history_s {
  * HOW:  Store references and cached effects
  */
 typedef struct snn_bcm_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;             /**< SNN network */
     bcm_synapse_t* bcm_synapses;        /**< BCM synapse array */
     uint32_t n_synapses;                /**< Number of synapses */

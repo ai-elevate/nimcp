@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/consolidation/nimcp_consolidation_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -43,8 +44,8 @@ consolidation_fep_bridge_t* consolidation_fep_bridge_create(const consolidation_
     } else {
         consolidation_fep_bridge_default_config(&bridge->config);
     }
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -55,11 +56,11 @@ consolidation_fep_bridge_t* consolidation_fep_bridge_create(const consolidation_
 
 void consolidation_fep_bridge_destroy(consolidation_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         consolidation_fep_bridge_disconnect_bio_async(bridge);
     }
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed consolidation FEP bridge");
@@ -67,25 +68,25 @@ void consolidation_fep_bridge_destroy(consolidation_fep_bridge_t* bridge) {
 
 int consolidation_fep_bridge_connect_fep(consolidation_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Connected FEP system to consolidation bridge");
     return 0;
 }
 
 int consolidation_fep_bridge_disconnect(consolidation_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Disconnected all systems from consolidation FEP bridge");
     return 0;
 }
 
 int consolidation_fep_bridge_update(consolidation_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
     bridge->fep_effects.current_free_energy = bridge->state.current_free_energy;
     if (bridge->config.enable_fe_urgency) {
@@ -95,57 +96,57 @@ int consolidation_fep_bridge_update(consolidation_fep_bridge_t* bridge) {
     }
     bridge->stats.avg_free_energy =
         (bridge->stats.avg_free_energy * 0.99f) + (bridge->state.current_free_energy * 0.01f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int consolidation_fep_bridge_get_state(const consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_state_t* state) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int consolidation_fep_bridge_get_stats(const consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int consolidation_fep_bridge_connect_bio_async(consolidation_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_CONSOLIDATION_BRIDGE,
         .module_name = "consolidation_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge
     };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
     return 0;
 }
 
 int consolidation_fep_bridge_disconnect_bio_async(consolidation_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
 }
 
 bool consolidation_fep_bridge_is_bio_async_connected(const consolidation_fep_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

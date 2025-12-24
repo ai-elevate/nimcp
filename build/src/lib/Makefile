@@ -6617,6 +6617,126 @@ __/core/brain/strategy/nimcp_brain_strategy.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/strategy/nimcp_brain_strategy.c.s
 .PHONY : __/core/brain/strategy/nimcp_brain_strategy.c.s
 
+__/core/brain/subcortical/nimcp_amygdala.o: __/core/brain/subcortical/nimcp_amygdala.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_amygdala.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala.c.o
+
+__/core/brain/subcortical/nimcp_amygdala.i: __/core/brain/subcortical/nimcp_amygdala.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_amygdala.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala.c.i
+
+__/core/brain/subcortical/nimcp_amygdala.s: __/core/brain/subcortical/nimcp_amygdala.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_amygdala.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala.c.s
+
+__/core/brain/subcortical/nimcp_amygdala_attention_bridge.o: __/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_attention_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.o
+
+__/core/brain/subcortical/nimcp_amygdala_attention_bridge.i: __/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_attention_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.i
+
+__/core/brain/subcortical/nimcp_amygdala_attention_bridge.s: __/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_attention_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_attention_bridge.c.s
+
+__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.o: __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.o
+
+__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.i: __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.i
+
+__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.s: __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.s
+
+__/core/brain/subcortical/nimcp_amygdala_stress_bridge.o: __/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_stress_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.o
+
+__/core/brain/subcortical/nimcp_amygdala_stress_bridge.i: __/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_stress_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.i
+
+__/core/brain/subcortical/nimcp_amygdala_stress_bridge.s: __/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_stress_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.s
+
+__/core/brain/subcortical/nimcp_amygdala_training_bridge.o: __/core/brain/subcortical/nimcp_amygdala_training_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_training_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_amygdala_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_training_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_training_bridge.c.o
+
+__/core/brain/subcortical/nimcp_amygdala_training_bridge.i: __/core/brain/subcortical/nimcp_amygdala_training_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_training_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_amygdala_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_training_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_training_bridge.c.i
+
+__/core/brain/subcortical/nimcp_amygdala_training_bridge.s: __/core/brain/subcortical/nimcp_amygdala_training_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_training_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_amygdala_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_training_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_training_bridge.c.s
+
 __/core/brain/subcortical/nimcp_basal_ganglia.o: __/core/brain/subcortical/nimcp_basal_ganglia.c.o
 .PHONY : __/core/brain/subcortical/nimcp_basal_ganglia.o
 
@@ -20059,6 +20179,21 @@ help:
 	@echo "... __/core/brain/strategy/nimcp_brain_strategy.o"
 	@echo "... __/core/brain/strategy/nimcp_brain_strategy.i"
 	@echo "... __/core/brain/strategy/nimcp_brain_strategy.s"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala.o"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala.i"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala.s"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_attention_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_attention_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_attention_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_stress_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_stress_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_stress_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_training_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_training_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_training_bridge.s"
 	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia.o"
 	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia.i"
 	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia.s"

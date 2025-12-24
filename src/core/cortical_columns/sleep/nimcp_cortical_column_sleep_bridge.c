@@ -6,6 +6,7 @@
  */
 
 #include "core/cortical_columns/sleep/nimcp_cortical_column_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -16,11 +17,12 @@
  * ======================================================================== */
 
 struct cortical_column_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     cortical_column_sleep_config_t config;
     hypercolumn_t* hypercolumn;
     sleep_system_t sleep_system;
     cortical_column_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -56,7 +58,7 @@ static void cortical_column_on_sleep_state_change(sleep_state_t new_state, void*
 
     NIMCP_LOGGING_DEBUG("Cortical column bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -112,7 +114,7 @@ static void cortical_column_on_sleep_state_change(sleep_state_t new_state, void*
     /* Spindle detection (light NREM) */
     bridge->effects.in_spindle = (new_state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Cortical column modulated: RF=%.2f, inhib=%.2f, temp=%.2f, offline=%d",
                         bridge->effects.receptive_field_gain,
@@ -175,8 +177,8 @@ cortical_column_sleep_bridge_t cortical_column_sleep_bridge_create(
     bridge->sleep_system = sleep;
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for cortical column sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -227,8 +229,8 @@ void cortical_column_sleep_bridge_destroy(cortical_column_sleep_bridge_t bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -261,7 +263,7 @@ int cortical_column_sleep_apply_modulation(cortical_column_sleep_bridge_t bridge
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     hypercolumn_t* hcol = bridge->hypercolumn;
 
@@ -279,7 +281,7 @@ int cortical_column_sleep_apply_modulation(cortical_column_sleep_bridge_t bridge
      * to set inhibition strength and RF gain multipliers.
      */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -297,9 +299,9 @@ int cortical_column_sleep_get_effects(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -311,9 +313,9 @@ float cortical_column_sleep_get_rf_gain(const cortical_column_sleep_bridge_t bri
         return -1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float gain = bridge->effects.receptive_field_gain;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return gain;
 }
@@ -325,9 +327,9 @@ float cortical_column_sleep_get_inhibition(const cortical_column_sleep_bridge_t 
         return -1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float inhib = bridge->effects.lateral_inhibition_strength;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return inhib;
 }
@@ -339,9 +341,9 @@ bool cortical_column_sleep_is_offline(const cortical_column_sleep_bridge_t bridg
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool offline = bridge->effects.columns_offline;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return offline;
 }

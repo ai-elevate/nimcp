@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/theory_of_mind/nimcp_tom_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -54,8 +55,8 @@ tom_fep_bridge_t* tom_fep_bridge_create(const tom_fep_config_t* config) {
         tom_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -69,12 +70,12 @@ tom_fep_bridge_t* tom_fep_bridge_create(const tom_fep_config_t* config) {
 void tom_fep_bridge_destroy(tom_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         tom_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -88,9 +89,9 @@ void tom_fep_bridge_destroy(tom_fep_bridge_t* bridge) {
 int tom_fep_bridge_connect_fep(tom_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_TOM_FEP " Connected to FEP system");
     return NIMCP_SUCCESS;
@@ -99,9 +100,9 @@ int tom_fep_bridge_connect_fep(tom_fep_bridge_t* bridge, fep_system_t* fep) {
 int tom_fep_bridge_connect_tom(tom_fep_bridge_t* bridge, theory_of_mind_t tom) {
     if (!bridge || !tom) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->tom_system = tom;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_TOM_FEP " Connected to ToM system");
     return NIMCP_SUCCESS;
@@ -115,7 +116,7 @@ int tom_fep_infer_belief(tom_fep_bridge_t* bridge, float prediction_error) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_belief_inference) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (fabsf(prediction_error) > bridge->config.belief_pe_threshold) {
         bridge->effects.belief_pe = fabsf(prediction_error);
@@ -137,7 +138,7 @@ int tom_fep_infer_belief(tom_fep_bridge_t* bridge, float prediction_error) {
     bridge->stats.avg_belief_pe =
         (bridge->stats.avg_belief_pe * 0.9f) + (fabsf(prediction_error) * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -145,7 +146,7 @@ int tom_fep_infer_intention(tom_fep_bridge_t* bridge, float action_pe) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_intention_inference) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (fabsf(action_pe) > bridge->config.action_pe_threshold) {
         bridge->effects.action_pe = fabsf(action_pe);
@@ -160,7 +161,7 @@ int tom_fep_infer_intention(tom_fep_bridge_t* bridge, float action_pe) {
     bridge->stats.avg_action_pe =
         (bridge->stats.avg_action_pe * 0.9f) + (fabsf(action_pe) * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -171,7 +172,7 @@ int tom_fep_activate_empathy(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_empathy) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.inferred_emotion = observed_emotion;
 
@@ -208,7 +209,7 @@ int tom_fep_activate_empathy(
     bridge->stats.avg_empathy_magnitude =
         (bridge->stats.avg_empathy_magnitude * 0.9f) + (resonance * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -219,14 +220,14 @@ int tom_fep_activate_empathy(
 int tom_fep_apply_social_priors(tom_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Apply social priors to FEP */
     /* Implementation would set FEP prior distributions */
 
     NIMCP_LOGGING_DEBUG(LOG_MODULE_TOM_FEP " Applied social priors to FEP");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -236,7 +237,7 @@ int tom_fep_modulate_empathic_precision(
 ) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Modulate FEP precision based on empathic state */
     /* High distress → increase precision */
@@ -248,7 +249,7 @@ int tom_fep_modulate_empathic_precision(
     NIMCP_LOGGING_DEBUG(LOG_MODULE_TOM_FEP
         " Modulated empathic precision (boost=%.2f)", precision_boost);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -258,7 +259,7 @@ int tom_fep_add_mentalizing_overhead(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t depth = recursion_depth;
     if (depth > bridge->config.max_recursion_depth) {
@@ -278,7 +279,7 @@ int tom_fep_add_mentalizing_overhead(
         (bridge->stats.avg_mentalizing_overhead * 0.9f) +
         (bridge->effects.mentalizing_overhead * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -289,7 +290,7 @@ int tom_fep_add_mentalizing_overhead(
 int tom_fep_bridge_update(tom_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay empathy over time */
     if (bridge->state.empathy_active) {
@@ -319,7 +320,7 @@ int tom_fep_bridge_update(tom_fep_bridge_t* bridge, uint64_t delta_ms) {
 
     bridge->state.last_social_pe_ms = delta_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -333,9 +334,9 @@ int tom_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -346,9 +347,9 @@ int tom_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -369,7 +370,7 @@ uint32_t tom_fep_get_mentalizing_depth(const tom_fep_bridge_t* bridge) {
 
 int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_TOM_BRIDGE,
@@ -378,9 +379,9 @@ int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO(LOG_MODULE_TOM_FEP " Connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -392,19 +393,19 @@ int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
 
 int tom_fep_bridge_disconnect_bio_async(tom_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO(LOG_MODULE_TOM_FEP " Disconnected from bio-async router");
     return NIMCP_SUCCESS;
 }
 
 bool tom_fep_bridge_is_bio_async_connected(const tom_fep_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

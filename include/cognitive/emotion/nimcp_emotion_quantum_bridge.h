@@ -33,6 +33,7 @@
 #define NIMCP_EMOTION_QUANTUM_BRIDGE_H
 
 #include "utils/quantum/nimcp_quantum_walk_ternary.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/nimcp_emotional_system.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -311,6 +312,8 @@ void emotion_quantum_reset_stats(emotion_quantum_bridge_t* bridge);
  * @brief Internal bridge structure
  */
 struct emotion_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     emotion_quantum_config_t config;      /**< Configuration */
     emotional_system_t* emotion_system;   /**< Associated emotion system */
 

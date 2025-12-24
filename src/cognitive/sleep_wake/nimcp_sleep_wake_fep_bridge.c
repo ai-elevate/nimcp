@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -84,8 +85,8 @@ sleep_wake_fep_bridge_t* sleep_wake_fep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -104,13 +105,13 @@ void sleep_wake_fep_bridge_destroy(sleep_wake_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         sleep_wake_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -132,9 +133,9 @@ int sleep_wake_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to sleep-wake bridge");
     return 0;
@@ -151,9 +152,9 @@ int sleep_wake_fep_bridge_connect_sleep_wake(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_system = sleep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected sleep-wake system to FEP bridge");
     return 0;
@@ -167,10 +168,10 @@ int sleep_wake_fep_bridge_connect_sleep_wake(
 int sleep_wake_fep_bridge_disconnect(sleep_wake_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->sleep_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from sleep-wake FEP bridge");
     return 0;
@@ -189,7 +190,7 @@ int sleep_wake_fep_bridge_update(sleep_wake_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->fep_system || !bridge->sleep_system) return NIMCP_ERROR_INVALID_STATE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current FEP free energy */
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
@@ -242,7 +243,7 @@ int sleep_wake_fep_bridge_update(sleep_wake_fep_bridge_t* bridge) {
         (bridge->stats.avg_free_energy * 0.99f) +
         (bridge->state.current_free_energy * 0.01f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Updated sleep-wake FEP bridge");
     return 0;
@@ -263,9 +264,9 @@ int sleep_wake_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -281,9 +282,9 @@ int sleep_wake_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -299,7 +300,7 @@ int sleep_wake_fep_bridge_get_stats(
  */
 int sleep_wake_fep_bridge_connect_bio_async(sleep_wake_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SLEEP_WAKE_BRIDGE,
@@ -308,9 +309,9 @@ int sleep_wake_fep_bridge_connect_bio_async(sleep_wake_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
 
@@ -324,14 +325,14 @@ int sleep_wake_fep_bridge_connect_bio_async(sleep_wake_fep_bridge_t* bridge) {
  */
 int sleep_wake_fep_bridge_disconnect_bio_async(sleep_wake_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -346,5 +347,5 @@ bool sleep_wake_fep_bridge_is_bio_async_connected(
     const sleep_wake_fep_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

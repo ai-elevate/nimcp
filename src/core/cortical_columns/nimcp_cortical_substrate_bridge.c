@@ -21,6 +21,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -133,16 +134,16 @@ cortical_substrate_bridge_t* cortical_substrate_bridge_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for cortical substrate bridge");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for cortical substrate bridge");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -174,14 +175,14 @@ void cortical_substrate_bridge_destroy(cortical_substrate_bridge_t* bridge)
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         cortical_substrate_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -252,7 +253,7 @@ int cortical_substrate_connect_bio_async(cortical_substrate_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
     }
 
@@ -263,9 +264,9 @@ int cortical_substrate_connect_bio_async(cortical_substrate_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected cortical substrate bridge to bio-async router");
         return 0;
     }
@@ -280,16 +281,16 @@ int cortical_substrate_disconnect_bio_async(cortical_substrate_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected cortical substrate bridge from bio-async router");
 
     return 0;
@@ -300,7 +301,7 @@ bool cortical_substrate_is_bio_async_connected(const cortical_substrate_bridge_t
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -313,7 +314,7 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state using proper API */
     substrate_metabolic_state_t metabolic;
@@ -321,13 +322,13 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
 
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get physical state from substrate");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -545,7 +546,7 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
         bridge->stats.max_fidelity_observed = bridge->effects.column_fidelity;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

@@ -6,12 +6,15 @@
  */
 
 #include "plasticity/predictive/nimcp_predictive_coding_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct predictive_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     predictive_sleep_config_t config;
     sleep_system_t sleep_system;
     predictive_sleep_effects_t effects;
@@ -44,7 +47,7 @@ static void predictive_on_sleep_state_change(sleep_state_t new_state, void* user
 
     NIMCP_LOGGING_DEBUG("Predictive coding bridge received sleep state: %d", new_state);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -68,7 +71,7 @@ static void predictive_on_sleep_state_change(sleep_state_t new_state, void* user
 
     bridge->effects.offline_consolidation = (new_state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Predictive coding modulated: pred=%.2f, precision=%.2f, error_lr=%.2f",
                         bridge->effects.prediction_strength_factor,
@@ -113,8 +116,8 @@ predictive_sleep_bridge_t predictive_sleep_bridge_create(
     bridge->effects.error_learning_rate_factor = 1.0f;
     bridge->effects.offline_consolidation = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -154,14 +157,14 @@ void predictive_sleep_bridge_destroy(predictive_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int predictive_sleep_update(predictive_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -189,43 +192,43 @@ int predictive_sleep_update(predictive_sleep_bridge_t bridge) {
 
     bridge->effects.offline_consolidation = (state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int predictive_sleep_get_effects(const predictive_sleep_bridge_t bridge,
                                   predictive_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float predictive_sleep_get_prediction_strength(const predictive_sleep_bridge_t bridge,
                                                 float base_strength) {
     if (!bridge) return base_strength;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_strength * bridge->effects.prediction_strength_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float predictive_sleep_get_precision(const predictive_sleep_bridge_t bridge,
                                       float base_precision) {
     if (!bridge) return base_precision;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_precision * bridge->effects.precision_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float predictive_sleep_get_error_learning_rate(const predictive_sleep_bridge_t bridge,
                                                 float base_lr) {
     if (!bridge) return base_lr;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_lr * bridge->effects.error_learning_rate_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

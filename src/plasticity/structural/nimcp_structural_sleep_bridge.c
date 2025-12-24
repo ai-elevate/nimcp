@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/structural/nimcp_structural_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -13,6 +14,8 @@
  * ============================================================================ */
 
 struct structural_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     structural_sleep_config_t config;
 
@@ -136,8 +139,8 @@ structural_sleep_bridge_t structural_sleep_bridge_create(
     bridge->structural_system = structural_system;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -156,8 +159,8 @@ structural_sleep_bridge_t structural_sleep_bridge_create(
 void structural_sleep_bridge_destroy(structural_sleep_bridge_t bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -174,7 +177,7 @@ int structural_sleep_update(structural_sleep_bridge_t bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query sleep system state */
     sleep_state_t current_state = sleep_get_current_state(bridge->sleep_system);
@@ -208,7 +211,7 @@ int structural_sleep_update(structural_sleep_bridge_t bridge) {
 
     bridge->total_updates++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -220,9 +223,9 @@ int structural_sleep_get_effects(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -233,11 +236,11 @@ int structural_sleep_consolidate_tagged(structural_sleep_bridge_t bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Only consolidate during NREM sleep */
     if (!bridge->effects.active_consolidation) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -275,7 +278,7 @@ int structural_sleep_consolidate_tagged(structural_sleep_bridge_t bridge) {
 
     bridge->total_consolidations += consolidated;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     if (consolidated > 0) {
         NIMCP_LOGGING_DEBUG("Consolidated %u tagged spines during NREM",
@@ -291,11 +294,11 @@ int structural_sleep_prune_weak(structural_sleep_bridge_t bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Only prune during REM sleep */
     if (!bridge->effects.active_pruning) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -335,7 +338,7 @@ int structural_sleep_prune_weak(structural_sleep_bridge_t bridge) {
 
     bridge->total_rem_prunings += pruned;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     if (pruned > 0) {
         NIMCP_LOGGING_DEBUG("Pruned %u weak spines during REM", pruned);

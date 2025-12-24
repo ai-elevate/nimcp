@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
@@ -78,17 +79,15 @@ typedef struct {
 } myelin_sheath_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     myelin_sheath_fep_config_t config;
     fep_system_t* fep_system;
     myelin_sheath_network_t* myelin_network;
     fep_myelin_sheath_effects_t fep_effects;
     myelin_sheath_fep_effects_t myelin_effects;
     myelin_sheath_fep_state_t state;
-    myelin_sheath_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} myelin_sheath_fep_bridge_t;
+    myelin_sheath_fep_stats_t stats;} myelin_sheath_fep_bridge_t;
 
 int myelin_sheath_fep_default_config(myelin_sheath_fep_config_t* config);
 myelin_sheath_fep_bridge_t* myelin_sheath_fep_create(

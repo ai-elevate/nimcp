@@ -29,9 +29,8 @@ protected:
         calcium = calcium_create(nullptr);
         ASSERT_NE(calcium, nullptr);
 
-        sleep_config_t sleep_config;
-        sleep_default_config(&sleep_config);
-        sleep_system = sleep_create(&sleep_config);
+        sleep_config_t sleep_config = sleep_default_config();
+        sleep_system = sleep_system_create(&sleep_config);
         ASSERT_NE(sleep_system, nullptr);
 
         bridge = calcium_sleep_bridge_create(nullptr, sleep_system, calcium);
@@ -40,7 +39,7 @@ protected:
 
     void TearDown() override {
         if (bridge) calcium_sleep_bridge_destroy(bridge);
-        if (sleep_system) sleep_destroy(sleep_system);
+        if (sleep_system) sleep_system_destroy(sleep_system);
         if (calcium) calcium_destroy(calcium);
     }
 };
@@ -80,7 +79,7 @@ TEST_F(CalciumSleepIntegrationTest, BridgeCreation) {
 }
 
 TEST_F(CalciumSleepIntegrationTest, InfluxModulationAwake) {
-    sleep_set_state(sleep_system, SLEEP_STATE_AWAKE);
+    sleep_enter_state(sleep_system, SLEEP_STATE_AWAKE);
     calcium_sleep_update(bridge);
 
     float influx_factor = calcium_sleep_get_influx_factor(bridge);
@@ -88,7 +87,7 @@ TEST_F(CalciumSleepIntegrationTest, InfluxModulationAwake) {
 }
 
 TEST_F(CalciumSleepIntegrationTest, InfluxModulationDeepNREM) {
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     calcium_sleep_update(bridge);
 
     float influx_factor = calcium_sleep_get_influx_factor(bridge);
@@ -96,11 +95,11 @@ TEST_F(CalciumSleepIntegrationTest, InfluxModulationDeepNREM) {
 }
 
 TEST_F(CalciumSleepIntegrationTest, DecayModulationByState) {
-    sleep_set_state(sleep_system, SLEEP_STATE_AWAKE);
+    sleep_enter_state(sleep_system, SLEEP_STATE_AWAKE);
     calcium_sleep_update(bridge);
     float decay_awake = calcium_sleep_get_decay_tau(bridge);
 
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     calcium_sleep_update(bridge);
     float decay_deep = calcium_sleep_get_decay_tau(bridge);
 
@@ -108,11 +107,11 @@ TEST_F(CalciumSleepIntegrationTest, DecayModulationByState) {
 }
 
 TEST_F(CalciumSleepIntegrationTest, LearningRateModulation) {
-    sleep_set_state(sleep_system, SLEEP_STATE_AWAKE);
+    sleep_enter_state(sleep_system, SLEEP_STATE_AWAKE);
     calcium_sleep_update(bridge);
     float lr_awake = calcium_sleep_get_learning_rate(bridge, 0.01f);
 
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     calcium_sleep_update(bridge);
     float lr_deep = calcium_sleep_get_learning_rate(bridge, 0.01f);
 
@@ -120,7 +119,7 @@ TEST_F(CalciumSleepIntegrationTest, LearningRateModulation) {
 }
 
 TEST_F(CalciumSleepIntegrationTest, GetEffects) {
-    sleep_set_state(sleep_system, SLEEP_STATE_REM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_REM);
     calcium_sleep_update(bridge);
 
     calcium_sleep_effects_t effects;
@@ -140,7 +139,7 @@ TEST_F(CalciumSleepIntegrationTest, AllSleepStates) {
     };
 
     for (auto state : states) {
-        sleep_set_state(sleep_system, state);
+        sleep_enter_state(sleep_system, state);
         calcium_sleep_update(bridge);
 
         float influx = calcium_sleep_get_influx_factor(bridge);

@@ -46,6 +46,7 @@
 #define NIMCP_PINK_NOISE_QUANTUM_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "plasticity/noise/nimcp_pink_noise.h"
@@ -132,6 +133,8 @@ typedef struct {
  * @brief Quantum bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     pink_quantum_config_t config;
 
     // Spectral state (for annealing)

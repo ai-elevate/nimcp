@@ -12,6 +12,7 @@
  */
 
 #include "glial/immune/nimcp_microglia_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -168,8 +169,8 @@ microglia_immune_bridge_t* microglia_immune_bridge_create(
     bridge->last_update_time = nimcp_time_get_us();
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("microglia_immune_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -184,13 +185,13 @@ void microglia_immune_bridge_destroy(microglia_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         microglia_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -213,7 +214,7 @@ int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
         return NIMCP_SUCCESS; /* Feature disabled */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query cytokine levels from immune system */
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -268,7 +269,7 @@ int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
         0.3f + m1_total * 0.5f - m2_total * 0.2f
     );
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -283,7 +284,7 @@ int microglia_immune_apply_inflammation_effects(microglia_immune_bridge_t* bridg
         return NIMCP_SUCCESS; /* Feature disabled */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current inflammation level */
     brain_inflammation_level_t level = get_inflammation_level(bridge->immune_system);
@@ -325,7 +326,7 @@ int microglia_immune_apply_inflammation_effects(microglia_immune_bridge_t* bridg
     bridge->inflammation_state.avg_cytokine_production = m1_fraction * 0.8f;
     bridge->inflammation_state.avg_phagocytosis_rate = activated_fraction * 0.6f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -372,7 +373,7 @@ int microglia_immune_release_m1_cytokines(microglia_immune_bridge_t* bridge) {
         return NIMCP_SUCCESS; /* Not enough M1 activation */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float release_strength = m1_strength - M1_CYTOKINE_PRODUCTION_THRESHOLD;
     uint32_t cytokine_id;
@@ -411,7 +412,7 @@ int microglia_immune_release_m1_cytokines(microglia_immune_bridge_t* bridge) {
     bridge->microglia_modulation.m1_cytokine_production += release_strength;
     bridge->cytokine_releases++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -432,7 +433,7 @@ int microglia_immune_release_m2_cytokines(microglia_immune_bridge_t* bridge) {
         return NIMCP_SUCCESS; /* Not enough M2 activation */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float release_strength = m2_strength - M2_CYTOKINE_PRODUCTION_THRESHOLD;
     uint32_t cytokine_id;
@@ -451,7 +452,7 @@ int microglia_immune_release_m2_cytokines(microglia_immune_bridge_t* bridge) {
     bridge->microglia_modulation.m2_cytokine_production += release_strength;
     bridge->cytokine_releases++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -472,7 +473,7 @@ int microglia_immune_present_damp_antigens(microglia_immune_bridge_t* bridge) {
         return NIMCP_SUCCESS;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Present DAMP antigens based on phagocytic activity */
     uint8_t damp_epitope[] = {0xDA, 0x4D, 0x50}; /* DAMP marker */
@@ -494,7 +495,7 @@ int microglia_immune_present_damp_antigens(microglia_immune_bridge_t* bridge) {
     bridge->microglia_modulation.antigens_presented++;
     bridge->antigens_presented++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -515,7 +516,7 @@ int microglia_immune_report_complement_pruning(microglia_immune_bridge_t* bridge
         return NIMCP_SUCCESS; /* Not active enough */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Sample pruning events (not every one) */
     static uint32_t pruning_counter = 0;
@@ -540,7 +541,7 @@ int microglia_immune_report_complement_pruning(microglia_immune_bridge_t* bridge
         bridge->complement_reports++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -551,7 +552,7 @@ int microglia_immune_report_phagocytosis(microglia_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update phagocytosis activity metric */
     float phagocytic = bridge->cytokine_effects.phagocytic_capacity;
@@ -564,7 +565,7 @@ int microglia_immune_report_phagocytosis(microglia_immune_bridge_t* bridge) {
         bridge->microglia_modulation.immune_cell_recruitment = phagocytic * 0.5f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -670,7 +671,7 @@ int microglia_immune_connect_bio_async(microglia_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS; /* Already connected */
     }
 
@@ -682,9 +683,9 @@ int microglia_immune_connect_bio_async(microglia_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("microglia_immune_connect_bio_async: connected to bio-async router");
     } else {
         NIMCP_LOGGING_DEBUG("Bio-async router not available, skipping registration");
@@ -699,16 +700,16 @@ int microglia_immune_disconnect_bio_async(microglia_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS; /* Already disconnected */
     }
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("microglia_immune_disconnect_bio_async: disconnected");
     return NIMCP_SUCCESS;
@@ -718,5 +719,5 @@ bool microglia_immune_is_bio_async_connected(const microglia_immune_bridge_t* br
     /* Guard: validate parameters */
     if (!bridge) return false;
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

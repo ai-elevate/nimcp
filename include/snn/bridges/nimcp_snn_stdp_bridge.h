@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "plasticity/nimcp_stdp.h"
 #include "async/nimcp_bio_async.h"
@@ -110,6 +111,8 @@ typedef struct weight_change_record_s {
  * HOW:  Store references and cached effects
  */
 typedef struct snn_stdp_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;             /**< SNN network */
     stdp_synapse_t* stdp_synapses;      /**< STDP synapse array */
     uint32_t n_synapses;                /**< Number of synapses */

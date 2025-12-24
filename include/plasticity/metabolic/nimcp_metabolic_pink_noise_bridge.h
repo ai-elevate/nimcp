@@ -125,6 +125,7 @@
 #define NIMCP_METABOLIC_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -237,6 +238,8 @@ typedef struct {
  * Main bridge structure connecting metabolic plasticity and pink noise
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     metabolic_plasticity_t* metabolic;       /**< Metabolic plasticity system */
     pink_noise_generator_t noise_generator;  /**< Pink noise generator */
 
@@ -249,13 +252,7 @@ typedef struct {
     float avg_threshold_jitter;              /**< Average threshold jitter */
     float avg_cost_variation;                /**< Average cost variation */
 
-    /* Thread safety */
-    void* mutex;                             /**< Thread safety mutex */
-
-    /* Bio-async integration */
-    void* bio_ctx;                           /**< Bio-async context */
-    bool bio_async_enabled;                  /**< Bio-async enabled flag */
-} metabolic_pink_noise_bridge_t;
+    void* bio_ctx;                           /**< Bio-async context */} metabolic_pink_noise_bridge_t;
 
 /**
  * @brief Bridge statistics

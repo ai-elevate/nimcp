@@ -112,6 +112,7 @@
 #define NIMCP_VISUAL_CORTEX_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -243,6 +244,8 @@ typedef struct {
  * @brief Visual Cortex FEP bridge state
  */
 struct visual_cortex_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     visual_cortex_fep_config_t config;
 
@@ -257,12 +260,6 @@ struct visual_cortex_fep_bridge {
     /* Statistics */
     visual_cortex_fep_stats_t stats;
 
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;                           /**< Mutex for thread safety */
 };
 
 /* ============================================================================

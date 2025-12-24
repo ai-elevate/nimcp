@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -116,14 +117,14 @@ triplet_stdp_immune_bridge_t triplet_stdp_immune_bridge_create(
     bridge->inflammation_state.a3_suppression = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Triplet STDP immune bridge created (%zu synapses)", num_synapses);
     return bridge;
@@ -136,9 +137,9 @@ void triplet_stdp_immune_bridge_destroy(triplet_stdp_immune_bridge_t bridge) {
      */
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -161,7 +162,7 @@ int triplet_stdp_immune_apply_cytokine_effects(triplet_stdp_immune_bridge_t brid
 
     if (!bridge->enable_cytokine_modulation) return 0;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get cytokine levels (simplified - would query immune system) */
     float il1_level = 0.0f;
@@ -191,7 +192,7 @@ int triplet_stdp_immune_apply_cytokine_effects(triplet_stdp_immune_bridge_t brid
 
     bridge->cytokine_modulations++;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -208,7 +209,7 @@ int triplet_stdp_immune_apply_inflammation_effects(triplet_stdp_immune_bridge_t 
 
     if (!bridge->enable_inflammation_impairment) return 0;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation level (would query immune system) */
     brain_inflammation_level_t level = bridge->inflammation_state.current_level;
@@ -243,7 +244,7 @@ int triplet_stdp_immune_apply_inflammation_effects(triplet_stdp_immune_bridge_t 
     bridge->inflammation_state.a2_suppression = a2_suppression;
     bridge->inflammation_state.a3_suppression = a3_suppression;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -261,7 +262,7 @@ int triplet_stdp_immune_get_modulation_state(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Combine cytokine and inflammation effects */
     float a2_mod = bridge->cytokine_effects.total_a2_modulation *
@@ -289,7 +290,7 @@ int triplet_stdp_immune_get_modulation_state(
     modulation->effective_tau_x = bridge->base_tau_x * tau_mod;
     modulation->effective_tau_y = bridge->base_tau_y * tau_mod;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -310,7 +311,7 @@ int triplet_stdp_immune_restore_plasticity(
     if (recovery_factor < 0.0f) recovery_factor = 0.0f;
     if (recovery_factor > 1.0f) recovery_factor = 1.0f;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Interpolate suppression toward zero */
     bridge->inflammation_state.a2_suppression *= (1.0f - recovery_factor);
@@ -318,7 +319,7 @@ int triplet_stdp_immune_restore_plasticity(
 
     bridge->plasticity_restorations++;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Restored triplet STDP plasticity (factor=%.2f)", recovery_factor);
     return 0;
@@ -427,7 +428,7 @@ int triplet_stdp_immune_connect_bio_async(triplet_stdp_immune_bridge_t bridge) {
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_INFO("Triplet STDP-immune bridge already connected to bio-async");
         return 0;
     }
@@ -439,9 +440,9 @@ int triplet_stdp_immune_connect_bio_async(triplet_stdp_immune_bridge_t bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Triplet STDP-immune bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -456,16 +457,16 @@ int triplet_stdp_immune_disconnect_bio_async(triplet_stdp_immune_bridge_t bridge
         return -1;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Triplet STDP-immune bridge disconnected from bio-async router");
 
     return 0;
@@ -475,5 +476,5 @@ bool triplet_stdp_immune_is_bio_async_connected(
     const triplet_stdp_immune_bridge_t bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

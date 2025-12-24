@@ -6,16 +6,18 @@
  */
 
 #include "cognitive/autobiographical_memory/nimcp_autobiographical_memory_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct autobio_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     autobio_sleep_config_t config;
     sleep_system_t sleep_system;
     autobio_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -44,7 +46,7 @@ static void autobio_on_sleep_state_change(sleep_state_t new_state, void* user_da
 
     NIMCP_LOGGING_DEBUG("Autobiographical memory bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -74,7 +76,7 @@ static void autobio_on_sleep_state_change(sleep_state_t new_state, void* user_da
                                             new_state == SLEEP_STATE_LIGHT_NREM ||
                                             new_state == SLEEP_STATE_REM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Autobiographical memory modulated: encoding=%.2f, consolidation=%.2f, active=%d",
                         bridge->effects.encoding_efficiency_factor,
@@ -112,8 +114,8 @@ autobio_sleep_bridge_t autobio_sleep_bridge_create(
     bridge->effects.narrative_integration_factor = 0.2f;
     bridge->effects.consolidation_active = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -150,14 +152,14 @@ void autobio_sleep_bridge_destroy(autobio_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int autobio_sleep_update(autobio_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -195,31 +197,31 @@ int autobio_sleep_update(autobio_sleep_bridge_t bridge) {
                                             state == SLEEP_STATE_LIGHT_NREM ||
                                             state == SLEEP_STATE_REM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int autobio_sleep_get_effects(const autobio_sleep_bridge_t bridge, autobio_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float autobio_sleep_get_encoding_efficiency(const autobio_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.encoding_efficiency_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 bool autobio_sleep_is_consolidation_active(const autobio_sleep_bridge_t bridge) {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.consolidation_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

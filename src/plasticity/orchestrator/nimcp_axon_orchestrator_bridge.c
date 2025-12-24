@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/orchestrator/nimcp_axon_orchestrator_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -62,6 +63,8 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct axon_orchestrator_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     axon_orchestrator_config_t config;
 
@@ -77,10 +80,6 @@ struct axon_orchestrator_bridge {
     /* Activity tracking (optional) */
     axon_activity_entry_t* activity_entries;
     size_t activity_capacity;
-
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
 
     /* Statistics */
     axon_orchestrator_stats_t stats;
@@ -185,11 +184,14 @@ axon_orchestrator_bridge_t* axon_orchestrator_bridge_create(
     }
 
     /* Create mutex */
-    if (nimcp_mutex_init(&bridge->mutex, NULL) == 0) {
-        bridge->mutex_initialized = true;
+
+
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+
+
+    if (bridge->base.mutex && nimcp_mutex_init(bridge->base.mutex, NULL) == 0) {
     } else {
         NIMCP_LOGGING_WARN("axon_orchestrator_bridge_create: mutex creation failed");
-        bridge->mutex_initialized = false;
     }
 
     /* Initialize statistics */
@@ -206,13 +208,15 @@ void axon_orchestrator_bridge_destroy(axon_orchestrator_bridge_t* bridge) {
     }
 
     /* Disconnect from bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         axon_orchestrator_disconnect_bio_async(bridge);
     }
 
     /* Free mutex */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_destroy(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free activity entries */
@@ -295,16 +299,16 @@ int axon_orchestrator_map_synapse(
         return -1;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Check if we need to grow */
     float load_factor = (float)bridge->mapping_count / bridge->mapping_capacity;
     if (load_factor > 0.7f) {
         if (grow_mappings(bridge) != 0) {
-            if (bridge->mutex_initialized) {
-                nimcp_mutex_unlock(&bridge->mutex);
+            if ((bridge->base.mutex != NULL)) {
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             return -1;
         }
@@ -322,8 +326,8 @@ int axon_orchestrator_map_synapse(
     }
 
     if (attempts >= bridge->mapping_capacity) {
-        if (bridge->mutex_initialized) {
-            nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
         return -1;
     }
@@ -338,8 +342,8 @@ int axon_orchestrator_map_synapse(
         bridge->mapping_count++;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -353,8 +357,8 @@ int axon_orchestrator_unmap_synapse(
         return -1;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Find the entry */
@@ -367,8 +371,8 @@ int axon_orchestrator_unmap_synapse(
             bridge->mappings[idx].valid = false;
             bridge->mapping_count--;
 
-            if (bridge->mutex_initialized) {
-                nimcp_mutex_unlock(&bridge->mutex);
+            if ((bridge->base.mutex != NULL)) {
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             return 0;
         }
@@ -376,8 +380,8 @@ int axon_orchestrator_unmap_synapse(
         attempts++;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return -1;  /* Not found */
@@ -432,8 +436,8 @@ void axon_orchestrator_spike_callback(
     );
 
     /* Update statistics */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->stats.spikes_forwarded++;
@@ -446,12 +450,12 @@ void axon_orchestrator_spike_callback(
         bridge->stats.spikes_unmapped++;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     /* Send bio-async message if enabled */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         send_bio_async_spike_message(bridge, spike->target_synapse_id, effective_time_ms);
     }
 
@@ -524,14 +528,14 @@ int axon_orchestrator_bridge_update(
     }
 
     /* Update statistics */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->stats.update_calls++;
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return (int)spikes_processed;
@@ -558,14 +562,14 @@ int axon_orchestrator_reset_stats(axon_orchestrator_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     memset(&bridge->stats, 0, sizeof(axon_orchestrator_stats_t));
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -592,7 +596,7 @@ static void send_bio_async_spike_message(
     uint32_t synapse_id,
     uint64_t timestamp_ms
 ) {
-    if (!bridge || !bridge->bio_ctx) {
+    if (!bridge || !bridge->base.bio_ctx) {
         return;
     }
 
@@ -616,15 +620,15 @@ static void send_bio_async_spike_message(
     msg.timestamp_ms = timestamp_ms;
 
     /* Send message */
-    nimcp_error_t err = bio_router_send(bridge->bio_ctx, &msg, sizeof(msg), 0);
+    nimcp_error_t err = bio_router_send(bridge->base.bio_ctx, &msg, sizeof(msg), 0);
 
     if (err == NIMCP_SUCCESS) {
-        if (bridge->mutex_initialized) {
-            nimcp_mutex_lock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) {
+            nimcp_mutex_lock(bridge->base.mutex);
         }
         bridge->stats.bio_async_messages_sent++;
-        if (bridge->mutex_initialized) {
-            nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 }
@@ -635,7 +639,7 @@ int axon_orchestrator_connect_bio_async(axon_orchestrator_bridge_t* bridge) {
     }
 
     /* Check if already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -653,10 +657,10 @@ int axon_orchestrator_connect_bio_async(axon_orchestrator_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
+    bridge->base.bio_ctx = bio_router_register_module(&info);
 
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("axon_orchestrator: connected to bio-async router");
         return 0;
     }
@@ -670,16 +674,16 @@ int axon_orchestrator_disconnect_bio_async(axon_orchestrator_bridge_t* bridge) {
         return -1;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("axon_orchestrator: disconnected from bio-async router");
 
     return 0;
@@ -691,7 +695,7 @@ bool axon_orchestrator_is_bio_async_connected(
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================

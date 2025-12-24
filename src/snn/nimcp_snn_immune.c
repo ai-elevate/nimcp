@@ -11,6 +11,7 @@
  */
 
 #include "snn/nimcp_snn_immune.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -76,14 +77,14 @@ snn_immune_bridge_t* snn_immune_bridge_create(
     memcpy(&bridge->config, config, sizeof(snn_immune_config_t));
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_mutex_init((nimcp_mutex_t*)bridge->mutex, NULL) != 0) {
-        nimcp_free(bridge->mutex);
+    if (nimcp_mutex_init((nimcp_mutex_t*)bridge->base.mutex, NULL) != 0) {
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -111,14 +112,14 @@ void snn_immune_bridge_destroy(snn_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_immune_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -126,7 +127,7 @@ void snn_immune_bridge_destroy(snn_immune_bridge_t* bridge) {
 
 int snn_immune_bridge_connect_bio_async(snn_immune_bridge_t* bridge) {
     if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;  /* Already connected */
+    if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_INFO("Bio-async router not available for SNN immune bridge");
@@ -143,13 +144,13 @@ int snn_immune_bridge_connect_bio_async(snn_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (!bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (!bridge->base.bio_ctx) {
         NIMCP_LOGGING_ERROR("SNN immune bridge: failed to register bio-async module");
         return SNN_ERROR_OPERATION_FAILED;
     }
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
     NIMCP_LOGGING_INFO("SNN immune bridge connected to bio-async");
 
     return 0;
@@ -157,20 +158,20 @@ int snn_immune_bridge_connect_bio_async(snn_immune_bridge_t* bridge) {
 
 int snn_immune_bridge_disconnect_bio_async(snn_immune_bridge_t* bridge) {
     if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_immune_bridge_is_bio_async_connected(const snn_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /*=============================================================================
@@ -192,7 +193,7 @@ static float compute_stdp_factor(const snn_immune_bridge_t* bridge, float cytoki
 int snn_immune_update_effects(snn_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune) return SNN_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get current inflammation level */
     bridge->effects.current_level = brain_immune_get_inflammation_level(bridge->immune);
@@ -248,7 +249,7 @@ int snn_immune_update_effects(snn_immune_bridge_t* bridge) {
     /* Refractory extension during inflammation */
     bridge->effects.refractory_extension = (float)bridge->effects.current_level * 0.5f;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -256,7 +257,7 @@ int snn_immune_update_effects(snn_immune_bridge_t* bridge) {
 int snn_immune_compute_health(snn_immune_bridge_t* bridge) {
     if (!bridge || !bridge->network) return SNN_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Get network statistics */
     snn_stats_t net_stats;
@@ -285,7 +286,7 @@ int snn_immune_compute_health(snn_immune_bridge_t* bridge) {
         bridge->instability_count++;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -471,8 +472,8 @@ int snn_immune_get_stats(
 void snn_immune_reset_stats(snn_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->instability_count = 0;
     bridge->immune_reports = 0;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 }

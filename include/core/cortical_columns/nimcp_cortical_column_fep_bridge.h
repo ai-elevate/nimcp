@@ -56,6 +56,7 @@
 #define NIMCP_CORTICAL_COLUMN_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
@@ -184,6 +185,8 @@ typedef struct {
  * @brief Complete cortical column FEP bridge
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* Configuration */
     cortical_column_fep_config_t config;
 
@@ -199,13 +202,7 @@ typedef struct {
     /* Statistics */
     cortical_column_fep_stats_t stats;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;
-} cortical_column_fep_bridge_t;
+    } cortical_column_fep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

@@ -41,6 +41,7 @@
 #define NIMCP_SECURITY_RECOVERY_BRIDGE_H
 
 #include "utils/validation/nimcp_common.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security_coverage.h"
 #include "security/nimcp_security_fractal.h"
 #include "security/nimcp_cfi.h"

@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_immune_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -21,13 +22,14 @@
 #include <string.h>
 
 struct swarm_immune_immune_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_immune_immune_config_t config;
     brain_immune_system_t* brain_immune;
     NimcpSwarmImmuneSystem* swarm_immune;
     brain_to_swarm_immune_effects_t brain_effects;
     swarm_to_brain_immune_effects_t swarm_effects;
     immune_coordination_state_t coordination;
-    nimcp_mutex_t* mutex;
     void* bio_ctx;
     bool bio_async_connected;
 };
@@ -79,8 +81,8 @@ swarm_immune_immune_bridge_t* swarm_immune_immune_bridge_create(
     bridge->brain_immune = brain_immune;
     bridge->swarm_immune = swarm_immune;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm immune-immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -107,8 +109,8 @@ void swarm_immune_immune_bridge_destroy(swarm_immune_immune_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -120,11 +122,11 @@ int swarm_immune_immune_apply_brain_effects(swarm_immune_immune_bridge_t* bridge
     if (!bridge || !bridge->brain_immune) return -1;
     if (!bridge->config.enable_brain_to_swarm) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->brain_immune, &stats) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -138,7 +140,7 @@ int swarm_immune_immune_apply_brain_effects(swarm_immune_immune_bridge_t* bridge
     bridge->brain_effects.memory_consolidation_factor =
         (level >= INFLAMMATION_SYSTEMIC) ? 1.5f : 1.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied brain-to-swarm effects: detection=%.2f",
                         bridge->brain_effects.detection_sensitivity_factor);
@@ -150,7 +152,7 @@ int swarm_immune_immune_apply_swarm_effects(swarm_immune_immune_bridge_t* bridge
     if (!bridge || !bridge->brain_immune) return -1;
     if (!bridge->config.enable_swarm_to_brain) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->swarm_effects.threat_presentation_rate =
         bridge->coordination.swarm_threat_level * bridge->config.coordination_strength;
@@ -167,7 +169,7 @@ int swarm_immune_immune_apply_swarm_effects(swarm_immune_immune_bridge_t* bridge
         bridge->swarm_effects.antigen_severity = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied swarm-to-brain effects: severity=%.2f",
                         bridge->swarm_effects.antigen_severity);
@@ -179,7 +181,7 @@ int swarm_immune_immune_present_swarm_threat(swarm_immune_immune_bridge_t* bridg
 {
     if (!bridge || !pattern || len == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->coordination.swarm_threat_level = severity;
 
@@ -187,7 +189,7 @@ int swarm_immune_immune_present_swarm_threat(swarm_immune_immune_bridge_t* bridg
         NIMCP_LOGGING_INFO("Presenting swarm threat to brain immune: severity=%.2f", severity);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -196,7 +198,7 @@ int swarm_immune_immune_coordinate_response(swarm_immune_immune_bridge_t* bridge
     if (!bridge) return -1;
     if (!bridge->config.enable_coordinated_response) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool brain_active = (bridge->coordination.brain_level >= INFLAMMATION_REGIONAL);
     bool swarm_active = (bridge->coordination.swarm_threat_level > SWARM_THREAT_MODERATE_SEVERITY);
@@ -214,7 +216,7 @@ int swarm_immune_immune_coordinate_response(swarm_immune_immune_bridge_t* bridge
             (brain_active && swarm_active) ? 1.0f : 0.5f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -234,9 +236,9 @@ float swarm_immune_immune_get_detection_factor(const swarm_immune_immune_bridge_
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->brain_effects.detection_sensitivity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -245,9 +247,9 @@ bool swarm_immune_immune_is_coordinated(const swarm_immune_immune_bridge_t* brid
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool coordinated = bridge->coordination.coordinated_response_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return coordinated;
 }
@@ -271,8 +273,8 @@ int swarm_immune_immune_connect_bio_async(swarm_immune_immune_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_INFO("Swarm immune-immune bridge connected to bio-async router");
     } else {
@@ -293,9 +295,9 @@ int swarm_immune_immune_disconnect_bio_async(swarm_immune_immune_bridge_t* bridg
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

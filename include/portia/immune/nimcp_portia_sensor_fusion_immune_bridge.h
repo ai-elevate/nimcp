@@ -124,6 +124,7 @@
 #define NIMCP_PORTIA_SENSOR_FUSION_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -269,6 +270,8 @@ typedef struct {
  * @brief Complete sensor fusion-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     portia_fusion_ctx_t* sensor_fusion;
@@ -292,13 +295,7 @@ typedef struct {
     uint32_t conflict_immune_triggers;
     uint32_t dropout_suppressions;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;        /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-    /* Thread safety */
-    void* mutex;
-} portia_sensor_fusion_immune_bridge_t;
+    } portia_sensor_fusion_immune_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

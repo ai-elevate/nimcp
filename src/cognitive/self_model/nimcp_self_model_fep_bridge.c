@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/self_model/nimcp_self_model_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -57,8 +58,8 @@ self_model_fep_bridge_t* self_model_fep_bridge_create(
         self_model_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -74,12 +75,12 @@ self_model_fep_bridge_t* self_model_fep_bridge_create(
 void self_model_fep_bridge_destroy(self_model_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         self_model_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -96,9 +97,9 @@ int self_model_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_SELF_MODEL_FEP " Connected to FEP system");
     return NIMCP_SUCCESS;
@@ -110,9 +111,9 @@ int self_model_fep_bridge_connect_self_model(
 ) {
     if (!bridge || !self_model) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->self_model_system = self_model;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_SELF_MODEL_FEP " Connected to self-model system");
     return NIMCP_SUCCESS;
@@ -130,7 +131,7 @@ int self_model_fep_update_belief(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_belief_updates) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (fabsf(prediction_error) > bridge->config.belief_pe_threshold) {
         float update_rate = bridge->config.belief_update_rate;
@@ -147,7 +148,7 @@ int self_model_fep_update_belief(
             " Updated belief %u (PE=%.2f)", belief_index, prediction_error);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -159,7 +160,7 @@ int self_model_fep_update_capability(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_capability_learning) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (fabsf(prediction_error) > bridge->config.capability_pe_threshold) {
         float update_rate = bridge->config.capability_update_rate;
@@ -177,7 +178,7 @@ int self_model_fep_update_capability(
             " Updated capability %u (PE=%.2f)", capability_index, prediction_error);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -185,7 +186,7 @@ int self_model_fep_explore_self(self_model_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_self_exploration) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.exploring_self = true;
     bridge->stats.exploration_episodes++;
@@ -193,7 +194,7 @@ int self_model_fep_explore_self(self_model_fep_bridge_t* bridge) {
 
     NIMCP_LOGGING_INFO(LOG_MODULE_SELF_MODEL_FEP " Self-exploration initiated");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -204,28 +205,28 @@ int self_model_fep_explore_self(self_model_fep_bridge_t* bridge) {
 int self_model_fep_apply_belief_priors(self_model_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Apply self-beliefs as FEP priors */
     /* Implementation would interact with FEP prior setting */
 
     NIMCP_LOGGING_DEBUG(LOG_MODULE_SELF_MODEL_FEP " Applied belief priors to FEP");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int self_model_fep_constrain_policies(self_model_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Constrain FEP policy space by known capabilities */
     /* Implementation would filter FEP action space */
 
     NIMCP_LOGGING_DEBUG(LOG_MODULE_SELF_MODEL_FEP " Constrained FEP policies");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -235,7 +236,7 @@ int self_model_fep_apply_sensory_attenuation(
 ) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (is_self_generated) {
         /* Reduce precision for self-generated predictions */
@@ -244,7 +245,7 @@ int self_model_fep_apply_sensory_attenuation(
         NIMCP_LOGGING_DEBUG(LOG_MODULE_SELF_MODEL_FEP " Applied sensory attenuation");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -258,7 +259,7 @@ int self_model_fep_bridge_update(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update self-knowledge uncertainty */
     float uncertainty = 1.0f - bridge->state.self_knowledge_certainty;
@@ -302,7 +303,7 @@ int self_model_fep_bridge_update(
         (bridge->stats.avg_self_certainty * 0.99f) +
         (bridge->state.self_knowledge_certainty * 0.01f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -316,9 +317,9 @@ int self_model_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -329,9 +330,9 @@ int self_model_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -352,7 +353,7 @@ float self_model_fep_get_self_certainty(const self_model_fep_bridge_t* bridge) {
 
 int self_model_fep_bridge_connect_bio_async(self_model_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SELF_MODEL_BRIDGE,
@@ -361,9 +362,9 @@ int self_model_fep_bridge_connect_bio_async(self_model_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO(LOG_MODULE_SELF_MODEL_FEP " Connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -377,14 +378,14 @@ int self_model_fep_bridge_disconnect_bio_async(
     self_model_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO(LOG_MODULE_SELF_MODEL_FEP " Disconnected from bio-async router");
     return NIMCP_SUCCESS;
 }
@@ -393,5 +394,5 @@ bool self_model_fep_bridge_is_bio_async_connected(
     const self_model_fep_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

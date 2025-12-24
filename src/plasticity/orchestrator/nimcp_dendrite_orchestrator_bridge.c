@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -40,6 +41,8 @@
  * @brief Internal bridge structure
  */
 struct dendrite_orchestrator_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     dendrite_orchestrator_config_t config;
 
@@ -51,10 +54,6 @@ struct dendrite_orchestrator_bridge {
     spine_synapse_mapping_t* mappings;
     size_t mapping_capacity;
     size_t mapping_count;
-
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
 
     /* Statistics */
     dendrite_orchestrator_stats_t stats;
@@ -154,11 +153,14 @@ dendrite_orchestrator_bridge_t* dendrite_orchestrator_bridge_create(
     bridge->mapping_count = 0;
 
     /* Create mutex */
-    if (nimcp_mutex_init(&bridge->mutex, NULL) == 0) {
-        bridge->mutex_initialized = true;
+
+
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+
+
+    if (bridge->base.mutex && nimcp_mutex_init(bridge->base.mutex, NULL) == 0) {
     } else {
         NIMCP_LOGGING_WARN("dendrite_orchestrator_bridge_create: mutex creation failed");
-        bridge->mutex_initialized = false;
     }
 
     /* Initialize statistics */
@@ -175,13 +177,15 @@ void dendrite_orchestrator_bridge_destroy(dendrite_orchestrator_bridge_t* bridge
     }
 
     /* Disconnect from bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         dendrite_orchestrator_disconnect_bio_async(bridge);
     }
 
     /* Free mutex */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_destroy(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free mappings */
@@ -270,7 +274,7 @@ static void send_sync_message(
     uint32_t synapse_id,
     dendrite_sync_direction_t direction
 ) {
-    if (!bridge || !bridge->bio_ctx) {
+    if (!bridge || !bridge->base.bio_ctx) {
         return;
     }
 
@@ -292,15 +296,15 @@ static void send_sync_message(
     msg.synapse_id = synapse_id;
     msg.direction = (uint8_t)direction;
 
-    nimcp_error_t err = bio_router_send(bridge->bio_ctx, &msg, sizeof(msg), 0);
+    nimcp_error_t err = bio_router_send(bridge->base.bio_ctx, &msg, sizeof(msg), 0);
 
     if (err == NIMCP_SUCCESS) {
-        if (bridge->mutex_initialized) {
-            nimcp_mutex_lock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) {
+            nimcp_mutex_lock(bridge->base.mutex);
         }
         bridge->stats.bio_async_messages_sent++;
-        if (bridge->mutex_initialized) {
-            nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 }
@@ -319,16 +323,16 @@ int dendrite_orchestrator_map_spine(
         return -1;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Check load factor */
     float load_factor = (float)bridge->mapping_count / bridge->mapping_capacity;
     if (load_factor > 0.7f) {
         if (grow_mappings(bridge) != 0) {
-            if (bridge->mutex_initialized) {
-                nimcp_mutex_unlock(&bridge->mutex);
+            if ((bridge->base.mutex != NULL)) {
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             return -1;
         }
@@ -346,8 +350,8 @@ int dendrite_orchestrator_map_spine(
     }
 
     if (attempts >= bridge->mapping_capacity) {
-        if (bridge->mutex_initialized) {
-            nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
         return -1;
     }
@@ -365,8 +369,8 @@ int dendrite_orchestrator_map_spine(
         bridge->stats.spines_registered++;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -380,14 +384,14 @@ int dendrite_orchestrator_unmap_spine(
         return -1;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     spine_synapse_mapping_t* mapping = find_mapping(bridge, synapse_id);
     if (!mapping) {
-        if (bridge->mutex_initialized) {
-            nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) {
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
         return -1;
     }
@@ -396,8 +400,8 @@ int dendrite_orchestrator_unmap_spine(
     bridge->mapping_count--;
     bridge->stats.spines_eliminated++;
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -464,16 +468,16 @@ int dendrite_orchestrator_sync_weight_to_spine(
      */
 
     /* Update statistics */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
     bridge->stats.weight_to_spine_syncs++;
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     /* Send bio-async notification */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         send_sync_message(bridge, synapse_id, SYNC_ORCHESTRATOR_TO_SPINE);
     }
 
@@ -506,16 +510,16 @@ int dendrite_orchestrator_sync_spine_to_orchestrator(
      */
 
     /* Update statistics */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
     bridge->stats.spine_to_orchestrator_syncs++;
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     /* Send bio-async notification */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         send_sync_message(bridge, synapse_id, SYNC_SPINE_TO_ORCHESTRATOR);
     }
 
@@ -579,12 +583,12 @@ int dendrite_orchestrator_pre_spike(
     );
 
     /* Update statistics */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
     bridge->stats.pre_spikes_forwarded++;
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -660,12 +664,12 @@ int dendrite_orchestrator_bridge_update(
     (void)current_time_us;  /* May be used for periodic sync */
 
     /* Update statistics */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
     bridge->stats.update_calls++;
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -692,8 +696,8 @@ int dendrite_orchestrator_reset_stats(dendrite_orchestrator_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Preserve spines_registered */
@@ -701,8 +705,8 @@ int dendrite_orchestrator_reset_stats(dendrite_orchestrator_bridge_t* bridge) {
     memset(&bridge->stats, 0, sizeof(dendrite_orchestrator_stats_t));
     bridge->stats.spines_registered = registered;
 
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -726,7 +730,7 @@ int dendrite_orchestrator_connect_bio_async(dendrite_orchestrator_bridge_t* brid
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -742,10 +746,10 @@ int dendrite_orchestrator_connect_bio_async(dendrite_orchestrator_bridge_t* brid
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
+    bridge->base.bio_ctx = bio_router_register_module(&info);
 
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("dendrite_orchestrator: connected to bio-async router");
         return 0;
     }
@@ -759,16 +763,16 @@ int dendrite_orchestrator_disconnect_bio_async(dendrite_orchestrator_bridge_t* b
         return -1;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("dendrite_orchestrator: disconnected from bio-async");
 
     return 0;
@@ -780,7 +784,7 @@ bool dendrite_orchestrator_is_bio_async_connected(
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================

@@ -53,7 +53,7 @@ TEST_F(MetabolicRegressionTest, RepeatedDepletionRecovery) {
     for (int cycle = 0; cycle < 10; cycle++) {
         // Deplete
         for (int i = 0; i < 10; i++) {
-            metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+            metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
         }
 
         // Recover
@@ -124,11 +124,11 @@ TEST_F(MetabolicRegressionTest, StatisticsAccuracy) {
     const int ltd_count = 5;
 
     for (int i = 0; i < ltp_count; i++) {
-        metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+        metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     }
 
     for (int i = 0; i < ltd_count; i++) {
-        metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTD, 1.0f);
+        metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTD, 1.0f);
     }
 
     // Check statistics
@@ -146,7 +146,7 @@ TEST_F(MetabolicRegressionTest, StatisticsAccuracy) {
 TEST_F(MetabolicRegressionTest, NoNegativeATP) {
     // Attempt to over-deplete
     for (int i = 0; i < 100; i++) {
-        metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+        metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
     }
 
     float atp = metabolic_plasticity_get_atp_level(metabolic);
@@ -202,7 +202,7 @@ protected:
     metabolic_sleep_bridge_t bridge;
 
     void SetUp() override {
-        sleep_wake_config_t sleep_config = sleep_wake_default_config();
+        sleep_config_t sleep_config = sleep_default_config();
         sleep_system = sleep_system_create(&sleep_config);
         metabolic = metabolic_plasticity_create(nullptr);
         bridge = metabolic_sleep_bridge_create(nullptr, sleep_system, metabolic);
@@ -238,7 +238,7 @@ TEST_F(MetabolicSleepRegressionTest, SleepStateModulationConsistency) {
     };
 
     for (int i = 0; i < 5; i++) {
-        sleep_set_state(sleep_system, states[i]);
+        sleep_enter_state(sleep_system, states[i]);
         metabolic_sleep_update(bridge);
 
         metabolic_sleep_effects_t effects;
@@ -267,14 +267,14 @@ TEST_F(MetabolicSleepRegressionTest, RepeatedSleepCycles) {
     // Simulate 10 sleep-wake cycles
     for (int cycle = 0; cycle < 10; cycle++) {
         // Wake: deplete
-        sleep_set_state(sleep_system, SLEEP_STATE_AWAKE);
+        sleep_enter_state(sleep_system, SLEEP_STATE_AWAKE);
         metabolic_sleep_update(bridge);
         for (int i = 0; i < 5; i++) {
-            metabolic_plasticity_consume_atp(metabolic, PLASTICITY_EVENT_LTP, 1.0f);
+            metabolic_plasticity_consume_atp(metabolic, METABOLIC_EVENT_LTP, 1.0f);
         }
 
         // Sleep: recover
-        sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+        sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
         metabolic_sleep_update(bridge);
         for (int i = 0; i < 10; i++) {
             metabolic_plasticity_update(metabolic, 1000);

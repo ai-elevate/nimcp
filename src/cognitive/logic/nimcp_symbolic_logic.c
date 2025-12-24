@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/nimcp_symbolic_logic.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 

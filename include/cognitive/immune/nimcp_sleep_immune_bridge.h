@@ -124,6 +124,7 @@
 #define NIMCP_SLEEP_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -257,6 +258,8 @@ typedef struct {
  * @brief Complete sleep-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     sleep_system_t sleep_system;
@@ -280,15 +283,7 @@ typedef struct {
     uint32_t sleep_enhanced_immune_events;
     uint32_t deprivation_suppression_events;
     uint32_t memory_consolidations;
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-
-
-    /* Thread safety */
-    void* mutex;
-} sleep_immune_bridge_t;
+    } sleep_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

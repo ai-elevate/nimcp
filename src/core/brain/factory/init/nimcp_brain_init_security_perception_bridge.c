@@ -33,6 +33,7 @@
 //=============================================================================
 
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "security/nimcp_security_perception_bridge.h"

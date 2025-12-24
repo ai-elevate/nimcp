@@ -148,6 +148,7 @@
 #define NIMCP_BROCA_IMMUNE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -431,6 +432,8 @@ typedef struct {
  * @brief Broca-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     broca_immune_config_t config;      /**< Configuration */
     broca_immune_state_t state;        /**< Current state */
 
@@ -454,9 +457,6 @@ typedef struct {
     /* State tracking */
     uint64_t last_update_time_ms;      /**< Last state update */
     uint64_t state_entry_time_ms;      /**< When entered current state */
-
-    /* Thread safety */
-    void* mutex;                       /**< Platform mutex */
 
     /* Status */
     bool running;                      /**< Integration active */

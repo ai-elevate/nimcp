@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_curiosity_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -209,8 +210,8 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     bridge->max_suppression_observed = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         LOG_MODULE_ERROR(LOG_MODULE, "Mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -232,8 +233,8 @@ void curiosity_immune_bridge_destroy(curiosity_immune_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -250,7 +251,7 @@ int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge)
     if (!bridge->config.enable_sickness_behavior) return 0;
     if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute current sickness level */
     float sickness = curiosity_immune_compute_sickness_level(bridge);
@@ -280,7 +281,7 @@ int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge)
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -292,7 +293,7 @@ int curiosity_immune_on_cytokine_release(
     if (!bridge || !cytokine) return -1;
     if (!bridge->config.enable_sickness_behavior) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Pro-inflammatory cytokines suppress curiosity */
     if (cytokine->pro_inflammatory) {
@@ -318,7 +319,7 @@ int curiosity_immune_on_cytokine_release(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -330,7 +331,7 @@ int curiosity_immune_on_inflammation(
     if (!bridge || !site) return -1;
     if (!bridge->config.enable_inflammation_suppression) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute inflammation effect */
     float suppression = inflammation_to_suppression(site->level);
@@ -360,7 +361,7 @@ int curiosity_immune_on_inflammation(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -451,7 +452,7 @@ int curiosity_immune_update_novelty_vigilance(curiosity_immune_bridge_t* bridge)
     if (!bridge->config.enable_novelty_vigilance) return 0;
     if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current curiosity drive as proxy for novelty seeking */
     float curiosity_drive = curiosity_get_drive(bridge->curiosity_engine);
@@ -474,7 +475,7 @@ int curiosity_immune_update_novelty_vigilance(curiosity_immune_bridge_t* bridge)
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -509,7 +510,7 @@ int curiosity_immune_on_knowledge_gap(
     if (!bridge || !gap) return -1;
     if (!bridge->config.enable_learning_stress_response) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Large knowledge gaps indicate high novelty */
     if (gap->gap_size >= 0.7f && gap->curiosity_intensity >= 0.6f) {
@@ -520,7 +521,7 @@ int curiosity_immune_on_knowledge_gap(
                   gap->topic, gap->gap_size);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -599,7 +600,7 @@ bool curiosity_immune_is_chronic_inflammation(
  */
 int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_CURIOSITY,
@@ -608,9 +609,9 @@ int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("curiosity_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -624,13 +625,13 @@ int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge) {
  */
 int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("curiosity_immune_bridge disconnected from bio-async router");
     return 0;
@@ -641,5 +642,5 @@ int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
  */
 bool curiosity_immune_is_bio_async_connected(const curiosity_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/hemispheric/nimcp_hemispheric_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -266,13 +267,13 @@ hemispheric_sleep_bridge_t* hemispheric_sleep_create(
     bridge->sleep_depth = 0.0f;
 
     // Allocate mutex
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_sleep_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     bridge->initialized = true;
 
@@ -284,14 +285,14 @@ void hemispheric_sleep_destroy(hemispheric_sleep_bridge_t* bridge) {
     if (!bridge) return;
 
     // Disconnect bio-async if connected
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         hemispheric_sleep_disconnect_bio_async(bridge);
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     bridge->initialized = false;
@@ -309,7 +310,7 @@ int hemispheric_sleep_update(hemispheric_sleep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Get current sleep state from sleep system
     if (bridge->sleep_system) {
@@ -373,7 +374,7 @@ int hemispheric_sleep_update(hemispheric_sleep_bridge_t* bridge) {
 
     bridge->stats.updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -383,7 +384,7 @@ int hemispheric_sleep_apply_modulation(hemispheric_sleep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Apply activity modulation to hemispheres
     brain_hemisphere_t* left = hemispheric_brain_get_left(bridge->brain);
@@ -409,7 +410,7 @@ int hemispheric_sleep_apply_modulation(hemispheric_sleep_bridge_t* bridge) {
         callosum_set_bandwidth_limit(callosum, modulated_bw);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -500,9 +501,9 @@ int hemispheric_sleep_set_stage(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_stage = stage;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     // Trigger update to recompute effects
     return hemispheric_sleep_update(bridge);
@@ -513,14 +514,14 @@ int hemispheric_sleep_trigger_transfer(hemispheric_sleep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Force inter-hemispheric transfer mode
     bridge->lateralization_effects.consolidation_mode = CONSOLIDATION_INTERHEMISPHERIC;
     bridge->callosum_effects.interhemispheric_transfer = 1.0f;
     bridge->stats.interhemispheric_transfers++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Triggered inter-hemispheric consolidation transfer");
     return NIMCP_SUCCESS;
@@ -531,10 +532,10 @@ int hemispheric_sleep_reset_callosum(hemispheric_sleep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->callosum_effects.current_efficiency = 1.0f;
     bridge->callosum_effects.bandwidth_recovery = 0.0f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset callosum efficiency to baseline");
     return NIMCP_SUCCESS;
@@ -557,9 +558,9 @@ hemispheric_sleep_stats_t hemispheric_sleep_get_stats(
 void hemispheric_sleep_reset_stats(hemispheric_sleep_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(hemispheric_sleep_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -571,7 +572,7 @@ int hemispheric_sleep_connect_bio_async(hemispheric_sleep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
     }
 
@@ -582,9 +583,9 @@ int hemispheric_sleep_connect_bio_async(hemispheric_sleep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Hemispheric sleep bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -598,16 +599,16 @@ int hemispheric_sleep_disconnect_bio_async(hemispheric_sleep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already disconnected
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Hemispheric sleep bridge disconnected from bio-async router");
 
     return NIMCP_SUCCESS;

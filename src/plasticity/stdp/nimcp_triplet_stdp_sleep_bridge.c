@@ -6,12 +6,15 @@
  */
 
 #include "plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct triplet_stdp_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     triplet_stdp_sleep_config_t config;
     sleep_system_t sleep_system;
     triplet_stdp_sleep_effects_t effects;
@@ -104,7 +107,7 @@ static void triplet_stdp_on_sleep_state_change(sleep_state_t new_state, void* us
 
     NIMCP_LOGGING_DEBUG("Triplet STDP bridge received sleep state: %d", new_state);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -146,7 +149,7 @@ static void triplet_stdp_on_sleep_state_change(sleep_state_t new_state, void* us
         (new_state != SLEEP_STATE_DEEP_NREM) ||
         (bridge->effects.a2_factor > 0.1f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Triplet STDP modulated: tau_fast=%.2f, tau_slow=%.2f, a2=%.2f, a3=%.2f",
                         bridge->effects.tau_fast_factor,
@@ -222,8 +225,8 @@ triplet_stdp_sleep_bridge_t triplet_stdp_sleep_bridge_create(
     bridge->effects.sleep_pressure = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -271,9 +274,9 @@ void triplet_stdp_sleep_bridge_destroy(triplet_stdp_sleep_bridge_t bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free structure */
@@ -315,9 +318,9 @@ int triplet_stdp_sleep_get_effects(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

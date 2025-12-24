@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_predictive_protocol_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include <string.h>
 #include <math.h>
@@ -71,8 +72,8 @@ predictive_protocol_fep_bridge_t* predictive_protocol_fep_create(
     bridge->fep_effects.exploration_factor = 0.1f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("predictive_protocol_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -89,13 +90,13 @@ void predictive_protocol_fep_destroy(predictive_protocol_fep_bridge_t* bridge) {
     }
 
     /* Disconnect from bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         predictive_protocol_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -110,7 +111,7 @@ int predictive_protocol_fep_update_effects(predictive_protocol_fep_bridge_t* bri
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current free energy */
     float free_energy = fep_get_free_energy(bridge->fep_system);
@@ -142,7 +143,7 @@ int predictive_protocol_fep_update_effects(predictive_protocol_fep_bridge_t* bri
         bridge->fep_effects.exploration_factor = 0.2f;  /* Explore */
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -157,7 +158,7 @@ int predictive_protocol_fep_observe_prefetch(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update cache observations */
     if (cache_hit) {
@@ -204,7 +205,7 @@ int predictive_protocol_fep_observe_prefetch(
             (float)bridge->state.total_predictions;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -219,7 +220,7 @@ int predictive_protocol_fep_predict_pattern(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Use FEP to predict next message type */
     /* For simplicity, use same type as current (would use FEP hierarchy) */
@@ -231,7 +232,7 @@ int predictive_protocol_fep_predict_pattern(
     bridge->state.total_predictions++;
     bridge->fep_effects.predicted_msg_type = *predicted_msg;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -245,7 +246,7 @@ int predictive_protocol_fep_learn_pattern(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Extract FEP belief as message pattern */
     /* In full implementation, would extract from FEP hierarchy */
@@ -257,7 +258,7 @@ int predictive_protocol_fep_learn_pattern(
     NIMCP_LOGGING_DEBUG("Learned pattern %u from FEP level %u",
                         *pattern_id, level);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -271,11 +272,11 @@ int predictive_protocol_fep_connect_bio_async(predictive_protocol_fep_bridge_t* 
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0; /* Already connected */
     }
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
 
     NIMCP_LOGGING_INFO("Connected predictive protocol FEP bridge");
 
@@ -287,11 +288,11 @@ int predictive_protocol_fep_disconnect_bio_async(predictive_protocol_fep_bridge_
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected predictive protocol FEP bridge");
 
@@ -301,7 +302,7 @@ int predictive_protocol_fep_disconnect_bio_async(predictive_protocol_fep_bridge_
 bool predictive_protocol_fep_is_bio_async_connected(
     const predictive_protocol_fep_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -316,9 +317,9 @@ int predictive_protocol_fep_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->fep_effects, sizeof(predictive_protocol_fep_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -331,9 +332,9 @@ int predictive_protocol_fep_get_protocol_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->protocol_effects, sizeof(fep_predictive_protocol_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -346,9 +347,9 @@ int predictive_protocol_fep_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(predictive_protocol_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -358,9 +359,9 @@ int predictive_protocol_fep_reset_stats(predictive_protocol_fep_bridge_t* bridge
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(predictive_protocol_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "glial/immune/nimcp_astrocytes_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -46,10 +47,10 @@ astro_immune_bridge_t* astro_immune_create(
     bridge->reactivity_state = ASTRO_QUIESCENT;
     bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base;
 
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
-        nimcp_free(bridge->mutex);
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -62,15 +63,15 @@ astro_immune_bridge_t* astro_immune_create(
 void astro_immune_destroy(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) astro_immune_disconnect_bio_async(bridge);
-    if (bridge->mutex) { nimcp_mutex_destroy(bridge->mutex); nimcp_free(bridge->mutex); }
+    if (bridge->base.bio_async_enabled) astro_immune_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) { nimcp_mutex_destroy(bridge->base.mutex); nimcp_free(bridge->base.mutex); }
     nimcp_free(bridge);
 }
 
 int astro_immune_connect_bio_async(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_ASTROCYTE,
@@ -79,28 +80,28 @@ int astro_immune_connect_bio_async(astro_immune_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) bridge->base.bio_async_enabled = true;
     return 0;
 }
 
 int astro_immune_disconnect_bio_async(astro_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) { bio_router_unregister_module(bridge->bio_ctx); bridge->bio_ctx = NULL; }
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) { bio_router_unregister_module(bridge->base.bio_ctx); bridge->base.bio_ctx = NULL; }
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool astro_immune_is_bio_async_connected(const astro_immune_bridge_t* bridge)
 {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float il1 = 0, tnf = 0, il6 = 0, il10 = 0;
     if (bridge->immune_system) {
@@ -122,14 +123,14 @@ int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge)
 
     bridge->cytokine_effects.a2_drive = bridge->cytokine_effects.il10_effect;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     astrocyte_reactivity_t old_state = bridge->reactivity_state;
 
@@ -173,7 +174,7 @@ int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
     bridge->stats.glutamate_clearance_rate = bridge->glutamate_clearance_rate;
     bridge->stats.gliotransmitter_release = bridge->gliotransmitter_release;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -205,9 +206,9 @@ int astro_immune_get_stats(const astro_immune_bridge_t* bridge, astro_immune_sta
 void astro_immune_reset_stats(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 const char* astrocyte_reactivity_to_string(astrocyte_reactivity_t state)

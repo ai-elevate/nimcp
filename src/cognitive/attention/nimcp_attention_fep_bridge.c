@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/attention/nimcp_attention_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -68,8 +69,8 @@ attention_fep_bridge_t* attention_fep_bridge_create(const attention_fep_config_t
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -83,13 +84,13 @@ void attention_fep_bridge_destroy(attention_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         attention_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -106,9 +107,9 @@ int attention_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to attention bridge");
     return 0;
@@ -120,9 +121,9 @@ int attention_fep_bridge_connect_attention(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = attention;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected attention system to FEP bridge");
     return 0;
@@ -131,10 +132,10 @@ int attention_fep_bridge_connect_attention(
 int attention_fep_bridge_disconnect(attention_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->attention = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from attention FEP bridge");
     return 0;
@@ -151,7 +152,7 @@ int attention_fep_apply_precision_gain_modulation(attention_fep_bridge_t* bridge
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current precision from FEP system */
     float precision = bridge->state.current_precision;
@@ -177,7 +178,7 @@ int attention_fep_apply_precision_gain_modulation(attention_fep_bridge_t* bridge
         (bridge->stats.avg_gain_modulation * (bridge->stats.precision_gain_modulations - 1) +
          gain_modifier) / bridge->stats.precision_gain_modulations;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied precision gain modulation: %f", gain_modifier);
     return 0;
@@ -193,7 +194,7 @@ int attention_fep_surprise_attention_shift(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if PE exceeds threshold */
     if (pe_magnitude > bridge->config.pe_attention_shift_threshold) {
@@ -209,7 +210,7 @@ int attention_fep_surprise_attention_shift(
     bridge->fep_effects.current_prediction_error = pe_magnitude;
     bridge->state.current_prediction_error = pe_magnitude;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -220,7 +221,7 @@ int attention_fep_efe_info_seeking(attention_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current EFE from FEP system */
     float efe = bridge->fep_effects.current_efe;
@@ -239,7 +240,7 @@ int attention_fep_efe_info_seeking(attention_fep_bridge_t* bridge) {
         bridge->state.info_seeking_active = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -254,7 +255,7 @@ int attention_fep_apply_attentional_gating(attention_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get attention focus */
     float focus = bridge->state.current_attention_focus;
@@ -280,7 +281,7 @@ int attention_fep_apply_attentional_gating(attention_fep_bridge_t* bridge) {
     bridge->state.precision_gating = precision_mult;
     bridge->stats.attentional_gating_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied attentional gating: %f", precision_mult);
     return 0;
@@ -293,7 +294,7 @@ int attention_fep_modulate_learning_rate(attention_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get attention gain */
     float gain = bridge->state.current_attention_focus;
@@ -316,7 +317,7 @@ int attention_fep_modulate_learning_rate(attention_fep_bridge_t* bridge) {
     bridge->state.lr_modulation = lr_modifier;
     bridge->stats.lr_modulation_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated learning rate by attention: %f", lr_modifier);
     return 0;
@@ -329,7 +330,7 @@ int attention_fep_apply_focus_model_narrowing(attention_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get attention focus */
     float focus = bridge->state.current_attention_focus;
@@ -343,7 +344,7 @@ int attention_fep_apply_focus_model_narrowing(attention_fep_bridge_t* bridge) {
     /* Update stats */
     bridge->stats.model_narrowing_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied focus model narrowing: %f", narrowing);
     return 0;
@@ -369,7 +370,7 @@ int attention_fep_bridge_update(
     attention_fep_apply_focus_model_narrowing(bridge);
 
     /* Update average stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->stats.avg_precision =
         (bridge->stats.avg_precision * 0.9f) + (bridge->state.current_precision * 0.1f);
@@ -380,7 +381,7 @@ int attention_fep_bridge_update(
     bridge->stats.avg_prediction_error =
         (bridge->stats.avg_prediction_error * 0.9f) + (bridge->state.current_prediction_error * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -395,9 +396,9 @@ int attention_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -408,9 +409,9 @@ int attention_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -421,7 +422,7 @@ int attention_fep_bridge_get_stats(
 
 int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_ATTENTION_BRIDGE,
@@ -430,9 +431,9 @@ int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -443,14 +444,14 @@ int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
 
 int attention_fep_bridge_disconnect_bio_async(attention_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -459,5 +460,5 @@ int attention_fep_bridge_disconnect_bio_async(attention_fep_bridge_t* bridge) {
 bool attention_fep_bridge_is_bio_async_connected(
     const attention_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

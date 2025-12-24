@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/astrocyte/nimcp_astrocyte_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -115,12 +116,12 @@ astrocyte_immune_bridge_t* astrocyte_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Astrocyte-immune bridge created successfully");
     return bridge;
@@ -130,14 +131,14 @@ void astrocyte_immune_bridge_destroy(astrocyte_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         astrocyte_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -155,7 +156,7 @@ int astrocyte_immune_apply_cytokine_effects(astrocyte_immune_bridge_t* bridge) {
     if (!bridge->config.enable_cytokine_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     cytokine_astrocyte_effects_t* effects = &bridge->cytokine_effects;
 
@@ -204,7 +205,7 @@ int astrocyte_immune_apply_cytokine_effects(astrocyte_immune_bridge_t* bridge) {
         pro_inflammatory_factor - anti_inflammatory_factor, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -216,7 +217,7 @@ int astrocyte_immune_apply_inflammation_effects(
     if (!bridge->config.enable_inflammation_effects) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_astrocyte_state_t* state = &bridge->inflammation_state;
 
@@ -255,7 +256,7 @@ int astrocyte_immune_apply_inflammation_effects(
         state->a2_transition_progress = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -267,7 +268,7 @@ int astrocyte_immune_transition_reactive_state(
     if (!bridge) return -1;
     if (!bridge->config.enable_reactive_state_control) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     astrocyte_reactive_state_t target_state =
         bridge->inflammation_state.target_state;
@@ -285,7 +286,7 @@ int astrocyte_immune_transition_reactive_state(
         bridge->reactive_state_transitions++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return result;
 }
 
@@ -298,7 +299,7 @@ int astrocyte_immune_detect_dysfunction(astrocyte_immune_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_dysfunction_detection) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     astrocyte_dysfunction_state_t* state = &bridge->dysfunction_state;
 
@@ -346,7 +347,7 @@ int astrocyte_immune_detect_dysfunction(astrocyte_immune_bridge_t* bridge) {
     if (state->excitotoxicity_risk) severity += 0.3f;
     state->dysfunction_severity = clamp_f(severity, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -447,9 +448,9 @@ int astrocyte_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_astrocyte_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -460,9 +461,9 @@ int astrocyte_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_astrocyte_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -473,9 +474,9 @@ int astrocyte_immune_get_dysfunction_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->dysfunction_state, sizeof(astrocyte_dysfunction_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -497,7 +498,7 @@ bool astrocyte_immune_is_function_impaired(
 
 int astrocyte_immune_connect_bio_async(astrocyte_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_ASTROCYTE,
@@ -506,9 +507,9 @@ int astrocyte_immune_connect_bio_async(astrocyte_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Astrocyte-immune bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -519,13 +520,13 @@ int astrocyte_immune_connect_bio_async(astrocyte_immune_bridge_t* bridge) {
 
 int astrocyte_immune_disconnect_bio_async(astrocyte_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("Astrocyte-immune bridge disconnected from bio-async router");
     return 0;
@@ -535,5 +536,5 @@ bool astrocyte_immune_is_bio_async_connected(
     const astrocyte_immune_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

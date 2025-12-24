@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "async/nimcp_bio_async.h"
 
@@ -53,6 +54,8 @@ typedef struct snn_self_model_state_s {
 } snn_self_model_state_t;
 
 typedef struct snn_self_model_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     self_model_context_t self_model;
     snn_self_model_config_t config;

@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "portia/nimcp_portia_swarm_logic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "portia/nimcp_portia_swarm_bridge.h"
 #include "swarm/nimcp_swarm_logic_bridge.h"
 #include "middleware/training/nimcp_perception_training_bridge.h"
@@ -22,6 +23,8 @@
  * @brief Internal bridge context
  */
 struct portia_swarm_logic_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     // Connected bridges
     portia_logic_bridge_t* portia_logic;      /**< Portia logic bridge (may be NULL) */
     swarm_logic_bridge_t* swarm_logic;        /**< Swarm logic bridge (may be NULL) */
@@ -50,9 +53,6 @@ struct portia_swarm_logic_bridge {
     portia_swarm_logic_config_t config;        /**< Bridge configuration */
 
     // Bio-async
-    bio_module_context_t bio_ctx;              /**< Bio-async module context */
-    bool bio_async_enabled;                    /**< Whether bio-async is active */
-
     // Thread safety
     pthread_mutex_t* mutex;                    /**< Mutex for thread safety */
 
@@ -123,7 +123,7 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
     pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -136,7 +136,7 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -162,7 +162,7 @@ void portia_swarm_logic_destroy(portia_swarm_logic_bridge_t* bridge) {
     }
 
     // Disconnect bio-async
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         portia_swarm_logic_disconnect_bio_async(bridge);
     }
 
@@ -172,8 +172,8 @@ void portia_swarm_logic_destroy(portia_swarm_logic_bridge_t* bridge) {
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     // Free bridge
@@ -187,16 +187,16 @@ int portia_swarm_logic_start(portia_swarm_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->started) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("Bridge already started");
         return 0;
     }
 
     // Connect bio-async if enabled
-    if (bridge->config.enable_bio_async && !bridge->bio_async_enabled) {
+    if (bridge->config.enable_bio_async && !bridge->base.bio_async_enabled) {
         int ret = portia_swarm_logic_connect_bio_async(bridge);
         if (ret != 0) {
             NIMCP_LOGGING_WARN("Failed to connect bio-async, continuing without it");
@@ -204,7 +204,7 @@ int portia_swarm_logic_start(portia_swarm_logic_bridge_t* bridge) {
     }
 
     bridge->started = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Unified bridge started");
     return 0;
@@ -216,16 +216,16 @@ int portia_swarm_logic_stop(portia_swarm_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->started) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("Bridge already stopped");
         return 0;
     }
 
     bridge->started = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Unified bridge stopped");
     return 0;
@@ -244,7 +244,7 @@ int portia_swarm_logic_connect_brain(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->brain = brain;
 
     // Connect brain to neural logic network for neuromodulation
@@ -252,7 +252,7 @@ int portia_swarm_logic_connect_brain(
         neural_logic_set_brain(bridge->logic_network, brain);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Brain connected to unified bridge");
     return 0;
@@ -267,9 +267,9 @@ int portia_swarm_logic_connect_immune(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune_system;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Immune system connected to unified bridge");
     return 0;
@@ -284,9 +284,9 @@ int portia_swarm_logic_connect_umm(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->umm = umm;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("UMM connected to unified bridge");
     return 0;
@@ -301,10 +301,10 @@ int portia_swarm_logic_connect_perception_training(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->perception_training = perception_training;
     bridge->stats.perception_training_connected = (perception_training != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (perception_training) {
         NIMCP_LOGGING_INFO("Perception training connected to unified bridge");
@@ -323,10 +323,10 @@ int portia_swarm_logic_connect_cortical_training(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->cortical_training = cortical_training;
     bridge->stats.cortical_training_connected = (cortical_training != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (cortical_training) {
         NIMCP_LOGGING_INFO("Cortical training connected to unified bridge");
@@ -604,7 +604,7 @@ int portia_swarm_logic_decide_tier_change(
     }
 
     uint64_t start_time = get_timestamp_us();
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(result, 0, sizeof(unified_decision_result_t));
 
@@ -646,7 +646,7 @@ int portia_swarm_logic_decide_tier_change(
         (bridge->stats.avg_decision_time_us * (bridge->stats.total_decisions - 1) +
          result->decision_time_us) / bridge->stats.total_decisions;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Tier change decision: %s (confidence: %.2f)",
                       result->approved ? "approved" : "denied",
@@ -671,7 +671,7 @@ int portia_swarm_logic_decide_degradation(
     }
 
     uint64_t start_time = get_timestamp_us();
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(result, 0, sizeof(unified_decision_result_t));
 
@@ -718,7 +718,7 @@ int portia_swarm_logic_decide_degradation(
         (bridge->stats.avg_decision_time_us * (bridge->stats.total_decisions - 1) +
          result->decision_time_us) / bridge->stats.total_decisions;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Degradation decision for feature %u: %s",
                       feature_id, result->approved ? "degrade" : "maintain");
@@ -748,7 +748,7 @@ int portia_swarm_logic_decide_resource_allocation(
     }
 
     uint64_t start_time = get_timestamp_us();
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(result, 0, sizeof(unified_decision_result_t));
 
@@ -776,7 +776,7 @@ int portia_swarm_logic_decide_resource_allocation(
         (bridge->stats.avg_decision_time_us * (bridge->stats.total_decisions - 1) +
          result->decision_time_us) / bridge->stats.total_decisions;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Resource allocation decision for target %u (%.2f): %s",
                       target_id, requested_amount,
@@ -800,7 +800,7 @@ int portia_swarm_logic_decide_emergency_mode(
     }
 
     uint64_t start_time = get_timestamp_us();
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(result, 0, sizeof(unified_decision_result_t));
 
@@ -843,7 +843,7 @@ int portia_swarm_logic_decide_emergency_mode(
         (bridge->stats.avg_decision_time_us * (bridge->stats.total_decisions - 1) +
          result->decision_time_us) / bridge->stats.total_decisions;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Emergency mode decision: %s",
                       result->approved ? "ACTIVATE" : "normal");
@@ -870,7 +870,7 @@ int portia_swarm_logic_add_unified_gate(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Simple expression parser for "A AND B", "A OR B", etc.
     logic_gate_type_t gate_type = LOGIC_GATE_AND;
@@ -885,7 +885,7 @@ int portia_swarm_logic_add_unified_gate(
     } else if (strstr(expression, "IMPLIES")) {
         gate_type = LOGIC_GATE_IMPLIES;
     } else {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Unsupported expression: %s", expression);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
@@ -893,13 +893,13 @@ int portia_swarm_logic_add_unified_gate(
     // Create gate in neural logic network
     uint32_t gate_id = neural_logic_create_gate(bridge->logic_network, gate_type, 1.5f);
     if (gate_id == UINT32_MAX) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Failed to create logic gate");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     *gate_id_out = gate_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Created unified gate %u: %s", gate_id, expression);
     return 0;
@@ -914,14 +914,14 @@ bool portia_swarm_logic_evaluate_unified_gate(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Evaluate gate with default inputs (1.0, 1.0)
     float inputs[2] = {1.0f, 1.0f};
     float output = 0.0f;
     bool success = neural_logic_evaluate(bridge->logic_network, gate_id, inputs, 2, &output);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (!success) {
         NIMCP_LOGGING_ERROR("Failed to evaluate gate %u", gate_id);
@@ -941,7 +941,7 @@ int portia_swarm_logic_connect_bio_async(portia_swarm_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_WARN("Bio-async already connected");
         return 0;
     }
@@ -953,9 +953,9 @@ int portia_swarm_logic_connect_bio_async(portia_swarm_logic_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     } else {
@@ -970,22 +970,22 @@ int portia_swarm_logic_disconnect_bio_async(portia_swarm_logic_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
 }
 
 bool portia_swarm_logic_is_bio_async_connected(const portia_swarm_logic_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 int portia_swarm_logic_process_inbox(portia_swarm_logic_bridge_t* bridge) {
@@ -994,11 +994,11 @@ int portia_swarm_logic_process_inbox(portia_swarm_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;
     }
 
-    int count = bio_router_process_inbox(bridge->bio_ctx, 0);
+    int count = bio_router_process_inbox(bridge->base.bio_ctx, 0);
     return count;
 }
 
@@ -1026,9 +1026,9 @@ int portia_swarm_logic_reset_stats(portia_swarm_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(portia_swarm_logic_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Statistics reset");
     return 0;

@@ -12,6 +12,7 @@
  */
 
 #include "perception/cortical/nimcp_audio_cortical_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,8 @@
  * @brief Internal structure for audio-cortical bridge
  */
 struct audio_cortical_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Connected modules */
     audio_cortex_t* audio_cortex;
     topographic_map_t* tonotopic_map;
@@ -48,10 +51,6 @@ struct audio_cortical_bridge {
     /* State */
     audio_cortical_state_t state;
     audio_cortical_stats_t stats;
-
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
 
     /* UMM */
     bool umm_enabled;
@@ -197,9 +196,8 @@ audio_cortical_bridge_t* audio_cortical_bridge_create(
     bridge->umm_enabled = config->use_umm;
 
     /* Initialize mutex */
-    bridge->mutex_initialized = false;
-    if (nimcp_mutex_init(&bridge->mutex, NULL) == NIMCP_SUCCESS) {
-        bridge->mutex_initialized = true;
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (bridge->base.mutex && nimcp_mutex_init(bridge->base.mutex, NULL) == 0) {
     } else {
         NIMCP_LOGGING_WARN("Failed to initialize mutex, continuing without thread safety");
     }
@@ -301,7 +299,7 @@ void audio_cortical_bridge_destroy(audio_cortical_bridge_t* bridge)
     if (!bridge) return;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         audio_cortical_disconnect_bio_async(bridge);
     }
 
@@ -326,8 +324,10 @@ void audio_cortical_bridge_destroy(audio_cortical_bridge_t* bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex_initialized) {
-        nimcp_mutex_destroy(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -345,11 +345,11 @@ int audio_cortical_connect_audio_cortex(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->audio_cortex = audio_cortex;
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Connected to audio cortex");
     return NIMCP_SUCCESS;
@@ -361,7 +361,7 @@ int audio_cortical_connect_immune(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->cortical_immune = immune;
 
@@ -375,7 +375,7 @@ int audio_cortical_connect_immune(
         }
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Connected to cortical immune system");
     return NIMCP_SUCCESS;
@@ -385,7 +385,7 @@ int audio_cortical_connect_bio_async(audio_cortical_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS; /* Already connected */
     }
 
@@ -396,9 +396,9 @@ int audio_cortical_connect_bio_async(audio_cortical_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
     } else {
@@ -411,23 +411,23 @@ int audio_cortical_disconnect_bio_async(audio_cortical_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_DEBUG("Disconnected from bio-async router");
     return NIMCP_SUCCESS;
 }
 
 bool audio_cortical_is_bio_async_connected(const audio_cortical_bridge_t* bridge)
 {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -449,7 +449,7 @@ int audio_cortical_process(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time = get_time_ns();
     bridge->state = AUDIO_CORTICAL_STATE_PROCESSING;
@@ -462,7 +462,7 @@ int audio_cortical_process(
     );
     if (!band_energies) {
         bridge->state = AUDIO_CORTICAL_STATE_ERROR;
-        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -532,7 +532,7 @@ int audio_cortical_process(
     bridge->last_process_time_ns = end_time;
     bridge->state = AUDIO_CORTICAL_STATE_READY;
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -552,7 +552,7 @@ int audio_cortical_process_spectrogram(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time = get_time_ns();
     bridge->state = AUDIO_CORTICAL_STATE_PROCESSING;
@@ -565,7 +565,7 @@ int audio_cortical_process_spectrogram(
     );
     if (!avg_responses) {
         bridge->state = AUDIO_CORTICAL_STATE_ERROR;
-        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
     memset(avg_responses, 0, bridge->bands_per_hypercolumn * sizeof(float));
@@ -668,7 +668,7 @@ int audio_cortical_process_spectrogram(
     bridge->last_process_time_ns = end_time;
     bridge->state = AUDIO_CORTICAL_STATE_READY;
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -688,20 +688,20 @@ int audio_cortical_process_frequency_band(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     memset(result, 0, sizeof(audio_cortical_frequency_result_t));
 
     /* Find hypercolumn for this frequency */
     uint32_t hcol_idx = compute_hypercolumn_index(bridge, center_frequency);
     if (hcol_idx >= bridge->num_hypercolumns) {
-        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     feature_hypercolumn_t* hcol = bridge->hypercolumns[hcol_idx];
     if (!hcol) {
-        if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -731,7 +731,7 @@ int audio_cortical_process_frequency_band(
     result->confidence = avg_energy;
     result->num_freq_bands = 1;
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -764,7 +764,7 @@ int audio_cortical_get_frequency_map(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute windowed frequency analysis */
     uint32_t window_size = sample_rate / 10;
@@ -811,7 +811,7 @@ int audio_cortical_get_frequency_map(
         }
     }
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -933,11 +933,11 @@ int audio_cortical_reset_stats(audio_cortical_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    if (bridge->mutex_initialized) nimcp_mutex_lock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(audio_cortical_stats_t));
 
-    if (bridge->mutex_initialized) nimcp_mutex_unlock(&bridge->mutex);
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -965,11 +965,11 @@ uint32_t audio_cortical_process_bio_messages(
     audio_cortical_bridge_t* bridge,
     uint32_t max_messages)
 {
-    if (!bridge || !bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge || !bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;
     }
 
-    uint32_t processed = bio_router_process_inbox(bridge->bio_ctx, max_messages);
+    uint32_t processed = bio_router_process_inbox(bridge->base.bio_ctx, max_messages);
 
     if (processed > 0) {
         bridge->stats.bio_messages_received += processed;
@@ -985,7 +985,7 @@ int audio_cortical_broadcast_frequency(
 {
     if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 

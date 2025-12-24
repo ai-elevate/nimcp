@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/emotional_tagging/nimcp_emotional_tagging_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -67,8 +68,8 @@ emotional_tagging_fep_bridge_t* emotional_tagging_fep_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -82,13 +83,13 @@ void emotional_tagging_fep_destroy(emotional_tagging_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         emotional_tagging_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -105,9 +106,9 @@ int emotional_tagging_fep_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to emotional tagging bridge");
     return 0;
@@ -119,9 +120,9 @@ int emotional_tagging_fep_connect_tag(
 ) {
     if (!bridge || !tag) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_tag = tag;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected emotional tag to FEP bridge");
     return 0;
@@ -130,10 +131,10 @@ int emotional_tagging_fep_connect_tag(
 int emotional_tagging_fep_disconnect(emotional_tagging_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->current_tag = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from emotional tagging FEP bridge");
     return 0;
@@ -150,7 +151,7 @@ int emotional_tagging_fep_generate_pe_valence(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_valence_generation) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Positive PE = better than expected = positive valence
      * Negative PE = worse than expected = negative valence
@@ -165,7 +166,7 @@ int emotional_tagging_fep_generate_pe_valence(
     bridge->state.current_valence = valence;
     bridge->state.current_prediction_error = pe_magnitude;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Generated PE valence: %f from PE: %f", valence, pe_magnitude);
     return 0;
@@ -178,7 +179,7 @@ int emotional_tagging_fep_generate_precision_arousal(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_precision_arousal) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* High precision (certainty) or high uncertainty = high arousal
      * Use absolute value to capture both extremes
@@ -193,7 +194,7 @@ int emotional_tagging_fep_generate_precision_arousal(
     bridge->state.current_arousal = arousal;
     bridge->state.current_precision = precision;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Generated precision arousal: %f from precision: %f", arousal, precision);
     return 0;
@@ -206,7 +207,7 @@ int emotional_tagging_fep_generate_surprise_intensity(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_surprise_intensity) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Surprise (free energy) drives emotional intensity */
     float intensity = surprise * bridge->config.surprise_intensity_gain;
@@ -218,7 +219,7 @@ int emotional_tagging_fep_generate_surprise_intensity(
     bridge->fep_effects.surprise_intensity = intensity;
     bridge->state.current_intensity = intensity;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Generated surprise intensity: %f from surprise: %f", intensity, surprise);
     return 0;
@@ -230,7 +231,7 @@ int emotional_tagging_fep_generate_tag(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Create emotional tag from current FEP-derived values */
     emotional_tag_t tag = emotional_tag_create(
@@ -261,7 +262,7 @@ int emotional_tagging_fep_generate_tag(
         *bridge->current_tag = tag;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Generated emotional tag: valence=%f, arousal=%f, intensity=%f",
                       tag.valence, tag.arousal, tag.intensity);
@@ -278,7 +279,7 @@ int emotional_tagging_fep_modulate_precision(
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_arousal_precision) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* High arousal increases precision weighting */
     float precision_modifier = 1.0f +
@@ -289,7 +290,7 @@ int emotional_tagging_fep_modulate_precision(
     /* Update stats */
     bridge->stats.precision_modulation_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated precision by arousal: %f", precision_modifier);
     return 0;
@@ -301,7 +302,7 @@ int emotional_tagging_fep_modulate_value(
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_valence_value) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Positive valence increases expected value */
     float value_modifier = 1.0f +
@@ -312,7 +313,7 @@ int emotional_tagging_fep_modulate_value(
     /* Update stats */
     bridge->stats.value_modulation_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated value by valence: %f", value_modifier);
     return 0;
@@ -324,7 +325,7 @@ int emotional_tagging_fep_boost_encoding(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_intensity_encoding) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* High intensity boosts memory encoding */
     float encoding_boost = 1.0f +
@@ -336,7 +337,7 @@ int emotional_tagging_fep_boost_encoding(
     float salience = encoding_boost * bridge->emotion_effects.precision_modifier;
     bridge->emotion_effects.emotional_salience = salience;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Boosted encoding by intensity: %f", encoding_boost);
     return 0;
@@ -363,7 +364,7 @@ int emotional_tagging_fep_update(
     emotional_tagging_fep_boost_encoding(bridge);
 
     /* Update average stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->stats.avg_prediction_error =
         (bridge->stats.avg_prediction_error * 0.9f) +
@@ -373,7 +374,7 @@ int emotional_tagging_fep_update(
         (bridge->stats.avg_precision * 0.9f) +
         (bridge->state.current_precision * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -388,9 +389,9 @@ int emotional_tagging_fep_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -401,9 +402,9 @@ int emotional_tagging_fep_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -416,7 +417,7 @@ int emotional_tagging_fep_connect_bio_async(
     emotional_tagging_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_EMOTIONAL_TAGGING_BRIDGE,
@@ -425,9 +426,9 @@ int emotional_tagging_fep_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -440,14 +441,14 @@ int emotional_tagging_fep_disconnect_bio_async(
     emotional_tagging_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -456,5 +457,5 @@ int emotional_tagging_fep_disconnect_bio_async(
 bool emotional_tagging_fep_is_bio_async_connected(
     const emotional_tagging_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/regions/broca/nimcp_broca_immune.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>

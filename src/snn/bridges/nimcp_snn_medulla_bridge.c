@@ -11,6 +11,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_medulla_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -98,12 +99,12 @@ snn_medulla_bridge_t* snn_medulla_bridge_create(
     bridge->state.combined_modulation = 1.0f;
 
     bridge->last_update_time = 0.0f;
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("Failed to create mutex for SNN-medulla bridge");
     }
 
@@ -113,12 +114,12 @@ snn_medulla_bridge_t* snn_medulla_bridge_create(
 void snn_medulla_bridge_destroy(snn_medulla_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_medulla_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -130,7 +131,7 @@ void snn_medulla_bridge_destroy(snn_medulla_bridge_t* bridge) {
 
 int snn_medulla_bridge_connect_bio_async(snn_medulla_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = SNN_MEDULLA_BRIDGE_MODULE_ID,
@@ -139,9 +140,9 @@ int snn_medulla_bridge_connect_bio_async(snn_medulla_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("SNN-medulla bridge connected to bio-async");
         return 0;
     } else {
@@ -152,19 +153,19 @@ int snn_medulla_bridge_connect_bio_async(snn_medulla_bridge_t* bridge) {
 
 int snn_medulla_bridge_disconnect_bio_async(snn_medulla_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_medulla_bridge_is_bio_async_connected(const snn_medulla_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -177,9 +178,9 @@ int snn_medulla_bridge_connect_medulla(
 ) {
     if (!bridge) return -1;
 
-    if (bridge->mutex) nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->medulla = medulla;
-    if (bridge->mutex) nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -342,7 +343,7 @@ int snn_medulla_bridge_update(snn_medulla_bridge_t* bridge, float dt) {
     }
     bridge->last_update_time = 0.0f;
 
-    if (bridge->mutex) nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Read current medulla state */
     if (bridge->medulla) {
@@ -376,7 +377,7 @@ int snn_medulla_bridge_update(snn_medulla_bridge_t* bridge, float dt) {
 
     bridge->state.sync_count++;
 
-    if (bridge->mutex) nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

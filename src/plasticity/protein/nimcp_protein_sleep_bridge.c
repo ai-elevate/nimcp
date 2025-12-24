@@ -11,6 +11,7 @@
  */
 
 #include "plasticity/protein/nimcp_protein_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -25,6 +26,8 @@
  * @brief Internal sleep-protein bridge state
  */
 typedef struct protein_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     protein_sleep_config_t config;
 
@@ -126,8 +129,8 @@ protein_sleep_bridge_t protein_sleep_bridge_create(
     bridge->effects.current_state = SLEEP_STATE_AWAKE;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -144,8 +147,8 @@ void protein_sleep_bridge_destroy(protein_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -161,7 +164,7 @@ void protein_sleep_bridge_destroy(protein_sleep_bridge_t bridge) {
 int protein_sleep_update(protein_sleep_bridge_t bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query sleep system */
     sleep_state_t current_state = sleep_get_current_state(bridge->sleep_system);
@@ -198,7 +201,7 @@ int protein_sleep_update(protein_sleep_bridge_t bridge) {
         /* Note: We update the internal state via the protein system's update function */
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Updated protein-sleep bridge: state=%d, synth_factor=%.2f",
                         current_state, synthesis_factor);
@@ -211,9 +214,9 @@ int protein_sleep_get_effects(
 ) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -224,9 +227,9 @@ float protein_sleep_get_synthesis_rate(
 ) {
     if (!bridge) return base_rate;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float effective_rate = base_rate * bridge->effects.synthesis_rate_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return effective_rate;
 }
@@ -236,9 +239,9 @@ bool protein_sleep_is_consolidation_window(
 ) {
     if (!bridge) return false;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bool is_window = bridge->effects.deep_sleep_consolidation;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return is_window;
 }

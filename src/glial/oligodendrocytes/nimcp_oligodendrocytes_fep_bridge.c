@@ -4,6 +4,7 @@
  */
 
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <string.h>
 #include <math.h>
 
@@ -40,25 +41,25 @@ oligodendrocytes_fep_bridge_t* oligodendrocytes_fep_create(
     bridge->oligodendrocyte_network = oligodendrocyte_network;
     bridge->fep_system = fep_system;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("oligodendrocytes_fep_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Oligodendrocytes-FEP bridge created");
     return bridge;
 }
 
 void oligodendrocytes_fep_destroy(oligodendrocytes_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         oligodendrocytes_fep_disconnect_bio_async(bridge);
     }
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Oligodendrocytes-FEP bridge destroyed");
@@ -142,7 +143,7 @@ int oligodendrocytes_fep_get_stats(const oligodendrocytes_fep_bridge_t* bridge,
 
 int oligodendrocytes_fep_connect_bio_async(oligodendrocytes_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_OLIGODENDROCYTE,
@@ -151,9 +152,9 @@ int oligodendrocytes_fep_connect_bio_async(oligodendrocytes_fep_bridge_t* bridge
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Oligodendrocytes-FEP bridge connected to bio-async");
         return 0;
     }
@@ -162,16 +163,16 @@ int oligodendrocytes_fep_connect_bio_async(oligodendrocytes_fep_bridge_t* bridge
 }
 
 int oligodendrocytes_fep_disconnect_bio_async(oligodendrocytes_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Oligodendrocytes-FEP bridge disconnected from bio-async");
     return 0;
 }
 
 bool oligodendrocytes_fep_is_bio_async_connected(const oligodendrocytes_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

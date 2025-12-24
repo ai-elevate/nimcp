@@ -10,6 +10,7 @@
  */
 
 #include "core/synapse_compute/nimcp_synapse_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -299,8 +300,8 @@ synapse_substrate_bridge_t* synapse_substrate_bridge_create(
     bridge->stats.min_transmission_efficiency = 1.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         synapse_substrate_bridge_destroy(bridge);
         return NULL;
@@ -314,9 +315,9 @@ void synapse_substrate_bridge_destroy(synapse_substrate_bridge_t* bridge) {
     /* Guard: NULL safe */
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -339,7 +340,7 @@ int synapse_substrate_update(synapse_substrate_bridge_t* bridge) {
         return NIMCP_SUCCESS;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state */
     substrate_metabolic_state_t metabolic;
@@ -492,7 +493,7 @@ int synapse_substrate_update(synapse_substrate_bridge_t* bridge) {
         bridge->stats.min_transmission_efficiency = bridge->substrate_effects.transmission_efficiency;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -555,10 +556,10 @@ int synapse_substrate_consume_transmission(
     /* Record transmission in substrate */
     substrate_record_transmissions(bridge->substrate, count);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.transmissions_processed += count;
     bridge->stats.total_atp_consumed_by_synapses += total_cost;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -590,9 +591,9 @@ int synapse_substrate_record_nmda_calcium(
     /* Calculate Ca2+ influx (simplified model) */
     /* In real implementation, would call substrate Ca2+ tracking API */
     /* For now, just track stats */
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.nmda_ca_influx_events += transmission_count;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* Note: Actual Ca2+ modulation would be:
      * substrate_add_calcium(bridge->substrate, transmission_count * NMDA_CA_INFLUX_PER_EVENT);
@@ -615,9 +616,9 @@ int synapse_substrate_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->substrate_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -664,9 +665,9 @@ int synapse_substrate_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }

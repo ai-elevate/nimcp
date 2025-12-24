@@ -8,6 +8,7 @@
  */
 
 #include "plasticity/stp/nimcp_stp_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -80,8 +81,8 @@ stp_fep_bridge_t* stp_fep_bridge_create(const stp_fep_config_t* config) {
     memset(&bridge->stats, 0, sizeof(stp_fep_stats_t));
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for STP-FEP bridge");
         nimcp_free(bridge);
         return NULL;
@@ -90,7 +91,7 @@ stp_fep_bridge_t* stp_fep_bridge_create(const stp_fep_config_t* config) {
     /* Initialize connections */
     bridge->fep_system = NULL;
     bridge->stp_state = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Created STP-FEP bridge");
     return bridge;
@@ -100,13 +101,13 @@ void stp_fep_bridge_destroy(stp_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if enabled */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         stp_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -120,9 +121,9 @@ void stp_fep_bridge_destroy(stp_fep_bridge_t* bridge) {
 int stp_fep_bridge_connect_fep(stp_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to STP-FEP bridge");
     return 0;
@@ -131,9 +132,9 @@ int stp_fep_bridge_connect_fep(stp_fep_bridge_t* bridge, fep_system_t* fep) {
 int stp_fep_bridge_connect_stp(stp_fep_bridge_t* bridge, stp_state_t* stp_state) {
     if (!bridge || !stp_state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stp_state = stp_state;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected STP state to STP-FEP bridge");
     return 0;
@@ -142,10 +143,10 @@ int stp_fep_bridge_connect_stp(stp_fep_bridge_t* bridge, stp_state_t* stp_state)
 int stp_fep_bridge_disconnect(stp_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->stp_state = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected STP-FEP bridge");
     return 0;
@@ -212,10 +213,10 @@ int stp_fep_report_facilitation(stp_fep_bridge_t* bridge, float u) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_stp_precision_feedback) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stp_effects.current_u = u;
     bridge->stp_effects.u_precision_estimate = u * bridge->config.stp_precision_gain;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -224,11 +225,11 @@ int stp_fep_report_depression(stp_fep_bridge_t* bridge, float x) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_stp_precision_feedback) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stp_effects.current_x = x;
     /* Lower x (depletion) → higher complexity */
     bridge->stp_effects.x_complexity_estimate = (1.0f - x);
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -254,7 +255,7 @@ float stp_fep_get_effective_transmission(const stp_fep_bridge_t* bridge) {
 int stp_fep_bridge_update(stp_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update only if both systems are connected */
     if (bridge->fep_system && bridge->stp_state) {
@@ -311,7 +312,7 @@ int stp_fep_bridge_update(stp_fep_bridge_t* bridge, uint64_t delta_ms) {
         bridge->state.last_update_time += delta_ms;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -322,9 +323,9 @@ int stp_fep_bridge_update(stp_fep_bridge_t* bridge, uint64_t delta_ms) {
 int stp_fep_bridge_get_state(const stp_fep_bridge_t* bridge, stp_fep_state_t* state) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->state, sizeof(stp_fep_state_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -332,9 +333,9 @@ int stp_fep_bridge_get_state(const stp_fep_bridge_t* bridge, stp_fep_state_t* st
 int stp_fep_bridge_get_stats(const stp_fep_bridge_t* bridge, stp_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(stp_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -345,20 +346,20 @@ int stp_fep_bridge_get_stats(const stp_fep_bridge_t* bridge, stp_fep_stats_t* st
 
 int stp_fep_bridge_connect_bio_async(stp_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     /* Note: BIO_MODULE_FEP_STP would need to be added to nimcp_bio_messages.h */
     NIMCP_LOGGING_INFO("Bio-async support for STP-FEP bridge (stub implementation)");
-    bridge->bio_async_enabled = false; /* Not yet implemented */
+    bridge->base.bio_async_enabled = false; /* Not yet implemented */
 
     return 0;
 }
 
 int stp_fep_bridge_disconnect_bio_async(stp_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected STP-FEP bridge from bio-async");
 
     return 0;
@@ -366,5 +367,5 @@ int stp_fep_bridge_disconnect_bio_async(stp_fep_bridge_t* bridge) {
 
 bool stp_fep_bridge_is_bio_async_connected(const stp_fep_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

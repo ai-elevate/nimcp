@@ -19,6 +19,7 @@
  */
 
 #include "cognitive/memory/nimcp_memory_consolidation_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -327,23 +328,23 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(
     bridge->stats.max_stress_observed = 0.0f;
 
     /* Create mutex for thread safety */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for consolidation substrate bridge");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for consolidation substrate bridge");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Bio-async not enabled yet */
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Created memory consolidation substrate bridge");
 
@@ -356,15 +357,15 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
     }
 
     /* Disconnect bio-async if enabled */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         consolidation_substrate_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -383,11 +384,11 @@ int consolidation_substrate_connect_bio_async(consolidation_substrate_bridge_t* 
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if already connected */
-    if (bridge->bio_async_enabled) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.bio_async_enabled) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -399,15 +400,15 @@ int consolidation_substrate_connect_bio_async(consolidation_substrate_bridge_t* 
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected memory consolidation substrate bridge to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -417,16 +418,16 @@ int consolidation_substrate_disconnect_bio_async(consolidation_substrate_bridge_
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    if (bridge->bio_async_enabled && bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
-        bridge->bio_async_enabled = false;
+    if (bridge->base.bio_async_enabled && bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
+        bridge->base.bio_async_enabled = false;
         NIMCP_LOGGING_INFO("Disconnected memory consolidation substrate bridge from bio-async router");
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -434,7 +435,7 @@ bool consolidation_substrate_is_bio_async_connected(const consolidation_substrat
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -452,13 +453,13 @@ int consolidation_substrate_update(consolidation_substrate_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate metabolic state */
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -526,7 +527,7 @@ int consolidation_substrate_update(consolidation_substrate_bridge_t* bridge) {
         NIMCP_LOGGING_WARN("Critical ATP level for consolidation: %.2f", metabolic.atp_level);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

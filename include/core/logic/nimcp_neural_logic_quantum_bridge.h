@@ -30,6 +30,7 @@
 #define NIMCP_NEURAL_LOGIC_QUANTUM_BRIDGE_H
 
 #include "core/neuron_types/nimcp_neural_logic.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -305,6 +306,8 @@ qreason_truth_t neural_logic_quantum_implies(qreason_truth_t a, qreason_truth_t 
  * WHAT: Bridge structure
  */
 struct neural_logic_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     neural_logic_quantum_config_t config;   /**< Configuration */
     neural_logic_network_t network;         /**< Connected neural logic network */
     qreason_t reasoner;                     /**< Quantum reasoner instance */

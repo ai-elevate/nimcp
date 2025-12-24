@@ -4,6 +4,7 @@
  */
 
 #include "security/immune/nimcp_rate_limiter_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -178,8 +179,8 @@ rate_limiter_immune_bridge_t* rate_limiter_immune_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for rate limiter immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -193,13 +194,13 @@ void rate_limiter_immune_destroy(rate_limiter_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         rate_limiter_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -213,7 +214,7 @@ void rate_limiter_immune_destroy(rate_limiter_immune_bridge_t* bridge) {
 int rate_limiter_immune_update(rate_limiter_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine effects */
     if (bridge->config.enable_cytokine_rps_modulation) {
@@ -229,14 +230,14 @@ int rate_limiter_immune_update(rate_limiter_immune_bridge_t* bridge) {
     bridge->total_updates++;
     bridge->last_update_time = 0; /* Would use actual timestamp */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int rate_limiter_immune_apply_modulation(rate_limiter_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute effective RPS combining cytokine and inflammation effects */
     float effective_rps = bridge->config.base_rps;
@@ -259,7 +260,7 @@ int rate_limiter_immune_apply_modulation(rate_limiter_immune_bridge_t* bridge) {
     /* nimcp_rate_limiter_set_rate(bridge->rate_limiter, effective_rps); */
     /* nimcp_rate_limiter_set_burst(bridge->rate_limiter, (uint32_t)effective_burst); */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -277,7 +278,7 @@ int rate_limiter_immune_present_violation(
         return 0; /* Not presented */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute severity from violation count */
     uint32_t severity = VIOLATION_SEVERITY_BASE +
@@ -307,7 +308,7 @@ int rate_limiter_immune_present_violation(
         bridge->immune_modulation.antigens_presented++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -318,7 +319,7 @@ int rate_limiter_immune_quarantine_client(
     if (!bridge || !client_id) return -1;
     if (!bridge->config.enable_blocked_client_quarantine) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Would activate killer T cell action here */
     /* This maps client block to immune quarantine */
@@ -326,7 +327,7 @@ int rate_limiter_immune_quarantine_client(
     bridge->quarantine_actions++;
     bridge->immune_modulation.quarantine_actions++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -336,7 +337,7 @@ int rate_limiter_immune_quarantine_client(
 
 int rate_limiter_immune_connect_bio_async(rate_limiter_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_RATE_LIMITER,
@@ -345,28 +346,28 @@ int rate_limiter_immune_connect_bio_async(rate_limiter_immune_bridge_t* bridge) 
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Rate limiter immune bridge connected to bio-async router");
     }
 
-    return bridge->bio_ctx ? 0 : -1;
+    return bridge->base.bio_ctx ? 0 : -1;
 }
 
 int rate_limiter_immune_disconnect_bio_async(rate_limiter_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) return -1;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Rate limiter immune bridge disconnected from bio-async router");
     return 0;
 }
 
 bool rate_limiter_immune_is_bio_async_connected(const rate_limiter_immune_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }
 
 /* ============================================================================

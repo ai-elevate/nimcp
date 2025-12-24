@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "plasticity/metabolic/nimcp_metabolic_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/metabolic/nimcp_metabolic_plasticity.h"
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "utils/memory/nimcp_memory.h"
@@ -248,16 +249,16 @@ metabolic_pink_noise_bridge_t* metabolic_pink_noise_create(
     bridge->state.effective_alpha = bridge->config.normal_alpha;
 
     // Create mutex for thread safety
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         pink_noise_destroy(bridge->noise_generator);
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         pink_noise_destroy(bridge->noise_generator);
         nimcp_free(bridge);
         return NULL;
@@ -279,9 +280,9 @@ void metabolic_pink_noise_destroy(metabolic_pink_noise_bridge_t* bridge) {
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     // Free bridge structure
@@ -311,9 +312,9 @@ int metabolic_pink_noise_connect_metabolic(
     }
 
     // Thread-safe update
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metabolic = metabolic;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected to metabolic plasticity system");
     return 0;
@@ -327,9 +328,9 @@ int metabolic_pink_noise_disconnect(metabolic_pink_noise_bridge_t* bridge) {
     }
 
     // Thread-safe update
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metabolic = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected from metabolic plasticity system");
     return 0;
@@ -359,7 +360,7 @@ int metabolic_pink_noise_update(
     }
 
     // Thread-safe update
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Update adaptive amplitude based on energy state
     update_adaptive_amplitude(bridge);
@@ -392,7 +393,7 @@ int metabolic_pink_noise_update(
     bridge->avg_threshold_jitter += (fabsf(bridge->state.ltp_threshold_noise) - bridge->avg_threshold_jitter) / bridge->update_count;
     bridge->avg_cost_variation += (fabsf(bridge->state.ltp_cost_noise) - bridge->avg_cost_variation) / bridge->update_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -508,9 +509,9 @@ int metabolic_pink_noise_get_state(
     }
 
     // Thread-safe copy
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -554,7 +555,7 @@ int metabolic_pink_noise_get_stats(
     }
 
     // Thread-safe copy
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     stats->total_updates = bridge->update_count;
     stats->avg_recovery_noise = bridge->avg_recovery_noise;
@@ -563,7 +564,7 @@ int metabolic_pink_noise_get_stats(
     stats->current_amplitude = bridge->state.effective_amplitude;
     stats->current_alpha = bridge->state.effective_alpha;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -576,14 +577,14 @@ int metabolic_pink_noise_reset_stats(metabolic_pink_noise_bridge_t* bridge) {
     }
 
     // Thread-safe reset
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->update_count = 0;
     bridge->avg_recovery_noise = 0.0f;
     bridge->avg_threshold_jitter = 0.0f;
     bridge->avg_cost_variation = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset statistics");
     return 0;
@@ -604,7 +605,7 @@ int metabolic_pink_noise_enable_target(
     }
 
     // Thread-safe update
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     switch (target) {
         case METABOLIC_NOISE_RECOVERY_RATE:
@@ -626,12 +627,12 @@ int metabolic_pink_noise_enable_target(
             break;
 
         default:
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Invalid noise target");
             return -1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -646,7 +647,7 @@ int metabolic_pink_noise_disable_target(
     }
 
     // Thread-safe update
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     switch (target) {
         case METABOLIC_NOISE_RECOVERY_RATE:
@@ -668,12 +669,12 @@ int metabolic_pink_noise_disable_target(
             break;
 
         default:
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Invalid noise target");
             return -1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -695,7 +696,7 @@ int metabolic_pink_noise_set_strength(
     }
 
     // Thread-safe update
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     switch (target) {
         case METABOLIC_NOISE_RECOVERY_RATE:
@@ -717,12 +718,12 @@ int metabolic_pink_noise_set_strength(
             break;
 
         default:
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Invalid noise target");
             return -1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

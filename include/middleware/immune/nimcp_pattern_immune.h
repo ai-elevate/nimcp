@@ -117,6 +117,7 @@
 #define NIMCP_PATTERN_IMMUNE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -303,6 +304,8 @@ typedef struct {
  * @brief Complete pattern-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     oscillation_detector_t* oscillation_detector;
@@ -335,9 +338,7 @@ typedef struct {
     uint32_t immune_alerts_triggered;
     uint32_t pattern_degradation_events;
 
-    /* Thread safety */
-    void* mutex;
-} pattern_immune_bridge_t;
+    } pattern_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

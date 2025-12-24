@@ -565,10 +565,8 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_bridge_pipelines.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_perception_cortical.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_plasticity_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_master_connectivity.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_cortical_substrate_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_substrate_bridges_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_training_logic_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_cognitive_training_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_perception_training_pipeline.dir
@@ -582,6 +580,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_phase1_bridges_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_subcortical_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_thalamus_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_amygdala_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1508,6 +1507,7 @@
 /home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_thalamus_test.dir
+/home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_amygdala_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/subcortical/CMakeFiles/rebuild_cache.dir
@@ -1529,6 +1529,7 @@
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_thalamus_test.dir
+/home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/subcortical/CMakeFiles/rebuild_cache.dir
@@ -1599,6 +1600,11 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_thalamus_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_training_bridge_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_attention_bridge_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_autobio_bridge_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_stress_bridge_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/subcortical/CMakeFiles/rebuild_cache.dir

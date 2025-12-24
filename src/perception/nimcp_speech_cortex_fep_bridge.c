@@ -6,6 +6,7 @@
  */
 
 #include "perception/nimcp_speech_cortex_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -72,8 +73,8 @@ speech_cortex_fep_bridge_t* speech_cortex_fep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE_SPEECH_FEP " Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -107,13 +108,13 @@ void speech_cortex_fep_bridge_destroy(speech_cortex_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         speech_cortex_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -136,9 +137,9 @@ int speech_cortex_fep_bridge_connect_fep(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " FEP system connected");
     return NIMCP_SUCCESS;
@@ -156,9 +157,9 @@ int speech_cortex_fep_bridge_connect_speech_cortex(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!speech) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->speech_cortex = speech;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " Speech cortex connected");
     return NIMCP_SUCCESS;
@@ -180,7 +181,7 @@ int speech_cortex_fep_apply_phoneme_predictions(
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
     if (!bridge->config.enable_phoneme_predictions) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute prediction priming (simplified) */
     float avg_confidence = 0.0f;
@@ -200,7 +201,7 @@ int speech_cortex_fep_apply_phoneme_predictions(
     /* Novelty sensitivity (inverse of prediction) */
     bridge->effects.novelty_sensitivity = (1.0f - avg_confidence) * 0.5f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -216,7 +217,7 @@ int speech_cortex_fep_apply_precision_categories(
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
     if (!bridge->config.enable_precision_categories) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get precision from FEP (placeholder) */
     float fep_precision = bridge->state.phoneme_precision;
@@ -240,7 +241,7 @@ int speech_cortex_fep_apply_precision_categories(
     bridge->effects.precision_category_modifier = fep_precision *
         bridge->config.phoneme_precision_sensitivity;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -256,12 +257,12 @@ int speech_cortex_fep_apply_motor_predictions(
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
     if (!bridge->config.enable_motor_theory) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Motor theory: predict acoustic consequences (simplified) */
     /* Would query FEP motor model for articulatory predictions */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -283,7 +284,7 @@ int speech_cortex_fep_compute_phoneme_prediction_error(
     if (!bridge || !prediction_error) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if phoneme was predicted */
     bool was_predicted = false;
@@ -320,7 +321,7 @@ int speech_cortex_fep_compute_phoneme_prediction_error(
         bridge->stats.high_pe_events++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -338,7 +339,7 @@ int speech_cortex_fep_report_phoneme_observation(
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
     if (!bridge->config.enable_phoneme_pe_updates) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Report to FEP system (would call FEP observation API) */
     bridge->state.phonemes_processed++;
@@ -352,7 +353,7 @@ int speech_cortex_fep_report_phoneme_observation(
     bridge->state.predicted_phonemes[SPEECH_FEP_PREDICTION_HORIZON - 1] = PHONEME_SILENCE;
     bridge->state.prediction_confidence[SPEECH_FEP_PREDICTION_HORIZON - 1] = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -367,12 +368,12 @@ int speech_cortex_fep_report_word_boundary(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Report word boundary to FEP (placeholder) */
     bridge->stats.word_recognition_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -397,7 +398,7 @@ int speech_cortex_fep_bridge_update(
     speech_cortex_fep_apply_motor_predictions(bridge);
 
     /* Update statistics */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->stats.avg_prediction_error = bridge->state.avg_phoneme_pe;
 
@@ -418,7 +419,7 @@ int speech_cortex_fep_bridge_update(
     bridge->stats.avg_prediction_priming = bridge->effects.prediction_priming;
     bridge->stats.lexical_facilitation_rate = bridge->effects.prediction_priming;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -438,9 +439,9 @@ int speech_cortex_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -456,9 +457,9 @@ int speech_cortex_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -476,7 +477,7 @@ int speech_cortex_fep_bridge_connect_bio_async(
     speech_cortex_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SPEECH_CORTEX_BRIDGE,
@@ -485,9 +486,9 @@ int speech_cortex_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " Connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -505,14 +506,14 @@ int speech_cortex_fep_bridge_disconnect_bio_async(
     speech_cortex_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " Disconnected from bio-async");
     return NIMCP_SUCCESS;
 }
@@ -525,5 +526,5 @@ int speech_cortex_fep_bridge_disconnect_bio_async(
 bool speech_cortex_fep_bridge_is_bio_async_connected(
     const speech_cortex_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "networking/immune/nimcp_protocol_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -123,7 +124,7 @@ protocol_immune_bridge_t* protocol_immune_bridge_create(
     pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     }
 
     NIMCP_LOGGING_INFO("protocol_immune_bridge: created successfully");
@@ -135,7 +136,7 @@ void protocol_immune_bridge_destroy(protocol_immune_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         protocol_immune_disconnect_bio_async(bridge);
     }
 
@@ -143,9 +144,9 @@ void protocol_immune_bridge_destroy(protocol_immune_bridge_t* bridge) {
         nimcp_free(bridge->protocol_modulation.filters);
     }
 
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -164,7 +165,7 @@ int protocol_immune_apply_cytokine_effects(protocol_immune_bridge_t* bridge) {
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
@@ -191,7 +192,7 @@ int protocol_immune_apply_cytokine_effects(protocol_immune_bridge_t* bridge) {
     bridge->cytokine_effects.validation_relaxation =
         bridge->cytokine_effects.il10_level * CYTOKINE_IL10_VALIDATION_RELAXATION;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -200,7 +201,7 @@ int protocol_immune_apply_inflammation_effects(protocol_immune_bridge_t* bridge)
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
@@ -214,7 +215,7 @@ int protocol_immune_apply_inflammation_effects(protocol_immune_bridge_t* bridge)
     bridge->inflammation_state.reject_unknown_types = (level >= INFLAMMATION_SYSTEMIC);
     bridge->inflammation_state.authenticated_only = (level == INFLAMMATION_STORM);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -230,10 +231,10 @@ int protocol_immune_create_antibody_filter(
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     if (bridge->protocol_modulation.filter_count >= bridge->protocol_modulation.filter_capacity) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -248,7 +249,7 @@ int protocol_immune_create_antibody_filter(
 
     bridge->protocol_modulation.filter_count++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -262,7 +263,7 @@ bool protocol_immune_message_filtered(
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->protocol_modulation.filter_count; i++) {
         const antibody_message_filter_t* filter = &bridge->protocol_modulation.filters[i];
@@ -274,12 +275,12 @@ bool protocol_immune_message_filtered(
         /* Simple pattern match */
         if (message_len >= filter->pattern_len &&
             memcmp(message, filter->blocked_pattern, filter->pattern_len) == 0) {
-            pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+            pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return false;
 }
 
@@ -295,12 +296,12 @@ int protocol_immune_update_error_metrics(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     memcpy(&bridge->protocol_modulation.errors, metrics, sizeof(protocol_error_metrics_t));
     bridge->last_error_check_time = get_time_ms();
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -313,7 +314,7 @@ int protocol_immune_trigger_error_inflammation(protocol_immune_bridge_t* bridge)
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     brain_inflammation_level_t level =
         compute_inflammation_from_errors(&bridge->protocol_modulation.errors);
@@ -323,7 +324,7 @@ int protocol_immune_trigger_error_inflammation(protocol_immune_bridge_t* bridge)
         bridge->error_inflammation_events++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -342,7 +343,7 @@ int protocol_immune_present_violation(
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
     memset(epitope, 0, sizeof(epitope));
@@ -370,7 +371,7 @@ int protocol_immune_present_violation(
         bridge->violation_antigens++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return result;
 }
 
@@ -379,7 +380,7 @@ int protocol_immune_release_il10_from_recovery(protocol_immune_bridge_t* bridge)
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     if (bridge->protocol_modulation.errors.error_rate < ERROR_RATE_LOCAL_THRESHOLD) {
         uint32_t cytokine_id;
@@ -396,7 +397,7 @@ int protocol_immune_release_il10_from_recovery(protocol_immune_bridge_t* bridge)
         bridge->recovery_il10_releases++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -412,10 +413,10 @@ int protocol_immune_bridge_update(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->last_update_time = get_time_ms();
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     protocol_immune_trigger_error_inflammation(bridge);
     protocol_immune_release_il10_from_recovery(bridge);
@@ -437,9 +438,9 @@ int protocol_immune_get_cytokine_effects(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_protocol_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -452,9 +453,9 @@ int protocol_immune_get_inflammation_state(
         return -1;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_protocol_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -485,7 +486,7 @@ int protocol_immune_connect_bio_async(protocol_immune_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_WARN("protocol_immune_bridge: Already connected to bio-async");
         return 0;
     }
@@ -497,37 +498,37 @@ int protocol_immune_connect_bio_async(protocol_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("protocol_immune_bridge: Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("protocol_immune_bridge: Bio-async router not available, skipping registration");
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
 int protocol_immune_disconnect_bio_async(protocol_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge || !bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("protocol_immune_bridge: Disconnected from bio-async router");
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
 bool protocol_immune_is_bio_async_connected(const protocol_immune_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

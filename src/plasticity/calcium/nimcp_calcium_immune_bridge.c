@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/calcium/nimcp_calcium_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -132,12 +133,12 @@ calcium_immune_bridge_t* calcium_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Calcium-immune bridge created");
     return bridge;
@@ -147,15 +148,15 @@ void calcium_immune_bridge_destroy(calcium_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         calcium_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    if (bridge->base.mutex) {
+        pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
         pthread_mutex_destroy(mtx);
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -168,7 +169,7 @@ void calcium_immune_bridge_destroy(calcium_immune_bridge_t* bridge) {
 int calcium_immune_apply_cytokine_effects(calcium_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     /* Initialize effects to neutral */
@@ -204,7 +205,7 @@ int calcium_immune_apply_cytokine_effects(calcium_immune_bridge_t* bridge) {
 int calcium_immune_apply_inflammation_effects(calcium_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     /* Get inflammation level (placeholder - would use real API) */
@@ -239,7 +240,7 @@ int calcium_immune_apply_inflammation_effects(calcium_immune_bridge_t* bridge) {
 float calcium_immune_get_effective_influx(const calcium_immune_bridge_t* bridge) {
     if (!bridge) return 1.0f;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     float influx_factor = bridge->cytokine_effects.total_influx_modulation;
@@ -255,7 +256,7 @@ int calcium_immune_get_modulation_state(
 ) {
     if (!bridge || !modulation) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     /* Compute modulation factors */
@@ -287,7 +288,7 @@ int calcium_immune_restore_dynamics(
 
     recovery_factor = clamp_f(recovery_factor, 0.0f, 1.0f);
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     /* Interpolate back to baseline */
@@ -311,7 +312,7 @@ int calcium_immune_restore_dynamics(
 int calcium_immune_detect_instability(calcium_immune_bridge_t* bridge) {
     if (!bridge || !bridge->calcium) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     /* Get current calcium concentration */
@@ -371,7 +372,7 @@ int calcium_immune_alert_instability(
 ) {
     if (!bridge || !antigen_id) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     /* Create epitope from instability signature (placeholder) */
@@ -398,7 +399,7 @@ int calcium_immune_alert_instability(
 int calcium_immune_signal_healthy_dynamics(calcium_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     /* Only signal if truly healthy */
@@ -421,7 +422,7 @@ int calcium_immune_bridge_update(
 ) {
     if (!bridge) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     bridge->total_updates++;
@@ -466,7 +467,7 @@ int calcium_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
     *effects = bridge->cytokine_effects;
     pthread_mutex_unlock(mtx);
@@ -480,7 +481,7 @@ int calcium_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
     *state = bridge->inflammation_state;
     pthread_mutex_unlock(mtx);
@@ -494,7 +495,7 @@ int calcium_immune_get_instability_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
     *state = bridge->instability_state;
     pthread_mutex_unlock(mtx);
@@ -505,7 +506,7 @@ int calcium_immune_get_instability_state(
 bool calcium_immune_is_dynamics_impaired(const calcium_immune_bridge_t* bridge) {
     if (!bridge) return false;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
     bool impaired = (bridge->cytokine_effects.total_influx_modulation < 0.9f) ||
@@ -522,10 +523,10 @@ bool calcium_immune_is_dynamics_impaired(const calcium_immune_bridge_t* bridge) 
 int calcium_immune_connect_bio_async(calcium_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         pthread_mutex_unlock(mtx);
         return 0;
     }
@@ -537,9 +538,9 @@ int calcium_immune_connect_bio_async(calcium_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -552,13 +553,13 @@ int calcium_immune_connect_bio_async(calcium_immune_bridge_t* bridge) {
 int calcium_immune_disconnect_bio_async(calcium_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
 
-    if (bridge->bio_async_enabled && bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
-        bridge->bio_async_enabled = false;
+    if (bridge->base.bio_async_enabled && bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
+        bridge->base.bio_async_enabled = false;
         NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     }
 
@@ -569,9 +570,9 @@ int calcium_immune_disconnect_bio_async(calcium_immune_bridge_t* bridge) {
 bool calcium_immune_is_bio_async_connected(const calcium_immune_bridge_t* bridge) {
     if (!bridge) return false;
 
-    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
-    bool connected = bridge->bio_async_enabled;
+    bool connected = bridge->base.bio_async_enabled;
     pthread_mutex_unlock(mtx);
 
     return connected;

@@ -21,6 +21,7 @@
 #define NIMCP_JOY_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/nimcp_joy_euphoria.h"
@@ -72,17 +73,15 @@ typedef struct {
 } joy_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     joy_fep_config_t config;
     fep_system_t* fep_system;
     joy_system_t* joy_system;
     joy_fep_effects_t fep_effects;
     fep_joy_effects_t emotion_effects;
     joy_fep_state_t state;
-    joy_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} joy_fep_bridge_t;
+    joy_fep_stats_t stats;} joy_fep_bridge_t;
 
 int joy_fep_default_config(joy_fep_config_t* config);
 joy_fep_bridge_t* joy_fep_create(const joy_fep_config_t* config);

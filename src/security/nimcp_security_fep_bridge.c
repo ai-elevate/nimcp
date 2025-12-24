@@ -4,6 +4,7 @@
  */
 
 #include "security/nimcp_security_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
@@ -34,8 +35,8 @@ security_fep_bridge_t* security_fep_create(const security_fep_config_t* config,
     else security_fep_default_config(&bridge->config);
 
     bridge->fep_system = fep_system;
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -48,15 +49,15 @@ security_fep_bridge_t* security_fep_create(const security_fep_config_t* config,
 
 void security_fep_destroy(security_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) security_fep_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) security_fep_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int security_fep_update(security_fep_bridge_t* bridge) {
     if (!bridge || !bridge->state.active) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     float surprise = fep_compute_surprise(bridge->fep_system);
 
@@ -88,7 +89,7 @@ int security_fep_update(security_fep_bridge_t* bridge) {
 
     bridge->state.update_count++;
     bridge->stats.avg_free_energy = fe;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -96,7 +97,7 @@ int security_fep_validate_input(security_fep_bridge_t* bridge, const char* input
     nimcp_input_validation_t* result, nimcp_threat_level_t* threat) {
     if (!bridge || !input || !result || !threat) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Standard security validation
     *result = nimcp_security_validate_input(input, 1024, threat);
@@ -126,14 +127,14 @@ int security_fep_validate_input(security_fep_bridge_t* bridge, const char* input
         bridge->security_effects.threats_detected++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int security_fep_apply_modulation(security_fep_bridge_t* bridge) {
     if (!bridge || !bridge->config.enable_adaptive_security) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float threat_rate = (float)bridge->security_effects.threats_detected /
                        (float)(bridge->state.validation_count + 1);
 
@@ -142,7 +143,7 @@ int security_fep_apply_modulation(security_fep_bridge_t* bridge) {
     bridge->state.current_precision =
         (1.0f - alpha) * bridge->state.current_precision + alpha * target_precision;
     bridge->stats.current_precision = bridge->state.current_precision;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -150,7 +151,7 @@ int security_fep_report_threat(security_fep_bridge_t* bridge,
     nimcp_threat_level_t level) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->security_effects.threats_detected++;
     float level_normalized = (float)level / (float)NIMCP_THREAT_CRITICAL;
     bridge->security_effects.avg_threat_level =
@@ -161,7 +162,7 @@ int security_fep_report_threat(security_fep_bridge_t* bridge,
         fep_update_precision(bridge->fep_system);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -173,29 +174,29 @@ int security_fep_get_stats(const security_fep_bridge_t* bridge,
 }
 
 int security_fep_connect_bio_async(security_fep_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_enabled) return 0;
+    if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SECURITY_CORE_FEP,
         .module_name = "security_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge
     };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Security FEP bridge connected to bio-async");
     }
     return 0;
 }
 
 int security_fep_disconnect_bio_async(security_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
     return 0;
 }
 
 bool security_fep_is_bio_async_connected(const security_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

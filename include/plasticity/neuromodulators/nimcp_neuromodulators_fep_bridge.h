@@ -60,6 +60,7 @@
 #define NIMCP_NEUROMODULATORS_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -128,15 +129,14 @@ typedef struct {
 } neuromod_fep_stats_t;
 
 struct neuromod_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     neuromod_fep_config_t config;
     fep_system_t* fep_system;
     neuromodulator_system_t neuromod_system;
     neuromod_fep_effects_t fep_effects;
     neuromod_fep_feedback_t neuromod_effects;
     neuromod_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 /* ============================================================================

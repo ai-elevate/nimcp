@@ -8,6 +8,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_amygdala_autobio_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
@@ -57,14 +58,14 @@ amygdala_autobio_bridge_t* amygdala_autobio_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Created amygdala-autobio bridge");
     return bridge;
@@ -75,13 +76,13 @@ void amygdala_autobio_destroy(amygdala_autobio_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         amygdala_autobio_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -100,10 +101,12 @@ int amygdala_autobio_connect_amygdala(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = amygdala;
-    bridge->connected = (bridge->amygdala != NULL && bridge->autobio_memory != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    bridge->base.system_a_connected = true;
+    bridge->base.bridge_active = (bridge->base.system_a_connected && bridge->base.system_b_connected);
+    bridge->connected = bridge->base.bridge_active;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected amygdala to bridge");
     return 0;
@@ -117,10 +120,12 @@ int amygdala_autobio_connect_memory(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->autobio_memory = autobio;
-    bridge->connected = (bridge->amygdala != NULL && bridge->autobio_memory != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    bridge->base.system_b_connected = true;
+    bridge->base.bridge_active = (bridge->base.system_a_connected && bridge->base.system_b_connected);
+    bridge->connected = bridge->base.bridge_active;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected autobiographical memory to bridge");
     return 0;
@@ -139,7 +144,7 @@ int amygdala_autobio_update(amygdala_autobio_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query amygdala state */
     bridge->tagging_state.fear_level = amygdala_get_fear_level(bridge->amygdala);
@@ -182,7 +187,8 @@ int amygdala_autobio_update(amygdala_autobio_bridge_t* bridge) {
     }
 
     bridge->total_updates++;
-    nimcp_mutex_unlock(bridge->mutex);
+    bridge->base.total_updates++;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -200,12 +206,12 @@ int amygdala_autobio_tag_memory(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Retrieve memory */
     autobiographical_memory_entry_t memory;
     if (!autobio_retrieve(bridge->autobio_memory, memory_id, &memory)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -238,7 +244,7 @@ int amygdala_autobio_tag_memory(
 
     bridge->tagging_state.tagged_memories++;
     bridge->memories_tagged++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -283,12 +289,12 @@ int amygdala_autobio_on_recall(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Retrieve memory */
     autobiographical_memory_entry_t memory;
     if (!autobio_retrieve(bridge->autobio_memory, memory_id, &memory)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -375,7 +381,7 @@ int amygdala_autobio_on_recall(
     }
 
     bridge->memories_recalled++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -499,7 +505,7 @@ int amygdala_autobio_connect_bio_async(amygdala_autobio_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
     }
 
@@ -510,9 +516,9 @@ int amygdala_autobio_connect_bio_async(amygdala_autobio_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected amygdala-autobio bridge to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -526,16 +532,16 @@ int amygdala_autobio_disconnect_bio_async(amygdala_autobio_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected amygdala-autobio bridge from bio-async router");
 
     return 0;
@@ -546,5 +552,5 @@ bool amygdala_autobio_is_bio_async_connected(const amygdala_autobio_bridge_t* br
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

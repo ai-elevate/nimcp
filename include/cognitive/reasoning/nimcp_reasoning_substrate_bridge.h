@@ -25,6 +25,7 @@
 #define NIMCP_REASONING_SUBSTRATE_BRIDGE_H
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -198,6 +199,8 @@ typedef struct {
  * HOW: Monitors substrate, computes effects, applies modulation
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /** Pointer to neural substrate */
     neural_substrate_t* substrate;
 
@@ -214,14 +217,8 @@ typedef struct {
     reasoning_substrate_stats_t stats;
 
     /** Bio-async module context */
-    bio_module_context_t bio_ctx;
-
     /** Bio-async enabled flag */
-    bool bio_async_enabled;
-
     /** Thread safety mutex */
-    nimcp_mutex_t* mutex;
-
     /** Last update timestamp (milliseconds) */
     uint64_t last_update_ms;
 

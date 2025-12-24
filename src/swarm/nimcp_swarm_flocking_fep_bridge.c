@@ -3,6 +3,7 @@
  */
 
 #include "swarm/nimcp_swarm_flocking_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
@@ -25,21 +26,21 @@ swarm_flocking_fep_bridge_t* swarm_flocking_fep_create(const swarm_flocking_fep_
     else swarm_flocking_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->flocking_engine = flocking_engine;
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
 
 void swarm_flocking_fep_destroy(swarm_flocking_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) swarm_flocking_fep_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) swarm_flocking_fep_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int swarm_flocking_fep_update(swarm_flocking_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     // Compute precision as inverse of free energy (high FE = low precision)
     float precision = 1.0f / (1.0f + fe);
@@ -58,7 +59,7 @@ int swarm_flocking_fep_update(swarm_flocking_fep_bridge_t* bridge) {
     bridge->stats.total_updates++;
     bridge->stats.avg_alignment_fe = (bridge->stats.avg_alignment_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
     bridge->stats.avg_formation_quality = (bridge->stats.avg_formation_quality * (bridge->stats.total_updates - 1) + flock_stats.formation_quality) / bridge->stats.total_updates;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -69,44 +70,44 @@ int swarm_flocking_fep_apply_modulation(swarm_flocking_fep_bridge_t* bridge) {
 
 int swarm_flocking_fep_get_effects(const swarm_flocking_fep_bridge_t* bridge, swarm_flocking_fep_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int swarm_flocking_fep_get_flocking_effects(const swarm_flocking_fep_bridge_t* bridge, fep_swarm_flocking_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->flocking_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int swarm_flocking_fep_get_stats(const swarm_flocking_fep_bridge_t* bridge, swarm_flocking_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int swarm_flocking_fep_connect_bio_async(swarm_flocking_fep_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_enabled) return 0;
+    if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = { .module_id = BIO_MODULE_FEP_SWARM_FLOCKING, .module_name = "swarm_flocking_fep_bridge", .inbox_capacity = 32, .user_data = bridge };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) bridge->base.bio_async_enabled = true;
     return 0;
 }
 
 int swarm_flocking_fep_disconnect_bio_async(swarm_flocking_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool swarm_flocking_fep_is_bio_async_connected(const swarm_flocking_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

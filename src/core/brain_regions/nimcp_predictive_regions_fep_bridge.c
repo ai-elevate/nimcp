@@ -10,6 +10,7 @@
  */
 
 #include "core/brain_regions/nimcp_predictive_regions_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -100,8 +101,8 @@ predictive_regions_fep_bridge_t* predictive_regions_fep_bridge_create(
     bridge->state.mean_prediction_error = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         predictive_regions_fep_bridge_destroy(bridge);
         return NULL;
     }
@@ -115,7 +116,7 @@ void predictive_regions_fep_bridge_destroy(
 ) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         predictive_regions_fep_bridge_disconnect_bio_async(bridge);
     }
 
@@ -126,9 +127,9 @@ void predictive_regions_fep_bridge_destroy(
         nimcp_free(bridge->level_mappings);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -145,9 +146,9 @@ int predictive_regions_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Predictive regions-FEP bridge connected to FEP system");
     return 0;
@@ -161,7 +162,7 @@ int predictive_regions_fep_bridge_map_region(
     if (!bridge || !region) return -1;
     if (bridge->num_mappings >= PREDICTIVE_FEP_MAX_REGIONS) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get region neuron count (placeholder - actual API may differ) */
     uint32_t num_neurons = 100; /* TODO: Get from region */
@@ -182,14 +183,14 @@ int predictive_regions_fep_bridge_map_region(
     if (!mapping->belief_buffer || !mapping->prediction_buffer ||
         !mapping->error_buffer) {
         free_level_mapping(mapping);
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     bridge->num_mappings++;
     bridge->state.num_mapped_levels = bridge->num_mappings;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -198,7 +199,7 @@ int predictive_regions_fep_bridge_disconnect(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
 
     for (uint32_t i = 0; i < bridge->num_mappings; i++) {
@@ -207,7 +208,7 @@ int predictive_regions_fep_bridge_disconnect(
     bridge->num_mappings = 0;
     bridge->state.num_mapped_levels = 0;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -221,7 +222,7 @@ int predictive_regions_fep_sync_beliefs_to_regions(
     if (!bridge || !bridge->fep_system) return -1;
     if (!bridge->config.enable_belief_sync) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -241,7 +242,7 @@ int predictive_regions_fep_sync_beliefs_to_regions(
     }
 
     bridge->stats.belief_syncs++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -250,7 +251,7 @@ int predictive_regions_fep_apply_precision_modulation(
 ) {
     if (!bridge || !bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -275,7 +276,7 @@ int predictive_regions_fep_apply_precision_modulation(
     }
 
     bridge->stats.precision_updates++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -284,7 +285,7 @@ int predictive_regions_fep_generate_predictions(
 ) {
     if (!bridge || !bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -306,7 +307,7 @@ int predictive_regions_fep_generate_predictions(
     }
 
     bridge->effects.prediction_strength = 1.0f;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -320,14 +321,14 @@ int predictive_regions_fep_propagate_errors_to_fep(
     if (!bridge || !bridge->fep_system) return -1;
     if (!bridge->config.enable_error_propagation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Copy region errors to FEP error signals */
     /* Note: Actual implementation would extract errors from regions */
     /* This is a simplified placeholder */
 
     bridge->stats.error_propagations++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -338,13 +339,13 @@ int predictive_regions_fep_compute_free_energy(
     if (!bridge || !free_energy) return -1;
     if (!bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     float total_fe = bridge->fep_system->free_energy.total;
     *free_energy = total_fe;
     bridge->state.total_free_energy = total_fe;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -354,7 +355,7 @@ int predictive_regions_fep_adapt_precision(
     if (!bridge || !bridge->fep_system) return -1;
     if (!bridge->config.enable_precision_adaptation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
     float lr = bridge->config.precision_learning_rate;
@@ -384,7 +385,7 @@ int predictive_regions_fep_adapt_precision(
     }
 
     bridge->stats.precision_updates++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -399,7 +400,7 @@ int predictive_regions_fep_active_inference_select(
     if (!bridge || !selected_region) return -1;
     if (!bridge->config.enable_active_inference) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute EFE for each region */
     float min_efe = INFINITY;
@@ -420,7 +421,7 @@ int predictive_regions_fep_active_inference_select(
     bridge->effects.selected_region = best_region;
     bridge->stats.active_inference_actions++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -476,7 +477,7 @@ int predictive_regions_fep_bridge_update(
     if (!bridge) return -1;
     (void)delta_ms; /* Unused for now */
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* 1. Synchronize FEP beliefs to regions */
     if (bridge->config.enable_belief_sync) {
@@ -525,7 +526,7 @@ int predictive_regions_fep_bridge_update(
         bridge->state.mean_prediction_error = pe;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -565,7 +566,7 @@ int predictive_regions_fep_bridge_connect_bio_async(
     predictive_regions_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_PREDICTIVE_REGIONS_BRIDGE,
@@ -574,9 +575,9 @@ int predictive_regions_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Predictive regions-FEP bridge connected to bio-async");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -588,18 +589,18 @@ int predictive_regions_fep_bridge_disconnect_bio_async(
     predictive_regions_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool predictive_regions_fep_bridge_is_bio_async_connected(
     const predictive_regions_fep_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

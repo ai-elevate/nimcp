@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_dendritic_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -178,12 +179,12 @@ dendritic_immune_bridge_t* dendritic_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("dendritic_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -193,9 +194,9 @@ void dendritic_immune_bridge_destroy(dendritic_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -213,7 +214,7 @@ int dendritic_immune_apply_cytokine_effects(dendritic_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_dendritic_modulation) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_dendritic_effects_t* effects = &bridge->cytokine_effects;
@@ -264,7 +265,7 @@ int dendritic_immune_apply_cytokine_effects(dendritic_immune_bridge_t* bridge) {
     }
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -274,7 +275,7 @@ int dendritic_immune_apply_inflammation_effects(dendritic_immune_bridge_t* bridg
     if (!bridge->enable_inflammation_atrophy) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_dendritic_state_t* state = &bridge->inflammation_state;
 
@@ -303,7 +304,7 @@ int dendritic_immune_apply_inflammation_effects(dendritic_immune_bridge_t* bridg
     /* Calcium dysregulation */
     state->calcium_dysregulation = clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -333,7 +334,7 @@ int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) 
     if (!bridge->enable_damage_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     dendritic_immune_trigger_t* trigger = &bridge->damage_trigger;
 
@@ -370,7 +371,7 @@ int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) 
         trigger->danger_signal_strength = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -380,7 +381,7 @@ int dendritic_immune_trigger_from_damage(dendritic_immune_bridge_t* bridge) {
     if (!bridge->enable_damage_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     dendritic_immune_trigger_t* trigger = &bridge->damage_trigger;
 
@@ -406,7 +407,7 @@ int dendritic_immune_trigger_from_damage(dendritic_immune_bridge_t* bridge) {
         trigger->compensation_failure = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -416,7 +417,7 @@ int dendritic_immune_support_from_health(dendritic_immune_bridge_t* bridge) {
     if (!bridge->enable_recovery_immune_support) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     dendritic_immune_support_t* support = &bridge->recovery_support;
 
@@ -447,7 +448,7 @@ int dendritic_immune_support_from_health(dendritic_immune_bridge_t* bridge) {
         support->inflammation_clearance = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -486,9 +487,9 @@ int dendritic_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_dendritic_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -499,9 +500,9 @@ int dendritic_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_dendritic_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -534,7 +535,7 @@ float dendritic_immune_get_complexity_loss(const dendritic_immune_bridge_t* brid
  */
 int dendritic_immune_connect_bio_async(dendritic_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_DENDRITIC,
@@ -543,9 +544,9 @@ int dendritic_immune_connect_bio_async(dendritic_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("dendritic_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -559,13 +560,13 @@ int dendritic_immune_connect_bio_async(dendritic_immune_bridge_t* bridge) {
  */
 int dendritic_immune_disconnect_bio_async(dendritic_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("dendritic_immune_bridge disconnected from bio-async router");
     return 0;
@@ -576,5 +577,5 @@ int dendritic_immune_disconnect_bio_async(dendritic_immune_bridge_t* bridge) {
  */
 bool dendritic_immune_is_bio_async_connected(const dendritic_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

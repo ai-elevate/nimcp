@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/hemispheric/nimcp_hemispheric_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -243,13 +244,13 @@ hemispheric_fep_bridge_t* hemispheric_fep_create(
     bridge->stats.min_free_energy = 1000.0f;  // Will be updated
 
     // Allocate mutex
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_fep_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     bridge->initialized = true;
 
@@ -261,14 +262,14 @@ void hemispheric_fep_destroy(hemispheric_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     // Disconnect bio-async if connected
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         hemispheric_fep_disconnect_bio_async(bridge);
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     bridge->initialized = false;
@@ -286,7 +287,7 @@ int hemispheric_fep_update(hemispheric_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Update left hemisphere effects
     update_hemisphere_effects(
@@ -343,7 +344,7 @@ int hemispheric_fep_update(hemispheric_fep_bridge_t* bridge) {
 
     bridge->stats.updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -353,7 +354,7 @@ int hemispheric_fep_apply_modulation(hemispheric_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Apply learning rate modulation to hemispheres
     if (bridge->config.enable_learning_modulation) {
@@ -385,7 +386,7 @@ int hemispheric_fep_apply_modulation(hemispheric_fep_bridge_t* bridge) {
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -395,7 +396,7 @@ int hemispheric_fep_minimize_step(hemispheric_fep_bridge_t* bridge, float dt) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Gradient descent on prediction error (simplified)
     float left_gradient = bridge->left_effects.precision * bridge->left_effects.prediction_error;
@@ -412,7 +413,7 @@ int hemispheric_fep_minimize_step(hemispheric_fep_bridge_t* bridge, float dt) {
 
     bridge->stats.fe_minimization_steps++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     // Update effects based on new errors
     return hemispheric_fep_update(bridge);
@@ -527,7 +528,7 @@ int hemispheric_fep_set_precision(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (hemisphere == HEMISPHERE_LEFT) {
         bridge->left_effects.precision = precision;
@@ -535,7 +536,7 @@ int hemispheric_fep_set_precision(
         bridge->right_effects.precision = precision;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -553,7 +554,7 @@ int hemispheric_fep_inject_prediction_error(
         error_magnitude = 0.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (hemisphere == HEMISPHERE_LEFT) {
         bridge->left_effects.prediction_error = error_magnitude;
@@ -561,7 +562,7 @@ int hemispheric_fep_inject_prediction_error(
         bridge->right_effects.prediction_error = error_magnitude;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     // Update effects
     return hemispheric_fep_update(bridge);
@@ -572,7 +573,7 @@ int hemispheric_fep_trigger_transfer(hemispheric_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Force prediction sharing
     bridge->callosum_effects.transfer_active = true;
@@ -586,7 +587,7 @@ int hemispheric_fep_trigger_transfer(hemispheric_fep_bridge_t* bridge) {
 
     bridge->stats.prediction_transfers++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Triggered cross-hemisphere prediction transfer");
     return NIMCP_SUCCESS;
@@ -597,7 +598,7 @@ int hemispheric_fep_reset_free_energy(hemispheric_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->left_effects.prediction_error = 0.0f;
     bridge->left_effects.free_energy = 0.1f;
@@ -609,7 +610,7 @@ int hemispheric_fep_reset_free_energy(hemispheric_fep_bridge_t* bridge) {
 
     bridge->global_state.total_free_energy = 0.2f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset free energy to baseline");
     return NIMCP_SUCCESS;
@@ -632,10 +633,10 @@ hemispheric_fep_stats_t hemispheric_fep_get_stats(
 void hemispheric_fep_reset_stats(hemispheric_fep_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(hemispheric_fep_stats_t));
     bridge->stats.min_free_energy = 1000.0f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -647,7 +648,7 @@ int hemispheric_fep_connect_bio_async(hemispheric_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
     }
 
@@ -658,9 +659,9 @@ int hemispheric_fep_connect_bio_async(hemispheric_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Hemispheric FEP bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -674,16 +675,16 @@ int hemispheric_fep_disconnect_bio_async(hemispheric_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already disconnected
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Hemispheric FEP bridge disconnected from bio-async router");
 
     return NIMCP_SUCCESS;

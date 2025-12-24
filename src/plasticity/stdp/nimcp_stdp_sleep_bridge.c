@@ -6,12 +6,15 @@
  */
 
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct stdp_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     stdp_sleep_config_t config;
     sleep_system_t sleep_system;
     stdp_sleep_effects_t effects;
@@ -43,7 +46,7 @@ static void stdp_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 
     NIMCP_LOGGING_DEBUG("STDP bridge received sleep state: %d", new_state);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -68,7 +71,7 @@ static void stdp_on_sleep_state_change(sleep_state_t new_state, void* user_data)
     bridge->effects.plasticity_enabled = (new_state != SLEEP_STATE_DEEP_NREM) ||
                                           bridge->effects.learning_rate_factor > 0.1f;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("STDP modulated: lr=%.2f, ratio=%.2f, tau=%.2f",
                         bridge->effects.learning_rate_factor,
@@ -112,8 +115,8 @@ stdp_sleep_bridge_t stdp_sleep_bridge_create(
     bridge->effects.tau_factor = 1.0f;
     bridge->effects.plasticity_enabled = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -153,14 +156,14 @@ void stdp_sleep_bridge_destroy(stdp_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int stdp_sleep_update(stdp_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -189,40 +192,40 @@ int stdp_sleep_update(stdp_sleep_bridge_t bridge) {
     bridge->effects.plasticity_enabled = (state != SLEEP_STATE_DEEP_NREM) ||
                                           bridge->effects.learning_rate_factor > 0.1f;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int stdp_sleep_get_effects(const stdp_sleep_bridge_t bridge, stdp_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float stdp_sleep_get_learning_rate(const stdp_sleep_bridge_t bridge, float base_lr) {
     if (!bridge) return base_lr;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_lr * bridge->effects.learning_rate_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float stdp_sleep_get_a_plus(const stdp_sleep_bridge_t bridge, float base_a_plus) {
     if (!bridge) return base_a_plus;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_a_plus * bridge->effects.ltp_ltd_ratio;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float stdp_sleep_get_a_minus(const stdp_sleep_bridge_t bridge, float base_a_minus) {
     if (!bridge) return base_a_minus;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* A- gets inverse ratio adjustment to shift LTP/LTD balance */
     float result = base_a_minus / bridge->effects.ltp_ltd_ratio;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

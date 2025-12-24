@@ -31,7 +31,7 @@ protected:
         /* Create bridge */
         bio_router_fep_config_t config;
         bio_router_fep_default_config(&config);
-        bridge = bio_router_fep_create(&config, fep);
+        bridge = bio_router_fep_create(&config, fep, (bio_router_t)0);
     }
 
     void TearDown() override {
@@ -55,14 +55,14 @@ TEST_F(BioRouterFepBridgeTest, CreateDestroy) {
 }
 
 TEST_F(BioRouterFepBridgeTest, CreateWithNullConfig) {
-    bio_router_fep_bridge_t* br = bio_router_fep_create(nullptr, fep);
+    bio_router_fep_bridge_t* br = bio_router_fep_create(nullptr, fep, (bio_router_t)0);
     EXPECT_EQ(br, nullptr);
 }
 
 TEST_F(BioRouterFepBridgeTest, CreateWithNullFep) {
     bio_router_fep_config_t config;
     bio_router_fep_default_config(&config);
-    bio_router_fep_bridge_t* br = bio_router_fep_create(&config, nullptr);
+    bio_router_fep_bridge_t* br = bio_router_fep_create(&config, nullptr, (bio_router_t)0);
     EXPECT_EQ(br, nullptr);
 }
 
@@ -133,7 +133,7 @@ TEST_F(BioRouterFepBridgeTest, PredictRoute) {
     bio_module_id_t predicted_hop;
     float confidence;
 
-    int ret = bio_router_fep_predict_route(bridge, 0x0100, &predicted_hop, &confidence);
+    int ret = bio_router_fep_predict_route(bridge, (bio_module_id_t)0x0100, (bio_module_id_t)0x0200, &predicted_hop, &confidence);
     EXPECT_EQ(ret, 0);
     EXPECT_GE(confidence, 0.0f);
     EXPECT_LE(confidence, 1.0f);
@@ -143,9 +143,9 @@ TEST_F(BioRouterFepBridgeTest, PredictRouteNull) {
     bio_module_id_t predicted_hop;
     float confidence;
 
-    EXPECT_NE(bio_router_fep_predict_route(nullptr, 0x0100, &predicted_hop, &confidence), 0);
-    EXPECT_NE(bio_router_fep_predict_route(bridge, 0x0100, nullptr, &confidence), 0);
-    EXPECT_NE(bio_router_fep_predict_route(bridge, 0x0100, &predicted_hop, nullptr), 0);
+    EXPECT_NE(bio_router_fep_predict_route(nullptr, (bio_module_id_t)0x0100, (bio_module_id_t)0x0200, &predicted_hop, &confidence), 0);
+    EXPECT_NE(bio_router_fep_predict_route(bridge, (bio_module_id_t)0x0100, (bio_module_id_t)0x0200, nullptr, &confidence), 0);
+    EXPECT_NE(bio_router_fep_predict_route(bridge, (bio_module_id_t)0x0100, (bio_module_id_t)0x0200, &predicted_hop, nullptr), 0);
 }
 
 /* ============================================================================
@@ -156,7 +156,7 @@ TEST_F(BioRouterFepBridgeTest, PredictLatency) {
     float predicted_ms;
     float uncertainty;
 
-    int ret = bio_router_fep_predict_latency(bridge, 0x0100, 0x0200,
+    int ret = bio_router_fep_predict_latency(bridge, (bio_module_id_t)0x0200,
                                               &predicted_ms, &uncertainty);
     EXPECT_EQ(ret, 0);
     EXPECT_GE(predicted_ms, 0.0f);
@@ -167,11 +167,11 @@ TEST_F(BioRouterFepBridgeTest, PredictLatencyNull) {
     float predicted_ms;
     float uncertainty;
 
-    EXPECT_NE(bio_router_fep_predict_latency(nullptr, 0x0100, 0x0200,
+    EXPECT_NE(bio_router_fep_predict_latency(nullptr, (bio_module_id_t)0x0200,
                                               &predicted_ms, &uncertainty), 0);
-    EXPECT_NE(bio_router_fep_predict_latency(bridge, 0x0100, 0x0200,
+    EXPECT_NE(bio_router_fep_predict_latency(bridge, (bio_module_id_t)0x0200,
                                               nullptr, &uncertainty), 0);
-    EXPECT_NE(bio_router_fep_predict_latency(bridge, 0x0100, 0x0200,
+    EXPECT_NE(bio_router_fep_predict_latency(bridge, (bio_module_id_t)0x0200,
                                               &predicted_ms, nullptr), 0);
 }
 
@@ -180,16 +180,16 @@ TEST_F(BioRouterFepBridgeTest, PredictLatencyNull) {
  * ============================================================================ */
 
 TEST_F(BioRouterFepBridgeTest, ObserveRouting) {
-    int ret = bio_router_fep_observe_routing(bridge, 0x0100, 0x0200, 5.0f, true);
+    int ret = bio_router_fep_observe_routing(bridge, (bio_module_id_t)0x0200, 5.0f, true);
     EXPECT_EQ(ret, 0);
 }
 
 TEST_F(BioRouterFepBridgeTest, ObserveRoutingNull) {
-    EXPECT_NE(bio_router_fep_observe_routing(nullptr, 0x0100, 0x0200, 5.0f, true), 0);
+    EXPECT_NE(bio_router_fep_observe_routing(nullptr, (bio_module_id_t)0x0200, 5.0f, true), 0);
 }
 
 TEST_F(BioRouterFepBridgeTest, ObserveRoutingUpdatesEffects) {
-    bio_router_fep_observe_routing(bridge, 0x0100, 0x0200, 5.0f, true);
+    bio_router_fep_observe_routing(bridge, (bio_module_id_t)0x0200, 5.0f, true);
 
     fep_bio_router_effects_t effects;
     int ret = bio_router_fep_get_router_effects(bridge, &effects);
@@ -268,7 +268,7 @@ TEST_F(BioRouterFepBridgeTest, GetStats) {
     int ret = bio_router_fep_get_stats(bridge, &stats);
 
     EXPECT_EQ(ret, 0);
-    EXPECT_GE(stats.prediction_accuracy, 0.0f);
+    EXPECT_GE(stats.avg_precision, 0.0f);
 }
 
 TEST_F(BioRouterFepBridgeTest, GetStatsNull) {
@@ -280,7 +280,7 @@ TEST_F(BioRouterFepBridgeTest, GetStatsNull) {
 
 TEST_F(BioRouterFepBridgeTest, ResetStats) {
     /* Generate some stats */
-    bio_router_fep_observe_routing(bridge, 0x0100, 0x0200, 5.0f, true);
+    bio_router_fep_observe_routing(bridge, (bio_module_id_t)0x0200, 5.0f, true);
 
     /* Reset stats */
     int ret = bio_router_fep_reset_stats(bridge);
@@ -306,7 +306,7 @@ TEST_F(BioRouterFepBridgeTest, HighLatencyDetected) {
     bio_router_fep_update_effects(bridge);
 
     /* Observe high latency routing */
-    bio_router_fep_observe_routing(bridge, 0x0100, 0x0200, 100.0f, true);
+    bio_router_fep_observe_routing(bridge, (bio_module_id_t)0x0200, 100.0f, true);
 
     fep_bio_router_effects_t effects;
     bio_router_fep_get_router_effects(bridge, &effects);
@@ -317,7 +317,7 @@ TEST_F(BioRouterFepBridgeTest, HighLatencyDetected) {
 
 TEST_F(BioRouterFepBridgeTest, RoutingErrorsTracked) {
     /* Observe failed routing */
-    bio_router_fep_observe_routing(bridge, 0x0100, 0x0200, 0.0f, false);
+    bio_router_fep_observe_routing(bridge, (bio_module_id_t)0x0200, 0.0f, false);
 
     fep_bio_router_effects_t effects;
     bio_router_fep_get_router_effects(bridge, &effects);

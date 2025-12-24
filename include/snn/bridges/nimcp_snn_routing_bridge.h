@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
 #include "async/nimcp_bio_async.h"
@@ -93,6 +94,8 @@ typedef struct snn_routing_stats_s {
  * HOW:  Store references and routing state
  */
 typedef struct snn_routing_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;          /**< SNN network being routed */
     thalamic_router_t* router;       /**< Thalamic router */
     snn_routing_config_t config;     /**< Bridge configuration */

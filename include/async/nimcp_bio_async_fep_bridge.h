@@ -26,6 +26,7 @@
 #define NIMCP_BIO_ASYNC_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -172,6 +173,8 @@ typedef struct {
  * @brief Bio-async FEP bridge
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* Configuration */
     bio_async_fep_config_t config;
 
@@ -189,13 +192,7 @@ typedef struct {
     /* Statistics */
     bio_async_fep_stats_t stats;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;
-} bio_async_fep_bridge_t;
+    } bio_async_fep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

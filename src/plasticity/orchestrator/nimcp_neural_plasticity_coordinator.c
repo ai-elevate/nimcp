@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/orchestrator/nimcp_neural_plasticity_coordinator.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"

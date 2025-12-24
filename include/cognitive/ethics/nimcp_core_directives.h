@@ -36,6 +36,7 @@ extern "C" {
 //=============================================================================
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "async/nimcp_bio_router.h"  // For bio_module_context_t
 

@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/hemispheric/nimcp_hemispheric_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -322,13 +323,13 @@ hemispheric_immune_bridge_t* hemispheric_immune_create(
     bridge->current_inflammation = INFLAMMATION_NONE;
 
     // Allocate mutex
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_immune_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     bridge->initialized = true;
 
@@ -340,14 +341,14 @@ void hemispheric_immune_destroy(hemispheric_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     // Disconnect bio-async if connected
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         hemispheric_immune_disconnect_bio_async(bridge);
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     bridge->initialized = false;
@@ -365,7 +366,7 @@ int hemispheric_immune_update(hemispheric_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Get current inflammation from immune system
     if (bridge->immune_system) {
@@ -440,7 +441,7 @@ int hemispheric_immune_update(hemispheric_immune_bridge_t* bridge) {
 
     bridge->stats.updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -450,7 +451,7 @@ int hemispheric_immune_apply_modulation(hemispheric_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Apply learning rate modulation to each hemisphere
     brain_hemisphere_t* left = hemispheric_brain_get_left(bridge->brain);
@@ -492,7 +493,7 @@ int hemispheric_immune_apply_modulation(hemispheric_immune_bridge_t* bridge) {
 
     bridge->stats.modulations_applied++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -601,9 +602,9 @@ int hemispheric_immune_set_inflammation(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_inflammation = level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     // Trigger update to recompute effects
     return hemispheric_immune_update(bridge);
@@ -616,9 +617,9 @@ int hemispheric_immune_trigger_emergency_bilateral(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->lateralization_effects.emergency_bilateral = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     // Apply immediately
     if (bridge->brain) {
@@ -634,9 +635,9 @@ int hemispheric_immune_clear_emergency(hemispheric_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->lateralization_effects.emergency_bilateral = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     // Restore normal mode
     if (bridge->brain) {
@@ -664,9 +665,9 @@ hemispheric_immune_stats_t hemispheric_immune_get_stats(
 void hemispheric_immune_reset_stats(hemispheric_immune_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(hemispheric_immune_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -678,7 +679,7 @@ int hemispheric_immune_connect_bio_async(hemispheric_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
     }
 
@@ -689,9 +690,9 @@ int hemispheric_immune_connect_bio_async(hemispheric_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Hemispheric immune bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -705,16 +706,16 @@ int hemispheric_immune_disconnect_bio_async(hemispheric_immune_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already disconnected
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Hemispheric immune bridge disconnected from bio-async router");
 
     return NIMCP_SUCCESS;

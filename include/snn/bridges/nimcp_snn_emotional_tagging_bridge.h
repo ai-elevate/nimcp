@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "async/nimcp_bio_async.h"
 
@@ -76,6 +77,8 @@ typedef struct snn_emotional_tagging_state_s {
 } snn_emotional_tagging_state_t;
 
 typedef struct snn_emotional_tagging_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     emotional_tagging_system_t* tagging_system;
     snn_emotional_tagging_config_t config;

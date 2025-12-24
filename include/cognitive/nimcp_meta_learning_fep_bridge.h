@@ -27,6 +27,7 @@
 #define NIMCP_META_LEARNING_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 
 #include "cognitive/free_energy/nimcp_free_energy.h"
@@ -74,6 +75,8 @@ typedef struct {
 } meta_learning_fep_stats_t;
 
 struct meta_learning_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     meta_learning_fep_config_t config;
     fep_system_t* fep_system;
     meta_learner_t meta_learner;
@@ -81,9 +84,6 @@ struct meta_learning_fep_bridge {
     fep_meta_learning_effects_t meta_effects;
     meta_learning_fep_state_t state;
     meta_learning_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 int meta_learning_fep_bridge_default_config(meta_learning_fep_config_t* config);

@@ -10,6 +10,7 @@
  */
 
 #include "perception/immune/nimcp_speech_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdio.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -172,12 +173,12 @@ speech_immune_bridge_t* speech_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("speech_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -187,9 +188,9 @@ void speech_immune_bridge_destroy(speech_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -207,7 +208,7 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_speech_modulation) return 0;
     if (!bridge->immune_system || !bridge->speech_cortex) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine levels from immune system */
     /* In a full implementation, we'd query actual cytokine concentrations */
@@ -274,7 +275,7 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
         clamp_f(-bridge->cytokine_effects.ifn_gamma_prosody_reduction, 0.0f, 0.8f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -285,7 +286,7 @@ int speech_immune_apply_inflammation_effects(speech_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -345,7 +346,7 @@ int speech_immune_apply_inflammation_effects(speech_immune_bridge_t* bridge) {
     bridge->inflammation_state.working_memory_capacity =
         1.0f - (inflammation_factor * 0.4f);  /* Max 40% reduction */
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -400,11 +401,11 @@ int speech_immune_trigger_from_effort(speech_immune_bridge_t* bridge) {
     if (!bridge->enable_speech_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->speech_cortex) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check if speech effort exceeds threshold */
     if (bridge->speech_trigger.speech_effort_level < SPEECH_EFFORT_IMMUNE_TRIGGER) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
@@ -441,7 +442,7 @@ int speech_immune_trigger_from_effort(speech_immune_bridge_t* bridge) {
     );
 
     bridge->speech_triggered_responses++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     LOG_MODULE_INFO("speech_immune_bridge",
                   "Speech effort triggered immune response");
@@ -464,7 +465,7 @@ int speech_immune_detect_distress_vocalization(
      * - Tremor in voice (anxiety/pain)
      */
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Simplified distress detection */
     bool distress_detected = bridge->speech_trigger.distress_intensity > DISTRESS_VOCALIZATION_THRESHOLD;
@@ -503,7 +504,7 @@ int speech_immune_detect_distress_vocalization(
                   "Distress vocalization triggered immune response");
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -516,7 +517,7 @@ int speech_immune_trigger_from_illness_expression(
     if (!bridge->enable_speech_immune_trigger) return 0;
     if (!word || !is_illness_word(word)) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Verbalizing illness modulates immune response (Pennebaker 1997) */
     /* Release IL-10 (anti-inflammatory, associated with expression/disclosure) */
@@ -530,7 +531,7 @@ int speech_immune_trigger_from_illness_expression(
         &cytokine_id
     );
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     LOG_MODULE_DEBUG("speech_immune_bridge",
                   "Illness word '%s' modulated immune response", word);
@@ -547,9 +548,9 @@ int speech_immune_bridge_update(
 ) {
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Apply immune effects to speech */
     speech_immune_apply_cytokine_effects(bridge);
@@ -586,9 +587,9 @@ int speech_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_speech_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -599,9 +600,9 @@ int speech_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_speech_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -636,7 +637,7 @@ float speech_immune_get_working_memory_capacity(
  */
 int speech_immune_connect_bio_async(speech_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SPEECH,
@@ -645,9 +646,9 @@ int speech_immune_connect_bio_async(speech_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("speech_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -661,13 +662,13 @@ int speech_immune_connect_bio_async(speech_immune_bridge_t* bridge) {
  */
 int speech_immune_disconnect_bio_async(speech_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("speech_immune_bridge disconnected from bio-async router");
     return 0;
@@ -678,5 +679,5 @@ int speech_immune_disconnect_bio_async(speech_immune_bridge_t* bridge) {
  */
 bool speech_immune_is_bio_async_connected(const speech_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

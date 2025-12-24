@@ -12,6 +12,7 @@
  */
 
 #include "security/sleep/nimcp_anomaly_detector_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -19,10 +20,11 @@
 #include <string.h>
 
 struct anomaly_detector_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     anomaly_detector_sleep_config_t config;
     sleep_system_t sleep_system;
     anomaly_detector_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -67,7 +69,7 @@ static void anomaly_detector_on_sleep_state_change(sleep_state_t new_state, void
     anomaly_detector_sleep_bridge_t bridge = (anomaly_detector_sleep_bridge_t)user_data;
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
     bridge->effects.anomaly_threshold_factor = anomaly_sleep_get_thresh_factor(new_state);
@@ -82,7 +84,7 @@ static void anomaly_detector_on_sleep_state_change(sleep_state_t new_state, void
                         bridge->effects.learning_rate_factor,
                         bridge->effects.fp_tolerance_factor);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 int anomaly_detector_sleep_default_config(anomaly_detector_sleep_config_t* config)
@@ -117,8 +119,8 @@ anomaly_detector_sleep_bridge_t anomaly_detector_sleep_bridge_create(
     memcpy(&bridge->config, config, sizeof(anomaly_detector_sleep_config_t));
     bridge->sleep_system = sleep_system;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for anomaly detector sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -152,8 +154,8 @@ void anomaly_detector_sleep_bridge_destroy(anomaly_detector_sleep_bridge_t bridg
                                         anomaly_detector_on_sleep_state_change, bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -164,9 +166,9 @@ int anomaly_detector_sleep_update(anomaly_detector_sleep_bridge_t bridge)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.sleep_pressure = sleep_get_pressure(bridge->sleep_system);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -176,9 +178,9 @@ int anomaly_detector_sleep_get_effects(const anomaly_detector_sleep_bridge_t bri
 {
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(anomaly_detector_sleep_effects_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -187,11 +189,11 @@ float anomaly_detector_sleep_get_threshold(const anomaly_detector_sleep_bridge_t
 {
     if (!bridge) return base;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->config.enable_threshold_modulation ?
         bridge->effects.anomaly_threshold_factor : 1.0f;
     float modulated = 1.0f + (factor - 1.0f) * bridge->config.modulation_strength;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return base * modulated;
 }
@@ -200,11 +202,11 @@ float anomaly_detector_sleep_get_learning_rate(const anomaly_detector_sleep_brid
 {
     if (!bridge) return base;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->config.enable_learning_modulation ?
         bridge->effects.learning_rate_factor : 1.0f;
     float modulated = 1.0f + (factor - 1.0f) * bridge->config.modulation_strength;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return base * modulated;
 }
@@ -213,9 +215,9 @@ bool anomaly_detector_sleep_is_learning_enabled(const anomaly_detector_sleep_bri
 {
     if (!bridge) return true;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool enabled = bridge->effects.learning_enabled;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return enabled;
 }

@@ -43,7 +43,7 @@ TEST_F(AnalysisFEPBridgeTest, DefaultConfig) {
 TEST_F(AnalysisFEPBridgeTest, CreateDestroy) {
     bridge = analysis_fep_bridge_create(nullptr);
     ASSERT_NE(bridge, nullptr);
-    EXPECT_FALSE(bridge->bio_async_enabled);
+    EXPECT_FALSE(bridge->base.bio_async_enabled);
 
     analysis_fep_bridge_destroy(bridge);
     bridge = nullptr; // Prevent double-free in TearDown

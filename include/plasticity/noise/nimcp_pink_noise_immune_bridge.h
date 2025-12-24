@@ -43,6 +43,7 @@
 #define NIMCP_PINK_NOISE_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "plasticity/noise/nimcp_pink_noise.h"
@@ -164,6 +165,8 @@ typedef struct {
  * @brief Immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     pink_immune_config_t config;
     brain_immune_system_t* immune_system;
     pink_noise_generator_t noise_generator;
@@ -178,10 +181,7 @@ typedef struct {
     float avg_alpha_modifier;
 
     // Bio-async integration
-    void* bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} pink_immune_bridge_t;
+    void* bio_ctx;} pink_immune_bridge_t;
 
 /**
  * @brief Bridge statistics

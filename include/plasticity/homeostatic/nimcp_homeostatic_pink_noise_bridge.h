@@ -32,6 +32,7 @@
 #define NIMCP_HOMEOSTATIC_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/noise/nimcp_pink_noise.h"
@@ -102,6 +103,8 @@ typedef struct {
  * @brief Pink noise bridge state for homeostatic plasticity
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     homeo_pink_noise_config_t config;
 
     /* Connected module */

@@ -157,6 +157,7 @@
 #define NIMCP_QUANTUM_ANNEALING_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -387,6 +388,8 @@ typedef struct {
  * @brief Quantum annealing immune bridge state
  */
 struct qa_immune_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     qa_immune_config_t config;         /**< Configuration */
     qa_immune_phase_t phase;           /**< Current phase */
 
@@ -424,10 +427,6 @@ struct qa_immune_bridge {
 
     /* Statistics */
     qa_immune_stats_t stats;
-
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;      /**< Bio-async module context */
-    bool bio_async_enabled;            /**< Bio-async active */
 
     /* Thread safety */
     nimcp_platform_mutex_t* mutex;     /**< Platform mutex */

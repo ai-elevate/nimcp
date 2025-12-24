@@ -21,6 +21,7 @@
 #define NIMCP_ASTROCYTES_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "async/nimcp_bio_router.h"
@@ -76,6 +77,8 @@ typedef struct {
 } astro_immune_stats_t;
 
 struct astro_immune_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     astro_immune_config_t config;
     nimcp_astrocyte_t* astrocyte;
     brain_immune_system_t* immune_system;
@@ -86,9 +89,6 @@ struct astro_immune_bridge {
     float scar_formation_progress;
     float reactivity_level;
     astro_immune_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
     bool initialized;
 };
 

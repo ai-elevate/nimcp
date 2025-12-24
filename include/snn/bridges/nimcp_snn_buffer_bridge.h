@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "middleware/buffering/nimcp_circular_buffer.h"
 #include "async/nimcp_bio_async.h"
@@ -97,6 +98,8 @@ typedef struct snn_buffer_stats_s {
  * HOW:  Store references and buffering state
  */
 typedef struct snn_buffer_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;          /**< SNN network being buffered */
     circular_buffer_t** buffers;     /**< Array of buffers (per neuron or pop) */
     uint32_t n_buffers;              /**< Number of buffers */

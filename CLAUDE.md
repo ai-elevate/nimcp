@@ -175,6 +175,43 @@ make <test_target> -j4            # Build specific test
 
 **Alternative approach:** Write implementation first, then derive tests from what was actually written - rather than writing tests for APIs you haven't verified.
 
+## MANDATORY Regex Testing Protocol
+
+**BEFORE applying ANY regex to the codebase, you MUST:**
+1. Test the regex on representative sample input first
+2. Print both input and output to verify the transformation is correct
+3. Check edge cases (what if the pattern appears multiple times? what about nested parentheses?)
+
+**Example validation approach:**
+```python
+import re
+
+# ALWAYS test before applying to files
+test_cases = [
+    "nimcp_mutex_lock((pthread_mutex_t*)&bridge->base.mutex);",
+    "pthread_mutex_init(&bridge->base.mutex, NULL)",
+]
+
+pattern = r'your_pattern_here'
+replacement = 'your_replacement'
+
+for test in test_cases:
+    result = re.sub(pattern, replacement, test)
+    print(f"Input:  {test}")
+    print(f"Output: {result}")
+    print()
+```
+
+**If a regex produces unexpected output:**
+- STOP and fix the pattern before running on real files
+- Never assume a regex works without testing it
+
+**Common regex pitfalls to watch for:**
+- Greedy matching consuming too much
+- Not accounting for the full context (e.g., function call parentheses)
+- Forgetting to escape special characters
+- Patterns that match partial identifiers
+
 ## Key API Patterns
 
 ### Tensor Library (`include/utils/tensor/nimcp_tensor.h`)

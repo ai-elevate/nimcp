@@ -103,6 +103,7 @@
 #define NIMCP_NEUROMOD_SUBSTRATE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -276,6 +277,8 @@ typedef struct {
  * @brief Complete neuromodulator-substrate bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     neural_substrate_t* substrate;
     neuromodulator_system_t neuromod_system;
@@ -286,16 +289,10 @@ typedef struct {
     /* Configuration */
     neuromod_substrate_config_t config;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     /* Statistics */
     neuromod_substrate_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-} neuromod_substrate_bridge_t;
+    } neuromod_substrate_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

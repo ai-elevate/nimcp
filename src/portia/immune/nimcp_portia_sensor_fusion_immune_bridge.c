@@ -6,6 +6,7 @@
  */
 
 #include "portia/immune/nimcp_portia_sensor_fusion_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -205,8 +206,8 @@ portia_sensor_fusion_immune_bridge_t* portia_sensor_fusion_immune_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -214,7 +215,7 @@ portia_sensor_fusion_immune_bridge_t* portia_sensor_fusion_immune_create(
 
     /* Initialize state */
     bridge->last_update_time = 0;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Created Portia sensor fusion-immune bridge");
     return bridge;
@@ -227,13 +228,13 @@ void portia_sensor_fusion_immune_destroy(portia_sensor_fusion_immune_bridge_t* b
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         portia_sensor_fusion_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -260,7 +261,7 @@ int portia_sensor_fusion_immune_apply_cytokine_effects(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     compute_cytokine_sensor_effects(bridge);
@@ -275,7 +276,7 @@ int portia_sensor_fusion_immune_apply_cytokine_effects(
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine effects: weight_factor=%.3f", weight_factor);
     return 0;
@@ -295,7 +296,7 @@ int portia_sensor_fusion_immune_apply_inflammation_effects(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute inflammation effects */
     compute_inflammation_sensor_effects(bridge);
@@ -311,7 +312,7 @@ int portia_sensor_fusion_immune_apply_inflammation_effects(
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation effects: weight=%.3f, confidence_loss=%.3f",
                        weight_factor, confidence_reduction);
@@ -366,12 +367,12 @@ int portia_sensor_fusion_immune_trigger_overload_response(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get sensor fusion state */
     portia_fusion_stats_t stats;
     if (!portia_fusion_get_stats(bridge->sensor_fusion, &stats)) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -406,7 +407,7 @@ int portia_sensor_fusion_immune_trigger_overload_response(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -424,7 +425,7 @@ int portia_sensor_fusion_immune_boost_from_conflicts(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute sensor conflict level (placeholder) */
     float conflict_level = bridge->sensor_modulation.sensor_conflict_level;
@@ -444,7 +445,7 @@ int portia_sensor_fusion_immune_boost_from_conflicts(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -462,12 +463,12 @@ int portia_sensor_fusion_immune_trigger_dropout_suppression(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get sensor fusion state */
     portia_fusion_stats_t stats;
     if (!portia_fusion_get_stats(bridge->sensor_fusion, &stats)) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -487,7 +488,7 @@ int portia_sensor_fusion_immune_trigger_dropout_suppression(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -506,7 +507,7 @@ int portia_sensor_fusion_immune_update(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Update timing */
     bridge->last_update_time += delta_ms;
@@ -536,7 +537,7 @@ int portia_sensor_fusion_immune_update(
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -610,9 +611,9 @@ int portia_sensor_fusion_immune_connect_bio_async(
     }
 
     /* Would register with bio-async router here */
-    /* bio_router_register_module(&bridge->bio_ctx, BIO_MODULE_IMMUNE_PORTIA_SENSOR); */
+    /* bio_router_register_module(&bridge->base.bio_ctx, BIO_MODULE_IMMUNE_PORTIA_SENSOR); */
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
 
     NIMCP_LOGGING_INFO("Connected Portia sensor fusion-immune bridge to bio-async");
     return 0;
@@ -627,14 +628,14 @@ int portia_sensor_fusion_immune_disconnect_bio_async(
         return -1;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;  /* Not connected */
     }
 
     /* Would unregister from bio-async router here */
-    /* bio_router_unregister_module(&bridge->bio_ctx); */
+    /* bio_router_unregister_module(&bridge->base.bio_ctx); */
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected Portia sensor fusion-immune bridge from bio-async");
     return 0;
@@ -648,5 +649,5 @@ bool portia_sensor_fusion_immune_is_bio_async_connected(
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

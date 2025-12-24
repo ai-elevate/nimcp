@@ -66,6 +66,7 @@
 #define NIMCP_MULTIMODAL_NLP_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -177,6 +178,8 @@ typedef struct {
  * @brief Complete multimodal NLP-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     brain_immune_system_t* immune_system;
     speech_cortex_t* speech_cortex;
     visual_cortex_t* visual_cortex;
@@ -193,13 +196,7 @@ typedef struct {
     uint32_t cytokine_impairments;
     uint32_t binding_error_triggers;
     uint32_t speech_error_triggers;
-    uint32_t fluency_boosts;
-
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    void* mutex;
-} multimodal_nlp_immune_bridge_t;
+    uint32_t fluency_boosts;} multimodal_nlp_immune_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

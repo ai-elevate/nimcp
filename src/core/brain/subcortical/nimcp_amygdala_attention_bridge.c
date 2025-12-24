@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_amygdala_attention_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
@@ -86,13 +87,13 @@ amygdala_attention_bridge_t* amygdala_attention_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Created amygdala-attention bridge");
     return bridge;
@@ -104,14 +105,14 @@ void amygdala_attention_destroy(amygdala_attention_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         amygdala_attention_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -123,7 +124,7 @@ int amygdala_attention_reset(amygdala_attention_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset state */
     memset(&bridge->amygdala_effects, 0, sizeof(amygdala_attention_effects_t));
@@ -131,12 +132,13 @@ int amygdala_attention_reset(amygdala_attention_bridge_t* bridge) {
 
     /* Reset statistics */
     bridge->total_updates = 0;
+    bridge->base.total_updates = 0;
     bridge->hypervigilance_activations = 0;
     bridge->threat_boosts = 0;
     bridge->attention_enhancements = 0;
     bridge->last_update_time = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset amygdala-attention bridge");
     return 0;
@@ -157,11 +159,14 @@ int amygdala_attention_connect_amygdala(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = amygdala;
+    bridge->base.system_a = amygdala;
     bridge->amygdala_connected = true;
+    bridge->base.system_a_connected = true;
     bridge->bridge_active = bridge->amygdala_connected && bridge->attention_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    bridge->base.bridge_active = bridge->bridge_active;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected amygdala to bridge");
     return 0;
@@ -178,11 +183,14 @@ int amygdala_attention_connect_attention(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = attention;
+    bridge->base.system_b = attention;
     bridge->attention_connected = true;
+    bridge->base.system_b_connected = true;
     bridge->bridge_active = bridge->amygdala_connected && bridge->attention_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    bridge->base.bridge_active = bridge->bridge_active;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected attention to bridge");
     return 0;
@@ -193,11 +201,13 @@ int amygdala_attention_disconnect_amygdala(amygdala_attention_bridge_t* bridge) 
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = NULL;
     bridge->amygdala_connected = false;
+    bridge->base.system_a_connected = false;
     bridge->bridge_active = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    bridge->base.bridge_active = false;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected amygdala from bridge");
     return 0;
@@ -208,11 +218,11 @@ int amygdala_attention_disconnect_attention(amygdala_attention_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = NULL;
     bridge->attention_connected = false;
     bridge->bridge_active = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected attention from bridge");
     return 0;
@@ -237,7 +247,7 @@ int amygdala_attention_apply_amygdala_effects(amygdala_attention_bridge_t* bridg
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get amygdala state */
     bridge->amygdala_effects.fear_level = amygdala_get_fear_level(bridge->amygdala);
@@ -273,7 +283,7 @@ int amygdala_attention_apply_amygdala_effects(amygdala_attention_bridge_t* bridg
     bridge->amygdala_effects.disengagement_difficulty =
         amygdala_attention_compute_disengagement_difficulty(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -357,7 +367,7 @@ int amygdala_attention_apply_attention_effects(amygdala_attention_bridge_t* brid
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* NOTE: Attention system is opaque pointer, so we can't query its state directly.
      * In a real implementation, this would call attention system API to get:
@@ -388,7 +398,7 @@ int amygdala_attention_apply_attention_effects(amygdala_attention_bridge_t* brid
         (bridge->attention_effects.focus_on_threat + bridge->attention_effects.focus_on_neutral + 0.001f) : 0.0f;
     bridge->attention_effects.prefrontal_regulation = focus_ratio;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -446,9 +456,10 @@ int amygdala_attention_update(amygdala_attention_bridge_t* bridge) {
         return result;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->total_updates++;
-    nimcp_mutex_unlock(bridge->mutex);
+    bridge->base.total_updates++;
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -493,9 +504,9 @@ int amygdala_attention_get_amygdala_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *effects = bridge->amygdala_effects;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -508,9 +519,9 @@ int amygdala_attention_get_attention_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *effects = bridge->attention_effects;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -544,7 +555,7 @@ int amygdala_attention_get_statistics(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     if (total_updates) {
         *total_updates = bridge->total_updates;
@@ -559,7 +570,7 @@ int amygdala_attention_get_statistics(
         *attention_enhancements = bridge->attention_enhancements;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -572,7 +583,7 @@ int amygdala_attention_connect_bio_async(amygdala_attention_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0; /* Already connected */
     }
 
@@ -583,9 +594,9 @@ int amygdala_attention_connect_bio_async(amygdala_attention_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -599,16 +610,16 @@ int amygdala_attention_disconnect_bio_async(amygdala_attention_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0; /* Not connected */
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -620,5 +631,5 @@ bool amygdala_attention_is_bio_async_connected(
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

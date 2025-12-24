@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -67,8 +68,8 @@ emotion_recognition_fep_bridge_t* emotion_recognition_fep_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -87,13 +88,13 @@ void emotion_recognition_fep_destroy(emotion_recognition_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         emotion_recognition_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -110,9 +111,9 @@ int emotion_recognition_fep_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to emotion recognition bridge");
     return 0;
@@ -124,9 +125,9 @@ int emotion_recognition_fep_connect_emotion(
 ) {
     if (!bridge || !emotion) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotion_system = emotion;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected emotion recognition system to FEP bridge");
     return 0;
@@ -135,10 +136,10 @@ int emotion_recognition_fep_connect_emotion(
 int emotion_recognition_fep_disconnect(emotion_recognition_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->emotion_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from emotion recognition FEP bridge");
     return 0;
@@ -155,7 +156,7 @@ int emotion_recognition_fep_infer_emotion(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_emotion_inference) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Prediction error drives emotional state inference
      * High PE -> more intense emotional inference
@@ -204,7 +205,7 @@ int emotion_recognition_fep_infer_emotion(
     bridge->stats.avg_prediction_error =
         (bridge->stats.avg_prediction_error * 0.9f) + (fabsf(pe_magnitude) * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Inferred emotion from PE: valence=%f, arousal=%f, confidence=%f",
                         inferred_valence, inferred_arousal, inference_strength);
@@ -217,7 +218,7 @@ int emotion_recognition_fep_modulate_modality_precision(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_precision_confidence) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Modulate precision weights for each modality based on confidence */
     float confidence = bridge->state.inference_confidence;
@@ -249,7 +250,7 @@ int emotion_recognition_fep_modulate_modality_precision(
     /* Update stats */
     bridge->stats.precision_modulation_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated modality precisions: facial=%f, vocal=%f, text=%f, physio=%f",
                         bridge->emotion_effects.modality_precision_weights[0],
@@ -272,7 +273,7 @@ int emotion_recognition_fep_update(
     /* Update modality precision modulation */
     emotion_recognition_fep_modulate_modality_precision(bridge);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update timestamp */
     bridge->state.last_recognition_time += delta_ms;
@@ -284,7 +285,7 @@ int emotion_recognition_fep_update(
         bridge->state.recognition_active = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -299,9 +300,9 @@ int emotion_recognition_fep_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -312,9 +313,9 @@ int emotion_recognition_fep_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -327,7 +328,7 @@ int emotion_recognition_fep_connect_bio_async(
     emotion_recognition_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_EMOTION_RECOGNITION_BRIDGE,
@@ -336,9 +337,9 @@ int emotion_recognition_fep_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -351,14 +352,14 @@ int emotion_recognition_fep_disconnect_bio_async(
     emotion_recognition_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -367,5 +368,5 @@ int emotion_recognition_fep_disconnect_bio_async(
 bool emotion_recognition_fep_is_bio_async_connected(
     const emotion_recognition_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

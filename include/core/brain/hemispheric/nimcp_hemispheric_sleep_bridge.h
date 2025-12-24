@@ -84,6 +84,7 @@
 #define NIMCP_HEMISPHERIC_SLEEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_fep_sleep.h"
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
@@ -219,6 +220,8 @@ typedef struct {
  * @brief Hemispheric sleep bridge structure
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     // Connected systems
     hemispheric_brain_t* brain;      /**< Hemispheric brain */
     fep_sleep_system_t* sleep_system; /**< FEP sleep system */
@@ -240,12 +243,7 @@ typedef struct {
     hemispheric_sleep_stats_t stats;
 
     // Bio-async
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     // Thread safety
-    nimcp_mutex_t* mutex;
-
     // State
     bool initialized;
 } hemispheric_sleep_bridge_t;

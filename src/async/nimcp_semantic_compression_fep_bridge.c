@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_semantic_compression_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include <string.h>
 #include <math.h>
@@ -71,8 +72,8 @@ semantic_compression_fep_bridge_t* semantic_compression_fep_create(
     bridge->fep_effects.preserve_semantic_structure = config->enable_semantic_preservation;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("semantic_compression_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -89,13 +90,13 @@ void semantic_compression_fep_destroy(semantic_compression_fep_bridge_t* bridge)
     }
 
     /* Disconnect from bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         semantic_compression_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -110,7 +111,7 @@ int semantic_compression_fep_update_effects(semantic_compression_fep_bridge_t* b
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current free energy */
     float free_energy = fep_get_free_energy(bridge->fep_system);
@@ -138,7 +139,7 @@ int semantic_compression_fep_update_effects(semantic_compression_fep_bridge_t* b
     bridge->fep_effects.acceptable_semantic_loss =
         0.1f * (1.0f - certainty); /* Higher uncertainty = more loss acceptable */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -152,7 +153,7 @@ int semantic_compression_fep_observe_compression(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update compression observations */
     bridge->compression_effects.achieved_compression_ratio = ratio;
@@ -190,7 +191,7 @@ int semantic_compression_fep_observe_compression(
         0.95f * bridge->stats.avg_compression_surprise +
         0.05f * bridge->compression_effects.compression_surprise;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -206,7 +207,7 @@ int semantic_compression_fep_predict_compressibility(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Use FEP to estimate signal predictability */
     /* High predictability = high compression ratio */
@@ -216,7 +217,7 @@ int semantic_compression_fep_predict_compressibility(
     /* Clamp ratio to reasonable bounds */
     *predicted_ratio = fmaxf(1.0f, fminf(*predicted_ratio, 20.0f));
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -230,7 +231,7 @@ int semantic_compression_fep_learn_primitive(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Extract FEP belief as semantic primitive */
     /* In a full implementation, would extract belief mean vector */
@@ -244,7 +245,7 @@ int semantic_compression_fep_learn_primitive(
     NIMCP_LOGGING_DEBUG("Learned primitive %u from FEP level %u",
                         *primitive_id, level);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -258,11 +259,11 @@ int semantic_compression_fep_connect_bio_async(semantic_compression_fep_bridge_t
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0; /* Already connected */
     }
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
 
     NIMCP_LOGGING_INFO("Connected semantic compression FEP bridge");
 
@@ -274,11 +275,11 @@ int semantic_compression_fep_disconnect_bio_async(semantic_compression_fep_bridg
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected semantic compression FEP bridge");
 
@@ -288,7 +289,7 @@ int semantic_compression_fep_disconnect_bio_async(semantic_compression_fep_bridg
 bool semantic_compression_fep_is_bio_async_connected(
     const semantic_compression_fep_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -303,9 +304,9 @@ int semantic_compression_fep_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->fep_effects, sizeof(semantic_compression_fep_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -318,9 +319,9 @@ int semantic_compression_fep_get_compression_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->compression_effects, sizeof(fep_semantic_compression_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -333,9 +334,9 @@ int semantic_compression_fep_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(semantic_compression_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -345,9 +346,9 @@ int semantic_compression_fep_reset_stats(semantic_compression_fep_bridge_t* brid
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(semantic_compression_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

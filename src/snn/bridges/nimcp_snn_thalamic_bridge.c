@@ -4,6 +4,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -159,7 +160,7 @@ void snn_thalamic_bridge_destroy(snn_thalamic_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_thalamic_bridge_disconnect_bio_async(bridge);
     }
 
@@ -176,9 +177,9 @@ void snn_thalamic_bridge_destroy(snn_thalamic_bridge_t* bridge) {
 
 int snn_thalamic_bridge_connect_bio_async(snn_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
     NIMCP_LOGGING_INFO("SNN thalamic bridge connected to bio-async");
 
     return 0;
@@ -186,16 +187,16 @@ int snn_thalamic_bridge_connect_bio_async(snn_thalamic_bridge_t* bridge) {
 
 int snn_thalamic_bridge_disconnect_bio_async(snn_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("SNN thalamic bridge disconnected from bio-async");
 
     return 0;
 }
 
 bool snn_thalamic_bridge_is_bio_async_connected(const snn_thalamic_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 //=============================================================================

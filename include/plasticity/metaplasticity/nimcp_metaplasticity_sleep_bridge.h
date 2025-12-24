@@ -73,6 +73,7 @@
 #define NIMCP_METAPLASTICITY_SLEEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/nimcp_sleep_wake.h"
 #include "plasticity/metaplasticity/nimcp_extended_metaplasticity.h"
@@ -135,6 +136,8 @@ typedef struct {
  * @brief Sleep-metaplasticity integration bridge
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     sleep_system_t sleep_system;
     metaplasticity_controller_t metaplasticity_controller;
@@ -152,9 +155,7 @@ typedef struct {
     float total_drift_accumulated;
     float max_drift_observed;
 
-    /* Thread safety */
-    void* mutex;
-} metaplasticity_sleep_bridge_t;
+    } metaplasticity_sleep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/emotion/nimcp_emotion_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
@@ -332,8 +333,8 @@ emotion_substrate_bridge_t* emotion_substrate_bridge_create(
     bridge->stats.max_reactivity_threshold = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for emotion substrate bridge");
         nimcp_free(bridge);
         return NULL;
@@ -358,13 +359,13 @@ void emotion_substrate_bridge_destroy(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Disconnect from bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         emotion_substrate_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -385,7 +386,7 @@ int emotion_substrate_connect_bio_async(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Guard: check if already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected");
         return NIMCP_SUCCESS;
     }
@@ -398,9 +399,9 @@ int emotion_substrate_connect_bio_async(emotion_substrate_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Emotion substrate bridge connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -418,17 +419,17 @@ int emotion_substrate_disconnect_bio_async(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Guard: check if connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
     /* Deregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Emotion substrate bridge disconnected from bio-async");
 
@@ -443,7 +444,7 @@ bool emotion_substrate_is_bio_async_connected(
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ========================================================================
@@ -464,13 +465,13 @@ int emotion_substrate_update(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Lock for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query substrate metabolic state */
     substrate_metabolic_state_t metabolic;
     int ret = substrate_get_metabolic_state(bridge->substrate, &metabolic);
     if (ret != NIMCP_SUCCESS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Failed to get substrate metabolic state");
         return ret;
     }
@@ -479,7 +480,7 @@ int emotion_substrate_update(emotion_substrate_bridge_t* bridge) {
     substrate_physical_state_t physical;
     ret = substrate_get_physical_state(bridge->substrate, &physical);
     if (ret != NIMCP_SUCCESS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Failed to get substrate physical state");
         return ret;
     }
@@ -550,7 +551,7 @@ int emotion_substrate_update(emotion_substrate_bridge_t* bridge) {
     bridge->stats.last_update_time = 0; /* TODO: get actual timestamp */
 
     /* Unlock */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Emotion substrate effects updated successfully");
 

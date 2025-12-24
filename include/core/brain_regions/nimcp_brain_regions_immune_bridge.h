@@ -115,6 +115,7 @@
 #define NIMCP_BRAIN_REGIONS_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -355,6 +356,8 @@ typedef struct {
  * @brief Complete brain regions-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_module_t* brain_module;
     brain_immune_system_t* immune_system;
@@ -381,16 +384,10 @@ typedef struct {
     /* Configuration */
     brain_regions_immune_config_t config;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     /* Statistics */
     brain_regions_immune_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-} brain_regions_immune_bridge_t;
+    } brain_regions_immune_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

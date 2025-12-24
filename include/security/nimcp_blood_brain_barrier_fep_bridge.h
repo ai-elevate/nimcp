@@ -76,6 +76,7 @@
 #define NIMCP_BLOOD_BRAIN_BARRIER_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -185,6 +186,8 @@ typedef struct {
  * @brief BBB FEP bridge
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     bbb_fep_config_t config;             /**< Configuration */
     fep_system_t* fep_system;            /**< FEP system */
     bbb_system_t bbb_system;             /**< BBB system */
@@ -193,13 +196,7 @@ typedef struct {
     fep_bbb_effects_t bbb_effects;       /**< BBB → FEP effects */
 
     bbb_fep_state_t state;               /**< Current state */
-    bbb_fep_stats_t stats;               /**< Statistics */
-
-    bio_module_context_t bio_ctx;        /**< Bio-async context */
-    bool bio_async_enabled;              /**< Bio-async active */
-
-    void* mutex;                         /**< Thread safety */
-} bbb_fep_bridge_t;
+    bbb_fep_stats_t stats;               /**< Statistics */} bbb_fep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

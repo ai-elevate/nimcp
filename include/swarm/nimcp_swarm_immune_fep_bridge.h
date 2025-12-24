@@ -20,6 +20,7 @@
 #define NIMCP_SWARM_IMMUNE_FEP_BRIDGE_H
 
 #include "swarm/nimcp_swarm_immune.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/thread/nimcp_thread.h"
@@ -65,17 +66,15 @@ typedef struct {
 } swarm_immune_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     swarm_immune_fep_config_t config;
     fep_system_t* fep_system;
     void* immune_system;
     swarm_immune_fep_effects_t fep_effects;
     fep_swarm_immune_effects_t immune_effects;
     swarm_immune_fep_state_t state;
-    swarm_immune_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
-} swarm_immune_fep_bridge_t;
+    swarm_immune_fep_stats_t stats;} swarm_immune_fep_bridge_t;
 
 void swarm_immune_fep_default_config(swarm_immune_fep_config_t* config);
 swarm_immune_fep_bridge_t* swarm_immune_fep_create(const swarm_immune_fep_config_t* config, void* immune_system, fep_system_t* fep_system);

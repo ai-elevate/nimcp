@@ -27,6 +27,7 @@
 #define NIMCP_SWARM_CONSCIOUSNESS_FEP_BRIDGE_H
 
 #include "swarm/nimcp_swarm_consciousness.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -95,17 +96,15 @@ typedef struct {
  * ============================================================================ */
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     swarm_consciousness_fep_config_t config;
     fep_system_t* fep_system;
     swarm_consciousness_ctx_t* consciousness_ctx;
     swarm_consciousness_fep_effects_t fep_effects;
     fep_swarm_consciousness_effects_t consciousness_effects;
     swarm_consciousness_fep_state_t state;
-    swarm_consciousness_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
-} swarm_consciousness_fep_bridge_t;
+    swarm_consciousness_fep_stats_t stats;} swarm_consciousness_fep_bridge_t;
 
 /* ============================================================================
  * API Functions

@@ -6,6 +6,7 @@
  */
 
 #include "information/immune/nimcp_cross_modal_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -135,8 +136,8 @@ cross_modal_immune_bridge_t* cross_modal_immune_create(
     bridge->last_update_time = get_time_ms();
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("cross_modal_immune_create: mutex creation failed");
     }
 
@@ -150,13 +151,13 @@ void cross_modal_immune_destroy(cross_modal_immune_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         cross_modal_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -176,7 +177,7 @@ int cross_modal_immune_apply_cytokine_effects(cross_modal_immune_bridge_t* bridg
         return 0;  /* Feature disabled */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get immune stats */
     brain_immune_stats_t stats;
@@ -217,7 +218,7 @@ int cross_modal_immune_apply_cytokine_effects(cross_modal_immune_bridge_t* bridg
 
     bridge->cytokine_impairments++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -231,7 +232,7 @@ int cross_modal_immune_apply_inflammation_effects(cross_modal_immune_bridge_t* b
         return 0;  /* Feature disabled */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get immune stats */
     brain_immune_stats_t stats;
@@ -264,7 +265,7 @@ int cross_modal_immune_apply_inflammation_effects(cross_modal_immune_bridge_t* b
     bridge->inflammation_state.synchrony_impairment =
         bridge->inflammation_state.binding_strength_reduction * 0.8f;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -314,7 +315,7 @@ int cross_modal_immune_detect_binding_failure(
         return 0;  /* Feature disabled */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->immune_modulation.binding_strength = binding_strength;
 
@@ -332,7 +333,7 @@ int cross_modal_immune_detect_binding_failure(
         bridge->immune_modulation.immune_alert_level = 0.0f;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -349,7 +350,7 @@ int cross_modal_immune_detect_mismatch(
         return 0;  /* Feature disabled */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Detect sensory mismatch (low coherence) */
     float mismatch_threshold = 0.5f;  /* Below this = mismatch */
@@ -361,7 +362,7 @@ int cross_modal_immune_detect_mismatch(
         bridge->immune_modulation.sensory_mismatch_detected = false;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -378,7 +379,7 @@ int cross_modal_immune_trigger_bottleneck_stress(
         return 0;  /* Feature disabled */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->immune_modulation.transfer_efficiency = efficiency;
 
@@ -398,7 +399,7 @@ int cross_modal_immune_trigger_bottleneck_stress(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -415,13 +416,13 @@ int cross_modal_immune_update(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update timing */
     bridge->last_update_time = get_time_ms();
     bridge->total_updates++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* IMMUNE → CROSS-MODAL pathways */
     cross_modal_immune_apply_cytokine_effects(bridge);
@@ -466,9 +467,9 @@ int cross_modal_immune_get_cytokine_effects(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cross_modal_cytokine_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -481,9 +482,9 @@ int cross_modal_immune_get_inflammation_state(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(cross_modal_inflammation_state_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -529,7 +530,7 @@ int cross_modal_immune_connect_bio_async(cross_modal_immune_bridge_t* bridge) {
     }
 
     /* Guard: already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_WARN("cross_modal_immune_bridge: Already connected to bio-async");
         return 0;
     }
@@ -542,18 +543,18 @@ int cross_modal_immune_connect_bio_async(cross_modal_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Register with router */
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("cross_modal_immune_bridge: Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("cross_modal_immune_bridge: Bio-async router not available, skipping registration");
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -570,20 +571,20 @@ int cross_modal_immune_disconnect_bio_async(cross_modal_immune_bridge_t* bridge)
     }
 
     /* Guard: not connected */
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Unregister */
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("cross_modal_immune_bridge: Disconnected from bio-async router");
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -596,5 +597,5 @@ bool cross_modal_immune_is_bio_async_connected(const cross_modal_immune_bridge_t
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

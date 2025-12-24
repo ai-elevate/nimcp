@@ -46,6 +46,7 @@
 #define NIMCP_STDP_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "plasticity/stdp/nimcp_quantum_stdp_optimizer.h"
 #include "plasticity/noise/nimcp_pink_noise_quantum_bridge.h"
@@ -133,6 +134,8 @@ typedef struct {
  * @brief Pink noise bridge state connecting to STDP optimizer
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     stdp_pink_noise_config_t config;
 
     /* Connected modules */

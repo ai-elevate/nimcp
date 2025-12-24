@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_sleep_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -184,12 +185,12 @@ sleep_immune_bridge_t* sleep_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("sleep_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -199,9 +200,9 @@ void sleep_immune_bridge_destroy(sleep_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -219,7 +220,7 @@ int sleep_immune_apply_cytokine_effects(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_sleep_modulation) return 0;
     if (!bridge->immune_system || !bridge->sleep_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_sleep_effects_t* effects = &bridge->cytokine_effects;
@@ -259,7 +260,7 @@ int sleep_immune_apply_cytokine_effects(sleep_immune_bridge_t* bridge) {
     }
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -269,7 +270,7 @@ int sleep_immune_apply_inflammation_effects(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_sleep_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_sleep_state_t* state = &bridge->inflammation_state;
 
@@ -311,7 +312,7 @@ int sleep_immune_apply_inflammation_effects(sleep_immune_bridge_t* bridge) {
     /* Store fragmentation level in cytokine effects for query */
     bridge->cytokine_effects.fragmentation_level = state->fragmentation_severity;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -335,7 +336,7 @@ int sleep_immune_enhance_during_deep_sleep(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_sleep_immune_enhancement) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sleep_immune_modulation_t* modulation = &bridge->sleep_modulation;
 
@@ -359,7 +360,7 @@ int sleep_immune_enhance_during_deep_sleep(sleep_immune_bridge_t* bridge) {
         modulation->memory_consolidation_rate = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -369,7 +370,7 @@ int sleep_immune_consolidate_memory_during_rem(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_rem_memory_consolidation) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sleep_immune_modulation_t* modulation = &bridge->sleep_modulation;
 
@@ -397,7 +398,7 @@ int sleep_immune_consolidate_memory_during_rem(sleep_immune_bridge_t* bridge) {
         modulation->memory_consolidation_rate = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -407,7 +408,7 @@ int sleep_immune_suppress_from_deprivation(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_sleep_deprivation_tracking) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sleep_deprivation_state_t* deprivation = &bridge->deprivation_state;
 
@@ -446,7 +447,7 @@ int sleep_immune_suppress_from_deprivation(sleep_immune_bridge_t* bridge) {
         deprivation->memory_formation_impairment = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -456,7 +457,7 @@ int sleep_immune_inflame_from_chronic_loss(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_sleep_deprivation_tracking) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sleep_deprivation_state_t* deprivation = &bridge->deprivation_state;
 
@@ -484,7 +485,7 @@ int sleep_immune_inflame_from_chronic_loss(sleep_immune_bridge_t* bridge) {
         deprivation->immune_dysregulation = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -524,9 +525,9 @@ int sleep_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_sleep_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -537,9 +538,9 @@ int sleep_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_sleep_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -550,9 +551,9 @@ int sleep_immune_get_sleep_modulation(
 ) {
     if (!bridge || !modulation) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(modulation, &bridge->sleep_modulation, sizeof(sleep_immune_modulation_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -563,9 +564,9 @@ int sleep_immune_get_deprivation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->deprivation_state, sizeof(sleep_deprivation_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -608,7 +609,7 @@ float sleep_immune_get_suppression_level(const sleep_immune_bridge_t* bridge) {
  */
 int sleep_immune_connect_bio_async(sleep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SLEEP,
@@ -617,9 +618,9 @@ int sleep_immune_connect_bio_async(sleep_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("sleep_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -633,13 +634,13 @@ int sleep_immune_connect_bio_async(sleep_immune_bridge_t* bridge) {
  */
 int sleep_immune_disconnect_bio_async(sleep_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("sleep_immune_bridge disconnected from bio-async router");
     return 0;
@@ -650,5 +651,5 @@ int sleep_immune_disconnect_bio_async(sleep_immune_bridge_t* bridge) {
  */
 bool sleep_immune_is_bio_async_connected(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

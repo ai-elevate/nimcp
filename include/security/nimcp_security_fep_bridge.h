@@ -67,6 +67,7 @@
 #define NIMCP_SECURITY_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 
 #include "security/nimcp_security.h"
@@ -125,16 +126,14 @@ typedef struct {
 } security_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     security_fep_config_t config;
     fep_system_t* fep_system;
     security_fep_effects_t fep_effects;
     fep_security_effects_t security_effects;
     security_fep_state_t state;
-    security_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} security_fep_bridge_t;
+    security_fep_stats_t stats;} security_fep_bridge_t;
 
 /* ============================================================================
  * API

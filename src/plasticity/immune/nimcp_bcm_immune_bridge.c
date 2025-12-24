@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_bcm_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -206,12 +207,12 @@ bcm_immune_bridge_t* bcm_immune_bridge_create(
     bridge->baseline_metrics.baseline_sliding_rate = 0.01f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("bcm_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -221,9 +222,9 @@ void bcm_immune_bridge_destroy(bcm_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -241,7 +242,7 @@ int bcm_immune_apply_cytokine_effects(bcm_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_modulation) return 0;
     if (!bridge->immune_system || !bridge->bcm_params) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine concentrations */
     float il1_level = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -291,7 +292,7 @@ int bcm_immune_apply_cytokine_effects(bcm_immune_bridge_t* bridge) {
     /* This is done in the BCM module, we just track the multipliers here */
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -301,7 +302,7 @@ int bcm_immune_apply_inflammation_effects(bcm_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_bcm_state_t* state = &bridge->inflammation_state;
 
@@ -347,7 +348,7 @@ int bcm_immune_apply_inflammation_effects(bcm_immune_bridge_t* bridge) {
     /* Estimate recovery time (hours) */
     state->recovery_time_estimate_ms = state->homeostatic_error * 86400000.0f; /* Up to 24 hours */
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -370,7 +371,7 @@ int bcm_immune_assist_recovery(bcm_immune_bridge_t* bridge) {
     if (!bridge->enable_recovery_assistance) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Query IL-10 level */
     float il10_level = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL10);
@@ -381,7 +382,7 @@ int bcm_immune_assist_recovery(bcm_immune_bridge_t* bridge) {
         bridge->recovery_assists++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -400,7 +401,7 @@ int bcm_immune_update_baseline(
     if (!bridge->enable_baseline_tracking) return 0;
     if (!synapses || num_synapses == 0 || !stats) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     bcm_baseline_metrics_t* baseline = &bridge->baseline_metrics;
 
@@ -441,7 +442,7 @@ int bcm_immune_update_baseline(
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -456,7 +457,7 @@ int bcm_immune_detect_abnormalities(
     if (!bridge->enable_bcm_immune_trigger) return 0;
     if (!synapses || num_synapses == 0 || !stats) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     bcm_abnormality_state_t* abnormality = &bridge->abnormality_state;
     const bcm_baseline_metrics_t* baseline = &bridge->baseline_metrics;
@@ -470,7 +471,7 @@ int bcm_immune_detect_abnormalities(
 
     /* Only detect abnormalities if baseline established */
     if (!baseline->baseline_established) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
@@ -519,7 +520,7 @@ int bcm_immune_detect_abnormalities(
     /* Cap at 10 */
     abnormality->immune_trigger_severity = (severity > 10) ? 10 : severity;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -529,13 +530,13 @@ int bcm_immune_trigger_from_abnormality(bcm_immune_bridge_t* bridge) {
     if (!bridge->enable_bcm_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     const bcm_abnormality_state_t* abnormality = &bridge->abnormality_state;
 
     /* Only trigger if severity >= 3 */
     if (abnormality->immune_trigger_severity < 3) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
@@ -572,7 +573,7 @@ int bcm_immune_trigger_from_abnormality(bcm_immune_bridge_t* bridge) {
                   abnormality->immune_trigger_severity);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return result;
 }
 
@@ -633,9 +634,9 @@ int bcm_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -645,9 +646,9 @@ int bcm_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -657,20 +658,20 @@ int bcm_immune_get_abnormality_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->abnormality_state;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
 bool bcm_immune_is_healthy(const bcm_immune_bridge_t* bridge) {
     if (!bridge) return false;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bool healthy = !bridge->abnormality_state.threshold_unstable &&
                    !bridge->abnormality_state.learning_collapsed &&
                    !bridge->abnormality_state.metaplasticity_stuck;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return healthy;
 }
 
@@ -700,7 +701,7 @@ float bcm_immune_get_metaplasticity_health(const bcm_immune_bridge_t* bridge) {
  */
 int bcm_immune_connect_bio_async(bcm_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_BCM,
@@ -709,9 +710,9 @@ int bcm_immune_connect_bio_async(bcm_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("bcm_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -725,13 +726,13 @@ int bcm_immune_connect_bio_async(bcm_immune_bridge_t* bridge) {
  */
 int bcm_immune_disconnect_bio_async(bcm_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("bcm_immune_bridge disconnected from bio-async router");
     return 0;
@@ -742,5 +743,5 @@ int bcm_immune_disconnect_bio_async(bcm_immune_bridge_t* bridge) {
  */
 bool bcm_immune_is_bio_async_connected(const bcm_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

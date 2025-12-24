@@ -7,6 +7,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_stdp_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -95,8 +96,8 @@ snn_stdp_bridge_t* snn_stdp_bridge_create(
            sizeof(weight_change_record_t) * bridge->weight_change_capacity);
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("Failed to create mutex for SNN-STDP bridge");
         /* Continue without mutex */
     }
@@ -130,7 +131,7 @@ void snn_stdp_bridge_destroy(snn_stdp_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_stdp_bridge_disconnect_bio_async(bridge);
     }
 
@@ -139,8 +140,8 @@ void snn_stdp_bridge_destroy(snn_stdp_bridge_t* bridge) {
         nimcp_free(bridge->weight_changes);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -152,7 +153,7 @@ void snn_stdp_bridge_destroy(snn_stdp_bridge_t* bridge) {
 
 int snn_stdp_bridge_connect_bio_async(snn_stdp_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SNN_STDP_BRIDGE,
@@ -161,9 +162,9 @@ int snn_stdp_bridge_connect_bio_async(snn_stdp_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected SNN-STDP bridge to bio-async router");
     }
 
@@ -171,17 +172,17 @@ int snn_stdp_bridge_connect_bio_async(snn_stdp_bridge_t* bridge) {
 }
 
 int snn_stdp_bridge_disconnect_bio_async(snn_stdp_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     return 0;
 }
 
 bool snn_stdp_bridge_is_bio_async_connected(const snn_stdp_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }
 
 //=============================================================================
@@ -193,8 +194,8 @@ int snn_stdp_bridge_update_effects(snn_stdp_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Average STDP parameters across synapses */
@@ -233,8 +234,8 @@ int snn_stdp_bridge_update_effects(snn_stdp_bridge_t* bridge) {
         bridge->effects.da_modulation_factor = 1.0f;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -245,8 +246,8 @@ int snn_stdp_bridge_apply_plasticity(snn_stdp_bridge_t* bridge, float dt) {
         return -1;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Apply STDP-based weight updates to SNN synapses */
@@ -254,8 +255,8 @@ int snn_stdp_bridge_apply_plasticity(snn_stdp_bridge_t* bridge, float dt) {
     /* For now, increment plasticity event counter */
     bridge->plasticity_events++;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -295,8 +296,8 @@ int snn_stdp_bridge_get_weight_changes(
         return -1;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock((void*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     }
 
     uint32_t count = 0;
@@ -311,8 +312,8 @@ int snn_stdp_bridge_get_weight_changes(
 
     *n_changes = count;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
     }
 
     return 0;
@@ -321,8 +322,8 @@ int snn_stdp_bridge_get_weight_changes(
 int snn_stdp_bridge_mark_synced(snn_stdp_bridge_t* bridge, uint32_t n_synced) {
     if (!bridge) return -1;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Mark first n_synced unsynced changes as synced */
@@ -336,8 +337,8 @@ int snn_stdp_bridge_mark_synced(snn_stdp_bridge_t* bridge, uint32_t n_synced) {
 
     bridge->weight_syncs += marked;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -350,8 +351,8 @@ int snn_stdp_bridge_record_weight_change(
 ) {
     if (!bridge) return -1;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Add to circular buffer */
@@ -366,8 +367,8 @@ int snn_stdp_bridge_record_weight_change(
         bridge->weight_change_count++;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -385,14 +386,14 @@ int snn_stdp_bridge_get_effects(
         return -1;
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock((void*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     }
 
     *effects = bridge->effects;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
     }
 
     return 0;
@@ -439,15 +440,15 @@ int snn_stdp_bridge_get_stats(
 void snn_stdp_bridge_reset_stats(snn_stdp_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     bridge->plasticity_events = 0;
     bridge->weight_syncs = 0;
     bridge->last_update_time_ms = 0.0f;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 }

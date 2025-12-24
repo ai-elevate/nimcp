@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -20,6 +21,8 @@
  * ============================================================================ */
 
 struct astrocyte_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Linked systems */
     sleep_system_t sleep_system;
     astrocyte_plasticity_t astrocyte_system;
@@ -151,12 +154,12 @@ astrocyte_sleep_bridge_t astrocyte_sleep_bridge_create(
     bridge->effects.glymphatic_active = false;
 
     /* Create mutex */
-    bridge->mutex = (pthread_mutex_t*)nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (pthread_mutex_t*)nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init(bridge->mutex, NULL);
+    pthread_mutex_init(bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Sleep-astrocyte bridge created successfully");
     return bridge;
@@ -166,9 +169,9 @@ void astrocyte_sleep_bridge_destroy(astrocyte_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -185,7 +188,7 @@ int astrocyte_sleep_update(astrocyte_sleep_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->sleep_system) return -1;
 
-    pthread_mutex_lock(bridge->mutex);
+    pthread_mutex_lock(bridge->base.mutex);
 
     /* Query sleep system state */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -240,7 +243,7 @@ int astrocyte_sleep_update(astrocyte_sleep_bridge_t bridge) {
         (state == SLEEP_STATE_LIGHT_NREM || state == SLEEP_STATE_DEEP_NREM);
 
     bridge->total_updates++;
-    pthread_mutex_unlock(bridge->mutex);
+    pthread_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -250,7 +253,7 @@ int astrocyte_sleep_apply_modulation(astrocyte_sleep_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->astrocyte_system) return -1;
 
-    pthread_mutex_lock(bridge->mutex);
+    pthread_mutex_lock(bridge->base.mutex);
 
     /* Get number of astrocytes */
     uint32_t num_astrocytes =
@@ -301,7 +304,7 @@ int astrocyte_sleep_apply_modulation(astrocyte_sleep_bridge_t bridge) {
     }
 
     bridge->modulation_applications++;
-    pthread_mutex_unlock(bridge->mutex);
+    pthread_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -310,9 +313,9 @@ int astrocyte_sleep_get_effects(const astrocyte_sleep_bridge_t bridge,
                                  astrocyte_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock(bridge->mutex);
+    pthread_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(astrocyte_sleep_effects_t));
-    pthread_mutex_unlock(bridge->mutex);
+    pthread_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -321,9 +324,9 @@ float astrocyte_sleep_get_d_serine_level(const astrocyte_sleep_bridge_t bridge,
                                           float base_d_serine) {
     if (!bridge) return base_d_serine;
 
-    pthread_mutex_lock(bridge->mutex);
+    pthread_mutex_lock(bridge->base.mutex);
     float factor = bridge->effects.d_serine_factor;
-    pthread_mutex_unlock(bridge->mutex);
+    pthread_mutex_unlock(bridge->base.mutex);
 
     return base_d_serine * factor;
 }
@@ -332,9 +335,9 @@ float astrocyte_sleep_get_glutamate_uptake(const astrocyte_sleep_bridge_t bridge
                                             float base_uptake) {
     if (!bridge) return base_uptake;
 
-    pthread_mutex_lock(bridge->mutex);
+    pthread_mutex_lock(bridge->base.mutex);
     float factor = bridge->effects.glutamate_uptake_factor;
-    pthread_mutex_unlock(bridge->mutex);
+    pthread_mutex_unlock(bridge->base.mutex);
 
     return base_uptake * factor;
 }
@@ -342,9 +345,9 @@ float astrocyte_sleep_get_glutamate_uptake(const astrocyte_sleep_bridge_t bridge
 bool astrocyte_sleep_is_glymphatic_active(const astrocyte_sleep_bridge_t bridge) {
     if (!bridge) return false;
 
-    pthread_mutex_lock(bridge->mutex);
+    pthread_mutex_lock(bridge->base.mutex);
     bool active = bridge->effects.glymphatic_active;
-    pthread_mutex_unlock(bridge->mutex);
+    pthread_mutex_unlock(bridge->base.mutex);
 
     return active;
 }

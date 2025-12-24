@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/calcium/nimcp_calcium_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -16,6 +17,8 @@
  * ============================================================================ */
 
 struct calcium_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     calcium_sleep_config_t config;
     sleep_system_t sleep_system;
     calcium_dynamics_t calcium;
@@ -51,7 +54,7 @@ static void calcium_on_sleep_state_change(sleep_state_t new_state, void* user_da
 
     NIMCP_LOGGING_DEBUG("Calcium bridge received sleep state: %d", new_state);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -78,7 +81,7 @@ static void calcium_on_sleep_state_change(sleep_state_t new_state, void* user_da
             1.0f + (pump_base - 1.0f) * bridge->config.modulation_strength;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Calcium modulated: influx=%.2f, decay=%.1f ms, LR=%.2f, pump=%.2f",
                         bridge->effects.influx_factor,
@@ -140,8 +143,8 @@ calcium_sleep_bridge_t calcium_sleep_bridge_create(
     bridge->effects.threshold_ltp_shift = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -181,7 +184,7 @@ void calcium_sleep_bridge_destroy(calcium_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
@@ -192,7 +195,7 @@ void calcium_sleep_bridge_destroy(calcium_sleep_bridge_t bridge) {
 int calcium_sleep_update(calcium_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -223,7 +226,7 @@ int calcium_sleep_update(calcium_sleep_bridge_t bridge) {
             1.0f + (pump_base - 1.0f) * bridge->config.modulation_strength;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -231,9 +234,9 @@ int calcium_sleep_get_effects(const calcium_sleep_bridge_t bridge,
                                calcium_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -241,9 +244,9 @@ int calcium_sleep_get_effects(const calcium_sleep_bridge_t bridge,
 float calcium_sleep_get_influx_factor(const calcium_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float factor = bridge->effects.influx_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -251,9 +254,9 @@ float calcium_sleep_get_influx_factor(const calcium_sleep_bridge_t bridge) {
 float calcium_sleep_get_decay_tau(const calcium_sleep_bridge_t bridge) {
     if (!bridge) return CALCIUM_SLEEP_DECAY_AWAKE;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float tau = bridge->effects.decay_tau_ms;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return tau;
 }
@@ -262,9 +265,9 @@ float calcium_sleep_get_learning_rate(const calcium_sleep_bridge_t bridge,
                                        float base_lr) {
     if (!bridge) return base_lr;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float modulated_lr = base_lr * bridge->effects.learning_rate_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return modulated_lr;
 }
@@ -272,7 +275,7 @@ float calcium_sleep_get_learning_rate(const calcium_sleep_bridge_t bridge,
 int calcium_sleep_apply_modulation(calcium_sleep_bridge_t bridge) {
     if (!bridge || !bridge->calcium) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current calcium config */
     calcium_config_t config;
@@ -295,7 +298,7 @@ int calcium_sleep_apply_modulation(calcium_sleep_bridge_t bridge) {
      * This would require adding calcium_set_config() or parameter setters
      * For now, this demonstrates the intended behavior */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

@@ -7,6 +7,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_introspection_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
@@ -62,7 +63,7 @@ snn_introspection_bridge_t* snn_introspection_bridge_create(
 
 void snn_introspection_bridge_destroy(snn_introspection_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_introspection_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
@@ -73,7 +74,7 @@ void snn_introspection_bridge_destroy(snn_introspection_bridge_t* bridge) {
 
 int snn_introspection_bridge_connect_bio_async(snn_introspection_bridge_t* bridge) {
     if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SNN_INTROSPECTION_BRIDGE,
@@ -82,9 +83,9 @@ int snn_introspection_bridge_connect_bio_async(snn_introspection_bridge_t* bridg
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -93,14 +94,14 @@ int snn_introspection_bridge_connect_bio_async(snn_introspection_bridge_t* bridg
 }
 
 int snn_introspection_bridge_disconnect_bio_async(snn_introspection_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_introspection_bridge_is_bio_async_connected(const snn_introspection_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }
 
 int snn_introspection_bridge_update(snn_introspection_bridge_t* bridge, float dt) {

@@ -6,16 +6,18 @@
  */
 
 #include "perception/sleep/nimcp_audio_cortex_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct audio_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     audio_sleep_config_t config;
     sleep_system_t sleep_system;
     audio_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -44,7 +46,7 @@ static void audio_on_sleep_state_change(sleep_state_t new_state, void* user_data
 
     NIMCP_LOGGING_DEBUG("Audio cortex bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -69,7 +71,7 @@ static void audio_on_sleep_state_change(sleep_state_t new_state, void* user_data
     bridge->effects.audio_processing_enabled = (new_state != SLEEP_STATE_DEEP_NREM) ||
                                                  bridge->effects.threshold_factor > 0.3f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Audio modulated: threshold=%.2f, frequency=%.2f, speed=%.2f",
                         bridge->effects.threshold_factor,
@@ -113,8 +115,8 @@ audio_sleep_bridge_t audio_sleep_bridge_create(
     bridge->effects.processing_speed_factor = 1.0f;
     bridge->effects.audio_processing_enabled = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -154,14 +156,14 @@ void audio_sleep_bridge_destroy(audio_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int audio_sleep_update(audio_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -190,39 +192,39 @@ int audio_sleep_update(audio_sleep_bridge_t bridge) {
     bridge->effects.audio_processing_enabled = (state != SLEEP_STATE_DEEP_NREM) ||
                                                  bridge->effects.threshold_factor > 0.3f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int audio_sleep_get_effects(const audio_sleep_bridge_t bridge, audio_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float audio_sleep_get_threshold(const audio_sleep_bridge_t bridge, float base_threshold) {
     if (!bridge) return base_threshold;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_threshold * bridge->effects.threshold_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float audio_sleep_get_frequency_selectivity(const audio_sleep_bridge_t bridge, float base_selectivity) {
     if (!bridge) return base_selectivity;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_selectivity * bridge->effects.frequency_selectivity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float audio_sleep_get_processing_speed(const audio_sleep_bridge_t bridge, float base_speed) {
     if (!bridge) return base_speed;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_speed * bridge->effects.processing_speed_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

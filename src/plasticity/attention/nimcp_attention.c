@@ -15,6 +15,7 @@
  */
 
 #include "plasticity/attention/nimcp_attention.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths
 #include "utils/memory/nimcp_page_cow.h"     // Phase COW: Copy-on-write for weight sharing

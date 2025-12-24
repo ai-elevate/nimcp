@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_homeostatic_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -186,12 +187,12 @@ homeostatic_immune_bridge_t* homeostatic_immune_bridge_create(
     bridge->current_threshold = bridge->base_threshold;
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("homeostatic_immune_bridge",
                   "Bridge created successfully");
@@ -202,9 +203,9 @@ void homeostatic_immune_bridge_destroy(homeostatic_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -224,7 +225,7 @@ int homeostatic_immune_apply_cytokine_effects(
     if (!bridge->enable_cytokine_homeostasis_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_homeostatic_effects_t* effects = &bridge->cytokine_effects;
@@ -297,7 +298,7 @@ int homeostatic_immune_apply_cytokine_effects(
         clamp_f(bridge->current_threshold, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -309,7 +310,7 @@ int homeostatic_immune_apply_inflammation_effects(
     if (!bridge->enable_inflammation_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_homeostatic_state_t* state = &bridge->inflammation_state;
 
@@ -361,7 +362,7 @@ int homeostatic_immune_apply_inflammation_effects(
         bridge->homeostatic_failures++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -430,7 +431,7 @@ int homeostatic_immune_trigger_from_instability(
     if (!bridge->enable_instability_immune_trigger) return 0;
     if (!bridge->immune_system || !firing_rates) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     homeostatic_immune_trigger_t* trigger = &bridge->instability_trigger;
 
@@ -474,7 +475,7 @@ int homeostatic_immune_trigger_from_instability(
         trigger->immune_activation_strength = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -537,7 +538,7 @@ int homeostatic_immune_boost_from_recovery(
     if (!bridge->enable_recovery_immune_boost) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     homeostatic_recovery_immune_boost_t* boost = &bridge->recovery_boost;
 
@@ -578,7 +579,7 @@ int homeostatic_immune_boost_from_recovery(
         boost->immune_resolution_speed = 1.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -597,9 +598,9 @@ int homeostatic_immune_bridge_update(
     /* Guard clauses */
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Immune → Homeostasis */
     homeostatic_immune_apply_cytokine_effects(bridge);
@@ -624,9 +625,9 @@ int homeostatic_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -637,9 +638,9 @@ int homeostatic_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -649,9 +650,9 @@ bool homeostatic_immune_is_homeostatic_failure(
 ) {
     if (!bridge) return false;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bool failure = bridge->inflammation_state.homeostatic_failure;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return failure;
 }
@@ -661,9 +662,9 @@ float homeostatic_immune_get_current_scaling_factor(
 ) {
     if (!bridge) return 1.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     float factor = bridge->current_scaling_factor;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return factor;
 }
@@ -673,9 +674,9 @@ float homeostatic_immune_get_current_target_rate(
 ) {
     if (!bridge) return 5.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     float rate = bridge->current_target_rate;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return rate;
 }
@@ -685,9 +686,9 @@ float homeostatic_immune_get_current_threshold(
 ) {
     if (!bridge) return 0.5f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     float threshold = bridge->current_threshold;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return threshold;
 }
@@ -697,9 +698,9 @@ float homeostatic_immune_get_disruption_level(
 ) {
     if (!bridge) return 0.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     float disruption = bridge->cytokine_effects.homeostatic_disruption_level;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return disruption;
 }
@@ -715,7 +716,7 @@ float homeostatic_immune_get_disruption_level(
  */
 int homeostatic_immune_connect_bio_async(homeostatic_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_HOMEOSTATIC,
@@ -724,9 +725,9 @@ int homeostatic_immune_connect_bio_async(homeostatic_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("homeostatic_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -740,13 +741,13 @@ int homeostatic_immune_connect_bio_async(homeostatic_immune_bridge_t* bridge) {
  */
 int homeostatic_immune_disconnect_bio_async(homeostatic_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("homeostatic_immune_bridge disconnected from bio-async router");
     return 0;
@@ -757,5 +758,5 @@ int homeostatic_immune_disconnect_bio_async(homeostatic_immune_bridge_t* bridge)
  */
 bool homeostatic_immune_is_bio_async_connected(const homeostatic_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

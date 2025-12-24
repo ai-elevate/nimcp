@@ -8,6 +8,7 @@
  */
 
 #include "lnn/nimcp_lnn_training.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_gradient.h"
 #include "lnn/nimcp_lnn_network.h"

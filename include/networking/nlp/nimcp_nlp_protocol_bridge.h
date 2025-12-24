@@ -35,6 +35,7 @@
 #define NIMCP_NLP_PROTOCOL_BRIDGE_H
 
 #include "networking/nlp/nimcp_neural_link_protocol.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "networking/nlp/nimcp_neural_language.h"
 
 #ifdef __cplusplus

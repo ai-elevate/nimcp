@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_pheromone_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -21,13 +22,14 @@
 #include <string.h>
 
 struct swarm_pheromone_immune_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_pheromone_immune_config_t config;
     brain_immune_system_t* immune_system;
     void* swarm_pheromone;
     cytokine_pheromone_effects_t cytokine_effects;
     inflammation_pheromone_state_t inflammation_state;
     pheromone_immune_modulation_t modulation;
-    nimcp_mutex_t* mutex;
     void* bio_ctx;
     bool bio_async_connected;
 };
@@ -78,8 +80,8 @@ swarm_pheromone_immune_bridge_t* swarm_pheromone_immune_bridge_create(
     bridge->immune_system = immune_system;
     bridge->swarm_pheromone = swarm_pheromone;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm pheromone immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -107,8 +109,8 @@ void swarm_pheromone_immune_bridge_destroy(swarm_pheromone_immune_bridge_t* brid
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -120,7 +122,7 @@ int swarm_pheromone_immune_apply_cytokine_effects(swarm_pheromone_immune_bridge_
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_cytokine_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sensitivity = bridge->config.cytokine_sensitivity;
 
@@ -139,7 +141,7 @@ int swarm_pheromone_immune_apply_cytokine_effects(swarm_pheromone_immune_bridge_
         bridge->cytokine_effects.sensing_threshold_increase = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine pheromone effects: threshold_increase=%.2f",
                         bridge->cytokine_effects.sensing_threshold_increase);
@@ -151,11 +153,11 @@ int swarm_pheromone_immune_apply_inflammation_effects(swarm_pheromone_immune_bri
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_inflammation_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -166,7 +168,7 @@ int swarm_pheromone_immune_apply_inflammation_effects(swarm_pheromone_immune_bri
     bridge->inflammation_state.gradient_impaired =
         (level >= INFLAMMATION_REGIONAL);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation pheromone effects: level=%d, factor=%.2f",
                         level, bridge->inflammation_state.pheromone_factor);
@@ -178,7 +180,7 @@ int swarm_pheromone_immune_report_contamination(swarm_pheromone_immune_bridge_t*
     if (!bridge) return -1;
     if (!bridge->config.enable_contamination_detection) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.contamination_events++;
     bridge->modulation.contamination_level = level;
@@ -189,7 +191,7 @@ int swarm_pheromone_immune_report_contamination(swarm_pheromone_immune_bridge_t*
                           level);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -197,7 +199,7 @@ int swarm_pheromone_immune_boost_from_clean_path(swarm_pheromone_immune_bridge_t
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.cleanup_signal += 0.05f;
     bridge->modulation.contamination_level = 0.0f;
@@ -206,7 +208,7 @@ int swarm_pheromone_immune_boost_from_clean_path(swarm_pheromone_immune_bridge_t
     NIMCP_LOGGING_DEBUG("Clean pheromone path boosted cleanup: total=%.2f",
                        bridge->modulation.cleanup_signal);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -225,9 +227,9 @@ float swarm_pheromone_immune_get_sensing_factor(const swarm_pheromone_immune_bri
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->inflammation_state.sensing_efficiency;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -236,9 +238,9 @@ float swarm_pheromone_immune_get_evaporation_factor(const swarm_pheromone_immune
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = 1.0f + bridge->cytokine_effects.evaporation_rate_increase;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -247,9 +249,9 @@ bool swarm_pheromone_immune_is_gradient_impaired(const swarm_pheromone_immune_br
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool impaired = bridge->inflammation_state.gradient_impaired;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return impaired;
 }
@@ -273,8 +275,8 @@ int swarm_pheromone_immune_connect_bio_async(swarm_pheromone_immune_bridge_t* br
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_INFO("Swarm pheromone-immune bridge connected to bio-async router");
     } else {
@@ -295,9 +297,9 @@ int swarm_pheromone_immune_disconnect_bio_async(swarm_pheromone_immune_bridge_t*
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

@@ -30,9 +30,8 @@ protected:
         ASSERT_NE(structural_system, nullptr);
 
         /* Create sleep system */
-        sleep_config_t sleep_cfg;
-        sleep_default_config(&sleep_cfg);
-        sleep_system = sleep_create(&sleep_cfg);
+        sleep_config_t sleep_cfg = sleep_default_config();
+        sleep_system = sleep_system_create(&sleep_cfg);
         ASSERT_NE(sleep_system, nullptr);
 
         /* Create immune system */
@@ -47,7 +46,7 @@ protected:
             structural_plasticity_destroy(structural_system);
         }
         if (sleep_system) {
-            sleep_destroy(sleep_system);
+            sleep_system_destroy(sleep_system);
         }
         if (immune_system) {
             brain_immune_destroy(immune_system);
@@ -85,14 +84,14 @@ TEST_F(StructuralIntegrationTest, SleepStateModulatesFormation) {
         &config, sleep_system, structural_system);
 
     /* Set to AWAKE state */
-    sleep_set_state(sleep_system, SLEEP_STATE_AWAKE);
+    sleep_enter_state(sleep_system, SLEEP_STATE_AWAKE);
     structural_sleep_update(bridge);
 
     structural_sleep_effects_t effects_awake;
     structural_sleep_get_effects(bridge, &effects_awake);
 
     /* Set to DEEP_NREM state */
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     structural_sleep_update(bridge);
 
     structural_sleep_effects_t effects_sleep;
@@ -123,7 +122,7 @@ TEST_F(StructuralIntegrationTest, NREMConsolidatesTaggedSpines) {
     }
 
     /* Transition to DEEP_NREM */
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     structural_sleep_update(bridge);
 
     /* Consolidate */
@@ -159,7 +158,7 @@ TEST_F(StructuralIntegrationTest, REMPrunesWeakSpines) {
     uint32_t count_before = structural_plasticity_get_total_spines(structural_system);
 
     /* Transition to REM */
-    sleep_set_state(sleep_system, SLEEP_STATE_REM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_REM);
     structural_sleep_update(bridge);
 
     /* Prune weak spines */
@@ -318,7 +317,7 @@ TEST_F(StructuralIntegrationTest, SleepAndImmuneCooperate) {
     }
 
     /* NREM consolidates tagged spines */
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     structural_sleep_update(sleep_bridge);
     structural_sleep_consolidate_tagged(sleep_bridge);
 

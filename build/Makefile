@@ -6724,19 +6724,6 @@ e2e_test_plasticity_pipeline/fast:
 .PHONY : e2e_test_plasticity_pipeline/fast
 
 #=============================================================================
-# Target rules for targets named e2e_test_neural_plasticity_pipeline
-
-# Build rule for target.
-e2e_test_neural_plasticity_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_neural_plasticity_pipeline
-.PHONY : e2e_test_neural_plasticity_pipeline
-
-# fast build rule for target.
-e2e_test_neural_plasticity_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build
-.PHONY : e2e_test_neural_plasticity_pipeline/fast
-
-#=============================================================================
 # Target rules for targets named e2e_test_master_connectivity
 
 # Build rule for target.
@@ -6761,19 +6748,6 @@ e2e_test_cortical_substrate_pipeline: cmake_check_build_system
 e2e_test_cortical_substrate_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_cortical_substrate_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_cortical_substrate_pipeline.dir/build
 .PHONY : e2e_test_cortical_substrate_pipeline/fast
-
-#=============================================================================
-# Target rules for targets named e2e_test_substrate_bridges_pipeline
-
-# Build rule for target.
-e2e_test_substrate_bridges_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_substrate_bridges_pipeline
-.PHONY : e2e_test_substrate_bridges_pipeline
-
-# fast build rule for target.
-e2e_test_substrate_bridges_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_substrate_bridges_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_substrate_bridges_pipeline.dir/build
-.PHONY : e2e_test_substrate_bridges_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_training_logic_pipeline
@@ -6943,6 +6917,19 @@ e2e_test_thalamus_pipeline: cmake_check_build_system
 e2e_test_thalamus_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_thalamus_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_thalamus_pipeline.dir/build
 .PHONY : e2e_test_thalamus_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_amygdala_pipeline
+
+# Build rule for target.
+e2e_test_amygdala_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_amygdala_pipeline
+.PHONY : e2e_test_amygdala_pipeline
+
+# fast build rule for target.
+e2e_test_amygdala_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_amygdala_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_amygdala_pipeline.dir/build
+.PHONY : e2e_test_amygdala_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -10975,6 +10962,19 @@ integration_core_brain_subcortical_thalamus_test/fast:
 .PHONY : integration_core_brain_subcortical_thalamus_test/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_subcortical_amygdala_test
+
+# Build rule for target.
+integration_core_brain_subcortical_amygdala_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_subcortical_amygdala_test
+.PHONY : integration_core_brain_subcortical_amygdala_test
+
+# fast build rule for target.
+integration_core_brain_subcortical_amygdala_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_amygdala_test.dir/build.make test/integration/core/brain/subcortical/CMakeFiles/integration_core_brain_subcortical_amygdala_test.dir/build
+.PHONY : integration_core_brain_subcortical_amygdala_test/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_oscillation_backward_compat
 
 # Build rule for target.
@@ -11064,6 +11064,19 @@ regression_core_brain_subcortical_thalamus_test: cmake_check_build_system
 regression_core_brain_subcortical_thalamus_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_thalamus_test.dir/build.make test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_thalamus_test.dir/build
 .PHONY : regression_core_brain_subcortical_thalamus_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_subcortical_amygdala_test
+
+# Build rule for target.
+regression_core_brain_subcortical_amygdala_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_subcortical_amygdala_test
+.PHONY : regression_core_brain_subcortical_amygdala_test
+
+# fast build rule for target.
+regression_core_brain_subcortical_amygdala_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir/build.make test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir/build
+.PHONY : regression_core_brain_subcortical_amygdala_test/fast
 
 #=============================================================================
 # Target rules for targets named integration_neuron_types_bio_async_test
@@ -11337,6 +11350,71 @@ unit_core_brain_subcortical_thalamus_test: cmake_check_build_system
 unit_core_brain_subcortical_thalamus_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_thalamus_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_thalamus_test.dir/build
 .PHONY : unit_core_brain_subcortical_thalamus_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_amygdala_test
+
+# Build rule for target.
+unit_core_brain_subcortical_amygdala_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_amygdala_test
+.PHONY : unit_core_brain_subcortical_amygdala_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_amygdala_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_test.dir/build
+.PHONY : unit_core_brain_subcortical_amygdala_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_amygdala_training_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_amygdala_training_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_amygdala_training_bridge_test
+.PHONY : unit_core_brain_subcortical_amygdala_training_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_amygdala_training_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_training_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_training_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_amygdala_training_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_amygdala_attention_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_amygdala_attention_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_amygdala_attention_bridge_test
+.PHONY : unit_core_brain_subcortical_amygdala_attention_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_amygdala_attention_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_attention_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_attention_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_amygdala_attention_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_amygdala_autobio_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_amygdala_autobio_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_amygdala_autobio_bridge_test
+.PHONY : unit_core_brain_subcortical_amygdala_autobio_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_amygdala_autobio_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_autobio_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_autobio_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_amygdala_autobio_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_amygdala_stress_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_amygdala_stress_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_amygdala_stress_bridge_test
+.PHONY : unit_core_brain_subcortical_amygdala_stress_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_amygdala_stress_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_stress_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_stress_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_amygdala_stress_bridge_test/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_math_test_complex_math
@@ -17664,6 +17742,7 @@ help:
 	@echo "... cow_inference_server"
 	@echo "... cow_snapshot_learning"
 	@echo "... distributed_cow_demo"
+	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_bio_async_cognitive_pipeline"
 	@echo "... e2e_test_bio_async_pipeline"
 	@echo "... e2e_test_bio_async_plasticity_pipeline"
@@ -17689,7 +17768,6 @@ help:
 	@echo "... e2e_test_master_connectivity"
 	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
-	@echo "... e2e_test_neural_plasticity_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
 	@echo "... e2e_test_nlp_neural_distributed"
 	@echo "... e2e_test_nlp_swarm_coordination"
@@ -17719,7 +17797,6 @@ help:
 	@echo "... e2e_test_snn_bridge_pipeline"
 	@echo "... e2e_test_snn_pipeline"
 	@echo "... e2e_test_subcortical_pipeline"
-	@echo "... e2e_test_substrate_bridges_pipeline"
 	@echo "... e2e_test_swarm_consciousness_enhanced_pipeline"
 	@echo "... e2e_test_swarm_consciousness_pipeline"
 	@echo "... e2e_test_swarm_formation"
@@ -17789,6 +17866,7 @@ help:
 	@echo "... integration_core_brain_factory_test_factory_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline"
+	@echo "... integration_core_brain_subcortical_amygdala_test"
 	@echo "... integration_core_brain_subcortical_test"
 	@echo "... integration_core_brain_subcortical_thalamus_test"
 	@echo "... integration_core_cortical_columns_substrate_bridge"
@@ -18004,6 +18082,7 @@ help:
 	@echo "... regression_core_brain_regions_test_language_bridge_regression"
 	@echo "... regression_core_brain_regions_test_language_production_bridge_regression"
 	@echo "... regression_core_brain_regions_test_visual_cortex_regression"
+	@echo "... regression_core_brain_subcortical_amygdala_test"
 	@echo "... regression_core_brain_subcortical_test"
 	@echo "... regression_core_brain_subcortical_thalamus_test"
 	@echo "... regression_core_cortical_columns_substrate_bridge"
@@ -18545,6 +18624,11 @@ help:
 	@echo "... unit_core_brain_regions_broca_test_nimcp_speech_motor"
 	@echo "... unit_core_brain_regions_broca_test_nimcp_syntax_processor"
 	@echo "... unit_core_brain_split_brain_test"
+	@echo "... unit_core_brain_subcortical_amygdala_attention_bridge_test"
+	@echo "... unit_core_brain_subcortical_amygdala_autobio_bridge_test"
+	@echo "... unit_core_brain_subcortical_amygdala_stress_bridge_test"
+	@echo "... unit_core_brain_subcortical_amygdala_test"
+	@echo "... unit_core_brain_subcortical_amygdala_training_bridge_test"
 	@echo "... unit_core_brain_subcortical_basal_ganglia_test"
 	@echo "... unit_core_brain_subcortical_thalamus_test"
 	@echo "... unit_core_brain_test_brain_100_percent_coverage"

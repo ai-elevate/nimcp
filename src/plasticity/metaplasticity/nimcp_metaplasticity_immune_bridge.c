@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -147,16 +148,16 @@ metaplasticity_immune_bridge_t* metaplasticity_immune_bridge_create(
     bridge->inflammation_state.threshold_elevation = 1.0f;
 
     /* Allocate mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -170,14 +171,14 @@ void metaplasticity_immune_bridge_destroy(metaplasticity_immune_bridge_t* bridge
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         metaplasticity_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -204,7 +205,7 @@ int metaplasticity_immune_apply_cytokine_effects(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine levels from immune system */
     float il1 = 0.0f, il6 = 0.0f, tnf = 0.0f, ifn = 0.0f, il10 = 0.0f;
@@ -251,7 +252,7 @@ int metaplasticity_immune_apply_cytokine_effects(
 
     bridge->cytokine_modulations++;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Cytokine effects: threshold×%.2f, adaptation×%.2f",
                        bridge->cytokine_effects.total_threshold_modulation,
@@ -274,7 +275,7 @@ int metaplasticity_immune_apply_inflammation_effects(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get current inflammation level from immune system */
     brain_inflammation_level_t level = INFLAMMATION_NONE;
@@ -316,7 +317,7 @@ int metaplasticity_immune_apply_inflammation_effects(
         bridge->inflammation_state.metaplastic_range_reduction = 0.6f;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Inflammation effects: level=%d, threshold×%.2f, adapt×%.2f",
                        level, bridge->inflammation_state.threshold_elevation,
@@ -392,7 +393,7 @@ int metaplasticity_immune_restore_metaplasticity(
     if (recovery_factor < 0.0f) recovery_factor = 0.0f;
     if (recovery_factor > 1.0f) recovery_factor = 1.0f;
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Interpolate threshold modulation back to baseline */
     float current_mod = bridge->cytokine_effects.total_threshold_modulation;
@@ -406,7 +407,7 @@ int metaplasticity_immune_restore_metaplasticity(
 
     bridge->threshold_restorations++;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Restored metaplasticity: recovery=%.2f", recovery_factor);
 
@@ -431,13 +432,13 @@ int metaplasticity_immune_detect_instability(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get metaplasticity statistics */
     metaplasticity_stats_t stats;
     if (metaplasticity_controller_get_stats(bridge->metaplasticity_controller,
                                            &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -476,7 +477,7 @@ int metaplasticity_immune_detect_instability(
     if (bridge->instability_state.reset_failure_detected) severity += 0.3f;
     bridge->instability_state.instability_severity = severity;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     if (bridge->instability_state.homeostatic_threat) {
         NIMCP_LOGGING_WARN("Metaplasticity instability detected: ratio=%.2f, severity=%.2f",
@@ -638,7 +639,7 @@ float metaplasticity_immune_get_threshold_elevation(
 
 int metaplasticity_immune_connect_bio_async(metaplasticity_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_METAPLASTICITY,
@@ -647,22 +648,22 @@ int metaplasticity_immune_connect_bio_async(metaplasticity_immune_bridge_t* brid
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected metaplasticity immune bridge to bio-async router");
     }
     return 0;
 }
 
 int metaplasticity_immune_disconnect_bio_async(metaplasticity_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected metaplasticity immune bridge from bio-async");
     return 0;
 }
@@ -670,5 +671,5 @@ int metaplasticity_immune_disconnect_bio_async(metaplasticity_immune_bridge_t* b
 bool metaplasticity_immune_is_bio_async_connected(
     const metaplasticity_immune_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

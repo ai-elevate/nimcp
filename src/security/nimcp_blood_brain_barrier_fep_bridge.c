@@ -4,6 +4,7 @@
  */
 
 #include "security/nimcp_blood_brain_barrier_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
@@ -68,8 +69,8 @@ bbb_fep_bridge_t* bbb_fep_create(
     bridge->fep_system = fep_system;
     bridge->bbb_system = bbb_system;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("BBB FEP bridge: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -77,7 +78,7 @@ bbb_fep_bridge_t* bbb_fep_create(
 
     bridge->state.active = true;
     bridge->state.current_precision = BBB_FEP_DEFAULT_PRECISION;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("BBB FEP bridge created");
     return bridge;
@@ -88,12 +89,12 @@ void bbb_fep_destroy(bbb_fep_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         bbb_fep_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -184,7 +185,7 @@ int bbb_fep_update(bbb_fep_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Get current FEP state
     float current_fe = fep_get_free_energy(bridge->fep_system);
@@ -223,7 +224,7 @@ int bbb_fep_update(bbb_fep_bridge_t* bridge) {
     bridge->state.update_count++;
     bridge->stats.avg_free_energy = bridge->state.avg_free_energy;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -237,7 +238,7 @@ int bbb_fep_process_input(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Extract features from input
     float features[BBB_FEP_MAX_FEATURES];
@@ -280,7 +281,7 @@ int bbb_fep_process_input(
     bridge->stats.total_inputs_processed++;
     bridge->stats.avg_prediction_error = fe.inaccuracy;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -293,7 +294,7 @@ int bbb_fep_apply_modulation(bbb_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Adapt precision based on threat landscape
     float threat_rate = (float)bridge->bbb_effects.threats_detected /
@@ -316,7 +317,7 @@ int bbb_fep_apply_modulation(bbb_fep_bridge_t* bridge) {
     bridge->stats.precision_adaptations++;
     bridge->stats.current_precision = bridge->state.current_precision;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -329,7 +330,7 @@ int bbb_fep_report_threat(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Update BBB effects
     bridge->bbb_effects.threats_detected++;
@@ -354,7 +355,7 @@ int bbb_fep_report_threat(
         fep_update_precision(bridge->fep_system);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -415,7 +416,7 @@ int bbb_fep_connect_bio_async(bbb_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -426,9 +427,9 @@ int bbb_fep_connect_bio_async(bbb_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("BBB FEP bridge connected to bio-async");
     }
 
@@ -436,18 +437,18 @@ int bbb_fep_connect_bio_async(bbb_fep_bridge_t* bridge) {
 }
 
 int bbb_fep_disconnect_bio_async(bbb_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     NIMCP_LOGGING_INFO("BBB FEP bridge disconnected from bio-async");
     return 0;
 }
 
 bool bbb_fep_is_bio_async_connected(const bbb_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

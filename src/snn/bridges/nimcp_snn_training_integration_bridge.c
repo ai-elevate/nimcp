@@ -11,6 +11,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_training_integration_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_training.h"
 #include "snn/nimcp_snn_network.h"
 #include "utils/memory/nimcp_memory.h"
@@ -42,6 +43,8 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct snn_training_integration_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     snn_training_integration_config_t config;
 
@@ -73,8 +76,6 @@ struct snn_training_integration_bridge {
 
     /* Bio-async context */
     void* bio_ctx;
-    bool bio_async_enabled;
-
     /* Thread safety */
     nimcp_platform_mutex_t* mutex;
 
@@ -245,8 +246,8 @@ snn_training_integration_bridge_t* snn_training_integration_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for SNN training integration bridge");
         nimcp_free(bridge);
         return NULL;
@@ -291,8 +292,8 @@ void snn_training_integration_destroy(
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -305,7 +306,7 @@ int snn_training_integration_start(
     if (!bridge) return -1;
     if (bridge->started) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Connect bio-async if enabled */
     if (bridge->config.enable_bio_async) {
@@ -315,7 +316,7 @@ int snn_training_integration_start(
     bridge->started = true;
     bridge->state.timestamp_ms = 0;  /* Will be set on first update */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Started SNN training integration bridge");
     return 0;
@@ -327,16 +328,16 @@ int snn_training_integration_stop(
     if (!bridge) return -1;
     if (!bridge->started) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_training_integration_disconnect_bio_async(bridge);
     }
 
     bridge->started = false;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Stopped SNN training integration bridge");
     return 0;
@@ -355,7 +356,7 @@ int snn_training_integration_connect_context(
     if (!bridge || !ctx) return -1;
     if (bridge->num_contexts >= SNN_TRAINING_INTEGRATION_MAX_CONTEXTS) return -2;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Find free slot */
     int slot = -1;
@@ -367,7 +368,7 @@ int snn_training_integration_connect_context(
     }
 
     if (slot < 0) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -2;
     }
 
@@ -391,7 +392,7 @@ int snn_training_integration_connect_context(
     bridge->num_contexts++;
     bridge->state.contexts_connected = bridge->num_contexts;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected SNN context '%s' (slot %d)",
                       bridge->contexts[slot].name, slot);
@@ -405,10 +406,10 @@ int snn_training_integration_disconnect_context(
     if (!bridge) return -1;
     if (context_id < 0 || context_id >= SNN_TRAINING_INTEGRATION_MAX_CONTEXTS) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (!bridge->contexts[context_id].active) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -418,7 +419,7 @@ int snn_training_integration_disconnect_context(
     bridge->num_contexts--;
     bridge->state.contexts_connected = bridge->num_contexts;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected SNN context (slot %d)", context_id);
     return 0;
@@ -434,10 +435,10 @@ int snn_training_integration_connect_brain_training(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->brain_training = training_ctx;
     bridge->stats.brain_training_connected = (training_ctx != NULL);
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected brain training context: %s",
                       training_ctx ? "yes" : "disconnected");
@@ -450,10 +451,10 @@ int snn_training_integration_connect_cognitive_training(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->cognitive_training = cognitive_training;
     bridge->stats.cognitive_training_connected = (cognitive_training != NULL);
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected cognitive training bridge: %s",
                       cognitive_training ? "yes" : "disconnected");
@@ -466,10 +467,10 @@ int snn_training_integration_connect_training_immune(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->training_immune = training_immune;
     bridge->stats.training_immune_connected = (training_immune != NULL);
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected training immune system: %s",
                       training_immune ? "yes" : "disconnected");
@@ -482,10 +483,10 @@ int snn_training_integration_connect_training_plasticity(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->training_plasticity = training_plasticity;
     bridge->stats.training_plasticity_connected = (training_plasticity != NULL);
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected training plasticity bridge: %s",
                       training_plasticity ? "yes" : "disconnected");
@@ -547,7 +548,7 @@ int snn_training_integration_set_params(
 ) {
     if (!bridge || !params) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(&bridge->params, params, sizeof(snn_pipeline_params_t));
     bridge->params.valid = true;
 
@@ -558,7 +559,7 @@ int snn_training_integration_set_params(
     bridge->consolidation_active = params->consolidation_mode;
     bridge->exploration_active = params->exploration_mode;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     bridge->stats.lr_modulations++;
     return 0;
@@ -572,14 +573,14 @@ int snn_training_integration_apply_lr_modulation(
     if (lr_factor < 0.1f) lr_factor = 0.1f;
     if (lr_factor > 2.0f) lr_factor = 2.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->params.lr_factor = lr_factor;
     bridge->params.stdp_amplitude_scale = 1.0f +
         (lr_factor - 1.0f) * bridge->config.stdp_modulation_scale;
     bridge->state.current_lr_factor = lr_factor;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     bridge->stats.lr_modulations++;
     return 0;
@@ -593,7 +594,7 @@ int snn_training_integration_set_reward(
     if (!bridge) return -1;
     if (source < 0 || source >= SNN_REWARD_SOURCE_COUNT) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Apply source weight */
     float weighted_reward = reward * bridge->params.reward_source_weights[source];
@@ -607,7 +608,7 @@ int snn_training_integration_set_reward(
     }
     bridge->metrics.reward_cumulative = bridge->reward_cumulative;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     bridge->stats.total_reward_events++;
     return 0;
@@ -619,11 +620,11 @@ int snn_training_integration_pause_learning(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->learning_paused = pause;
     bridge->params.pause_learning = pause;
     bridge->state.learning_paused = pause;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     if (pause) {
         bridge->stats.learning_pauses++;
@@ -640,7 +641,7 @@ int snn_training_integration_consolidation_mode(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->consolidation_active = enable;
     bridge->params.consolidation_mode = enable;
     bridge->state.consolidation_active = enable;
@@ -651,7 +652,7 @@ int snn_training_integration_consolidation_mode(
         bridge->params.eligibility_decay_scale *= 1.5f;  /* Faster decay */
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("SNN consolidation mode: %s", enable ? "enabled" : "disabled");
     return 0;
@@ -663,7 +664,7 @@ int snn_training_integration_exploration_mode(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->exploration_active = enable;
     bridge->params.exploration_mode = enable;
     bridge->state.exploration_active = enable;
@@ -674,7 +675,7 @@ int snn_training_integration_exploration_mode(
         bridge->params.tau_minus_scale *= 1.2f;  /* Widen LTD window */
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("SNN exploration mode: %s", enable ? "enabled" : "disabled");
     return 0;
@@ -692,7 +693,7 @@ int snn_training_integration_update(
     if (!bridge->started) return 0;
     if (bridge->config.op_mode == SNN_TRAINING_INTEGRATION_OP_DISABLED) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Aggregate metrics from all contexts */
     aggregate_context_metrics(bridge);
@@ -728,7 +729,7 @@ int snn_training_integration_update(
     bridge->stats.last_update_ms = bridge->state.timestamp_ms;
     bridge->stats.snn_contexts_connected = bridge->num_contexts;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -741,7 +742,7 @@ int snn_training_integration_report_event(
     if (!bridge) return -1;
     if (event < 0 || event >= SNN_LEARNING_EVENT_COUNT) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     switch (event) {
         case SNN_LEARNING_EVENT_LTP:
@@ -782,7 +783,7 @@ int snn_training_integration_report_event(
             break;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -792,7 +793,7 @@ int snn_training_integration_epoch_complete(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Store epoch metrics */
     bridge->state.epoch = epoch;
@@ -828,7 +829,7 @@ int snn_training_integration_epoch_complete(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("SNN epoch %lu complete, stability=%.3f",
                        (unsigned long)epoch, bridge->metrics.learning_stability);
@@ -843,11 +844,11 @@ int snn_training_integration_connect_bio_async(
     snn_training_integration_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     /* Bio-async router registration would happen here */
     /* For now, mark as not available (common in unit tests) */
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     bridge->stats.bio_async_connected = false;
 
     NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -859,8 +860,8 @@ int snn_training_integration_disconnect_bio_async(
 ) {
     if (!bridge) return -1;
 
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
     bridge->stats.bio_async_connected = false;
 
     return 0;
@@ -870,7 +871,7 @@ bool snn_training_integration_is_bio_async_connected(
     const snn_training_integration_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -908,7 +909,7 @@ void snn_training_integration_reset_stats(
 ) {
     if (!bridge) return;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Preserve connection status */
     bool brain_conn = bridge->stats.brain_training_connected;
@@ -928,7 +929,7 @@ void snn_training_integration_reset_stats(
     bridge->stats.bio_async_connected = bio_conn;
     bridge->stats.snn_contexts_connected = ctx_count;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================

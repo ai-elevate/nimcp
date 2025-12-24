@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/working_memory/nimcp_working_memory_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -165,25 +166,22 @@ wm_substrate_bridge_t* wm_substrate_bridge_create(
      * WHY: Requires explicit connection
      * HOW: Set flags to false/NULL
      */
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     /* WHAT: Initialize mutex for thread safety
      * WHY: Allow concurrent access from WM and substrate threads
      * HOW: Allocate and initialize platform mutex
      */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (bridge->mutex) {
-        if (nimcp_platform_mutex_init(bridge->mutex, false) == 0) {
-            bridge->mutex_initialized = true;
+    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (bridge->base.mutex) {
+        if (nimcp_platform_mutex_init(bridge->base.mutex, false) == 0) {
         } else {
             NIMCP_LOGGING_WARN("Failed to initialize mutex for WM-substrate bridge");
-            nimcp_free(bridge->mutex);
-            bridge->mutex = NULL;
-            bridge->mutex_initialized = false;
+            nimcp_free(bridge->base.mutex);
+            bridge->base.mutex = NULL;
         }
     } else {
-        bridge->mutex_initialized = false;
         NIMCP_LOGGING_WARN("Failed to allocate mutex for WM-substrate bridge");
     }
 
@@ -202,7 +200,7 @@ void wm_substrate_bridge_destroy(wm_substrate_bridge_t* bridge)
      * WHY: Clean shutdown of messaging
      * HOW: Call disconnect function
      */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         wm_substrate_disconnect_bio_async(bridge);
     }
 
@@ -210,9 +208,9 @@ void wm_substrate_bridge_destroy(wm_substrate_bridge_t* bridge)
      * WHY: Release mutex resources
      * HOW: Platform mutex destroy and free
      */
-    if (bridge->mutex_initialized && bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if ((bridge->base.mutex != NULL) && bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* WHAT: Free bridge structure
@@ -237,7 +235,7 @@ int wm_substrate_connect_bio_async(wm_substrate_bridge_t* bridge)
     }
 
     /* Guard: Check if already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_WARN("WM-substrate bridge already connected to bio-async");
         return 0;
     }
@@ -253,9 +251,9 @@ int wm_substrate_connect_bio_async(wm_substrate_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("WM-substrate bridge connected to bio-async router");
         return 0;
     } else {
@@ -273,7 +271,7 @@ int wm_substrate_disconnect_bio_async(wm_substrate_bridge_t* bridge)
     }
 
     /* Guard: Check if connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -281,12 +279,12 @@ int wm_substrate_disconnect_bio_async(wm_substrate_bridge_t* bridge)
      * WHY: Clean disconnection
      * HOW: Unregister module and clear state
      */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("WM-substrate bridge disconnected from bio-async");
 
     return 0;
@@ -299,7 +297,7 @@ bool wm_substrate_is_bio_async_connected(const wm_substrate_bridge_t* bridge)
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -335,8 +333,8 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
     }
 
     /* Lock for thread-safe effect updates */
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* ========================================================================
@@ -485,8 +483,8 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
         (1.0f - alpha) * bridge->stats.avg_decay_rate_mod;
 
     /* Unlock */
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     NIMCP_LOGGING_DEBUG("Updated WM-substrate effects: capacity=%.2f, decay_mod=%.2f, "
@@ -512,10 +510,10 @@ float wm_substrate_get_capacity_factor(const wm_substrate_bridge_t* bridge)
     }
 
     float result;
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.capacity_factor;
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     } else {
         result = bridge->effects.capacity_factor;
     }
@@ -531,10 +529,10 @@ float wm_substrate_get_decay_mod(const wm_substrate_bridge_t* bridge)
     }
 
     float result;
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.decay_rate_mod;
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     } else {
         result = bridge->effects.decay_rate_mod;
     }
@@ -550,10 +548,10 @@ float wm_substrate_get_refresh_efficiency(const wm_substrate_bridge_t* bridge)
     }
 
     float result;
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.refresh_efficiency;
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     } else {
         result = bridge->effects.refresh_efficiency;
     }
@@ -569,10 +567,10 @@ float wm_substrate_get_encoding_strength(const wm_substrate_bridge_t* bridge)
     }
 
     float result;
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.encoding_strength;
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     } else {
         result = bridge->effects.encoding_strength;
     }
@@ -594,10 +592,10 @@ int wm_substrate_get_effects(
      * WHY: Provide consistent snapshot of all effects
      * HOW: Lock, memcpy, unlock
      */
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         memcpy(effects, &bridge->effects, sizeof(wm_substrate_effects_t));
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     } else {
         memcpy(effects, &bridge->effects, sizeof(wm_substrate_effects_t));
     }
@@ -613,10 +611,10 @@ bool wm_substrate_is_impaired(const wm_substrate_bridge_t* bridge)
     }
 
     bool result;
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.is_impaired;
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     } else {
         result = bridge->effects.is_impaired;
     }
@@ -638,10 +636,10 @@ int wm_substrate_get_stats(
      * WHY: Provide consistent snapshot of stats
      * HOW: Lock, memcpy, unlock
      */
-    if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if ((bridge->base.mutex != NULL)) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         memcpy(stats, &bridge->stats, sizeof(wm_substrate_stats_t));
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     } else {
         memcpy(stats, &bridge->stats, sizeof(wm_substrate_stats_t));
     }

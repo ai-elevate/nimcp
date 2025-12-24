@@ -22,6 +22,7 @@
 #define NIMCP_ETHICS_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -69,15 +70,14 @@ typedef struct {
 } ethics_fep_stats_t;
 
 struct ethics_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     ethics_fep_config_t config;
     fep_system_t* fep_system;
     void* ethics_system;  /* ethics_engine_t* */
     ethics_fep_effects_t effects;
     ethics_fep_state_t state;
     ethics_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 int ethics_fep_bridge_default_config(ethics_fep_config_t* config);

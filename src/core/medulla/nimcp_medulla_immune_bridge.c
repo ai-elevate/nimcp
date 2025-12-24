@@ -10,6 +10,7 @@
  */
 
 #include "core/medulla/nimcp_medulla_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -26,6 +27,8 @@
 //=============================================================================
 
 struct medulla_immune_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /** Configuration */
     medulla_immune_config_t config;
 
@@ -43,9 +46,6 @@ struct medulla_immune_bridge {
 
     /** Statistics */
     medulla_immune_stats_t stats;
-
-    /** Bio-async context */
-    bio_module_context_t bio_ctx;
 
     /** Bio-async connected flag */
     bool bio_async_connected;
@@ -121,7 +121,7 @@ medulla_immune_bridge_t medulla_immune_create(
     bridge->immune = immune;
 
     /* Initialize mutex */
-    if (nimcp_platform_mutex_init(&bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize bridge mutex");
         nimcp_free(bridge);
         return NULL;
@@ -161,7 +161,7 @@ void medulla_immune_destroy(medulla_immune_bridge_t bridge) {
     }
 
     /* Destroy mutex */
-    nimcp_platform_mutex_destroy(&bridge->mutex);
+    nimcp_platform_mutex_destroy(bridge->base.mutex);
 
     /* Free bridge */
     nimcp_free(bridge);
@@ -228,12 +228,12 @@ int medulla_immune_update_immune_to_medulla(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_immune_to_medulla) return NIMCP_SUCCESS;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current inflammation level from immune system */
     brain_immune_stats_t immune_stats;
     if (brain_immune_get_stats(bridge->immune, &immune_stats) != 0) {
-        nimcp_platform_mutex_unlock(&bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -319,7 +319,7 @@ int medulla_immune_update_immune_to_medulla(
         *effects = bridge->cytokine_effects;
     }
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -334,12 +334,12 @@ int medulla_immune_update_medulla_to_immune(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_medulla_to_immune) return NIMCP_SUCCESS;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current medulla state */
     medulla_stats_t medulla_stats;
     if (medulla_get_stats(bridge->medulla, &medulla_stats) != 0) {
-        nimcp_platform_mutex_unlock(&bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -405,7 +405,7 @@ int medulla_immune_update_medulla_to_immune(
         *effects = bridge->immune_effects;
     }
 
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -431,9 +431,9 @@ int medulla_immune_update(medulla_immune_bridge_t bridge) {
     }
 
     /* Increment update counter */
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.total_updates++;
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -448,9 +448,9 @@ int medulla_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -461,9 +461,9 @@ int medulla_immune_get_immune_effects(
 ) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->immune_effects;
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -474,9 +474,9 @@ int medulla_immune_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(&bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(&bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -497,8 +497,8 @@ int medulla_immune_connect_bio_async(medulla_immune_bridge_t bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_DEBUG("Medulla-immune bridge connected to bio-async");
     } else {
@@ -512,9 +512,9 @@ int medulla_immune_disconnect_bio_async(medulla_immune_bridge_t bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

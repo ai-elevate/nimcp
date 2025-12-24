@@ -22,6 +22,7 @@
 #define NIMCP_EMOTIONAL_CONTAGION_FEP_BRIDGE_H
 
 #include "swarm/nimcp_emotional_contagion.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/thread/nimcp_thread.h"
@@ -68,17 +69,15 @@ typedef struct {
 } emotional_contagion_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     emotional_contagion_fep_config_t config;
     fep_system_t* fep_system;
     emotional_contagion_t* contagion_system;
     emotional_contagion_fep_effects_t fep_effects;
     fep_emotional_contagion_effects_t contagion_effects;
     emotional_contagion_fep_state_t state;
-    emotional_contagion_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
-} emotional_contagion_fep_bridge_t;
+    emotional_contagion_fep_stats_t stats;} emotional_contagion_fep_bridge_t;
 
 void emotional_contagion_fep_default_config(emotional_contagion_fep_config_t* config);
 emotional_contagion_fep_bridge_t* emotional_contagion_fep_create(const emotional_contagion_fep_config_t* config, emotional_contagion_t* contagion_system, fep_system_t* fep_system);

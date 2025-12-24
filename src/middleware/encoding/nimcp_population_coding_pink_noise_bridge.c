@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "middleware/encoding/nimcp_population_coding_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -120,13 +121,13 @@ population_pink_bridge_t* population_pink_bridge_create(
     bridge->num_neurons = num_neurons;
 
     // Create mutex
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
-        nimcp_free(bridge->mutex);
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -143,8 +144,8 @@ population_pink_bridge_t* population_pink_bridge_create(
 
     bridge->global_generator = pink_noise_create(&pink_cfg);
     if (!bridge->global_generator) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -156,8 +157,8 @@ population_pink_bridge_t* population_pink_bridge_create(
         );
         if (!bridge->per_neuron_generators) {
             pink_noise_destroy(bridge->global_generator);
-            nimcp_mutex_destroy(bridge->mutex);
-            nimcp_free(bridge->mutex);
+            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_free(bridge->base.mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -173,8 +174,8 @@ population_pink_bridge_t* population_pink_bridge_create(
                 }
                 nimcp_free(bridge->per_neuron_generators);
                 pink_noise_destroy(bridge->global_generator);
-                nimcp_mutex_destroy(bridge->mutex);
-                nimcp_free(bridge->mutex);
+                nimcp_mutex_destroy(bridge->base.mutex);
+                nimcp_free(bridge->base.mutex);
                 nimcp_free(bridge);
                 return NULL;
             }
@@ -191,8 +192,8 @@ population_pink_bridge_t* population_pink_bridge_create(
             nimcp_free(bridge->per_neuron_generators);
         }
         pink_noise_destroy(bridge->global_generator);
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -222,9 +223,9 @@ void population_pink_bridge_destroy(population_pink_bridge_t* bridge) {
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -241,9 +242,9 @@ int population_pink_bridge_connect_encoder(
     // Guard: validate inputs
     if (!bridge || !encoder) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoder = encoder;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -252,9 +253,9 @@ int population_pink_bridge_disconnect(population_pink_bridge_t* bridge) {
     // Guard: validate input
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoder = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -268,11 +269,11 @@ int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_noise) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Generate global noise sample
     if (!pink_noise_generate_sample(bridge->global_generator, &bridge->global_noise_value)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -290,7 +291,7 @@ int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
             for (uint32_t i = 0; i < bridge->num_neurons; i++) {
                 float local_noise;
                 if (!pink_noise_generate_sample(bridge->per_neuron_generators[i], &local_noise)) {
-                    nimcp_mutex_unlock(bridge->mutex);
+                    nimcp_mutex_unlock(bridge->base.mutex);
                     return -1;
                 }
                 bridge->current_noise_values[i] = local_noise;
@@ -305,7 +306,7 @@ int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
                 for (uint32_t i = 0; i < bridge->num_neurons; i++) {
                     float local_noise;
                     if (!pink_noise_generate_sample(bridge->per_neuron_generators[i], &local_noise)) {
-                        nimcp_mutex_unlock(bridge->mutex);
+                        nimcp_mutex_unlock(bridge->base.mutex);
                         return -1;
                     }
                     bridge->current_noise_values[i] = corr * bridge->global_noise_value + inv_corr * local_noise;
@@ -329,7 +330,7 @@ int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
     bridge->stats.samples_generated += bridge->num_neurons;
 
     bridge->update_count++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -372,7 +373,7 @@ int population_pink_bridge_modulate_rates(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float strength = bridge->config.rate_modulation_strength;
     float amplitude = bridge->config.amplitude;
@@ -398,7 +399,7 @@ int population_pink_bridge_modulate_rates(
         rates_out[i] = modulated;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -419,7 +420,7 @@ int population_pink_bridge_modulate_tuning(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float strength = bridge->config.tuning_modulation_strength;
 
@@ -440,7 +441,7 @@ int population_pink_bridge_modulate_tuning(
         tuning_out[i].tuning_width = modulated_width;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -461,7 +462,7 @@ int population_pink_bridge_modulate_positions(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float strength = bridge->config.position_modulation_strength;
 
@@ -480,7 +481,7 @@ int population_pink_bridge_modulate_positions(
         positions_out[i].magnitude = mag;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -492,9 +493,9 @@ int population_pink_bridge_enable(population_pink_bridge_t* bridge) {
     // Guard: validate input
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_noise = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -503,9 +504,9 @@ int population_pink_bridge_disable(population_pink_bridge_t* bridge) {
     // Guard: validate input
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_noise = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -524,13 +525,13 @@ int population_pink_bridge_reset(
     // Guard: validate input
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t seed = (new_seed == 0) ? bridge->config.seed : new_seed;
 
     // Reset global generator
     if (!pink_noise_reset(bridge->global_generator, seed)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -539,7 +540,7 @@ int population_pink_bridge_reset(
         for (uint32_t i = 0; i < bridge->num_neurons; i++) {
             uint32_t neuron_seed = (seed == 0) ? 0 : seed + i + 1;
             if (!pink_noise_reset(bridge->per_neuron_generators[i], neuron_seed)) {
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
         }
@@ -549,7 +550,7 @@ int population_pink_bridge_reset(
     memset(bridge->current_noise_values, 0, bridge->num_neurons * sizeof(float));
     bridge->global_noise_value = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -564,9 +565,9 @@ int population_pink_bridge_set_amplitude(
     // Guard: validate inputs
     if (!bridge || amplitude <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.amplitude = amplitude;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -578,9 +579,9 @@ int population_pink_bridge_set_alpha(
     // Guard: validate inputs
     if (!bridge || alpha < 0.0f || alpha > 3.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.alpha = alpha;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -592,9 +593,9 @@ int population_pink_bridge_set_correlation(
     // Guard: validate inputs
     if (!bridge || correlation < 0.0f || correlation > 1.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.correlation_factor = correlation;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -606,9 +607,9 @@ int population_pink_bridge_set_rate_modulation(
     // Guard: validate inputs
     if (!bridge || strength < 0.0f || strength > 1.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.rate_modulation_strength = strength;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -632,10 +633,10 @@ int population_pink_bridge_reset_stats(population_pink_bridge_t* bridge) {
     // Guard: validate input
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(population_pink_stats_t));
     bridge->update_count = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

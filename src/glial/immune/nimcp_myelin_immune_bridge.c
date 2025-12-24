@@ -6,6 +6,7 @@
  */
 
 #include "glial/immune/nimcp_myelin_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -45,10 +46,10 @@ myelin_immune_bridge_t* myelin_immune_create(
     bridge->sheath_integrity = 1.0f;
     bridge->conduction_efficiency = 1.0f;
 
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
-        nimcp_free(bridge->mutex);
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -61,15 +62,15 @@ myelin_immune_bridge_t* myelin_immune_create(
 void myelin_immune_destroy(myelin_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) myelin_immune_disconnect_bio_async(bridge);
-    if (bridge->mutex) { nimcp_mutex_destroy(bridge->mutex); nimcp_free(bridge->mutex); }
+    if (bridge->base.bio_async_enabled) myelin_immune_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) { nimcp_mutex_destroy(bridge->base.mutex); nimcp_free(bridge->base.mutex); }
     nimcp_free(bridge);
 }
 
 int myelin_immune_connect_bio_async(myelin_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_MYELIN,
@@ -78,28 +79,28 @@ int myelin_immune_connect_bio_async(myelin_immune_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) bridge->base.bio_async_enabled = true;
     return 0;
 }
 
 int myelin_immune_disconnect_bio_async(myelin_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) { bio_router_unregister_module(bridge->bio_ctx); bridge->bio_ctx = NULL; }
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) { bio_router_unregister_module(bridge->base.bio_ctx); bridge->base.bio_ctx = NULL; }
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool myelin_immune_is_bio_async_connected(const myelin_immune_bridge_t* bridge)
 {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 int myelin_immune_update_cytokine_effects(myelin_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float il1 = 0, tnf = 0, ifn = 0, il10 = 0;
     if (bridge->immune_system) {
@@ -119,14 +120,14 @@ int myelin_immune_update_cytokine_effects(myelin_immune_bridge_t* bridge)
         bridge->cytokine_effects.ifn_gamma_damage -
         bridge->cytokine_effects.il10_repair;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int myelin_immune_apply_damage(myelin_immune_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float damage = bridge->cytokine_effects.net_damage * (dt_ms / 1000.0f);
     if (damage > 0) {
@@ -138,14 +139,14 @@ int myelin_immune_apply_damage(myelin_immune_bridge_t* bridge, float dt_ms)
     bridge->conduction_efficiency = bridge->sheath_integrity;
     bridge->stats.current_integrity = bridge->sheath_integrity;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int myelin_immune_apply_repair(myelin_immune_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->cytokine_effects.net_damage < 0.1f && bridge->sheath_integrity < 1.0f) {
         float repair = bridge->config.integrity_repair_rate * (dt_ms / 1000.0f);
@@ -155,7 +156,7 @@ int myelin_immune_apply_repair(myelin_immune_bridge_t* bridge, float dt_ms)
         bridge->stats.repair_events++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -188,7 +189,7 @@ int myelin_immune_get_stats(const myelin_immune_bridge_t* bridge, myelin_immune_
 void myelin_immune_reset_stats(myelin_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }

@@ -6,16 +6,18 @@
  */
 
 #include "cognitive/knowledge/nimcp_knowledge_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct knowledge_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     knowledge_sleep_config_t config;
     sleep_system_t sleep_system;
     knowledge_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -44,7 +46,7 @@ static void knowledge_on_sleep_state_change(sleep_state_t new_state, void* user_
 
     NIMCP_LOGGING_DEBUG("Knowledge bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -75,7 +77,7 @@ static void knowledge_on_sleep_state_change(sleep_state_t new_state, void* user_
                                             new_state == SLEEP_STATE_LIGHT_NREM ||
                                             new_state == SLEEP_STATE_REM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Knowledge modulated: retrieval=%.2f, consolidation=%.2f, active=%d",
                         bridge->effects.retrieval_speed_factor,
@@ -113,8 +115,8 @@ knowledge_sleep_bridge_t knowledge_sleep_bridge_create(
     bridge->effects.association_strength_factor = 0.2f;
     bridge->effects.consolidation_active = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -151,14 +153,14 @@ void knowledge_sleep_bridge_destroy(knowledge_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int knowledge_sleep_update(knowledge_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -194,31 +196,31 @@ int knowledge_sleep_update(knowledge_sleep_bridge_t bridge) {
                                             state == SLEEP_STATE_LIGHT_NREM ||
                                             state == SLEEP_STATE_REM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int knowledge_sleep_get_effects(const knowledge_sleep_bridge_t bridge, knowledge_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float knowledge_sleep_get_retrieval_speed(const knowledge_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.retrieval_speed_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 bool knowledge_sleep_is_consolidation_active(const knowledge_sleep_bridge_t bridge) {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.consolidation_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

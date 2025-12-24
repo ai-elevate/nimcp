@@ -10,6 +10,7 @@
  */
 
 #include "async/immune/nimcp_bio_router_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
@@ -279,8 +280,8 @@ router_immune_bridge_t* router_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->recent_anomalies);
         nimcp_free(bridge->quarantined_nodes);
         nimcp_free(bridge->inflammation_impacts);
@@ -288,7 +289,7 @@ router_immune_bridge_t* router_immune_bridge_create(
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("router_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -298,9 +299,9 @@ void router_immune_bridge_destroy(router_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free arrays */
@@ -367,7 +368,7 @@ int router_immune_prioritize_cytokine(
     if (!bridge->enable_cytokine_priority_routing) return 0;
     if (bridge->cytokine_count >= bridge->cytokine_capacity) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Create cytokine routing state */
     cytokine_routing_state_t* state = &bridge->cytokine_states[bridge->cytokine_count];
@@ -384,7 +385,7 @@ int router_immune_prioritize_cytokine(
                   "Prioritized cytokine type %d with priority %u",
               cytokine_type, state->priority_level);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -397,14 +398,14 @@ int router_immune_apply_inflammation_latency(
     if (!bridge) return -1;
     if (!bridge->enable_inflammation_latency_impact) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Find or create inflammation impact */
     inflammation_routing_impact_t* impact = find_inflammation_impact(bridge, region_id);
     if (!impact) {
         /* Add new inflammation impact */
         if (bridge->inflammation_count >= bridge->inflammation_capacity) {
-            pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+            pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
             return -1;
         }
         impact = &bridge->inflammation_impacts[bridge->inflammation_count++];
@@ -422,7 +423,7 @@ int router_immune_apply_inflammation_latency(
                   "Applied inflammation latency for region %u: multiplier %.2f",
               region_id, impact->latency_multiplier);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -437,7 +438,7 @@ int router_immune_quarantine_node(
     if (!bridge) return -1;
     if (!bridge->enable_quarantine_routing_exclusion) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check if already quarantined */
     quarantined_node_state_t* existing = find_quarantined_node(bridge, node_id);
@@ -446,13 +447,13 @@ int router_immune_quarantine_node(
         existing->quarantine_duration_ms = duration_ms;
         existing->trust_score = trust_score;
         existing->triggering_antigen_id = antigen_id;
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
     /* Add new quarantine */
     if (bridge->quarantine_count >= bridge->quarantine_capacity) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         LOG_MODULE_WARN("router_immune_bridge", "Quarantine capacity exceeded");
         return -1;
     }
@@ -471,7 +472,7 @@ int router_immune_quarantine_node(
                   "Quarantined node %u for %lu ms (trust: %.2f)",
               node_id, duration_ms, trust_score);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -482,7 +483,7 @@ int router_immune_restore_node(
     /* Guard clauses */
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Find and remove quarantined node */
     for (size_t i = 0; i < bridge->quarantine_count; i++) {
@@ -497,12 +498,12 @@ int router_immune_restore_node(
             LOG_MODULE_INFO("router_immune_bridge",
                   "Restored node %u to routing", node_id);
 
-            pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+            pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
             return 0;
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return -1;  /* Node not found in quarantine */
 }
 
@@ -562,7 +563,7 @@ int router_immune_detect_anomalies(
     /* Update statistics first */
     router_immune_update_stats(bridge);
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check for anomalies */
     bool anomaly_detected = false;
@@ -609,13 +610,13 @@ int router_immune_detect_anomalies(
                   "Detected routing anomaly on node %u (severity %u)",
                   node_id, anomaly.severity);
 
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
         /* Trigger immune response */
         return router_immune_trigger_from_anomaly(bridge, &anomaly);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -723,7 +724,7 @@ int router_immune_bridge_update(
     /* Guard clauses */
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     uint64_t current_time = bridge->total_updates * delta_ms;  /* Simplified time tracking */
 
@@ -744,7 +745,7 @@ int router_immune_bridge_update(
 
     bridge->total_updates++;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -853,9 +854,9 @@ int router_immune_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -866,9 +867,9 @@ bool router_immune_is_node_quarantined(
 ) {
     if (!bridge) return false;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bool quarantined = (find_quarantined_node((router_immune_bridge_t*)bridge, node_id) != NULL);
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return quarantined;
 }
@@ -879,14 +880,14 @@ float router_immune_get_latency_multiplier(
 ) {
     if (!bridge) return 1.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_routing_impact_t* impact =
         find_inflammation_impact((router_immune_bridge_t*)bridge, region_id);
 
     float multiplier = impact ? impact->latency_multiplier : 1.0f;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return multiplier;
 }
@@ -904,12 +905,12 @@ uint32_t router_immune_get_anomaly_count(
 ) {
     if (!bridge) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     if (time_window_ms == 0) {
         /* Return all anomalies */
         uint32_t count = bridge->anomaly_count;
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return count;
     }
 
@@ -923,6 +924,6 @@ uint32_t router_immune_get_anomaly_count(
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return count;
 }

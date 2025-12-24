@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/hemispheric/nimcp_hemispheric_portia_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -172,13 +173,13 @@ hemispheric_portia_bridge_t* hemispheric_portia_create(
     bridge->right_state.last_transition_ms = 0;
 
     // Allocate mutex
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_portia_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     bridge->initialized = true;
 
@@ -189,13 +190,13 @@ hemispheric_portia_bridge_t* hemispheric_portia_create(
 void hemispheric_portia_destroy(hemispheric_portia_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         hemispheric_portia_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     bridge->initialized = false;
@@ -213,7 +214,7 @@ int hemispheric_portia_update(hemispheric_portia_bridge_t* bridge, float dt) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Compute resource fraction based on strategy
     float left_fraction = bridge->config.left_base_fraction;
@@ -286,7 +287,7 @@ int hemispheric_portia_update(hemispheric_portia_bridge_t* bridge, float dt) {
     bridge->stats.avg_left_fraction =
         (bridge->stats.avg_left_fraction * (n - 1) + left_fraction) / n;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -296,7 +297,7 @@ int hemispheric_portia_apply_allocation(hemispheric_portia_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Apply tiers to hemispheric brain
     hemispheric_brain_set_tier(
@@ -318,7 +319,7 @@ int hemispheric_portia_apply_allocation(hemispheric_portia_bridge_t* bridge) {
         false  // Already set tiers above
     );
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -335,10 +336,10 @@ int hemispheric_portia_set_strategy(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_strategy = strategy;
     bridge->stats.allocation_changes++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Set allocation strategy to %d", (int)strategy);
     return NIMCP_SUCCESS;
@@ -352,9 +353,9 @@ int hemispheric_portia_set_task(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_task = task;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -371,7 +372,7 @@ int hemispheric_portia_set_fraction(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->left_state.resource_fraction = left_fraction;
     bridge->right_state.resource_fraction = 1.0f - left_fraction;
@@ -384,7 +385,7 @@ int hemispheric_portia_set_fraction(
         &bridge->right_state.target_tier
     );
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -398,7 +399,7 @@ int hemispheric_portia_force_tier(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (hemisphere == HEMISPHERE_LEFT) {
         bridge->left_state.current_tier = tier;
@@ -409,7 +410,7 @@ int hemispheric_portia_force_tier(
     }
 
     bridge->stats.tier_transitions++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     // Apply immediately
     return hemispheric_portia_apply_allocation(bridge);
@@ -423,7 +424,7 @@ int hemispheric_portia_handle_tier_change(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->global_tier = new_tier;
     bridge->stats.portia_events_received++;
@@ -436,7 +437,7 @@ int hemispheric_portia_handle_tier_change(
         &bridge->right_state.target_tier
     );
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Received global tier change to %d", (int)new_tier);
     return NIMCP_SUCCESS;
@@ -494,9 +495,9 @@ hemispheric_portia_stats_t hemispheric_portia_get_stats(
 void hemispheric_portia_reset_stats(hemispheric_portia_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(hemispheric_portia_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -508,7 +509,7 @@ int hemispheric_portia_connect_bio_async(hemispheric_portia_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
@@ -519,9 +520,9 @@ int hemispheric_portia_connect_bio_async(hemispheric_portia_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Hemispheric Portia bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -535,16 +536,16 @@ int hemispheric_portia_disconnect_bio_async(hemispheric_portia_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Hemispheric Portia bridge disconnected from bio-async router");
 
     return NIMCP_SUCCESS;

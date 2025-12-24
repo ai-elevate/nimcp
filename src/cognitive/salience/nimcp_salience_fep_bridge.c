@@ -67,6 +67,7 @@
  */
 
 #include "cognitive/salience/nimcp_salience_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -177,16 +178,16 @@ salience_fep_bridge_t* salience_fep_bridge_create(const salience_fep_config_t* c
     memset(&bridge->stats, 0, sizeof(salience_fep_stats_t));
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Initialize bio-async state */
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     NIMCP_LOGGING_INFO("Created salience-FEP bridge");
     return bridge;
@@ -202,14 +203,14 @@ void salience_fep_bridge_destroy(salience_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         salience_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -237,9 +238,9 @@ int salience_fep_bridge_connect_fep(
     }
 
     /* Thread-safe connection */
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to salience bridge");
     return 0;
@@ -261,9 +262,9 @@ int salience_fep_bridge_connect_salience(
     }
 
     /* Thread-safe connection */
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->salience_evaluator = salience;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected salience evaluator to FEP bridge");
     return 0;
@@ -298,7 +299,7 @@ int salience_fep_modulate_precision_by_salience(salience_fep_bridge_t* bridge) {
         return 0;  /* Components not connected yet */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current salience score */
     float salience = bridge->state.current_salience;
@@ -321,7 +322,7 @@ int salience_fep_modulate_precision_by_salience(salience_fep_bridge_t* bridge) {
         (bridge->stats.avg_precision_boost * (bridge->stats.total_precision_boosts - 1) +
          precision_boost) / bridge->stats.total_precision_boosts;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated precision by salience: boost=%f", precision_boost);
     return 0;
@@ -361,7 +362,7 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
         return 0;  /* FEP not connected */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -420,7 +421,7 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
     bridge->stats.avg_salience =
         0.95f * bridge->stats.avg_salience + 0.05f * salience;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Computed salience from PE: salience=%f (surprise=%f, urgency=%f, novelty=%f)",
                         salience, surprise, urgency, novelty);
@@ -452,7 +453,7 @@ int salience_fep_gate_by_salience(salience_fep_bridge_t* bridge) {
         return 0;  /* Feature disabled */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current salience */
     float salience = bridge->state.current_salience;
@@ -466,7 +467,7 @@ int salience_fep_gate_by_salience(salience_fep_bridge_t* bridge) {
     /* Update statistics */
     bridge->stats.total_salience_gates++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied salience gating: factor=%f", gating_factor);
     return 0;
@@ -522,9 +523,9 @@ int salience_fep_bridge_get_state(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -544,9 +545,9 @@ int salience_fep_bridge_get_stats(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -568,7 +569,7 @@ int salience_fep_bridge_connect_bio_async(salience_fep_bridge_t* bridge) {
     }
 
     /* Already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -580,9 +581,9 @@ int salience_fep_bridge_connect_bio_async(salience_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected salience-FEP bridge to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -604,17 +605,17 @@ int salience_fep_bridge_disconnect_bio_async(salience_fep_bridge_t* bridge) {
     }
 
     /* Not connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
     /* Unregister from router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected salience-FEP bridge from bio-async router");
 
     return 0;
@@ -626,5 +627,5 @@ int salience_fep_bridge_disconnect_bio_async(salience_fep_bridge_t* bridge) {
  * HOW:  Return bio_async_enabled flag
  */
 bool salience_fep_bridge_is_bio_async_connected(const salience_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

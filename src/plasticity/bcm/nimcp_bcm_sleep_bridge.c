@@ -6,12 +6,15 @@
  */
 
 #include "plasticity/bcm/nimcp_bcm_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct bcm_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     bcm_sleep_config_t config;
     sleep_system_t sleep_system;
     bcm_sleep_effects_t effects;
@@ -43,7 +46,7 @@ static void bcm_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 
     NIMCP_LOGGING_DEBUG("BCM bridge received sleep state: %d", new_state);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -62,7 +65,7 @@ static void bcm_on_sleep_state_change(sleep_state_t new_state, void* user_data)
     /* Elevated theta favors LTD (activity must exceed higher threshold for LTP) */
     bridge->effects.favors_ltd = (bridge->effects.theta_factor > 1.0f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("BCM modulated: theta=%.2f, lr=%.2f, favors_ltd=%d",
                         bridge->effects.theta_factor,
@@ -104,8 +107,8 @@ bcm_sleep_bridge_t bcm_sleep_bridge_create(
     bridge->effects.learning_rate_factor = 1.0f;
     bridge->effects.favors_ltd = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -145,14 +148,14 @@ void bcm_sleep_bridge_destroy(bcm_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int bcm_sleep_update(bcm_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -175,31 +178,31 @@ int bcm_sleep_update(bcm_sleep_bridge_t bridge) {
     /* Elevated theta favors LTD (activity must exceed higher threshold for LTP) */
     bridge->effects.favors_ltd = (bridge->effects.theta_factor > 1.0f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int bcm_sleep_get_effects(const bcm_sleep_bridge_t bridge, bcm_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float bcm_sleep_get_theta_factor(const bcm_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.theta_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float bcm_sleep_get_lr_factor(const bcm_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.learning_rate_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

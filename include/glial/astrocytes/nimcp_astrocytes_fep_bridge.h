@@ -41,6 +41,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "glial/astrocytes/nimcp_astrocytes.h"
@@ -148,6 +149,8 @@ typedef struct {
  * HOW:  Track effects, update both systems, maintain state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     astrocytes_fep_config_t config;      /**< Bridge configuration */
     fep_system_t* fep_system;            /**< FEP system pointer */
     astrocyte_network_t* astrocyte_network; /**< Astrocyte network pointer */
@@ -155,13 +158,7 @@ typedef struct {
     fep_astrocyte_effects_t fep_effects; /**< FEP → astrocyte effects */
     astrocyte_fep_effects_t astro_effects; /**< Astrocyte → FEP effects */
     astrocytes_fep_state_t state;        /**< Bridge state */
-    astrocytes_fep_stats_t stats;        /**< Statistics */
-
-    bio_module_context_t bio_ctx;        /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Bio-async integration active */
-
-    void* mutex;                         /**< Thread safety mutex */
-} astrocytes_fep_bridge_t;
+    astrocytes_fep_stats_t stats;        /**< Statistics */} astrocytes_fep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

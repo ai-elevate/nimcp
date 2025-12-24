@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_consensus_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -21,13 +22,14 @@
 #include <string.h>
 
 struct swarm_consensus_immune_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_consensus_immune_config_t config;
     brain_immune_system_t* immune_system;
     void* swarm_consensus;
     cytokine_consensus_effects_t cytokine_effects;
     inflammation_consensus_state_t inflammation_state;
     consensus_immune_modulation_t modulation;
-    nimcp_mutex_t* mutex;
     void* bio_ctx;
     bool bio_async_connected;
 };
@@ -79,8 +81,8 @@ swarm_consensus_immune_bridge_t* swarm_consensus_immune_bridge_create(
     bridge->immune_system = immune_system;
     bridge->swarm_consensus = swarm_consensus;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm consensus immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -109,8 +111,8 @@ void swarm_consensus_immune_bridge_destroy(swarm_consensus_immune_bridge_t* brid
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -122,7 +124,7 @@ int swarm_consensus_immune_apply_cytokine_effects(swarm_consensus_immune_bridge_
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_cytokine_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sensitivity = bridge->config.cytokine_sensitivity;
 
@@ -140,7 +142,7 @@ int swarm_consensus_immune_apply_cytokine_effects(swarm_consensus_immune_bridge_
         bridge->cytokine_effects.voting_delay_factor = 0.5f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine consensus effects: delay=%.2f",
                         bridge->cytokine_effects.voting_delay_factor);
@@ -152,11 +154,11 @@ int swarm_consensus_immune_apply_inflammation_effects(swarm_consensus_immune_bri
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_inflammation_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -167,7 +169,7 @@ int swarm_consensus_immune_apply_inflammation_effects(swarm_consensus_immune_bri
     bridge->inflammation_state.consensus_blocked =
         (level >= INFLAMMATION_STORM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation consensus effects: level=%d, quorum=%.2f",
                         level, bridge->inflammation_state.quorum_factor);
@@ -179,7 +181,7 @@ int swarm_consensus_immune_trigger_from_failure(swarm_consensus_immune_bridge_t*
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_failure_stress) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.failed_votes++;
     if (bridge->modulation.failed_votes > 3) {
@@ -188,7 +190,7 @@ int swarm_consensus_immune_trigger_from_failure(swarm_consensus_immune_bridge_t*
                           bridge->modulation.failed_votes);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -197,7 +199,7 @@ int swarm_consensus_immune_boost_from_success(swarm_consensus_immune_bridge_t* b
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_success_boost) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.il10_from_success += 0.05f;
     bridge->modulation.failed_votes = 0;
@@ -206,7 +208,7 @@ int swarm_consensus_immune_boost_from_success(swarm_consensus_immune_bridge_t* b
     NIMCP_LOGGING_DEBUG("Consensus success boosted IL-10: total=%.2f",
                        bridge->modulation.il10_from_success);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -225,9 +227,9 @@ float swarm_consensus_immune_get_voting_delay(const swarm_consensus_immune_bridg
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float delay = bridge->cytokine_effects.voting_delay_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return delay;
 }
@@ -236,9 +238,9 @@ float swarm_consensus_immune_get_quorum_factor(const swarm_consensus_immune_brid
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->inflammation_state.quorum_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -247,9 +249,9 @@ bool swarm_consensus_immune_is_blocked(const swarm_consensus_immune_bridge_t* br
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool blocked = bridge->inflammation_state.consensus_blocked;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return blocked;
 }
@@ -273,8 +275,8 @@ int swarm_consensus_immune_connect_bio_async(swarm_consensus_immune_bridge_t* br
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_INFO("Swarm consensus-immune bridge connected to bio-async router");
     } else {
@@ -295,9 +297,9 @@ int swarm_consensus_immune_disconnect_bio_async(swarm_consensus_immune_bridge_t*
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

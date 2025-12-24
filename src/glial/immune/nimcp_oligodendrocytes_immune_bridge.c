@@ -12,6 +12,7 @@
  */
 
 #include "glial/immune/nimcp_oligodendrocytes_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -102,13 +103,13 @@ oligo_immune_bridge_t* oligo_immune_create(
     bridge->myelination_rate_modifier = 1.0f;
 
     /* Allocate mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
-        nimcp_free(bridge->mutex);
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -126,13 +127,13 @@ void oligo_immune_destroy(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         oligo_immune_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -148,16 +149,16 @@ int oligo_immune_connect_network(
     oligodendrocyte_network_t* network)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->oligo_network = network;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int oligo_immune_connect_bio_async(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_OLIGODENDROCYTE,
@@ -166,9 +167,9 @@ int oligo_immune_connect_bio_async(oligo_immune_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected oligo-immune to bio-async");
     }
     return 0;
@@ -177,20 +178,20 @@ int oligo_immune_connect_bio_async(oligo_immune_bridge_t* bridge)
 int oligo_immune_disconnect_bio_async(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool oligo_immune_is_bio_async_connected(const oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -201,7 +202,7 @@ int oligo_immune_update_cytokine_effects(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get cytokine levels from immune system */
     float il1 = 0.0f, il6 = 0.0f, il10 = 0.0f, tnf = 0.0f, ifn_gamma = 0.0f;
@@ -233,7 +234,7 @@ int oligo_immune_update_cytokine_effects(oligo_immune_bridge_t* bridge)
 
     bridge->stats.cytokine_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -250,7 +251,7 @@ int oligo_immune_apply_modulation(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute myelination modifier */
     float net_effect = bridge->cytokine_effects.net_protection_signal -
@@ -270,7 +271,7 @@ int oligo_immune_apply_modulation(oligo_immune_bridge_t* bridge)
         bridge->progenitor_recruitment = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -284,7 +285,7 @@ int oligo_immune_accumulate_damage(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Accumulate damage from net damage signal */
     float damage_delta = bridge->cytokine_effects.net_damage_signal *
@@ -312,7 +313,7 @@ int oligo_immune_accumulate_damage(
 
     bridge->stats.current_damage_level = bridge->damage_level;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -320,7 +321,7 @@ bool oligo_immune_check_death(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool died = false;
     if (bridge->damage_level >= bridge->config.death_threshold) {
@@ -330,7 +331,7 @@ bool oligo_immune_check_death(oligo_immune_bridge_t* bridge)
         NIMCP_LOGGING_WARN("Oligodendrocyte death from inflammatory damage");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return died;
 }
 
@@ -351,7 +352,7 @@ int oligo_immune_process_demyelination(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Demyelination rate based on damage and IFN-gamma */
     float demyelin_rate = bridge->damage_level * 0.1f +
@@ -368,7 +369,7 @@ int oligo_immune_process_demyelination(
 
     bridge->stats.demyelination_state = bridge->demyelination_state;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -390,7 +391,7 @@ int oligo_immune_process_remyelination(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_remyelination) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Remyelination only if inflammation resolved */
     bool can_remyelinate = (bridge->cytokine_effects.net_damage_signal < 0.2f) &&
@@ -411,7 +412,7 @@ int oligo_immune_process_remyelination(
         bridge->damage_state = classify_damage(bridge->damage_level);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -473,9 +474,9 @@ int oligo_immune_get_stats(
 void oligo_immune_reset_stats(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

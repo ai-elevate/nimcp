@@ -19,6 +19,7 @@
 #define NIMCP_TRAINING_LOGIC_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 

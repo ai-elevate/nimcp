@@ -21,6 +21,7 @@
 #define NIMCP_EMPATHETIC_RESPONSE_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/nimcp_empathetic_response.h"
@@ -69,17 +70,15 @@ typedef struct {
 } empathetic_response_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     empathetic_response_fep_config_t config;
     fep_system_t* fep_system;
     empathetic_response_engine_t empathetic_system;
     empathetic_response_fep_effects_t fep_effects;
     fep_empathetic_response_effects_t emotion_effects;
     empathetic_response_fep_state_t state;
-    empathetic_response_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} empathetic_response_fep_bridge_t;
+    empathetic_response_fep_stats_t stats;} empathetic_response_fep_bridge_t;
 
 int empathetic_response_fep_default_config(empathetic_response_fep_config_t* config);
 empathetic_response_fep_bridge_t* empathetic_response_fep_create(const empathetic_response_fep_config_t* config);

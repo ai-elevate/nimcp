@@ -50,8 +50,8 @@ protected:
 
 TEST_F(AmygdalaStressBridgeTest, CreateWithDefaultConfig) {
     EXPECT_NE(bridge, nullptr);
-    EXPECT_FALSE(bridge->amygdala_connected);
-    EXPECT_FALSE(bridge->stress_connected);
+    EXPECT_FALSE(bridge->base.system_a_connected);
+    EXPECT_FALSE(bridge->base.system_b_connected);
     EXPECT_FALSE(bridge->wellbeing_connected);
     EXPECT_EQ(bridge->cortisol_level, 0.0f);
     EXPECT_EQ(bridge->amygdala_sensitization, 0.0f);
@@ -99,8 +99,8 @@ TEST_F(AmygdalaStressBridgeTest, DestroyNullBridge) {
 TEST_F(AmygdalaStressBridgeTest, ConnectAmygdala) {
     int ret = amygdala_stress_connect_amygdala(bridge, amygdala);
     EXPECT_EQ(ret, 0);
-    EXPECT_TRUE(bridge->amygdala_connected);
-    EXPECT_EQ(bridge->amygdala, amygdala);
+    EXPECT_TRUE(bridge->base.system_a_connected);
+    EXPECT_EQ(bridge->base.system_a, amygdala);
 }
 
 TEST_F(AmygdalaStressBridgeTest, ConnectAmygdalaNullBridge) {
@@ -117,7 +117,7 @@ TEST_F(AmygdalaStressBridgeTest, ConnectStressSystem) {
     int dummy_stress = 42;
     int ret = amygdala_stress_connect_stress(bridge, &dummy_stress);
     EXPECT_EQ(ret, 0);
-    EXPECT_TRUE(bridge->stress_connected);
+    EXPECT_TRUE(bridge->base.system_b_connected);
 }
 
 TEST_F(AmygdalaStressBridgeTest, ConnectWellbeingSystem) {
@@ -373,7 +373,7 @@ TEST_F(AmygdalaStressBridgeTest, FullUpdateCycle) {
 
     /* Check effects applied */
     EXPECT_GT(bridge->cortisol_level, 0.0f);
-    EXPECT_GT(bridge->total_updates, 0);
+    EXPECT_GT(bridge->base.total_updates, 0);
 }
 
 TEST_F(AmygdalaStressBridgeTest, StressAnxietyFeedbackLoop) {

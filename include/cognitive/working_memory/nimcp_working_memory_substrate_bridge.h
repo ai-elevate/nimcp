@@ -44,6 +44,7 @@
 #define NIMCP_WORKING_MEMORY_SUBSTRATE_BRIDGE_H
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/nimcp_working_memory.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -192,15 +193,13 @@ typedef struct {
  * - Safe for concurrent access from WM and substrate threads
  */
 typedef struct wm_substrate_bridge_t {
+    bridge_base_t base;                  /**< MUST be first: base bridge infrastructure */
+
     neural_substrate_t* substrate;      // Pointer to neural substrate
     working_memory_t* wm;               // Pointer to working memory system
     wm_substrate_effects_t effects;     // Computed metabolic effects
     wm_substrate_config_t config;       // Bridge configuration
     wm_substrate_stats_t stats;         // Runtime statistics
-    bio_module_context_t bio_ctx;       // Bio-async module context
-    bool bio_async_enabled;             // Bio-async connection status
-    nimcp_mutex_t* mutex;               // Thread safety (pointer to mutex)
-    bool mutex_initialized;             // Mutex initialization flag
 } wm_substrate_bridge_t;
 
 /* ═══════════════════════════════════════════════════════════════════════════

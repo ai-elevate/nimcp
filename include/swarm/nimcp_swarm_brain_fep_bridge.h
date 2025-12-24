@@ -28,6 +28,7 @@
 #define NIMCP_SWARM_BRAIN_FEP_BRIDGE_H
 
 #include "swarm/nimcp_swarm_brain.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -124,17 +125,15 @@ typedef struct {
  * @brief Swarm brain FEP bridge
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     swarm_brain_fep_config_t config;
     fep_system_t* fep_system;
     swarm_brain_t* swarm_brain;
     swarm_brain_fep_effects_t fep_effects;
     fep_swarm_brain_effects_t swarm_effects;
     swarm_brain_fep_state_t state;
-    swarm_brain_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
-} swarm_brain_fep_bridge_t;
+    swarm_brain_fep_stats_t stats;} swarm_brain_fep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

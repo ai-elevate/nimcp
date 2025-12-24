@@ -10,6 +10,7 @@
  */
 
 #include "core/brain_regions/nimcp_brain_regions_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <string.h>
 #include <math.h>
 
@@ -375,15 +376,15 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
     bridge->propagation_count = 0;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         brain_regions_immune_bridge_destroy(bridge);
         return NULL;
     }
 
     /* Try bio-async connection if enabled */
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     if (config->enable_bio_async) {
         brain_regions_immune_connect_bio_async(bridge);
     }
@@ -396,7 +397,7 @@ void brain_regions_immune_bridge_destroy(brain_regions_immune_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         brain_regions_immune_disconnect_bio_async(bridge);
     }
 
@@ -415,9 +416,9 @@ void brain_regions_immune_bridge_destroy(brain_regions_immune_bridge_t* bridge) 
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -430,7 +431,7 @@ void brain_regions_immune_bridge_destroy(brain_regions_immune_bridge_t* bridge) 
 
 int brain_regions_immune_connect_bio_async(brain_regions_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_BRAIN_REGIONS,
@@ -439,9 +440,9 @@ int brain_regions_immune_connect_bio_async(brain_regions_immune_bridge_t* bridge
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -452,13 +453,13 @@ int brain_regions_immune_connect_bio_async(brain_regions_immune_bridge_t* bridge
 
 int brain_regions_immune_disconnect_bio_async(brain_regions_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -466,7 +467,7 @@ int brain_regions_immune_disconnect_bio_async(brain_regions_immune_bridge_t* bri
 
 bool brain_regions_immune_is_bio_async_connected(const brain_regions_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -479,13 +480,13 @@ int brain_regions_immune_set_sensitivity(
 ) {
     if (!bridge || !sensitivity) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if already exists */
     for (uint32_t i = 0; i < bridge->sensitivity_count; i++) {
         if (bridge->sensitivities[i].region_type == sensitivity->region_type) {
             bridge->sensitivities[i] = *sensitivity;
-            nimcp_platform_mutex_unlock(bridge->mutex);
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -493,11 +494,11 @@ int brain_regions_immune_set_sensitivity(
     /* Add new */
     if (bridge->sensitivity_count < REGION_TYPE_COUNT) {
         bridge->sensitivities[bridge->sensitivity_count++] = *sensitivity;
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return -1;
 }
 
@@ -526,7 +527,7 @@ int brain_regions_immune_get_sensitivity(
 int brain_regions_immune_apply_effects(brain_regions_immune_bridge_t* bridge) {
     if (!bridge || !bridge->brain_module) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Apply to each region in brain module */
     for (uint32_t i = 0; i < bridge->brain_module->num_regions; i++) {
@@ -537,7 +538,7 @@ int brain_regions_immune_apply_effects(brain_regions_immune_bridge_t* bridge) {
     }
 
     bridge->stats.total_updates++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -647,7 +648,7 @@ int brain_regions_immune_apply_layer_effects(
 int brain_regions_immune_propagate_inflammation(brain_regions_immune_bridge_t* bridge) {
     if (!bridge || !bridge->config.enable_inflammation_propagation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     int propagations = 0;
 
@@ -690,7 +691,7 @@ int brain_regions_immune_propagate_inflammation(brain_regions_immune_bridge_t* b
     }
 
     bridge->stats.propagations_triggered += propagations;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return propagations;
 }
@@ -737,7 +738,7 @@ int brain_regions_immune_detect_abnormalities(brain_regions_immune_bridge_t* bri
     if (!bridge || !bridge->config.enable_abnormality_detection) return 0;
     if (!bridge->brain_module) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     int abnormalities = 0;
 
@@ -753,7 +754,7 @@ int brain_regions_immune_detect_abnormalities(brain_regions_immune_bridge_t* bri
     }
 
     bridge->stats.abnormalities_detected += abnormalities;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return abnormalities;
 }
@@ -943,7 +944,7 @@ int brain_regions_immune_bridge_update(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update duration tracking */
     for (uint32_t i = 0; i < bridge->inflammation_state_count; i++) {
@@ -993,7 +994,7 @@ int brain_regions_immune_bridge_update(
     }
 
     bridge->stats.total_updates++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

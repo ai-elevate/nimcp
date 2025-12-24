@@ -42,6 +42,7 @@
 #define NIMCP_EMOTION_TENSOR_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/nimcp_emotion_tensor.h"
 #include "cognitive/nimcp_emotional_tagging.h"

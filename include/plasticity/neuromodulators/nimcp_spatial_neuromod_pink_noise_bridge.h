@@ -57,6 +57,7 @@
 #define NIMCP_SPATIAL_NEUROMOD_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "plasticity/noise/nimcp_pink_noise_spatial.h"
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
@@ -136,6 +137,8 @@ typedef struct {
  * HOW:  Generate noise, map regions→neurons, apply to diffusion dynamics
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     // === CONNECTED SYSTEMS ===
     pink_spatial_t* pink_spatial;                    /**< Spatial pink noise generator */
     spatial_neuromod_field_t* neuromod_field;        /**< Spatial neuromodulator field */

@@ -37,6 +37,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "core/brain_regions/nimcp_brain_regions.h"
 
@@ -166,6 +167,8 @@ typedef struct inhibitory_control_s {
  * HOW:  Store WM items, goals, decision state
  */
 typedef struct snn_prefrontal_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;             /**< SNN network */
     brain_region_t* prefrontal_region;  /**< Prefrontal brain region */
     snn_prefrontal_config_t config;     /**< Bridge configuration */

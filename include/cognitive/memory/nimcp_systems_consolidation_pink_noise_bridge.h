@@ -55,6 +55,7 @@
 #define NIMCP_SYSTEMS_CONSOLIDATION_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "plasticity/noise/nimcp_pink_noise_sleep.h"
@@ -145,6 +146,8 @@ typedef struct {
  * HOW:  Monitors pink noise state, computes modulation, applies to replay
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     // Configuration
     consolidation_pink_noise_config_t config;
 
@@ -166,7 +169,6 @@ typedef struct {
     uint64_t stage_transitions;
 
     // Thread safety
-    nimcp_mutex_t* mutex;
 } consolidation_pink_noise_bridge_t;
 
 //=============================================================================

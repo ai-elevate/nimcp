@@ -16,6 +16,7 @@
 #define NIMCP_SEMANTIC_MEMORY_QUANTUM_BRIDGE_H
 
 #include "cognitive/memory/nimcp_quantum_semantic.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -83,6 +84,8 @@ quantum_semantic_t semantic_quantum_get_context(semantic_quantum_bridge_t* bridg
 #include <math.h>
 
 struct semantic_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     semantic_quantum_config_t config;
     quantum_semantic_t qsem;  /* Direct handle */
     semantic_quantum_stats_t stats;

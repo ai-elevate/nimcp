@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "plasticity/stdp/nimcp_stdp_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>

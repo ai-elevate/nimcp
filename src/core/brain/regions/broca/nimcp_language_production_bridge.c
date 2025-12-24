@@ -12,6 +12,7 @@
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -47,6 +48,8 @@
  * @brief Internal bridge state
  */
 struct language_production_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     lpb_config_t config;
 

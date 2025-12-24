@@ -6,17 +6,19 @@
  */
 
 #include "core/cortical_columns/sleep/nimcp_cortical_attention_gain_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct cortical_attention_gain_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     cortical_attention_gain_sleep_config_t config;
     void* attention_gain_module;
     sleep_system_t sleep_system;
     cortical_attention_gain_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -25,7 +27,7 @@ static void cortical_attention_gain_on_sleep_state_change(sleep_state_t new_stat
     cortical_attention_gain_sleep_bridge_t bridge = (cortical_attention_gain_sleep_bridge_t)user_data;
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.current_state = new_state;
 
     if (bridge->config.enable_gain_modulation) {
@@ -49,7 +51,7 @@ static void cortical_attention_gain_on_sleep_state_change(sleep_state_t new_stat
     }
 
     bridge->effects.gain_offline = (new_state == SLEEP_STATE_DEEP_NREM);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 int cortical_attention_gain_sleep_default_config(cortical_attention_gain_sleep_config_t* config)
@@ -80,8 +82,8 @@ cortical_attention_gain_sleep_bridge_t cortical_attention_gain_sleep_bridge_crea
     bridge->attention_gain_module = attention_gain_module;
     bridge->sleep_system = sleep;
 
-    bridge->mutex = nimcp_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -102,7 +104,7 @@ void cortical_attention_gain_sleep_bridge_destroy(cortical_attention_gain_sleep_
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_attention_gain_on_sleep_state_change, bridge);
     }
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
@@ -115,17 +117,17 @@ int cortical_attention_gain_sleep_update(cortical_attention_gain_sleep_bridge_t 
 float cortical_attention_gain_sleep_get_gain_factor(const cortical_attention_gain_sleep_bridge_t bridge)
 {
     if (!bridge) return -1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float gain = bridge->effects.gain_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return gain;
 }
 
 bool cortical_attention_gain_sleep_is_offline(const cortical_attention_gain_sleep_bridge_t bridge)
 {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool offline = bridge->effects.gain_offline;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return offline;
 }

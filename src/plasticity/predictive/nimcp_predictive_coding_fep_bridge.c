@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/predictive/nimcp_predictive_coding_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -36,50 +37,50 @@ predictive_coding_fep_bridge_t* predictive_coding_fep_bridge_create(const predic
     memset(&bridge->pc_effects, 0, sizeof(predictive_coding_fep_feedback_t));
     memset(&bridge->stats, 0, sizeof(predictive_coding_fep_stats_t));
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
 
     bridge->fep_system = NULL;
     bridge->pc_hierarchy = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     return bridge;
 }
 
 void predictive_coding_fep_bridge_destroy(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) predictive_coding_fep_bridge_disconnect_bio_async(bridge);
+    if (bridge->base.bio_async_enabled) predictive_coding_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->fep_effects.level_free_energies) nimcp_free(bridge->fep_effects.level_free_energies);
     if (bridge->pc_effects.prediction_errors) nimcp_free(bridge->pc_effects.prediction_errors);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int predictive_coding_fep_bridge_connect_fep(predictive_coding_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int predictive_coding_fep_bridge_connect_pc(predictive_coding_fep_bridge_t* bridge, pc_hierarchy_t hierarchy) {
     if (!bridge || !hierarchy) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->pc_hierarchy = hierarchy;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int predictive_coding_fep_bridge_disconnect(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->pc_hierarchy = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -96,7 +97,7 @@ float predictive_coding_fep_compute_hierarchical_free_energy(const predictive_co
 
 int predictive_coding_fep_report_errors(predictive_coding_fep_bridge_t* bridge, const float* errors, uint32_t num_levels) {
     if (!bridge || !errors) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->pc_effects.prediction_errors) nimcp_free(bridge->pc_effects.prediction_errors);
     bridge->pc_effects.prediction_errors = (float*)nimcp_malloc(sizeof(float) * num_levels);
     if (bridge->pc_effects.prediction_errors) {
@@ -106,43 +107,43 @@ int predictive_coding_fep_report_errors(predictive_coding_fep_bridge_t* bridge, 
         for (uint32_t i = 0; i < num_levels; i++) sum += fabsf(errors[i]);
         bridge->pc_effects.mean_error = sum / num_levels;
     }
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int predictive_coding_fep_bridge_update(predictive_coding_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system && bridge->pc_hierarchy) {
         bridge->fep_effects.total_free_energy = pc_hierarchy_get_free_energy(bridge->pc_hierarchy);
         bridge->stats.total_updates++;
         bridge->stats.avg_free_energy = (bridge->stats.avg_free_energy * (bridge->stats.total_updates - 1) + bridge->fep_effects.total_free_energy) / bridge->stats.total_updates;
         bridge->stats.avg_prediction_error = (bridge->stats.avg_prediction_error * (bridge->stats.total_updates - 1) + bridge->pc_effects.mean_error) / bridge->stats.total_updates;
     }
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int predictive_coding_fep_bridge_get_stats(const predictive_coding_fep_bridge_t* bridge, predictive_coding_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(predictive_coding_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int predictive_coding_fep_bridge_connect_bio_async(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 int predictive_coding_fep_bridge_disconnect_bio_async(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool predictive_coding_fep_bridge_is_bio_async_connected(const predictive_coding_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

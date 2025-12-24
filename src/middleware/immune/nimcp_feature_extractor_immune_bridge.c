@@ -10,6 +10,7 @@
  */
 
 #include "middleware/immune/nimcp_feature_extractor_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -188,12 +189,12 @@ feature_immune_bridge_t* feature_immune_bridge_create(
         config ? config->chronic_degradation_threshold : 0.5f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("feature_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -203,9 +204,9 @@ void feature_immune_bridge_destroy(feature_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -223,7 +224,7 @@ int feature_immune_apply_cytokine_effects(feature_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_feature_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine concentrations from immune system */
     /* Note: Would need actual implementation in brain_immune to query cytokines */
@@ -263,7 +264,7 @@ int feature_immune_apply_cytokine_effects(feature_immune_bridge_t* bridge) {
     bridge->cytokine_effects.temporal_jitter = total_reduction * 5.0f;
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -274,7 +275,7 @@ int feature_immune_apply_inflammation_effects(feature_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_precision_reduction) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -300,7 +301,7 @@ int feature_immune_apply_inflammation_effects(feature_immune_bridge_t* bridge) {
     bridge->inflammation_state.threat_feature_bias = impairment * 0.5f;
     bridge->inflammation_state.non_threat_suppression = impairment * 0.4f;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -320,13 +321,13 @@ int feature_immune_apply_threat_bias(feature_immune_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->enable_threat_feature_bias) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Threat bias is already computed in inflammation state */
     /* This function would adjust feature extractor thresholds */
     /* Implementation would depend on feature extractor API */
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -343,7 +344,7 @@ int feature_immune_trigger_from_anomalies(
     if (!bridge->enable_feature_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Reset anomaly flags */
     memset(&bridge->immune_trigger, 0, sizeof(feature_immune_trigger_t));
@@ -446,7 +447,7 @@ int feature_immune_trigger_from_anomalies(
         bridge->anomalies_detected++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -458,7 +459,7 @@ int feature_immune_escalate_from_degradation(
     if (!bridge || !features) return -1;
     if (!bridge->enable_quality_monitoring) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute current precision */
     float current_precision = feature_immune_compute_precision_reduction(bridge);
@@ -501,7 +502,7 @@ int feature_immune_escalate_from_degradation(
         bridge->quality_escalations++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -656,7 +657,7 @@ float feature_immune_get_quality_score(const feature_immune_bridge_t* bridge) {
  */
 int feature_extractor_immune_connect_bio_async(feature_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_FEATURE_EXTRACTOR,
@@ -665,9 +666,9 @@ int feature_extractor_immune_connect_bio_async(feature_immune_bridge_t* bridge) 
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("feature_extractor_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -681,13 +682,13 @@ int feature_extractor_immune_connect_bio_async(feature_immune_bridge_t* bridge) 
  */
 int feature_extractor_immune_disconnect_bio_async(feature_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("feature_extractor_immune_bridge disconnected from bio-async router");
     return 0;
@@ -698,5 +699,5 @@ int feature_extractor_immune_disconnect_bio_async(feature_immune_bridge_t* bridg
  */
 bool feature_extractor_immune_is_bio_async_connected(const feature_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 
@@ -114,6 +115,8 @@ typedef struct snn_health_metrics_s {
  * HOW:  Store references and cached effects
  */
 typedef struct snn_immune_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;             /**< SNN network being monitored */
     brain_immune_system_t* immune;      /**< Brain immune system */
     snn_immune_config_t config;         /**< Bridge configuration */
@@ -125,13 +128,6 @@ typedef struct snn_immune_bridge_s {
     float last_update_time;             /**< Last update timestamp (ms) */
     uint32_t instability_count;         /**< Number of instabilities */
     uint32_t immune_reports;            /**< Reports sent to immune */
-
-    /* Bio-async */
-    bool bio_async_enabled;             /**< Bio-async connected */
-    bio_module_context_t bio_ctx;       /**< Bio-async context */
-
-    /* Mutex for thread safety */
-    void* mutex;
 } snn_immune_bridge_t;
 
 //=============================================================================

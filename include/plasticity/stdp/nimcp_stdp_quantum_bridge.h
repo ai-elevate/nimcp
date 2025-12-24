@@ -16,6 +16,7 @@
 #define NIMCP_STDP_QUANTUM_BRIDGE_H
 
 #include "plasticity/stdp/nimcp_quantum_stdp_optimizer.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -116,6 +117,8 @@ void stdp_quantum_reset_stats(stdp_quantum_bridge_t* bridge);
 #include <string.h>
 
 struct stdp_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     stdp_quantum_config_t config;
     qstdp_optimizer_t optimizer;  /* Direct handle, not pointer-to-pointer */
     stdp_quantum_stats_t stats;

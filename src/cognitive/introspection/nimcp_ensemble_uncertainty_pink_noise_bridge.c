@@ -11,6 +11,7 @@
  */
 
 #include "cognitive/introspection/nimcp_ensemble_uncertainty_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
@@ -117,8 +118,8 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
     }
 
     // Create mutex for thread safety
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -145,7 +146,7 @@ void ensemble_pink_destroy(ensemble_pink_bridge_t* bridge) {
     }
 
     // Disconnect bio-async if connected
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         ensemble_pink_disconnect_bio_async(bridge);
     }
 
@@ -155,8 +156,8 @@ void ensemble_pink_destroy(ensemble_pink_bridge_t* bridge) {
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     // Free bridge
@@ -179,7 +180,7 @@ int ensemble_pink_connect_ensemble(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Store ensemble reference
     bridge->ensemble = ensemble;
@@ -188,7 +189,7 @@ int ensemble_pink_connect_ensemble(
     uint32_t num_models = ensemble_get_size(ensemble);
     if (num_models == 0) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Ensemble has no models");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -202,7 +203,7 @@ int ensemble_pink_connect_ensemble(
     if (!bridge->generators) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate generators");
         bridge->ensemble = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -226,7 +227,7 @@ int ensemble_pink_connect_ensemble(
             nimcp_free(bridge->generators);
             bridge->generators = NULL;
             bridge->ensemble = NULL;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return NIMCP_ERROR_OPERATION_FAILED;
         }
     }
@@ -244,7 +245,7 @@ int ensemble_pink_connect_ensemble(
         nimcp_free(bridge->generators);
         bridge->generators = NULL;
         bridge->ensemble = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -253,7 +254,7 @@ int ensemble_pink_connect_ensemble(
     NIMCP_LOGGING_INFO(LOG_MODULE " Connected to ensemble with %u models, %u generators",
                        num_models, bridge->num_generators);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -262,7 +263,7 @@ int ensemble_pink_disconnect_ensemble(ensemble_pink_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Destroy generators
     if (bridge->generators) {
@@ -286,7 +287,7 @@ int ensemble_pink_disconnect_ensemble(ensemble_pink_bridge_t* bridge) {
 
     NIMCP_LOGGING_INFO(LOG_MODULE " Disconnected from ensemble");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -310,7 +311,7 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Generate noise samples
     uint32_t num_models = bridge->state.num_noise_samples;
@@ -321,7 +322,7 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
             float sample = 0.0f;
             if (!pink_noise_generate_sample(bridge->generators[i], &sample)) {
                 NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to generate noise sample %u", i);
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return NIMCP_ERROR_OPERATION_FAILED;
             }
             // Apply current amplitude modulation
@@ -332,7 +333,7 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
         float sample = 0.0f;
         if (!pink_noise_generate_sample(bridge->generators[0], &sample)) {
             NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to generate shared noise sample");
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return NIMCP_ERROR_OPERATION_FAILED;
         }
         float modulated_sample = sample * bridge->effects.effective_amplitude;
@@ -361,7 +362,7 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
 
     bridge->state.samples_generated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -392,7 +393,7 @@ int ensemble_pink_inject_noise(
         return ret;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Inject noise based on mode
     float scale = bridge->config.prediction_noise_scale;
@@ -427,7 +428,7 @@ int ensemble_pink_inject_noise(
         NIMCP_LOGGING_DEBUG(LOG_MODULE " Injected noise into %u predictions", num_predictions);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -452,7 +453,7 @@ int ensemble_pink_inject_feature_noise(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float scale = bridge->config.feature_noise_scale;
 
@@ -463,7 +464,7 @@ int ensemble_pink_inject_feature_noise(
         features[i] += sample * scale * bridge->effects.effective_amplitude;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -483,7 +484,7 @@ int ensemble_pink_update_uncertainty(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Update uncertainty metrics
     bridge->uncertainty.epistemic = uncertainty->epistemic;
@@ -526,7 +527,7 @@ int ensemble_pink_update_uncertainty(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -539,7 +540,7 @@ int ensemble_pink_adapt_noise(ensemble_pink_bridge_t* bridge) {
         return NIMCP_SUCCESS;  // Adaptation disabled
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float amplitude_modifier = 1.0f;
     float alpha_modifier = 0.0f;
@@ -637,7 +638,7 @@ int ensemble_pink_adapt_noise(ensemble_pink_bridge_t* bridge) {
                            new_amplitude, amplitude_modifier, new_alpha);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -656,9 +657,9 @@ int ensemble_pink_update(
     }
 
     // Update statistics
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.update_count++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -701,9 +702,9 @@ int ensemble_pink_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -716,9 +717,9 @@ int ensemble_pink_get_uncertainty(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *uncertainty = bridge->uncertainty;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -735,11 +736,11 @@ int ensemble_pink_set_enabled(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_noise_injection = enable;
     NIMCP_LOGGING_INFO(LOG_MODULE " Noise injection %s",
                        enable ? "enabled" : "disabled");
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -752,11 +753,11 @@ int ensemble_pink_set_adaptation_enabled(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_adaptation = enable;
     NIMCP_LOGGING_INFO(LOG_MODULE " Adaptation %s",
                        enable ? "enabled" : "disabled");
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -766,7 +767,7 @@ int ensemble_pink_reset(ensemble_pink_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Reset generators
     if (bridge->generators) {
@@ -801,7 +802,7 @@ int ensemble_pink_reset(ensemble_pink_bridge_t* bridge) {
 
     NIMCP_LOGGING_INFO(LOG_MODULE " Bridge reset to initial state");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -814,11 +815,11 @@ int ensemble_pink_connect_bio_async(ensemble_pink_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Register with bio-async router
     bio_module_info_t info = {
@@ -828,15 +829,15 @@ int ensemble_pink_connect_bio_async(ensemble_pink_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO(LOG_MODULE " Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN(LOG_MODULE " Bio-async router not available");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -845,22 +846,22 @@ int ensemble_pink_disconnect_bio_async(ensemble_pink_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Not connected
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
-    if (bridge->bio_ctx) {
+    if (bridge->base.bio_ctx) {
         // Unregister from router (if API exists)
-        // bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+        // bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO(LOG_MODULE " Disconnected from bio-async router");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -870,5 +871,5 @@ bool ensemble_pink_is_bio_async_connected(
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

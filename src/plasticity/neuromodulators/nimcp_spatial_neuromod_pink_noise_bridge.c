@@ -11,6 +11,7 @@
  */
 
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>

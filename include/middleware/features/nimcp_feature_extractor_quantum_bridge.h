@@ -16,6 +16,7 @@
 #define NIMCP_FEATURE_EXTRACTOR_QUANTUM_BRIDGE_H
 
 #include "middleware/features/nimcp_quantum_feature_maps.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -98,6 +99,8 @@ void feature_quantum_reset_stats(feature_quantum_bridge_t* bridge);
 #include <math.h>
 
 struct feature_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     feature_quantum_config_t config;
     quantum_feature_map_t qfm;  /* Direct handle, not pointer-to-pointer */
     feature_quantum_stats_t stats;

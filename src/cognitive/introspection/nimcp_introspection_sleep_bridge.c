@@ -6,16 +6,18 @@
  */
 
 #include "cognitive/introspection/nimcp_introspection_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct introspection_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     introspection_sleep_config_t config;
     sleep_system_t sleep_system;
     introspection_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -44,7 +46,7 @@ static void introspection_on_sleep_state_change(sleep_state_t new_state, void* u
 
     NIMCP_LOGGING_DEBUG("Introspection bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -73,7 +75,7 @@ static void introspection_on_sleep_state_change(sleep_state_t new_state, void* u
     bridge->effects.introspection_offline = (new_state == SLEEP_STATE_DEEP_NREM ||
                                              new_state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Introspection modulated: metacog=%.2f, consciousness=%.2f, offline=%d",
                         bridge->effects.metacognitive_accuracy_factor,
@@ -111,8 +113,8 @@ introspection_sleep_bridge_t introspection_sleep_bridge_create(
     bridge->effects.uncertainty_awareness_factor = 1.0f;
     bridge->effects.introspection_offline = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -149,14 +151,14 @@ void introspection_sleep_bridge_destroy(introspection_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int introspection_sleep_update(introspection_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -197,31 +199,31 @@ int introspection_sleep_update(introspection_sleep_bridge_t bridge) {
     bridge->effects.introspection_offline = (state == SLEEP_STATE_DEEP_NREM ||
                                              state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int introspection_sleep_get_effects(const introspection_sleep_bridge_t bridge, introspection_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float introspection_sleep_get_metacognitive_accuracy(const introspection_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.metacognitive_accuracy_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 bool introspection_sleep_is_offline(const introspection_sleep_bridge_t bridge) {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.introspection_offline;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

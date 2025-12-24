@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/predictive/nimcp_predictive_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -79,8 +80,8 @@ predictive_fep_bridge_t* predictive_fep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -97,12 +98,12 @@ void predictive_fep_bridge_destroy(predictive_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         predictive_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Free allocated arrays in effects */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->fep_effects.synchronized_beliefs) {
         nimcp_free(bridge->fep_effects.synchronized_beliefs);
@@ -123,11 +124,11 @@ void predictive_fep_bridge_destroy(predictive_fep_bridge_t* bridge) {
         nimcp_free(bridge->pred_effects.kalman_gains);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -144,9 +145,9 @@ int predictive_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to predictive bridge");
     return 0;
@@ -158,9 +159,9 @@ int predictive_fep_bridge_connect_predictive(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->predictive = predictive;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected predictive network to FEP bridge");
     return 0;
@@ -169,10 +170,10 @@ int predictive_fep_bridge_connect_predictive(
 int predictive_fep_bridge_disconnect(predictive_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     memset(&bridge->predictive, 0, sizeof(predictive_network_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected all systems from predictive FEP bridge");
     return 0;
@@ -188,7 +189,7 @@ int predictive_fep_sync_beliefs_to_predictions(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_belief_prediction_sync) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Synchronize FEP beliefs with predictions
      * FEP belief = expected state = prediction
@@ -197,7 +198,7 @@ int predictive_fep_sync_beliefs_to_predictions(
     bridge->state.beliefs_synchronized = true;
     bridge->stats.belief_syncs++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Synchronized beliefs to predictions");
     return 0;
@@ -209,7 +210,7 @@ int predictive_fep_apply_precision_gain_control(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_precision_gain_control) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Apply FEP precision as predictive gain control
      * High precision → amplify errors
@@ -222,7 +223,7 @@ int predictive_fep_apply_precision_gain_control(
     /* This would modulate prediction error gain in the predictive network */
     bridge->stats.precision_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied precision gain control: gain=%f", gain);
     return 0;
@@ -234,7 +235,7 @@ int predictive_fep_map_fe_to_error(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_fe_error_mapping) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Map free energy to prediction error
      * F ≈ ∑Π||ε||² (equivalence in linear Gaussian case)
@@ -250,7 +251,7 @@ int predictive_fep_map_fe_to_error(
     bridge->state.current_prediction_error = pe;
     bridge->stats.fe_error_mappings++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mapped FE to PE: FE=%f, PE=%f", fe, pe);
     return 0;
@@ -266,7 +267,7 @@ int predictive_fep_flow_error_gradients(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_error_gradient_flow) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Flow prediction errors as variational gradients
      * PE = ∂F/∂μ (prediction errors are variational gradients)
@@ -278,7 +279,7 @@ int predictive_fep_flow_error_gradients(
     /* This gradient would be used to update FEP beliefs */
     bridge->stats.gradient_flows++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Flowed error gradients: PE=%f, gradient=%f", pe, gradient);
     return 0;
@@ -290,7 +291,7 @@ int predictive_fep_provide_generative_predictions(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_prediction_generative_model) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Provide predictions as generative model
      * Predictions = g(μ) (generative model output)
@@ -298,7 +299,7 @@ int predictive_fep_provide_generative_predictions(
      */
     bridge->stats.generative_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Provided generative predictions");
     return 0;
@@ -310,7 +311,7 @@ int predictive_fep_compute_kalman_gains(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_precision_kalman_gains) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute precision as Kalman gains
      * Precision = Kalman gain (optimal Bayesian weighting)
@@ -319,7 +320,7 @@ int predictive_fep_compute_kalman_gains(
      */
     bridge->stats.kalman_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Computed Kalman gains");
     return 0;
@@ -345,7 +346,7 @@ int predictive_fep_bridge_update(
     predictive_fep_provide_generative_predictions(bridge);
     predictive_fep_compute_kalman_gains(bridge);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Track convergence */
     float prev_fe = bridge->stats.avg_free_energy;
@@ -385,7 +386,7 @@ int predictive_fep_bridge_update(
     bridge->state.current_free_energy = curr_fe;
     bridge->state.last_sync_time += delta_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -400,9 +401,9 @@ int predictive_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -413,9 +414,9 @@ int predictive_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -428,7 +429,7 @@ int predictive_fep_bridge_connect_bio_async(
     predictive_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_PREDICTIVE_BRIDGE,
@@ -437,9 +438,9 @@ int predictive_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
@@ -452,14 +453,14 @@ int predictive_fep_bridge_disconnect_bio_async(
     predictive_fep_bridge_t* bridge
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return 0;
@@ -468,5 +469,5 @@ int predictive_fep_bridge_disconnect_bio_async(
 bool predictive_fep_bridge_is_bio_async_connected(
     const predictive_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

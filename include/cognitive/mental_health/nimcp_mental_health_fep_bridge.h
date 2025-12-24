@@ -25,6 +25,7 @@
 #define NIMCP_MENTAL_HEALTH_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -90,6 +91,8 @@ typedef struct {
 } mental_health_fep_stats_t;
 
 struct mental_health_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     mental_health_fep_config_t config;
     fep_system_t* fep_system;
     mental_health_monitor_t* mental_health_system;
@@ -97,9 +100,6 @@ struct mental_health_fep_bridge {
     fep_mental_health_effects_t mental_health_effects;
     mental_health_fep_state_t state;
     mental_health_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 int mental_health_fep_bridge_default_config(mental_health_fep_config_t* config);

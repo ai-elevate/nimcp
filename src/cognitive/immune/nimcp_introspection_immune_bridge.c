@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_introspection_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -181,12 +182,12 @@ introspection_immune_bridge_t* introspection_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     /* Initialize baselines to defaults */
     bridge->baseline_phi = 0.5f; /* Will be set via introspection_immune_set_baseline */
@@ -201,9 +202,9 @@ void introspection_immune_bridge_destroy(introspection_immune_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -221,7 +222,7 @@ int introspection_immune_apply_cytokine_effects(introspection_immune_bridge_t* b
     if (!bridge->enable_cytokine_introspection_modulation) return 0;
     if (!bridge->immune_system || !bridge->introspection_context) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine levels from immune system */
     float il1_level = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -264,7 +265,7 @@ int introspection_immune_apply_cytokine_effects(introspection_immune_bridge_t* b
     effects->uncertainty_increase = clamp_f(proinflam_total * 0.7f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -274,7 +275,7 @@ int introspection_immune_apply_inflammation_effects(introspection_immune_bridge_
     if (!bridge->enable_inflammation_phi_reduction) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_consciousness_state_t* state = &bridge->consciousness_state;
 
@@ -315,7 +316,7 @@ int introspection_immune_apply_inflammation_effects(introspection_immune_bridge_
     /* Confidence reduction */
     state->confidence_reduction = clamp_f(inflammation_intensity * 0.6f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -355,7 +356,7 @@ int introspection_immune_detect_sickness(introspection_immune_bridge_t* bridge) 
     if (!bridge->enable_sickness_detection) return 0;
     if (!bridge->introspection_context) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     introspection_sickness_detection_t* detection = &bridge->sickness_detection;
 
@@ -406,7 +407,7 @@ int introspection_immune_detect_sickness(introspection_immune_bridge_t* bridge) 
         bridge->sickness_detections++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -416,7 +417,7 @@ int introspection_immune_correlate_patterns(introspection_immune_bridge_t* bridg
     if (!bridge->enable_pattern_immune_correlation) return 0;
     if (!bridge->introspection_context || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get current immune phase */
     brain_immune_phase_t immune_phase = brain_immune_get_phase(bridge->immune_system);
@@ -427,7 +428,7 @@ int introspection_immune_correlate_patterns(introspection_immune_bridge_t* bridg
         bridge->sickness_detection.pattern_disruptions++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -463,9 +464,9 @@ int introspection_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_introspection_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -475,9 +476,9 @@ int introspection_immune_get_consciousness_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->consciousness_state, sizeof(inflammation_consciousness_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -500,7 +501,7 @@ int introspection_immune_set_baseline(introspection_immune_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->introspection_context) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Capture current introspection metrics as baseline */
     /* Note: In actual implementation, would query real metrics */
@@ -512,14 +513,14 @@ int introspection_immune_set_baseline(introspection_immune_bridge_t* bridge) {
     bridge->sickness_detection.phi_baseline = bridge->baseline_phi;
     bridge->sickness_detection.uncertainty_baseline = bridge->baseline_uncertainty;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
 int introspection_immune_reset_sickness_detection(introspection_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Clear sickness detection state */
     bridge->sickness_detection.sickness_detected = false;
@@ -527,7 +528,7 @@ int introspection_immune_reset_sickness_detection(introspection_immune_bridge_t*
     bridge->sickness_detection.pattern_disruptions = 0;
     bridge->sickness_detection.detection_time = 0;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -542,7 +543,7 @@ int introspection_immune_reset_sickness_detection(introspection_immune_bridge_t*
  */
 int introspection_immune_connect_bio_async(introspection_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_INTROSPECTION,
@@ -551,9 +552,9 @@ int introspection_immune_connect_bio_async(introspection_immune_bridge_t* bridge
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("introspection_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -567,13 +568,13 @@ int introspection_immune_connect_bio_async(introspection_immune_bridge_t* bridge
  */
 int introspection_immune_disconnect_bio_async(introspection_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("introspection_immune_bridge disconnected from bio-async router");
     return 0;
@@ -584,5 +585,5 @@ int introspection_immune_disconnect_bio_async(introspection_immune_bridge_t* bri
  */
 bool introspection_immune_is_bio_async_connected(const introspection_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

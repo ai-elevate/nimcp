@@ -49,6 +49,7 @@
 #define NIMCP_WELLBEING_FREE_ENERGY_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 
 #include "cognitive/wellbeing/nimcp_wellbeing_enhanced.h"
@@ -107,6 +108,8 @@ typedef struct {
  * @brief Free energy bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* Configuration */
     free_energy_bridge_config_t config;
 
@@ -134,9 +137,7 @@ typedef struct {
     float avg_free_energy;
     float avg_precision;
 
-    /* Thread safety */
-    void* mutex;
-} free_energy_bridge_t;
+    } free_energy_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

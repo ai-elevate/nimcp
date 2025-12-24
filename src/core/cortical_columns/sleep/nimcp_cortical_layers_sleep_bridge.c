@@ -6,6 +6,7 @@
  */
 
 #include "core/cortical_columns/sleep/nimcp_cortical_layers_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -21,11 +22,12 @@
  * ======================================================================== */
 
 struct cortical_layers_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     cortical_layers_sleep_config_t config;
     laminar_structure_t* layers;
     sleep_system_t sleep_system;
     cortical_layers_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
     uint64_t last_oscillation_update_us;
 };
@@ -64,7 +66,7 @@ static void cortical_layers_on_sleep_state_change(sleep_state_t new_state, void*
 
     NIMCP_LOGGING_DEBUG("Cortical layers bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -106,7 +108,7 @@ static void cortical_layers_on_sleep_state_change(sleep_state_t new_state, void*
         bridge->last_oscillation_update_us = 0;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Cortical layers modulated: activity=%.2f, FF=%.2f, FB=%.2f, offline=%d",
                         bridge->effects.global_activity_factor,
@@ -325,8 +327,8 @@ cortical_layers_sleep_bridge_t cortical_layers_sleep_bridge_create(
     bridge->sleep_system = sleep;
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for cortical layers sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -383,8 +385,8 @@ void cortical_layers_sleep_bridge_destroy(cortical_layers_sleep_bridge_t bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -404,7 +406,7 @@ int cortical_layers_sleep_update(cortical_layers_sleep_bridge_t bridge)
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update layer-specific effects if enabled */
     if (bridge->config.enable_layer_specific) {
@@ -416,7 +418,7 @@ int cortical_layers_sleep_update(cortical_layers_sleep_bridge_t bridge)
         update_slow_oscillation(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -428,7 +430,7 @@ int cortical_layers_sleep_apply_modulation(cortical_layers_sleep_bridge_t bridge
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     laminar_structure_t* layers = bridge->layers;
 
@@ -458,7 +460,7 @@ int cortical_layers_sleep_apply_modulation(cortical_layers_sleep_bridge_t bridge
                                 0.4f * bridge->effects.feedback_balance);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -476,9 +478,9 @@ int cortical_layers_sleep_get_effects(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -490,9 +492,9 @@ float cortical_layers_sleep_get_activity_factor(const cortical_layers_sleep_brid
         return -1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->effects.global_activity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -504,9 +506,9 @@ bool cortical_layers_sleep_is_offline(const cortical_layers_sleep_bridge_t bridg
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool offline = bridge->effects.layers_offline;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return offline;
 }
@@ -518,9 +520,9 @@ bool cortical_layers_sleep_is_up_state(const cortical_layers_sleep_bridge_t brid
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool up_state = bridge->effects.in_up_state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return up_state;
 }

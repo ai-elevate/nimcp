@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 
 /* Forward declaration - reasoning system is complex, use void* */
@@ -61,6 +62,8 @@ typedef struct snn_reasoning_state_s {
 } snn_reasoning_state_t;
 
 typedef struct snn_reasoning_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     reasoning_system_t reasoning;
     snn_reasoning_config_t config;

@@ -6,16 +6,18 @@
  */
 
 #include "perception/sleep/nimcp_speech_cortex_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct speech_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     speech_sleep_config_t config;
     sleep_system_t sleep_system;
     speech_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -44,7 +46,7 @@ static void speech_on_sleep_state_change(sleep_state_t new_state, void* user_dat
 
     NIMCP_LOGGING_DEBUG("Speech cortex bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -69,7 +71,7 @@ static void speech_on_sleep_state_change(sleep_state_t new_state, void* user_dat
     bridge->effects.speech_processing_enabled = (new_state != SLEEP_STATE_DEEP_NREM) ||
                                                   bridge->effects.phoneme_discrimination_factor > 0.2f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Speech modulated: phoneme=%.2f, clarity=%.2f, comprehension=%.2f",
                         bridge->effects.phoneme_discrimination_factor,
@@ -113,8 +115,8 @@ speech_sleep_bridge_t speech_sleep_bridge_create(
     bridge->effects.comprehension_factor = 1.0f;
     bridge->effects.speech_processing_enabled = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -154,14 +156,14 @@ void speech_sleep_bridge_destroy(speech_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int speech_sleep_update(speech_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -190,39 +192,39 @@ int speech_sleep_update(speech_sleep_bridge_t bridge) {
     bridge->effects.speech_processing_enabled = (state != SLEEP_STATE_DEEP_NREM) ||
                                                   bridge->effects.phoneme_discrimination_factor > 0.2f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int speech_sleep_get_effects(const speech_sleep_bridge_t bridge, speech_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float speech_sleep_get_phoneme_discrimination(const speech_sleep_bridge_t bridge, float base_discrimination) {
     if (!bridge) return base_discrimination;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_discrimination * bridge->effects.phoneme_discrimination_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float speech_sleep_get_speech_clarity(const speech_sleep_bridge_t bridge, float base_clarity) {
     if (!bridge) return base_clarity;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_clarity * bridge->effects.speech_clarity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 float speech_sleep_get_comprehension(const speech_sleep_bridge_t bridge, float base_comprehension) {
     if (!bridge) return base_comprehension;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = base_comprehension * bridge->effects.comprehension_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

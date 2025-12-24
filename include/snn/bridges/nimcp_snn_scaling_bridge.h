@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "async/nimcp_bio_async.h"
@@ -46,6 +47,8 @@ typedef struct snn_scaling_effects_s {
 } snn_scaling_effects_t;
 
 typedef struct snn_scaling_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;
     synaptic_scaling_state_t* scaling_states;
     uint32_t n_neurons;

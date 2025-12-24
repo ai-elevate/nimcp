@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "portia/nimcp_portia_logic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -50,6 +51,8 @@ static uint64_t get_time_us(void) {
  * @brief Main bridge structure
  */
 struct portia_logic_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Neural logic network */
     neural_logic_network_t logic_network;
 
@@ -73,13 +76,6 @@ struct portia_logic_bridge {
     brain_t brain;
     void* immune_system;
     void* umm;
-
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Statistics */
     portia_logic_stats_t stats;
@@ -278,7 +274,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -293,7 +289,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -302,7 +298,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     if (init_decision_gates(bridge) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize decision gates");
         neural_logic_destroy(bridge->logic_network);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -327,7 +323,7 @@ void portia_logic_bridge_destroy(portia_logic_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         portia_logic_disconnect_bio_async(bridge);
     }
 
@@ -337,8 +333,8 @@ void portia_logic_bridge_destroy(portia_logic_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -352,10 +348,10 @@ int portia_logic_bridge_start(portia_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect to bio-async if enabled */
-    if (bridge->config.enable_bio_async && !bridge->bio_async_enabled) {
+    if (bridge->config.enable_bio_async && !bridge->base.bio_async_enabled) {
         int result = portia_logic_connect_bio_async(bridge);
         if (result != NIMCP_SUCCESS) {
             NIMCP_LOGGING_WARN("Bio-async connection failed, continuing without it");
@@ -367,7 +363,7 @@ int portia_logic_bridge_start(portia_logic_bridge_t* bridge) {
         update_conditions_internal(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Started Portia-Logic bridge");
 
@@ -379,14 +375,14 @@ int portia_logic_bridge_stop(portia_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         portia_logic_disconnect_bio_async(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Stopped Portia-Logic bridge");
 
@@ -402,7 +398,7 @@ int portia_logic_connect_brain(portia_logic_bridge_t* bridge, brain_t brain) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->brain = brain;
 
@@ -412,7 +408,7 @@ int portia_logic_connect_brain(portia_logic_bridge_t* bridge, brain_t brain) {
         NIMCP_LOGGING_INFO("Connected brain to Portia-Logic bridge");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -422,12 +418,12 @@ int portia_logic_connect_immune(portia_logic_bridge_t* bridge, void* immune_syst
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->immune_system = immune_system;
     NIMCP_LOGGING_INFO("Connected immune system to Portia-Logic bridge");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -437,12 +433,12 @@ int portia_logic_connect_umm(portia_logic_bridge_t* bridge, void* umm) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->umm = umm;
     NIMCP_LOGGING_INFO("Connected UMM to Portia-Logic bridge");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -464,7 +460,7 @@ bool portia_logic_can_upgrade_tier(
         return false;  /* Not an upgrade */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -481,7 +477,7 @@ bool portia_logic_can_upgrade_tier(
     bridge->stats.tier_upgrade_decisions++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return can_upgrade;
 }
@@ -496,7 +492,7 @@ bool portia_logic_must_downgrade_tier(
 
     (void)current_tier;  /* Unused for now */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -513,7 +509,7 @@ bool portia_logic_must_downgrade_tier(
     bridge->stats.tier_downgrade_decisions++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return must_downgrade;
 }
@@ -528,7 +524,7 @@ bool portia_logic_can_disable_feature(
 
     (void)feature_id;  /* For now, use generic logic */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -545,7 +541,7 @@ bool portia_logic_can_disable_feature(
     bridge->stats.degradation_decisions++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return can_disable;
 }
@@ -565,7 +561,7 @@ bool portia_logic_can_allocate_resource(
         return false;  /* Invalid amount */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions (unless disabled for testing) */
     if (!bridge->config.disable_auto_update) {
@@ -582,7 +578,7 @@ bool portia_logic_can_allocate_resource(
     bridge->stats.allocation_decisions++;
     bridge->stats.successful_evaluations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return can_allocate;
 }
@@ -605,7 +601,7 @@ int portia_logic_add_custom_gate(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Simple expression parsing - support basic patterns */
     logic_gate_type_t gate_type = LOGIC_GATE_AND;
@@ -621,7 +617,7 @@ int portia_logic_add_custom_gate(
         gate_type = LOGIC_GATE_IMPLIES;
     } else {
         NIMCP_LOGGING_ERROR("Unsupported gate expression: %s", expression);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -634,7 +630,7 @@ int portia_logic_add_custom_gate(
 
     if (gate_id == UINT32_MAX) {
         NIMCP_LOGGING_ERROR("Failed to create custom gate");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -644,7 +640,7 @@ int portia_logic_add_custom_gate(
 
     NIMCP_LOGGING_INFO("Created custom gate %u: %s", gate_id, expression);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -654,7 +650,7 @@ bool portia_logic_evaluate_gate(portia_logic_bridge_t* bridge, uint32_t gate_id)
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions first */
     update_conditions_internal(bridge);
@@ -683,7 +679,7 @@ bool portia_logic_evaluate_gate(portia_logic_bridge_t* bridge, uint32_t gate_id)
         bridge->stats.failed_evaluations++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return success && (output >= bridge->config.decision_threshold);
 }
@@ -697,7 +693,7 @@ int portia_logic_get_gate_decision(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update conditions */
     update_conditions_internal(bridge);
@@ -731,7 +727,7 @@ int portia_logic_get_gate_decision(
              "Gate %u evaluated to %.2f (threshold %.2f)",
              gate_id, output, bridge->config.decision_threshold);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -745,9 +741,9 @@ int portia_logic_update_conditions(portia_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int result = update_conditions_internal(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -774,7 +770,7 @@ int portia_logic_set_condition(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (strcmp(condition_name, "memory_ok") == 0) {
         bridge->conditions.memory_ok = value;
@@ -790,7 +786,7 @@ int portia_logic_set_condition(
         bridge->conditions.emergency_mode = value;
     } else {
         NIMCP_LOGGING_ERROR("Unknown condition: %s", condition_name);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -802,7 +798,7 @@ int portia_logic_set_condition(
     score += bridge->conditions.cpu_ok ? 0.25f : 0.0f;
     bridge->conditions.resource_score = score;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -816,7 +812,7 @@ int portia_logic_connect_bio_async(portia_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
     }
 
@@ -827,9 +823,9 @@ int portia_logic_connect_bio_async(portia_logic_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -843,16 +839,16 @@ int portia_logic_disconnect_bio_async(portia_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
 
     return NIMCP_SUCCESS;
@@ -863,7 +859,7 @@ bool portia_logic_is_bio_async_connected(const portia_logic_bridge_t* bridge) {
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 int portia_logic_process_inbox(portia_logic_bridge_t* bridge) {
@@ -871,11 +867,11 @@ int portia_logic_process_inbox(portia_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;  /* No messages to process */
     }
 
-    return bio_router_process_inbox(bridge->bio_ctx, 10);
+    return bio_router_process_inbox(bridge->base.bio_ctx, 10);
 }
 
 int portia_logic_broadcast_decision(
@@ -886,14 +882,14 @@ int portia_logic_broadcast_decision(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled || !bridge->bio_ctx) {
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;  /* Bio-async not connected */
     }
 
     /* Create bio-async message with proper header */
     bio_msg_logic_gate_result_t msg = {0};
     bio_msg_init_header(&msg.header, BIO_MSG_LOGIC_GATE_RESULT,
-                        bio_module_context_get_id(bridge->bio_ctx), 0, sizeof(msg));
+                        bio_module_context_get_id(bridge->base.bio_ctx), 0, sizeof(msg));
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
 
     msg.gate_id = decision->gate_id;
@@ -904,7 +900,7 @@ int portia_logic_broadcast_decision(
     msg.threshold_used = decision->confidence;
 
     /* Broadcast to subscribers */
-    bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    bio_router_broadcast(bridge->base.bio_ctx, &msg, sizeof(msg));
 
     NIMCP_LOGGING_DEBUG("Broadcast decision for gate %u", decision->gate_id);
 
@@ -939,14 +935,14 @@ int portia_logic_reset_stats(portia_logic_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all counters except active_gates */
     uint32_t active_gates = bridge->stats.active_gates;
     memset(&bridge->stats, 0, sizeof(portia_logic_stats_t));
     bridge->stats.active_gates = active_gates;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Reset Portia-Logic statistics");
 

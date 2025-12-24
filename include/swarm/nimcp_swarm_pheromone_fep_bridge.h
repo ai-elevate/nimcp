@@ -20,6 +20,7 @@
 #define NIMCP_SWARM_PHEROMONE_FEP_BRIDGE_H
 
 #include "swarm/nimcp_swarm_pheromone.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/thread/nimcp_thread.h"
@@ -64,17 +65,15 @@ typedef struct {
 } swarm_pheromone_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     swarm_pheromone_fep_config_t config;
     fep_system_t* fep_system;
     void* pheromone_ctx;
     swarm_pheromone_fep_effects_t fep_effects;
     fep_swarm_pheromone_effects_t pheromone_effects;
     swarm_pheromone_fep_state_t state;
-    swarm_pheromone_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
-} swarm_pheromone_fep_bridge_t;
+    swarm_pheromone_fep_stats_t stats;} swarm_pheromone_fep_bridge_t;
 
 void swarm_pheromone_fep_default_config(swarm_pheromone_fep_config_t* config);
 swarm_pheromone_fep_bridge_t* swarm_pheromone_fep_create(const swarm_pheromone_fep_config_t* config, void* pheromone_ctx, fep_system_t* fep_system);

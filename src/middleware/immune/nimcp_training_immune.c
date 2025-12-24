@@ -9,6 +9,7 @@
  */
 
 #include "middleware/immune/nimcp_training_immune.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/training/nimcp_perception_training_bridge.h"
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/memory/nimcp_memory.h"

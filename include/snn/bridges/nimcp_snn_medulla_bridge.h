@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "async/nimcp_bio_async.h"
@@ -108,6 +109,8 @@ typedef struct snn_medulla_state_s {
  * @brief SNN-medulla bridge structure
  */
 typedef struct snn_medulla_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;              /**< SNN network reference */
     medulla_t medulla;               /**< Medulla reference */
     snn_medulla_config_t config;     /**< Bridge configuration */

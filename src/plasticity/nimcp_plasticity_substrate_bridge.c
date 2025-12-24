@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/nimcp_plasticity_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -120,16 +121,16 @@ plasticity_substrate_bridge_t* plasticity_substrate_bridge_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -177,14 +178,14 @@ void plasticity_substrate_bridge_destroy(plasticity_substrate_bridge_t* bridge)
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         plasticity_substrate_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -205,7 +206,7 @@ int plasticity_substrate_connect_contexts(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->stdp_context = stdp_ctx;
     bridge->bcm_context = bcm_ctx;
@@ -213,7 +214,7 @@ int plasticity_substrate_connect_contexts(
     bridge->eligibility_context = eligibility_ctx;
     bridge->dendritic_tree = dendritic_tree;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Connected plasticity contexts to bridge");
 
@@ -230,7 +231,7 @@ int plasticity_substrate_connect_bio_async(plasticity_substrate_bridge_t* bridge
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
     }
 
@@ -241,9 +242,9 @@ int plasticity_substrate_connect_bio_async(plasticity_substrate_bridge_t* bridge
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected plasticity substrate bridge to bio-async router");
         return 0;
     }
@@ -254,13 +255,13 @@ int plasticity_substrate_connect_bio_async(plasticity_substrate_bridge_t* bridge
 
 int plasticity_substrate_disconnect_bio_async(plasticity_substrate_bridge_t* bridge)
 {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return -1;
     }
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected plasticity substrate bridge from bio-async");
 
@@ -269,7 +270,7 @@ int plasticity_substrate_disconnect_bio_async(plasticity_substrate_bridge_t* bri
 
 bool plasticity_substrate_is_bio_async_connected(const plasticity_substrate_bridge_t* bridge)
 {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -663,7 +664,7 @@ int plasticity_substrate_update_all(plasticity_substrate_bridge_t* bridge)
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update all mechanisms */
     if (bridge->config.enable_stdp_modulation) {
@@ -737,7 +738,7 @@ int plasticity_substrate_update_all(plasticity_substrate_bridge_t* bridge)
         (1.0f - alpha) * bridge->stats.avg_plasticity_capacity +
         alpha * bridge->effects.plasticity_capacity;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -803,9 +804,9 @@ int plasticity_substrate_get_effects(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -846,9 +847,9 @@ int plasticity_substrate_get_stats(
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

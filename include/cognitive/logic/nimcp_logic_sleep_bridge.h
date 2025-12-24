@@ -105,6 +105,7 @@
 #define NIMCP_LOGIC_SLEEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/nimcp_sleep_wake.h"
 #include "utils/thread/nimcp_thread.h"
@@ -203,16 +204,12 @@ typedef struct {
  * Internal structure is implementation detail
  */
 typedef struct logic_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     logic_sleep_config_t config;           /**< Bridge configuration */
     sleep_system_t sleep_system;           /**< Sleep/wake system handle */
     logic_sleep_effects_t effects;         /**< Current computed effects */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;          /**< Bio-async module context */
-    bool bio_async_enabled;                 /**< Whether bio-async is active */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;                  /**< Mutex for thread-safe access */
     bool initialized;                      /**< Initialization flag */
     bool callback_registered;              /**< Track if callback is registered for cleanup */
 } logic_sleep_bridge_t;

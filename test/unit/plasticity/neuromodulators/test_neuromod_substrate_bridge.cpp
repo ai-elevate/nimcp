@@ -135,7 +135,7 @@ TEST_F(NeuromodSubstrateBridgeTest, DefaultConfigNullPointer) {
 TEST_F(NeuromodSubstrateBridgeTest, CreateValidBridge) {
     EXPECT_NE(bridge, nullptr);
     EXPECT_EQ(bridge->substrate, substrate);
-    EXPECT_NE(bridge->mutex, nullptr);
+    EXPECT_NE(bridge->base.mutex, nullptr);
 }
 
 TEST_F(NeuromodSubstrateBridgeTest, CreateWithNullConfig) {

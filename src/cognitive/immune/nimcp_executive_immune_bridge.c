@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_executive_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -217,12 +218,12 @@ executive_immune_bridge_t* executive_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("executive_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -232,9 +233,9 @@ void executive_immune_bridge_destroy(executive_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -252,7 +253,7 @@ int executive_immune_apply_cytokine_effects(executive_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_executive_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_executive_effects_t* effects = &bridge->cytokine_effects;
@@ -327,7 +328,7 @@ int executive_immune_apply_cytokine_effects(executive_immune_bridge_t* bridge) {
     effects->flexibility_impairment = clamp_f(proinflam_total * 0.7f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -337,7 +338,7 @@ int executive_immune_apply_inflammation_effects(executive_immune_bridge_t* bridg
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_executive_state_t* state = &bridge->inflammation_state;
 
@@ -367,7 +368,7 @@ int executive_immune_apply_inflammation_effects(executive_immune_bridge_t* bridg
     /* Perseveration increase */
     state->perseveration_increase = clamp_f(inflammation_intensity * 0.8f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -420,7 +421,7 @@ int executive_immune_trigger_from_overload(executive_immune_bridge_t* bridge) {
     if (!bridge->enable_executive_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     executive_immune_trigger_t* trigger = &bridge->executive_trigger;
 
@@ -447,7 +448,7 @@ int executive_immune_trigger_from_overload(executive_immune_bridge_t* bridge) {
         bridge->overload_events++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -457,14 +458,14 @@ int executive_immune_amplify_from_frustration(executive_immune_bridge_t* bridge)
     if (!bridge->enable_executive_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     executive_immune_trigger_t* trigger = &bridge->executive_trigger;
 
     /* Get executive stats to count failed tasks */
     executive_stats_t stats;
     if (!executive_get_stats(bridge->executive_controller, &stats)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -483,7 +484,7 @@ int executive_immune_amplify_from_frustration(executive_immune_bridge_t* bridge)
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -493,7 +494,7 @@ int executive_immune_detect_burnout(executive_immune_bridge_t* bridge) {
     if (!bridge->enable_overload_monitoring) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     executive_immune_trigger_t* trigger = &bridge->executive_trigger;
 
@@ -533,7 +534,7 @@ int executive_immune_detect_burnout(executive_immune_bridge_t* bridge) {
         trigger->chronic_overload = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -543,14 +544,14 @@ int executive_immune_boost_from_success(executive_immune_bridge_t* bridge) {
     if (!bridge->enable_success_immune_boost) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     executive_success_immune_boost_t* boost = &bridge->success_boost;
 
     /* Get executive stats */
     executive_stats_t stats;
     if (!executive_get_stats(bridge->executive_controller, &stats)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -587,7 +588,7 @@ int executive_immune_boost_from_success(executive_immune_bridge_t* bridge) {
         bridge->success_boosts++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -602,7 +603,7 @@ int executive_immune_bridge_update(
     /* Guard clauses */
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update overload duration tracking */
     float delta_sec = (float)delta_ms / 1000.0f;
@@ -610,7 +611,7 @@ int executive_immune_bridge_update(
         bridge->executive_trigger.overload_duration_sec += delta_sec;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Immune → Executive: Apply cytokine and inflammation effects */
     executive_immune_apply_cytokine_effects(bridge);
@@ -622,10 +623,10 @@ int executive_immune_bridge_update(
     executive_immune_detect_burnout(bridge);
     executive_immune_boost_from_success(bridge);
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
     bridge->last_update_time += delta_ms;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -640,9 +641,9 @@ int executive_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -653,9 +654,9 @@ int executive_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -691,7 +692,7 @@ float executive_immune_get_burnout_severity(const executive_immune_bridge_t* bri
  */
 int executive_immune_connect_bio_async(executive_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_EXECUTIVE,
@@ -700,9 +701,9 @@ int executive_immune_connect_bio_async(executive_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("executive_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -716,13 +717,13 @@ int executive_immune_connect_bio_async(executive_immune_bridge_t* bridge) {
  */
 int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("executive_immune_bridge disconnected from bio-async router");
     return 0;
@@ -733,5 +734,5 @@ int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge) {
  */
 bool executive_immune_is_bio_async_connected(const executive_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

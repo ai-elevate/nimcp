@@ -6,16 +6,18 @@
  */
 
 #include "middleware/sleep/nimcp_population_coding_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct population_coding_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     population_coding_sleep_config_t config;
     sleep_system_t sleep_system;
     population_coding_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -44,7 +46,7 @@ static void population_coding_on_sleep_state_change(sleep_state_t new_state, voi
 
     NIMCP_LOGGING_DEBUG("Population coding bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -67,7 +69,7 @@ static void population_coding_on_sleep_state_change(sleep_state_t new_state, voi
     bridge->effects.encoding_enabled = (new_state != SLEEP_STATE_DEEP_NREM) ||
                                         bridge->effects.encoding_precision_factor > 0.25f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Population coding modulated: precision=%.2f, synchrony=%.2f, sparsity=%.2f",
                         bridge->effects.encoding_precision_factor,
@@ -112,8 +114,8 @@ population_coding_sleep_bridge_t population_coding_sleep_bridge_create(
     bridge->effects.sparsity_target = 0.1f;
     bridge->effects.encoding_enabled = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -153,14 +155,14 @@ void population_coding_sleep_bridge_destroy(population_coding_sleep_bridge_t bri
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int population_coding_sleep_update(population_coding_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -187,7 +189,7 @@ int population_coding_sleep_update(population_coding_sleep_bridge_t bridge) {
     bridge->effects.encoding_enabled = (state != SLEEP_STATE_DEEP_NREM) ||
                                         bridge->effects.encoding_precision_factor > 0.25f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -196,9 +198,9 @@ int population_coding_sleep_get_effects(
     population_coding_sleep_effects_t* effects)
 {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -206,9 +208,9 @@ float population_coding_sleep_get_precision(
     const population_coding_sleep_bridge_t bridge)
 {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.encoding_precision_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -216,9 +218,9 @@ float population_coding_sleep_get_synchrony_threshold(
     const population_coding_sleep_bridge_t bridge)
 {
     if (!bridge) return 0.5f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.synchrony_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -226,9 +228,9 @@ float population_coding_sleep_get_sparsity_target(
     const population_coding_sleep_bridge_t bridge)
 {
     if (!bridge) return 0.1f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.sparsity_target;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

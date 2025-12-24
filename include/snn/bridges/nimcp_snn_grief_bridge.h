@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "async/nimcp_bio_async.h"
 
@@ -76,6 +77,8 @@ typedef struct snn_grief_state_s {
 } snn_grief_state_t;
 
 typedef struct snn_grief_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     grief_system_t* grief_system;
     snn_grief_config_t config;

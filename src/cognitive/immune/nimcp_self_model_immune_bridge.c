@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_self_model_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -192,12 +193,12 @@ self_model_immune_bridge_t* self_model_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("self_model_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -207,9 +208,9 @@ void self_model_immune_bridge_destroy(self_model_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -229,7 +230,7 @@ int self_model_immune_generate_interoceptive_signals(
     if (!bridge->enable_interoceptive_signaling) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     interoceptive_immune_signals_t* signals = &bridge->interoceptive_signals;
     brain_inflammation_level_t max_inflam = get_max_inflammation_level(bridge->immune_system);
@@ -264,7 +265,7 @@ int self_model_immune_generate_interoceptive_signals(
         (signals->sickness_intensity >= 0.5f); /* Default threshold */
 
     bridge->interoceptive_signals_sent++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -276,7 +277,7 @@ int self_model_immune_update_health_status(
     if (!bridge->enable_self_model_health_update) return 0;
     if (!bridge->immune_system || !bridge->self_model) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_model_immune_modulation_t* updates = &bridge->self_model_updates;
 
@@ -324,7 +325,7 @@ int self_model_immune_update_health_status(
     /* Health certainty based on interoceptive signal strength */
     updates->health_certainty = bridge->interoceptive_signals.total_body_awareness;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -336,7 +337,7 @@ int self_model_immune_modulate_capabilities(
     if (!bridge->enable_capability_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_model_immune_modulation_t* updates = &bridge->self_model_updates;
     brain_inflammation_level_t max_inflam = get_max_inflammation_level(bridge->immune_system);
@@ -361,7 +362,7 @@ int self_model_immune_modulate_capabilities(
     updates->goal_adjustment = inflammation_intensity * 0.5f;
 
     bridge->capability_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -373,7 +374,7 @@ int self_model_immune_integrate_chronic_illness(
     if (!bridge->enable_identity_integration) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_model_immune_modulation_t* updates = &bridge->self_model_updates;
 
@@ -406,7 +407,7 @@ int self_model_immune_integrate_chronic_illness(
         updates->body_schema_distortion = clamp_f(duration_days / 90.0f, 0.0f, 0.5f);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -421,7 +422,7 @@ int self_model_immune_trigger_adaptive_behavior(
     if (!bridge) return -1;
     if (!bridge->self_model) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
@@ -440,7 +441,7 @@ int self_model_immune_trigger_adaptive_behavior(
         effects->rest_compliance = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -452,7 +453,7 @@ int self_model_immune_boost_from_health_beliefs(
     if (!bridge->enable_health_belief_immune_effects) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
@@ -482,7 +483,7 @@ int self_model_immune_boost_from_health_beliefs(
         bridge->belief_immune_boosts++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -493,7 +494,7 @@ int self_model_immune_suppress_from_health_anxiety(
     if (!bridge) return -1;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
@@ -511,7 +512,7 @@ int self_model_immune_suppress_from_health_anxiety(
         effects->stress_from_illness_belief = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -522,7 +523,7 @@ int self_model_immune_accelerate_from_acceptance(
     if (!bridge) return -1;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
@@ -538,7 +539,7 @@ int self_model_immune_accelerate_from_acceptance(
         /* Note: Would increase resolution_progress on inflammation sites */
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -580,9 +581,9 @@ int self_model_immune_get_interoceptive_signals(
 ) {
     if (!bridge || !signals) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(signals, &bridge->interoceptive_signals, sizeof(interoceptive_immune_signals_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -593,9 +594,9 @@ int self_model_immune_get_self_model_updates(
 ) {
     if (!bridge || !updates) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(updates, &bridge->self_model_updates, sizeof(self_model_immune_modulation_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -649,7 +650,7 @@ float self_model_immune_get_interoceptive_accuracy(
  */
 int self_model_immune_connect_bio_async(self_model_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SELF_MODEL,
@@ -658,9 +659,9 @@ int self_model_immune_connect_bio_async(self_model_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("self_model_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -674,13 +675,13 @@ int self_model_immune_connect_bio_async(self_model_immune_bridge_t* bridge) {
  */
 int self_model_immune_disconnect_bio_async(self_model_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("self_model_immune_bridge disconnected from bio-async router");
     return 0;
@@ -691,5 +692,5 @@ int self_model_immune_disconnect_bio_async(self_model_immune_bridge_t* bridge) {
  */
 bool self_model_immune_is_bio_async_connected(const self_model_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

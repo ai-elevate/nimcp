@@ -16,6 +16,7 @@
 #define NIMCP_SYNAPTIC_TAGGING_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "plasticity/protein/nimcp_protein_synthesis.h"
 #include "plasticity/noise/nimcp_pink_noise.h"
@@ -38,6 +39,8 @@ typedef struct {
 } tag_pink_noise_config_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     tag_pink_noise_config_t config;
     void* tagging_state;
     pink_noise_generator_t noise_gen;

@@ -4,6 +4,7 @@
  */
 
 #include "swarm/nimcp_swarm_consciousness_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
@@ -35,10 +36,10 @@ swarm_consciousness_fep_bridge_t* swarm_consciousness_fep_create(
 
     bridge->fep_system = fep_system;
     bridge->consciousness_ctx = consciousness_ctx;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -49,15 +50,15 @@ swarm_consciousness_fep_bridge_t* swarm_consciousness_fep_create(
 
 void swarm_consciousness_fep_destroy(swarm_consciousness_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) swarm_consciousness_fep_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) swarm_consciousness_fep_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int swarm_consciousness_fep_update(swarm_consciousness_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Get FEP state
     float free_energy = fep_get_free_energy(bridge->fep_system);
@@ -102,7 +103,7 @@ int swarm_consciousness_fep_update(swarm_consciousness_fep_bridge_t* bridge) {
     bridge->stats.avg_phi = (bridge->stats.avg_phi * (bridge->stats.total_updates - 1) + phi) / bridge->stats.total_updates;
     bridge->stats.avg_free_energy = (bridge->stats.avg_free_energy * (bridge->stats.total_updates - 1) + free_energy) / bridge->stats.total_updates;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -113,49 +114,49 @@ int swarm_consciousness_fep_apply_modulation(swarm_consciousness_fep_bridge_t* b
 
 int swarm_consciousness_fep_get_effects(const swarm_consciousness_fep_bridge_t* bridge, swarm_consciousness_fep_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int swarm_consciousness_fep_get_consciousness_effects(const swarm_consciousness_fep_bridge_t* bridge, fep_swarm_consciousness_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->consciousness_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int swarm_consciousness_fep_get_stats(const swarm_consciousness_fep_bridge_t* bridge, swarm_consciousness_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int swarm_consciousness_fep_connect_bio_async(swarm_consciousness_fep_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_enabled) return 0;
+    if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SWARM_CONSCIOUSNESS,
         .module_name = "swarm_consciousness_fep_bridge",
         .inbox_capacity = 32,
         .user_data = bridge
     };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) bridge->base.bio_async_enabled = true;
     return 0;
 }
 
 int swarm_consciousness_fep_disconnect_bio_async(swarm_consciousness_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool swarm_consciousness_fep_is_bio_async_connected(const swarm_consciousness_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

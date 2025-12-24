@@ -6,6 +6,7 @@
  */
 
 #include "middleware/buffering/nimcp_circular_buffer_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -62,8 +63,8 @@ circular_buffer_fep_bridge_t* circular_buffer_fep_bridge_create(
         circular_buffer_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -90,12 +91,12 @@ void circular_buffer_fep_bridge_destroy(
 
     circular_buffer_fep_bridge_disconnect(bridge);
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         circular_buffer_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -117,9 +118,9 @@ int circular_buffer_fep_bridge_connect_buffer(
 ) {
     if (!bridge || !buffer) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->buffer = buffer;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected circular buffer to FEP bridge");
     return 0;
@@ -136,9 +137,9 @@ int circular_buffer_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to buffer bridge");
     return 0;
@@ -154,10 +155,10 @@ int circular_buffer_fep_bridge_disconnect(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->buffer = NULL;
     bridge->fep_system = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -177,7 +178,7 @@ int circular_buffer_fep_adjust_horizon(
 ) {
     if (!bridge || !bridge->config.enable_horizon_adjustment) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t target_capacity = (uint32_t)(horizon * bridge->config.horizon_sensitivity);
     if (target_capacity < FEP_BUFFER_MIN_HORIZON) {
@@ -191,7 +192,7 @@ int circular_buffer_fep_adjust_horizon(
     bridge->effects.horizon_depth = horizon;
     bridge->stats.horizon_adjustments++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -206,7 +207,7 @@ int circular_buffer_fep_set_precision_window(
 ) {
     if (!bridge || !bridge->config.enable_precision_windowing) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t window = (uint32_t)(FEP_BUFFER_PRECISION_WINDOW_BASE +
                                   precision * 40.0f * bridge->config.precision_sensitivity);
@@ -216,7 +217,7 @@ int circular_buffer_fep_set_precision_window(
     bridge->stats.avg_attention_window =
         (bridge->stats.avg_attention_window * 0.9f) + (window * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -231,10 +232,10 @@ int circular_buffer_fep_prime_sequence(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.primed_for_sequence = true;
     bridge->effects.overflow_tolerance = expected_fill_rate * 0.2f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -255,7 +256,7 @@ int circular_buffer_fep_report_utilization(
     if (!bridge || !bridge->config.enable_utilization_feedback) return -1;
     if (!bridge->buffer) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.buffer_utilization = utilization;
     bridge->stats.avg_utilization =
@@ -269,7 +270,7 @@ int circular_buffer_fep_report_utilization(
         bridge->state.capacity_constraint = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -284,7 +285,7 @@ int circular_buffer_fep_report_overflow(
 ) {
     if (!bridge || !bridge->config.enable_overflow_surprise) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.overflow_count = overflow_count;
     bridge->stats.total_overflows += overflow_count;
@@ -298,7 +299,7 @@ int circular_buffer_fep_report_overflow(
             (bridge->stats.avg_overflow_surprise * 0.9f) + (surprise * 0.1f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -312,7 +313,7 @@ int circular_buffer_fep_report_patterns(
 ) {
     if (!bridge || !bridge->buffer) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t size = circular_buffer_size(bridge->buffer);
     size_t capacity = circular_buffer_capacity(bridge->buffer);
@@ -321,7 +322,7 @@ int circular_buffer_fep_report_patterns(
     float utilization = (capacity > 0) ? ((float)size / capacity) : 0.0f;
     circular_buffer_fep_report_utilization(bridge, utilization);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -361,9 +362,9 @@ int circular_buffer_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -379,9 +380,9 @@ int circular_buffer_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -399,7 +400,7 @@ int circular_buffer_fep_bridge_connect_bio_async(
     circular_buffer_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_BUFFERING_BRIDGE,
@@ -408,9 +409,9 @@ int circular_buffer_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -427,11 +428,11 @@ int circular_buffer_fep_bridge_connect_bio_async(
 int circular_buffer_fep_bridge_disconnect_bio_async(
     circular_buffer_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) return -1;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -445,5 +446,5 @@ int circular_buffer_fep_bridge_disconnect_bio_async(
 bool circular_buffer_fep_bridge_is_bio_async_connected(
     const circular_buffer_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

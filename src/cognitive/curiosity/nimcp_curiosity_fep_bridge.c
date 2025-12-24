@@ -25,6 +25,7 @@
  */
 
 #include "cognitive/curiosity/nimcp_curiosity_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_fep_curiosity.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -113,15 +114,15 @@ curiosity_fep_bridge_t* curiosity_fep_bridge_create(const curiosity_fep_config_t
     memset(&bridge->effects, 0, sizeof(curiosity_fep_effects_t));
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for curiosity-FEP bridge");
         curiosity_fep_bridge_destroy(bridge);
         return NULL;
     }
 
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     NIMCP_LOGGING_INFO("Curiosity-FEP bridge created");
     return bridge;
@@ -136,14 +137,14 @@ void curiosity_fep_bridge_destroy(curiosity_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if enabled */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         curiosity_fep_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -165,9 +166,9 @@ int curiosity_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Curiosity-FEP bridge connected to FEP system");
     return 0;
@@ -184,9 +185,9 @@ int curiosity_fep_bridge_connect_curiosity(
 ) {
     if (!bridge || !curiosity) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->curiosity_engine = curiosity;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Curiosity-FEP bridge connected to curiosity engine");
     return 0;
@@ -208,7 +209,7 @@ int curiosity_fep_compute_epistemic_value(curiosity_fep_bridge_t* bridge) {
     if (!bridge->config.enable_epistemic_curiosity) return 0;
     if (!bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute average prediction error magnitude across FEP hierarchy */
     fep_system_t* fep = bridge->fep_system;
@@ -236,7 +237,7 @@ int curiosity_fep_compute_epistemic_value(curiosity_fep_bridge_t* bridge) {
     bridge->stats.avg_information_gain =
         (bridge->stats.avg_information_gain * 0.99f) + (epistemic_value * 0.01f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -252,7 +253,7 @@ int curiosity_fep_detect_knowledge_gaps(curiosity_fep_bridge_t* bridge) {
     if (!bridge->config.enable_knowledge_gap_detection) return 0;
     if (!bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute uncertainty from FEP belief precision */
     fep_system_t* fep = bridge->fep_system;
@@ -292,7 +293,7 @@ int curiosity_fep_detect_knowledge_gaps(curiosity_fep_bridge_t* bridge) {
     bridge->state.current_uncertainty = avg_uncertainty;
     bridge->effects.knowledge_gap_size = gap_size;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -307,7 +308,7 @@ int curiosity_fep_trigger_exploration(curiosity_fep_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_exploration_feedback) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute exploration motivation */
     float epistemic_component = bridge->state.current_epistemic_value *
@@ -333,7 +334,7 @@ int curiosity_fep_trigger_exploration(curiosity_fep_bridge_t* bridge) {
         bridge->stats.total_explorations++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -353,7 +354,7 @@ int curiosity_fep_update_model_from_learning(curiosity_fep_bridge_t* bridge) {
     if (!bridge->config.enable_learning_updates) return 0;
     if (!bridge->curiosity_engine || !bridge->fep_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query information gain from recent curiosity-driven exploration */
     float information_gain = curiosity_get_information_gain(bridge->curiosity_engine);
@@ -390,7 +391,7 @@ int curiosity_fep_update_model_from_learning(curiosity_fep_bridge_t* bridge) {
         bridge->stats.total_uncertainty_reduction += information_gain;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -425,7 +426,7 @@ int curiosity_fep_bridge_update(curiosity_fep_bridge_t* bridge, uint64_t delta_m
     }
 
     /* Update curiosity level statistics */
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->curiosity_engine) {
         float curiosity_level = curiosity_get_drive(bridge->curiosity_engine);
@@ -434,7 +435,7 @@ int curiosity_fep_bridge_update(curiosity_fep_bridge_t* bridge, uint64_t delta_m
             (bridge->stats.avg_curiosity_level * 0.99f) + (curiosity_level * 0.01f);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -482,7 +483,7 @@ int curiosity_fep_bridge_get_stats(
  */
 int curiosity_fep_bridge_connect_bio_async(curiosity_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_CURIOSITY_CORE_BRIDGE,
@@ -491,9 +492,9 @@ int curiosity_fep_bridge_connect_bio_async(curiosity_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Curiosity-FEP bridge connected to bio-async");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -509,14 +510,14 @@ int curiosity_fep_bridge_connect_bio_async(curiosity_fep_bridge_t* bridge) {
  */
 int curiosity_fep_bridge_disconnect_bio_async(curiosity_fep_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Curiosity-FEP bridge disconnected from bio-async");
     return 0;
 }
@@ -527,5 +528,5 @@ int curiosity_fep_bridge_disconnect_bio_async(curiosity_fep_bridge_t* bridge) {
  * HOW:  Return bio_async_enabled flag
  */
 bool curiosity_fep_bridge_is_bio_async_connected(const curiosity_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

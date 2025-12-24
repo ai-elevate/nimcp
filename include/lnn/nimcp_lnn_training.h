@@ -19,6 +19,7 @@
 #define NIMCP_LNN_TRAINING_H
 
 #include "nimcp_lnn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "nimcp_lnn_gradient.h"
 #include "middleware/training/nimcp_optimizers.h"
 #include "middleware/training/nimcp_gradient_manager.h"

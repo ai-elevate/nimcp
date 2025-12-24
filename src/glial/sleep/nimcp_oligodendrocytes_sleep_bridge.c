@@ -11,6 +11,7 @@
  */
 
 #include "glial/sleep/nimcp_oligodendrocytes_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -25,19 +26,17 @@
  * HOW:  Store config, effects, sleep system, and synchronization
  */
 struct oligo_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     oligo_sleep_config_t config;           /**< Configuration parameters */
     sleep_system_t sleep_system;           /**< Sleep system handle */
     oligo_sleep_effects_t effects;         /**< Current modulation effects */
-    nimcp_mutex_t* mutex;                  /**< Thread safety */
     bool callback_registered;              /**< Track callback for cleanup */
 
     /* Activity tracking for activity-dependent myelination */
     float accumulated_activity;            /**< Accumulated axon activity */
     float last_activity_update;            /**< Last activity timestamp */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;          /**< Bio-async module context */
-    bool bio_async_enabled;                /**< Whether bio-async is active */
 };
 
 /* Forward declarations */
@@ -75,7 +74,7 @@ static void oligo_on_sleep_state_change(sleep_state_t new_state, void* user_data
 
     NIMCP_LOGGING_DEBUG("Oligodendrocyte bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current sleep pressure */
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -83,7 +82,7 @@ static void oligo_on_sleep_state_change(sleep_state_t new_state, void* user_data
     /* Recompute all effects for new state */
     compute_effects(bridge, new_state, pressure);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Oligodendrocyte modulated: synthesis=%.2f, opc=%.2f, repair=%.2f",
                         bridge->effects.myelin_synthesis_factor,
@@ -315,15 +314,15 @@ oligo_sleep_bridge_t oligo_sleep_create(
      * WHY:  Start with bio-async disabled
      * HOW:  Set fields to NULL/false
      */
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     /* WHAT: Create thread safety mutex
      * WHY:  Protect concurrent access to effects
      * HOW:  Platform-agnostic mutex creation
      */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for oligodendrocyte-sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -364,7 +363,7 @@ void oligo_sleep_destroy(oligo_sleep_bridge_t bridge)
      * WHY:  Clean shutdown of messaging
      * HOW:  Call disconnect function
      */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         oligo_sleep_disconnect_bio_async(bridge);
     }
 
@@ -387,8 +386,8 @@ void oligo_sleep_destroy(oligo_sleep_bridge_t bridge)
      * WHY:  Free synchronization resources
      * HOW:  Platform-agnostic mutex destruction
      */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* WHAT: Free bridge structure
@@ -419,7 +418,7 @@ float oligo_sleep_enable_synthesis(oligo_sleep_bridge_t bridge)
      * - Deep NREM enables peak synthesis rates
      * - New myelin wraps around active axons
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = bridge->effects.current_state;
     float synthesis = get_synthesis_factor_for_state(state) *
@@ -428,7 +427,7 @@ float oligo_sleep_enable_synthesis(oligo_sleep_bridge_t bridge)
     bridge->effects.myelin_synthesis_factor = synthesis;
     bridge->effects.synthesis_active = (synthesis > 2.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return synthesis;
 }
@@ -438,9 +437,9 @@ float oligo_sleep_get_synthesis_rate(const oligo_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.myelin_synthesis_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -450,9 +449,9 @@ bool oligo_sleep_is_synthesis_active(const oligo_sleep_bridge_t bridge)
     /* Guard clause: Return false if NULL */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.synthesis_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -466,9 +465,9 @@ float oligo_sleep_get_opc_factor(const oligo_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return OLIGO_SLEEP_OPC_AWAKE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.opc_differentiation_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -488,7 +487,7 @@ float oligo_sleep_initiate_opc_differentiation(oligo_sleep_bridge_t bridge)
      * - Deep NREM provides optimal conditions for maturation
      * - Newly differentiated oligodendrocytes myelinate active axons
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = bridge->effects.current_state;
     float factor = get_opc_factor_for_state(state) *
@@ -496,7 +495,7 @@ float oligo_sleep_initiate_opc_differentiation(oligo_sleep_bridge_t bridge)
 
     bridge->effects.opc_differentiation_factor = factor;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -520,7 +519,7 @@ float oligo_sleep_enable_repair(oligo_sleep_bridge_t bridge)
      * - Deep NREM provides optimal conditions for repair
      * - Repair involves both patching and complete remyelination
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = bridge->effects.current_state;
     float repair = get_repair_factor_for_state(state) *
@@ -529,7 +528,7 @@ float oligo_sleep_enable_repair(oligo_sleep_bridge_t bridge)
     bridge->effects.myelin_repair_factor = repair;
     bridge->effects.repair_active = (repair > 1.5f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return repair;
 }
@@ -539,9 +538,9 @@ float oligo_sleep_get_repair_rate(const oligo_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.myelin_repair_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -551,9 +550,9 @@ bool oligo_sleep_is_repair_active(const oligo_sleep_bridge_t bridge)
     /* Guard clause: Return false if NULL */
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.repair_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -580,9 +579,9 @@ int oligo_sleep_get_effects(
      * WHY:  Allow caller to use effects without holding lock
      * HOW:  Lock, copy, unlock
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -599,7 +598,7 @@ int oligo_sleep_update(oligo_sleep_bridge_t bridge, float dt_ms)
      * WHY:  Evolve synthesis, repair, and modulations
      * HOW:  Called each simulation step
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query current sleep state */
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -616,7 +615,7 @@ int oligo_sleep_update(oligo_sleep_bridge_t bridge, float dt_ms)
         bridge->accumulated_activity *= (1.0f - decay_rate);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -626,9 +625,9 @@ float oligo_sleep_get_metabolic_factor(const oligo_sleep_bridge_t bridge)
     /* Guard clause: Return baseline if NULL */
     if (!bridge) return OLIGO_SLEEP_METABOLIC_AWAKE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.metabolic_support_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -646,7 +645,7 @@ int oligo_sleep_connect_bio_async(oligo_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected for oligodendrocyte-sleep bridge");
         return 0;
     }
@@ -662,9 +661,9 @@ int oligo_sleep_connect_bio_async(oligo_sleep_bridge_t bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Oligodendrocyte-sleep bridge connected to bio-async router");
         return 0;
     } else {
@@ -682,7 +681,7 @@ int oligo_sleep_disconnect_bio_async(oligo_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Not connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -690,12 +689,12 @@ int oligo_sleep_disconnect_bio_async(oligo_sleep_bridge_t bridge)
      * WHY:  Clean shutdown of messaging
      * HOW:  Unregister and clear context
      */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Oligodendrocyte-sleep bridge disconnected from bio-async router");
 
     return 0;
@@ -706,5 +705,5 @@ bool oligo_sleep_is_bio_async_connected(const oligo_sleep_bridge_t bridge)
     /* Guard clause: Return false if NULL */
     if (!bridge) return false;
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

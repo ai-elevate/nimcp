@@ -44,6 +44,7 @@
 #define NIMCP_TRAINING_MODULE_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "middleware/training/nimcp_training_module.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"

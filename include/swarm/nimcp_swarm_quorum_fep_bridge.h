@@ -21,6 +21,7 @@
 #define NIMCP_SWARM_QUORUM_FEP_BRIDGE_H
 
 #include "swarm/nimcp_swarm_quorum.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/thread/nimcp_thread.h"
@@ -66,17 +67,15 @@ typedef struct {
 } swarm_quorum_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     swarm_quorum_fep_config_t config;
     fep_system_t* fep_system;
     nimcp_swarm_quorum_t* quorum_system;
     swarm_quorum_fep_effects_t fep_effects;
     fep_swarm_quorum_effects_t quorum_effects;
     swarm_quorum_fep_state_t state;
-    swarm_quorum_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
-} swarm_quorum_fep_bridge_t;
+    swarm_quorum_fep_stats_t stats;} swarm_quorum_fep_bridge_t;
 
 void swarm_quorum_fep_default_config(swarm_quorum_fep_config_t* config);
 swarm_quorum_fep_bridge_t* swarm_quorum_fep_create(const swarm_quorum_fep_config_t* config, nimcp_swarm_quorum_t* quorum_system, fep_system_t* fep_system);

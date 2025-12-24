@@ -23,6 +23,7 @@
 #define NIMCP_EXECUTIVE_QUANTUM_BRIDGE_H
 
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -253,6 +254,8 @@ int executive_quantum_get_config(
  * @brief Internal structure
  */
 struct executive_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     executive_quantum_config_t config;   /**< Configuration */
     qreason_t quantum_reasoner;          /**< Quantum reasoning engine */
     executive_quantum_stats_t stats;     /**< Statistics */

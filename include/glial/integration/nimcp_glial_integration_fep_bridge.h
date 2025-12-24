@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "glial/integration/nimcp_glial_integration.h"
@@ -78,17 +79,15 @@ typedef struct {
 } glial_integration_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     glial_integration_fep_config_t config;
     fep_system_t* fep_system;
     glial_integration_t* glial_integration;
     fep_glial_integration_effects_t fep_effects;
     glial_integration_fep_effects_t glial_effects;
     glial_integration_fep_state_t state;
-    glial_integration_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} glial_integration_fep_bridge_t;
+    glial_integration_fep_stats_t stats;} glial_integration_fep_bridge_t;
 
 int glial_integration_fep_default_config(glial_integration_fep_config_t* config);
 glial_integration_fep_bridge_t* glial_integration_fep_create(

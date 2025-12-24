@@ -36,6 +36,7 @@
 #define NIMCP_EXECUTIVE_SUBSTRATE_BRIDGE_H
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/nimcp_executive.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -175,6 +176,8 @@ typedef struct {
  * HOW: Updates effects based on ATP, applies to executive system
  */
 typedef struct executive_substrate_bridge_t {
+    bridge_base_t base;                  /**< MUST be first: base bridge infrastructure */
+
     /* Core components */
     neural_substrate_t* substrate;       /**< Neural substrate system */
     nimcp_executive_t* executive;        /**< Executive function system */
@@ -183,13 +186,6 @@ typedef struct executive_substrate_bridge_t {
     executive_substrate_config_t config; /**< Bridge configuration */
     executive_substrate_effects_t effects; /**< Current effects */
     executive_substrate_stats_t stats;   /**< Performance statistics */
-
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;        /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Bio-async active flag */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;                /**< Bridge mutex */
 
     /* Internal state */
     float last_atp_level;                /**< Previous ATP level */

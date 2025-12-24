@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/wellbeing/nimcp_wellbeing_free_energy_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
@@ -94,8 +95,8 @@ free_energy_bridge_t* free_energy_bridge_create(
     bridge->predictions_correct = 0;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("Failed to create mutex for free energy bridge");
     }
 
@@ -113,8 +114,8 @@ void free_energy_bridge_destroy(free_energy_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -138,14 +139,14 @@ int free_energy_bridge_set_state(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->fe_state = *state;
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -161,8 +162,8 @@ int free_energy_bridge_update_effects(free_energy_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Compute prediction error distress */
@@ -228,8 +229,8 @@ int free_energy_bridge_update_effects(free_energy_bridge_t* bridge) {
     bridge->avg_precision = alpha * bridge->fe_state.precision +
                             (1.0f - alpha) * bridge->avg_precision;
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -248,8 +249,8 @@ int free_energy_bridge_update_coherence(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Update prediction counts */
@@ -279,8 +280,8 @@ int free_energy_bridge_update_coherence(
                            bridge->model_coherence);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -401,14 +402,14 @@ int free_energy_bridge_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     *effects = bridge->effects;
 
-    if (bridge->mutex) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     return 0;

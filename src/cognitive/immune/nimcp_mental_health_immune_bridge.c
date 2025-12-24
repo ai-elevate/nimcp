@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_mental_health_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -195,12 +196,12 @@ mental_health_immune_bridge_t* mental_health_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("mental_health_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -210,9 +211,9 @@ void mental_health_immune_bridge_destroy(mental_health_immune_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -230,7 +231,7 @@ int mental_health_immune_apply_cytokine_effects(mental_health_immune_bridge_t* b
     if (!bridge->enable_cytokine_disorder_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_mental_health_effects_t* effects = &bridge->cytokine_effects;
@@ -275,7 +276,7 @@ int mental_health_immune_apply_cytokine_effects(mental_health_immune_bridge_t* b
     effects->neurotransmitter_suppression = clamp_f(proinflam_total * 0.3f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -284,7 +285,7 @@ int mental_health_immune_apply_inflammation_effects(mental_health_immune_bridge_
     if (!bridge) return -1;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_mental_health_state_t* state = &bridge->inflammation_state;
 
@@ -340,7 +341,7 @@ int mental_health_immune_apply_inflammation_effects(mental_health_immune_bridge_
     state->serotonin_suppression = clamp_f(inflammation_intensity * 0.5f, 0.0f, 1.0f);
     state->dopamine_suppression = clamp_f(inflammation_intensity * 0.4f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -385,7 +386,7 @@ int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* 
     if (!bridge->enable_disorder_immune_trigger) return 0;
     if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     mental_disorder_immune_trigger_t* trigger = &bridge->disorder_trigger;
 
@@ -421,7 +422,7 @@ int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* 
         trigger->depression_triggered = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -431,7 +432,7 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
     if (!bridge->enable_disorder_immune_trigger) return 0;
     if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     mental_disorder_immune_trigger_t* trigger = &bridge->disorder_trigger;
 
@@ -464,7 +465,7 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
         trigger->anxiety_triggered = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -474,7 +475,7 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
     if (!bridge->enable_disorder_immune_trigger) return 0;
     if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     mental_disorder_immune_trigger_t* trigger = &bridge->disorder_trigger;
 
@@ -510,7 +511,7 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
         trigger->ptsd_triggered = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -520,7 +521,7 @@ int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* brid
     if (!bridge->enable_recovery_immune_boost) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     recovery_immune_enhancement_t* boost = &bridge->recovery_boost;
 
@@ -553,7 +554,7 @@ int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* brid
         bridge->recovery_boosts++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -596,9 +597,9 @@ int mental_health_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_mental_health_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -609,9 +610,9 @@ int mental_health_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_mental_health_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -636,13 +637,13 @@ int mental_health_immune_get_stats(
 ) {
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     if (total_updates) *total_updates = bridge->total_updates;
     if (depression_triggers) *depression_triggers = bridge->depression_triggers;
     if (anxiety_triggers) *anxiety_triggers = bridge->anxiety_triggers;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -657,7 +658,7 @@ int mental_health_immune_get_stats(
  */
 int mental_health_immune_connect_bio_async(mental_health_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_MENTAL_HEALTH,
@@ -666,9 +667,9 @@ int mental_health_immune_connect_bio_async(mental_health_immune_bridge_t* bridge
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("mental_health_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -682,13 +683,13 @@ int mental_health_immune_connect_bio_async(mental_health_immune_bridge_t* bridge
  */
 int mental_health_immune_disconnect_bio_async(mental_health_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("mental_health_immune_bridge disconnected from bio-async router");
     return 0;
@@ -699,5 +700,5 @@ int mental_health_immune_disconnect_bio_async(mental_health_immune_bridge_t* bri
  */
 bool mental_health_immune_is_bio_async_connected(const mental_health_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

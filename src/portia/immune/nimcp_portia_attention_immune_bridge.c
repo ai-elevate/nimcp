@@ -6,6 +6,7 @@
  */
 
 #include "portia/immune/nimcp_portia_attention_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -197,8 +198,8 @@ portia_attention_immune_bridge_t* portia_attention_immune_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -207,7 +208,7 @@ portia_attention_immune_bridge_t* portia_attention_immune_create(
     /* Initialize state */
     bridge->last_update_time = 0;
     bridge->preemption_counter = 0;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Created Portia attention-immune bridge");
     return bridge;
@@ -220,13 +221,13 @@ void portia_attention_immune_destroy(portia_attention_immune_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         portia_attention_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -251,7 +252,7 @@ int portia_attention_immune_apply_cytokine_effects(portia_attention_immune_bridg
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     compute_cytokine_attention_effects(bridge);
@@ -266,7 +267,7 @@ int portia_attention_immune_apply_cytokine_effects(portia_attention_immune_bridg
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine effects: budget_factor=%.3f", budget_factor);
     return 0;
@@ -286,7 +287,7 @@ int portia_attention_immune_apply_inflammation_effects(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute inflammation effects */
     compute_inflammation_attention_effects(bridge);
@@ -302,7 +303,7 @@ int portia_attention_immune_apply_inflammation_effects(
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation effects: budget=%.3f, efficiency_loss=%.3f",
                        budget_factor, efficiency_loss);
@@ -357,12 +358,12 @@ int portia_attention_immune_trigger_depletion_suppression(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get resource availability */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -383,7 +384,7 @@ int portia_attention_immune_trigger_depletion_suppression(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -399,12 +400,12 @@ int portia_attention_immune_trigger_scarcity_stress(portia_attention_immune_brid
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get resource state */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -429,7 +430,7 @@ int portia_attention_immune_trigger_scarcity_stress(portia_attention_immune_brid
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -447,12 +448,12 @@ int portia_attention_immune_trigger_preemption_inflammation(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Check preemption count */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -479,7 +480,7 @@ int portia_attention_immune_trigger_preemption_inflammation(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -498,7 +499,7 @@ int portia_attention_immune_update(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Update timing */
     bridge->last_update_time += delta_ms;
@@ -528,7 +529,7 @@ int portia_attention_immune_update(
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -600,9 +601,9 @@ int portia_attention_immune_connect_bio_async(portia_attention_immune_bridge_t* 
     }
 
     /* Would register with bio-async router here */
-    /* bio_router_register_module(&bridge->bio_ctx, BIO_MODULE_IMMUNE_PORTIA_ATTENTION); */
+    /* bio_router_register_module(&bridge->base.bio_ctx, BIO_MODULE_IMMUNE_PORTIA_ATTENTION); */
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
 
     NIMCP_LOGGING_INFO("Connected Portia attention-immune bridge to bio-async");
     return 0;
@@ -615,14 +616,14 @@ int portia_attention_immune_disconnect_bio_async(portia_attention_immune_bridge_
         return -1;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;  /* Not connected */
     }
 
     /* Would unregister from bio-async router here */
-    /* bio_router_unregister_module(&bridge->bio_ctx); */
+    /* bio_router_unregister_module(&bridge->base.bio_ctx); */
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected Portia attention-immune bridge from bio-async");
     return 0;
@@ -636,5 +637,5 @@ bool portia_attention_immune_is_bio_async_connected(
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

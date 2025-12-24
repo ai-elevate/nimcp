@@ -34,6 +34,7 @@
 #define NIMCP_EMOTIONAL_TAGGING_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -163,17 +164,15 @@ typedef struct {
  * HOW:  Pointers to both systems + effects + state + stats
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     emotional_tagging_fep_config_t config;
     fep_system_t* fep_system;
     emotional_tag_t* current_tag;       /**< Pointer to current tag (not opaque) */
     emotional_tagging_fep_effects_t fep_effects;
     fep_emotional_tagging_effects_t emotion_effects;
     emotional_tagging_fep_state_t state;
-    emotional_tagging_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} emotional_tagging_fep_bridge_t;
+    emotional_tagging_fep_stats_t stats;} emotional_tagging_fep_bridge_t;
 
 /* ============================================================================
  * LIFECYCLE API

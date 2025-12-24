@@ -145,6 +145,7 @@
 #define NIMCP_TOM_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -273,6 +274,8 @@ typedef struct {
  * @brief Complete ToM-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     theory_of_mind_t tom_system;
     brain_immune_system_t* immune_system;
@@ -298,15 +301,7 @@ typedef struct {
     uint32_t social_connection_boosts;
     uint32_t rejection_inflammations;
     uint32_t isolation_inflammations;
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-
-
-    /* Thread safety */
-    void* mutex;
-} tom_immune_bridge_t;
+    } tom_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

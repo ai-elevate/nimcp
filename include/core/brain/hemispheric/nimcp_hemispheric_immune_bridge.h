@@ -93,6 +93,7 @@
 #define NIMCP_HEMISPHERIC_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
@@ -214,6 +215,8 @@ typedef struct {
  * @brief Hemispheric immune bridge structure
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     // Connected systems
     hemispheric_brain_t* brain;              /**< Hemispheric brain */
     brain_immune_system_t* immune_system;    /**< Brain immune system */
@@ -235,12 +238,7 @@ typedef struct {
     hemispheric_immune_stats_t stats;
 
     // Bio-async
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
     // Thread safety
-    nimcp_mutex_t* mutex;
-
     // State
     bool initialized;
 } hemispheric_immune_bridge_t;

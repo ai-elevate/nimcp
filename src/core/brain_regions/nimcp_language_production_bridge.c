@@ -13,6 +13,7 @@
 #define LOG_MODULE "language_bridge"
 
 #include "core/brain_regions/nimcp_language_production_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -57,6 +58,8 @@ typedef struct {
  * @brief Language production bridge structure
  */
 struct language_production_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     uint32_t magic;                          /**< Magic number for validation */
 
     // Configuration
@@ -80,7 +83,6 @@ struct language_production_bridge {
     nimcp_platform_mutex_t stats_mutex;
 
     // Bio-async integration
-    bio_module_context_t bio_ctx;
     bool bio_async_registered;
 
     // Message ID generation
@@ -115,8 +117,8 @@ static void language_bridge_register_bio_async(language_production_bridge_t* bri
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_registered = true;
         LOG_INFO("Language production bridge registered with bio-router");
     } else {
@@ -158,7 +160,7 @@ static void language_bridge_send_bio_event(language_production_bridge_t* bridge,
     msg.success = success;
     msg.confidence = bridge->stats.avg_confidence;
 
-    bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    bio_router_broadcast(bridge->base.bio_ctx, &msg, sizeof(msg));
 
     LOG_DEBUG("Sent bio-async event: type=0x%04X success=%d channel=%d",
               event_type, success, channel);
@@ -448,8 +450,8 @@ void language_bridge_destroy(language_production_bridge_t* bridge) {
     LOG_INFO("Destroying language production bridge");
 
     // Unregister from bio-async
-    if (bridge->bio_async_registered && bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
+    if (bridge->bio_async_registered && bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
     }
 
     // Free queued messages
@@ -764,7 +766,7 @@ int language_bridge_process_inbox(language_production_bridge_t* bridge) {
     }
 
     // Process up to 32 messages per call
-    return bio_router_process_inbox(bridge->bio_ctx, 32);
+    return bio_router_process_inbox(bridge->base.bio_ctx, 32);
 }
 
 //=============================================================================

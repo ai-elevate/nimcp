@@ -6,6 +6,7 @@
  */
 
 #include "nlp/immune/nimcp_multimodal_nlp_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
@@ -95,7 +96,7 @@ multimodal_nlp_immune_bridge_t* multimodal_nlp_immune_bridge_create(
     pthread_mutex_t* mutex = nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     }
 
     NIMCP_LOGGING_INFO("multimodal_nlp_immune_bridge: created successfully");
@@ -105,12 +106,12 @@ multimodal_nlp_immune_bridge_t* multimodal_nlp_immune_bridge_create(
 void multimodal_nlp_immune_bridge_destroy(multimodal_nlp_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         multimodal_nlp_immune_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->mutex;
+    if (bridge->base.mutex) {
+        pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->base.mutex;
         pthread_mutex_destroy(mutex);
         nimcp_free(mutex);
     }
@@ -316,7 +317,7 @@ int multimodal_nlp_immune_bridge_update(
 ) {
     if (!bridge) return -1;
 
-    pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->mutex;
+    pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->base.mutex;
     if (mutex) pthread_mutex_lock(mutex);
 
     if (bridge->inflammation_state.current_level != INFLAMMATION_NONE) {
@@ -398,7 +399,7 @@ int multimodal_nlp_immune_connect_bio_async(
     multimodal_nlp_immune_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_MULTIMODAL_NLP,
@@ -407,9 +408,9 @@ int multimodal_nlp_immune_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("multimodal_nlp_immune_bridge: connected to bio-async router");
     } else {
         NIMCP_LOGGING_DEBUG("multimodal_nlp_immune_bridge: bio-async router not available");
@@ -421,13 +422,13 @@ int multimodal_nlp_immune_disconnect_bio_async(
     multimodal_nlp_immune_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("multimodal_nlp_immune_bridge: bio-async disconnected");
     return 0;
 }
@@ -435,5 +436,5 @@ int multimodal_nlp_immune_disconnect_bio_async(
 bool multimodal_nlp_immune_is_bio_async_connected(
     const multimodal_nlp_immune_bridge_t* bridge
 ) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

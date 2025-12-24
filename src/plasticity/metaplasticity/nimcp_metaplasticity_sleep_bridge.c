@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -110,16 +111,16 @@ metaplasticity_sleep_bridge_t* metaplasticity_sleep_bridge_create(
     bridge->effects.adaptation_frozen = false;
 
     /* Allocate mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -133,9 +134,9 @@ void metaplasticity_sleep_bridge_destroy(metaplasticity_sleep_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -160,7 +161,7 @@ int metaplasticity_sleep_apply_threshold_reset(metaplasticity_sleep_bridge_t* br
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get current sleep state */
     sleep_state_t sleep_state = sleep_get_current_state(bridge->sleep_system);
@@ -175,7 +176,7 @@ int metaplasticity_sleep_apply_threshold_reset(metaplasticity_sleep_bridge_t* br
     if (bridge->effects.threshold_reset_factor > 0.0f) {
         if (metaplasticity_controller_set_sleep_state(
                 bridge->metaplasticity_controller, sleep_state) != 0) {
-            nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+            nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Failed to apply sleep state");
             return -1;
         }
@@ -192,7 +193,7 @@ int metaplasticity_sleep_apply_threshold_reset(metaplasticity_sleep_bridge_t* br
                            sleep_state, bridge->effects.threshold_reset_factor);
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -211,7 +212,7 @@ int metaplasticity_sleep_freeze_adaptation(metaplasticity_sleep_bridge_t* bridge
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get current sleep state */
     sleep_state_t sleep_state = sleep_get_current_state(bridge->sleep_system);
@@ -226,7 +227,7 @@ int metaplasticity_sleep_freeze_adaptation(metaplasticity_sleep_bridge_t* bridge
         (sleep_state == SLEEP_STATE_DEEP_NREM) &&
         (bridge->effects.adaptation_rate_factor < 0.1f);
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -264,12 +265,12 @@ int metaplasticity_sleep_monitor_threshold_drift(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Get metaplasticity statistics */
     metaplasticity_stats_t stats;
     if (metaplasticity_controller_get_stats(bridge->metaplasticity_controller, &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Failed to get metaplasticity stats");
         return -1;
     }
@@ -286,7 +287,7 @@ int metaplasticity_sleep_monitor_threshold_drift(
         bridge->max_drift_observed = current_drift;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Threshold drift: %.3f (baseline: %.3f, effective: %.3f)",
                        current_drift, stats.mean_theta_baseline,
@@ -311,7 +312,7 @@ int metaplasticity_sleep_compute_sleep_pressure(
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute pressure from drift */
     float drift_ratio = bridge->effects.baseline_drift /
@@ -325,7 +326,7 @@ int metaplasticity_sleep_compute_sleep_pressure(
     bridge->effects.sleep_pressure_contribution = drift_ratio;
     *sleep_pressure = drift_ratio;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     if (drift_ratio > 0.5f) {
         NIMCP_LOGGING_DEBUG("High sleep pressure from threshold drift: %.2f", drift_ratio);

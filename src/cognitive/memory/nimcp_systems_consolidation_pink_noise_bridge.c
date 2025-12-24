@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -134,15 +135,15 @@ consolidation_pink_noise_bridge_t* consolidation_pink_noise_create(
     bridge->stage_transitions = 0;
 
     // Create mutex for thread safety
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -160,10 +161,10 @@ void consolidation_pink_noise_destroy(consolidation_pink_noise_bridge_t* bridge)
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -184,7 +185,7 @@ int consolidation_pink_noise_update(consolidation_pink_noise_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Sample current pink noise state
     float noise_amplitude = pink_sleep_get_amplitude(bridge->pink_noise_bridge);
@@ -276,7 +277,7 @@ int consolidation_pink_noise_update(consolidation_pink_noise_bridge_t* bridge) {
 
     bridge->total_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -295,7 +296,7 @@ int consolidation_pink_noise_apply_modulation(consolidation_pink_noise_bridge_t*
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // The consolidation system would need to expose:
     // - Set replay frequency
@@ -320,7 +321,7 @@ int consolidation_pink_noise_apply_modulation(consolidation_pink_noise_bridge_t*
     // For now, we successfully store the modulation state that can be
     // queried by the consolidation system or wrapper code
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -341,9 +342,9 @@ int consolidation_pink_noise_get_effects(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects_out, &bridge->effects, sizeof(consolidation_pink_noise_effects_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -359,9 +360,9 @@ float consolidation_pink_noise_get_replay_strength(
         return -1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float strength = bridge->effects.replay_strength_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return strength;
 }
@@ -377,9 +378,9 @@ float consolidation_pink_noise_get_transfer_quality(
         return -1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float quality = bridge->effects.transfer_quality_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return quality;
 }
@@ -395,9 +396,9 @@ float consolidation_pink_noise_get_replay_frequency(
         return -1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float freq = bridge->effects.replay_frequency_hz;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return freq;
 }
@@ -413,9 +414,9 @@ bool consolidation_pink_noise_in_spindle_burst(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool in_spindle = bridge->effects.in_spindle_burst;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return in_spindle;
 }
@@ -439,7 +440,7 @@ int consolidation_pink_noise_get_statistics(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (total_updates_out) {
         *total_updates_out = bridge->total_updates;
@@ -451,7 +452,7 @@ int consolidation_pink_noise_get_statistics(
         *stage_transitions_out = bridge->stage_transitions;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

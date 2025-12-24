@@ -26,7 +26,7 @@ protected:
 
     void SetUp() override {
         // Create sleep system
-        sleep_wake_config_t sleep_config = sleep_wake_default_config();
+        sleep_config_t sleep_config = sleep_default_config();
         sleep_system = sleep_system_create(&sleep_config);
         ASSERT_NE(sleep_system, nullptr);
 
@@ -98,7 +98,7 @@ TEST_F(MetabolicSleepIntegrationTest, DeepSleepEnhancesRecovery) {
     metabolic_plasticity_restore_atp(metabolic, 50.0f);
 
     // Transition to deep NREM
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     metabolic_sleep_update(bridge);
 
     // Recovery should be enhanced
@@ -111,7 +111,7 @@ TEST_F(MetabolicSleepIntegrationTest, DeepSleepEnhancesRecovery) {
 }
 
 TEST_F(MetabolicSleepIntegrationTest, REMStandardRecovery) {
-    sleep_set_state(sleep_system, SLEEP_STATE_REM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_REM);
     metabolic_sleep_update(bridge);
 
     metabolic_sleep_effects_t effects;
@@ -149,13 +149,13 @@ TEST_F(MetabolicSleepIntegrationTest, RecoveryRateModulation) {
     float base_rate = 3.0f;
 
     // Awake state
-    sleep_set_state(sleep_system, SLEEP_STATE_AWAKE);
+    sleep_enter_state(sleep_system, SLEEP_STATE_AWAKE);
     metabolic_sleep_update(bridge);
     float awake_rate = metabolic_sleep_get_recovery_rate(bridge, base_rate);
     EXPECT_FLOAT_EQ(awake_rate, base_rate * METABOLIC_SLEEP_RECOVERY_AWAKE);
 
     // Deep sleep state
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     metabolic_sleep_update(bridge);
     float deep_rate = metabolic_sleep_get_recovery_rate(bridge, base_rate);
     EXPECT_FLOAT_EQ(deep_rate, base_rate * METABOLIC_SLEEP_RECOVERY_DEEP_NREM);
@@ -164,13 +164,13 @@ TEST_F(MetabolicSleepIntegrationTest, RecoveryRateModulation) {
 
 TEST_F(MetabolicSleepIntegrationTest, CostFactorModulation) {
     // Awake: standard cost
-    sleep_set_state(sleep_system, SLEEP_STATE_AWAKE);
+    sleep_enter_state(sleep_system, SLEEP_STATE_AWAKE);
     metabolic_sleep_update(bridge);
     float awake_cost = metabolic_sleep_get_cost_factor(bridge);
     EXPECT_FLOAT_EQ(awake_cost, METABOLIC_SLEEP_COST_AWAKE);
 
     // Deep NREM: reduced cost
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     metabolic_sleep_update(bridge);
     float deep_cost = metabolic_sleep_get_cost_factor(bridge);
     EXPECT_FLOAT_EQ(deep_cost, METABOLIC_SLEEP_COST_DEEP_NREM);
@@ -294,7 +294,7 @@ protected:
 
     void SetUp() override {
         // Create systems
-        sleep_wake_config_t sleep_config = sleep_wake_default_config();
+        sleep_config_t sleep_config = sleep_default_config();
         sleep_system = sleep_system_create(&sleep_config);
 
         brain_immune_config_t immune_config;
@@ -339,7 +339,7 @@ TEST_F(MetabolicFullIntegrationTest, DeepSleepRestorationWithInflammation) {
     metabolic_immune_apply_inflammation_effects(immune_bridge);
 
     // Enter deep sleep (enhances recovery)
-    sleep_set_state(sleep_system, SLEEP_STATE_DEEP_NREM);
+    sleep_enter_state(sleep_system, SLEEP_STATE_DEEP_NREM);
     metabolic_sleep_update(sleep_bridge);
 
     // Recovery should be enhanced despite inflammation

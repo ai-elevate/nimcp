@@ -37,6 +37,7 @@
 #define NIMCP_THALAMIC_QUANTUM_BRIDGE_H
 
 #include "plasticity/attention/nimcp_quantum_attention.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -219,6 +220,8 @@ void thalamic_quantum_reset_stats(thalamic_quantum_bridge_t* bridge);
  * @brief Internal bridge structure
  */
 struct thalamic_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     thalamic_quantum_config_t config;   /**< Configuration */
     quantum_attention_t quantum_attn;   /**< Quantum attention context */
     thalamic_quantum_stats_t stats;     /**< Statistics */

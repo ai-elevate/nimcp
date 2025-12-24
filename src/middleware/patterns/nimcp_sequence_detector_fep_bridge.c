@@ -6,6 +6,7 @@
  */
 
 #include "middleware/patterns/nimcp_sequence_detector_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -52,8 +53,8 @@ sequence_detector_fep_bridge_t* sequence_detector_fep_bridge_create(
     bridge->effects.temporal_tolerance = SEQUENCE_TEMPORAL_TOLERANCE_MS;
     bridge->state.current_precision = 0.5f;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         sequence_detector_fep_bridge_destroy(bridge);
         return NULL;
     }
@@ -67,13 +68,13 @@ void sequence_detector_fep_bridge_destroy(
 ) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         sequence_detector_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -85,9 +86,9 @@ int sequence_detector_fep_bridge_connect_detector(
     sequence_detector_t* detector
 ) {
     if (!bridge || !detector) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->sequence_detector = detector;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Sequence detector connected to FEP bridge");
     return 0;
 }
@@ -97,9 +98,9 @@ int sequence_detector_fep_bridge_connect_fep(
     fep_system_t* fep
 ) {
     if (!bridge || !fep) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("FEP system connected to sequence bridge");
     return 0;
 }
@@ -108,10 +109,10 @@ int sequence_detector_fep_bridge_disconnect(
     sequence_detector_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->sequence_detector = NULL;
     bridge->fep_system = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("Sequence-FEP bridge disconnected");
     return 0;
 }
@@ -123,11 +124,11 @@ int sequence_detector_fep_prime_expected_sequence(
     if (!bridge) return -1;
     if (!bridge->config.enable_prediction_priming) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->effects.expected_template_id = template_id;
     bridge->effects.priming_active = true;
     bridge->effects.detection_threshold *= 0.8f;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Expected sequence primed: template %u", template_id);
     return 0;
@@ -140,7 +141,7 @@ int sequence_detector_fep_adjust_tolerance(
     if (!bridge) return -1;
     if (!bridge->config.enable_precision_tolerance) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     float tolerance = (precision > 0.7f) ? FEP_PRECISION_HIGH_TOLERANCE :
                       (precision > 0.3f) ? 0.5f : FEP_PRECISION_LOW_TOLERANCE;
@@ -149,7 +150,7 @@ int sequence_detector_fep_adjust_tolerance(
     bridge->state.current_precision = precision;
     bridge->effects.temporal_tolerance = SEQUENCE_TEMPORAL_TOLERANCE_MS * (1.0f / tolerance);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Tolerance adjusted: precision=%.3f → tolerance=%.3f",
                         precision, bridge->effects.temporal_tolerance);
@@ -162,7 +163,7 @@ int sequence_detector_fep_report_detection(
 ) {
     if (!bridge || !detection) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->state.sequences_detected++;
     bridge->stats.sequence_detections++;
@@ -176,7 +177,7 @@ int sequence_detector_fep_report_detection(
         bridge->effects.priming_active = false;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Sequence detected: template %u, strength %.3f",
                         detection->template_id, detection->strength);
@@ -190,7 +191,7 @@ int sequence_detector_fep_report_violation(
     if (!bridge) return -1;
     if (!bridge->config.enable_sequence_pe) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->state.violations_detected++;
     bridge->stats.sequence_violations++;
@@ -203,7 +204,7 @@ int sequence_detector_fep_report_violation(
     /* Clear priming */
     bridge->effects.priming_active = false;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Sequence violation: expected %u, PE=%.3f", expected_id, pe);
     return 0;
@@ -216,7 +217,7 @@ int sequence_detector_fep_report_replay(
     if (!bridge || !replay) return -1;
     if (!bridge->config.enable_replay_consolidation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->stats.replay_events++;
 
@@ -226,7 +227,7 @@ int sequence_detector_fep_report_replay(
     bridge->state.replay_consolidation_progress = clamp_f(
         bridge->state.replay_consolidation_progress, 0.0f, 1.0f);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Replay detected: %s, compression=%.3f",
                         replay->is_forward ? "forward" : "backward",
@@ -247,9 +248,9 @@ int sequence_detector_fep_bridge_get_state(
     sequence_detector_fep_state_t* state
 ) {
     if (!bridge || !state) return -1;
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
     return 0;
 }
 
@@ -258,9 +259,9 @@ int sequence_detector_fep_bridge_get_stats(
     sequence_detector_fep_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
-    nimcp_platform_mutex_lock((void*)bridge->mutex);
+    nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
     return 0;
 }
 
@@ -268,7 +269,7 @@ int sequence_detector_fep_bridge_connect_bio_async(
     sequence_detector_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SEQUENCE_DETECTOR_BRIDGE,
@@ -277,9 +278,9 @@ int sequence_detector_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -292,11 +293,11 @@ int sequence_detector_fep_bridge_disconnect_bio_async(
     sequence_detector_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
@@ -306,5 +307,5 @@ bool sequence_detector_fep_bridge_is_bio_async_connected(
     const sequence_detector_fep_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

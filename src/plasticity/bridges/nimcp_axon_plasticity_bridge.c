@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/bridges/nimcp_axon_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -126,14 +127,14 @@ axon_plasticity_bridge_t* axon_plasticity_create(
            bridge->segment_capacity * sizeof(axon_segment_state_t));
 
     /* Allocate mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->segments);
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
-        nimcp_free(bridge->mutex);
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge->segments);
         nimcp_free(bridge);
         return NULL;
@@ -151,13 +152,13 @@ void axon_plasticity_destroy(axon_plasticity_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         axon_plasticity_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     if (bridge->segments) {
@@ -175,43 +176,43 @@ void axon_plasticity_destroy(axon_plasticity_bridge_t* bridge)
 int axon_plasticity_connect_structural(axon_plasticity_bridge_t* bridge, structural_state_t* s)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->structural = s;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int axon_plasticity_connect_intrinsic(axon_plasticity_bridge_t* bridge, intrinsic_excitability_state_t* i)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->intrinsic = i;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int axon_plasticity_connect_metabolic(axon_plasticity_bridge_t* bridge, metabolic_state_t* m)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metabolic = m;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int axon_plasticity_connect_myelin(axon_plasticity_bridge_t* bridge, nimcp_myelin_sheath_t* myelin)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->myelin = myelin;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int axon_plasticity_connect_bio_async(axon_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_AXON,
@@ -220,9 +221,9 @@ int axon_plasticity_connect_bio_async(axon_plasticity_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected axon-plasticity to bio-async");
     }
     return 0;
@@ -231,20 +232,20 @@ int axon_plasticity_connect_bio_async(axon_plasticity_bridge_t* bridge)
 int axon_plasticity_disconnect_bio_async(axon_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool axon_plasticity_is_bio_async_connected(const axon_plasticity_bridge_t* bridge)
 {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -255,7 +256,7 @@ int axon_plasticity_update_conduction(axon_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sum_velocity = 0.0f;
     for (size_t i = 0; i < bridge->num_segments; i++) {
@@ -293,7 +294,7 @@ int axon_plasticity_update_conduction(axon_plasticity_bridge_t* bridge)
         bridge->stats.avg_conduction_velocity = bridge->avg_conduction_velocity;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -310,18 +311,18 @@ int axon_plasticity_on_spike(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     axon_segment_state_t* seg = find_or_create_segment(bridge, segment_id);
     if (!seg) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
     /* Check for conduction block */
     if (seg->conduction_state == CONDUCTION_BLOCKED) {
         bridge->stats.conduction_failures++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -337,7 +338,7 @@ int axon_plasticity_on_spike(
     bridge->stats.spikes_propagated++;
     bridge->total_activity += 1.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -350,7 +351,7 @@ int axon_plasticity_update_myelination(axon_plasticity_bridge_t* bridge)
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_adaptive_myelination) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sum_myelin = 0.0f;
     for (size_t i = 0; i < bridge->num_segments; i++) {
@@ -372,7 +373,7 @@ int axon_plasticity_update_myelination(axon_plasticity_bridge_t* bridge)
         bridge->stats.avg_myelination = bridge->avg_myelination_factor;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -399,7 +400,7 @@ int axon_plasticity_apply_structural(axon_plasticity_bridge_t* bridge)
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_structural_plasticity) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->num_segments; i++) {
         axon_segment_state_t* seg = &bridge->segments[i];
@@ -411,7 +412,7 @@ int axon_plasticity_apply_structural(axon_plasticity_bridge_t* bridge)
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -423,7 +424,7 @@ int axon_plasticity_update(axon_plasticity_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay fatigue and activity */
     float fatigue_decay = expf(-dt_ms / bridge->config.conduction_recovery_tau_ms);
@@ -459,7 +460,7 @@ int axon_plasticity_update(axon_plasticity_bridge_t* bridge, float dt_ms)
 
     bridge->last_update_time = nimcp_time_get_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Update conduction and myelination */
     axon_plasticity_update_conduction(bridge);
@@ -480,9 +481,9 @@ int axon_plasticity_get_stats(
 void axon_plasticity_reset_stats(axon_plasticity_bridge_t* bridge)
 {
     if (!bridge) return;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

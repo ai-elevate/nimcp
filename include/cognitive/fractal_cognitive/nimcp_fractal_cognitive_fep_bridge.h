@@ -60,6 +60,7 @@
 #define NIMCP_FRACTAL_COGNITIVE_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -160,6 +161,8 @@ typedef struct {
  * @brief Complete bridge structure
  */
 struct fractal_cognitive_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     fractal_cognitive_fep_config_t config;
     fep_system_t* fep_system;
     fractal_cognitive_cache_t* fractal_cache;
@@ -167,9 +170,6 @@ struct fractal_cognitive_fep_bridge {
     fep_fractal_cognitive_effects_t fractal_effects;
     fractal_cognitive_fep_state_t state;
     fractal_cognitive_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 /* ============================================================================

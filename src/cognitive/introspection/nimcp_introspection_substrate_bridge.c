@@ -26,6 +26,7 @@
  */
 
 #include "cognitive/introspection/nimcp_introspection_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -245,12 +246,12 @@ introspection_substrate_bridge_t* introspection_substrate_bridge_create(
     bridge->stats.avg_recovery_time = 0.0f;
 
     /* Initialize bio-async state */
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for introspection substrate bridge");
         nimcp_free(bridge);
         return NULL;
@@ -272,14 +273,14 @@ void introspection_substrate_bridge_destroy(introspection_substrate_bridge_t* br
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         introspection_substrate_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge structure */
@@ -296,7 +297,7 @@ int introspection_substrate_connect_bio_async(introspection_substrate_bridge_t* 
     }
 
     /* Guard: check if already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected");
         return NIMCP_SUCCESS;
     }
@@ -310,9 +311,9 @@ int introspection_substrate_connect_bio_async(introspection_substrate_bridge_t* 
     };
 
     /* Register with bio-async router */
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected introspection substrate bridge to bio-async router");
         return NIMCP_SUCCESS;
     } else {
@@ -329,17 +330,17 @@ int introspection_substrate_disconnect_bio_async(introspection_substrate_bridge_
     }
 
     /* Guard: check if connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_DEBUG("Disconnected introspection substrate bridge from bio-async");
     return NIMCP_SUCCESS;
 }
@@ -352,7 +353,7 @@ bool introspection_substrate_is_bio_async_connected(
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 int introspection_substrate_update(introspection_substrate_bridge_t* bridge) {
@@ -363,14 +364,14 @@ int introspection_substrate_update(introspection_substrate_bridge_t* bridge) {
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query substrate metabolic state */
     substrate_metabolic_state_t metabolic;
     int ret = substrate_get_metabolic_state(bridge->substrate, &metabolic);
     if (ret != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to get substrate metabolic state");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return ret;
     }
 
@@ -379,7 +380,7 @@ int introspection_substrate_update(introspection_substrate_bridge_t* bridge) {
     ret = substrate_get_physical_state(bridge->substrate, &physical);
     if (ret != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to get substrate physical state");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return ret;
     }
 
@@ -467,7 +468,7 @@ int introspection_substrate_update(introspection_substrate_bridge_t* bridge) {
     }
 
     /* Unlock mutex */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Updated introspection substrate effects: "
                        "self_awareness=%.3f, metacognitive=%.3f, monitoring=%.3f, "
@@ -491,9 +492,9 @@ float introspection_substrate_get_self_awareness_depth(
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float depth = bridge->effects.self_awareness_depth;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return depth;
 }
@@ -508,9 +509,9 @@ float introspection_substrate_get_metacognitive_accuracy(
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float accuracy = bridge->effects.metacognitive_accuracy;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return accuracy;
 }
@@ -525,9 +526,9 @@ float introspection_substrate_get_monitoring_capacity(
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float capacity = bridge->effects.monitoring_capacity;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return capacity;
 }
@@ -542,9 +543,9 @@ float introspection_substrate_get_uncertainty_estimation(
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float estimation = bridge->effects.uncertainty_estimation;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return estimation;
 }
@@ -565,13 +566,13 @@ int introspection_substrate_get_effects(
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy effects structure */
     memcpy(effects, &bridge->effects, sizeof(introspection_substrate_effects_t));
 
     /* Unlock mutex */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -583,9 +584,9 @@ bool introspection_substrate_is_impaired(const introspection_substrate_bridge_t*
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool impaired = bridge->effects.is_impaired;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return impaired;
 }
@@ -606,13 +607,13 @@ int introspection_substrate_get_stats(
     }
 
     /* Lock mutex for thread safety */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy statistics structure */
     memcpy(stats, &bridge->stats, sizeof(introspection_substrate_stats_t));
 
     /* Unlock mutex */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }

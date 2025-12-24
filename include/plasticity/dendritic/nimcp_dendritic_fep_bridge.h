@@ -55,6 +55,7 @@
 #define NIMCP_DENDRITIC_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
@@ -115,15 +116,14 @@ typedef struct {
 } dendritic_fep_stats_t;
 
 struct dendritic_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     dendritic_fep_config_t config;
     fep_system_t* fep_system;
     dendritic_tree_t dendritic_system;
     dendritic_fep_effects_t effects;
     dendritic_fep_state_t state;
     dendritic_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 int dendritic_fep_bridge_default_config(dendritic_fep_config_t* config);

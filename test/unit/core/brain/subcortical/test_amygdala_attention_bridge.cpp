@@ -93,10 +93,10 @@ TEST_F(AmygdalaAttentionBridgeTest, ValidateInvalidSensitivity) {
 
 TEST_F(AmygdalaAttentionBridgeTest, CreateAndDestroyBridge) {
     EXPECT_NE(bridge, nullptr);
-    EXPECT_NE(bridge->mutex, nullptr);
-    EXPECT_FALSE(bridge->amygdala_connected);
-    EXPECT_FALSE(bridge->attention_connected);
-    EXPECT_FALSE(bridge->bridge_active);
+    EXPECT_NE(bridge->base.mutex, nullptr);
+    EXPECT_FALSE(bridge->base.system_a_connected);
+    EXPECT_FALSE(bridge->base.system_b_connected);
+    EXPECT_FALSE(bridge->base.bridge_active);
 }
 
 TEST_F(AmygdalaAttentionBridgeTest, CreateWithNullConfig) {
@@ -109,15 +109,15 @@ TEST_F(AmygdalaAttentionBridgeTest, CreateWithNullConfig) {
 TEST_F(AmygdalaAttentionBridgeTest, ResetBridge) {
     /* Set some state */
     amygdala_attention_connect_amygdala(bridge, amygdala);
-    bridge->total_updates = 100;
+    bridge->base.total_updates = 100;
     bridge->hypervigilance_activations = 10;
 
     /* Reset */
     int result = amygdala_attention_reset(bridge);
     EXPECT_EQ(result, 0);
-    EXPECT_EQ(bridge->total_updates, 0);
+    EXPECT_EQ(bridge->base.total_updates, 0);
     EXPECT_EQ(bridge->hypervigilance_activations, 0);
-    EXPECT_TRUE(bridge->amygdala_connected); /* Connections preserved */
+    EXPECT_TRUE(bridge->base.system_a_connected); /* Connections preserved */
 }
 
 /* ============================================================================
@@ -127,37 +127,37 @@ TEST_F(AmygdalaAttentionBridgeTest, ResetBridge) {
 TEST_F(AmygdalaAttentionBridgeTest, ConnectAmygdala) {
     int result = amygdala_attention_connect_amygdala(bridge, amygdala);
     EXPECT_EQ(result, 0);
-    EXPECT_TRUE(bridge->amygdala_connected);
-    EXPECT_EQ(bridge->amygdala, amygdala);
+    EXPECT_TRUE(bridge->base.system_a_connected);
+    EXPECT_EQ(bridge->base.system_a, amygdala);
 }
 
 TEST_F(AmygdalaAttentionBridgeTest, ConnectAttention) {
     void* dummy_attention = (void*)0x1234;
     int result = amygdala_attention_connect_attention(bridge, dummy_attention);
     EXPECT_EQ(result, 0);
-    EXPECT_TRUE(bridge->attention_connected);
-    EXPECT_EQ(bridge->attention, dummy_attention);
+    EXPECT_TRUE(bridge->base.system_b_connected);
+    EXPECT_EQ(bridge->base.system_b, dummy_attention);
 }
 
 TEST_F(AmygdalaAttentionBridgeTest, BridgeActivatesWhenBothConnected) {
-    EXPECT_FALSE(bridge->bridge_active);
+    EXPECT_FALSE(bridge->base.bridge_active);
 
     amygdala_attention_connect_amygdala(bridge, amygdala);
-    EXPECT_FALSE(bridge->bridge_active); /* Need both */
+    EXPECT_FALSE(bridge->base.bridge_active); /* Need both */
 
     void* dummy_attention = (void*)0x1234;
     amygdala_attention_connect_attention(bridge, dummy_attention);
-    EXPECT_TRUE(bridge->bridge_active); /* Both connected */
+    EXPECT_TRUE(bridge->base.bridge_active); /* Both connected */
 }
 
 TEST_F(AmygdalaAttentionBridgeTest, DisconnectAmygdala) {
     amygdala_attention_connect_amygdala(bridge, amygdala);
-    EXPECT_TRUE(bridge->amygdala_connected);
+    EXPECT_TRUE(bridge->base.system_a_connected);
 
     int result = amygdala_attention_disconnect_amygdala(bridge);
     EXPECT_EQ(result, 0);
-    EXPECT_FALSE(bridge->amygdala_connected);
-    EXPECT_FALSE(bridge->bridge_active);
+    EXPECT_FALSE(bridge->base.system_a_connected);
+    EXPECT_FALSE(bridge->base.bridge_active);
 }
 
 TEST_F(AmygdalaAttentionBridgeTest, IsConnected) {
@@ -324,11 +324,11 @@ TEST_F(AmygdalaAttentionBridgeTest, UpdateIncrementsStatistics) {
     void* dummy_attention = (void*)0x1234;
     amygdala_attention_connect_attention(bridge, dummy_attention);
 
-    uint64_t initial_updates = bridge->total_updates;
+    uint64_t initial_updates = bridge->base.total_updates;
 
     amygdala_attention_update(bridge);
 
-    EXPECT_EQ(bridge->total_updates, initial_updates + 1);
+    EXPECT_EQ(bridge->base.total_updates, initial_updates + 1);
 }
 
 TEST_F(AmygdalaAttentionBridgeTest, ApplyModulation) {

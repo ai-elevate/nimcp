@@ -13,6 +13,7 @@
  */
 
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/training/nimcp_perception_training_bridge.h"
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "security/nimcp_security.h"

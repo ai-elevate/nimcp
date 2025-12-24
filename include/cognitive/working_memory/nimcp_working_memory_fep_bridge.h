@@ -62,6 +62,7 @@
 #define NIMCP_WORKING_MEMORY_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -216,6 +217,8 @@ typedef struct {
  * @brief Working Memory-FEP bridge state
  */
 struct working_memory_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     working_memory_fep_config_t config;
 
@@ -231,12 +234,6 @@ struct working_memory_fep_bridge {
     /* Statistics */
     working_memory_fep_stats_t stats;
 
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;                             /**< Mutex for thread safety */
 };
 
 /* ============================================================================

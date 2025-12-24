@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/analysis/nimcp_analysis_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -51,8 +52,8 @@ analysis_fep_bridge_t* analysis_fep_bridge_create(const analysis_fep_config_t* c
         analysis_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -68,12 +69,12 @@ analysis_fep_bridge_t* analysis_fep_bridge_create(const analysis_fep_config_t* c
 void analysis_fep_bridge_destroy(analysis_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         analysis_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -87,9 +88,9 @@ void analysis_fep_bridge_destroy(analysis_fep_bridge_t* bridge) {
 int analysis_fep_bridge_connect_fep(analysis_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -102,9 +103,9 @@ int analysis_fep_bridge_connect_fep(analysis_fep_bridge_t* bridge, fep_system_t*
 int analysis_fep_bridge_connect_analysis(analysis_fep_bridge_t* bridge, network_analyzer_t* analyzer) {
     if (!bridge || !analyzer) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->analyzer = analyzer;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -117,10 +118,10 @@ int analysis_fep_bridge_connect_analysis(analysis_fep_bridge_t* bridge, network_
 int analysis_fep_bridge_disconnect(analysis_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->analyzer = NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -134,7 +135,7 @@ int analysis_fep_trigger_exploration(analysis_fep_bridge_t* bridge, float pe_mag
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_exploration) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->fep_effects.current_prediction_error = pe_magnitude;
 
@@ -145,7 +146,7 @@ int analysis_fep_trigger_exploration(analysis_fep_bridge_t* bridge, float pe_mag
         NIMCP_LOGGING_INFO("Topological exploration triggered (PE=%.2f)", pe_magnitude);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -158,7 +159,7 @@ int analysis_fep_weight_hubs_by_precision(analysis_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_precision_weighting) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Simplified: set uniform hub weights (real implementation would query FEP precision)
     bridge->fep_effects.num_hubs_weighted = 0;
@@ -168,7 +169,7 @@ int analysis_fep_weight_hubs_by_precision(analysis_fep_bridge_t* bridge) {
 
     bridge->stats.hub_weighting_applications++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -180,12 +181,12 @@ int analysis_fep_weight_hubs_by_precision(analysis_fep_bridge_t* bridge) {
 int analysis_fep_trigger_reorganization(analysis_fep_bridge_t* bridge) {
     if (!bridge || !bridge->analyzer) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->fep_effects.topology_exploration_active = true;
     bridge->stats.community_detections++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -198,13 +199,13 @@ int analysis_fep_apply_topology_priors(analysis_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_topology_priors) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->analysis_effects.modularity_prior_bias = bridge->config.modularity_prior_strength;
     bridge->analysis_effects.topology_constraining_model = true;
     bridge->stats.topology_constraint_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -217,13 +218,13 @@ int analysis_fep_apply_community_beliefs(analysis_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_community_beliefs) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Simplified: would extract actual community count from analyzer
     bridge->analysis_effects.num_communities_detected = 0;
     bridge->state.num_communities = bridge->analysis_effects.num_communities_detected;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -236,12 +237,12 @@ int analysis_fep_update_model_structure(analysis_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_topology_updates) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->analysis_effects.model_structure_updated = true;
     bridge->stats.topology_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -269,9 +270,9 @@ int analysis_fep_bridge_update(analysis_fep_bridge_t* bridge, uint64_t delta_ms)
 int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_fep_state_t* state) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -284,9 +285,9 @@ int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_
 int analysis_fep_bridge_get_stats(const analysis_fep_bridge_t* bridge, analysis_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -298,7 +299,7 @@ int analysis_fep_bridge_get_stats(const analysis_fep_bridge_t* bridge, analysis_
  */
 int analysis_fep_bridge_connect_bio_async(analysis_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_ANALYSIS_BRIDGE,
@@ -307,9 +308,9 @@ int analysis_fep_bridge_connect_bio_async(analysis_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
 
@@ -322,14 +323,14 @@ int analysis_fep_bridge_connect_bio_async(analysis_fep_bridge_t* bridge) {
  * HOW:  Unregister module context
  */
 int analysis_fep_bridge_disconnect_bio_async(analysis_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
     }
 
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     return 0;
 }
@@ -340,5 +341,5 @@ int analysis_fep_bridge_disconnect_bio_async(analysis_fep_bridge_t* bridge) {
  * HOW:  Return enabled flag
  */
 bool analysis_fep_bridge_is_bio_async_connected(const analysis_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

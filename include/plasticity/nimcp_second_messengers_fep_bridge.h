@@ -58,6 +58,7 @@
 #define NIMCP_SECOND_MESSENGERS_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -128,6 +129,8 @@ typedef struct {
 } sm_fep_stats_t;
 
 struct sm_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     sm_fep_config_t config;
     fep_system_t* fep_system;
     second_messenger_system_t* sm_system;
@@ -135,9 +138,6 @@ struct sm_fep_bridge {
     sm_fep_effects_t fep_effects;
     sm_fep_feedback_t sm_effects;
     sm_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 /* ============================================================================

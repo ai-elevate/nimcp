@@ -3,6 +3,7 @@
  */
 
 #include "swarm/nimcp_emotional_contagion_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
@@ -25,21 +26,21 @@ emotional_contagion_fep_bridge_t* emotional_contagion_fep_create(const emotional
     else emotional_contagion_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->contagion_system = contagion_system;
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
 
 void emotional_contagion_fep_destroy(emotional_contagion_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) emotional_contagion_fep_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) emotional_contagion_fep_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int emotional_contagion_fep_update(emotional_contagion_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     // Compute precision as inverse of free energy (high FE = low precision)
     float precision = 1.0f / (1.0f + fe);
@@ -64,7 +65,7 @@ int emotional_contagion_fep_update(emotional_contagion_fep_bridge_t* bridge) {
     bridge->stats.total_updates++;
     bridge->stats.avg_collective_intensity = (bridge->stats.avg_collective_intensity * (bridge->stats.total_updates - 1) + avg_intensity) / bridge->stats.total_updates;
     bridge->stats.avg_emotional_fe = (bridge->stats.avg_emotional_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -75,44 +76,44 @@ int emotional_contagion_fep_apply_modulation(emotional_contagion_fep_bridge_t* b
 
 int emotional_contagion_fep_get_effects(const emotional_contagion_fep_bridge_t* bridge, emotional_contagion_fep_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int emotional_contagion_fep_get_contagion_effects(const emotional_contagion_fep_bridge_t* bridge, fep_emotional_contagion_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->contagion_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int emotional_contagion_fep_get_stats(const emotional_contagion_fep_bridge_t* bridge, emotional_contagion_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int emotional_contagion_fep_connect_bio_async(emotional_contagion_fep_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_enabled) return 0;
+    if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = { .module_id = BIO_MODULE_FEP_EMOTIONAL_CONTAGION, .module_name = "emotional_contagion_fep_bridge", .inbox_capacity = 32, .user_data = bridge };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) bridge->base.bio_async_enabled = true;
     return 0;
 }
 
 int emotional_contagion_fep_disconnect_bio_async(emotional_contagion_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool emotional_contagion_fep_is_bio_async_connected(const emotional_contagion_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

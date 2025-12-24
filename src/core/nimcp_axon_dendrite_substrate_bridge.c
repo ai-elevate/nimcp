@@ -6,6 +6,7 @@
  */
 
 #include "core/nimcp_axon_dendrite_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
@@ -157,16 +158,16 @@ axon_dendrite_substrate_bridge_t* axon_dendrite_substrate_bridge_create(
     memset(bridge, 0, sizeof(axon_dendrite_substrate_bridge_t));
 
     /* Create mutex */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -196,7 +197,7 @@ axon_dendrite_substrate_bridge_t* axon_dendrite_substrate_bridge_create(
     bridge->dendrite_effects.ca_handling_mod = 1.0f;
     bridge->dendrite_effects.overall_capacity = 1.0f;
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Created axon-dendrite substrate bridge");
 
@@ -211,13 +212,13 @@ void axon_dendrite_substrate_bridge_destroy(axon_dendrite_substrate_bridge_t* br
      */
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         axon_dendrite_substrate_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -234,7 +235,7 @@ int axon_dendrite_substrate_connect_bio_async(axon_dendrite_substrate_bridge_t* 
      * HOW:  Create module context, register
      */
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_AXON_SUBSTRATE,
@@ -243,9 +244,9 @@ int axon_dendrite_substrate_connect_bio_async(axon_dendrite_substrate_bridge_t* 
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -261,14 +262,14 @@ int axon_dendrite_substrate_disconnect_bio_async(axon_dendrite_substrate_bridge_
      * HOW:  Unregister module
      */
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
@@ -277,7 +278,7 @@ bool axon_dendrite_substrate_is_bio_async_connected(
 )
 {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -296,7 +297,7 @@ int axon_dendrite_substrate_update_axon_effects(
     if (!bridge->axon) return 0;  /* No axon to modulate */
     if (!bridge->config.enable_axon_modulation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current substrate state */
     substrate_metabolic_state_t metabolic;
@@ -404,7 +405,7 @@ int axon_dendrite_substrate_update_axon_effects(
         effects->atp_velocity_factor *
         effects->transport_efficiency;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -449,7 +450,7 @@ int axon_dendrite_substrate_update_dendrite_effects(
     if (!bridge->dendrite) return 0;  /* No dendrite to modulate */
     if (!bridge->config.enable_dendrite_modulation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current substrate state */
     substrate_metabolic_state_t metabolic;
@@ -563,7 +564,7 @@ int axon_dendrite_substrate_update_dendrite_effects(
         effects->ca_handling_mod *
         effects->plasticity_mod;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -617,7 +618,7 @@ int axon_dendrite_substrate_record_axon_spikes(
     if (!bridge->config.enable_bidirectional_feedback) return 0;
     if (spike_count == 0) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Record spikes for statistics */
     bridge->recent_axon_spikes += spike_count;
@@ -640,7 +641,7 @@ int axon_dendrite_substrate_record_axon_spikes(
         /* Would need setter in substrate API to apply ion disruption */
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -658,7 +659,7 @@ int axon_dendrite_substrate_record_dendrite_events(
     if (!bridge->config.enable_bidirectional_feedback) return 0;
     if (event_count == 0) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->recent_dendrite_events += event_count;
     bridge->stats.dendrite_events_processed += event_count;
@@ -671,7 +672,7 @@ int axon_dendrite_substrate_record_dendrite_events(
         substrate_record_transmissions(bridge->substrate, event_count);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -689,7 +690,7 @@ int axon_dendrite_substrate_record_plasticity(
     if (!bridge->config.enable_bidirectional_feedback) return 0;
     if (magnitude <= 0.0f) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_atp_dynamics) {
         float atp_cost = magnitude * SUBSTRATE_PLASTICITY_ATP_COST;
@@ -700,7 +701,7 @@ int axon_dendrite_substrate_record_plasticity(
         substrate_record_transmissions(bridge->substrate, equiv_events);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -720,22 +721,22 @@ int axon_dendrite_substrate_bridge_update(
      */
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->stats.total_updates++;
 
     /* Update substrate effects on axon */
     if (bridge->axon && bridge->config.enable_axon_modulation) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         axon_dendrite_substrate_update_axon_effects(bridge);
-        nimcp_platform_mutex_lock(bridge->mutex);
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Update substrate effects on dendrite */
     if (bridge->dendrite && bridge->config.enable_dendrite_modulation) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         axon_dendrite_substrate_update_dendrite_effects(bridge);
-        nimcp_platform_mutex_lock(bridge->mutex);
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Check for substrate limitations */
@@ -776,7 +777,7 @@ int axon_dendrite_substrate_bridge_update(
         last_clear = delta_ms;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -792,9 +793,9 @@ int axon_dendrite_substrate_get_axon_effects(
 {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->axon_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -806,9 +807,9 @@ int axon_dendrite_substrate_get_dendrite_effects(
 {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->dendrite_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -863,9 +864,9 @@ int axon_dendrite_substrate_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

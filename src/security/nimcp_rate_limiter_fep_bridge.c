@@ -4,6 +4,7 @@
  */
 
 #include "security/nimcp_rate_limiter_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
@@ -65,8 +66,8 @@ rate_fep_bridge_t* rate_fep_create(
     bridge->fep_system = fep_system;
     bridge->limiter = limiter;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Rate FEP bridge: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -75,7 +76,7 @@ rate_fep_bridge_t* rate_fep_create(
     bridge->state.active = true;
     bridge->state.current_precision = RATE_FEP_DEFAULT_PRECISION;
     bridge->state.current_rate_multiplier = 1.0f;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Rate limiter FEP bridge created");
     return bridge;
@@ -86,12 +87,12 @@ void rate_fep_destroy(rate_fep_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         rate_fep_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -111,7 +112,7 @@ int rate_fep_update(rate_fep_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Get current FEP state
     float current_fe = fep_get_free_energy(bridge->fep_system);
@@ -152,7 +153,7 @@ int rate_fep_update(rate_fep_bridge_t* bridge) {
     bridge->stats.avg_free_energy = current_fe;
     bridge->stats.avg_prediction_error = pred_error;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -165,7 +166,7 @@ int rate_fep_check_request(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Check standard rate limiter first
     bool limiter_allowed = nimcp_rate_limiter_allow(bridge->limiter, client_id);
@@ -189,7 +190,7 @@ int rate_fep_check_request(
         bridge->stats.fep_based_decisions++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -202,7 +203,7 @@ int rate_fep_apply_modulation(rate_fep_bridge_t* bridge) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Adapt precision based on violation rate
     float violation_rate = (float)bridge->rate_effects.violations /
@@ -230,7 +231,7 @@ int rate_fep_apply_modulation(rate_fep_bridge_t* bridge) {
     bridge->stats.precision_adaptations++;
     bridge->stats.current_precision = bridge->state.current_precision;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -243,7 +244,7 @@ int rate_fep_report_violation(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->rate_effects.violations += violation_count;
     bridge->rate_effects.penalties_applied++;
@@ -258,7 +259,7 @@ int rate_fep_report_violation(
         fep_update_precision(bridge->fep_system);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -319,7 +320,7 @@ int rate_fep_connect_bio_async(rate_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -330,9 +331,9 @@ int rate_fep_connect_bio_async(rate_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Rate limiter FEP bridge connected to bio-async");
     }
 
@@ -340,18 +341,18 @@ int rate_fep_connect_bio_async(rate_fep_bridge_t* bridge) {
 }
 
 int rate_fep_disconnect_bio_async(rate_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     NIMCP_LOGGING_INFO("Rate limiter FEP bridge disconnected from bio-async");
     return 0;
 }
 
 bool rate_fep_is_bio_async_connected(const rate_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

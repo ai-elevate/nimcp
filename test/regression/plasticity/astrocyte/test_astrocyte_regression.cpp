@@ -155,7 +155,7 @@ TEST(AstrocyteBridgeRegression, SleepBridgeMultipleUpdates) {
     astrocyte_plasticity_t astro = astrocyte_plasticity_create(&astro_config, 5);
     ASSERT_NE(astro, nullptr);
 
-    sleep_config_t sleep_config = sleep_config_default();
+    sleep_config_t sleep_config = sleep_default_config();
     sleep_system_t sleep_sys = sleep_system_create(&sleep_config);
     ASSERT_NE(sleep_sys, nullptr);
 
@@ -176,7 +176,7 @@ TEST(AstrocyteBridgeRegression, SleepBridgeMultipleUpdates) {
 
     for (int cycle = 0; cycle < 10; cycle++) {
         for (size_t s = 0; s < sizeof(states)/sizeof(states[0]); s++) {
-            sleep_transition_state(sleep_sys, states[s]);
+            sleep_enter_state(sleep_sys, states[s]);
             EXPECT_EQ(astrocyte_sleep_update(bridge), 0);
             EXPECT_EQ(astrocyte_sleep_apply_modulation(bridge), 0);
         }

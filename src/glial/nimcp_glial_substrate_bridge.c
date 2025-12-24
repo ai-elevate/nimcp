@@ -6,6 +6,7 @@
  */
 
 #include "glial/nimcp_glial_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <math.h>
 #include <string.h>
 
@@ -105,16 +106,16 @@ glial_substrate_bridge_t* glial_substrate_bridge_create(
     bridge->myelin_network = myelin_network;
 
     /* Initialize mutex */
-    bridge->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: mutex init failed");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -158,13 +159,13 @@ glial_substrate_bridge_t* glial_substrate_bridge_create(
 void glial_substrate_bridge_destroy(glial_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         glial_substrate_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -181,9 +182,9 @@ int glial_substrate_connect_astrocytes(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->astrocyte_network = astro_network;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     if (astro_network) {
         NIMCP_LOGGING_INFO("Connected astrocyte network to substrate bridge");
@@ -198,9 +199,9 @@ int glial_substrate_connect_oligodendrocytes(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->oligo_network = oligo_network;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     if (oligo_network) {
         NIMCP_LOGGING_INFO("Connected oligodendrocyte network to substrate bridge");
@@ -215,9 +216,9 @@ int glial_substrate_connect_microglia(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->microglia_network = micro_network;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     if (micro_network) {
         NIMCP_LOGGING_INFO("Connected microglia network to substrate bridge");
@@ -232,9 +233,9 @@ int glial_substrate_connect_myelin(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->myelin_network = myelin_network;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     if (myelin_network) {
         NIMCP_LOGGING_INFO("Connected myelin sheath network to substrate bridge");
@@ -249,7 +250,7 @@ int glial_substrate_connect_myelin(
 
 int glial_substrate_connect_bio_async(glial_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_GLIAL_SUBSTRATE,
@@ -258,9 +259,9 @@ int glial_substrate_connect_bio_async(glial_substrate_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected glial-substrate bridge to bio-async router");
         return 0;
     }
@@ -270,21 +271,21 @@ int glial_substrate_connect_bio_async(glial_substrate_bridge_t* bridge) {
 }
 
 int glial_substrate_disconnect_bio_async(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected glial-substrate bridge from bio-async");
 
     return 0;
 }
 
 bool glial_substrate_is_bio_async_connected(const glial_substrate_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -295,7 +296,7 @@ int glial_substrate_update_astrocyte_effects(glial_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
     if (!bridge->config.enable_astrocyte_substrate) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state */
     substrate_metabolic_state_t metabolic;
@@ -342,7 +343,7 @@ int glial_substrate_update_astrocyte_effects(glial_substrate_bridge_t* bridge) {
 
     bridge->stats.astrocyte_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -350,7 +351,7 @@ int glial_substrate_update_oligodendrocyte_effects(glial_substrate_bridge_t* bri
     if (!bridge || !bridge->substrate) return -1;
     if (!bridge->config.enable_oligo_substrate) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state */
     substrate_metabolic_state_t metabolic;
@@ -397,7 +398,7 @@ int glial_substrate_update_oligodendrocyte_effects(glial_substrate_bridge_t* bri
 
     bridge->stats.oligo_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -405,7 +406,7 @@ int glial_substrate_update_microglia_effects(glial_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
     if (!bridge->config.enable_microglia_substrate) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state */
     substrate_metabolic_state_t metabolic;
@@ -449,7 +450,7 @@ int glial_substrate_update_microglia_effects(glial_substrate_bridge_t* bridge) {
 
     bridge->stats.microglia_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -457,7 +458,7 @@ int glial_substrate_update_myelin_effects(glial_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
     if (!bridge->config.enable_myelin_substrate) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state */
     substrate_metabolic_state_t metabolic;
@@ -506,7 +507,7 @@ int glial_substrate_update_myelin_effects(glial_substrate_bridge_t* bridge) {
 
     bridge->stats.myelin_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -518,7 +519,7 @@ int glial_substrate_compute_astrocyte_support(glial_substrate_bridge_t* bridge) 
     if (!bridge || !bridge->astrocyte_network) return -1;
     if (!bridge->config.enable_lactate_shuttle) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Count active astrocytes and sum lactate production */
     uint32_t active_count = 0;
@@ -544,7 +545,7 @@ int glial_substrate_compute_astrocyte_support(glial_substrate_bridge_t* bridge) 
 
     bridge->stats.lactate_shuttles++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -552,7 +553,7 @@ int glial_substrate_compute_oligodendrocyte_support(glial_substrate_bridge_t* br
     if (!bridge || !bridge->oligo_network) return -1;
     if (!bridge->config.enable_lactate_shuttle) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Count active oligodendrocytes and sum lactate production */
     uint32_t active_count = 0;
@@ -576,14 +577,14 @@ int glial_substrate_compute_oligodendrocyte_support(glial_substrate_bridge_t* br
     bridge->glial_support.oligo_atp_contribution = atp_contribution;
     bridge->glial_support.oligo_active_count = active_count;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int glial_substrate_compute_myelin_support(glial_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->myelin_network) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get network-wide myelination statistics */
     myelin_network_stats_t stats;
@@ -603,14 +604,14 @@ int glial_substrate_compute_myelin_support(glial_substrate_bridge_t* bridge) {
     bridge->glial_support.myelin_atp_savings = savings_factor;
     bridge->glial_support.avg_myelination_factor = avg_myelin;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int glial_substrate_compute_microglia_support(glial_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->microglia_network) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get network statistics */
     microglia_network_stats_t stats;
@@ -623,14 +624,14 @@ int glial_substrate_compute_microglia_support(glial_substrate_bridge_t* bridge) 
     bridge->glial_support.pruning_atp_savings = savings;
     bridge->glial_support.synapses_pruned = stats.total_pruned;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int glial_substrate_apply_glial_support(glial_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Sum all ATP contributions */
     float total_support = bridge->glial_support.astro_atp_contribution +
@@ -656,7 +657,7 @@ int glial_substrate_apply_glial_support(glial_substrate_bridge_t* bridge) {
         bridge->stats.max_atp_support = total_support;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -719,7 +720,7 @@ int glial_substrate_bridge_update(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.total_updates++;
 
     /* Track substrate health */
@@ -732,7 +733,7 @@ int glial_substrate_bridge_update(
         bridge->stats.stress_events++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* Update substrate effects on glial cells */
     int result = glial_substrate_update_all_effects(bridge);
@@ -756,9 +757,9 @@ int glial_substrate_get_astrocyte_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->astro_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -769,9 +770,9 @@ int glial_substrate_get_oligodendrocyte_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->oligo_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -782,9 +783,9 @@ int glial_substrate_get_microglia_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->micro_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -795,9 +796,9 @@ int glial_substrate_get_myelin_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->myelin_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -808,9 +809,9 @@ int glial_substrate_get_support(
 ) {
     if (!bridge || !support) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *support = bridge->glial_support;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -818,9 +819,9 @@ int glial_substrate_get_support(
 float glial_substrate_get_total_atp_support(const glial_substrate_bridge_t* bridge) {
     if (!bridge) return 0.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float support = bridge->glial_support.total_atp_support;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return support;
 }
@@ -831,9 +832,9 @@ int glial_substrate_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

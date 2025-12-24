@@ -28,6 +28,7 @@
 #define NIMCP_MEMORY_CONSOLIDATION_SUBSTRATE_BRIDGE_H
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
@@ -158,6 +159,8 @@ typedef struct {
  * HOW: Monitor substrate, compute effects, update consolidation module
  */
 typedef struct consolidation_substrate_bridge_t {
+    bridge_base_t base;                  /**< MUST be first: base bridge infrastructure */
+
     /* Core components */
     neural_substrate_t* substrate;                /**< Neural substrate instance */
     memory_consolidation_t* consolidation;        /**< Memory consolidation module */
@@ -167,12 +170,6 @@ typedef struct consolidation_substrate_bridge_t {
     consolidation_substrate_effects_t effects;    /**< Current substrate effects */
     consolidation_substrate_stats_t stats;        /**< Bridge statistics */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;                 /**< Bio-async module context */
-    bool bio_async_enabled;                       /**< Whether bio-async is active */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;                         /**< Protects bridge state */
 } consolidation_substrate_bridge_t;
 
 /* ============================================================================

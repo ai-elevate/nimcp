@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_biological_timescales_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
@@ -97,8 +98,8 @@ biological_timescales_fep_bridge_t* biological_timescales_fep_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("biological_timescales_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -115,13 +116,13 @@ void biological_timescales_fep_destroy(biological_timescales_fep_bridge_t* bridg
     }
 
     /* Disconnect from bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         biological_timescales_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -136,7 +137,7 @@ int biological_timescales_fep_update_effects(biological_timescales_fep_bridge_t*
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current free energy */
     float free_energy = fep_get_free_energy(bridge->fep_system);
@@ -184,7 +185,7 @@ int biological_timescales_fep_update_effects(biological_timescales_fep_bridge_t*
     /* Modulate decay rate based on prediction confidence */
     bridge->fep_effects.decay_rate_modulation = 1.0f / (1.0f + certainty);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -198,7 +199,7 @@ int biological_timescales_fep_observe_timing(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update timing observations */
     bridge->timescales_effects.observed_interval_ms = interval_ms;
@@ -246,7 +247,7 @@ int biological_timescales_fep_observe_timing(
         bridge->state.current_band = band;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -261,7 +262,7 @@ int biological_timescales_fep_predict_timing(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Use band period as baseline prediction */
     *predicted_interval_ms = BIO_HZ_TO_PERIOD_MS(nimcp_oscillation_center_freq(band));
@@ -277,7 +278,7 @@ int biological_timescales_fep_predict_timing(
     bridge->state.active_predictions++;
     bridge->state.total_predictions++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -290,7 +291,7 @@ nimcp_oscillation_band_t biological_timescales_fep_select_band(
         return BIO_OSC_GAMMA; /* Safe default */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     nimcp_oscillation_band_t band;
 
@@ -300,7 +301,7 @@ nimcp_oscillation_band_t biological_timescales_fep_select_band(
         band = bridge->fep_effects.selected_band;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return band;
 }
@@ -314,11 +315,11 @@ int biological_timescales_fep_connect_bio_async(biological_timescales_fep_bridge
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0; /* Already connected */
     }
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
 
     NIMCP_LOGGING_INFO("Connected biological timescales FEP bridge");
 
@@ -330,11 +331,11 @@ int biological_timescales_fep_disconnect_bio_async(biological_timescales_fep_bri
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected biological timescales FEP bridge");
 
@@ -344,7 +345,7 @@ int biological_timescales_fep_disconnect_bio_async(biological_timescales_fep_bri
 bool biological_timescales_fep_is_bio_async_connected(
     const biological_timescales_fep_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -359,9 +360,9 @@ int biological_timescales_fep_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->fep_effects, sizeof(biological_timescales_fep_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -374,9 +375,9 @@ int biological_timescales_fep_get_timescales_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->timescales_effects, sizeof(fep_biological_timescales_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -389,9 +390,9 @@ int biological_timescales_fep_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(biological_timescales_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -401,9 +402,9 @@ int biological_timescales_fep_reset_stats(biological_timescales_fep_bridge_t* br
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(biological_timescales_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

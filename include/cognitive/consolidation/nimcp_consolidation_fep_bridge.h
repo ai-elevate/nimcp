@@ -59,6 +59,7 @@
 #define NIMCP_CONSOLIDATION_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -145,15 +146,14 @@ typedef struct {
 } consolidation_fep_stats_t;
 
 struct consolidation_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     consolidation_fep_config_t config;
     fep_system_t* fep_system;
     consolidation_fep_effects_t fep_effects;
     fep_consolidation_effects_t consolidation_effects;
     consolidation_fep_state_t state;
     consolidation_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 /* ============================================================================

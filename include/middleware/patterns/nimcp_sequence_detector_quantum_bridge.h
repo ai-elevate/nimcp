@@ -16,6 +16,7 @@
 #define NIMCP_SEQUENCE_DETECTOR_QUANTUM_BRIDGE_H
 
 #include "middleware/patterns/nimcp_sequence_detector.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/patterns/nimcp_quantum_sequence_matcher.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -128,6 +129,8 @@ void sequence_quantum_reset_stats(sequence_quantum_bridge_t* bridge);
 #include <math.h>
 
 struct sequence_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     sequence_quantum_config_t config;
     sequence_detector_t* detector;
     qseq_matcher_t matcher;  /* Direct handle, not pointer-to-pointer */

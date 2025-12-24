@@ -6,16 +6,18 @@
  */
 
 #include "middleware/sleep/nimcp_circular_buffer_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct circular_buffer_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     circular_buffer_sleep_config_t config;
     sleep_system_t sleep_system;
     circular_buffer_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;
 };
 
@@ -44,7 +46,7 @@ static void circular_buffer_on_sleep_state_change(sleep_state_t new_state, void*
 
     NIMCP_LOGGING_DEBUG("Circular buffer bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -68,7 +70,7 @@ static void circular_buffer_on_sleep_state_change(sleep_state_t new_state, void*
     bridge->effects.buffering_enabled = (new_state != SLEEP_STATE_DEEP_NREM) ||
                                          bridge->effects.capacity_factor > 0.15f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Circular buffer modulated: capacity=%.2f, retention=%.2f",
                         bridge->effects.capacity_factor,
@@ -112,8 +114,8 @@ circular_buffer_sleep_bridge_t circular_buffer_sleep_bridge_create(
     bridge->effects.overflow_strategy = OVERFLOW_OVERWRITE;
     bridge->effects.buffering_enabled = true;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -153,14 +155,14 @@ void circular_buffer_sleep_bridge_destroy(circular_buffer_sleep_bridge_t bridge)
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int circular_buffer_sleep_update(circular_buffer_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -188,7 +190,7 @@ int circular_buffer_sleep_update(circular_buffer_sleep_bridge_t bridge) {
     bridge->effects.buffering_enabled = (state != SLEEP_STATE_DEEP_NREM) ||
                                          bridge->effects.capacity_factor > 0.15f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -197,9 +199,9 @@ int circular_buffer_sleep_get_effects(
     circular_buffer_sleep_effects_t* effects)
 {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -207,9 +209,9 @@ float circular_buffer_sleep_get_capacity(
     const circular_buffer_sleep_bridge_t bridge)
 {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.capacity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -217,9 +219,9 @@ float circular_buffer_sleep_get_retention_duration(
     const circular_buffer_sleep_bridge_t bridge)
 {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.retention_duration_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

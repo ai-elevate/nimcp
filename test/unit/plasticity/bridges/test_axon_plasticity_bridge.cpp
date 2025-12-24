@@ -96,7 +96,7 @@ TEST_F(AxonPlasticityBridgeTest, DestroyNullIsNoOp) {
 
 TEST_F(AxonPlasticityBridgeTest, BridgeIsInitializedAfterCreate) {
     EXPECT_TRUE(bridge->initialized);
-    EXPECT_NE(bridge->mutex, nullptr);
+    EXPECT_NE(bridge->base.mutex, nullptr);
 }
 
 TEST_F(AxonPlasticityBridgeTest, IntrinsicPlasticityDefaultsEnabled) {

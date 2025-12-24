@@ -33,6 +33,7 @@
 #define NIMCP_WORKING_MEMORY_QUANTUM_BRIDGE_H
 
 #include "cognitive/memory/nimcp_quantum_semantic.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -364,6 +365,8 @@ quantum_semantic_t working_memory_quantum_get_context(
  * HOW:  Store quantum semantic handle, slot metadata, stats
  */
 struct working_memory_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     working_memory_quantum_config_t config;   /**< Bridge configuration */
     quantum_semantic_t qsem;                  /**< Quantum semantic context */
     working_memory_quantum_stats_t stats;     /**< Performance statistics */

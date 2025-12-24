@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
 #include "async/nimcp_bio_async.h"
@@ -111,6 +112,8 @@ typedef struct snn_thalamic_stats_s {
  * HOW:  Store references and relay state
  */
 typedef struct snn_thalamic_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* network;               /**< SNN network being relayed */
     thalamic_router_t* router;            /**< Thalamic router */
     snn_thalamic_config_t config;         /**< Bridge configuration */

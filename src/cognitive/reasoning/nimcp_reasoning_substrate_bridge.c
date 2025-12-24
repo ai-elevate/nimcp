@@ -18,6 +18,7 @@
  */
 
 #include "cognitive/reasoning/nimcp_reasoning_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -264,16 +265,16 @@ reasoning_substrate_bridge_t* reasoning_substrate_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init(bridge->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -320,14 +321,14 @@ void reasoning_substrate_bridge_destroy(reasoning_substrate_bridge_t* bridge)
     }
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         reasoning_substrate_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -347,7 +348,7 @@ int reasoning_substrate_connect_bio_async(reasoning_substrate_bridge_t* bridge)
     }
 
     /* Guard: already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
@@ -359,9 +360,9 @@ int reasoning_substrate_connect_bio_async(reasoning_substrate_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Reasoning substrate bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -379,17 +380,17 @@ int reasoning_substrate_disconnect_bio_async(reasoning_substrate_bridge_t* bridg
     }
 
     /* Guard: not connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Reasoning substrate bridge disconnected from bio-async router");
     return NIMCP_SUCCESS;
 }
@@ -399,7 +400,7 @@ bool reasoning_substrate_is_bio_async_connected(const reasoning_substrate_bridge
     if (!bridge) {
         return false;
     }
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -420,14 +421,14 @@ int reasoning_substrate_update(reasoning_substrate_bridge_t* bridge)
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query substrate metabolic state */
     substrate_metabolic_state_t metabolic;
     int ret = substrate_get_metabolic_state(bridge->substrate, &metabolic);
     if (ret != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to get substrate metabolic state");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return ret;
     }
 
@@ -436,7 +437,7 @@ int reasoning_substrate_update(reasoning_substrate_bridge_t* bridge)
     ret = substrate_get_physical_state(bridge->substrate, &physical);
     if (ret != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to get substrate physical state");
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return ret;
     }
 
@@ -524,7 +525,7 @@ int reasoning_substrate_update(reasoning_substrate_bridge_t* bridge)
         bridge->stats.max_stress_observed = stress;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Reasoning substrate updated: inference_depth=%.3f, accuracy=%.3f, speed=%.3f, abstraction=%.3f, impaired=%d",
         bridge->effects.inference_depth,

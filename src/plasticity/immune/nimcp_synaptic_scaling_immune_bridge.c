@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_synaptic_scaling_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -313,7 +314,7 @@ synaptic_scaling_immune_bridge_t* synaptic_scaling_immune_bridge_create(
     pthread_mutex_t* mutex = (pthread_mutex_t*)nimcp_malloc(sizeof(pthread_mutex_t));
     if (mutex) {
         pthread_mutex_init(mutex, NULL);
-        bridge->mutex = mutex;
+        bridge->base.mutex = mutex;
     }
 
     LOG_MODULE_INFO("synaptic_scaling_immune_bridge",
@@ -327,9 +328,9 @@ void synaptic_scaling_immune_bridge_destroy(synaptic_scaling_immune_bridge_t* br
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -347,7 +348,7 @@ int synaptic_scaling_immune_apply_tnf_effects(
     if (!bridge || !bridge->enable_tnf_scaling_modulation) return -1;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get TNF-α concentration */
     float tnf_conc = get_tnf_alpha_concentration(bridge->immune_system);
@@ -385,7 +386,7 @@ int synaptic_scaling_immune_apply_tnf_effects(
     /* Update statistics */
     bridge->tnf_modulations++;
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -397,7 +398,7 @@ int synaptic_scaling_immune_apply_il1_effects(
     if (!bridge || !bridge->enable_il1_threshold_modulation) return -1;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get IL-1β concentration */
     float il1_conc = get_il1_beta_concentration(bridge->immune_system);
@@ -422,7 +423,7 @@ int synaptic_scaling_immune_apply_il1_effects(
         1.0f - (il1_conc * 0.3f), 0.7f, 1.0f
     );
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -434,7 +435,7 @@ int synaptic_scaling_immune_apply_inflammation_effects(
     if (!bridge || !bridge->enable_inflammation_rate_modulation) return -1;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -480,7 +481,7 @@ int synaptic_scaling_immune_apply_inflammation_effects(
     bridge->inflammation_state.global_silencing =
         (bridge->inflammation_state.excitation_inhibition_balance < 0.25f);
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -501,7 +502,7 @@ int synaptic_scaling_immune_restore_from_il10(
     if (!bridge || !bridge->enable_il10_restoration) return -1;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get IL-10 concentration */
     float il10_conc = get_il10_concentration(bridge->immune_system);
@@ -535,7 +536,7 @@ int synaptic_scaling_immune_restore_from_il10(
         }
     }
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -551,7 +552,7 @@ int synaptic_scaling_immune_detect_aberrance(
     if (!bridge || !bridge->enable_aberrance_detection) return -1;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get effective scaling factor */
     float scaling_factor = bridge->tnf_effects.scaling_factor_modulation;
@@ -590,7 +591,7 @@ int synaptic_scaling_immune_detect_aberrance(
         bridge->aberrance_detections++;
     }
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -605,11 +606,11 @@ int synaptic_scaling_immune_trigger_from_aberrance(
     if (!synaptic_scaling_immune_is_aberrant(bridge)) return 0;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Guard: avoid repeat triggers */
     if (bridge->aberrance.immune_triggered) {
-        if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
@@ -650,7 +651,7 @@ int synaptic_scaling_immune_trigger_from_aberrance(
                   severity, antigen_id);
     }
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return result;
 }
@@ -662,7 +663,7 @@ int synaptic_scaling_immune_signal_recovery(
     if (!bridge || !bridge->enable_recovery_tracking) return -1;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check if scaling is near normal */
     float current_factor = bridge->tnf_effects.scaling_factor_modulation;
@@ -708,7 +709,7 @@ int synaptic_scaling_immune_signal_recovery(
         1.0f - fabsf(current_factor - 1.0f) / 2.5f, 0.0f, 1.0f
     );
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -743,12 +744,12 @@ int synaptic_scaling_immune_bridge_update(
     if (!bridge) return -1;
 
     /* Lock for thread safety */
-    if (bridge->mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update statistics */
     bridge->total_updates++;
 
-    if (bridge->mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     /* IMMUNE → SCALING: Apply cytokine effects */
     if (bridge->enable_tnf_scaling_modulation) {
@@ -866,7 +867,7 @@ float synaptic_scaling_immune_get_recovery_progress(
  */
 int synaptic_scaling_immune_connect_bio_async(synaptic_scaling_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SYNAPTIC_SCALING,
@@ -875,9 +876,9 @@ int synaptic_scaling_immune_connect_bio_async(synaptic_scaling_immune_bridge_t* 
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("synaptic_scaling_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -891,13 +892,13 @@ int synaptic_scaling_immune_connect_bio_async(synaptic_scaling_immune_bridge_t* 
  */
 int synaptic_scaling_immune_disconnect_bio_async(synaptic_scaling_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("synaptic_scaling_immune_bridge disconnected from bio-async router");
     return 0;
@@ -908,5 +909,5 @@ int synaptic_scaling_immune_disconnect_bio_async(synaptic_scaling_immune_bridge_
  */
 bool synaptic_scaling_immune_is_bio_async_connected(const synaptic_scaling_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

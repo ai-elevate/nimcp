@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/nimcp_second_messengers_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -42,8 +43,8 @@ sm_fep_bridge_t* sm_fep_bridge_create(const sm_fep_config_t* config, uint32_t ne
     memset(&bridge->sm_effects, 0, sizeof(sm_fep_feedback_t));
     memset(&bridge->stats, 0, sizeof(sm_fep_stats_t));
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -51,39 +52,39 @@ sm_fep_bridge_t* sm_fep_bridge_create(const sm_fep_config_t* config, uint32_t ne
     bridge->fep_system = NULL;
     bridge->sm_system = NULL;
     bridge->neuron_id = neuron_id;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return bridge;
 }
 
 void sm_fep_bridge_destroy(sm_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) sm_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) sm_fep_bridge_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int sm_fep_bridge_connect_fep(sm_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sm_fep_bridge_connect_sm(sm_fep_bridge_t* bridge, second_messenger_system_t* sm) {
     if (!bridge || !sm) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->sm_system = sm;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sm_fep_bridge_disconnect(sm_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->sm_system = NULL;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -126,7 +127,7 @@ float sm_fep_get_plasticity_modulation(const sm_fep_bridge_t* bridge) {
 int sm_fep_bridge_update(sm_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system && bridge->sm_system) {
         /* Get FEP state */
         float pe = fep_get_prediction_error(bridge->fep_system, 0);
@@ -175,30 +176,30 @@ int sm_fep_bridge_update(sm_fep_bridge_t* bridge, uint64_t delta_ms) {
         bridge->stats.avg_pka_activity = (bridge->stats.avg_pka_activity * (bridge->stats.total_updates - 1) + bridge->sm_effects.pka_activity) / bridge->stats.total_updates;
         bridge->stats.avg_plasticity_modulation = (bridge->stats.avg_plasticity_modulation * (bridge->stats.total_updates - 1) + bridge->sm_effects.plasticity_modulation) / bridge->stats.total_updates;
     }
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sm_fep_bridge_get_stats(const sm_fep_bridge_t* bridge, sm_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(sm_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sm_fep_bridge_connect_bio_async(sm_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 int sm_fep_bridge_disconnect_bio_async(sm_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool sm_fep_bridge_is_bio_async_connected(const sm_fep_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

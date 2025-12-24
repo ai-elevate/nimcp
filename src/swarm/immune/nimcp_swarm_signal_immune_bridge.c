@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_signal_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -21,13 +22,14 @@
 #include <string.h>
 
 struct swarm_signal_immune_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_signal_immune_config_t config;
     brain_immune_system_t* immune_system;
     void* swarm_signal;
     cytokine_signal_effects_t cytokine_effects;
     inflammation_signal_state_t inflammation_state;
     signal_immune_modulation_t modulation;
-    nimcp_mutex_t* mutex;
     void* bio_ctx;
     bool bio_async_connected;
 };
@@ -78,8 +80,8 @@ swarm_signal_immune_bridge_t* swarm_signal_immune_bridge_create(
     bridge->immune_system = immune_system;
     bridge->swarm_signal = swarm_signal;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm signal immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -108,8 +110,8 @@ void swarm_signal_immune_bridge_destroy(swarm_signal_immune_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -121,7 +123,7 @@ int swarm_signal_immune_apply_cytokine_effects(swarm_signal_immune_bridge_t* bri
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_cytokine_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sensitivity = bridge->config.cytokine_sensitivity;
 
@@ -140,7 +142,7 @@ int swarm_signal_immune_apply_cytokine_effects(swarm_signal_immune_bridge_t* bri
         bridge->cytokine_effects.packet_loss_increase = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine signal effects: packet_loss=%.2f",
                         bridge->cytokine_effects.packet_loss_increase);
@@ -152,11 +154,11 @@ int swarm_signal_immune_apply_inflammation_effects(swarm_signal_immune_bridge_t*
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_inflammation_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -167,7 +169,7 @@ int swarm_signal_immune_apply_inflammation_effects(swarm_signal_immune_bridge_t*
     bridge->inflammation_state.critical_signals_only =
         (level >= INFLAMMATION_SYSTEMIC);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation signal effects: level=%d, quality=%.2f",
                         level, bridge->inflammation_state.signal_quality_factor);
@@ -179,7 +181,7 @@ int swarm_signal_immune_report_corruption(swarm_signal_immune_bridge_t* bridge, 
     if (!bridge) return -1;
     if (!bridge->config.enable_corruption_detection) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.corrupted_packets += count;
     bridge->modulation.corruption_rate = (float)count / 100.0f;
@@ -190,7 +192,7 @@ int swarm_signal_immune_report_corruption(swarm_signal_immune_bridge_t* bridge, 
                           bridge->modulation.corruption_rate);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -198,7 +200,7 @@ int swarm_signal_immune_boost_from_clean_path(swarm_signal_immune_bridge_t* brid
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.cleanup_signal += 0.05f;
     bridge->modulation.corrupted_packets = 0;
@@ -207,7 +209,7 @@ int swarm_signal_immune_boost_from_clean_path(swarm_signal_immune_bridge_t* brid
     NIMCP_LOGGING_DEBUG("Clean signal path boosted cleanup: total=%.2f",
                        bridge->modulation.cleanup_signal);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -226,9 +228,9 @@ float swarm_signal_immune_get_quality_factor(const swarm_signal_immune_bridge_t*
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->inflammation_state.signal_quality_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -237,9 +239,9 @@ float swarm_signal_immune_get_packet_loss(const swarm_signal_immune_bridge_t* br
 {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float loss = bridge->cytokine_effects.packet_loss_increase;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return loss;
 }
@@ -248,9 +250,9 @@ bool swarm_signal_immune_is_critical_only(const swarm_signal_immune_bridge_t* br
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool critical = bridge->inflammation_state.critical_signals_only;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return critical;
 }
@@ -274,8 +276,8 @@ int swarm_signal_immune_connect_bio_async(swarm_signal_immune_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_INFO("Swarm signal-immune bridge connected to bio-async router");
     } else {
@@ -296,9 +298,9 @@ int swarm_signal_immune_disconnect_bio_async(swarm_signal_immune_bridge_t* bridg
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

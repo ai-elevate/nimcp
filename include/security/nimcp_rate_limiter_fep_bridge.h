@@ -77,6 +77,7 @@
 #define NIMCP_RATE_LIMITER_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -181,6 +182,8 @@ typedef struct {
  * @brief Rate limiter FEP bridge
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     rate_fep_config_t config;            /**< Configuration */
     fep_system_t* fep_system;            /**< FEP system */
     nimcp_rate_limiter_t limiter;        /**< Rate limiter */
@@ -189,13 +192,7 @@ typedef struct {
     fep_rate_effects_t rate_effects;     /**< Rate → FEP effects */
 
     rate_fep_state_t state;              /**< Current state */
-    rate_fep_stats_t stats;              /**< Statistics */
-
-    bio_module_context_t bio_ctx;        /**< Bio-async context */
-    bool bio_async_enabled;              /**< Bio-async active */
-
-    void* mutex;                         /**< Thread safety */
-} rate_fep_bridge_t;
+    rate_fep_stats_t stats;              /**< Statistics */} rate_fep_bridge_t;
 
 /* ============================================================================
  * Lifecycle API

@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_consciousness_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -21,13 +22,14 @@
 #include <string.h>
 
 struct swarm_consciousness_immune_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_consciousness_immune_config_t config;
     brain_immune_system_t* immune_system;
     void* swarm_consciousness;
     cytokine_consciousness_effects_t cytokine_effects;
     inflammation_consciousness_state_t inflammation_state;
     consciousness_immune_modulation_t modulation;
-    nimcp_mutex_t* mutex;
     void* bio_ctx;
     bool bio_async_connected;
 };
@@ -79,8 +81,8 @@ swarm_consciousness_immune_bridge_t* swarm_consciousness_immune_bridge_create(
     bridge->immune_system = immune_system;
     bridge->swarm_consciousness = swarm_consciousness;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm consciousness immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -107,8 +109,8 @@ void swarm_consciousness_immune_bridge_destroy(swarm_consciousness_immune_bridge
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -120,7 +122,7 @@ int swarm_consciousness_immune_apply_cytokine_effects(swarm_consciousness_immune
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_cytokine_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sensitivity = bridge->config.cytokine_sensitivity;
 
@@ -135,7 +137,7 @@ int swarm_consciousness_immune_apply_cytokine_effects(swarm_consciousness_immune
     bridge->cytokine_effects.awareness_narrowing =
         bridge->cytokine_effects.phi_suppression * 0.6f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine consciousness effects: phi_suppression=%.2f",
                         bridge->cytokine_effects.phi_suppression);
@@ -147,11 +149,11 @@ int swarm_consciousness_immune_apply_inflammation_effects(swarm_consciousness_im
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_inflammation_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -162,7 +164,7 @@ int swarm_consciousness_immune_apply_inflammation_effects(swarm_consciousness_im
     bridge->inflammation_state.awareness_fragmented =
         (level >= INFLAMMATION_SYSTEMIC);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation consciousness effects: level=%d, phi=%.2f",
                         level, bridge->inflammation_state.phi_factor);
@@ -174,7 +176,7 @@ int swarm_consciousness_immune_trigger_from_low_phi(swarm_consciousness_immune_b
     if (!bridge) return -1;
     if (!bridge->config.enable_low_phi_stress) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->modulation.current_phi < 0.3f) {
         bridge->modulation.low_phi_triggered = true;
@@ -182,7 +184,7 @@ int swarm_consciousness_immune_trigger_from_low_phi(swarm_consciousness_immune_b
                           bridge->modulation.current_phi);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -191,7 +193,7 @@ int swarm_consciousness_immune_boost_from_high_phi(swarm_consciousness_immune_br
     if (!bridge) return -1;
     if (!bridge->config.enable_high_phi_boost) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->modulation.current_phi > 0.8f) {
         bridge->modulation.il10_from_phi += 0.1f;
@@ -200,7 +202,7 @@ int swarm_consciousness_immune_boost_from_high_phi(swarm_consciousness_immune_br
                            bridge->modulation.il10_from_phi);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -219,9 +221,9 @@ float swarm_consciousness_immune_get_phi_factor(const swarm_consciousness_immune
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->inflammation_state.phi_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -230,9 +232,9 @@ float swarm_consciousness_immune_get_integration_factor(const swarm_consciousnes
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->inflammation_state.integration_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -241,9 +243,9 @@ bool swarm_consciousness_immune_is_fragmented(const swarm_consciousness_immune_b
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool fragmented = bridge->inflammation_state.awareness_fragmented;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return fragmented;
 }
@@ -267,8 +269,8 @@ int swarm_consciousness_immune_connect_bio_async(swarm_consciousness_immune_brid
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_INFO("Swarm consciousness-immune bridge connected to bio-async router");
     } else {
@@ -289,9 +291,9 @@ int swarm_consciousness_immune_disconnect_bio_async(swarm_consciousness_immune_b
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

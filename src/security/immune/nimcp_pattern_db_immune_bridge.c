@@ -4,6 +4,7 @@
  */
 
 #include "security/immune/nimcp_pattern_db_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -186,8 +187,8 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
     memset(bridge->mappings, 0, sizeof(pattern_immune_mapping_t) * bridge->mapping_capacity);
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for pattern DB immune bridge");
         nimcp_free(bridge->mappings);
         nimcp_free(bridge);
@@ -202,7 +203,7 @@ void pattern_db_immune_destroy(pattern_db_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         pattern_db_immune_disconnect_bio_async(bridge);
     }
 
@@ -212,8 +213,8 @@ void pattern_db_immune_destroy(pattern_db_immune_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -227,7 +228,7 @@ void pattern_db_immune_destroy(pattern_db_immune_bridge_t* bridge) {
 int pattern_db_immune_update(pattern_db_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine effects */
     if (bridge->config.enable_cytokine_weight_modulation) {
@@ -243,14 +244,14 @@ int pattern_db_immune_update(pattern_db_immune_bridge_t* bridge) {
     bridge->total_updates++;
     bridge->last_update_time = 0; /* Would use actual timestamp */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int pattern_db_immune_apply_modulation(pattern_db_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute effective weight multiplier combining cytokine and inflammation */
     float effective_multiplier = bridge->inflammation_state.weight_multiplier;
@@ -259,7 +260,7 @@ int pattern_db_immune_apply_modulation(pattern_db_immune_bridge_t* bridge) {
     /* Would update pattern weights in DB here */
     /* For each pattern, multiply weight by effective_multiplier */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -267,14 +268,14 @@ int pattern_db_immune_sync_memory_to_patterns(pattern_db_immune_bridge_t* bridge
     if (!bridge) return -1;
     if (!bridge->config.enable_memory_cell_pattern_sync) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Would iterate immune memory cells and create patterns here */
     /* This is a placeholder for the actual sync logic */
 
     bridge->patterns_synced++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -291,7 +292,7 @@ int pattern_db_immune_present_match(
         return 0; /* Not presented */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute severity from match score */
     uint32_t severity = (uint32_t)(match_result->threat_score * bridge->config.severity_multiplier);
@@ -320,7 +321,7 @@ int pattern_db_immune_present_match(
         bridge->immune_modulation.antigens_presented++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -333,14 +334,14 @@ int pattern_db_immune_refine_from_affinity(
     if (!bridge) return -1;
     if (!bridge->config.enable_affinity_based_refinement) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Would refine pattern weight based on affinity here */
     /* Higher affinity → boost pattern weight */
 
     bridge->immune_modulation.patterns_refined++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -348,7 +349,7 @@ uint32_t pattern_db_immune_prune_unused(pattern_db_immune_bridge_t* bridge) {
     if (!bridge) return 0;
     if (!bridge->config.auto_prune_unused) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     uint32_t pruned = 0;
 
@@ -358,7 +359,7 @@ uint32_t pattern_db_immune_prune_unused(pattern_db_immune_bridge_t* bridge) {
     bridge->patterns_pruned += pruned;
     bridge->last_prune_time = 0; /* Would use actual timestamp */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return pruned;
 }
 
@@ -368,7 +369,7 @@ uint32_t pattern_db_immune_prune_unused(pattern_db_immune_bridge_t* bridge) {
 
 int pattern_db_immune_connect_bio_async(pattern_db_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_PATTERN_DB,
@@ -377,28 +378,28 @@ int pattern_db_immune_connect_bio_async(pattern_db_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Pattern DB immune bridge connected to bio-async router");
     }
 
-    return bridge->bio_ctx ? 0 : -1;
+    return bridge->base.bio_ctx ? 0 : -1;
 }
 
 int pattern_db_immune_disconnect_bio_async(pattern_db_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) return -1;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Pattern DB immune bridge disconnected from bio-async router");
     return 0;
 }
 
 bool pattern_db_immune_is_bio_async_connected(const pattern_db_immune_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }
 
 /* ============================================================================

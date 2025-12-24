@@ -29,6 +29,7 @@
 #define NIMCP_ATTENTION_QUANTUM_BRIDGE_H
 
 #include "plasticity/attention/nimcp_attention.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/attention/nimcp_quantum_attention.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -183,6 +184,8 @@ void attention_quantum_reset_stats(attention_quantum_bridge_t* bridge);
 #include <math.h>
 
 struct attention_quantum_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     attention_quantum_config_t config;
     multihead_attention_t mha;
     quantum_attention_t qattn;           /* Uses actual quantum attention API */

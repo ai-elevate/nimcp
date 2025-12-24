@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 
 //=============================================================================
@@ -151,6 +152,8 @@ typedef struct snn_autobiographical_state_s {
  * HOW:  Store references, memories, and state
  */
 typedef struct snn_autobiographical_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;                     /**< SNN network */
     snn_autobiographical_config_t config;   /**< Bridge configuration */
     snn_autobiographical_state_t state;     /**< Current state */

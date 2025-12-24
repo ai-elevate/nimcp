@@ -25,6 +25,7 @@
 #define NIMCP_SWARM_MULTI_H
 
 #include "utils/validation/nimcp_common.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/nimcp_brain.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
@@ -237,6 +238,8 @@ typedef struct {
  * @brief Communication bridge between swarms
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     uint64_t bridge_id;                /**< Bridge identifier */
     uint64_t swarm_a;                  /**< First swarm ID */
     uint64_t swarm_b;                  /**< Second swarm ID */

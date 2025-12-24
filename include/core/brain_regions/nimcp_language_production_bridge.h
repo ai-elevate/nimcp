@@ -55,6 +55,7 @@
 #define NIMCP_LANGUAGE_PRODUCTION_BRIDGE_H
 
 #include "utils/validation/nimcp_common.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "networking/nlp/nimcp_neural_link_protocol.h"
 #include <stdint.h>
 #include <stdbool.h>

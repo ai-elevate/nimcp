@@ -8,6 +8,7 @@
  */
 
 #include "plasticity/noise/nimcp_pink_noise_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
@@ -386,7 +387,7 @@ int pink_immune_bridge_connect_bio_async(pink_immune_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_INFO("Pink noise-immune bridge already connected to bio-async");
         return 0;
     }
@@ -398,9 +399,9 @@ int pink_immune_bridge_connect_bio_async(pink_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Pink noise-immune bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -415,16 +416,16 @@ int pink_immune_bridge_disconnect_bio_async(pink_immune_bridge_t* bridge) {
         return -1;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Pink noise-immune bridge disconnected from bio-async router");
 
     return 0;
@@ -432,5 +433,5 @@ int pink_immune_bridge_disconnect_bio_async(pink_immune_bridge_t* bridge) {
 
 bool pink_immune_bridge_is_bio_async_connected(const pink_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

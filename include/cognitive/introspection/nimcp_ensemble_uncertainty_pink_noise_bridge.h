@@ -64,6 +64,7 @@
 #define NIMCP_ENSEMBLE_UNCERTAINTY_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -241,6 +242,8 @@ typedef struct {
  * HOW:  Store configuration, state, generators, and connections
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     ensemble_pink_config_t config;          /**< Configuration */
 
     // Module connections
@@ -255,12 +258,7 @@ typedef struct {
     ensemble_pink_stats_t stats;            /**< Statistics */
 
     // Bio-async integration
-    bio_module_context_t bio_ctx;           /**< Bio-async module context */
-    bool bio_async_enabled;                 /**< Bio-async connection status */
-
     // Thread safety
-    void* mutex;                            /**< Mutex for thread safety */
-
 } ensemble_pink_bridge_t;
 
 //=============================================================================

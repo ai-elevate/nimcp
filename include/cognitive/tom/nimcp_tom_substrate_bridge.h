@@ -23,6 +23,7 @@ extern "C" {
 #endif
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -120,19 +121,14 @@ typedef struct {
  * HOW: Monitors substrate metrics and modulates ToM capacities
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     neural_substrate_t* substrate;          /* Neural substrate being monitored */
     theory_of_mind_t tom;                   /* ToM module being modulated */
 
     tom_substrate_config_t config;          /* Bridge configuration */
     tom_substrate_effects_t effects;        /* Current metabolic effects */
     tom_substrate_stats_t stats;            /* Statistics */
-
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;           /* Bio-async context */
-    bool bio_async_enabled;                 /* Whether bio-async is active */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;                   /* Protects bridge state */
 
     /* Timestamp tracking */
     uint64_t last_update_time_ms;           /* Last update timestamp */

@@ -10,6 +10,7 @@
  */
 
 #include "core/neuron_models/nimcp_neuron_substrate_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -193,15 +194,15 @@ neuron_substrate_bridge_t* neuron_substrate_bridge_create(
     bridge->energy_tracking.atp_per_spike = config->atp_cost_per_spike;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         neuron_substrate_bridge_destroy(bridge);
         return NULL;
     }
 
     /* Try bio-async connection */
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     if (config->enable_bio_async) {
         neuron_substrate_connect_bio_async(bridge);
     }
@@ -213,13 +214,13 @@ neuron_substrate_bridge_t* neuron_substrate_bridge_create(
 void neuron_substrate_bridge_destroy(neuron_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         neuron_substrate_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -235,7 +236,7 @@ int neuron_substrate_connect_bio_async(neuron_substrate_bridge_t* bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
-    if (bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_NEURON_SUBSTRATE,
@@ -244,9 +245,9 @@ int neuron_substrate_connect_bio_async(neuron_substrate_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -260,20 +261,20 @@ int neuron_substrate_disconnect_bio_async(neuron_substrate_bridge_t* bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
-    if (!bridge->bio_async_enabled) return NIMCP_SUCCESS;
+    if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     return NIMCP_SUCCESS;
 }
 
 bool neuron_substrate_is_bio_async_connected(const neuron_substrate_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -290,7 +291,7 @@ int neuron_substrate_update_effects(neuron_substrate_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state */
     substrate_metabolic_state_t metabolic;
@@ -405,7 +406,7 @@ int neuron_substrate_update_effects(neuron_substrate_bridge_t* bridge) {
         bridge->stats.substrate_critical_events++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -419,7 +420,7 @@ int neuron_substrate_apply_modulation(neuron_substrate_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Apply voltage shift from ion imbalance and ATP depletion */
     if (bridge->config.enable_ion_effects || bridge->config.enable_atp_modulation) {
@@ -435,7 +436,7 @@ int neuron_substrate_apply_modulation(neuron_substrate_bridge_t* bridge) {
 
     bridge->stats.modulation_applications++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -470,7 +471,7 @@ int neuron_substrate_consume_spike(neuron_substrate_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current ATP level */
     substrate_metabolic_state_t metabolic;
@@ -487,7 +488,7 @@ int neuron_substrate_consume_spike(neuron_substrate_bridge_t* bridge) {
     bridge->stats.spikes_consumed++;
     bridge->stats.total_atp_depleted += atp_cost;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -501,7 +502,7 @@ int neuron_substrate_update_metabolic_rate(
     }
     if (delta_ms == 0) return NIMCP_SUCCESS;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Calculate firing rate (spikes per second) */
     float delta_s = delta_ms / 1000.0f;
@@ -519,7 +520,7 @@ int neuron_substrate_update_metabolic_rate(
         bridge->energy_tracking.peak_metabolic_rate = metabolic_rate;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 

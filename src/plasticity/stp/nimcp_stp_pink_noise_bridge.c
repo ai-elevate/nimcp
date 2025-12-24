@@ -14,6 +14,7 @@
  */
 
 #include "plasticity/stp/nimcp_stp_pink_noise_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
@@ -174,7 +175,7 @@ void stp_pink_noise_destroy(stp_pink_noise_bridge_t* bridge) {
     if (!bridge) return;
 
     // Disconnect bio-async if connected
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         stp_pink_noise_disconnect_bio_async(bridge);
     }
 
@@ -651,7 +652,7 @@ int stp_pink_noise_connect_bio_async(stp_pink_noise_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0; // Already connected
     }
 
@@ -662,9 +663,9 @@ int stp_pink_noise_connect_bio_async(stp_pink_noise_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     }
@@ -681,16 +682,16 @@ int stp_pink_noise_connect_bio_async(stp_pink_noise_bridge_t* bridge) {
  * HOW:  Unregister module, clear context
  */
 int stp_pink_noise_disconnect_bio_async(stp_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
 }
@@ -706,5 +707,5 @@ bool stp_pink_noise_is_bio_async_connected(
     const stp_pink_noise_bridge_t* bridge
 ) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

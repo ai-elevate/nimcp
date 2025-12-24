@@ -6,6 +6,7 @@
  */
 
 #include "gpu/immune/nimcp_multigpu_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -155,7 +156,7 @@ multigpu_immune_bridge_t* multigpu_immune_create(
     bridge->last_update_time = get_time_ms();
     bridge->error_window_start = bridge->last_update_time;
 
-    bridge->mutex = nimcp_platform_mutex_create();
+    bridge->base.mutex = nimcp_platform_mutex_create();
 
     /* Allocate per-GPU utilization array if multigpu context available */
     if (multigpu_context) {
@@ -179,7 +180,7 @@ void multigpu_immune_destroy(multigpu_immune_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         multigpu_immune_disconnect_bio_async(bridge);
     }
 
@@ -187,8 +188,8 @@ void multigpu_immune_destroy(multigpu_immune_bridge_t* bridge) {
         nimcp_free(bridge->error_state.per_gpu_utilization);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -207,7 +208,7 @@ int multigpu_immune_apply_cytokine_effects(multigpu_immune_bridge_t* bridge) {
         return NIMCP_SUCCESS;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
@@ -234,7 +235,7 @@ int multigpu_immune_apply_cytokine_effects(multigpu_immune_bridge_t* bridge) {
     /* Disable work stealing during high inflammation */
     bridge->cytokine_effects.disable_work_stealing = (level >= INFLAMMATION_SYSTEMIC);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -477,7 +478,7 @@ int multigpu_immune_connect_bio_async(multigpu_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
@@ -488,9 +489,9 @@ int multigpu_immune_connect_bio_async(multigpu_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("multigpu_immune: connected to bio-async router");
         return NIMCP_SUCCESS;
     }
@@ -500,21 +501,21 @@ int multigpu_immune_connect_bio_async(multigpu_immune_bridge_t* bridge) {
 }
 
 int multigpu_immune_disconnect_bio_async(multigpu_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) {
+    if (!bridge || !bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("multigpu_immune: disconnected from bio-async router");
 
     return NIMCP_SUCCESS;
 }
 
 bool multigpu_immune_is_bio_async_connected(const multigpu_immune_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }

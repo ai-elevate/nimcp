@@ -6,6 +6,7 @@
  */
 
 #include "core/directives/nimcp_core_directives_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -157,8 +158,8 @@ directive_immune_bridge_t* directive_immune_bridge_create(
     bridge->core_directives = core_directives;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("directive_immune_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -178,13 +179,13 @@ void directive_immune_bridge_destroy(directive_immune_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         directive_immune_bridge_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -201,10 +202,10 @@ int directive_immune_bridge_update(directive_immune_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (!bridge->enable_immune_modulation) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -236,7 +237,7 @@ int directive_immune_bridge_update(directive_immune_bridge_t* bridge) {
     bridge->total_updates++;
     bridge->cytokine_modulations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -245,10 +246,10 @@ int directive_immune_bridge_apply_modulation(directive_immune_bridge_t* bridge) 
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (!bridge->enable_immune_modulation || !bridge->core_directives) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -259,7 +260,7 @@ int directive_immune_bridge_apply_modulation(directive_immune_bridge_t* bridge) 
      * - Escalation bias
      */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -271,9 +272,9 @@ int directive_immune_bridge_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -290,16 +291,16 @@ int directive_immune_bridge_on_threat_detected(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (!bridge->enable_directive_immune_trigger) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     /* Guard: check if threat is severe enough */
     if (threat_level < bridge->threat_severity_threshold) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -312,7 +313,7 @@ int directive_immune_bridge_on_threat_detected(
     NIMCP_LOGGING_INFO("Directive threat detected (severity %.1f), triggering immune", threat_level);
 
     bridge->directive_triggered_responses++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -326,10 +327,10 @@ int directive_immune_bridge_report_blocked_action(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (!bridge->enable_directive_immune_trigger) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -347,7 +348,7 @@ int directive_immune_bridge_report_blocked_action(
                       reason ? reason : "unknown");
 
     bridge->blocked_actions_reported++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -364,7 +365,7 @@ int directive_immune_bridge_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     stats->total_updates = bridge->total_updates;
     stats->cytokine_modulations = bridge->cytokine_modulations;
@@ -375,7 +376,7 @@ int directive_immune_bridge_get_stats(
     stats->current_threshold_modifier = bridge->cytokine_effects.total_threshold_modifier;
     stats->immune_alert_active = bridge->inflammation_state.immune_alert_active;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -384,9 +385,9 @@ bool directive_immune_bridge_is_alert_active(const directive_immune_bridge_t* br
         return false;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bool active = bridge->inflammation_state.immune_alert_active;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return active;
 }
@@ -396,9 +397,9 @@ float directive_immune_bridge_get_strictness(const directive_immune_bridge_t* br
         return 1.0f;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float strictness = bridge->inflammation_state.strictness_factor;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return strictness;
 }
@@ -408,9 +409,9 @@ float directive_immune_bridge_get_threshold_modifier(const directive_immune_brid
         return 1.0f;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float modifier = bridge->cytokine_effects.total_threshold_modifier;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return modifier;
 }
@@ -424,10 +425,10 @@ int directive_immune_bridge_connect_bio_async(directive_immune_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    if (bridge->bio_async_enabled) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.bio_async_enabled) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already connected */
     }
 
@@ -439,15 +440,15 @@ int directive_immune_bridge_connect_bio_async(directive_immune_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected directive-immune bridge to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -456,23 +457,23 @@ int directive_immune_bridge_disconnect_bio_async(directive_immune_bridge_t* brid
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    if (!bridge->bio_async_enabled) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (!bridge->base.bio_async_enabled) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not connected */
     }
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected directive-immune bridge from bio-async router");
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -481,9 +482,9 @@ bool directive_immune_bridge_is_bio_async_connected(const directive_immune_bridg
         return false;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
-    bool connected = bridge->bio_async_enabled;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    bool connected = bridge->base.bio_async_enabled;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

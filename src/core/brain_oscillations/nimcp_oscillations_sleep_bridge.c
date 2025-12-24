@@ -8,16 +8,18 @@
  */
 
 #include "core/brain_oscillations/nimcp_oscillations_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct oscillations_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     oscillations_sleep_config_t config;
     sleep_system_t sleep_system;
     oscillations_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -45,7 +47,7 @@ static void oscillations_on_sleep_state_change(sleep_state_t new_state, void* us
 
     NIMCP_LOGGING_DEBUG("Oscillations bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -75,7 +77,7 @@ static void oscillations_on_sleep_state_change(sleep_state_t new_state, void* us
                                           (new_state == SLEEP_STATE_LIGHT_NREM) ? 0.4f : 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Oscillations modulated: freq=%.1fHz, band=%d, spindle=%.2f",
                         bridge->effects.dominant_frequency,
@@ -114,8 +116,8 @@ oscillations_sleep_bridge_t oscillations_sleep_bridge_create(
     bridge->effects.spindle_activity = 0.0f;
     bridge->effects.ripple_activity = 0.0f;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -152,14 +154,14 @@ void oscillations_sleep_bridge_destroy(oscillations_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int oscillations_sleep_update(oscillations_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -193,7 +195,7 @@ int oscillations_sleep_update(oscillations_sleep_bridge_t bridge) {
                                           (state == SLEEP_STATE_LIGHT_NREM) ? 0.4f : 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -202,25 +204,25 @@ int oscillations_sleep_get_effects(
     oscillations_sleep_effects_t* effects)
 {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float oscillations_sleep_get_frequency(const oscillations_sleep_bridge_t bridge) {
     if (!bridge) return OSC_SLEEP_FREQ_AWAKE;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.dominant_frequency;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 oscillation_band_t oscillations_sleep_get_band(const oscillations_sleep_bridge_t bridge) {
     if (!bridge) return OSC_BAND_BETA;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     oscillation_band_t result = bridge->effects.dominant_band;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

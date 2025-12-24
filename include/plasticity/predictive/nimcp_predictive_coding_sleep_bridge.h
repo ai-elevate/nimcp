@@ -65,6 +65,7 @@
 #define NIMCP_PREDICTIVE_CODING_SLEEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/nimcp_sleep_wake.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"

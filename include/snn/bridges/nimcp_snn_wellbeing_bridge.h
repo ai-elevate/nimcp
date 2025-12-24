@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "async/nimcp_bio_async.h"
 
@@ -50,6 +51,8 @@ typedef struct snn_wellbeing_state_s {
 } snn_wellbeing_state_t;
 
 typedef struct snn_wellbeing_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     snn_network_t* snn;
     wellbeing_system_t* wellbeing_system;
     snn_wellbeing_config_t config;

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_neurons_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -86,8 +87,8 @@ mirror_neurons_fep_bridge_t* mirror_neurons_fep_bridge_create(
     bridge->stats.max_mirror_gain_applied = 1.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         mirror_neurons_fep_bridge_destroy(bridge);
         return NULL;
     }
@@ -99,13 +100,13 @@ mirror_neurons_fep_bridge_t* mirror_neurons_fep_bridge_create(
 void mirror_neurons_fep_bridge_destroy(mirror_neurons_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         mirror_neurons_fep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -122,9 +123,9 @@ int mirror_neurons_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Mirror neurons-FEP bridge connected to FEP system");
     return 0;
@@ -136,9 +137,9 @@ int mirror_neurons_fep_bridge_connect_mirror_neurons(
 ) {
     if (!bridge || !mirror) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->mirror_system = mirror;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Mirror neurons-FEP bridge connected to mirror neuron system");
     return 0;
@@ -154,7 +155,7 @@ int mirror_neurons_fep_apply_precision_modulation(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_precision_modulation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get average precision across FEP hierarchy */
     fep_system_t* fep = bridge->fep_system;
@@ -191,7 +192,7 @@ int mirror_neurons_fep_apply_precision_modulation(
         bridge->stats.max_mirror_gain_applied = gain;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -201,7 +202,7 @@ int mirror_neurons_fep_update_goals_from_beliefs(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_goal_belief_coupling) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -227,7 +228,7 @@ int mirror_neurons_fep_update_goals_from_beliefs(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -237,7 +238,7 @@ int mirror_neurons_fep_propagate_prediction_errors(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_pe_propagation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -263,7 +264,7 @@ int mirror_neurons_fep_propagate_prediction_errors(
         bridge->stats.high_motor_pe_count++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -277,7 +278,7 @@ int mirror_neurons_fep_transfer_goals_to_beliefs(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_goal_belief_coupling) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     mirror_hierarchy_t mirror = bridge->mirror_system;
     fep_system_t* fep = bridge->fep_system;
@@ -306,7 +307,7 @@ int mirror_neurons_fep_transfer_goals_to_beliefs(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -316,7 +317,7 @@ int mirror_neurons_fep_provide_motor_evidence(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_motor_evidence) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     mirror_hierarchy_t mirror = bridge->mirror_system;
 
@@ -333,7 +334,7 @@ int mirror_neurons_fep_provide_motor_evidence(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -342,7 +343,7 @@ int mirror_neurons_fep_set_precision_from_resonance(
 ) {
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get mirror neuron resonance strength */
     mirror_hierarchy_stats_t mirror_stats;
@@ -364,7 +365,7 @@ int mirror_neurons_fep_set_precision_from_resonance(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -426,7 +427,7 @@ int mirror_neurons_fep_bridge_connect_bio_async(
     mirror_neurons_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_MIRROR_NEURONS_BRIDGE,
@@ -435,9 +436,9 @@ int mirror_neurons_fep_bridge_connect_bio_async(
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Mirror neurons-FEP bridge connected to bio-async");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -449,18 +450,18 @@ int mirror_neurons_fep_bridge_disconnect_bio_async(
     mirror_neurons_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool mirror_neurons_fep_bridge_is_bio_async_connected(
     const mirror_neurons_fep_bridge_t* bridge
 ) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

@@ -4,6 +4,7 @@
  */
 
 #include "security/immune/nimcp_anomaly_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -179,8 +180,8 @@ anomaly_immune_bridge_t* anomaly_immune_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for anomaly immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -194,13 +195,13 @@ void anomaly_immune_destroy(anomaly_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         anomaly_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -214,7 +215,7 @@ void anomaly_immune_destroy(anomaly_immune_bridge_t* bridge) {
 int anomaly_immune_update(anomaly_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine effects */
     if (bridge->config.enable_cytokine_threshold_modulation) {
@@ -230,14 +231,14 @@ int anomaly_immune_update(anomaly_immune_bridge_t* bridge) {
     bridge->total_updates++;
     bridge->last_update_time = 0; /* Would use actual timestamp */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int anomaly_immune_apply_modulation(anomaly_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute effective threshold combining cytokine and inflammation effects */
     float effective_threshold = bridge->config.base_overall_threshold;
@@ -254,7 +255,7 @@ int anomaly_immune_apply_modulation(anomaly_immune_bridge_t* bridge) {
     /* Would update anomaly detector thresholds here */
     /* nimcp_anomaly_detector_set_threshold(bridge->anomaly_detector, effective_threshold); */
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -271,7 +272,7 @@ int anomaly_immune_present_anomaly(
         return 0; /* Not presented, but not an error */
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map anomaly score to severity */
     uint32_t severity = (uint32_t)(result->anomaly_score * bridge->config.severity_multiplier);
@@ -299,7 +300,7 @@ int anomaly_immune_present_anomaly(
         bridge->immune_modulation.antigens_presented++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -311,7 +312,7 @@ int anomaly_immune_training_feedback(
     if (!bridge) return -1;
     if (!bridge->config.enable_immune_training_feedback) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Would train anomaly detector here based on feedback */
     /* nimcp_anomaly_train(bridge->anomaly_detector, input, len, was_neutralized); */
@@ -324,7 +325,7 @@ int anomaly_immune_training_feedback(
         bridge->immune_modulation.false_positives++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -334,7 +335,7 @@ int anomaly_immune_training_feedback(
 
 int anomaly_immune_connect_bio_async(anomaly_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_ANOMALY,
@@ -343,28 +344,28 @@ int anomaly_immune_connect_bio_async(anomaly_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Anomaly immune bridge connected to bio-async router");
     }
 
-    return bridge->bio_ctx ? 0 : -1;
+    return bridge->base.bio_ctx ? 0 : -1;
 }
 
 int anomaly_immune_disconnect_bio_async(anomaly_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) return -1;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Anomaly immune bridge disconnected from bio-async router");
     return 0;
 }
 
 bool anomaly_immune_is_bio_async_connected(const anomaly_immune_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }
 
 /* ============================================================================

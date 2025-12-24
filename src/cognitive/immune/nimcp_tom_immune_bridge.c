@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/immune/nimcp_tom_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -175,12 +176,12 @@ tom_immune_bridge_t* tom_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("tom_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -190,9 +191,9 @@ void tom_immune_bridge_destroy(tom_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -210,7 +211,7 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_tom_modulation) return 0;
     if (!bridge->immune_system || !bridge->tom_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_tom_effects_t* effects = &bridge->cytokine_effects;
@@ -248,7 +249,7 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     effects->mentalizing_accuracy_loss = clamp_f(proinflam_total * 0.8f, 0.0f, 1.0f);
 
     bridge->cytokine_impairments++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -258,7 +259,7 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_tom_state_t* state = &bridge->inflammation_state;
 
@@ -291,7 +292,7 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     state->goal_inference_impairment = clamp_f(inflammation_intensity * 0.70f, 0.0f, 1.0f);
     state->intention_inference_impairment = clamp_f(inflammation_intensity * 0.60f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -355,7 +356,7 @@ int tom_immune_trigger_from_rejection(
     if (!bridge->immune_system) return -1;
     if (rejection_severity < 0.0f || rejection_severity > 1.0f) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update social stress state */
     bridge->social_stress_trigger.rejection_severity = rejection_severity;
@@ -381,7 +382,7 @@ int tom_immune_trigger_from_rejection(
     }
 
     bridge->social_stress_triggers++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -395,7 +396,7 @@ int tom_immune_trigger_from_prediction_error(
     if (!bridge->immune_system) return -1;
     if (prediction_error < 0.0f || prediction_error > 1.0f) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update social stress state */
     bridge->social_stress_trigger.prediction_error = prediction_error;
@@ -418,7 +419,7 @@ int tom_immune_trigger_from_prediction_error(
         bridge->social_stress_triggers++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -432,7 +433,7 @@ int tom_immune_trigger_from_isolation(
     if (!bridge->immune_system) return -1;
     if (isolation_duration_sec < 0.0f) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update isolation state */
     bridge->social_stress_trigger.isolation_duration_sec = isolation_duration_sec;
@@ -476,7 +477,7 @@ int tom_immune_trigger_from_isolation(
         bridge->isolation_inflammations++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -490,7 +491,7 @@ int tom_immune_boost_from_social_connection(
     if (!bridge->immune_system) return -1;
     if (connection_strength < 0.0f || connection_strength > 1.0f) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update social connection state */
     bridge->social_connection_boost.social_bond_strength = connection_strength;
@@ -519,7 +520,7 @@ int tom_immune_boost_from_social_connection(
         bridge->social_connection_boosts++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -611,7 +612,7 @@ float tom_immune_get_empathy_impairment(const tom_immune_bridge_t* bridge) {
  */
 int tom_immune_connect_bio_async(tom_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_TOM,
@@ -620,9 +621,9 @@ int tom_immune_connect_bio_async(tom_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("tom_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -636,13 +637,13 @@ int tom_immune_connect_bio_async(tom_immune_bridge_t* bridge) {
  */
 int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("tom_immune_bridge disconnected from bio-async router");
     return 0;
@@ -653,5 +654,5 @@ int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge) {
  */
 bool tom_immune_is_bio_async_connected(const tom_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

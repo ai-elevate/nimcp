@@ -6,16 +6,18 @@
  */
 
 #include "cognitive/attention/nimcp_attention_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct attention_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     attention_sleep_config_t config;
     sleep_system_t sleep_system;
     attention_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -44,7 +46,7 @@ static void attention_on_sleep_state_change(sleep_state_t new_state, void* user_
 
     NIMCP_LOGGING_DEBUG("Attention bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -68,7 +70,7 @@ static void attention_on_sleep_state_change(sleep_state_t new_state, void* user_
     bridge->effects.attention_offline = (new_state == SLEEP_STATE_DEEP_NREM ||
                                          new_state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Attention modulated: capacity=%.2f, vigilance=%.2f, offline=%d",
                         bridge->effects.capacity_factor,
@@ -105,8 +107,8 @@ attention_sleep_bridge_t attention_sleep_bridge_create(
     bridge->effects.spotlight_size_factor = 1.0f;
     bridge->effects.attention_offline = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -143,14 +145,14 @@ void attention_sleep_bridge_destroy(attention_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int attention_sleep_update(attention_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -179,31 +181,31 @@ int attention_sleep_update(attention_sleep_bridge_t bridge) {
     bridge->effects.attention_offline = (state == SLEEP_STATE_DEEP_NREM ||
                                          state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int attention_sleep_get_effects(const attention_sleep_bridge_t bridge, attention_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float attention_sleep_get_capacity(const attention_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.capacity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 bool attention_sleep_is_offline(const attention_sleep_bridge_t bridge) {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.attention_offline;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

@@ -7,6 +7,7 @@
  */
 
 #include "swarm/nimcp_swarm_brain_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
@@ -67,10 +68,10 @@ swarm_brain_fep_bridge_t* swarm_brain_fep_create(
 
     bridge->fep_system = fep_system;
     bridge->swarm_brain = swarm_brain;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -90,12 +91,12 @@ swarm_brain_fep_bridge_t* swarm_brain_fep_create(
 void swarm_brain_fep_destroy(swarm_brain_fep_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         swarm_brain_fep_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -114,12 +115,12 @@ void swarm_brain_fep_destroy(swarm_brain_fep_bridge_t* bridge) {
 int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Get swarm brain stats
     swarm_stats_t swarm_stats;
     if (!swarm_brain_get_stats(bridge->swarm_brain, &swarm_stats)) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -166,7 +167,7 @@ int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
         bridge->stats.max_collective_fe = free_energy;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -178,7 +179,7 @@ int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
 int swarm_brain_fep_apply_modulation(swarm_brain_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Apply FEP-driven swarm brain adjustments
     // This would call swarm_brain API to adjust parameters
@@ -186,7 +187,7 @@ int swarm_brain_fep_apply_modulation(swarm_brain_fep_bridge_t* bridge) {
 
     bridge->stats.formation_adaptations++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -198,7 +199,7 @@ int swarm_brain_fep_apply_modulation(swarm_brain_fep_bridge_t* bridge) {
 float swarm_brain_fep_compute_collective_fe(swarm_brain_fep_bridge_t* bridge) {
     if (!bridge) return 0.0f;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     float collective_fe = fep_get_free_energy(bridge->fep_system);
 
@@ -208,7 +209,7 @@ float swarm_brain_fep_compute_collective_fe(swarm_brain_fep_bridge_t* bridge) {
         collective_fe *= (1.0f - stats.workspace_coherence * 0.3f);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return collective_fe;
 }
 
@@ -224,13 +225,13 @@ int swarm_brain_fep_process_collective_observation(
 {
     if (!bridge || !observation) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Process observation through FEP system
     // fep_process_observation takes (fep_system, float*, dim)
     int result = fep_process_observation(bridge->fep_system, (float*)observation, observation_dim);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -244,9 +245,9 @@ int swarm_brain_fep_get_effects(
 {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -256,9 +257,9 @@ int swarm_brain_fep_get_swarm_effects(
 {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->swarm_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -268,9 +269,9 @@ int swarm_brain_fep_get_stats(
 {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -280,7 +281,7 @@ int swarm_brain_fep_get_stats(
 
 int swarm_brain_fep_connect_bio_async(swarm_brain_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SWARM_BRAIN,
@@ -289,9 +290,9 @@ int swarm_brain_fep_connect_bio_async(swarm_brain_fep_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
 
@@ -299,18 +300,18 @@ int swarm_brain_fep_connect_bio_async(swarm_brain_fep_bridge_t* bridge) {
 }
 
 int swarm_brain_fep_disconnect_bio_async(swarm_brain_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Disconnected from bio-async router");
     return 0;
 }
 
 bool swarm_brain_fep_is_bio_async_connected(const swarm_brain_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

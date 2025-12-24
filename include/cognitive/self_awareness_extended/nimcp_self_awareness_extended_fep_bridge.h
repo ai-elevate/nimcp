@@ -60,6 +60,7 @@
 #define NIMCP_SELF_AWARENESS_EXTENDED_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 
 #include "cognitive/free_energy/nimcp_free_energy.h"
@@ -125,6 +126,8 @@ typedef struct {
 } self_awareness_extended_fep_stats_t;
 
 struct self_awareness_extended_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     self_awareness_extended_fep_config_t config;
     fep_system_t* fep_system;
     self_awareness_system_t awareness_system;
@@ -132,9 +135,6 @@ struct self_awareness_extended_fep_bridge {
     fep_self_awareness_extended_effects_t awareness_effects;
     self_awareness_extended_fep_state_t state;
     self_awareness_extended_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
 };
 
 int self_awareness_extended_fep_bridge_default_config(self_awareness_extended_fep_config_t* config);

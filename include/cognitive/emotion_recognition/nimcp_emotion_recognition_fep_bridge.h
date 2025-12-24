@@ -23,6 +23,7 @@
 #define NIMCP_EMOTION_RECOGNITION_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/nimcp_emotion_recognition.h"
@@ -81,17 +82,15 @@ typedef struct {
 } emotion_recognition_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     emotion_recognition_fep_config_t config;
     fep_system_t* fep_system;
     emotion_recognition_system_t* emotion_system;
     emotion_recognition_fep_effects_t fep_effects;
     fep_emotion_recognition_effects_t emotion_effects;
     emotion_recognition_fep_state_t state;
-    emotion_recognition_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} emotion_recognition_fep_bridge_t;
+    emotion_recognition_fep_stats_t stats;} emotion_recognition_fep_bridge_t;
 
 int emotion_recognition_fep_default_config(emotion_recognition_fep_config_t* config);
 emotion_recognition_fep_bridge_t* emotion_recognition_fep_create(const emotion_recognition_fep_config_t* config);

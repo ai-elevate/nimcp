@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_bio_router_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include <string.h>
 #include <math.h>
@@ -70,8 +71,8 @@ bio_router_fep_bridge_t* bio_router_fep_create(
     bridge->fep_effects.exploration_factor = config->exploration_rate;
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("bio_router_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -88,13 +89,13 @@ void bio_router_fep_destroy(bio_router_fep_bridge_t* bridge) {
     }
 
     /* Disconnect from bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         bio_router_fep_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -109,7 +110,7 @@ int bio_router_fep_update_effects(bio_router_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current free energy */
     float free_energy = fep_get_free_energy(bridge->fep_system);
@@ -143,7 +144,7 @@ int bio_router_fep_update_effects(bio_router_fep_bridge_t* bridge) {
     bridge->fep_effects.routing_priority_boost =
         bridge->fep_effects.route_confidence * 0.5f;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -158,7 +159,7 @@ int bio_router_fep_observe_routing(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update routing observations */
     bridge->router_effects.actual_latency_ms = latency_ms;
@@ -207,7 +208,7 @@ int bio_router_fep_observe_routing(
     bridge->state.last_actual_route = target;
     bridge->state.last_latency_ms = latency_ms;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -223,7 +224,7 @@ int bio_router_fep_predict_route(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* For simplicity, predict direct routing */
     /* In a full implementation, would use FEP to evaluate multiple paths */
@@ -235,7 +236,7 @@ int bio_router_fep_predict_route(
     bridge->state.total_route_predictions++;
     bridge->state.last_predicted_route = target;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -250,7 +251,7 @@ int bio_router_fep_predict_latency(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Use historical average as prediction */
     *predicted_latency_ms = bridge->stats.avg_routing_latency_ms;
@@ -265,7 +266,7 @@ int bio_router_fep_predict_latency(
     bridge->fep_effects.predicted_latency_ms = *predicted_latency_ms;
     bridge->fep_effects.latency_uncertainty = *uncertainty;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -279,12 +280,12 @@ int bio_router_fep_connect_bio_async(bio_router_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return 0; /* Already connected */
     }
 
     /* Note: Integration with bio-router is via direct API, not bio-async messaging */
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
 
     NIMCP_LOGGING_INFO("Connected bio-router FEP bridge");
 
@@ -296,11 +297,11 @@ int bio_router_fep_disconnect_bio_async(bio_router_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected bio-router FEP bridge");
 
@@ -308,7 +309,7 @@ int bio_router_fep_disconnect_bio_async(bio_router_fep_bridge_t* bridge) {
 }
 
 bool bio_router_fep_is_bio_async_connected(const bio_router_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -323,9 +324,9 @@ int bio_router_fep_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->fep_effects, sizeof(bio_router_fep_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -338,9 +339,9 @@ int bio_router_fep_get_router_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->router_effects, sizeof(fep_bio_router_effects_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -353,9 +354,9 @@ int bio_router_fep_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(bio_router_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -365,9 +366,9 @@ int bio_router_fep_reset_stats(bio_router_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bio_router_fep_stats_t));
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

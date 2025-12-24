@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/memory/nimcp_memory_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -20,15 +21,13 @@
  * HOW:  Opaque struct pattern (pimpl)
  */
 struct memory_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     memory_sleep_config_t config;        /* Bridge configuration */
     sleep_system_t sleep_system;          /* Non-owning pointer to sleep system */
     memory_sleep_effects_t effects;       /* Current sleep effects */
-    nimcp_mutex_t* mutex;                 /* Thread safety */
     bool callback_registered;             /* Track callback registration for cleanup */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;         /* Bio-async module context */
-    bool bio_async_enabled;                /* Whether bio-async is active */
 };
 
 /* Forward declarations */
@@ -62,7 +61,7 @@ static void memory_on_sleep_state_change(sleep_state_t new_state, void* user_dat
 
     NIMCP_LOGGING_DEBUG("Memory bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -93,7 +92,7 @@ static void memory_on_sleep_state_change(sleep_state_t new_state, void* user_dat
 
     bridge->effects.peak_consolidation = (new_state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Memory consolidation modulated: replay=%.2f, transfer=%.3f, "
                         "consolidation=%.2f, semantic=%.2f, peak=%d",
@@ -178,8 +177,8 @@ memory_sleep_bridge_t memory_sleep_bridge_create(
     bridge->effects.peak_consolidation = false;
 
     /* Create thread safety mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -235,12 +234,12 @@ void memory_sleep_bridge_destroy(memory_sleep_bridge_t bridge)
     }
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         memory_sleep_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -268,7 +267,7 @@ int memory_sleep_update(memory_sleep_bridge_t bridge)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -309,7 +308,7 @@ int memory_sleep_update(memory_sleep_bridge_t bridge)
 
     bridge->effects.peak_consolidation = (state == SLEEP_STATE_DEEP_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -332,9 +331,9 @@ int memory_sleep_get_effects(
 {
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -354,9 +353,9 @@ float memory_sleep_get_replay_frequency(const memory_sleep_bridge_t bridge)
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.replay_frequency_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -382,9 +381,9 @@ bool memory_sleep_is_replay_active(const memory_sleep_bridge_t bridge)
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.replay_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -519,7 +518,7 @@ int memory_sleep_connect_bio_async(memory_sleep_bridge_t bridge)
 {
     /* Guard clauses */
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;  /* Already connected */
+    if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
     bio_module_info_t info = {
@@ -529,9 +528,9 @@ int memory_sleep_connect_bio_async(memory_sleep_bridge_t bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Memory-sleep bridge connected to bio-async router");
         return 0;
     }
@@ -554,15 +553,15 @@ int memory_sleep_disconnect_bio_async(memory_sleep_bridge_t bridge)
 {
     /* Guard clauses */
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;  /* Not connected */
+    if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Memory-sleep bridge disconnected from bio-async router");
 
     return 0;
@@ -584,5 +583,5 @@ bool memory_sleep_is_bio_async_connected(const memory_sleep_bridge_t bridge)
     /* Guard clause */
     if (!bridge) return false;
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

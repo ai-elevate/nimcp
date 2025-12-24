@@ -6,16 +6,18 @@
  */
 
 #include "cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 struct working_memory_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     working_memory_sleep_config_t config;
     sleep_system_t sleep_system;
     working_memory_sleep_effects_t effects;
-    nimcp_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
 
@@ -43,7 +45,7 @@ static void working_memory_on_sleep_state_change(sleep_state_t new_state, void* 
 
     NIMCP_LOGGING_DEBUG("Working memory bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->effects.current_state = new_state;
 
@@ -63,7 +65,7 @@ static void working_memory_on_sleep_state_change(sleep_state_t new_state, void* 
     bridge->effects.consolidation_active = (new_state == SLEEP_STATE_DEEP_NREM ||
                                             new_state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("WM modulated: capacity=%.2f, decay=%.2f, offline=%d",
                         bridge->effects.capacity_factor,
@@ -103,8 +105,8 @@ working_memory_sleep_bridge_t working_memory_sleep_bridge_create(
     bridge->effects.wm_offline = false;
     bridge->effects.consolidation_active = false;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -141,14 +143,14 @@ void working_memory_sleep_bridge_destroy(working_memory_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int working_memory_sleep_update(working_memory_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -177,7 +179,7 @@ int working_memory_sleep_update(working_memory_sleep_bridge_t bridge) {
     bridge->effects.consolidation_active = (state == SLEEP_STATE_DEEP_NREM ||
                                             state == SLEEP_STATE_LIGHT_NREM);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -186,25 +188,25 @@ int working_memory_sleep_get_effects(
     working_memory_sleep_effects_t* effects)
 {
     if (!bridge || !effects) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float working_memory_sleep_get_capacity(const working_memory_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.capacity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
 bool working_memory_sleep_is_offline(const working_memory_sleep_bridge_t bridge) {
     if (!bridge) return false;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.wm_offline;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 

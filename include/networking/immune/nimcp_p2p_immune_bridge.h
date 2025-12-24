@@ -107,6 +107,7 @@
 #define NIMCP_P2P_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -231,6 +232,8 @@ typedef struct {
  * @brief Complete P2P-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     p2p_node_t p2p_node;
@@ -257,13 +260,7 @@ typedef struct {
     uint32_t recovery_il10_releases;
     uint32_t peers_filtered;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;
-} p2p_immune_bridge_t;
+    } p2p_immune_bridge_t;
 
 /**
  * @brief Bridge configuration

@@ -10,6 +10,7 @@
  */
 
 #include "middleware/immune/nimcp_sequence_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -141,12 +142,12 @@ sequence_immune_bridge_t* sequence_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("sequence_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -156,9 +157,9 @@ void sequence_immune_bridge_destroy(sequence_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -176,7 +177,7 @@ int sequence_immune_apply_cytokine_effects(sequence_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_modulation) return 0;
     if (!bridge->immune_system || !bridge->sequence_detector) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_sequence_effects_t* effects = &bridge->cytokine_effects;
@@ -219,7 +220,7 @@ int sequence_immune_apply_cytokine_effects(sequence_immune_bridge_t* bridge) {
     /* New threshold = baseline * (1 + learning_impairment) */
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -229,7 +230,7 @@ int sequence_immune_apply_inflammation_effects(sequence_immune_bridge_t* bridge)
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_sequence_state_t* state = &bridge->inflammation_state;
 
@@ -266,7 +267,7 @@ int sequence_immune_apply_inflammation_effects(sequence_immune_bridge_t* bridge)
     state->procedural_memory_impairment = clamp_f(inflammation_intensity * 0.75f, 0.0f, 0.85f);
     state->sequence_consolidation_rate = 1.0f - state->learning_rate_reduction;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -311,7 +312,7 @@ int sequence_immune_trigger_from_anomaly(
     if (!bridge->enable_anomaly_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sequence_immune_trigger_t* trigger = &bridge->immune_trigger;
 
@@ -361,7 +362,7 @@ int sequence_immune_trigger_from_anomaly(
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -370,7 +371,7 @@ int sequence_immune_report_learning_failure(sequence_immune_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->enable_anomaly_immune_trigger) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sequence_immune_trigger_t* trigger = &bridge->immune_trigger;
     trigger->learning_failure_count++;
@@ -390,7 +391,7 @@ int sequence_immune_report_learning_failure(sequence_immune_bridge_t* bridge) {
         trigger->learning_failure_count = 0;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -402,7 +403,7 @@ int sequence_immune_report_detection_failure(
     if (!bridge) return -1;
     if (!bridge->enable_anomaly_immune_trigger) return 0;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sequence_immune_trigger_t* trigger = &bridge->immune_trigger;
     bridge->detection_failures++;
@@ -421,7 +422,7 @@ int sequence_immune_report_detection_failure(
         trigger->consecutive_failures = 0;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -431,7 +432,7 @@ int sequence_immune_boost_from_learning_success(sequence_immune_bridge_t* bridge
     if (!bridge->enable_positive_feedback) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sequence_immune_feedback_t* feedback = &bridge->positive_feedback;
 
@@ -462,7 +463,7 @@ int sequence_immune_boost_from_learning_success(sequence_immune_bridge_t* bridge
         feedback->positive_feedback_active = false;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -500,9 +501,9 @@ int sequence_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_sequence_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -513,9 +514,9 @@ int sequence_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_sequence_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -549,13 +550,13 @@ int sequence_immune_get_stats(
 ) {
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     if (total_updates) *total_updates = bridge->total_updates;
     if (anomaly_alerts) *anomaly_alerts = bridge->anomaly_alerts_sent;
     if (learning_failures) *learning_failures = bridge->learning_failures;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -570,7 +571,7 @@ int sequence_immune_get_stats(
  */
 int sequence_immune_connect_bio_async(sequence_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SEQUENCE,
@@ -579,9 +580,9 @@ int sequence_immune_connect_bio_async(sequence_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("sequence_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -595,13 +596,13 @@ int sequence_immune_connect_bio_async(sequence_immune_bridge_t* bridge) {
  */
 int sequence_immune_disconnect_bio_async(sequence_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("sequence_immune_bridge disconnected from bio-async router");
     return 0;
@@ -612,5 +613,5 @@ int sequence_immune_disconnect_bio_async(sequence_immune_bridge_t* bridge) {
  */
 bool sequence_immune_is_bio_async_connected(const sequence_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

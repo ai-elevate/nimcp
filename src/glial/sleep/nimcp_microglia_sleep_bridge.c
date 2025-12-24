@@ -6,6 +6,7 @@
  */
 
 #include "glial/sleep/nimcp_microglia_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -19,15 +20,13 @@
  * HOW:  Store config, effects, sleep system, and synchronization
  */
 struct microglia_sleep_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     microglia_sleep_config_t config;        /**< Configuration parameters */
     sleep_system_t sleep_system;            /**< Sleep system handle */
     microglia_sleep_effects_t effects;      /**< Current modulation effects */
-    nimcp_mutex_t* mutex;                   /**< Thread safety */
     bool callback_registered;               /**< Track callback for cleanup */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;           /**< Bio-async module context */
-    bool bio_async_enabled;                 /**< Whether bio-async is active */
 };
 
 /* Forward declarations */
@@ -61,7 +60,7 @@ static void microglia_on_sleep_state_change(sleep_state_t new_state, void* user_
 
     NIMCP_LOGGING_DEBUG("Microglia bridge received sleep state: %d", new_state);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current sleep pressure */
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -69,7 +68,7 @@ static void microglia_on_sleep_state_change(sleep_state_t new_state, void* user_
     /* Recompute all effects for new state */
     compute_effects(bridge, new_state, pressure);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Microglia modulated: phago=%.2f, surveillance=%.2f, glymphatic=%s",
                         bridge->effects.phagocytosis_rate_factor,
@@ -243,15 +242,15 @@ microglia_sleep_bridge_t microglia_sleep_bridge_create(
      * WHY:  Start with bio-async disabled
      * HOW:  Set fields to NULL/false
      */
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
 
     /* WHAT: Create thread safety mutex
      * WHY:  Protect concurrent access to effects
      * HOW:  Platform-agnostic mutex creation
      */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for microglia-sleep bridge");
         nimcp_free(bridge);
         return NULL;
@@ -292,7 +291,7 @@ void microglia_sleep_bridge_destroy(microglia_sleep_bridge_t bridge)
      * WHY:  Clean shutdown of messaging
      * HOW:  Call disconnect function
      */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         microglia_sleep_disconnect_bio_async(bridge);
     }
 
@@ -315,8 +314,8 @@ void microglia_sleep_bridge_destroy(microglia_sleep_bridge_t bridge)
      * WHY:  Free synchronization resources
      * HOW:  Platform-agnostic mutex destruction
      */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     /* WHAT: Free bridge structure
@@ -344,7 +343,7 @@ int microglia_sleep_update(microglia_sleep_bridge_t bridge)
      * WHY:  Provide alternative update path
      * HOW:  Query sleep system and recompute effects
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     float pressure = sleep_get_pressure(bridge->sleep_system);
@@ -352,7 +351,7 @@ int microglia_sleep_update(microglia_sleep_bridge_t bridge)
     /* Recompute all effects */
     compute_effects(bridge, state, pressure);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -374,9 +373,9 @@ int microglia_sleep_get_effects(const microglia_sleep_bridge_t bridge,
      * WHY:  Allow caller to use effects without holding lock
      * HOW:  Lock, copy, unlock
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -394,9 +393,9 @@ float microglia_sleep_get_phagocytosis_rate(const microglia_sleep_bridge_t bridg
      * WHY:  Quick access to pruning modulation
      * HOW:  Lock, read, unlock
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.phagocytosis_rate_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -410,9 +409,9 @@ float microglia_sleep_get_surveillance_activity(const microglia_sleep_bridge_t b
      * WHY:  Quick access to surveillance modulation
      * HOW:  Lock, read, unlock
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.surveillance_activity_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -426,9 +425,9 @@ bool microglia_sleep_is_glymphatic_active(const microglia_sleep_bridge_t bridge)
      * WHY:  Determine if waste clearance is active
      * HOW:  Lock, read, unlock
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.glymphatic_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -442,9 +441,9 @@ bool microglia_sleep_is_enhanced(const microglia_sleep_bridge_t bridge)
      * WHY:  Determine if microglia are in peak activity mode
      * HOW:  Lock, read, unlock
      */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.microglia_enhanced;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -535,7 +534,7 @@ int microglia_sleep_connect_bio_async(microglia_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Already connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected for microglia-sleep bridge");
         return 0;
     }
@@ -551,9 +550,9 @@ int microglia_sleep_connect_bio_async(microglia_sleep_bridge_t bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Microglia-sleep bridge connected to bio-async router");
         return 0;
     } else {
@@ -571,7 +570,7 @@ int microglia_sleep_disconnect_bio_async(microglia_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Not connected */
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;
     }
 
@@ -579,12 +578,12 @@ int microglia_sleep_disconnect_bio_async(microglia_sleep_bridge_t bridge)
      * WHY:  Clean shutdown of messaging
      * HOW:  Unregister and clear context
      */
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Microglia-sleep bridge disconnected from bio-async router");
 
     return 0;
@@ -599,5 +598,5 @@ bool microglia_sleep_is_bio_async_connected(const microglia_sleep_bridge_t bridg
      * WHY:  Allow conditional bio-async usage
      * HOW:  Return bio_async_enabled flag
      */
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

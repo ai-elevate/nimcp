@@ -21,6 +21,7 @@
 #define NIMCP_EMOTIONAL_SYSTEM_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/nimcp_emotional_system.h"
@@ -71,17 +72,15 @@ typedef struct {
 } emotional_system_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     emotional_system_fep_config_t config;
     fep_system_t* fep_system;
     emotional_system_t* emotional_system;
     emotional_system_fep_effects_t fep_effects;
     fep_emotional_system_effects_t emotion_effects;
     emotional_system_fep_state_t state;
-    emotional_system_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    void* mutex;
-} emotional_system_fep_bridge_t;
+    emotional_system_fep_stats_t stats;} emotional_system_fep_bridge_t;
 
 int emotional_system_fep_default_config(emotional_system_fep_config_t* config);
 emotional_system_fep_bridge_t* emotional_system_fep_create(const emotional_system_fep_config_t* config);

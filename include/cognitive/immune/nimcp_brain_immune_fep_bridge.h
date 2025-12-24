@@ -88,6 +88,7 @@
 #define NIMCP_BRAIN_IMMUNE_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -210,6 +211,8 @@ typedef struct {
  * @brief Brain immune FEP bridge
  */
 struct brain_immune_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     brain_immune_fep_config_t config; /**< Configuration */
     fep_system_t* fep_system;         /**< FEP system */
     brain_immune_system_t* immune_system; /**< Brain immune system */
@@ -222,12 +225,6 @@ struct brain_immune_fep_bridge {
     brain_immune_fep_state_t state;   /**< Bridge state */
     brain_immune_fep_stats_t stats;   /**< Statistics */
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;     /**< Bio-async context */
-    bool bio_async_enabled;           /**< Bio-async active */
-
-    /* Thread safety */
-    void* mutex;                      /**< Platform mutex */
 };
 
 /* ============================================================================

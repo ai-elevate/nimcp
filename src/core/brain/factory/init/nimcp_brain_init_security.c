@@ -21,6 +21,7 @@
 //=============================================================================
 
 #include "core/brain/factory/init/nimcp_brain_init_security.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/factory/init/nimcp_brain_init_validation.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"

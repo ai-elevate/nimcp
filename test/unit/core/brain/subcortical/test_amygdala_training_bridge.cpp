@@ -363,6 +363,7 @@ TEST_F(AmygdalaTrainingBridgeTest, Statistics_QueryStats) {
     EXPECT_EQ(result, 0);
 
     EXPECT_EQ(stats.total_updates, 5);
+    EXPECT_EQ(bridge->base.total_updates, 5);
     EXPECT_TRUE(stats.amygdala_connected);
     EXPECT_TRUE(stats.training_connected);
 }

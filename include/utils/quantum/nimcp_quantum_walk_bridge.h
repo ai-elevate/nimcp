@@ -16,6 +16,7 @@
 #define NIMCP_QUANTUM_WALK_BRIDGE_H
 
 #include "utils/quantum/nimcp_quantum_walk_ternary.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -154,6 +155,8 @@ void quantum_walk_bridge_reset_stats(quantum_walk_bridge_t* bridge);
 #include <math.h>
 
 struct quantum_walk_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     quantum_walk_bridge_config_t config;
     trit_walker_graph_t* walker;
     trit_matrix_t* adjacency;           /**< Ternary adjacency matrix for graph */

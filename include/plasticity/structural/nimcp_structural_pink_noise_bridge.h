@@ -16,6 +16,7 @@
 #define NIMCP_STRUCTURAL_PINK_NOISE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include "plasticity/structural/nimcp_structural_plasticity.h"
 #include "plasticity/noise/nimcp_pink_noise.h"
@@ -37,6 +38,8 @@ typedef struct {
 } struct_pink_noise_config_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     struct_pink_noise_config_t config;
     void* structural_state;
     pink_noise_generator_t noise_gen;

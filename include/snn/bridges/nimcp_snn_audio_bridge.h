@@ -38,6 +38,7 @@ extern "C" {
 #endif
 
 #include "snn/nimcp_snn_types.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_encoding.h"
 #include "perception/nimcp_audio_cortex.h"
@@ -136,6 +137,8 @@ typedef struct snn_audio_decode_stats_s {
  * HOW:  Store SNN, audio cortex, encoders/decoders, buffers
  */
 typedef struct snn_audio_bridge_s {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     /* Connected systems */
     snn_network_t* snn;                 /**< SNN network */
     audio_cortex_t* audio_cortex;       /**< Audio cortex module */

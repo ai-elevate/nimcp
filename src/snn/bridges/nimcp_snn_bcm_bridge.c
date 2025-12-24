@@ -7,6 +7,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_bcm_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -103,7 +104,7 @@ snn_bcm_bridge_t* snn_bcm_bridge_create(
         bridge->rate_history[i].spike_count = 0;
     }
 
-    bridge->mutex = nimcp_platform_mutex_create();
+    bridge->base.mutex = nimcp_platform_mutex_create();
 
     bridge->connected = true;
     bridge->last_update_time_ms = 0.0f;
@@ -129,7 +130,7 @@ snn_bcm_bridge_t* snn_bcm_bridge_create(
 void snn_bcm_bridge_destroy(snn_bcm_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_bcm_bridge_disconnect_bio_async(bridge);
     }
 
@@ -137,8 +138,8 @@ void snn_bcm_bridge_destroy(snn_bcm_bridge_t* bridge) {
         nimcp_free(bridge->rate_history);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -150,7 +151,7 @@ void snn_bcm_bridge_destroy(snn_bcm_bridge_t* bridge) {
 
 int snn_bcm_bridge_connect_bio_async(snn_bcm_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SNN_BCM_BRIDGE,
@@ -159,9 +160,9 @@ int snn_bcm_bridge_connect_bio_async(snn_bcm_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected SNN-BCM bridge to bio-async router");
     }
 
@@ -169,17 +170,17 @@ int snn_bcm_bridge_connect_bio_async(snn_bcm_bridge_t* bridge) {
 }
 
 int snn_bcm_bridge_disconnect_bio_async(snn_bcm_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_async_enabled = false;
-    bridge->bio_ctx = NULL;
+    bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_async_enabled = false;
+    bridge->base.bio_ctx = NULL;
 
     return 0;
 }
 
 bool snn_bcm_bridge_is_bio_async_connected(const snn_bcm_bridge_t* bridge) {
-    return bridge ? bridge->bio_async_enabled : false;
+    return bridge ? bridge->base.bio_async_enabled : false;
 }
 
 //=============================================================================
@@ -189,8 +190,8 @@ bool snn_bcm_bridge_is_bio_async_connected(const snn_bcm_bridge_t* bridge) {
 int snn_bcm_bridge_update_rates(snn_bcm_bridge_t* bridge, float dt) {
     if (!bridge || !bridge->network) return -1;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Update exponential moving average of firing rates */
@@ -210,8 +211,8 @@ int snn_bcm_bridge_update_rates(snn_bcm_bridge_t* bridge, float dt) {
                                     (1.0f - alpha) * (activity * activity);
     }
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -220,8 +221,8 @@ int snn_bcm_bridge_update_rates(snn_bcm_bridge_t* bridge, float dt) {
 int snn_bcm_bridge_update_thresholds(snn_bcm_bridge_t* bridge, float dt) {
     if (!bridge || !bridge->bcm_synapses) return -1;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Update BCM thresholds based on activity history */
@@ -246,8 +247,8 @@ int snn_bcm_bridge_update_thresholds(snn_bcm_bridge_t* bridge, float dt) {
     bridge->effects.avg_threshold = threshold_sum / (float)bridge->n_synapses;
     bridge->threshold_updates++;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -256,15 +257,15 @@ int snn_bcm_bridge_update_thresholds(snn_bcm_bridge_t* bridge, float dt) {
 int snn_bcm_bridge_apply_plasticity(snn_bcm_bridge_t* bridge, float dt) {
     if (!bridge || !bridge->network) return -1;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     /* Apply BCM rule to SNN synapses */
     bridge->plasticity_events++;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -316,14 +317,14 @@ int snn_bcm_bridge_get_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock((void*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     }
 
     *effects = bridge->effects;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock((void*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
     }
 
     return 0;
@@ -371,15 +372,15 @@ int snn_bcm_bridge_get_stats(
 void snn_bcm_bridge_reset_stats(snn_bcm_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
     }
 
     bridge->plasticity_events = 0;
     bridge->threshold_updates = 0;
     bridge->last_update_time_ms = 0.0f;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 }

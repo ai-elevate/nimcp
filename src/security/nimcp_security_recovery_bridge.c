@@ -10,6 +10,7 @@
  */
 
 #include "security/nimcp_security_recovery_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -56,6 +57,8 @@ typedef struct {
 
 /** Bridge internal structure */
 struct nimcp_security_recovery_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     nimcp_srb_config_t config;
 
     /* Connected security modules */

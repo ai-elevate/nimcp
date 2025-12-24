@@ -136,6 +136,7 @@
 #define NIMCP_TOM_FEP_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -274,6 +275,8 @@ typedef struct {
  * @brief ToM FEP bridge state
  */
 struct tom_fep_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     tom_fep_config_t config;
 
@@ -288,12 +291,6 @@ struct tom_fep_bridge {
     /* Statistics */
     tom_fep_stats_t stats;
 
-    /* Bio-async */
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-
-    /* Thread safety */
-    void* mutex;                          /**< Mutex for thread safety */
 };
 
 /* ============================================================================

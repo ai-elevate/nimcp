@@ -6,6 +6,7 @@
  */
 
 #include "portia/immune/nimcp_portia_learning_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -199,8 +200,8 @@ portia_learning_immune_bridge_t* portia_learning_immune_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -208,7 +209,7 @@ portia_learning_immune_bridge_t* portia_learning_immune_create(
 
     /* Initialize state */
     bridge->last_update_time = 0;
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Created Portia learning-immune bridge");
     return bridge;
@@ -221,13 +222,13 @@ void portia_learning_immune_destroy(portia_learning_immune_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         portia_learning_immune_disconnect_bio_async(bridge);
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -252,7 +253,7 @@ int portia_learning_immune_apply_cytokine_effects(portia_learning_immune_bridge_
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     compute_cytokine_learning_effects(bridge);
@@ -267,7 +268,7 @@ int portia_learning_immune_apply_cytokine_effects(portia_learning_immune_bridge_
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine effects: lr_factor=%.3f", lr_factor);
     return 0;
@@ -287,7 +288,7 @@ int portia_learning_immune_apply_inflammation_effects(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute inflammation effects */
     compute_inflammation_learning_effects(bridge);
@@ -303,7 +304,7 @@ int portia_learning_immune_apply_inflammation_effects(
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation effects: lr=%.3f, consolidation_loss=%.3f",
                        lr_factor, consolidation_impairment);
@@ -358,7 +359,7 @@ int portia_learning_immune_trigger_failure_response(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Check learning success rate */
     float success_rate = bridge->learning_modulation.learning_success_rate;
@@ -393,7 +394,7 @@ int portia_learning_immune_trigger_failure_response(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -411,7 +412,7 @@ int portia_learning_immune_release_il10_from_success(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Check learning success rate */
     float success_rate = bridge->learning_modulation.learning_success_rate;
@@ -436,7 +437,7 @@ int portia_learning_immune_release_il10_from_success(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -454,7 +455,7 @@ int portia_learning_immune_trigger_repeated_failure_inflammation(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Check for repeated failures */
     if (bridge->learning_modulation.consecutive_failures >=
@@ -475,7 +476,7 @@ int portia_learning_immune_trigger_repeated_failure_inflammation(
     }
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -494,7 +495,7 @@ int portia_learning_immune_update(
     }
 
     /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Update timing */
     bridge->last_update_time += delta_ms;
@@ -524,7 +525,7 @@ int portia_learning_immune_update(
     bridge->total_updates++;
 
     /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -594,9 +595,9 @@ int portia_learning_immune_connect_bio_async(portia_learning_immune_bridge_t* br
     }
 
     /* Would register with bio-async router here */
-    /* bio_router_register_module(&bridge->bio_ctx, BIO_MODULE_IMMUNE_PORTIA_LEARNING); */
+    /* bio_router_register_module(&bridge->base.bio_ctx, BIO_MODULE_IMMUNE_PORTIA_LEARNING); */
 
-    bridge->bio_async_enabled = true;
+    bridge->base.bio_async_enabled = true;
 
     NIMCP_LOGGING_INFO("Connected Portia learning-immune bridge to bio-async");
     return 0;
@@ -609,14 +610,14 @@ int portia_learning_immune_disconnect_bio_async(portia_learning_immune_bridge_t*
         return -1;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return 0;  /* Not connected */
     }
 
     /* Would unregister from bio-async router here */
-    /* bio_router_unregister_module(&bridge->bio_ctx); */
+    /* bio_router_unregister_module(&bridge->base.bio_ctx); */
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected Portia learning-immune bridge from bio-async");
     return 0;
@@ -630,5 +631,5 @@ bool portia_learning_immune_is_bio_async_connected(
         return false;
     }
 
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

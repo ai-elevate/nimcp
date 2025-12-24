@@ -4,6 +4,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_hippocampus_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -262,7 +263,7 @@ void snn_hippocampus_bridge_destroy(snn_hippocampus_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         snn_hippocampus_bridge_disconnect_bio_async(bridge);
     }
 
@@ -275,7 +276,7 @@ void snn_hippocampus_bridge_destroy(snn_hippocampus_bridge_t* bridge) {
 
 int snn_hippocampus_bridge_connect_bio_async(snn_hippocampus_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SNN_HIPPOCAMPUS,
@@ -284,27 +285,27 @@ int snn_hippocampus_bridge_connect_bio_async(snn_hippocampus_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
     }
     return 0;
 }
 
 int snn_hippocampus_bridge_disconnect_bio_async(snn_hippocampus_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_hippocampus_bridge_is_bio_async_connected(const snn_hippocampus_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }
 
 //=============================================================================

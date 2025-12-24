@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_emergence_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -21,13 +22,14 @@
 #include <string.h>
 
 struct swarm_emergence_immune_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     swarm_emergence_immune_config_t config;
     brain_immune_system_t* immune_system;
     void* swarm_emergence;
     cytokine_emergence_effects_t cytokine_effects;
     inflammation_emergence_state_t inflammation_state;
     emergence_immune_modulation_t modulation;
-    nimcp_mutex_t* mutex;
     void* bio_ctx;
     bool bio_async_connected;
 };
@@ -79,8 +81,8 @@ swarm_emergence_immune_bridge_t* swarm_emergence_immune_bridge_create(
     bridge->immune_system = immune_system;
     bridge->swarm_emergence = swarm_emergence;
 
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm emergence immune bridge");
         nimcp_free(bridge);
         return NULL;
@@ -108,8 +110,8 @@ void swarm_emergence_immune_bridge_destroy(swarm_emergence_immune_bridge_t* brid
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -121,7 +123,7 @@ int swarm_emergence_immune_apply_cytokine_effects(swarm_emergence_immune_bridge_
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_cytokine_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float sensitivity = bridge->config.cytokine_sensitivity;
 
@@ -136,7 +138,7 @@ int swarm_emergence_immune_apply_cytokine_effects(swarm_emergence_immune_bridge_
     bridge->cytokine_effects.capability_degradation =
         bridge->cytokine_effects.tier_advancement_suppression * 0.3f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied cytokine emergence effects: suppression=%.2f",
                         bridge->cytokine_effects.tier_advancement_suppression);
@@ -148,11 +150,11 @@ int swarm_emergence_immune_apply_inflammation_effects(swarm_emergence_immune_bri
     if (!bridge || !bridge->immune_system) return -1;
     if (!bridge->config.enable_inflammation_effects) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -173,7 +175,7 @@ int swarm_emergence_immune_apply_inflammation_effects(swarm_emergence_immune_bri
         bridge->inflammation_state.advancement_blocked = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied inflammation emergence effects: level=%d, factor=%.2f",
                         level, bridge->inflammation_state.emergence_factor);
@@ -185,7 +187,7 @@ int swarm_emergence_immune_trigger_from_regression(swarm_emergence_immune_bridge
     if (!bridge) return -1;
     if (!bridge->config.enable_regression_stress) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.tier_drops++;
     if (bridge->modulation.tier_drops > 2) {
@@ -194,7 +196,7 @@ int swarm_emergence_immune_trigger_from_regression(swarm_emergence_immune_bridge
                           bridge->modulation.tier_drops);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -203,7 +205,7 @@ int swarm_emergence_immune_boost_from_advancement(swarm_emergence_immune_bridge_
     if (!bridge) return -1;
     if (!bridge->config.enable_tier_boost) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->modulation.il10_from_tier += 0.1f;
     bridge->modulation.tier_drops = 0;
@@ -212,7 +214,7 @@ int swarm_emergence_immune_boost_from_advancement(swarm_emergence_immune_bridge_
     NIMCP_LOGGING_DEBUG("Tier advancement boosted IL-10: total=%.2f",
                        bridge->modulation.il10_from_tier);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -231,9 +233,9 @@ float swarm_emergence_immune_get_emergence_factor(const swarm_emergence_immune_b
 {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float factor = bridge->inflammation_state.emergence_factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return factor;
 }
@@ -242,9 +244,9 @@ int swarm_emergence_immune_get_tier_penalty(const swarm_emergence_immune_bridge_
 {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int penalty = bridge->inflammation_state.tier_penalty;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return penalty;
 }
@@ -253,9 +255,9 @@ bool swarm_emergence_immune_is_advancement_blocked(const swarm_emergence_immune_
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool blocked = bridge->inflammation_state.advancement_blocked;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return blocked;
 }
@@ -279,8 +281,8 @@ int swarm_emergence_immune_connect_bio_async(swarm_emergence_immune_bridge_t* br
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
         bridge->bio_async_connected = true;
         NIMCP_LOGGING_INFO("Swarm emergence-immune bridge connected to bio-async router");
     } else {
@@ -301,9 +303,9 @@ int swarm_emergence_immune_disconnect_bio_async(swarm_emergence_immune_bridge_t*
         return 0;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
     bridge->bio_async_connected = false;

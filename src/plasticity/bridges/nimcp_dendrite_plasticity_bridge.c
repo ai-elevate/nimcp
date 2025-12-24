@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/bridges/nimcp_dendrite_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -145,16 +146,16 @@ dendrite_plasticity_bridge_t* dendrite_plasticity_create(
            bridge->compartment_capacity * sizeof(compartment_plasticity_state_t));
 
     /* Allocate mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge->compartments);
         nimcp_free(bridge);
         return NULL;
     }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->mutex);
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge->compartments);
         nimcp_free(bridge);
         return NULL;
@@ -172,14 +173,14 @@ void dendrite_plasticity_destroy(dendrite_plasticity_bridge_t* bridge)
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         dendrite_plasticity_disconnect_bio_async(bridge);
     }
 
     /* Free mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free compartment array */
@@ -201,9 +202,9 @@ int dendrite_plasticity_connect_stdp(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stdp_template = stdp;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Connected STDP to dendrite-plasticity bridge");
     return 0;
@@ -212,7 +213,7 @@ int dendrite_plasticity_connect_stdp(
 int dendrite_plasticity_connect_bio_async(dendrite_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_CORTICAL_DENDRITIC,
@@ -221,9 +222,9 @@ int dendrite_plasticity_connect_bio_async(dendrite_plasticity_bridge_t* bridge)
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected dendrite-plasticity to bio-async");
     }
 
@@ -233,13 +234,13 @@ int dendrite_plasticity_connect_bio_async(dendrite_plasticity_bridge_t* bridge)
 int dendrite_plasticity_disconnect_bio_async(dendrite_plasticity_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_INFO("Disconnected dendrite-plasticity from bio-async");
     return 0;
@@ -248,7 +249,7 @@ int dendrite_plasticity_disconnect_bio_async(dendrite_plasticity_bridge_t* bridg
 bool dendrite_plasticity_is_bio_async_connected(const dendrite_plasticity_bridge_t* bridge)
 {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -262,11 +263,11 @@ int dendrite_plasticity_update_calcium(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -295,7 +296,7 @@ int dendrite_plasticity_update_calcium(
         bridge->stats.total_weight_change += delta;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -320,7 +321,7 @@ int dendrite_plasticity_decay_calcium(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (dt_ms <= 0.0f) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float decay_factor = expf(-dt_ms / bridge->config.calcium_decay_tau_ms);
 
@@ -330,7 +331,7 @@ int dendrite_plasticity_decay_calcium(
             &bridge->config, bridge->compartments[i].calcium_level);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -347,11 +348,11 @@ float dendrite_plasticity_apply_stdp(
     if (!bridge) return 0.0f;
     if (!bridge->config.enable_stdp) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0.0f;
     }
 
@@ -385,7 +386,7 @@ float dendrite_plasticity_apply_stdp(
     bridge->stats.stdp_events++;
     bridge->stats.total_weight_change += weight_change;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return weight_change;
 }
 
@@ -397,11 +398,11 @@ int dendrite_plasticity_process_bpap(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -413,7 +414,7 @@ int dendrite_plasticity_process_bpap(
     comp->last_spike_time = (uint64_t)(bpap_time * 1000.0f);
     comp->activity_trace += 1.0f - attenuation;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -428,11 +429,11 @@ int dendrite_plasticity_apply_structural(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_structural_plasticity) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -445,7 +446,7 @@ int dendrite_plasticity_apply_structural(
         bridge->stats.structural_events++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -471,11 +472,11 @@ int dendrite_plasticity_update_bcm(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_bcm) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -490,7 +491,7 @@ int dendrite_plasticity_update_bcm(
     if (comp->bcm_threshold < 0.1f) comp->bcm_threshold = 0.1f;
     if (comp->bcm_threshold > 0.9f) comp->bcm_threshold = 0.9f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -518,7 +519,7 @@ int dendrite_plasticity_update(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay calcium */
     float decay_factor = expf(-dt_ms / bridge->config.calcium_decay_tau_ms);
@@ -546,7 +547,7 @@ int dendrite_plasticity_update(
 
     bridge->last_update_time = nimcp_time_get_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -569,7 +570,7 @@ int dendrite_plasticity_apply_to_orchestrator(dendrite_plasticity_bridge_t* brid
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->plasticity_orch) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Would send accumulated deltas to orchestrator */
     /* For now, just clear the accumulators */
@@ -577,7 +578,7 @@ int dendrite_plasticity_apply_to_orchestrator(dendrite_plasticity_bridge_t* brid
         bridge->compartments[i].weight_delta_sum = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -595,9 +596,9 @@ void dendrite_plasticity_reset_stats(dendrite_plasticity_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

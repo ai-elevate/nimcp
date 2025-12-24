@@ -10,6 +10,7 @@
  */
 
 #include "middleware/immune/nimcp_thalamic_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -181,12 +182,12 @@ thalamic_immune_bridge_t* thalamic_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("thalamic_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -196,9 +197,9 @@ void thalamic_immune_bridge_destroy(thalamic_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -216,7 +217,7 @@ int thalamic_immune_apply_cytokine_effects(thalamic_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_routing_modulation) return 0;
     if (!bridge->immune_system || !bridge->thalamic_router) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_routing_effects_t* effects = &bridge->cytokine_effects;
@@ -252,7 +253,7 @@ int thalamic_immune_apply_cytokine_effects(thalamic_immune_bridge_t* bridge) {
     effects->social_suppression_level = clamp_f(proinflam_total * 0.6f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -262,7 +263,7 @@ int thalamic_immune_apply_inflammation_effects(thalamic_immune_bridge_t* bridge)
     if (!bridge->enable_inflammation_hypervigilance) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_routing_state_t* state = &bridge->inflammation_state;
 
@@ -288,7 +289,7 @@ int thalamic_immune_apply_inflammation_effects(thalamic_immune_bridge_t* bridge)
     /* Attention bias toward threats */
     state->attention_bias = clamp_f(state->inflammation_intensity * 0.9f, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -303,7 +304,7 @@ int thalamic_immune_escalate_priority(
     if (!bridge->enable_priority_escalation) return 0;
     if (!bridge->thalamic_router) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get current inflammation level */
     float intensity = bridge->inflammation_state.inflammation_intensity;
@@ -328,7 +329,7 @@ int thalamic_immune_escalate_priority(
     thalamic_router_set_attention(bridge->thalamic_router, source_id, dest_id, escalated_attention);
 
     bridge->priority_escalations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -337,7 +338,7 @@ int thalamic_immune_restore_gating(thalamic_immune_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->immune_system || !bridge->thalamic_router) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check IL-10 level */
     float il10_level = compute_cytokine_level(bridge->immune_system, BRAIN_CYTOKINE_IL10);
@@ -351,7 +352,7 @@ int thalamic_immune_restore_gating(thalamic_immune_bridge_t* bridge) {
     bridge->inflammation_state.hypervigilance_level *= (1.0f - restoration);
 
     bridge->gating_adjustments++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -365,14 +366,14 @@ int thalamic_immune_detect_anomalies(thalamic_immune_bridge_t* bridge) {
     if (!bridge->enable_routing_anomaly_detection) return 0;
     if (!bridge->thalamic_router) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     routing_anomaly_state_t* state = &bridge->anomaly_state;
 
     /* Query router statistics */
     routing_stats_t router_stats;
     if (!thalamic_router_get_stats(bridge->thalamic_router, &router_stats)) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -414,7 +415,7 @@ int thalamic_immune_detect_anomalies(thalamic_immune_bridge_t* bridge) {
     if (state->priority_violations) state->threat_severity += 0.4f;
     state->threat_severity = clamp_f(state->threat_severity, 0.0f, 1.0f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -424,13 +425,13 @@ int thalamic_immune_trigger_from_anomaly(thalamic_immune_bridge_t* bridge) {
     if (!bridge->enable_routing_anomaly_detection) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     routing_anomaly_state_t* state = &bridge->anomaly_state;
 
     /* Trigger only if anomalies detected */
     if (state->anomaly_count == 0) {
-        pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+        pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
         return 0;
     }
 
@@ -468,7 +469,7 @@ int thalamic_immune_trigger_from_anomaly(thalamic_immune_bridge_t* bridge) {
                   antigen_id, severity);
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return result;
 }
 
@@ -478,7 +479,7 @@ int thalamic_immune_boost_from_health(thalamic_immune_bridge_t* bridge) {
     if (!bridge->enable_health_feedback) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     routing_health_feedback_t* feedback = &bridge->health_feedback;
     routing_anomaly_state_t* anomaly = &bridge->anomaly_state;
@@ -507,7 +508,7 @@ int thalamic_immune_boost_from_health(thalamic_immune_bridge_t* bridge) {
         feedback->inflammation_reduction = 0.0f;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -522,9 +523,9 @@ int thalamic_immune_bridge_update(
     /* Guard clauses */
     if (!bridge) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Immune → Routing */
     thalamic_immune_apply_cytokine_effects(bridge);
@@ -554,9 +555,9 @@ int thalamic_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_routing_effects_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -566,9 +567,9 @@ int thalamic_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_routing_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -578,19 +579,19 @@ int thalamic_immune_get_anomaly_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->anomaly_state, sizeof(routing_anomaly_state_t));
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
 bool thalamic_immune_is_hypervigilant(const thalamic_immune_bridge_t* bridge) {
     if (!bridge) return false;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bool hypervigilant = (bridge->inflammation_state.hypervigilance_level > 0.5f) &&
                         (bridge->inflammation_state.current_level >= INFLAMMATION_REGIONAL);
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return hypervigilant;
 }
@@ -598,14 +599,14 @@ bool thalamic_immune_is_hypervigilant(const thalamic_immune_bridge_t* bridge) {
 float thalamic_immune_get_gating_threshold(const thalamic_immune_bridge_t* bridge) {
     if (!bridge) return 0.5f;  /* Default threshold */
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     float base_threshold = 0.5f;
     float threshold = base_threshold + bridge->cytokine_effects.gating_threshold_modifier;
     threshold -= bridge->inflammation_state.gating_reduction;
     threshold = clamp_f(threshold, 0.1f, 0.9f);
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return threshold;
 }
 
@@ -614,10 +615,10 @@ float thalamic_immune_get_threat_priority_multiplier(
 ) {
     if (!bridge) return 1.0f;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     float multiplier = bridge->inflammation_state.threat_priority_boost;
     multiplier = clamp_f(multiplier, 1.0f, 2.0f);
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return multiplier;
 }
@@ -633,7 +634,7 @@ float thalamic_immune_get_threat_priority_multiplier(
  */
 int thalamic_immune_connect_bio_async(thalamic_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_THALAMIC,
@@ -642,9 +643,9 @@ int thalamic_immune_connect_bio_async(thalamic_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("thalamic_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -658,13 +659,13 @@ int thalamic_immune_connect_bio_async(thalamic_immune_bridge_t* bridge) {
  */
 int thalamic_immune_disconnect_bio_async(thalamic_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("thalamic_immune_bridge disconnected from bio-async router");
     return 0;
@@ -675,5 +676,5 @@ int thalamic_immune_disconnect_bio_async(thalamic_immune_bridge_t* bridge) {
  */
 bool thalamic_immune_is_bio_async_connected(const thalamic_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

@@ -21,6 +21,7 @@
 #define NIMCP_COLLECTIVE_WORKSPACE_FEP_BRIDGE_H
 
 #include "swarm/nimcp_collective_workspace.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/thread/nimcp_thread.h"
@@ -66,17 +67,15 @@ typedef struct {
 } collective_workspace_fep_stats_t;
 
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     collective_workspace_fep_config_t config;
     fep_system_t* fep_system;
     collective_workspace_t* workspace;
     collective_workspace_fep_effects_t fep_effects;
     fep_collective_workspace_effects_t workspace_effects;
     collective_workspace_fep_state_t state;
-    collective_workspace_fep_stats_t stats;
-    bio_module_context_t bio_ctx;
-    bool bio_async_enabled;
-    nimcp_mutex_t* mutex;
-} collective_workspace_fep_bridge_t;
+    collective_workspace_fep_stats_t stats;} collective_workspace_fep_bridge_t;
 
 void collective_workspace_fep_default_config(collective_workspace_fep_config_t* config);
 collective_workspace_fep_bridge_t* collective_workspace_fep_create(const collective_workspace_fep_config_t* config, collective_workspace_t* workspace, fep_system_t* fep_system);

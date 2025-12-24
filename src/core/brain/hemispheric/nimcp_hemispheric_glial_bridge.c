@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/hemispheric/nimcp_hemispheric_glial_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -213,13 +214,13 @@ hemispheric_glial_bridge_t* hemispheric_glial_create(
     bridge->cross_state.wave_propagating = false;
 
     // Allocate mutex
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_glial_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
-    nimcp_mutex_init(bridge->mutex, NULL);
+    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     bridge->initialized = true;
 
@@ -230,13 +231,13 @@ hemispheric_glial_bridge_t* hemispheric_glial_create(
 void hemispheric_glial_destroy(hemispheric_glial_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         hemispheric_glial_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     // Note: We don't destroy left_glial/right_glial - caller owns them
@@ -256,7 +257,7 @@ int hemispheric_glial_update(hemispheric_glial_bridge_t* bridge, float dt) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Update per-hemisphere glial systems
     uint64_t timestamp = get_time_us();
@@ -285,7 +286,7 @@ int hemispheric_glial_update(hemispheric_glial_bridge_t* bridge, float dt) {
     bridge->stats.avg_left_myelination = bridge->left_effects.myelination_factor;
     bridge->stats.avg_right_myelination = bridge->right_effects.myelination_factor;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -295,7 +296,7 @@ int hemispheric_glial_apply_modulation(hemispheric_glial_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // The glial effects are computed during update()
     // Here we would apply them to the hemispheric brain's processing
@@ -304,7 +305,7 @@ int hemispheric_glial_apply_modulation(hemispheric_glial_bridge_t* bridge) {
     // (The actual effect is in the glial_integration_get_myelination_factor calls
     //  during neural network stepping)
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -332,7 +333,7 @@ int hemispheric_glial_stimulate_astrocyte(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     astrocyte_calcium_system_stimulate(
         glial->astrocyte_network->calcium_system,
@@ -349,7 +350,7 @@ int hemispheric_glial_stimulate_astrocyte(
         bridge->cross_state.wave_start_time = get_time_us();
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -391,14 +392,14 @@ int hemispheric_glial_trigger_cross_wave(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->cross_state.wave_propagating = true;
     bridge->cross_state.wave_source = source;
     bridge->cross_state.calcium_transfer_rate = intensity;
     bridge->cross_state.wave_start_time = get_time_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Triggered cross-hemisphere wave from %s, intensity %.2f",
         source == HEMISPHERE_LEFT ? "left" : "right", intensity);
@@ -450,7 +451,7 @@ int hemispheric_glial_set_myelin_factor(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (hemisphere == HEMISPHERE_LEFT) {
         bridge->config.left_myelin_factor = factor;
@@ -458,7 +459,7 @@ int hemispheric_glial_set_myelin_factor(
         bridge->config.right_myelin_factor = factor;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -488,7 +489,7 @@ int hemispheric_glial_transfer_metabolic(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Positive amount = left to right
     bridge->left_effects.metabolic_support -= amount;
@@ -502,7 +503,7 @@ int hemispheric_glial_transfer_metabolic(
 
     bridge->cross_state.metabolic_flow = amount;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -579,9 +580,9 @@ hemispheric_glial_stats_t hemispheric_glial_get_stats(
 void hemispheric_glial_reset_stats(hemispheric_glial_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(hemispheric_glial_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 cross_hemisphere_glial_t hemispheric_glial_get_cross_state(
@@ -607,7 +608,7 @@ int hemispheric_glial_connect_glial(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (hemisphere == HEMISPHERE_LEFT) {
         bridge->left_glial = glial;
@@ -615,7 +616,7 @@ int hemispheric_glial_connect_glial(
         bridge->right_glial = glial;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected glial system to %s hemisphere",
         hemisphere == HEMISPHERE_LEFT ? "left" : "right");
@@ -632,7 +633,7 @@ int hemispheric_glial_connect_bio_async(hemispheric_glial_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (bridge->bio_async_enabled) {
+    if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
@@ -643,9 +644,9 @@ int hemispheric_glial_connect_bio_async(hemispheric_glial_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Hemispheric glial bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
@@ -659,16 +660,16 @@ int hemispheric_glial_disconnect_bio_async(hemispheric_glial_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (!bridge->bio_async_enabled) {
+    if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
 
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO("Hemispheric glial bridge disconnected from bio-async router");
 
     return NIMCP_SUCCESS;

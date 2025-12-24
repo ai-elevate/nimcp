@@ -10,6 +10,7 @@
  */
 
 #include "perception/immune/nimcp_visual_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -212,12 +213,12 @@ visual_immune_bridge_t* visual_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(pthread_mutex_t));
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
-    pthread_mutex_init((pthread_mutex_t*)bridge->mutex, NULL);
+    pthread_mutex_init((pthread_mutex_t*)bridge->base.mutex, NULL);
 
     LOG_MODULE_INFO("visual_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -227,9 +228,9 @@ void visual_immune_bridge_destroy(visual_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        pthread_mutex_destroy((pthread_mutex_t*)bridge->mutex);
-        nimcp_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
@@ -247,7 +248,7 @@ int visual_immune_apply_cytokine_effects(visual_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_visual_modulation) return 0;
     if (!bridge->immune_system || !bridge->visual_cortex) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Compute cytokine effects from immune system */
     /* Note: In full implementation, would query actual cytokine levels */
@@ -282,7 +283,7 @@ int visual_immune_apply_cytokine_effects(visual_immune_bridge_t* bridge) {
         compute_sickness_behavior(bridge->immune_system);
 
     bridge->cytokine_modulations++;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -292,7 +293,7 @@ int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_visual_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -334,7 +335,7 @@ int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
     bridge->inflammation_state.gabor_filter_gain_reduction = impairment * 0.5f;
     bridge->inflammation_state.feature_extraction_noise = impairment * 0.3f;
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -344,7 +345,7 @@ int visual_immune_apply_sickness_effects(visual_immune_bridge_t* bridge) {
     if (!bridge->enable_sickness_visual_reduction) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get sickness behavior level */
     float sickness = compute_sickness_behavior(bridge->immune_system);
@@ -371,7 +372,7 @@ int visual_immune_apply_sickness_effects(visual_immune_bridge_t* bridge) {
     bridge->sickness_effects.attention_to_novelty_reduction =
         sickness * 0.7f; /* 70% reduction in novelty seeking */
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -423,7 +424,7 @@ int visual_immune_trigger_from_threat(
     if (!threat_features || num_features == 0) return -1;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update visual trigger state */
     bridge->visual_trigger.threat_salience = salience;
@@ -463,7 +464,7 @@ int visual_immune_trigger_from_threat(
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -476,7 +477,7 @@ int visual_immune_trigger_from_anomaly(
     if (!bridge->enable_visual_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update visual trigger state */
     bridge->visual_trigger.pattern_corruption_level = anomaly_score;
@@ -513,7 +514,7 @@ int visual_immune_trigger_from_anomaly(
         }
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -523,7 +524,7 @@ int visual_immune_trigger_from_visual_stress(visual_immune_bridge_t* bridge) {
     if (!bridge->enable_visual_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check visual stress duration */
     float stress_duration = bridge->visual_trigger.visual_stress_duration_sec;
@@ -555,7 +556,7 @@ int visual_immune_trigger_from_visual_stress(visual_immune_bridge_t* bridge) {
         bridge->visual_triggered_responses++;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -595,9 +596,9 @@ int visual_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -608,9 +609,9 @@ int visual_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
-    pthread_mutex_lock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
-    pthread_mutex_unlock((pthread_mutex_t*)bridge->mutex);
+    pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -674,7 +675,7 @@ float visual_immune_get_threat_salience_boost(const visual_immune_bridge_t* brid
  */
 int visual_immune_connect_bio_async(visual_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (bridge->bio_async_enabled) return 0;
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_VISUAL,
@@ -683,9 +684,9 @@ int visual_immune_connect_bio_async(visual_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) {
-        bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO("visual_immune_bridge connected to bio-async router");
     } else {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping registration");
@@ -699,13 +700,13 @@ int visual_immune_connect_bio_async(visual_immune_bridge_t* bridge) {
  */
 int visual_immune_disconnect_bio_async(visual_immune_bridge_t* bridge) {
     if (!bridge) return -1;
-    if (!bridge->bio_async_enabled) return 0;
+    if (!bridge->base.bio_async_enabled) return 0;
 
-    if (bridge->bio_ctx) {
-        bio_router_unregister_module(bridge->bio_ctx);
-        bridge->bio_ctx = NULL;
+    if (bridge->base.bio_ctx) {
+        bio_router_unregister_module(bridge->base.bio_ctx);
+        bridge->base.bio_ctx = NULL;
     }
-    bridge->bio_async_enabled = false;
+    bridge->base.bio_async_enabled = false;
 
     NIMCP_LOGGING_DEBUG("visual_immune_bridge disconnected from bio-async router");
     return 0;
@@ -716,5 +717,5 @@ int visual_immune_disconnect_bio_async(visual_immune_bridge_t* bridge) {
  */
 bool visual_immune_is_bio_async_connected(const visual_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->bio_async_enabled;
+    return bridge->base.bio_async_enabled;
 }

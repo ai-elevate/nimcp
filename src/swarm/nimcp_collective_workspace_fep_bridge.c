@@ -3,6 +3,7 @@
  */
 
 #include "swarm/nimcp_collective_workspace_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
@@ -25,21 +26,21 @@ collective_workspace_fep_bridge_t* collective_workspace_fep_create(const collect
     else collective_workspace_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->workspace = workspace;
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
 
 void collective_workspace_fep_destroy(collective_workspace_fep_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->bio_async_enabled) collective_workspace_fep_disconnect_bio_async(bridge);
-    if (bridge->mutex) nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.bio_async_enabled) collective_workspace_fep_disconnect_bio_async(bridge);
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
     nimcp_free(bridge);
 }
 
 int collective_workspace_fep_update(collective_workspace_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     // Compute precision as inverse of free energy (high FE = low precision)
     float precision = 1.0f / (1.0f + fe);
@@ -56,7 +57,7 @@ int collective_workspace_fep_update(collective_workspace_fep_bridge_t* bridge) {
     bridge->state.last_update_time = nimcp_platform_time_monotonic_ms();
     bridge->stats.total_updates++;
     bridge->stats.avg_workspace_fe = (bridge->stats.avg_workspace_fe * (bridge->stats.total_updates - 1) + fe) / bridge->stats.total_updates;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -67,44 +68,44 @@ int collective_workspace_fep_apply_modulation(collective_workspace_fep_bridge_t*
 
 int collective_workspace_fep_get_effects(const collective_workspace_fep_bridge_t* bridge, collective_workspace_fep_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int collective_workspace_fep_get_workspace_effects(const collective_workspace_fep_bridge_t* bridge, fep_collective_workspace_effects_t* effects) {
     if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->workspace_effects;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int collective_workspace_fep_get_stats(const collective_workspace_fep_bridge_t* bridge, collective_workspace_fep_stats_t* stats) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int collective_workspace_fep_connect_bio_async(collective_workspace_fep_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_enabled) return 0;
+    if (!bridge || bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = { .module_id = BIO_MODULE_FEP_COLLECTIVE_WORKSPACE, .module_name = "collective_workspace_fep_bridge", .inbox_capacity = 32, .user_data = bridge };
-    bridge->bio_ctx = bio_router_register_module(&info);
-    if (bridge->bio_ctx) bridge->bio_async_enabled = true;
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) bridge->base.bio_async_enabled = true;
     return 0;
 }
 
 int collective_workspace_fep_disconnect_bio_async(collective_workspace_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_enabled) return 0;
-    if (bridge->bio_ctx) bio_router_unregister_module(bridge->bio_ctx);
-    bridge->bio_ctx = NULL;
-    bridge->bio_async_enabled = false;
+    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
+    bridge->base.bio_ctx = NULL;
+    bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool collective_workspace_fep_is_bio_async_connected(const collective_workspace_fep_bridge_t* bridge) {
-    return bridge && bridge->bio_async_enabled;
+    return bridge && bridge->base.bio_async_enabled;
 }

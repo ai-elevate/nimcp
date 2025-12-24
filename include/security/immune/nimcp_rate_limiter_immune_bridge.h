@@ -131,6 +131,7 @@
 #define NIMCP_RATE_LIMITER_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -279,6 +280,8 @@ typedef struct {
  * @brief Complete rate limiter-immune bridge state
  */
 typedef struct {
+    
+    bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;
     nimcp_rate_limiter_t rate_limiter;
@@ -300,11 +303,6 @@ typedef struct {
     uint32_t antigens_presented;
     uint32_t quarantine_actions;
 
-    /* Bio-async integration */
-    bio_module_context_t bio_ctx;       /**< Bio-async module context */
-    bool bio_async_enabled;              /**< Whether bio-async is active */
-
-    /* Thread safety */
     nimcp_platform_mutex_t* mutex;
 } rate_limiter_immune_bridge_t;
 

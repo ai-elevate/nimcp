@@ -43,6 +43,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "core/dendrite/nimcp_dendrite.h"

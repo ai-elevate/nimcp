@@ -151,10 +151,10 @@ TEST_F(TrainingLogicIntegrationTest, InstabilityTriggersImmune) {
     EXPECT_EQ(training_logic_start(bridge), 0);
 
     // Signal various instabilities
-    EXPECT_EQ(training_logic_signal_instability(bridge, TRAINING_INSTABILITY_GRAD_EXPLOSION, 8), 0);
+    EXPECT_EQ(training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 8), 0);
     EXPECT_TRUE(training_logic_needs_intervention(bridge));
 
-    EXPECT_EQ(training_logic_signal_instability(bridge, TRAINING_INSTABILITY_LOSS_NAN, 10), 0);
+    EXPECT_EQ(training_logic_signal_instability(bridge, LOGIC_INSTABILITY_LOSS_NAN, 10), 0);
     EXPECT_TRUE(training_logic_needs_intervention(bridge));
 
     // Verify stats tracked

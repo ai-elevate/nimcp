@@ -98,7 +98,7 @@ TEST_F(AstrocytesImmuneBridgeTest, DestroyNullIsNoOp) {
 
 TEST_F(AstrocytesImmuneBridgeTest, BridgeIsInitializedAfterCreate) {
     EXPECT_TRUE(bridge->initialized);
-    EXPECT_NE(bridge->mutex, nullptr);
+    EXPECT_NE(bridge->base.mutex, nullptr);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, InitialStateIsQuiescent) {
