@@ -69,6 +69,9 @@ typedef struct bridge_base {
     /* Timing and statistics */
     uint64_t last_update_time_ms;       /**< Last update timestamp */
     uint64_t total_updates;             /**< Total update count */
+
+    /* Module identification */
+    uint32_t module_id;                 /**< BIO_MODULE_* identifier */
     const char* module_name;            /**< Human-readable name */
 
     /* Bio-async integration */

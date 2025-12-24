@@ -30,14 +30,24 @@
  * WHY:  Tests need deterministic results
  * HOW:  Use provided seed or time(NULL) if seed is 0
  *
+ * THREAD SAFETY: Note that rand() is not guaranteed to be thread-safe by C standard.
+ *                For thread-safe RNG, consider using rand_r() or platform-specific APIs.
+ *
  * @param seed Random seed (0 = use current time)
+ *
+ * NOTE: 64-bit seed is XOR-folded to 32 bits to preserve entropy
  */
 static void lnn_wiring_seed_rng(uint64_t seed) {
+    unsigned int seed32;
+
     if (seed == 0) {
-        srand((unsigned int)time(NULL));
+        seed32 = (unsigned int)time(NULL);
     } else {
-        srand((unsigned int)seed);
+        /* XOR-fold 64-bit seed to 32 bits to preserve entropy */
+        seed32 = (unsigned int)(seed ^ (seed >> 32));
     }
+
+    srand(seed32);
 }
 
 /**

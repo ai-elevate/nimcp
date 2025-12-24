@@ -30,6 +30,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_security.h"
 #include <math.h>
 #include <string.h>
@@ -577,13 +578,13 @@ void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_syna
     if (!synapses || num_synapses == 0) return NULL;
 
     /* WHAT: Allocate statistics structure */
-    bcm_activity_stats_t* stats = (bcm_activity_stats_t*)malloc(sizeof(bcm_activity_stats_t));
+    bcm_activity_stats_t* stats = (bcm_activity_stats_t*)nimcp_malloc(sizeof(bcm_activity_stats_t));
     if (!stats) return NULL;
 
     /* WHAT: Compute BCM statistics */
     bcm_stats_t bcm_stats;
     if (!bcm_compute_stats(synapses, num_synapses, &bcm_stats)) {
-        free(stats);
+        nimcp_free(stats);
         return NULL;
     }
 

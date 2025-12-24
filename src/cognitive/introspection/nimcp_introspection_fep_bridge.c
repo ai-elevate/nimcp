@@ -41,7 +41,10 @@ introspection_fep_bridge_t* introspection_fep_bridge_create(const introspection_
 void introspection_fep_bridge_destroy(introspection_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) introspection_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+    }
     nimcp_free(bridge);
 }
 

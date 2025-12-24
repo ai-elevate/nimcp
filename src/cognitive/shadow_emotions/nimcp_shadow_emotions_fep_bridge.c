@@ -44,7 +44,10 @@ shadow_emotions_fep_bridge_t* shadow_emotions_fep_bridge_create(const shadow_emo
 void shadow_emotions_fep_bridge_destroy(shadow_emotions_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) shadow_emotions_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+    }
     nimcp_free(bridge);
 }
 

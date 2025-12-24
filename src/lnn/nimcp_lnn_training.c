@@ -173,7 +173,7 @@ lnn_training_ctx_t* lnn_training_create(
     }
 
     /* Allocate context */
-    lnn_training_ctx_t* ctx = (lnn_training_ctx_t*)malloc(sizeof(lnn_training_ctx_t));
+    lnn_training_ctx_t* ctx = (lnn_training_ctx_t*)nimcp_malloc(sizeof(lnn_training_ctx_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate training context");
         return NULL;
@@ -274,7 +274,7 @@ lnn_training_ctx_t* lnn_training_create(
     ctx->lr_schedule = config->lr_schedule;
     if (config->n_schedule_params > 0) {
         ctx->n_schedule_params = config->n_schedule_params;
-        ctx->lr_schedule_params = (float*)malloc(config->n_schedule_params * sizeof(float));
+        ctx->lr_schedule_params = (float*)nimcp_malloc(config->n_schedule_params * sizeof(float));
         if (ctx->lr_schedule_params) {
             memcpy(ctx->lr_schedule_params, config->lr_schedule_params,
                    config->n_schedule_params * sizeof(float));
@@ -361,13 +361,13 @@ void lnn_training_destroy(lnn_training_ctx_t* ctx) {
 
     /* Free LR schedule params */
     if (ctx->lr_schedule_params) {
-        free(ctx->lr_schedule_params);
+        nimcp_free(ctx->lr_schedule_params);
     }
 
     /* Note: We don't destroy bridges - they're owned externally */
 
     /* Free context */
-    free(ctx);
+    nimcp_free(ctx);
 
     NIMCP_LOGGING_INFO("Destroyed LNN training context");
 }
@@ -452,8 +452,8 @@ int lnn_training_step(
             /* Get parameter count and allocate buffers */
             size_t n_params = lnn_network_param_count(ctx->network);
             if (n_params > 0) {
-                float* params = (float*)malloc(n_params * sizeof(float));
-                float* grads = (float*)malloc(n_params * sizeof(float));
+                float* params = (float*)nimcp_malloc(n_params * sizeof(float));
+                float* grads = (float*)nimcp_malloc(n_params * sizeof(float));
 
                 if (params && grads) {
                     size_t actual_params = 0;
@@ -475,8 +475,8 @@ int lnn_training_step(
                     lnn_network_zero_gradients(ctx->network);
                 }
 
-                if (params) free(params);
-                if (grads) free(grads);
+                if (params) nimcp_free(params);
+                if (grads) nimcp_free(grads);
             }
 
             /* Clear gradient context accumulated state */
@@ -741,7 +741,7 @@ int lnn_training_set_lr_schedule(
 
     /* Free old params */
     if (ctx->lr_schedule_params) {
-        free(ctx->lr_schedule_params);
+        nimcp_free(ctx->lr_schedule_params);
         ctx->lr_schedule_params = NULL;
     }
 
@@ -751,7 +751,7 @@ int lnn_training_set_lr_schedule(
 
     /* Copy params if provided */
     if (n_params > 0 && params) {
-        ctx->lr_schedule_params = (float*)malloc(n_params * sizeof(float));
+        ctx->lr_schedule_params = (float*)nimcp_malloc(n_params * sizeof(float));
         if (!ctx->lr_schedule_params) {
             NIMCP_LOGGING_ERROR("Failed to allocate schedule params");
             return LNN_ERROR_OUT_OF_MEMORY;

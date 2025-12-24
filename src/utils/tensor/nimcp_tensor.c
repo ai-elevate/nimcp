@@ -294,10 +294,13 @@ nimcp_tensor_t* nimcp_tensor_create(
         t->data = nimcp_aligned_alloc(NIMCP_TENSOR_ALIGN, t->shape.nbytes);
         if (!t->data) {
             LOG_ERROR(LOG_MODULE, "Failed to allocate %zu bytes for tensor data", t->shape.nbytes);
+            /* Clean up: mutex was initialized at line 279 */
             pthread_mutex_destroy(&t->lock);
+            /* Clean up: struct was allocated at line 266 */
             nimcp_free(t);
             return NULL;
         }
+        /* Note: Data is uninitialized. Use nimcp_tensor_zeros() if zero initialization is needed. */
     }
 
     /* Update stats */
@@ -540,35 +543,61 @@ nimcp_tensor_t* nimcp_tensor_clone(const nimcp_tensor_t* t)
     return clone;
 }
 
+/**
+ * @brief Destroy tensor and free resources
+ *
+ * WHAT: Free tensor memory and decrement reference count
+ * WHY:  Clean resource management with refcounting
+ * HOW:  Thread-safe cleanup, idempotent (safe to call on partially initialized tensors)
+ *
+ * MEMORY SAFETY:
+ * - Idempotent: Safe to call multiple times (magic check prevents double-free)
+ * - Partial cleanup: Safe even if tensor creation failed partway
+ * - Refcounting: Only frees when refcount reaches 0
+ * - Gradient cleanup: Recursive destroy of gradient tensor
+ *
+ * @param t Tensor to destroy (NULL is safe, no-op)
+ */
 void nimcp_tensor_destroy(nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return;
+    /* Guard: NULL is no-op */
+    if (!t) return;
+
+    /* Guard: Invalid magic means already destroyed or corrupted */
+    if (!tensor_is_valid(t)) {
+        /* Already destroyed or never initialized properly */
+        return;
+    }
 
     pthread_mutex_lock(&t->lock);
 
+    /* Refcount management */
     t->refcount--;
     if (t->refcount > 0) {
         pthread_mutex_unlock(&t->lock);
         return;
     }
 
-    /* Update stats */
+    /* Update stats before freeing */
     pthread_mutex_lock(&g_stats_lock);
     g_stats.tensors_destroyed++;
     g_stats.memory_current -= t->shape.nbytes + sizeof(nimcp_tensor_t);
     pthread_mutex_unlock(&g_stats_lock);
 
-    /* Free gradient if exists */
+    /* Free gradient if exists (recursive destroy) */
     if (t->grad) {
         nimcp_tensor_destroy(t->grad);
+        t->grad = NULL;  /* Prevent double-free on re-entry */
     }
 
     /* Free data if owned */
     if (t->owns_data && t->data) {
         nimcp_free(t->data);
+        t->data = NULL;  /* Prevent double-free */
     }
 
-    t->magic = 0;  /* Invalidate */
+    /* Invalidate magic BEFORE unlocking to prevent re-entry */
+    t->magic = 0;
 
     pthread_mutex_unlock(&t->lock);
     pthread_mutex_destroy(&t->lock);

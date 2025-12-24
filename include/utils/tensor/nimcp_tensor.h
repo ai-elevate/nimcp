@@ -64,19 +64,43 @@ extern "C" {
 // Error Codes
 //=============================================================================
 
+/**
+ * @brief Tensor library error codes
+ *
+ * DESIGN RATIONALE:
+ * - Uses negative codes (-1 to -11) for module-local error handling
+ * - Does NOT use core NIMCP_ERROR_* codes (1000-9999 range)
+ * - Enables fast, type-safe error checking within tensor operations
+ * - See docs/ERROR_CODE_STRATEGY.md for full error code architecture
+ *
+ * ERROR HANDLING PATTERN:
+ * @code
+ * nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, NIMCP_DTYPE_F32);
+ * if (!t) {
+ *     // Creation failed - check logs for details
+ *     // Possible errors: NIMCP_TENSOR_ERR_RANK, NIMCP_TENSOR_ERR_ALLOC
+ * }
+ * @endcode
+ *
+ * MEMORY SAFETY:
+ * - NULL returns indicate allocation failure (NIMCP_TENSOR_ERR_ALLOC)
+ * - nimcp_tensor_destroy() is IDEMPOTENT (safe to call multiple times)
+ * - nimcp_tensor_destroy() handles partially initialized tensors
+ * - All creation functions clean up on failure (no leaks)
+ */
 typedef enum {
-    NIMCP_TENSOR_OK = 0,
-    NIMCP_TENSOR_ERR_NULL = -1,
-    NIMCP_TENSOR_ERR_SHAPE = -2,
-    NIMCP_TENSOR_ERR_RANK = -3,
-    NIMCP_TENSOR_ERR_ALLOC = -4,
-    NIMCP_TENSOR_ERR_BROADCAST = -5,
-    NIMCP_TENSOR_ERR_EINSUM = -6,
-    NIMCP_TENSOR_ERR_DTYPE = -7,
-    NIMCP_TENSOR_ERR_CONTIGUOUS = -8,
-    NIMCP_TENSOR_ERR_INDEX = -9,
-    NIMCP_TENSOR_ERR_GRAD = -10,
-    NIMCP_TENSOR_ERR_INVALID = -11
+    NIMCP_TENSOR_OK = 0,              /**< Success */
+    NIMCP_TENSOR_ERR_NULL = -1,       /**< NULL pointer argument */
+    NIMCP_TENSOR_ERR_SHAPE = -2,      /**< Shape mismatch or invalid shape */
+    NIMCP_TENSOR_ERR_RANK = -3,       /**< Rank exceeds NIMCP_TENSOR_MAX_RANK */
+    NIMCP_TENSOR_ERR_ALLOC = -4,      /**< Memory allocation failed */
+    NIMCP_TENSOR_ERR_BROADCAST = -5,  /**< Incompatible shapes for broadcasting */
+    NIMCP_TENSOR_ERR_EINSUM = -6,     /**< Invalid einsum equation */
+    NIMCP_TENSOR_ERR_DTYPE = -7,      /**< Unsupported or mismatched data type */
+    NIMCP_TENSOR_ERR_CONTIGUOUS = -8, /**< Operation requires contiguous memory */
+    NIMCP_TENSOR_ERR_INDEX = -9,      /**< Index out of bounds */
+    NIMCP_TENSOR_ERR_GRAD = -10,      /**< Gradient computation error */
+    NIMCP_TENSOR_ERR_INVALID = -11    /**< Invalid tensor (corrupted magic) */
 } nimcp_tensor_error_t;
 
 //=============================================================================
@@ -223,8 +247,30 @@ void nimcp_tensor_shutdown(void);
  * WHY:  Basic creation for filling with computed values
  * HOW:  Allocate header + aligned data buffer
  *
+ * MEMORY SAFETY:
+ * - Returns NULL on failure (no partial allocations leaked)
+ * - Cleanup on failure: mutex destroyed, struct freed
+ * - Data is UNINITIALIZED (use nimcp_tensor_zeros() for zero-init)
+ * - Safe to destroy: nimcp_tensor_destroy(NULL) is no-op
+ *
+ * ERROR CONDITIONS:
+ * - NULL: rank > NIMCP_TENSOR_MAX_RANK (logged as NIMCP_TENSOR_ERR_RANK)
+ * - NULL: Allocation failed (logged as NIMCP_TENSOR_ERR_ALLOC)
+ *
+ * EXAMPLE:
+ * @code
+ * uint32_t dims[] = {3, 4};
+ * nimcp_tensor_t* t = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
+ * if (!t) {
+ *     // Check logs for specific error
+ *     return;
+ * }
+ * // ... use tensor ...
+ * nimcp_tensor_destroy(t);  // Always safe, even if creation partial
+ * @endcode
+ *
  * @param dims Array of dimension sizes
- * @param rank Number of dimensions
+ * @param rank Number of dimensions (must be <= NIMCP_TENSOR_MAX_RANK)
  * @param dtype Data type
  * @return Tensor handle or NULL on failure
  */
@@ -334,6 +380,36 @@ nimcp_tensor_t* nimcp_tensor_clone(const nimcp_tensor_t* t);
 
 /**
  * @brief Destroy tensor and free resources
+ *
+ * WHAT: Free tensor memory and decrement reference count
+ * WHY:  Clean resource management with refcounting
+ * HOW:  Thread-safe cleanup, idempotent (safe to call multiple times)
+ *
+ * MEMORY SAFETY GUARANTEES:
+ * 1. **Idempotent**: Safe to call multiple times (magic check prevents double-free)
+ * 2. **NULL-safe**: nimcp_tensor_destroy(NULL) is a no-op
+ * 3. **Partial cleanup**: Safe even if tensor creation failed partway
+ * 4. **Refcounting**: Only frees when refcount reaches 0
+ * 5. **Gradient cleanup**: Recursively destroys gradient tensor
+ * 6. **No double-free**: Sets data/grad to NULL after freeing
+ *
+ * THREAD SAFETY:
+ * - Uses tensor's mutex lock for refcount decrement
+ * - Updates global stats under stats_lock
+ * - Safe to call from multiple threads on same tensor (refcount protected)
+ *
+ * EXAMPLE:
+ * @code
+ * nimcp_tensor_t* t = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
+ * if (!t) return;  // Safe: destroy not needed on NULL
+ *
+ * // ... use tensor ...
+ *
+ * nimcp_tensor_destroy(t);  // Decrements refcount, frees if 0
+ * nimcp_tensor_destroy(t);  // Safe: magic invalidated, early return
+ * @endcode
+ *
+ * @param t Tensor to destroy (NULL is safe, no-op)
  */
 void nimcp_tensor_destroy(nimcp_tensor_t* t);
 

@@ -54,7 +54,8 @@ void social_bond_fep_bridge_destroy(social_bond_fep_bridge_t* bridge) {
         social_bond_fep_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

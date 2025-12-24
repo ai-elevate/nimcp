@@ -11,29 +11,13 @@
 #include "lnn/nimcp_lnn_neuron.h"
 #include "lnn/nimcp_lnn_wiring.h"
 #include "lnn/nimcp_lnn_ode.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
-
-/*=============================================================================
- * Memory Management Macros
- *===========================================================================*/
-
-/* NIMCP uses standard C library allocation */
-#define nimcp_malloc malloc
-#define nimcp_calloc calloc
-#define nimcp_free free
-
-/*=============================================================================
- * Logging Macros (Placeholder - Replace with actual NIMCP logging)
- *===========================================================================*/
-
-#define NIMCP_LOGGING_ERROR(msg, ...) fprintf(stderr, "ERROR: " msg "\n", ##__VA_ARGS__)
-#define NIMCP_LOGGING_WARN(msg, ...)  fprintf(stderr, "WARN: " msg "\n", ##__VA_ARGS__)
-#define NIMCP_LOGGING_INFO(msg, ...)  fprintf(stdout, "INFO: " msg "\n", ##__VA_ARGS__)
-#define NIMCP_LOGGING_DEBUG(msg, ...) /* Debug disabled */
 
 /*=============================================================================
  * Helper Functions
@@ -95,12 +79,18 @@ static int apply_activation(
 
 /**
  * @brief Generate random normal value
+ *
+ * WHAT: Thread-safe Box-Muller transform for Gaussian samples
+ * WHY:  Weight initialization requires random normal values
+ * HOW:  Uses thread-local storage for cached spare value
+ *
+ * THREAD SAFETY: Thread-safe via thread-local storage
  */
 static float randn(float mean, float std)
 {
-    /* Box-Muller transform */
-    static bool has_spare = false;
-    static float spare;
+    /* Box-Muller transform with thread-local storage */
+    static __thread bool has_spare = false;
+    static __thread float spare;
 
     if (has_spare) {
         has_spare = false;

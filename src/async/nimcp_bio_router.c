@@ -32,6 +32,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_cond.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include "utils/platform/nimcp_tier_optimization.h"
 #include <stdlib.h>
 #include <string.h>
@@ -153,7 +154,16 @@ struct bio_router_struct {
 
 static struct bio_router_struct* g_router = NULL;
 static nimcp_platform_mutex_t g_router_init_mutex;
-static bool g_router_init_mutex_initialized = false;
+static nimcp_platform_once_t g_router_init_once = NIMCP_PLATFORM_ONCE_INIT;
+
+/**
+ * WHAT: One-time initialization of router init mutex
+ * WHY:  Fix TOCTOU race condition in bio_router_init
+ * HOW:  Called exactly once via pthread_once before any mutex operations
+ */
+static void init_router_mutex_once(void) {
+    nimcp_platform_mutex_init(&g_router_init_mutex, false);
+}
 
 /*=============================================================================
  * MESSAGE QUEUE OPERATIONS
@@ -389,11 +399,12 @@ bio_router_config_t bio_router_default_config(void) {
 }
 
 nimcp_error_t bio_router_init(const bio_router_config_t* config) {
-    // Initialize global init mutex once
-    if (!g_router_init_mutex_initialized) {
-        nimcp_platform_mutex_init(&g_router_init_mutex, false);
-        g_router_init_mutex_initialized = true;
-    }
+    // Initialize global init mutex once (thread-safe)
+    // WHAT: Use pthread_once to guarantee mutex initialization happens exactly once
+    // WHY:  Fixes TOCTOU race where multiple threads could both check
+    //       g_router_init_mutex_initialized == false and both try to initialize
+    // HOW:  pthread_once guarantees init_router_mutex_once() executes exactly once
+    nimcp_platform_once(&g_router_init_once, init_router_mutex_once);
 
     nimcp_platform_mutex_lock(&g_router_init_mutex);
 
@@ -1291,7 +1302,16 @@ typedef struct {
 static signal_observer_t g_signal_observers[256];
 static uint32_t g_signal_observer_count = 0;
 static nimcp_platform_mutex_t g_signal_mutex;
-static bool g_signal_mutex_initialized = false;
+static nimcp_platform_once_t g_signal_mutex_once = NIMCP_PLATFORM_ONCE_INIT;
+
+/**
+ * WHAT: One-time initialization of signal observer mutex
+ * WHY:  Fix TOCTOU race condition in signal observer registration
+ * HOW:  Called exactly once via pthread_once before any mutex operations
+ */
+static void init_signal_mutex_once(void) {
+    nimcp_platform_mutex_init(&g_signal_mutex, false);
+}
 
 nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
                                          const char* signal_name,
@@ -1300,11 +1320,8 @@ nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
                                          bio_prediction_observer_t callback) {
     if (!ctx || !signal_name || !callback) return -1;
 
-    // Initialize mutex on first use
-    if (!g_signal_mutex_initialized) {
-        nimcp_platform_mutex_init(&g_signal_mutex, false);
-        g_signal_mutex_initialized = true;
-    }
+    // Initialize mutex on first use (thread-safe via pthread_once)
+    nimcp_platform_once(&g_signal_mutex_once, init_signal_mutex_once);
 
     nimcp_platform_mutex_lock(&g_signal_mutex);
 
@@ -1339,10 +1356,8 @@ nimcp_error_t bio_router_publish_signal(bio_module_context_t ctx,
                                          float value) {
     if (!ctx || !signal_name) return -1;
 
-    if (!g_signal_mutex_initialized) {
-        // No observers registered yet
-        return NIMCP_SUCCESS;
-    }
+    // Initialize mutex on first use (thread-safe via pthread_once)
+    nimcp_platform_once(&g_signal_mutex_once, init_signal_mutex_once);
 
     nimcp_platform_mutex_lock(&g_signal_mutex);
 
@@ -1496,18 +1511,24 @@ static uint32_t g_next_wave_id = 1;
 static wave_callback_entry_t g_wave_callbacks[128];
 static uint32_t g_wave_callback_count = 0;
 static nimcp_platform_mutex_t g_wave_mutex;
-static bool g_wave_mutex_initialized = false;
+static nimcp_platform_once_t g_wave_mutex_once = NIMCP_PLATFORM_ONCE_INIT;
+
+/**
+ * WHAT: One-time initialization of glial wave mutex
+ * WHY:  Fix TOCTOU race condition in wave registration
+ * HOW:  Called exactly once via pthread_once before any mutex operations
+ */
+static void init_wave_mutex_once(void) {
+    nimcp_platform_mutex_init(&g_wave_mutex, false);
+}
 
 nimcp_glial_wave_t bio_router_initiate_wave(bio_module_context_t ctx,
                                              float intensity,
                                              const void* metadata) {
     if (!ctx || intensity <= 0.0F) return NULL;
 
-    // Initialize mutex on first use
-    if (!g_wave_mutex_initialized) {
-        nimcp_platform_mutex_init(&g_wave_mutex, false);
-        g_wave_mutex_initialized = true;
-    }
+    // Initialize mutex on first use (thread-safe via pthread_once)
+    nimcp_platform_once(&g_wave_mutex_once, init_wave_mutex_once);
 
     nimcp_platform_mutex_lock(&g_wave_mutex);
 
@@ -1565,11 +1586,8 @@ nimcp_error_t bio_router_on_wave_arrival(bio_module_context_t ctx,
                                           void* user_data) {
     if (!ctx || !callback) return -1;
 
-    // Initialize mutex on first use
-    if (!g_wave_mutex_initialized) {
-        nimcp_platform_mutex_init(&g_wave_mutex, false);
-        g_wave_mutex_initialized = true;
-    }
+    // Initialize mutex on first use (thread-safe via pthread_once)
+    nimcp_platform_once(&g_wave_mutex_once, init_wave_mutex_once);
 
     nimcp_platform_mutex_lock(&g_wave_mutex);
 
@@ -1700,23 +1718,19 @@ typedef struct {
 static bio_subscription_entry_t g_subscriptions[MAX_SUBSCRIPTIONS];
 static uint32_t g_subscription_count = 0;
 static nimcp_platform_mutex_t g_subscription_mutex;
-static bool g_subscription_initialized = false;
+static nimcp_platform_once_t g_subscription_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
  * @brief Initialize subscription subsystem
  *
  * WHAT: Initialize mutex and state for subscriptions
  * WHY:  Thread-safe subscription management
- * HOW:  Create mutex, clear subscription array
+ * HOW:  Create mutex, clear subscription array (called via pthread_once)
  */
 static void subscription_init(void) {
-    if (g_subscription_initialized) {
-        return;
-    }
     nimcp_platform_mutex_init(&g_subscription_mutex, false);
     memset(g_subscriptions, 0, sizeof(g_subscriptions));
     g_subscription_count = 0;
-    g_subscription_initialized = true;
 }
 
 /**
@@ -1737,10 +1751,8 @@ bool bio_router_subscribe(void* ctx, uint32_t msg_type) {
         return false;
     }
 
-    /* WHAT: Initialize subscription system on first use */
-    if (!g_subscription_initialized) {
-        subscription_init();
-    }
+    /* WHAT: Initialize subscription system on first use (thread-safe via pthread_once) */
+    nimcp_platform_once(&g_subscription_once, subscription_init);
 
     /* WHAT: Acquire lock for thread-safe modification */
     nimcp_platform_mutex_lock(&g_subscription_mutex);
@@ -1805,11 +1817,8 @@ bool bio_router_subscribe(void* ctx, uint32_t msg_type) {
  * @param user_data User context data that was provided during subscription
  */
 void bio_async_unsubscribe(int channel, uint32_t msg_type, void* callback, void* user_data) {
-    /* WHAT: Guard clause - ensure subscription system initialized */
-    if (!g_subscription_initialized) {
-        LOG_DEBUG("bio_async_unsubscribe: subscription system not initialized");
-        return;
-    }
+    /* WHAT: Initialize subscription system on first use (thread-safe via pthread_once) */
+    nimcp_platform_once(&g_subscription_once, subscription_init);
 
     /* WHAT: Acquire lock for thread-safe modification */
     nimcp_platform_mutex_lock(&g_subscription_mutex);
@@ -1960,19 +1969,15 @@ typedef struct {
 static bbb_emotion_registration_t g_emotion_registrations[MAX_EMOTION_REGISTRATIONS];
 static uint32_t g_emotion_registration_count = 0;
 static nimcp_platform_mutex_t g_emotion_reg_mutex;
-static bool g_emotion_reg_initialized = false;
+static nimcp_platform_once_t g_emotion_reg_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
- * @brief Initialize emotion registration subsystem
+ * @brief Initialize emotion registration subsystem (called via pthread_once)
  */
 static void emotion_registration_init(void) {
-    if (g_emotion_reg_initialized) {
-        return;
-    }
     nimcp_platform_mutex_init(&g_emotion_reg_mutex, false);
     memset(g_emotion_registrations, 0, sizeof(g_emotion_registrations));
     g_emotion_registration_count = 0;
-    g_emotion_reg_initialized = true;
 }
 
 /**
@@ -1992,10 +1997,8 @@ void bbb_register_emotion_query(void* system, const char* module_name) {
         return;
     }
 
-    /* WHAT: Initialize registration system on first use */
-    if (!g_emotion_reg_initialized) {
-        emotion_registration_init();
-    }
+    /* WHAT: Initialize registration system on first use (thread-safe via pthread_once) */
+    nimcp_platform_once(&g_emotion_reg_once, emotion_registration_init);
 
     /* WHAT: Acquire lock for thread-safe modification */
     nimcp_platform_mutex_lock(&g_emotion_reg_mutex);

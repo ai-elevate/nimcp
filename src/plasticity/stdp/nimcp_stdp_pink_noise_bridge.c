@@ -24,7 +24,7 @@ stdp_pink_noise_bridge_t* stdp_pink_noise_create(
 ) {
     /* Allocate bridge structure */
     stdp_pink_noise_bridge_t* bridge =
-        (stdp_pink_noise_bridge_t*)calloc(1, sizeof(stdp_pink_noise_bridge_t));
+        (stdp_pink_noise_bridge_t*)nimcp_calloc(1, sizeof(stdp_pink_noise_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate pink noise bridge");
         return NULL;
@@ -44,7 +44,7 @@ stdp_pink_noise_bridge_t* stdp_pink_noise_create(
     bridge->pink_bridge = pink_quantum_create(&pink_config);
     if (!bridge->pink_bridge) {
         NIMCP_LOGGING_ERROR("Failed to create quantum pink noise generator");
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -80,7 +80,7 @@ void stdp_pink_noise_destroy(stdp_pink_noise_bridge_t* bridge) {
         pink_quantum_destroy(bridge->pink_bridge);
     }
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 //=============================================================================

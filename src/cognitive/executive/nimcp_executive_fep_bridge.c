@@ -47,7 +47,10 @@ executive_fep_bridge_t* executive_fep_bridge_create(const executive_fep_config_t
 void executive_fep_bridge_destroy(executive_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) executive_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+    }
     nimcp_free(bridge);
 }
 

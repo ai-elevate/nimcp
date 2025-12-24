@@ -40,7 +40,10 @@ symbolic_logic_fep_bridge_t* symbolic_logic_fep_bridge_create(const symbolic_log
 void symbolic_logic_fep_bridge_destroy(symbolic_logic_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) symbolic_logic_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+    }
     nimcp_free(bridge);
 }
 

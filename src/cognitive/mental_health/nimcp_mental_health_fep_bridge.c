@@ -44,7 +44,10 @@ mental_health_fep_bridge_t* mental_health_fep_bridge_create(const mental_health_
 void mental_health_fep_bridge_destroy(mental_health_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) mental_health_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+    }
     nimcp_free(bridge);
 }
 

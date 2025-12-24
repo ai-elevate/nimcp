@@ -123,10 +123,12 @@ static float activation_derivative(float x, lnn_activation_t activation) {
  * WHAT: Sample from Normal(0, 1)
  * WHY:  Weight initialization requires Gaussian samples
  * HOW:  Box-Muller transform of uniform samples
+ *
+ * THREAD SAFETY: Uses thread-local storage for cached spare value
  */
 static float randn(void) {
-    static bool has_spare = false;
-    static float spare;
+    static __thread bool has_spare = false;
+    static __thread float spare;
 
     if (has_spare) {
         has_spare = false;
