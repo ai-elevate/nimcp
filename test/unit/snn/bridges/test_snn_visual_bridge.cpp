@@ -28,6 +28,10 @@ protected:
 
         // Initialize config with defaults
         snn_visual_config_default(&config);
+
+        // Override with smaller dimensions for testing (avoid huge allocations)
+        config.frame_width = 32;
+        config.frame_height = 32;
     }
 
     void TearDown() override {
@@ -43,10 +47,15 @@ protected:
     }
 
     void CreateMinimalSNN() {
+        /* Create visual cortex first if not created */
+        if (!visual_cortex) {
+            CreateMinimalVisualCortex();
+        }
+
         snn_config_t snn_cfg;
-        memset(&snn_cfg, 0, sizeof(snn_cfg));
+        snn_config_default(&snn_cfg);  /* Initialize with valid defaults (dt, tau, etc.) */
         snn_cfg.n_inputs = config.frame_width * config.frame_height;
-        snn_cfg.n_outputs = config.visual_cortex->feature_dim;
+        snn_cfg.n_outputs = 128;  /* Match visual cortex feature_dim */
         snn_cfg.n_populations = 2;
         snn = snn_network_create(&snn_cfg);
     }
@@ -64,18 +73,26 @@ protected:
     }
 };
 
-// Test 1: Config defaults
+// Test 1: Config defaults (note: SetUp overrides frame_width/height for testing)
 TEST_F(SNNVisualBridgeTest, ConfigDefaults) {
-    EXPECT_EQ(config.encoding_method, SNN_ENCODE_RATE);
-    EXPECT_GT(config.max_spike_rate, 0.0f);
-    EXPECT_GT(config.min_spike_rate, 0.0f);
-    EXPECT_LT(config.min_spike_rate, config.max_spike_rate);
-    EXPECT_GT(config.temporal_window_ms, 0.0f);
-    EXPECT_EQ(config.neurons_per_pixel, 1);
-    EXPECT_EQ(config.frame_width, 640);
-    EXPECT_EQ(config.frame_height, 480);
-    EXPECT_EQ(config.frame_channels, 1);
-    EXPECT_TRUE(config.use_attention_modulation);
+    // Test original defaults from snn_visual_config_default() directly
+    snn_visual_config_t orig_cfg;
+    snn_visual_config_default(&orig_cfg);
+
+    EXPECT_EQ(orig_cfg.encoding_method, SNN_ENCODE_RATE);
+    EXPECT_GT(orig_cfg.max_spike_rate, 0.0f);
+    EXPECT_GT(orig_cfg.min_spike_rate, 0.0f);
+    EXPECT_LT(orig_cfg.min_spike_rate, orig_cfg.max_spike_rate);
+    EXPECT_GT(orig_cfg.temporal_window_ms, 0.0f);
+    EXPECT_EQ(orig_cfg.neurons_per_pixel, 1);
+    EXPECT_EQ(orig_cfg.frame_width, 640);
+    EXPECT_EQ(orig_cfg.frame_height, 480);
+    EXPECT_EQ(orig_cfg.frame_channels, 1);
+    EXPECT_TRUE(orig_cfg.use_attention_modulation);
+
+    // config from SetUp has overridden dimensions for testing
+    EXPECT_EQ(config.frame_width, 32);
+    EXPECT_EQ(config.frame_height, 32);
 }
 
 // Test 2: Bridge creation/destruction
@@ -100,12 +117,12 @@ TEST_F(SNNVisualBridgeTest, FrameEncodingGrayscale) {
     bridge = snn_visual_bridge_create(&config, snn, visual_cortex);
     ASSERT_NE(bridge, nullptr);
 
-    // Create test frame (checkerboard pattern)
-    uint32_t width = 64, height = 64;
+    // Create test frame (checkerboard pattern) - use config dimensions
+    uint32_t width = config.frame_width, height = config.frame_height;
     uint8_t* frame = (uint8_t*)malloc(width * height);
     for (uint32_t y = 0; y < height; y++) {
         for (uint32_t x = 0; x < width; x++) {
-            frame[y * width + x] = ((x / 8) + (y / 8)) % 2 ? 255 : 0;
+            frame[y * width + x] = ((x / 4) + (y / 4)) % 2 ? 255 : 0;
         }
     }
 
@@ -125,7 +142,8 @@ TEST_F(SNNVisualBridgeTest, FrameEncodingRGB) {
     bridge = snn_visual_bridge_create(&config, snn, visual_cortex);
     ASSERT_NE(bridge, nullptr);
 
-    uint32_t width = 64, height = 64;
+    // Use config dimensions
+    uint32_t width = config.frame_width, height = config.frame_height;
     uint8_t* frame = (uint8_t*)malloc(width * height * 3);
     for (uint32_t i = 0; i < width * height * 3; i++) {
         frame[i] = (uint8_t)(i % 256);
@@ -165,11 +183,12 @@ TEST_F(SNNVisualBridgeTest, SpikeDecodingToFrame) {
     bridge = snn_visual_bridge_create(&config, snn, visual_cortex);
     ASSERT_NE(bridge, nullptr);
 
-    // Create mock spike trains
-    uint32_t num_trains = 64 * 64;
+    // Create mock spike trains - use config dimensions
+    uint32_t width = config.frame_width, height = config.frame_height;
+    uint32_t num_trains = width * height;
     snn_spike_train_t* spike_trains = (snn_spike_train_t*)calloc(num_trains, sizeof(snn_spike_train_t));
 
-    uint8_t* frame_out = (uint8_t*)malloc(64 * 64);
+    uint8_t* frame_out = (uint8_t*)malloc(width * height);
     int ret = snn_visual_bridge_decode(bridge, spike_trains, num_trains, frame_out);
     EXPECT_EQ(ret, 0);
 
@@ -219,13 +238,18 @@ TEST_F(SNNVisualBridgeTest, Downsampling) {
     bridge = snn_visual_bridge_create(&config, snn, visual_cortex);
     ASSERT_NE(bridge, nullptr);
 
-    uint32_t width = 128, height = 128;
+    // Use config dimensions (bridge validates frame matches config)
+    uint32_t width = config.frame_width, height = config.frame_height;
     uint8_t* frame = (uint8_t*)malloc(width * height);
     memset(frame, 128, width * height);
 
     snn_spike_train_t* spike_trains = nullptr;
     int ret = snn_visual_bridge_encode(bridge, frame, width, height, 1, &spike_trains);
     EXPECT_EQ(ret, 0);
+
+    // Verify downsampling config is enabled
+    EXPECT_TRUE(config.downsample_frames);
+    EXPECT_EQ(config.downsample_factor, 2);
 
     free(frame);
 }

@@ -7,7 +7,7 @@
 
 extern "C" {
 #include "snn/bridges/nimcp_snn_homeostatic_bridge.h"
-#include "utils/memory/nimcp_malloc.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 class SNNHomeostaticBridgeTest : public ::testing::Test {
@@ -88,6 +88,18 @@ TEST_F(SNNHomeostaticBridgeTest, GetAvgRate) {
 }
 
 TEST_F(SNNHomeostaticBridgeTest, IsStable) {
+    /* Initially unstable (neuron rates are 0, below target 5Hz) */
+    bool initial_stable = snn_homeostatic_bridge_is_stable(bridge);
+
+    /* Run updates to let homeostasis adjust - simulate neurons hitting target */
+    for (int i = 0; i < 10; i++) {
+        /* Simulate neurons at target rate by setting their rates */
+        for (uint32_t n = 0; n < bridge->n_neurons; n++) {
+            bridge->neuron_states[n].current_rate = bridge->config.target_rate_hz;
+        }
+        snn_homeostatic_bridge_update(bridge, 1.0f);
+    }
+
     bool stable = snn_homeostatic_bridge_is_stable(bridge);
     EXPECT_TRUE(stable);
 }
