@@ -102,14 +102,16 @@ static void queue_destroy(callosum_message_queue_t* queue) {
         return;
     }
 
-    // Free any remaining message data
+    // Free any remaining message data (NULL after free to prevent double-free)
     if (queue->messages) {
         for (uint32_t i = 0; i < queue->capacity; i++) {
             if (queue->messages[i].data) {
                 nimcp_free(queue->messages[i].data);
+                queue->messages[i].data = NULL;
             }
         }
         nimcp_free(queue->messages);
+        queue->messages = NULL;
     }
 
     if (queue->mutex) {
@@ -521,8 +523,16 @@ int callosum_send(
 
     // Create message
     // Note: Use explicit masking to prevent uint64_t overflow when casting to uint32_t
-    uint64_t total_msgs = cc->stats.total_messages_left_to_right +
-                          cc->stats.total_messages_right_to_left;
+    // Check for potential overflow before adding (defensive - unlikely in practice)
+    uint64_t left_count = cc->stats.total_messages_left_to_right;
+    uint64_t right_count = cc->stats.total_messages_right_to_left;
+    uint64_t total_msgs;
+    if (left_count > UINT64_MAX - right_count) {
+        // Overflow detected - wrap around safely
+        total_msgs = (left_count - (UINT64_MAX - right_count) - 1);
+    } else {
+        total_msgs = left_count + right_count;
+    }
     callosum_message_t msg = {
         .source = from,
         .destination = (from == HEMISPHERE_LEFT) ? HEMISPHERE_RIGHT : HEMISPHERE_LEFT,

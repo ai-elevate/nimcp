@@ -130,7 +130,8 @@ const char* brain_immune_inflammation_to_string(brain_inflammation_level_t level
 static uint64_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    /* P1 fix: Cast to uint64_t before multiplication to prevent overflow on 32-bit time_t */
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
 }
 
 /**

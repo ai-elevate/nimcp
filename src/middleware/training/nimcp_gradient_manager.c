@@ -21,6 +21,7 @@
 #include "security/nimcp_security_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "utils/platform/nimcp_platform_mutex.h"  /* P0 fix: Thread-safe accum buffer */
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -47,6 +48,10 @@ struct nimcp_gradient_manager_ctx {
     size_t accum_buffer_size;     /**< Buffer size */
     uint32_t accum_step;          /**< Current accumulation step */
     bool accum_initialized;       /**< Buffer initialized */
+
+    /* P0 fix: Thread safety for accum_buffer reallocation */
+    nimcp_platform_mutex_t accum_mutex;  /**< Protects accum_buffer reallocation */
+    bool accum_mutex_initialized;        /**< Whether mutex was initialized */
 
     /* Scaling state */
     float current_scale;          /**< Current scale factor */
@@ -166,6 +171,15 @@ nimcp_gradient_manager_ctx_t* nimcp_gradient_manager_create(
 
     ctx->initialized = true;
 
+    /* P0 fix: Initialize accum buffer mutex for thread safety */
+    if (nimcp_platform_mutex_init(&ctx->accum_mutex, NULL) == 0) {
+        ctx->accum_mutex_initialized = true;
+    } else {
+        ctx->accum_mutex_initialized = false;
+        nimcp_log(LOG_LEVEL_WARN, "[%s] Failed to initialize accum mutex, continuing without thread safety",
+                  LOG_MODULE);
+    }
+
     /* Register with security module if available */
     ctx->security_ctx = config->security_ctx;
     ctx->security_registered = false;
@@ -189,6 +203,11 @@ void nimcp_gradient_manager_destroy(nimcp_gradient_manager_ctx_t* ctx) {
         return;
     }
 
+    /* P0 fix: Acquire lock before destroying accum buffer */
+    if (ctx->accum_mutex_initialized) {
+        nimcp_platform_mutex_lock(&ctx->accum_mutex);
+    }
+
     /* Unregister from security module */
     if (ctx->security_registered && ctx->security_ctx) {
         nimcp_sec_unregister_module(ctx->security_ctx, ctx->security_module_id);
@@ -197,6 +216,14 @@ void nimcp_gradient_manager_destroy(nimcp_gradient_manager_ctx_t* ctx) {
 
     if (ctx->accum_buffer) {
         nimcp_free(ctx->accum_buffer);
+        ctx->accum_buffer = NULL;
+    }
+
+    /* P0 fix: Cleanup accum mutex */
+    if (ctx->accum_mutex_initialized) {
+        nimcp_platform_mutex_unlock(&ctx->accum_mutex);
+        nimcp_platform_mutex_destroy(&ctx->accum_mutex);
+        ctx->accum_mutex_initialized = false;
     }
 
     nimcp_free(ctx);
@@ -219,18 +246,30 @@ nimcp_result_t nimcp_gradient_accumulate(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    /* Allocate or resize buffer if needed */
+    /* P0 fix: Thread-safe accum buffer reallocation */
     if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
-        if (ctx->accum_buffer) {
-            nimcp_free(ctx->accum_buffer);
+        if (ctx->accum_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->accum_mutex);
         }
-        ctx->accum_buffer = (float*)nimcp_calloc(num_gradients, sizeof(float));
-        if (!ctx->accum_buffer) {
-            return NIMCP_ERROR_MEMORY;
+        /* Re-check condition after acquiring lock (TOCTOU fix) */
+        if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
+            if (ctx->accum_buffer) {
+                nimcp_free(ctx->accum_buffer);
+            }
+            ctx->accum_buffer = (float*)nimcp_calloc(num_gradients, sizeof(float));
+            if (!ctx->accum_buffer) {
+                if (ctx->accum_mutex_initialized) {
+                    nimcp_platform_mutex_unlock(&ctx->accum_mutex);
+                }
+                return NIMCP_ERROR_MEMORY;
+            }
+            ctx->accum_buffer_size = num_gradients;
+            ctx->accum_initialized = true;
+            ctx->accum_step = 0;
         }
-        ctx->accum_buffer_size = num_gradients;
-        ctx->accum_initialized = true;
-        ctx->accum_step = 0;
+        if (ctx->accum_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->accum_mutex);
+        }
     }
 
     /* Reset buffer at start of accumulation */
@@ -792,18 +831,30 @@ nimcp_result_t nimcp_gradient_accumulate_tensor(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    /* Allocate or resize buffer if needed */
+    /* P0 fix: Thread-safe accum buffer reallocation */
     if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
-        if (ctx->accum_buffer) {
-            nimcp_free(ctx->accum_buffer);
+        if (ctx->accum_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->accum_mutex);
         }
-        ctx->accum_buffer = (float*)nimcp_calloc(num_gradients, sizeof(float));
-        if (!ctx->accum_buffer) {
-            return NIMCP_ERROR_MEMORY;
+        /* Re-check condition after acquiring lock (TOCTOU fix) */
+        if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
+            if (ctx->accum_buffer) {
+                nimcp_free(ctx->accum_buffer);
+            }
+            ctx->accum_buffer = (float*)nimcp_calloc(num_gradients, sizeof(float));
+            if (!ctx->accum_buffer) {
+                if (ctx->accum_mutex_initialized) {
+                    nimcp_platform_mutex_unlock(&ctx->accum_mutex);
+                }
+                return NIMCP_ERROR_MEMORY;
+            }
+            ctx->accum_buffer_size = num_gradients;
+            ctx->accum_initialized = true;
+            ctx->accum_step = 0;
         }
-        ctx->accum_buffer_size = num_gradients;
-        ctx->accum_initialized = true;
-        ctx->accum_step = 0;
+        if (ctx->accum_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->accum_mutex);
+        }
     }
 
     /* Reset buffer at start of accumulation */

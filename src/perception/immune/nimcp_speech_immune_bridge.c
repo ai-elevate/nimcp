@@ -47,7 +47,10 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
 
     /* Query immune system for oldest inflammation site */
     float max_duration = 0.0f;
-    for (size_t i = 0; i < immune->inflammation_count; i++) {
+    /* P0 fix: Add bounds check to prevent array overflow */
+    size_t count = (immune->inflammation_count < BRAIN_IMMUNE_MAX_INFLAMMATION) ?
+                   immune->inflammation_count : BRAIN_IMMUNE_MAX_INFLAMMATION;
+    for (size_t i = 0; i < count; i++) {
         brain_inflammation_site_t* site = &immune->inflammation_sites[i];
         uint64_t current_time = 0; /* Would get from system time */
         float duration = (current_time - site->start_time) / 1000.0f;
@@ -71,7 +74,10 @@ static brain_inflammation_level_t get_max_inflammation_level(
     if (!immune) return INFLAMMATION_NONE;
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
-    for (size_t i = 0; i < immune->inflammation_count; i++) {
+    /* P0 fix: Add bounds check to prevent array overflow */
+    size_t count = (immune->inflammation_count < BRAIN_IMMUNE_MAX_INFLAMMATION) ?
+                   immune->inflammation_count : BRAIN_IMMUNE_MAX_INFLAMMATION;
+    for (size_t i = 0; i < count; i++) {
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -216,8 +222,10 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
     float tnf_level = 0.0f;
     float ifn_gamma_level = 0.0f;
 
-    /* Iterate through active cytokines */
-    for (size_t i = 0; i < bridge->immune_system->cytokine_count; i++) {
+    /* Iterate through active cytokines (P1 fix: bounds check) */
+    size_t cytokine_limit = (bridge->immune_system->cytokine_count < BRAIN_IMMUNE_MAX_CYTOKINES) ?
+                            bridge->immune_system->cytokine_count : BRAIN_IMMUNE_MAX_CYTOKINES;
+    for (size_t i = 0; i < cytokine_limit; i++) {
         brain_cytokine_t* cytokine = &bridge->immune_system->cytokines[i];
         if (!cytokine->delivered) continue;
 

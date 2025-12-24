@@ -639,45 +639,83 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
 
     uint32_t processed = 0;
 
-    // Lock mutex for thread-safe queue access
-    if (router->queue_mutex) {
-        nimcp_mutex_lock(router->queue_mutex);
-    }
+    /* P1 fix: Process signals outside mutex to prevent callback deadlock
+     * WHY: Callbacks may call router APIs, causing mutex re-entry deadlock
+     * HOW: Copy signal data under lock, deliver outside lock, then update queue
+     */
+    while (processed < max_signals) {
+        signal_wrapper_t wrapper = NULL;
+        signal_wrapper_t original_wrapper = NULL;  /* Track for cleanup after delivery */
+        uint32_t source_id = 0;
+        float attention_weight = 0.0f;
+        double enqueue_time_ms = 0.0;
 
-    while (processed < max_signals && router->queue_size > 0) {
-        // Dequeue highest priority (front of queue)
-        queued_signal_t* qs = &router->queue[0];
-
-        // Deliver using CoW wrapper (zero-copy)
-        bool delivered = deliver_signal_wrapper(router, qs->wrapper,
-                                               qs->source_id,
-                                               qs->attention_weight);
-
-        if (delivered) {
-            router->stats.signals_routed++;
-
-            // Update latency statistics
-            double latency = current_time - qs->enqueue_time_ms;
-            float alpha = 0.1F;
-            router->stats.avg_latency_ms =
-                (1.0F - alpha) * router->stats.avg_latency_ms + alpha * (float)latency;
+        /* Lock and copy signal data */
+        if (router->queue_mutex) {
+            nimcp_mutex_lock(router->queue_mutex);
         }
 
-        // Release wrapper (decrements refcount, frees if last reference)
-        signal_wrapper_release(qs->wrapper);
+        if (router->queue_size == 0) {
+            if (router->queue_mutex) {
+                nimcp_mutex_unlock(router->queue_mutex);
+            }
+            break;  /* No more signals */
+        }
 
-        // Shift queue
+        /* Copy data from queue front */
+        queued_signal_t* qs = &router->queue[0];
+        original_wrapper = qs->wrapper;  /* Save for cleanup after delivery */
+        wrapper = signal_wrapper_acquire(original_wrapper);  /* Increment refcount */
+        source_id = qs->source_id;
+        attention_weight = qs->attention_weight;
+        enqueue_time_ms = qs->enqueue_time_ms;
+
+        /* Shift queue (DON'T release original wrapper yet - managers still needed by acquired wrapper) */
         for (uint32_t i = 0; i < router->queue_size - 1; i++) {
             router->queue[i] = router->queue[i + 1];
         }
-
         router->queue_size--;
+
+        if (router->queue_mutex) {
+            nimcp_mutex_unlock(router->queue_mutex);
+        }
+
+        /* Deliver signal OUTSIDE mutex to prevent deadlock */
+        bool delivered = deliver_signal_wrapper(router, wrapper,
+                                               source_id,
+                                               attention_weight);
+
+        if (delivered) {
+            /* Update stats under lock */
+            if (router->queue_mutex) {
+                nimcp_mutex_lock(router->queue_mutex);
+            }
+            router->stats.signals_routed++;
+
+            /* Update latency statistics */
+            double latency = current_time - enqueue_time_ms;
+            float alpha = 0.1F;
+            router->stats.avg_latency_ms =
+                (1.0F - alpha) * router->stats.avg_latency_ms + alpha * (float)latency;
+
+            if (router->queue_mutex) {
+                nimcp_mutex_unlock(router->queue_mutex);
+            }
+        }
+
+        /* Release both wrappers now that delivery is complete.
+         * IMPORTANT: Release original AFTER acquired - original owns the managers.
+         * Acquired wrapper's handles keep the data alive until released. */
+        signal_wrapper_release(wrapper);
+        signal_wrapper_release(original_wrapper);
         processed++;
     }
 
+    /* Update final queue depth under lock */
+    if (router->queue_mutex) {
+        nimcp_mutex_lock(router->queue_mutex);
+    }
     router->stats.queue_depth = router->queue_size;
-
-    // Unlock mutex
     if (router->queue_mutex) {
         nimcp_mutex_unlock(router->queue_mutex);
     }

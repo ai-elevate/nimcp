@@ -301,13 +301,19 @@ float eligibility_apply_reward(
     // WHAT: Apply weight change
     // WHY: Implement learning
     // HOW: w_new = w_old + Δw
+    // P1 fix: Check for NaN/Inf before weight update
+    if (isnan(delta_w) || isinf(delta_w)) {
+        delta_w = 0.0f;  /* Skip corrupted update */
+    }
     synapse->weight += delta_w;
 
     // STEP 4: Clamp weight to physiological range [0, 1]
     // WHAT: Bound weight updates to prevent unbounded growth
     // WHY: Synaptic weights must stay in valid range
     // HOW: Use fminf/fmaxf for branchless clamping
-    synapse->weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+    // P1 fix: Also validate final weight for NaN
+    float new_weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+    synapse->weight = isnan(new_weight) ? 0.5f : new_weight;
 
     return delta_w;
 }
@@ -469,14 +475,18 @@ float eligibility_consolidate_on_burst(
             delta_w *= dopamine_concentration;
         }
 
-        // Update synapse weight
+        // Update synapse weight (P1 fix: validate before update)
+        if (isnan(delta_w) || isinf(delta_w)) {
+            delta_w = 0.0f;
+        }
         synapse->weight += delta_w;
 
         // Clamp weight to physiological range [0, 1]
         // WHAT: Bound weight updates to prevent unbounded growth
         // WHY: Synaptic weights must stay in valid range
         // HOW: Use fminf/fmaxf for branchless clamping
-        synapse->weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+        float new_weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+        synapse->weight = isnan(new_weight) ? 0.5f : new_weight;
 
         return delta_w;
 
@@ -495,13 +505,18 @@ float eligibility_consolidate_on_burst(
             delta_w *= dopamine_concentration;
         }
 
+        // P1 fix: validate before update
+        if (isnan(delta_w) || isinf(delta_w)) {
+            delta_w = 0.0f;
+        }
         synapse->weight += delta_w;
 
         // Clamp weight to physiological range [0, 1]
         // WHAT: Bound weight updates to prevent unbounded growth
         // WHY: Synaptic weights must stay in valid range
         // HOW: Use fminf/fmaxf for branchless clamping
-        synapse->weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+        float new_weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+        synapse->weight = isnan(new_weight) ? 0.5f : new_weight;
 
         return delta_w;
     }

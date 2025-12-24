@@ -201,14 +201,25 @@ hetero_system_t* hetero_create(const hetero_config_t* config, size_t initial_cap
 void hetero_destroy(hetero_system_t* system) {
     if (!system) return;
 
-    /* Destroy all synapse mutexes */
-    for (size_t i = 0; i < system->num_synapses; i++) {
-        nimcp_platform_mutex_destroy(&system->synapses[i].lock);
+    /* Destroy all synapse mutexes (P0 fix: NULL after free to prevent double-free) */
+    if (system->synapses) {
+        for (size_t i = 0; i < system->num_synapses; i++) {
+            nimcp_platform_mutex_destroy(&system->synapses[i].lock);
+        }
+        nimcp_free(system->synapses);
+        system->synapses = NULL;
     }
 
-    nimcp_free(system->synapses);
-    destroy_spatial_index(system->spatial_index);
-    nimcp_platform_mutex_destroy(system->mutex);
+    if (system->spatial_index) {
+        destroy_spatial_index(system->spatial_index);
+        system->spatial_index = NULL;
+    }
+
+    if (system->mutex) {
+        nimcp_platform_mutex_destroy(system->mutex);
+        system->mutex = NULL;
+    }
+
     nimcp_free(system);
 
     NIMCP_LOGGING_INFO("Destroyed heterosynaptic system");

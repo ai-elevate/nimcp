@@ -538,9 +538,17 @@ bool routing_immune_get_stats(
         return false;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-    *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    /* P1 fix: Check if mutex exists and lock succeeded before accessing stats */
+    if (bridge->base.mutex) {
+        if (nimcp_platform_mutex_lock(bridge->base.mutex) != 0) {
+            return false;  /* Failed to acquire lock */
+        }
+        *stats = bridge->stats;
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
+    } else {
+        /* No mutex - read without lock (not thread-safe but avoid crash) */
+        *stats = bridge->stats;
+    }
 
     return true;
 }

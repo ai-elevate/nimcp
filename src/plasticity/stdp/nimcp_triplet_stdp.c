@@ -244,6 +244,14 @@ int triplet_stdp_update_traces(triplet_stdp_synapse_t* synapse, float dt) {
     /* Decay slow post-trace (tau_y) */
     synapse->o2_post *= expf(-dt / synapse->tau_y);
 
+    /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
+     * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
+     */
+    if (synapse->r1_pre < 1e-10f) synapse->r1_pre = 0.0f;
+    if (synapse->r2_pre < 1e-10f) synapse->r2_pre = 0.0f;
+    if (synapse->o1_post < 1e-10f) synapse->o1_post = 0.0f;
+    if (synapse->o2_post < 1e-10f) synapse->o2_post = 0.0f;
+
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)synapse->mutex);
 
     return 0;
@@ -270,6 +278,11 @@ float triplet_stdp_pre_spike(triplet_stdp_synapse_t* synapse, float spike_time) 
         if (dt > 0.0f) {
             synapse->r1_pre *= expf(-dt / synapse->tau_plus);
             synapse->r2_pre *= expf(-dt / synapse->tau_x);
+            /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
+             * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
+             */
+            if (synapse->r1_pre < 1e-10f) synapse->r1_pre = 0.0f;
+            if (synapse->r2_pre < 1e-10f) synapse->r2_pre = 0.0f;
         }
     }
 
@@ -333,6 +346,11 @@ float triplet_stdp_post_spike(triplet_stdp_synapse_t* synapse, float spike_time)
         if (dt > 0.0f) {
             synapse->o1_post *= expf(-dt / synapse->tau_minus);
             synapse->o2_post *= expf(-dt / synapse->tau_y);
+            /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
+             * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
+             */
+            if (synapse->o1_post < 1e-10f) synapse->o1_post = 0.0f;
+            if (synapse->o2_post < 1e-10f) synapse->o2_post = 0.0f;
         }
     }
 

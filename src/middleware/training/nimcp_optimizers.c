@@ -19,6 +19,7 @@
 #include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"  /* P0 fix: Thread-safe state buffer */
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -101,6 +102,10 @@ struct nimcp_optimizer_context {
     } state;
 
     size_t state_size;
+
+    /* Thread safety for state buffer reallocation (P0 fix) */
+    nimcp_platform_mutex_t state_mutex;  /**< Protects state buffer reallocation */
+    bool state_mutex_initialized;        /**< Whether mutex was initialized */
 
     /* Bio-async integration (Phase BIO-1) */
     bio_module_context_t bio_ctx;      /**< Bio-async module context */
@@ -336,8 +341,11 @@ static void step_sgd(
     float weight_decay = ctx->config.params.sgd.weight_decay;
     bool nesterov = ctx->config.params.sgd.nesterov;
 
-    /* Allocate or reallocate velocity buffer if needed */
+    /* P0 fix: Thread-safe velocity buffer reallocation */
     if (momentum != 0.0F && (ctx->state.momentum.velocity == NULL || count > ctx->state.momentum.count)) {
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->state_mutex);
+        }
         /* Free old buffer if reallocating */
         if (ctx->state.momentum.velocity != NULL) {
             free_buffer(ctx, ctx->state.momentum.velocity);
@@ -346,6 +354,9 @@ static void step_sgd(
         ctx->state.momentum.count = count;
         if (ctx->state.momentum.velocity) {
             memset(ctx->state.momentum.velocity, 0, count * sizeof(float));
+        }
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
     }
 
@@ -392,8 +403,11 @@ static void step_adam(
 
     optimizer_adam_state_t* state = &ctx->state.adam;
 
-    /* Allocate or reallocate state buffers if needed */
+    /* P0 fix: Thread-safe Adam state buffer reallocation */
     if (state->m == NULL || count > state->count) {
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->state_mutex);
+        }
         /* Free old buffers if reallocating */
         if (state->m != NULL) {
             free_buffer(ctx, state->m);
@@ -412,6 +426,9 @@ static void step_adam(
         if (state->m) memset(state->m, 0, count * sizeof(float));
         if (state->v) memset(state->v, 0, count * sizeof(float));
         if (state->v_max) memset(state->v_max, 0, count * sizeof(float));
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->state_mutex);
+        }
     }
 
     state->t++;
@@ -461,8 +478,11 @@ static void step_adamw(
 
     optimizer_adam_state_t* state = &ctx->state.adam;
 
-    /* Allocate or reallocate state buffers if needed */
+    /* P0 fix: Thread-safe AdamW state buffer reallocation */
     if (state->m == NULL || count > state->count) {
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->state_mutex);
+        }
         /* Free old buffers if reallocating */
         if (state->m != NULL) {
             free_buffer(ctx, state->m);
@@ -481,6 +501,9 @@ static void step_adamw(
         if (state->m) memset(state->m, 0, count * sizeof(float));
         if (state->v) memset(state->v, 0, count * sizeof(float));
         if (state->v_max) memset(state->v_max, 0, count * sizeof(float));
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->state_mutex);
+        }
     }
 
     state->t++;
@@ -529,8 +552,11 @@ static void step_nadam(
 
     optimizer_adam_state_t* state = &ctx->state.adam;
 
-    /* Allocate or reallocate state buffers if needed */
+    /* P0 fix: Thread-safe NAdam state buffer reallocation */
     if (state->m == NULL || count > state->count) {
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->state_mutex);
+        }
         /* Free old buffers if reallocating */
         if (state->m != NULL) {
             free_buffer(ctx, state->m);
@@ -543,6 +569,9 @@ static void step_nadam(
 
         if (state->m) memset(state->m, 0, count * sizeof(float));
         if (state->v) memset(state->v, 0, count * sizeof(float));
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->state_mutex);
+        }
     }
 
     state->t++;
@@ -585,8 +614,11 @@ static void step_rmsprop(
 
     optimizer_rmsprop_state_t* state = &ctx->state.rmsprop;
 
-    /* Allocate or reallocate state buffers if needed */
+    /* P0 fix: Thread-safe RMSprop state buffer reallocation */
     if (state->square_avg == NULL || count > state->count) {
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->state_mutex);
+        }
         /* Free old buffers if reallocating */
         if (state->square_avg != NULL) {
             free_buffer(ctx, state->square_avg);
@@ -607,6 +639,9 @@ static void step_rmsprop(
         if (state->square_avg) memset(state->square_avg, 0, count * sizeof(float));
         if (state->momentum_buffer) memset(state->momentum_buffer, 0, count * sizeof(float));
         if (state->grad_avg) memset(state->grad_avg, 0, count * sizeof(float));
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->state_mutex);
+        }
     }
 
     for (size_t i = 0; i < count; i++) {
@@ -653,8 +688,11 @@ static void step_adagrad(
 
     optimizer_adagrad_state_t* state = &ctx->state.adagrad;
 
-    /* Allocate or reallocate state buffers if needed */
+    /* P0 fix: Thread-safe AdaGrad state buffer reallocation */
     if (state->sum == NULL || count > state->count) {
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_lock(&ctx->state_mutex);
+        }
         /* Free old buffer if reallocating */
         if (state->sum != NULL) {
             free_buffer(ctx, state->sum);
@@ -667,6 +705,9 @@ static void step_adagrad(
             for (size_t i = 0; i < count; i++) {
                 state->sum[i] = initial_acc;
             }
+        }
+        if (ctx->state_mutex_initialized) {
+            nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
     }
 
@@ -778,6 +819,15 @@ nimcp_optimizer_context_t* nimcp_optimizer_create(
         }
     }
 
+    /* P0 fix: Initialize state buffer mutex for thread safety */
+    if (nimcp_platform_mutex_init(&ctx->state_mutex, NULL) == 0) {
+        ctx->state_mutex_initialized = true;
+    } else {
+        ctx->state_mutex_initialized = false;
+        nimcp_log(LOG_LEVEL_WARN, "[%s] Failed to initialize state mutex, continuing without thread safety",
+                  LOG_MODULE);
+    }
+
     ctx->initialized = true;
     nimcp_log(LOG_LEVEL_INFO, "[%s] Optimizer created: type=%s, lr=%f",
               LOG_MODULE, nimcp_optimizer_type_name(config->type), ctx->current_lr);
@@ -786,6 +836,11 @@ nimcp_optimizer_context_t* nimcp_optimizer_create(
 
 void nimcp_optimizer_destroy(nimcp_optimizer_context_t* ctx) {
     if (!ctx) return;
+
+    /* P0 fix: Acquire lock before destroying state buffers to prevent races */
+    if (ctx->state_mutex_initialized) {
+        nimcp_platform_mutex_lock(&ctx->state_mutex);
+    }
 
     /* Bio-async cleanup (Phase BIO-1) */
     if (ctx->bio_async_enabled && ctx->bio_ctx) {
@@ -819,6 +874,13 @@ void nimcp_optimizer_destroy(nimcp_optimizer_context_t* ctx) {
             break;
         default:
             break;
+    }
+
+    /* P0 fix: Cleanup state mutex */
+    if (ctx->state_mutex_initialized) {
+        nimcp_platform_mutex_unlock(&ctx->state_mutex);
+        nimcp_platform_mutex_destroy(&ctx->state_mutex);
+        ctx->state_mutex_initialized = false;
     }
 
     nimcp_log(LOG_LEVEL_INFO, "[%s] Optimizer destroyed: type=%s",

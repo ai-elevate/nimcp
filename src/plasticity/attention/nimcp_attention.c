@@ -60,22 +60,45 @@
 #define ATTENTION_POOL_BLOCK_SIZE 16384  // 16KB - fits 4096 floats
 #define ATTENTION_POOL_NUM_BLOCKS 128    // 128 concurrent buffers
 
-static memory_pool_t g_attention_pool = NULL;
+static _Atomic(memory_pool_t) g_attention_pool = NULL;
+static atomic_flag g_pool_init_flag = ATOMIC_FLAG_INIT;
 
 /**
  * @brief Get or create the attention memory pool
+ *
+ * P1 fix: Use atomic compare-exchange for thread-safe lazy initialization
+ * WHY:  Prevents race condition where two threads both create pools,
+ *       causing memory leak from first pool being orphaned
  */
 static memory_pool_t get_attention_pool(void) {
-    if (g_attention_pool == NULL) {
+    memory_pool_t pool = atomic_load(&g_attention_pool);
+    if (pool != NULL) {
+        return pool;
+    }
+
+    /* Use spinlock to ensure only one thread creates the pool */
+    while (atomic_flag_test_and_set(&g_pool_init_flag)) {
+        /* Another thread is initializing - wait */
+    }
+
+    /* Double-check after acquiring lock */
+    pool = atomic_load(&g_attention_pool);
+    if (pool == NULL) {
         memory_pool_config_t config = memory_pool_default_config(
             ATTENTION_POOL_BLOCK_SIZE, ATTENTION_POOL_NUM_BLOCKS);
-        g_attention_pool = memory_pool_create(&config);
+        pool = memory_pool_create(&config);
+        atomic_store(&g_attention_pool, pool);
     }
-    return g_attention_pool;
+
+    atomic_flag_clear(&g_pool_init_flag);
+    return pool;
 }
 
 /**
  * @brief Allocate workspace buffer from pool or heap
+ *
+ * P1 fix: Falls back to heap allocation if pool acquisition fails
+ * WHY:  Prevents unnecessary failures under high concurrent load
  */
 static void* alloc_attention_buffer(size_t size) {
     if (size <= ATTENTION_POOL_BLOCK_SIZE) {
@@ -83,6 +106,7 @@ static void* alloc_attention_buffer(size_t size) {
         if (pool) {
             void* buf = memory_pool_acquire(pool);
             if (buf) return buf;
+            /* Fall through to heap allocation if pool exhausted */
         }
     }
     return nimcp_malloc(size);
@@ -90,10 +114,12 @@ static void* alloc_attention_buffer(size_t size) {
 
 /**
  * @brief Free workspace buffer to pool or heap
+ *
+ * P1 fix: Uses atomic load for thread-safe pool access
  */
 static void free_attention_buffer(void* buf) {
     if (!buf) return;
-    memory_pool_t pool = get_attention_pool();
+    memory_pool_t pool = atomic_load(&g_attention_pool);
     if (pool && memory_pool_owns(pool, buf)) {
         memory_pool_release(pool, buf);
     } else {

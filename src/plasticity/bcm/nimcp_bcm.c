@@ -257,6 +257,15 @@ void bcm_apply_rule(bcm_synapse_t* synapse, float pre_activity, float post_activ
      */
     float new_weight = synapse->weight + delta_w;
 
+    /* P0 fix: Validate numerical stability before weight update
+     * WHY:  NaN/Inf can propagate from inputs, causing weight corruption
+     * HOW:  Skip update if delta_w or new_weight is invalid
+     */
+    if (isnan(new_weight) || isinf(new_weight)) {
+        nimcp_spinlock_unlock(&synapse->lock);
+        return;  /* Skip this update to protect weight integrity */
+    }
+
     /* WHAT: Clamp weight to valid physiological range
      * WHY:  Weights must stay in [0, 1] for biological realism
      * NOTE: Branchless clamp for performance
@@ -335,7 +344,18 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
     /* WHAT: Apply weight update with clamping
      * WHY:  Same as standard BCM, but modulated magnitude
      */
-    synapse->weight = clamp_f(synapse->weight + delta_w, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
+    float new_weight = synapse->weight + delta_w;
+
+    /* P0 fix: Validate numerical stability before weight update
+     * WHY:  NaN/Inf can propagate from inputs, causing weight corruption
+     * HOW:  Skip update if new_weight is invalid
+     */
+    if (isnan(new_weight) || isinf(new_weight)) {
+        nimcp_spinlock_unlock(&synapse->lock);
+        return;  /* Skip this update to protect weight integrity */
+    }
+
+    synapse->weight = clamp_f(new_weight, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
 
     /* WHAT: Update eligibility trace
      * WHY:  Track recent plasticity for delayed reward

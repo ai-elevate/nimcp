@@ -87,6 +87,9 @@ struct executive_controller {
     uint64_t last_switch_time_ms;
     uint32_t next_task_id;
 
+    // Thread safety for task queue operations
+    nimcp_mutex_t task_mutex;       /**< Protect task queue, active_task, num_tasks */
+
     // Inhibition tracking
     uint32_t total_decisions;
 
@@ -637,6 +640,16 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     exec->brain = NULL;  // Initialize to NULL
 
     // =========================================================================
+    // THREAD SAFETY: Initialize task mutex
+    // =========================================================================
+    if (nimcp_mutex_init(&exec->task_mutex, NULL) != 0) {
+        set_error("Failed to initialize task queue mutex");
+        nimcp_free(exec->task_queue);
+        nimcp_free(exec);
+        return NULL;
+    }
+
+    // =========================================================================
     // GLOBAL WORKSPACE: Initialize integration fields
     // =========================================================================
     exec->workspace = NULL;
@@ -895,6 +908,9 @@ void executive_destroy(executive_controller_t* exec)
         exec->quantum_bridge = NULL;
     }
 
+    // Destroy task mutex
+    nimcp_mutex_destroy(&exec->task_mutex);
+
     // Free controller structure
     nimcp_free(exec);
 }
@@ -910,8 +926,14 @@ uint32_t executive_add_task(executive_controller_t* exec, const task_descriptor_
         return 0;
     }
 
+    /* P0 fix: Acquire task mutex to protect shared state access
+     * WHY:  Prevents race conditions when multiple threads add tasks
+     */
+    nimcp_mutex_lock(&exec->task_mutex);
+
     if (exec->num_tasks >= exec->max_tasks) {
         set_error("Task queue full (%u/%u)", exec->num_tasks, exec->max_tasks);
+        nimcp_mutex_unlock(&exec->task_mutex);
         return 0;
     }
 
@@ -919,6 +941,7 @@ uint32_t executive_add_task(executive_controller_t* exec, const task_descriptor_
     task_descriptor_t* new_task = nimcp_malloc(sizeof(task_descriptor_t));
     if (!new_task) {
         set_error("Failed to allocate task (%zu bytes)", sizeof(task_descriptor_t));
+        nimcp_mutex_unlock(&exec->task_mutex);
         return 0;
     }
 
@@ -935,7 +958,9 @@ uint32_t executive_add_task(executive_controller_t* exec, const task_descriptor_
     exec->task_queue[exec->num_tasks++] = new_task;
     exec->stats.total_tasks++;
 
-    return new_task->task_id;
+    uint32_t task_id = new_task->task_id;
+    nimcp_mutex_unlock(&exec->task_mutex);
+    return task_id;
 }
 
 bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint64_t current_time_ms)
@@ -945,6 +970,11 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
         return false;
     }
 
+    /* P0 fix: Acquire task mutex to protect shared state access
+     * WHY:  Prevents race conditions when multiple threads access task queue
+     */
+    nimcp_mutex_lock(&exec->task_mutex);
+
     // Find target task in queue
     task_descriptor_t* target = NULL;
     uint32_t target_index = 0;
@@ -953,6 +983,7 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
     // Check if it's the current active task
     if (exec->active_task && exec->active_task->task_id == task_id) {
         // Already active, no-op
+        nimcp_mutex_unlock(&exec->task_mutex);
         return true;
     }
 
@@ -968,11 +999,13 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
 
     if (!target) {
         set_error("Task %u not found", task_id);
+        nimcp_mutex_unlock(&exec->task_mutex);
         return false;
     }
 
     if (target->status != TASK_STATUS_PENDING && target->status != TASK_STATUS_SUSPENDED) {
         set_error("Cannot switch to task in status %d", target->status);
+        nimcp_mutex_unlock(&exec->task_mutex);
         return false;
     }
 
@@ -1000,11 +1033,16 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
     // REMOVE target from queue (to prevent double-free)
     if (found_in_queue) {
         // Shift remaining tasks down
-        for (uint32_t i = target_index; i < exec->num_tasks - 1; i++) {
-            exec->task_queue[i] = exec->task_queue[i + 1];
+        /* P0 fix: Add bounds check to prevent underflow when num_tasks is 0
+         * WHY:  exec->num_tasks - 1 would underflow to UINT32_MAX if num_tasks == 0
+         */
+        if (exec->num_tasks > 0) {
+            for (uint32_t i = target_index; i < exec->num_tasks - 1; i++) {
+                exec->task_queue[i] = exec->task_queue[i + 1];
+            }
+            exec->task_queue[exec->num_tasks - 1] = NULL;
+            exec->num_tasks--;
         }
-        exec->task_queue[exec->num_tasks - 1] = NULL;
-        exec->num_tasks--;
     }
 
     // Activate new task
@@ -1015,6 +1053,7 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
     }
     exec->last_switch_time_ms = current_time_ms;
 
+    nimcp_mutex_unlock(&exec->task_mutex);
     return true;
 }
 
@@ -1031,8 +1070,14 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
         return false;
     }
 
+    /* P0 fix: Acquire task mutex to protect shared state access
+     * WHY:  Prevents race conditions when completing tasks
+     */
+    nimcp_mutex_lock(&exec->task_mutex);
+
     if (!exec->active_task) {
         set_error("No active task to complete");
+        nimcp_mutex_unlock(&exec->task_mutex);
         return false;
     }
 
@@ -1060,12 +1105,23 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
     // Remove from active
     exec->active_task = NULL;
 
-    // Try to activate next highest priority task
+    // Try to activate next highest priority task (while still holding lock)
+    uint32_t next_task_id = 0;
     if (exec->config.enable_task_prioritization) {
         task_descriptor_t* next = get_highest_priority_task(exec);
         if (next) {
-            executive_switch_task(exec, next->task_id, current_time_ms);
+            next_task_id = next->task_id;
         }
+    }
+
+    /* Release lock before calling executive_switch_task to avoid deadlock
+     * WHY:  executive_switch_task also acquires the task mutex
+     */
+    nimcp_mutex_unlock(&exec->task_mutex);
+
+    // Switch to next task (outside lock to prevent deadlock)
+    if (next_task_id > 0) {
+        executive_switch_task(exec, next_task_id, current_time_ms);
     }
 
     return true;

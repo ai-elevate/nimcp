@@ -180,16 +180,25 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
                 atomic_store(&buffer->read_pos, (read + 1) % buffer->capacity);
                 break;
 
-            case OVERFLOW_BLOCK:
+            case OVERFLOW_BLOCK: {
                 // WHAT: Wait for space in buffer using spin-wait with yield
                 // WHY:  Blocking strategy requires waiting for consumer to free space
                 // HOW:  Busy-wait with sched_yield() to reduce CPU waste
                 // NOTE: This is inefficient compared to condition variables, but maintains
                 //       lock-free design. Consider using semaphores for production use.
+                // P1 fix: Add timeout to prevent infinite blocking if consumer dies
+                uint32_t spin_count = 0;
+                const uint32_t max_spins = 1000000;  /* ~1 second at 1us per spin */
                 while (next_write == atomic_load(&buffer->read_pos)) {
                     sched_yield();  // Yield CPU to allow consumer to run
+                    spin_count++;
+                    if (spin_count >= max_spins) {
+                        buffer->stats.overflows++;  /* Count as overflow */
+                        return false;  /* Timeout - prevent infinite loop */
+                    }
                 }
                 break;
+            }
 
             case OVERFLOW_ERROR:
                 // Report error

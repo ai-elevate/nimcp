@@ -712,6 +712,16 @@ int lnn_gradient_clip(lnn_gradient_ctx_t* ctx, float max_norm) {
     }
 
     float norm = lnn_gradient_norm(ctx);
+
+    /* P0 fix: Validate norm before using in division
+     * WHY:  NaN/Inf norm would propagate through scaling
+     */
+    if (isnan(norm) || isinf(norm)) {
+        NIMCP_LOGGING_WARN("Gradient norm is invalid (NaN/Inf), zeroing gradients");
+        nimcp_tensor_mul_scalar_(ctx->grad_params, 0.0f);  /* Zero by multiplying by 0 */
+        return LNN_ERROR_OPERATION_FAILED;
+    }
+
     if (norm > max_norm) {
         float scale = max_norm / norm;
         nimcp_tensor_mul_scalar_(ctx->grad_params, scale);

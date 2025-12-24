@@ -692,15 +692,21 @@ int lnn_layer_backward(lnn_layer_t* layer, const nimcp_tensor_t* upstream_grad)
 
     for (uint32_t j = 0; j < n; j++) {
         float tau_j = tau_data[j];
-        /* Guard against gradient explosion from small tau values
-         * Use tau_safe to ensure tau >= 1e-4 before squaring
-         * This prevents tau_sq from becoming too small (e.g., tau=1e-4 gives tau_sq=1e-8)
+        /* Guard against gradient explosion from small tau values (P0 fix)
+         * Use conservative epsilon of 0.01 to prevent extreme gradients
+         * This prevents tau_sq from becoming too small (e.g., tau=0.01 gives tau_sq=1e-4)
          */
-        float tau_safe = fmaxf(tau_j, 1e-4f);
+        float tau_safe = fmaxf(tau_j, 0.01f);
         float tau_sq = tau_safe * tau_safe;
 
         /* ∂L/∂tau = upstream * x / tau^2 (decay term gradient) */
         float grad_tau = upstream_data[j] * x_data[j] / tau_sq;
+
+        /* P0 fix: Check for NaN/Inf in gradient */
+        if (isnan(grad_tau) || isinf(grad_tau)) {
+            grad_tau = 0.0f;  /* Skip corrupted gradient */
+            continue;
+        }
 
         /* For simplified tau: tau = tau_base * sigmoid(...)
          * ∂tau/∂tau_base ≈ sigmoid(...) ≈ tau / tau_base
@@ -708,7 +714,10 @@ int lnn_layer_backward(lnn_layer_t* layer, const nimcp_tensor_t* upstream_grad)
          */
         float tau_base_j = ((float*)nimcp_tensor_data(layer->tau_base))[j];
         if (tau_base_j > 1e-6f) {
-            grad_tau_base_data[j] += grad_tau * (tau_j / tau_base_j);
+            float grad_update = grad_tau * (tau_j / tau_base_j);
+            if (!isnan(grad_update) && !isinf(grad_update)) {
+                grad_tau_base_data[j] += grad_update;
+            }
         }
     }
 

@@ -175,10 +175,20 @@ void feature_extractor_destroy(feature_extractor_t extractor) {
     }
 
     nimcp_platform_mutex_destroy(&extractor->mutex);
-    memory_pool_destroy(extractor->rate_signal_pool);
-    nimcp_free(extractor->rate_buffer);
-    nimcp_free(extractor->isi_buffer);
-    nimcp_free(extractor->count_buffer);
+
+    /* P1 fix: Add NULL checks before destroying sub-resources */
+    if (extractor->rate_signal_pool) {
+        memory_pool_destroy(extractor->rate_signal_pool);
+    }
+    if (extractor->rate_buffer) {
+        nimcp_free(extractor->rate_buffer);
+    }
+    if (extractor->isi_buffer) {
+        nimcp_free(extractor->isi_buffer);
+    }
+    if (extractor->count_buffer) {
+        nimcp_free(extractor->count_buffer);
+    }
 
     // Destroy quantum bridge
     if (extractor->quantum_bridge) {
@@ -479,17 +489,36 @@ bool feature_extractor_compute_oscillation_power(
         return true;
     }
 
-    // Use memory pool for rate signal (1.13x faster than malloc)
-    float* rate_signal = (float*)memory_pool_acquire(extractor->rate_signal_pool);
+    /* P1 fix: Use memory pool with heap fallback for rate signal
+     * WHY:  Pool exhaustion should not cause unnecessary failures
+     */
+    bool from_pool = false;
+    float* rate_signal = NULL;
+
+    if (extractor->rate_signal_pool) {
+        rate_signal = (float*)memory_pool_acquire(extractor->rate_signal_pool);
+        if (rate_signal) {
+            from_pool = true;
+        }
+    }
+
+    /* Fallback to heap allocation if pool exhausted or unavailable */
     if (!rate_signal) {
-        return false;
+        rate_signal = (float*)nimcp_malloc(num_bins * sizeof(float));
+        if (!rate_signal) {
+            return false;
+        }
     }
 
     // Zero only the bins we need (not the full pool buffer)
     memset(rate_signal, 0, num_bins * sizeof(float));
 
     if (!build_rate_signal(spike_data, rate_signal, num_bins)) {
-        memory_pool_release(extractor->rate_signal_pool, rate_signal);
+        if (from_pool) {
+            memory_pool_release(extractor->rate_signal_pool, rate_signal);
+        } else {
+            nimcp_free(rate_signal);
+        }
         return false;
     }
 
@@ -502,8 +531,12 @@ bool feature_extractor_compute_oscillation_power(
 
     normalize_band_powers(band_powers, delta_power, theta_power, alpha_power, beta_power, gamma_power);
 
-    // Release back to pool (no free!)
-    memory_pool_release(extractor->rate_signal_pool, rate_signal);
+    /* Release back to pool or free heap allocation */
+    if (from_pool) {
+        memory_pool_release(extractor->rate_signal_pool, rate_signal);
+    } else {
+        nimcp_free(rate_signal);
+    }
     return true;
 }
 

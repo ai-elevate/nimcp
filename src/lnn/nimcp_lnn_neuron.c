@@ -643,10 +643,11 @@ int lnn_neuron_accumulate_gradients(lnn_neuron_t* neuron,
     /* Gradient w.r.t. tau parameters (simplified) */
     /* ∂L/∂τ = ∂L/∂x * x/τ² */
     /* Guard: prevent gradient explosion from small tau values
-     * Use tau_safe to ensure tau >= 1e-4 before squaring
-     * This prevents tau_sq from becoming too small (e.g., tau=1e-4 gives tau_sq=1e-8)
+     * Use adaptive epsilon based on tau_min configuration (P0 fix)
+     * This prevents tau_sq from becoming too small relative to configured range
      */
-    float tau_safe = fmaxf(tau, 1e-4f);
+    float tau_epsilon = fmaxf(1e-4f, neuron->tau_min * 0.01f);
+    float tau_safe = fmaxf(tau, tau_epsilon);
     float tau_sq = tau_safe * tau_safe;
     float grad_tau = upstream_grad * neuron->x / tau_sq;
 

@@ -115,15 +115,24 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     /* Thread-safe weight modification */
     nimcp_spinlock_lock(&synapse->lock);
 
+    /* P0 fix: Validate numerical stability before weight update
+     * WHY:  NaN/Inf can propagate and corrupt weights
+     */
+    if (isnan(weight_change) || isinf(weight_change)) {
+        nimcp_spinlock_unlock(&synapse->lock);
+        return 0.0F;  /* Return zero to indicate no valid change */
+    }
+
     if (weight_change < 0.0F) {
         synapse->num_depression_events++;
         synapse->total_ltd += fabsf(weight_change);
     }
 
-    /* Apply weight change */
-    synapse->weight += weight_change;
-    if (synapse->weight < synapse->w_min) synapse->weight = synapse->w_min;
-    if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
+    /* Apply weight change with atomic clamp (P0 fix: single operation to prevent torn reads)
+     * WHY:  Separate update and clamp creates window for unclamped values to be observed
+     */
+    float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + weight_change));
+    synapse->weight = new_weight;
 
     /* Increment presynaptic trace */
     synapse->pre_trace += 1.0F;
@@ -148,15 +157,24 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     /* Thread-safe weight modification */
     nimcp_spinlock_lock(&synapse->lock);
 
+    /* P0 fix: Validate numerical stability before weight update
+     * WHY:  NaN/Inf can propagate and corrupt weights
+     */
+    if (isnan(weight_change) || isinf(weight_change)) {
+        nimcp_spinlock_unlock(&synapse->lock);
+        return 0.0F;  /* Return zero to indicate no valid change */
+    }
+
     if (weight_change > 0.0F) {
         synapse->num_potentiation_events++;
         synapse->total_ltp += weight_change;
     }
 
-    /* Apply weight change */
-    synapse->weight += weight_change;
-    if (synapse->weight < synapse->w_min) synapse->weight = synapse->w_min;
-    if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
+    /* Apply weight change with atomic clamp (P0 fix: single operation to prevent torn reads)
+     * WHY:  Separate update and clamp creates window for unclamped values to be observed
+     */
+    float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + weight_change));
+    synapse->weight = new_weight;
 
     /* Increment postsynaptic trace */
     synapse->post_trace += 1.0F;
@@ -203,6 +221,14 @@ float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
     /* Thread-safe weight modification */
     nimcp_spinlock_lock(&synapse->lock);
 
+    /* P0 fix: Validate numerical stability before weight update
+     * WHY:  NaN/Inf can propagate and corrupt weights
+     */
+    if (isnan(modulated_weight_change) || isinf(modulated_weight_change)) {
+        nimcp_spinlock_unlock(&synapse->lock);
+        return 0.0F;  /* Return zero to indicate no valid change */
+    }
+
     /* Update statistics */
     if (modulated_weight_change > 0.0F) {
         synapse->num_potentiation_events++;
@@ -212,12 +238,9 @@ float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
         synapse->total_ltd += fabsf(modulated_weight_change);
     }
 
-    /* Apply weight change */
-    synapse->weight += modulated_weight_change;
-
-    /* Clamp to [w_min, w_max] */
-    if (synapse->weight < synapse->w_min) synapse->weight = synapse->w_min;
-    if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
+    /* Apply weight change with atomic clamp (P0 fix: single operation to prevent torn reads) */
+    float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + modulated_weight_change));
+    synapse->weight = new_weight;
 
     nimcp_spinlock_unlock(&synapse->lock);
 

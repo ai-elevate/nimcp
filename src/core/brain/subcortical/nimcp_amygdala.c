@@ -136,10 +136,23 @@ static void update_nucleus_activation(amyg_nucleus_t* nucleus,
     /* Activation dynamics (simple exponential approach) */
     float tau = AMYG_ACTIVATION_TAU_MS;
     float target = clamp01(nucleus->baseline + modulated_input);
+
+    /* P2 fix: Validate dt_ms to prevent NaN/Inf from expf */
+    if (dt_ms <= 0.0f || dt_ms > 10000.0f) {
+        dt_ms = 1.0f;  /* Default to 1ms if invalid */
+    }
+    if (tau <= 0.0f) {
+        tau = 1.0f;  /* Prevent division by zero */
+    }
+
     float alpha = 1.0f - expf(-dt_ms / tau);
 
-    nucleus->activation = nucleus->activation + alpha * (target - nucleus->activation);
-    nucleus->activation = clamp01(nucleus->activation);
+    /* Check for NaN before updating activation */
+    float new_activation = nucleus->activation + alpha * (target - nucleus->activation);
+    if (isnan(new_activation) || isinf(new_activation)) {
+        new_activation = nucleus->baseline;  /* Reset to baseline if corrupted */
+    }
+    nucleus->activation = clamp01(new_activation);
 }
 
 /**
