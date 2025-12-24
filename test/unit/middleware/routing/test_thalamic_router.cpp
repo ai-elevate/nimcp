@@ -342,8 +342,9 @@ TEST_F(ThalamicRouterTest, ProcessQueue_Success) {
     EXPECT_EQ(num_processed, 1);
 
     // Signal should be delivered now
-    EXPECT_EQ(ctx.call_count, 1);
+    ASSERT_EQ(ctx.call_count, 1);  // Use ASSERT to prevent segfault on null access
     EXPECT_EQ(ctx.dest_id_received, 100);
+    ASSERT_NE(ctx.signal_received, nullptr);
     EXPECT_FLOAT_EQ(ctx.signal_received[0], 5.0f);
 
     thalamic_router_free_signal(signal);
@@ -411,7 +412,8 @@ TEST_F(ThalamicRouterTest, ProcessQueue_Success_PriorityOrder) {
     thalamic_router_process_queue(router, 1, &num_processed);
 
     // Should receive normal priority first (2.0f, not 1.0f)
-    EXPECT_EQ(ctx.call_count, 1);
+    ASSERT_EQ(ctx.call_count, 1);
+    ASSERT_NE(ctx.signal_received, nullptr);
     EXPECT_FLOAT_EQ(ctx.signal_received[0], 2.0f);
 
     thalamic_router_free_signal(sig_low);
@@ -487,9 +489,10 @@ TEST_F(ThalamicRouterTest, Callback_Invoked_OnSignalDelivery) {
 
     thalamic_router_route_signal(router, signal);
 
-    EXPECT_EQ(ctx.call_count, 1);
+    ASSERT_EQ(ctx.call_count, 1);
     EXPECT_EQ(ctx.dest_id_received, 100);
     EXPECT_EQ(ctx.size_received, 2);
+    ASSERT_NE(ctx.signal_received, nullptr);
     EXPECT_FLOAT_EQ(ctx.signal_received[0], 3.14f);
     EXPECT_FLOAT_EQ(ctx.signal_received[1], 2.71f);
 
@@ -582,6 +585,8 @@ TEST_F(ThalamicRouterTest, Attention_ModulatesSignal) {
     thalamic_router_route_signal(router, signal);
 
     // Signal scaled by attention (MIXED mode: 0.5 * topdown_weight=0.7 = 0.35)
+    ASSERT_EQ(ctx.call_count, 1);
+    ASSERT_NE(ctx.signal_received, nullptr);
     EXPECT_FLOAT_EQ(ctx.signal_received[0], 3.5f);  // 10.0 * 0.35
     EXPECT_FLOAT_EQ(ctx.attention_received, 0.35f);
 
@@ -630,6 +635,8 @@ TEST_F(ThalamicRouterTest, Attention_DisabledConfig) {
     thalamic_router_route_signal(router, signal);
 
     // Without gating, signal should be unmodulated
+    ASSERT_EQ(ctx.call_count, 1);
+    ASSERT_NE(ctx.signal_received, nullptr);
     EXPECT_FLOAT_EQ(ctx.signal_received[0], 10.0f);
 
     thalamic_router_free_signal(signal);
@@ -892,6 +899,8 @@ TEST_F(ThalamicRouterTest, Regression_CombinedAttention_SignalAndGate) {
 
     // Combined: signal_weight * gate_weight (MIXED mode: 0.5 * 0.7 = 0.35)
     // Total: 0.8 * 0.35 = 0.28, Signal: 10.0 * 0.28 = 2.8
+    ASSERT_EQ(ctx.call_count, 1);
+    ASSERT_NE(ctx.signal_received, nullptr);
     EXPECT_TRUE(FloatEquals(ctx.signal_received[0], 2.8f, 0.01f));
     EXPECT_TRUE(FloatEquals(ctx.attention_received, 0.28f, 0.01f));
 

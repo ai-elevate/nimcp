@@ -66,6 +66,7 @@ struct thalamic_router {
     queued_signal_t* queue;
     uint32_t queue_capacity;
     uint32_t queue_size;
+    nimcp_mutex_t* queue_mutex;           /**< Mutex for thread-safe queue access */
 
     // Delivery callbacks
     delivery_registration_t* callbacks;
@@ -110,8 +111,16 @@ static void init_stats(routing_stats_t* stats) {
 }
 
 static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* signal) {
+    // Lock mutex for thread-safe queue access
+    if (router->queue_mutex) {
+        nimcp_mutex_lock(router->queue_mutex);
+    }
+
     if (router->queue_size >= router->queue_capacity) {
         router->stats.signals_dropped++;
+        if (router->queue_mutex) {
+            nimcp_mutex_unlock(router->queue_mutex);
+        }
         return false;
     }
 
@@ -122,7 +131,12 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         signal->dest_ids, signal->num_dests,
         signal->signal_data, signal->signal_size);
 
-    if (!qs->wrapper) return false;
+    if (!qs->wrapper) {
+        if (router->queue_mutex) {
+            nimcp_mutex_unlock(router->queue_mutex);
+        }
+        return false;
+    }
 
     // Copy metadata (small, fixed-size)
     qs->source_id = signal->source_id;
@@ -143,6 +157,11 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         } else {
             break;
         }
+    }
+
+    // Unlock mutex
+    if (router->queue_mutex) {
+        nimcp_mutex_unlock(router->queue_mutex);
     }
 
     return true;
@@ -212,8 +231,29 @@ static bool apply_quantum_routing(thalamic_router_t* router,
         num_filtered
     );
 
-    if (result < 0) {
-        LOG_WARN(LOG_MODULE, "Quantum routing failed, using classical fallback");
+    /* Check if we need to fall back to classical routing:
+     * 1. Quantum routing failed (result < 0)
+     * 2. Quantum returned no destinations (*num_filtered == 0)
+     * 3. Threshold is 0.0 (expect all destinations) but quantum filtered some
+     */
+    bool needs_fallback = (result < 0) || (*num_filtered == 0);
+
+    /* If min_attention_threshold is 0.0, we expect all destinations to pass.
+     * If quantum routing didn't return all, fall back to classical. */
+    if (!needs_fallback && router->config.min_attention_threshold == 0.0f) {
+        if (*num_filtered < num_dests) {
+            LOG_DEBUG(LOG_MODULE, "Quantum routing filtered %u/%u with threshold=0, using classical",
+                      *num_filtered, num_dests);
+            needs_fallback = true;
+        }
+    }
+
+    if (needs_fallback) {
+        if (result < 0) {
+            LOG_WARN(LOG_MODULE, "Quantum routing failed, using classical fallback");
+        } else if (*num_filtered == 0) {
+            LOG_DEBUG(LOG_MODULE, "Quantum routing returned 0 destinations, using classical fallback");
+        }
         memcpy(filtered_dests, dest_ids, num_dests * sizeof(uint32_t));
         *num_filtered = num_dests;
         return false;
@@ -389,6 +429,14 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
 
     router->queue_size = 0;
 
+    // Initialize queue mutex for thread safety
+    router->queue_mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!router->queue_mutex) {
+        thalamic_router_destroy(router);
+        return NULL;
+    }
+    nimcp_mutex_init(router->queue_mutex, NULL);
+
     // Allocate callback storage
     router->callbacks = (delivery_registration_t*)nimcp_calloc(MAX_DESTINATIONS,
                                                          sizeof(delivery_registration_t));
@@ -491,6 +539,13 @@ void thalamic_router_destroy(thalamic_router_t* router) {
         nimcp_free(router->queue);
     }
 
+    // Destroy queue mutex
+    if (router->queue_mutex) {
+        nimcp_mutex_destroy(router->queue_mutex);
+        nimcp_free(router->queue_mutex);
+        router->queue_mutex = NULL;
+    }
+
     nimcp_free(router->callbacks);
 
     attention_gate_destroy(router->attention_gate);
@@ -569,6 +624,11 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
 
     uint32_t processed = 0;
 
+    // Lock mutex for thread-safe queue access
+    if (router->queue_mutex) {
+        nimcp_mutex_lock(router->queue_mutex);
+    }
+
     while (processed < max_signals && router->queue_size > 0) {
         // Dequeue highest priority (front of queue)
         queued_signal_t* qs = &router->queue[0];
@@ -601,6 +661,11 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
     }
 
     router->stats.queue_depth = router->queue_size;
+
+    // Unlock mutex
+    if (router->queue_mutex) {
+        nimcp_mutex_unlock(router->queue_mutex);
+    }
 
     // Update throughput
     double elapsed = current_time - router->last_process_time_ms;
@@ -673,6 +738,11 @@ void thalamic_router_reset_stats(thalamic_router_t* router) {
 void thalamic_router_clear_queue(thalamic_router_t* router) {
     if (!router) return;
 
+    // Lock mutex for thread-safe queue access
+    if (router->queue_mutex) {
+        nimcp_mutex_lock(router->queue_mutex);
+    }
+
     // Release all queued wrappers
     for (uint32_t i = 0; i < router->queue_size; i++) {
         signal_wrapper_release(router->queue[i].wrapper);
@@ -680,6 +750,11 @@ void thalamic_router_clear_queue(thalamic_router_t* router) {
 
     router->queue_size = 0;
     router->stats.queue_depth = 0;
+
+    // Unlock mutex
+    if (router->queue_mutex) {
+        nimcp_mutex_unlock(router->queue_mutex);
+    }
 }
 
 routed_signal_t* thalamic_router_create_signal(uint32_t source_id,
