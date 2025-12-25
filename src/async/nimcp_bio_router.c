@@ -723,6 +723,10 @@ void bio_router_unregister_module(bio_module_context_t ctx) {
     // Destroy inbox
     bio_msg_queue_destroy(&entry->inbox);
 
+    // Clear all handlers to prevent accumulation on re-registration
+    entry->handler_count = 0;
+    memset(entry->handlers, 0, sizeof(entry->handlers));
+
     // Destroy handler mutex
     nimcp_platform_mutex_destroy(&entry->handler_mutex);
 
@@ -768,12 +772,20 @@ nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
         return -1;
     }
 
-    // Check for duplicate
+    // Check for duplicate - if same handler already registered, succeed silently (idempotent)
     for (uint32_t i = 0; i < entry->handler_count; i++) {
         if (entry->handlers[i].msg_type == msg_type &&
             !entry->handlers[i].is_category_handler) {
+            // If same handler function, just succeed (idempotent re-registration)
+            if (entry->handlers[i].handler == handler) {
+                nimcp_platform_mutex_unlock(&entry->handler_mutex);
+                LOG_DEBUG("Handler for message type 0x%04X already registered in module %s (same handler)",
+                          msg_type, entry->module_name);
+                return NIMCP_SUCCESS;
+            }
+            // Different handler for same type - this is a conflict
             nimcp_platform_mutex_unlock(&entry->handler_mutex);
-            LOG_WARN("Handler for message type 0x%04X already registered in module %s",
+            LOG_WARN("Handler for message type 0x%04X already registered in module %s (different handler)",
                      msg_type, entry->module_name);
             return -1;
         }
@@ -812,6 +824,23 @@ nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
         return -1;
     }
 
+    // Check for duplicate category handler - if same handler already registered, succeed silently
+    for (uint32_t i = 0; i < entry->handler_count; i++) {
+        if (entry->handlers[i].msg_type == category_base &&
+            entry->handlers[i].is_category_handler) {
+            if (entry->handlers[i].handler == handler) {
+                nimcp_platform_mutex_unlock(&entry->handler_mutex);
+                LOG_DEBUG("Category handler for 0x%04X already registered in module %s (same handler)",
+                          category_base, entry->module_name);
+                return NIMCP_SUCCESS;
+            }
+            nimcp_platform_mutex_unlock(&entry->handler_mutex);
+            LOG_WARN("Category handler for 0x%04X already registered in module %s (different handler)",
+                     category_base, entry->module_name);
+            return -1;
+        }
+    }
+
     // Add category handler
     bio_handler_entry_t* h = &entry->handlers[entry->handler_count];
     h->msg_type = category_base;
@@ -825,6 +854,62 @@ nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
 
     LOG_DEBUG("Registered category handler for 0x%04X in module %s",
               category_base, entry->module_name);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t bio_router_unregister_handler(bio_module_context_t ctx,
+                                             bio_message_type_t msg_type) {
+    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return -1;
+
+    bio_module_entry_t* entry = ctx->entry;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) return -1;
+
+    nimcp_platform_mutex_lock(&entry->handler_mutex);
+
+    // Find handler for this message type
+    bool found = false;
+    for (uint32_t i = 0; i < entry->handler_count; i++) {
+        if (entry->handlers[i].msg_type == msg_type &&
+            !entry->handlers[i].is_category_handler) {
+            // Found it - shift remaining handlers down
+            for (uint32_t j = i; j < entry->handler_count - 1; j++) {
+                entry->handlers[j] = entry->handlers[j + 1];
+            }
+            entry->handler_count--;
+            found = true;
+            break;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&entry->handler_mutex);
+
+    if (found) {
+        LOG_DEBUG("Unregistered handler for message type 0x%04X in module %s",
+                  msg_type, entry->module_name);
+        return NIMCP_SUCCESS;
+    } else {
+        LOG_WARN("Handler for message type 0x%04X not found in module %s",
+                 msg_type, entry->module_name);
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+}
+
+nimcp_error_t bio_router_clear_handlers(bio_module_context_t ctx) {
+    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return -1;
+
+    bio_module_entry_t* entry = ctx->entry;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) return -1;
+
+    nimcp_platform_mutex_lock(&entry->handler_mutex);
+
+    uint32_t old_count = entry->handler_count;
+    entry->handler_count = 0;
+    memset(entry->handlers, 0, sizeof(entry->handlers));
+
+    nimcp_platform_mutex_unlock(&entry->handler_mutex);
+
+    LOG_DEBUG("Cleared %u handlers from module %s", old_count, entry->module_name);
 
     return NIMCP_SUCCESS;
 }

@@ -61,10 +61,17 @@ extern "C" {
  * WHY:  posix_memalign() requires alignment to be power of 2 and >= sizeof(void*)
  *       Invalid alignment causes undefined behavior or allocation failures.
  */
+#ifdef __cplusplus
+static_assert((NIMCP_TENSOR_ALIGN & (NIMCP_TENSOR_ALIGN - 1)) == 0,
+              "NIMCP_TENSOR_ALIGN must be a power of 2");
+static_assert(NIMCP_TENSOR_ALIGN >= sizeof(void*),
+              "NIMCP_TENSOR_ALIGN must be >= sizeof(void*)");
+#else
 _Static_assert((NIMCP_TENSOR_ALIGN & (NIMCP_TENSOR_ALIGN - 1)) == 0,
                "NIMCP_TENSOR_ALIGN must be a power of 2");
 _Static_assert(NIMCP_TENSOR_ALIGN >= sizeof(void*),
                "NIMCP_TENSOR_ALIGN must be >= sizeof(void*)");
+#endif
 
 /** Magic number for validation */
 #define NIMCP_TENSOR_MAGIC 0x54454E53  /* "TENS" */

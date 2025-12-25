@@ -219,6 +219,30 @@ nimcp_error_t bio_router_register_category_handler(
     bio_message_handler_t handler
 );
 
+/**
+ * @brief Unregister handler for specific message type
+ *
+ * @param ctx Module context
+ * @param msg_type Message type to unregister
+ * @return NIMCP_SUCCESS or error if not found
+ */
+nimcp_error_t bio_router_unregister_handler(
+    bio_module_context_t ctx,
+    bio_message_type_t msg_type
+);
+
+/**
+ * @brief Clear all handlers for a module
+ *
+ * WHAT: Remove all registered handlers from module
+ * WHY:  Clean slate for re-registration (prevents handler accumulation)
+ * HOW:  Reset handler_count to zero
+ *
+ * @param ctx Module context
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_router_clear_handlers(bio_module_context_t ctx);
+
 /*=============================================================================
  * MESSAGE SENDING API
  *============================================================================*/
