@@ -358,7 +358,9 @@ TEST_F(HeterosynapticTest, WinnerTakeAllDepressesLosers) {
     float weight2_before = hetero_get_synapse(system, 2)->weight;
     float weight3_before = hetero_get_synapse(system, 3)->weight;
 
-    hetero_spatial_coords_t center = {5.0f, 0.0f, 0.0f};
+    /* Use center offset from all synapse positions to include all in competition
+     * (hetero_find_neighbors excludes synapses at distance 0) */
+    hetero_spatial_coords_t center = {4.0f, 0.0f, 0.0f};
     hetero_competition_result_t result;
     hetero_winner_take_all(system, &center, 15.0f, &result);
 
@@ -410,6 +412,9 @@ TEST_F(HeterosynapticTest, SleepModulatesDepressionFactor) {
     /* WHAT: Test sleep state reduces competition
      * WHY:  Consolidation requires reduced pruning
      */
+    /* Need at least one synapse - sleep modulation uses first synapse's state */
+    add_synapse_at(0.0f, 0.0f, 0.0f, 0.5f, 1);
+
     float base_factor = 0.4f;
 
     /* Awake: full competition */
