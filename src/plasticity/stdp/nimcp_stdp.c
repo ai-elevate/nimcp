@@ -303,6 +303,14 @@ void stdp_set_sleep_state(stdp_synapse_t* synapse, sleep_state_t state) {
      * HOW:  Set current_sleep_state field, will be queried during next spike
      */
     if (!synapse) return;
+
+    /* P2 fix: Validate sleep state bounds to prevent array index overflow
+     * WHY:  Sleep bridge uses state as array index; invalid state = UB
+     */
+    if (state < SLEEP_STATE_AWAKE || state > SLEEP_STATE_REM) {
+        LOG_WARN("Invalid sleep state %d, defaulting to AWAKE", (int)state);
+        state = SLEEP_STATE_AWAKE;
+    }
     synapse->current_sleep_state = state;
 }
 

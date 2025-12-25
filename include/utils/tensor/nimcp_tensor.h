@@ -57,6 +57,15 @@ extern "C" {
 /** Default memory alignment */
 #define NIMCP_TENSOR_ALIGN 64
 
+/* P2 fix: Compile-time verification that alignment is power of 2
+ * WHY:  posix_memalign() requires alignment to be power of 2 and >= sizeof(void*)
+ *       Invalid alignment causes undefined behavior or allocation failures.
+ */
+_Static_assert((NIMCP_TENSOR_ALIGN & (NIMCP_TENSOR_ALIGN - 1)) == 0,
+               "NIMCP_TENSOR_ALIGN must be a power of 2");
+_Static_assert(NIMCP_TENSOR_ALIGN >= sizeof(void*),
+               "NIMCP_TENSOR_ALIGN must be >= sizeof(void*)");
+
 /** Magic number for validation */
 #define NIMCP_TENSOR_MAGIC 0x54454E53  /* "TENS" */
 

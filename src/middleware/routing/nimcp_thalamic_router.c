@@ -117,7 +117,10 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
     }
 
     if (router->queue_size >= router->queue_capacity) {
-        router->stats.signals_dropped++;
+        /* P2 fix: Use saturation for stats counter */
+        if (router->stats.signals_dropped < UINT64_MAX) {
+            router->stats.signals_dropped++;
+        }
         if (router->queue_mutex) {
             nimcp_mutex_unlock(router->queue_mutex);
         }
@@ -575,7 +578,12 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
         return false;
     }
 
-    router->total_signal_count++;
+    /* P2 fix: Use saturation to prevent theoretical overflow after 2^64 signals
+     * WHY:  Wraparound would reset stats, corrupting historical metrics
+     */
+    if (router->total_signal_count < UINT64_MAX) {
+        router->total_signal_count++;
+    }
 
     // High priority or bypass flag: deliver immediately
     if (signal->bypass_queue ||
@@ -584,8 +592,13 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
         bool delivered = deliver_signal(router, signal);
 
         if (delivered) {
-            router->stats.signals_routed++;
-            router->stats.signals_bypassed++;
+            /* P2 fix: Use saturation for stats counters */
+            if (router->stats.signals_routed < UINT64_MAX) {
+                router->stats.signals_routed++;
+            }
+            if (router->stats.signals_bypassed < UINT64_MAX) {
+                router->stats.signals_bypassed++;
+            }
 
             // Update routing table (Hebbian learning)
             if (router->config.enable_learning) {
@@ -690,7 +703,10 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
             if (router->queue_mutex) {
                 nimcp_mutex_lock(router->queue_mutex);
             }
-            router->stats.signals_routed++;
+            /* P2 fix: Use saturation for stats counter */
+            if (router->stats.signals_routed < UINT64_MAX) {
+                router->stats.signals_routed++;
+            }
 
             /* Update latency statistics */
             double latency = current_time - enqueue_time_ms;

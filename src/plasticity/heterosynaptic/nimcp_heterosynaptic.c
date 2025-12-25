@@ -333,7 +333,11 @@ hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_i
  * Spatial Query API Implementation
  * ============================================================================ */
 
-float hetero_compute_distance(
+/* P2 fix: Add squared distance function to avoid expensive sqrtf in hot path
+ * WHY:  sqrtf is ~10x slower than arithmetic. When comparing to threshold,
+ *       d <= r is equivalent to d² <= r², avoiding the sqrt entirely.
+ */
+static inline float hetero_compute_distance_squared(
     const hetero_spatial_coords_t* pos1,
     const hetero_spatial_coords_t* pos2)
 {
@@ -343,7 +347,16 @@ float hetero_compute_distance(
     float dy = pos1->y - pos2->y;
     float dz = pos1->z - pos2->z;
 
-    return sqrtf(dx * dx + dy * dy + dz * dz);
+    return dx * dx + dy * dy + dz * dz;
+}
+
+float hetero_compute_distance(
+    const hetero_spatial_coords_t* pos1,
+    const hetero_spatial_coords_t* pos2)
+{
+    if (!pos1 || !pos2) return 0.0f;
+
+    return sqrtf(hetero_compute_distance_squared(pos1, pos2));
 }
 
 float hetero_compute_depression_factor(
@@ -370,12 +383,14 @@ int hetero_find_neighbors(
     *num_found = 0;
     float radius_sq = radius * radius;
 
-    /* Linear search through all synapses */
+    /* Linear search through all synapses
+     * P2 fix: Use squared distance comparison to avoid sqrtf in hot loop
+     */
     for (size_t i = 0; i < system->num_synapses && *num_found < max_neighbors; i++) {
         hetero_synapse_t* syn = &system->synapses[i];
-        float dist = hetero_compute_distance(center_position, &syn->position);
+        float dist_sq = hetero_compute_distance_squared(center_position, &syn->position);
 
-        if (dist <= radius && dist > 0.0f) {  /* Exclude self (dist=0) */
+        if (dist_sq <= radius_sq && dist_sq > 0.0f) {  /* Exclude self (dist_sq=0) */
             neighbors[*num_found] = syn;
             (*num_found)++;
         }

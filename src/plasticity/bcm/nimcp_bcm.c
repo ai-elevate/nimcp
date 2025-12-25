@@ -547,17 +547,20 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
 
     /* WHAT: Accumulate sums for mean computation
      * WHY:  Single pass for efficiency
+     * P2 fix: Use double for accumulators to prevent precision loss
+     *         with large synapse counts (float has 24-bit mantissa,
+     *         double has 53-bit mantissa - handles ~10^15 synapses accurately)
      */
-    float sum_weight = 0.0F;
-    float sum_threshold = 0.0F;
-    float sum_weight_squared = 0.0F;
+    double sum_weight = 0.0;
+    double sum_threshold = 0.0;
+    double sum_weight_squared = 0.0;
 
     for (uint32_t i = 0; i < num_synapses; i++) {
         const bcm_synapse_t* syn = &synapses[i];
 
-        sum_weight += syn->weight;
-        sum_threshold += syn->threshold;
-        sum_weight_squared += syn->weight * syn->weight;
+        sum_weight += (double)syn->weight;
+        sum_threshold += (double)syn->threshold;
+        sum_weight_squared += (double)(syn->weight * syn->weight);
 
         /* WHAT: Count LTP vs LTD events (approximate)
          * WHY:  Balance indicates learning dynamics
@@ -572,17 +575,19 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
 
     /* WHAT: Compute averages
      * WHY:  Mean weight and threshold indicate population state
+     * P2 fix: Cast back to float after division for storage
      */
-    stats->avg_weight = sum_weight / num_synapses;
-    stats->avg_threshold = sum_threshold / num_synapses;
+    stats->avg_weight = (float)(sum_weight / (double)num_synapses);
+    stats->avg_threshold = (float)(sum_threshold / (double)num_synapses);
 
     /* WHAT: Compute weight variance
      * WHY:  Variance indicates weight distribution spread
      * FORMULA: Var(w) = E[w²] - E[w]²
+     * P2 fix: Use double for intermediate calculation to preserve precision
      */
-    float mean_squared = stats->avg_weight * stats->avg_weight;
-    float mean_of_squares = sum_weight_squared / num_synapses;
-    stats->weight_variance = mean_of_squares - mean_squared;
+    double mean_squared = (double)stats->avg_weight * (double)stats->avg_weight;
+    double mean_of_squares = sum_weight_squared / (double)num_synapses;
+    stats->weight_variance = (float)(mean_of_squares - mean_squared);
 
     /* WHAT: Record total update count (per synapse basis)
      * WHY:  Indicates total plasticity activity

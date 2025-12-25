@@ -67,6 +67,13 @@
 #define MIN_CAPACITY 1
 #define MAX_CAPACITY 32  // Pathological cases beyond 7±2
 
+/* P2 fix: Minimum exponent for expf() to prevent underflow to 0
+ * WHY:  expf(-88.7) ≈ 0 due to float underflow. Clamping to -80 ensures
+ *       meaningful decay factor (≈10^-35) while avoiding numerical issues.
+ * BIO:  Items untouched for very long should decay to threshold, not 0.
+ */
+#define MIN_DECAY_EXPONENT (-80.0F)
+
 // ============================================================================
 // INTERNAL STRUCTURE
 // ============================================================================
@@ -1304,7 +1311,12 @@ uint32_t working_memory_decay(
         uint64_t elapsed_ms = current_time_ms - wm->timestamps[i];
 
         // Apply exponential decay with sleep-modulated rate: s_new = s_old × exp(-t×decay_rate/τ)
-        float decay_factor = expf(-(float)elapsed_ms * decay_rate_modulation / wm->decay_tau_ms);
+        // P2 fix: Clamp exponent to prevent underflow to exactly 0
+        float exponent = -(float)elapsed_ms * decay_rate_modulation / wm->decay_tau_ms;
+        if (exponent < MIN_DECAY_EXPONENT) {
+            exponent = MIN_DECAY_EXPONENT;
+        }
+        float decay_factor = expf(exponent);
         wm->salience[i] *= decay_factor;
 
         // Remove if below threshold
