@@ -21,7 +21,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
-#include "cognitive/ethics/nimcp_core_directives.h"
+// core/directives/nimcp_core_directives.h is included via nimcp_brain_internal.h
 #include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "BRAIN_INIT_CORE_DIRECTIVES"
@@ -51,30 +51,29 @@ bool nimcp_brain_factory_init_core_directives_subsystem(brain_t brain) {
         return true;  /* Not an error - just not needed */
     }
 
-    /* Create directives configuration */
+    /* Create directives configuration using core/directives version */
+    /* WHAT: Configure the core directives orchestrator with all sub-modules
+     * WHY:  core_directives_default_config() initializes all nested configs
+     * HOW:  Use default config which sets harm_config, command_config, etc. */
     core_directives_config_t dir_config;
     core_directives_default_config(&dir_config);
 
-    /* Configure based on brain settings */
-    dir_config.enable_bio_async = brain->bio_async_enabled;
-    dir_config.enable_immune_integration = brain->immune_enabled;
-    dir_config.enable_fep_integration = (brain->fep_orchestrator != NULL);
+    /* Override specific thresholds if needed */
+    dir_config.harm_config.block_threshold = 0.3f;
+    dir_config.harm_config.warn_threshold = 0.1f;
+    dir_config.harm_config.enable_human_escalation = true;
 
-    /* Enable all ethical layers */
-    dir_config.enable_first_law = true;           // Harm prevention
-    dir_config.enable_second_law = true;          // Obedience (when safe)
-    dir_config.enable_third_law = true;           // Self-preservation
-    dir_config.enable_golden_rule = true;         // Reciprocity
-    dir_config.enable_combinatorial_harm = true;  // Emergent harm detection
+    dir_config.reciprocity_config.symmetry_threshold = 0.7f;
+    dir_config.reciprocity_config.enable_perspective_taking = true;
 
-    /* Set thresholds */
-    dir_config.harm_threshold = 0.3f;
-    dir_config.severity_threshold = 0.5f;
-    dir_config.confidence_threshold = 0.6f;
+    dir_config.combinatorial_config.harm_threshold = 0.7f;
+    dir_config.combinatorial_config.max_pattern_count = 256;
 
-    /* Action history for combinatorial analysis */
-    dir_config.action_history_size = 100;
-    dir_config.max_combination_depth = 5;
+    dir_config.history_config.max_history_size = 100;
+
+    /* Enable all directive checks */
+    dir_config.enable_all_checks = true;
+    dir_config.strict_mode = true;
 
     /* Create core directives system */
     core_directives_system_t* directives = core_directives_create(&dir_config);
@@ -122,7 +121,7 @@ bool nimcp_brain_factory_init_core_directives_subsystem(brain_t brain) {
     NIMCP_LOGGING_INFO("  Asimov's Laws: ENABLED (harm prevention, obedience, self-preservation)");
     NIMCP_LOGGING_INFO("  Golden Rule: ENABLED (reciprocity evaluation)");
     NIMCP_LOGGING_INFO("  Combinatorial Harm: ENABLED (emergent harm detection)");
-    NIMCP_LOGGING_INFO("  Action History: %u entries", dir_config.action_history_size);
+    NIMCP_LOGGING_INFO("  Action History: %u entries", dir_config.history_config.max_history_size);
     NIMCP_LOGGING_INFO("  Bio-Async: %s", brain->bio_async_enabled ? "CONNECTED" : "DISABLED");
     NIMCP_LOGGING_INFO("  Immune Integration: %s", brain->immune_enabled ? "CONNECTED" : "DISABLED");
     NIMCP_LOGGING_INFO("  FEP Integration: %s", brain->fep_orchestrator ? "CONNECTED" : "DISABLED");

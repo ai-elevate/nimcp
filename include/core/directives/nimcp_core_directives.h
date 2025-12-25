@@ -228,6 +228,16 @@ typedef bool (*escalation_callback_t)(const proposed_action_t* action,
  */
 typedef struct core_directives_system core_directives_system_t;
 
+/**
+ * @brief Forward declarations for bridge types
+ *
+ * WHAT: Opaque handles for directive-subsystem integration bridges
+ * WHY:  Allows brain_internal.h to use pointer types without full definitions
+ * HOW:  Full definitions in nimcp_core_directives_immune_bridge.h and _fep_bridge.h
+ */
+typedef struct directive_immune_bridge directive_immune_bridge_t;
+typedef struct directive_fep_bridge directive_fep_bridge_t;
+
 /*=============================================================================
  * LIFECYCLE API
  *============================================================================*/

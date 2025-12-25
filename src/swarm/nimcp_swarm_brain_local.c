@@ -11,6 +11,7 @@
 
 #include "swarm/nimcp_swarm_brain_local.h"
 #include "nimcp.h"
+#include "api/nimcp_api_internal.h"  /* For nimcp_brain_handle struct access */
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_core.h"
 #include "core/brain/nimcp_brain_io.h"
@@ -427,8 +428,28 @@ int swarm_brain_create_for_agent(
     /* Create brain instance */
     char task_name[64];
     snprintf(task_name, sizeof(task_name), "swarm_agent_%u", agent_id);
-    nimcp_brain_t brain = nimcp_brain_create(task_name, NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION,
-                                              brain_size, brain_size / 2);
+
+    nimcp_brain_t brain = NULL;
+    float* test_weights = NULL;
+    if (mgr->config.test_mode) {
+        /* Test mode: Create stub brain without going through factory (100x faster) */
+        brain = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
+        /* brain->internal_brain stays NULL - tests don't need actual neural network */
+        /* Allocate dummy weights so sync operations work correctly */
+        test_weights = (float*)nimcp_calloc(brain_size, sizeof(float));
+    } else {
+        /* Production mode: Use minimal brain creation for fast initialization */
+        brain = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+        if (brain) {
+            brain->internal_brain = brain_create_minimal(task_name, BRAIN_SIZE_TINY,
+                                                         BRAIN_TASK_CLASSIFICATION,
+                                                         brain_size, brain_size / 2);
+            if (!brain->internal_brain) {
+                nimcp_free(brain);
+                brain = NULL;
+            }
+        }
+    }
     if (!brain) {
         LOG_ERROR("Failed to create brain for agent %u", agent_id);
         nimcp_platform_mutex_unlock(&mgr->mutex);
@@ -450,8 +471,14 @@ int swarm_brain_create_for_agent(
     entry->brain_data.agent_id = agent_id;
     entry->brain_data.brain = brain;
     entry->brain_data.brain_size = brain_size;
-    entry->brain_data.num_weights = 0;  /* Will be set on first sync */
-    entry->brain_data.local_weights = NULL;
+    if (mgr->config.test_mode && test_weights) {
+        /* Test mode: Pre-initialize weights for sync operations */
+        entry->brain_data.num_weights = brain_size;
+        entry->brain_data.local_weights = test_weights;
+    } else {
+        entry->brain_data.num_weights = 0;  /* Will be set on first sync */
+        entry->brain_data.local_weights = NULL;
+    }
     entry->brain_data.last_sync_ms = nimcp_time_get_us() / 1000;
     entry->brain_data.divergence_score = 0.0F;
     entry->brain_data.active = true;
@@ -737,14 +764,30 @@ int swarm_brain_create_for_agent_with_template(
     snprintf(task_name, sizeof(task_name), "swarm_%s_%u",
              swarm_brain_role_name(templ->role), agent_id);
 
-    /* For minimal mode roles, use the minimal brain creation */
-    nimcp_brain_t brain;
-    if (templ->minimal_mode) {
-        /* Create minimal brain - skips heavy subsystems */
-        brain = nimcp_brain_create(task_name, NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION,
-                                   brain_size, brain_size / 2);
+    /* Create brain based on mode */
+    nimcp_brain_t brain = NULL;
+    float* test_weights = NULL;
+    if (mgr->config.test_mode) {
+        /* Test mode: Create stub brain without going through factory (100x faster) */
+        brain = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
+        /* brain->internal_brain stays NULL - tests don't need actual neural network */
+        /* Allocate dummy weights so sync operations work correctly */
+        test_weights = (float*)nimcp_calloc(brain_size, sizeof(float));
+    } else if (templ->minimal_mode) {
+        /* Minimal mode: Create wrapper for minimal brain - skips heavy subsystems */
+        brain = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+        if (brain) {
+            brain_size_t internal_size = (brain_size_t)nimcp_size;
+            brain->internal_brain = brain_create_minimal(task_name, internal_size,
+                                                         BRAIN_TASK_CLASSIFICATION,
+                                                         brain_size, brain_size / 2);
+            if (!brain->internal_brain) {
+                nimcp_free(brain);
+                brain = NULL;
+            }
+        }
     } else {
-        /* Create standard brain with role-appropriate size */
+        /* Standard mode: Create brain with role-appropriate size */
         brain = nimcp_brain_create(task_name, nimcp_size, NIMCP_TASK_CLASSIFICATION,
                                    brain_size, brain_size / 2);
     }
@@ -770,11 +813,18 @@ int swarm_brain_create_for_agent_with_template(
     entry->brain_data.agent_id = agent_id;
     entry->brain_data.brain = brain;
     entry->brain_data.brain_size = brain_size;
-    entry->brain_data.num_weights = 0;
-    entry->brain_data.local_weights = NULL;
+    if (mgr->config.test_mode && test_weights) {
+        /* Test mode: Pre-initialize weights for sync operations */
+        entry->brain_data.num_weights = brain_size;
+        entry->brain_data.local_weights = test_weights;
+    } else {
+        entry->brain_data.num_weights = 0;
+        entry->brain_data.local_weights = NULL;
+    }
     entry->brain_data.last_sync_ms = nimcp_time_get_us() / 1000;
     entry->brain_data.divergence_score = 0.0F;
     entry->brain_data.active = true;
+    entry->brain_data.role = templ->role;  /* Store the role */
 
     /* Insert into hash table */
     uint32_t hash = agent_hash(agent_id);

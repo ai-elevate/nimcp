@@ -157,7 +157,8 @@
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 
 // Core Directives Integration (Ethical Foundation)
-#include "cognitive/ethics/nimcp_core_directives.h"
+// Uses core/directives which has the full implementation with nested configs
+#include "core/directives/nimcp_core_directives.h"
 
 // Medulla Oblongata Integration (Brainstem Autonomic Regulation)
 #include "core/medulla/nimcp_medulla.h"

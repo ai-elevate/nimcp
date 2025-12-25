@@ -415,6 +415,20 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
     // Use defaults if no config provided
     bio_router_config_t cfg = config ? *config : bio_router_default_config();
 
+    // WHAT: Ensure bio-async is initialized before router
+    // WHY:  Router uses bio-async promises; predictive models require bio-async
+    // HOW:  Initialize bio-async with defaults if not already done
+    if (!nimcp_bio_async_is_initialized()) {
+        nimcp_error_t bio_err = nimcp_bio_async_init(NULL);  // Use defaults
+        if (bio_err != NIMCP_SUCCESS) {
+            nimcp_platform_mutex_unlock(&g_router_init_mutex);
+            LOG_WARN("Bio-async initialization failed (code %d), router continues without predictive coding", bio_err);
+            // Non-fatal: router can work without full bio-async
+        } else {
+            LOG_INFO("Bio-async auto-initialized by bio-router");
+        }
+    }
+
     // Allocate router
     g_router = nimcp_calloc(1, sizeof(struct bio_router_struct));
     if (!g_router) {

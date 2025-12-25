@@ -79,6 +79,13 @@ add_test_binary(
     integration
 )
 
+# Test: Swarm Brain Local Integration (Role-Based Asymmetric Brains)
+add_test_binary(
+    test_swarm_brain_local_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_brain_local_integration.cpp
+    integration
+)
+
 # ============================================================================
 # Subdirectories
 # ============================================================================

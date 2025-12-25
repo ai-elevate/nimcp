@@ -123,11 +123,15 @@ typedef struct {
 } middleware_command_t;
 
 //=============================================================================
-// Command Result
+// Command Execution Result
 //=============================================================================
 
 /**
  * @brief Result of command execution
+ *
+ * Note: Renamed from command_result_t to avoid conflict with
+ *       core/directives/nimcp_command_compliance.h which defines
+ *       command_result_t for compliance evaluation results.
  */
 typedef struct {
     uint32_t command_id;                    /**< Which command */
@@ -135,7 +139,7 @@ typedef struct {
     uint64_t execution_latency_us;          /**< How long it took */
     float information_delivered;            /**< Bits successfully delivered */
     char error_message[128];                /**< Error if failed */
-} command_result_t;
+} command_execution_result_t;
 
 #ifdef __cplusplus
 }

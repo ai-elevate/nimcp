@@ -235,6 +235,7 @@ typedef struct {
     float divergence_threshold;     /**< Divergence alert threshold (0-1) */
     bool enable_weight_sharing;     /**< Enable weight sharing between agents */
     bool enable_bio_async;          /**< Enable bio-async integration */
+    bool test_mode;                 /**< Skip actual brain creation (for fast unit tests) */
 } swarm_brain_config_t;
 
 /**
@@ -344,7 +345,7 @@ int swarm_brain_create_for_agent_with_role(
 int swarm_brain_create_for_agent_with_template(
     swarm_brain_manager_t* mgr,
     uint32_t agent_id,
-    const drone_brain_template_t* template
+    const drone_brain_template_t* templ
 );
 
 /**

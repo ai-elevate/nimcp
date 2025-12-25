@@ -38,16 +38,23 @@ extern "C" {
 
 class BufferPoolTest : public ::testing::Test {
 protected:
+    nimcp_memory_stats_t baseline_stats;
+
     void SetUp() override {
         nimcp_memory_init();
+        // Get baseline stats AFTER initialization (includes infrastructure allocations)
+        nimcp_memory_get_stats(&baseline_stats);
     }
 
     void TearDown() override {
-        // Check for memory leaks
+        // Check that we're back to baseline (only infrastructure allocations remain)
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
-        EXPECT_EQ(stats.current_allocated, 0)
-            << "Memory leak detected: " << stats.current_allocated << " bytes still allocated";
+        EXPECT_EQ(stats.current_allocated, baseline_stats.current_allocated)
+            << "Memory leak detected: " << (stats.current_allocated - baseline_stats.current_allocated) << " bytes leaked";
+
+        // Cleanup memory system for next test
+        nimcp_memory_cleanup();
     }
 
     // Helper: Create default config

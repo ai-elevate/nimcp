@@ -164,15 +164,13 @@ TEST_F(ImmuneVaccineTest, AdministerVaccine) {
     vaccine_create_entry(vaccine, VACCINE_TYPE_INACTIVATED, epitope, sizeof(epitope),
                          "Test", &vaccine_id);
 
-    // Note: Administration fails because brain_immune_activate_b_cell requires
-    // an existing antigen (antigen_id=0 doesn't exist). This is a limitation
-    // of the current vaccine implementation which uses dummy antigen_id.
+    // Note: Administration succeeds using internal antigen creation
     int result = vaccine_administer(vaccine, vaccine_id);
-    EXPECT_EQ(result, -1);  // Fails due to no antigen with id=0
+    EXPECT_EQ(result, 0);
 
     const vaccine_entry_t* entry = vaccine_get_entry(vaccine, vaccine_id);
     ASSERT_NE(entry, nullptr);
-    EXPECT_EQ(entry->status, VACCINE_STATUS_FAILED);  // Status set to FAILED
+    EXPECT_EQ(entry->status, VACCINE_STATUS_ADMINISTERED);
 }
 
 TEST_F(ImmuneVaccineTest, AdministerAttenuatedVaccine) {
@@ -196,14 +194,14 @@ TEST_F(ImmuneVaccineTest, AdministerCreatesMemoryBCell) {
     vaccine_create_entry(vaccine, VACCINE_TYPE_INACTIVATED, epitope, sizeof(epitope),
                          "Test", &vaccine_id);
 
-    // Administration fails due to missing antigen
+    // Administration succeeds
     int result = vaccine_administer(vaccine, vaccine_id);
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, 0);
 
-    // No memory B cell created since administration failed
+    // Memory B cell should be created
     const vaccine_entry_t* entry = vaccine_get_entry(vaccine, vaccine_id);
     ASSERT_NE(entry, nullptr);
-    EXPECT_EQ(entry->memory_b_cell_id, 0u);  // Not set due to failure
+    EXPECT_GT(entry->memory_b_cell_id, 0u);
 }
 
 /* ============================================================================
@@ -272,11 +270,15 @@ TEST_F(ImmuneVaccineTest, ImportPassiveImmunity) {
     uint8_t epitope[] = {0x01, 0x02, 0x03, 0x04, 0x05};
     uint32_t vaccine_id;
 
-    // Import passive immunity also calls vaccine_administer internally,
-    // which fails due to missing antigen
+    // Import passive immunity succeeds
     int result = vaccine_import_passive_immunity(vaccine, epitope, sizeof(epitope),
                                                  0.8f, "External source", &vaccine_id);
-    EXPECT_EQ(result, -1);  // Fails due to administer failure
+    EXPECT_EQ(result, 0);
+
+    // Verify vaccine was created
+    const vaccine_entry_t* entry = vaccine_get_entry(vaccine, vaccine_id);
+    ASSERT_NE(entry, nullptr);
+    EXPECT_EQ(entry->type, VACCINE_TYPE_PASSIVE);
 }
 
 /* ============================================================================
@@ -431,7 +433,7 @@ TEST_F(ImmuneVaccineTest, GetActiveVaccines) {
     vaccine_create_entry(vaccine, VACCINE_TYPE_INACTIVATED, epitope1, sizeof(epitope1), "V1", &id1);
     vaccine_create_entry(vaccine, VACCINE_TYPE_INACTIVATED, epitope2, sizeof(epitope2), "V2", &id2);
 
-    // Administration fails, so no active vaccines
+    // Administration succeeds
     vaccine_administer(vaccine, id1);
     vaccine_administer(vaccine, id2);
 
@@ -439,7 +441,7 @@ TEST_F(ImmuneVaccineTest, GetActiveVaccines) {
     size_t count;
     int result = vaccine_get_active_vaccines(vaccine, active_ids, 10, &count);
     EXPECT_EQ(result, 0);
-    EXPECT_EQ(count, 0u);  // No active vaccines due to failed administration
+    EXPECT_EQ(count, 2u);  // Two active vaccines
 }
 
 /* ============================================================================
@@ -457,14 +459,13 @@ TEST_F(ImmuneVaccineTest, StatsTrackAdministrations) {
     uint32_t vaccine_id;
     vaccine_create_entry(vaccine, VACCINE_TYPE_INACTIVATED, epitope, sizeof(epitope),
                          "Test", &vaccine_id);
-    vaccine_administer(vaccine, vaccine_id);  // Fails
+    vaccine_administer(vaccine, vaccine_id);  // Succeeds
 
     vaccine_stats_t stats;
     int result = vaccine_get_stats(vaccine, &stats);
     EXPECT_EQ(result, 0);
-    // total_vaccines is only incremented on successful administration
-    // Since administration fails, count stays at 0
-    EXPECT_EQ(stats.total_vaccines, 0u);
+    // total_vaccines incremented on successful administration
+    EXPECT_EQ(stats.total_vaccines, 1u);
 }
 
 /* ============================================================================

@@ -186,6 +186,12 @@ add_e2e_test(e2e_test_swarm_threat_response
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_threat_response.cpp
 )
 
+# Asymmetric Swarm E2E Test (Role-Based Brain Configurations)
+add_e2e_test(e2e_test_asymmetric_swarm
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_asymmetric_swarm.cpp
+)
+
 add_e2e_test(e2e_test_server_swarm_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_server_swarm_pipeline.cpp

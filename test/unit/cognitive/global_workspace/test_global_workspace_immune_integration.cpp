@@ -305,12 +305,14 @@ TEST_F(GlobalWorkspaceImmuneTest, AnomalyDetection_ModuleHijacking) {
     create_test_content(content, 256, 0.5f);
 
     // Same module broadcasts repeatedly (3+ times)
+    // Must call gw_immune_check_broadcast after each to track module streak
     for (int i = 0; i < 4; i++) {
         global_workspace_compete(workspace, MODULE_WORKING_MEMORY, content, 256, 0.8f);
+        gw_immune_check_broadcast(context);  // Track this broadcast
         usleep(60000);  // Wait past refractory period
     }
 
-    // Check for anomalies
+    // Check for anomalies (module hijacking should now be detected)
     gw_broadcast_anomaly_t anomalies[5];
     uint32_t count;
     int result = gw_immune_detect_anomalies(context, anomalies, 5, &count);
@@ -374,10 +376,12 @@ TEST_F(GlobalWorkspaceImmuneTest, AnomalyDetection_RapidSwitching) {
 
     // First broadcast
     global_workspace_compete(workspace, MODULE_WORKING_MEMORY, content1, 256, 0.8f);
+    gw_immune_check_broadcast(context);  // Track first broadcast
 
     // Second broadcast immediately (violates refractory period)
     usleep(10000);  // 10ms < refractory period (50ms)
     global_workspace_compete(workspace, MODULE_EXECUTIVE, content2, 256, 0.9f);
+    gw_immune_check_broadcast(context);  // Track second broadcast - should detect rapid switching
 
     // Detect anomalies
     gw_broadcast_anomaly_t anomalies[5];

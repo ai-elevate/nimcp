@@ -663,7 +663,11 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Initialize core directives after immune, bio-async, and FEP are ready
     // Core directives must be the FIRST checkpoint before any action execution
     // Implements Asimov's Laws, Golden Rule, and Combinatorial Harm Detection
-    if (!init_core_directives_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // CRITICAL: Skip for minimal_mode to prevent infinite recursion
+    // (core_directives -> ethics_engine -> brain_create_minimal -> core_directives...)
+    if (!brain->config.minimal_mode) {
+        if (!init_core_directives_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
     // ========================================================================
     // COORDINATOR/ORCHESTRATOR SUBSYSTEMS

@@ -248,9 +248,11 @@ typedef struct {
 
 /**
  * @brief Complete directive-immune bridge state
+ *
+ * Note: Uses tagged struct for forward declaration compatibility
  */
-typedef struct {
-    
+typedef struct directive_immune_bridge {
+
     bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
     /* System handles */
     brain_immune_system_t* immune_system;

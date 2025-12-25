@@ -123,7 +123,7 @@ TEST_F(GlobalWorkspaceTest, CreateWithInvalidConfigThresholdTooLow) {
 
 TEST_F(GlobalWorkspaceTest, CreateWithInvalidConfigThresholdTooHigh) {
     global_workspace_config_t config = global_workspace_default_config();
-    config.ignition_threshold = 0.99f;  // Above maximum
+    config.ignition_threshold = 2.5f;  // Above maximum (2.0)
 
     workspace = CreateCustomWorkspace(&config);
     EXPECT_EQ(workspace, nullptr);
@@ -684,8 +684,8 @@ TEST_F(GlobalWorkspaceTest, SetIgnitionThresholdClamps) {
     EXPECT_GE(global_workspace_get_ignition_threshold(workspace),
               GLOBAL_WORKSPACE_MIN_IGNITION_THRESHOLD);
 
-    // Too high - should clamp
-    global_workspace_set_ignition_threshold(workspace, 0.99f);
+    // Too high - should clamp (max is now 2.0 for inflammation modulation)
+    global_workspace_set_ignition_threshold(workspace, 2.5f);
     EXPECT_LE(global_workspace_get_ignition_threshold(workspace),
               GLOBAL_WORKSPACE_MAX_IGNITION_THRESHOLD);
 }

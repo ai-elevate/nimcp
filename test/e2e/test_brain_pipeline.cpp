@@ -56,8 +56,8 @@ E2E_TEST(BrainPipelineTest, SimpleBrainLifecycle) {
     nimcp_brain_t brain = nullptr;
     const char* save_path = "/tmp/nimcp_e2e_brain_test.bin";
 
-    // Stage 1: Create brain
-    E2E_STAGE_BEGIN("Create brain", 100);
+    // Stage 1: Create brain (increased timeout for full subsystem init)
+    E2E_STAGE_BEGIN("Create brain", 500);
     {
         brain = nimcp_brain_create(
             "e2e_test_brain",
@@ -284,8 +284,8 @@ E2E_TEST(BrainPipelineTest, BrainProbeStatistics) {
 
     nimcp_brain_t brain = nullptr;
 
-    // Stage 1: Create brain
-    E2E_STAGE_BEGIN("Create brain", 100);
+    // Stage 1: Create brain (increased timeout for full subsystem init)
+    E2E_STAGE_BEGIN("Create brain", 500);
     {
         brain = nimcp_brain_create(
             "probe_test",

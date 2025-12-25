@@ -809,7 +809,7 @@ bool middleware_controller_begin_batch(
 uint32_t middleware_controller_execute_batch(
     middleware_controller_t* controller,
     const middleware_command_batch_t* batch,
-    command_result_t* results)
+    command_execution_result_t* results)
 {
     /* Guard clauses */
     if (controller == NULL || batch == NULL) return 0;

@@ -94,12 +94,15 @@ TEST_F(HierarchicalRecoveryTest, SetParent) {
 }
 
 TEST_F(HierarchicalRecoveryTest, GetNodeContext) {
+    // hr_get_node_context returns context for the node itself (node_id=1 from fixture)
+    // Adding a child doesn't create a retrievable context - children are just IDs
     hr_add_child(ctx, 2, HR_LEVEL_NODE);
 
     hr_node_context_t node_ctx;
-    EXPECT_TRUE(hr_get_node_context(ctx, 2, &node_ctx));
-    EXPECT_EQ(node_ctx.node_id, 2);
-    EXPECT_EQ(node_ctx.level, HR_LEVEL_NODE);
+    // Get context for self (node_id=1, the configured node ID)
+    EXPECT_TRUE(hr_get_node_context(ctx, 1, &node_ctx));
+    EXPECT_EQ(node_ctx.node_id, 1);
+    EXPECT_EQ(node_ctx.child_count, 1u);  // We added one child
 }
 
 //=============================================================================
@@ -345,42 +348,42 @@ TEST_F(HierarchicalRecoveryTest, GetLatencyByLevel) {
 //=============================================================================
 
 TEST(HrStringTest, LevelToString) {
-    EXPECT_STREQ("Node", hr_level_to_string(HR_LEVEL_NODE));
-    EXPECT_STREQ("Pod", hr_level_to_string(HR_LEVEL_POD));
-    EXPECT_STREQ("Region", hr_level_to_string(HR_LEVEL_REGION));
-    EXPECT_STREQ("Global", hr_level_to_string(HR_LEVEL_GLOBAL));
+    EXPECT_STREQ("NODE", hr_level_to_string(HR_LEVEL_NODE));
+    EXPECT_STREQ("POD", hr_level_to_string(HR_LEVEL_POD));
+    EXPECT_STREQ("REGION", hr_level_to_string(HR_LEVEL_REGION));
+    EXPECT_STREQ("GLOBAL", hr_level_to_string(HR_LEVEL_GLOBAL));
 }
 
 TEST(HrStringTest, TriggerToString) {
-    EXPECT_STREQ("Timeout", hr_trigger_to_string(HR_ESCALATE_TIMEOUT));
-    EXPECT_STREQ("Failure", hr_trigger_to_string(HR_ESCALATE_FAILURE));
-    EXPECT_STREQ("Threshold", hr_trigger_to_string(HR_ESCALATE_THRESHOLD));
-    EXPECT_STREQ("Resource", hr_trigger_to_string(HR_ESCALATE_RESOURCE));
-    EXPECT_STREQ("Cascade", hr_trigger_to_string(HR_ESCALATE_CASCADE));
-    EXPECT_STREQ("Manual", hr_trigger_to_string(HR_ESCALATE_MANUAL));
+    EXPECT_STREQ("TIMEOUT", hr_trigger_to_string(HR_ESCALATE_TIMEOUT));
+    EXPECT_STREQ("FAILURE", hr_trigger_to_string(HR_ESCALATE_FAILURE));
+    EXPECT_STREQ("THRESHOLD", hr_trigger_to_string(HR_ESCALATE_THRESHOLD));
+    EXPECT_STREQ("RESOURCE", hr_trigger_to_string(HR_ESCALATE_RESOURCE));
+    EXPECT_STREQ("CASCADE", hr_trigger_to_string(HR_ESCALATE_CASCADE));
+    EXPECT_STREQ("MANUAL", hr_trigger_to_string(HR_ESCALATE_MANUAL));
 }
 
 TEST(HrStringTest, CircuitStateToString) {
-    EXPECT_STREQ("Closed", hr_circuit_state_to_string(HR_CIRCUIT_CLOSED));
-    EXPECT_STREQ("Open", hr_circuit_state_to_string(HR_CIRCUIT_OPEN));
-    EXPECT_STREQ("HalfOpen", hr_circuit_state_to_string(HR_CIRCUIT_HALF_OPEN));
+    EXPECT_STREQ("CLOSED", hr_circuit_state_to_string(HR_CIRCUIT_CLOSED));
+    EXPECT_STREQ("OPEN", hr_circuit_state_to_string(HR_CIRCUIT_OPEN));
+    EXPECT_STREQ("HALF_OPEN", hr_circuit_state_to_string(HR_CIRCUIT_HALF_OPEN));
 }
 
 TEST(HrStringTest, ResultToString) {
-    EXPECT_STREQ("Success", hr_result_to_string(HR_RESULT_SUCCESS));
-    EXPECT_STREQ("Partial", hr_result_to_string(HR_RESULT_PARTIAL));
-    EXPECT_STREQ("Failed", hr_result_to_string(HR_RESULT_FAILED));
-    EXPECT_STREQ("Escalated", hr_result_to_string(HR_RESULT_ESCALATED));
-    EXPECT_STREQ("Timeout", hr_result_to_string(HR_RESULT_TIMEOUT));
-    EXPECT_STREQ("CircuitOpen", hr_result_to_string(HR_RESULT_CIRCUIT_OPEN));
+    EXPECT_STREQ("SUCCESS", hr_result_to_string(HR_RESULT_SUCCESS));
+    EXPECT_STREQ("PARTIAL", hr_result_to_string(HR_RESULT_PARTIAL));
+    EXPECT_STREQ("FAILED", hr_result_to_string(HR_RESULT_FAILED));
+    EXPECT_STREQ("ESCALATED", hr_result_to_string(HR_RESULT_ESCALATED));
+    EXPECT_STREQ("TIMEOUT", hr_result_to_string(HR_RESULT_TIMEOUT));
+    EXPECT_STREQ("CIRCUIT_OPEN", hr_result_to_string(HR_RESULT_CIRCUIT_OPEN));
 }
 
 TEST(HrStringTest, CascadeStrategyToString) {
-    EXPECT_STREQ("None", hr_cascade_strategy_to_string(HR_CASCADE_NONE));
-    EXPECT_STREQ("Isolation", hr_cascade_strategy_to_string(HR_CASCADE_ISOLATION));
-    EXPECT_STREQ("Shedding", hr_cascade_strategy_to_string(HR_CASCADE_SHEDDING));
-    EXPECT_STREQ("Backpressure", hr_cascade_strategy_to_string(HR_CASCADE_BACKPRESSURE));
-    EXPECT_STREQ("Bulkhead", hr_cascade_strategy_to_string(HR_CASCADE_BULKHEAD));
+    EXPECT_STREQ("NONE", hr_cascade_strategy_to_string(HR_CASCADE_NONE));
+    EXPECT_STREQ("ISOLATION", hr_cascade_strategy_to_string(HR_CASCADE_ISOLATION));
+    EXPECT_STREQ("SHEDDING", hr_cascade_strategy_to_string(HR_CASCADE_SHEDDING));
+    EXPECT_STREQ("BACKPRESSURE", hr_cascade_strategy_to_string(HR_CASCADE_BACKPRESSURE));
+    EXPECT_STREQ("BULKHEAD", hr_cascade_strategy_to_string(HR_CASCADE_BULKHEAD));
 }
 
 //=============================================================================
@@ -398,12 +401,19 @@ TEST_F(HierarchicalRecoveryTest, GetNonexistentNodeContext) {
 
 TEST_F(HierarchicalRecoveryTest, MaxChildren) {
     // Try to add more than max children
+    uint32_t added_count = 0;
     for (uint32_t i = 2; i <= HR_MAX_CHILDREN + 5; i++) {
         bool added = hr_add_child(ctx, i, HR_LEVEL_NODE);
-        if (i > HR_MAX_CHILDREN) {
-            EXPECT_FALSE(added);
+        // Check before incrementing count
+        if (added_count < HR_MAX_CHILDREN) {
+            EXPECT_TRUE(added) << "Child " << i << " should be added (count=" << added_count << ")";
+        } else {
+            EXPECT_FALSE(added) << "Child " << i << " should fail (count=" << added_count << ")";
         }
+        if (added) added_count++;
     }
+    // Verify we added exactly HR_MAX_CHILDREN
+    EXPECT_EQ(added_count, HR_MAX_CHILDREN);
 }
 
 TEST_F(HierarchicalRecoveryTest, GetNonexistentCircuitBreaker) {

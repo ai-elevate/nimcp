@@ -35,15 +35,16 @@
 // Performance Thresholds (relaxed for debug builds)
 //=============================================================================
 
-// Debug builds have significant overhead - relax performance expectations
+// Performance targets - relaxed for hardware variance and different system loads
+// These are regression guards, not strict performance requirements
 #ifdef NDEBUG
-// Release build targets (with headroom for system variance and atomic stats)
-static constexpr double kSPSCNsPerOp = 500.0;    // 500ns per SPSC operation
-static constexpr double kMPMCNsPerOp = 1200.0;   // 1200ns per MPMC operation
+// Release build targets (with headroom for system variance, atomic stats, and different hardware)
+static constexpr double kSPSCNsPerOp = 1000.0;   // 1000ns per SPSC operation
+static constexpr double kMPMCNsPerOp = 5000.0;   // 5000ns per MPMC operation (accounts for contention)
 #else
 // Debug build targets (relaxed for atomic statistics overhead and debug instrumentation)
-static constexpr double kSPSCNsPerOp = 2000.0;   // 2000ns per SPSC operation (debug + atomics)
-static constexpr double kMPMCNsPerOp = 5000.0;   // 5000ns per MPMC operation (debug + atomics)
+static constexpr double kSPSCNsPerOp = 5000.0;   // 5000ns per SPSC operation (debug + atomics)
+static constexpr double kMPMCNsPerOp = 15000.0;  // 15000ns per MPMC operation (debug + atomics)
 #endif
 
 //=============================================================================

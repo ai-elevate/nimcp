@@ -44,6 +44,13 @@ add_test_binary(
     unit
 )
 
+# Test 6b: Swarm Brain Local (Role-Based Asymmetric Brains)
+add_test_binary(
+    test_swarm_brain_local
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_brain_local.cpp
+    unit
+)
+
 # Test 7: Swarm Gateway
 add_test_binary(
     test_swarm_gateway

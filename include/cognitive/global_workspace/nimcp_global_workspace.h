@@ -179,9 +179,11 @@ extern "C" {
  *
  * WHAT: Upper bound for ignition threshold
  * WHY:  Too high = nothing gets in (workspace unused)
- * VALUE: 0.95 (95%) - allows some access
+ * VALUE: 2.0 (200%) - allows room for inflammation modulation
+ *        Storm level multiplies by 1.8x, so with baseline 0.6 we get 1.08
+ *        Setting to 2.0 provides headroom for extreme modulation
  */
-#define GLOBAL_WORKSPACE_MAX_IGNITION_THRESHOLD 0.95f
+#define GLOBAL_WORKSPACE_MAX_IGNITION_THRESHOLD 2.0f
 
 /**
  * @brief Broadcast refractory period in milliseconds

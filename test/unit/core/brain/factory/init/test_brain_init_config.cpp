@@ -24,6 +24,7 @@
 //=============================================================================
 
 // Expected neuron counts from implementation
+static const uint32_t EXPECTED_MICRO_NEURONS = 25;    // Ultra-lightweight for unit tests
 static const uint32_t EXPECTED_TINY_NEURONS = 100;
 static const uint32_t EXPECTED_SMALL_NEURONS = 500;
 static const uint32_t EXPECTED_MEDIUM_NEURONS = 1000;
@@ -32,6 +33,7 @@ static const uint32_t EXPECTED_CUSTOM_NEURONS = 1000;
 static const uint32_t EXPECTED_DEFAULT_NEURONS = 1000;
 
 // Expected sparsity values from implementation
+static const float EXPECTED_MICRO_SPARSITY = 0.60f;   // Lower sparsity for micro brains
 static const float EXPECTED_TINY_SPARSITY = 0.70f;
 static const float EXPECTED_SMALL_SPARSITY = 0.80f;
 static const float EXPECTED_MEDIUM_SPARSITY = 0.85f;
@@ -44,6 +46,17 @@ static const float FLOAT_EPSILON = 1e-6f;
 //=============================================================================
 // Neuron Count Tests
 //=============================================================================
+
+/**
+ * WHAT: Test neuron count for MICRO brain size
+ * WHY:  Verify ultra-lightweight configuration for unit tests and swarm drones
+ */
+TEST(BrainInitConfig, NeuronCount_Micro)
+{
+    uint32_t count = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MICRO);
+    EXPECT_EQ(count, EXPECTED_MICRO_NEURONS)
+        << "MICRO brain should have " << EXPECTED_MICRO_NEURONS << " neurons";
+}
 
 /**
  * WHAT: Test neuron count for TINY brain size
@@ -106,11 +119,13 @@ TEST(BrainInitConfig, NeuronCount_Custom)
  */
 TEST(BrainInitConfig, NeuronCount_Ordering)
 {
+    uint32_t micro = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MICRO);
     uint32_t tiny = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_TINY);
     uint32_t small = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_SMALL);
     uint32_t medium = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MEDIUM);
     uint32_t large = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_LARGE);
 
+    EXPECT_LT(micro, tiny) << "MICRO should have fewer neurons than TINY";
     EXPECT_LT(tiny, small) << "TINY should have fewer neurons than SMALL";
     EXPECT_LT(small, medium) << "SMALL should have fewer neurons than MEDIUM";
     EXPECT_LT(medium, large) << "MEDIUM should have fewer neurons than LARGE";
@@ -142,6 +157,7 @@ TEST(BrainInitConfig, NeuronCount_ScalingFactor)
  */
 TEST(BrainInitConfig, NeuronCount_NonZero)
 {
+    EXPECT_GT(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MICRO), 0u);
     EXPECT_GT(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_TINY), 0u);
     EXPECT_GT(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_SMALL), 0u);
     EXPECT_GT(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MEDIUM), 0u);
@@ -180,6 +196,17 @@ TEST(BrainInitConfig, NeuronCount_Consistency)
 //=============================================================================
 // Sparsity Tests
 //=============================================================================
+
+/**
+ * WHAT: Test sparsity for MICRO brain size
+ * WHY:  Verify ultra-lightweight networks have lowest sparsity (more dense connections)
+ */
+TEST(BrainInitConfig, Sparsity_Micro)
+{
+    float sparsity = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MICRO);
+    EXPECT_NEAR(sparsity, EXPECTED_MICRO_SPARSITY, FLOAT_EPSILON)
+        << "MICRO brain sparsity should be " << EXPECTED_MICRO_SPARSITY;
+}
 
 /**
  * WHAT: Test sparsity for TINY brain size
@@ -242,11 +269,13 @@ TEST(BrainInitConfig, Sparsity_Custom)
  */
 TEST(BrainInitConfig, Sparsity_Ordering)
 {
+    float micro = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MICRO);
     float tiny = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_TINY);
     float small = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_SMALL);
     float medium = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MEDIUM);
     float large = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_LARGE);
 
+    EXPECT_LT(micro, tiny) << "MICRO sparsity should be less than TINY";
     EXPECT_LT(tiny, small) << "TINY sparsity should be less than SMALL";
     EXPECT_LT(small, medium) << "SMALL sparsity should be less than MEDIUM";
     EXPECT_LT(medium, large) << "MEDIUM sparsity should be less than LARGE";
@@ -258,10 +287,14 @@ TEST(BrainInitConfig, Sparsity_Ordering)
  */
 TEST(BrainInitConfig, Sparsity_ValidRange)
 {
+    float micro = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MICRO);
     float tiny = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_TINY);
     float small = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_SMALL);
     float medium = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MEDIUM);
     float large = nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_LARGE);
+
+    EXPECT_GE(micro, 0.0f) << "Sparsity must be >= 0";
+    EXPECT_LE(micro, 1.0f) << "Sparsity must be <= 1";
 
     EXPECT_GE(tiny, 0.0f) << "Sparsity must be >= 0";
     EXPECT_LE(tiny, 1.0f) << "Sparsity must be <= 1";
@@ -323,6 +356,7 @@ TEST(BrainInitConfig, Sparsity_Consistency)
  */
 TEST(BrainInitConfig, Sparsity_NotNaN)
 {
+    EXPECT_FALSE(std::isnan(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MICRO)));
     EXPECT_FALSE(std::isnan(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_TINY)));
     EXPECT_FALSE(std::isnan(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_SMALL)));
     EXPECT_FALSE(std::isnan(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MEDIUM)));
@@ -335,6 +369,7 @@ TEST(BrainInitConfig, Sparsity_NotNaN)
  */
 TEST(BrainInitConfig, Sparsity_NotInfinity)
 {
+    EXPECT_FALSE(std::isinf(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MICRO)));
     EXPECT_FALSE(std::isinf(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_TINY)));
     EXPECT_FALSE(std::isinf(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_SMALL)));
     EXPECT_FALSE(std::isinf(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MEDIUM)));
@@ -384,6 +419,7 @@ TEST(BrainInitConfig, NeuronCountSparsityCorrelation)
 TEST(BrainInitConfig, AllSizesHaveValidConfig)
 {
     brain_size_t sizes[] = {
+        BRAIN_SIZE_MICRO,
         BRAIN_SIZE_TINY,
         BRAIN_SIZE_SMALL,
         BRAIN_SIZE_MEDIUM,
@@ -432,11 +468,14 @@ TEST(BrainInitConfig, MemoryFeasibility)
 TEST(BrainInitConfig, DefaultValuesMatchConstants)
 {
     // This test documents the expected values
+    EXPECT_EQ(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MICRO), EXPECTED_MICRO_NEURONS);
     EXPECT_EQ(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_TINY), EXPECTED_TINY_NEURONS);
     EXPECT_EQ(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_SMALL), EXPECTED_SMALL_NEURONS);
     EXPECT_EQ(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MEDIUM), EXPECTED_MEDIUM_NEURONS);
     EXPECT_EQ(nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_LARGE), EXPECTED_LARGE_NEURONS);
 
+    EXPECT_NEAR(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_MICRO),
+                EXPECTED_MICRO_SPARSITY, FLOAT_EPSILON);
     EXPECT_NEAR(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_TINY),
                 EXPECTED_TINY_SPARSITY, FLOAT_EPSILON);
     EXPECT_NEAR(nimcp_brain_factory_get_default_sparsity(BRAIN_SIZE_SMALL),

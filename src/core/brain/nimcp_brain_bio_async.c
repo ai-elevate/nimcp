@@ -360,37 +360,55 @@ nimcp_error_t brain_bio_async_init(brain_t brain) {
     LOG_DEBUG("Registered handler for BIO_MSG_BRAIN_STEP_REQUEST");
 
     // Initialize predictive models for brain state signals
-    uint32_t neuron_count = adaptive_network_get_neuron_count(b->network);
+    // WHAT: Only create predictive models if global bio-async is initialized
+    // WHY:  nimcp_predictive_create requires nimcp_bio_async_init() to have been called
+    // HOW:  Check initialization state and gracefully skip if not available
+    if (nimcp_bio_async_is_initialized()) {
+        uint32_t neuron_count = adaptive_network_get_neuron_count(b->network);
 
-    ctx->neuron_count_predictor = nimcp_predictive_create(
-        "brain.neuron_count",
-        (float)neuron_count,
-        100.0F  // High precision - neuron count is stable
-    );
+        ctx->neuron_count_predictor = nimcp_predictive_create(
+            "brain.neuron_count",
+            (float)neuron_count,
+            100.0F  // High precision - neuron count is stable
+        );
 
-    ctx->activity_predictor = nimcp_predictive_create(
-        "brain.global_activity",
-        0.05F,  // Expect low baseline activity
-        10.0F   // Medium precision - activity varies
-    );
+        ctx->activity_predictor = nimcp_predictive_create(
+            "brain.global_activity",
+            0.05F,  // Expect low baseline activity
+            10.0F   // Medium precision - activity varies
+        );
 
-    ctx->energy_predictor = nimcp_predictive_create(
-        "brain.energy_level",
-        1.0F,   // Expect full energy initially
-        50.0F   // High precision for energy monitoring
-    );
+        ctx->energy_predictor = nimcp_predictive_create(
+            "brain.energy_level",
+            1.0F,   // Expect full energy initially
+            50.0F   // High precision for energy monitoring
+        );
 
-    if (!ctx->neuron_count_predictor || !ctx->activity_predictor ||
-        !ctx->energy_predictor) {
-        LOG_ERROR("brain_bio_async_init: Failed to create predictive models");
-        bio_router_unregister_module(ctx->module_ctx);
-        nimcp_platform_mutex_destroy(&ctx->stats_mutex);
-        unified_mem_free(ctx_handle);
-        unified_mem_destroy(mem_mgr);
-        return -1;
+        if (!ctx->neuron_count_predictor || !ctx->activity_predictor ||
+            !ctx->energy_predictor) {
+            LOG_WARN("brain_bio_async_init: Failed to create some predictive models, continuing without them");
+            // Clean up any that were created
+            if (ctx->neuron_count_predictor) {
+                nimcp_predictive_destroy(ctx->neuron_count_predictor);
+                ctx->neuron_count_predictor = NULL;
+            }
+            if (ctx->activity_predictor) {
+                nimcp_predictive_destroy(ctx->activity_predictor);
+                ctx->activity_predictor = NULL;
+            }
+            if (ctx->energy_predictor) {
+                nimcp_predictive_destroy(ctx->energy_predictor);
+                ctx->energy_predictor = NULL;
+            }
+        } else {
+            LOG_DEBUG("Created predictive models for brain state signals");
+        }
+    } else {
+        LOG_DEBUG("Bio-async not initialized, skipping predictive model creation");
+        ctx->neuron_count_predictor = NULL;
+        ctx->activity_predictor = NULL;
+        ctx->energy_predictor = NULL;
     }
-
-    LOG_DEBUG("Created predictive models for brain state signals");
 
     ctx->initialized = true;
     b->bio_async_ctx = ctx;

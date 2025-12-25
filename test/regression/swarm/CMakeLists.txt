@@ -81,3 +81,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_logic_bridge_enhanced_regression.cpp
     regression
 )
+
+# Test: Swarm Brain Local Regression (Role-Based Memory Optimization)
+add_test_binary(
+    test_swarm_brain_local_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_brain_local_regression.cpp
+    regression
+)
