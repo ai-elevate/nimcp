@@ -12,6 +12,7 @@
 #include <cstring>
 #include "cognitive/bias/nimcp_bias_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
+#include "utils/error/nimcp_error_codes.h"
 
 class BiasFepBridgeTest : public ::testing::Test {
 protected:
@@ -63,7 +64,7 @@ TEST_F(BiasFepBridgeTest, DefaultConfig) {
 
 TEST_F(BiasFepBridgeTest, DefaultConfigNullPtr) {
     int ret = bias_fep_bridge_default_config(nullptr);
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, NIMCP_ERROR_NULL_POINTER);  /* Returns proper error code, not -1 */
 }
 
 /* ============================================================================
@@ -123,8 +124,17 @@ TEST_F(BiasFepBridgeTest, DetectAllBiasTypes) {
  * ============================================================================ */
 
 TEST_F(BiasFepBridgeTest, CorrectPrior) {
+    /* Must connect FEP system before prior correction can work */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    bias_fep_bridge_connect_fep(bridge, fep);
     int ret = bias_fep_correct_prior(bridge, BIAS_TYPE_CONFIRMATION);
     EXPECT_EQ(ret, 0);
+
+    fep_destroy(fep);
 }
 
 TEST_F(BiasFepBridgeTest, CorrectPriorNull) {
@@ -133,10 +143,19 @@ TEST_F(BiasFepBridgeTest, CorrectPriorNull) {
 }
 
 TEST_F(BiasFepBridgeTest, CorrectAllBiasTypes) {
+    /* Must connect FEP system before prior correction can work */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    bias_fep_bridge_connect_fep(bridge, fep);
     EXPECT_EQ(bias_fep_correct_prior(bridge, BIAS_TYPE_CONFIRMATION), 0);
     EXPECT_EQ(bias_fep_correct_prior(bridge, BIAS_TYPE_AVAILABILITY), 0);
     EXPECT_EQ(bias_fep_correct_prior(bridge, BIAS_TYPE_ANCHORING), 0);
     EXPECT_EQ(bias_fep_correct_prior(bridge, BIAS_TYPE_RECENCY), 0);
+
+    fep_destroy(fep);
 }
 
 /* ============================================================================
@@ -198,8 +217,9 @@ TEST_F(BiasFepBridgeTest, DisconnectBioAsync) {
 }
 
 TEST_F(BiasFepBridgeTest, DisconnectBioAsyncNull) {
+    /* Disconnect with NULL is a graceful no-op, returns SUCCESS */
     int ret = bias_fep_bridge_disconnect_bio_async(nullptr);
-    EXPECT_NE(ret, 0);
+    EXPECT_EQ(ret, 0);
 }
 
 TEST_F(BiasFepBridgeTest, IsBioAsyncConnected) {

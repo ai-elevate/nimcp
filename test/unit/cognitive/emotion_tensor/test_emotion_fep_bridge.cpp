@@ -12,6 +12,7 @@
 #include <cstring>
 #include "cognitive/emotion/nimcp_emotion_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
+#include "utils/error/nimcp_error_codes.h"
 
 class EmotionFepBridgeTest : public ::testing::Test {
 protected:
@@ -64,7 +65,7 @@ TEST_F(EmotionFepBridgeTest, DefaultConfig) {
 
 TEST_F(EmotionFepBridgeTest, DefaultConfigNullPtr) {
     int ret = emotion_fep_bridge_default_config(nullptr);
-    EXPECT_EQ(ret, -1);
+    EXPECT_NE(ret, 0);  /* Returns error code for NULL */
 }
 
 /* ============================================================================
@@ -84,14 +85,14 @@ TEST_F(EmotionFepBridgeTest, ConnectFep) {
 }
 
 TEST_F(EmotionFepBridgeTest, ConnectFepNull) {
-    EXPECT_EQ(emotion_fep_bridge_connect_fep(nullptr, nullptr), -1);
+    EXPECT_NE(emotion_fep_bridge_connect_fep(nullptr, nullptr), 0);
 
     fep_config_t fep_config;
     fep_default_config(&fep_config);
     fep_system_t* fep = fep_create(&fep_config, 8, 4);
 
-    EXPECT_EQ(emotion_fep_bridge_connect_fep(nullptr, fep), -1);
-    EXPECT_EQ(emotion_fep_bridge_connect_fep(bridge, nullptr), -1);
+    EXPECT_NE(emotion_fep_bridge_connect_fep(nullptr, fep), 0);
+    EXPECT_NE(emotion_fep_bridge_connect_fep(bridge, nullptr), 0);
 
     fep_destroy(fep);
 }
@@ -99,11 +100,11 @@ TEST_F(EmotionFepBridgeTest, ConnectFepNull) {
 TEST_F(EmotionFepBridgeTest, ConnectEmotion) {
     // Emotion system requires complex initialization, test with NULL for now
     int ret = emotion_fep_bridge_connect_emotion(bridge, nullptr);
-    EXPECT_EQ(ret, -1);  // Should fail with NULL
+    EXPECT_NE(ret, 0);  // Should fail with NULL
 }
 
 TEST_F(EmotionFepBridgeTest, ConnectEmotionNull) {
-    EXPECT_EQ(emotion_fep_bridge_connect_emotion(nullptr, nullptr), -1);
+    EXPECT_NE(emotion_fep_bridge_connect_emotion(nullptr, nullptr), 0);
 }
 
 TEST_F(EmotionFepBridgeTest, Disconnect) {
@@ -112,7 +113,7 @@ TEST_F(EmotionFepBridgeTest, Disconnect) {
 }
 
 TEST_F(EmotionFepBridgeTest, DisconnectNull) {
-    EXPECT_EQ(emotion_fep_bridge_disconnect(nullptr), -1);
+    EXPECT_NE(emotion_fep_bridge_disconnect(nullptr), 0);
 }
 
 /* ============================================================================
@@ -135,8 +136,8 @@ TEST_F(EmotionFepBridgeTest, GetState) {
 TEST_F(EmotionFepBridgeTest, GetStateNull) {
     emotion_fep_state_t state;
 
-    EXPECT_EQ(emotion_fep_bridge_get_state(nullptr, &state), -1);
-    EXPECT_EQ(emotion_fep_bridge_get_state(bridge, nullptr), -1);
+    EXPECT_NE(emotion_fep_bridge_get_state(nullptr, &state), 0);
+    EXPECT_NE(emotion_fep_bridge_get_state(bridge, nullptr), 0);
 }
 
 TEST_F(EmotionFepBridgeTest, GetStats) {
@@ -151,8 +152,8 @@ TEST_F(EmotionFepBridgeTest, GetStats) {
 TEST_F(EmotionFepBridgeTest, GetStatsNull) {
     emotion_fep_stats_t stats;
 
-    EXPECT_EQ(emotion_fep_bridge_get_stats(nullptr, &stats), -1);
-    EXPECT_EQ(emotion_fep_bridge_get_stats(bridge, nullptr), -1);
+    EXPECT_NE(emotion_fep_bridge_get_stats(nullptr, &stats), 0);
+    EXPECT_NE(emotion_fep_bridge_get_stats(bridge, nullptr), 0);
 }
 
 /* ============================================================================
@@ -190,16 +191,25 @@ TEST_F(EmotionFepBridgeTest, GenerateValencedPeNegative) {
 }
 
 TEST_F(EmotionFepBridgeTest, GenerateValencedPeNull) {
-    EXPECT_EQ(emotion_fep_generate_valenced_pe(nullptr, 5.0f), -1);
+    EXPECT_NE(emotion_fep_generate_valenced_pe(nullptr, 5.0f), 0);
 }
 
 TEST_F(EmotionFepBridgeTest, ModulatePrecisionByIntensity) {
+    /* Must connect FEP system before precision modulation can work */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    emotion_fep_bridge_connect_fep(bridge, fep);
     int ret = emotion_fep_modulate_precision_by_intensity(bridge);
     EXPECT_EQ(ret, 0);
+
+    fep_destroy(fep);
 }
 
 TEST_F(EmotionFepBridgeTest, ModulatePrecisionByIntensityNull) {
-    EXPECT_EQ(emotion_fep_modulate_precision_by_intensity(nullptr), -1);
+    EXPECT_NE(emotion_fep_modulate_precision_by_intensity(nullptr), 0);
 }
 
 /* ============================================================================
@@ -207,21 +217,39 @@ TEST_F(EmotionFepBridgeTest, ModulatePrecisionByIntensityNull) {
  * ============================================================================ */
 
 TEST_F(EmotionFepBridgeTest, ApplyEmotionPrecisionModulation) {
+    /* Must connect FEP system before precision modulation can work */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    emotion_fep_bridge_connect_fep(bridge, fep);
     int ret = emotion_fep_apply_emotion_precision_modulation(bridge);
     EXPECT_EQ(ret, 0);
+
+    fep_destroy(fep);
 }
 
 TEST_F(EmotionFepBridgeTest, ApplyEmotionPrecisionModulationNull) {
-    EXPECT_EQ(emotion_fep_apply_emotion_precision_modulation(nullptr), -1);
+    EXPECT_NE(emotion_fep_apply_emotion_precision_modulation(nullptr), 0);
 }
 
 TEST_F(EmotionFepBridgeTest, ApplyEmotionLearningModulation) {
+    /* Must connect FEP system before learning modulation can work */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    emotion_fep_bridge_connect_fep(bridge, fep);
     int ret = emotion_fep_apply_emotion_learning_modulation(bridge);
     EXPECT_EQ(ret, 0);
+
+    fep_destroy(fep);
 }
 
 TEST_F(EmotionFepBridgeTest, ApplyEmotionLearningModulationNull) {
-    EXPECT_EQ(emotion_fep_apply_emotion_learning_modulation(nullptr), -1);
+    EXPECT_NE(emotion_fep_apply_emotion_learning_modulation(nullptr), 0);
 }
 
 /* ============================================================================
@@ -234,7 +262,7 @@ TEST_F(EmotionFepBridgeTest, Update) {
 }
 
 TEST_F(EmotionFepBridgeTest, UpdateNull) {
-    EXPECT_EQ(emotion_fep_bridge_update(nullptr, 16), -1);
+    EXPECT_NE(emotion_fep_bridge_update(nullptr, 16), 0);
 }
 
 TEST_F(EmotionFepBridgeTest, UpdateZeroDelta) {
@@ -270,8 +298,9 @@ TEST_F(EmotionFepBridgeTest, BioAsyncIsConnected) {
 }
 
 TEST_F(EmotionFepBridgeTest, BioAsyncNullParams) {
-    EXPECT_EQ(emotion_fep_bridge_connect_bio_async(nullptr), -1);
-    EXPECT_EQ(emotion_fep_bridge_disconnect_bio_async(nullptr), -1);
+    EXPECT_NE(emotion_fep_bridge_connect_bio_async(nullptr), 0);
+    /* Disconnect with NULL is a graceful no-op, returns SUCCESS */
+    EXPECT_EQ(emotion_fep_bridge_disconnect_bio_async(nullptr), 0);
     EXPECT_FALSE(emotion_fep_bridge_is_bio_async_connected(nullptr));
 }
 

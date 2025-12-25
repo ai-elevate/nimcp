@@ -184,9 +184,21 @@ static void pa_calculate_trend(pa_series_data_t* series) {
         series->intercept = (sum_y - series->slope * sum_x) / n;
     }
 
-    /* Determine trend type */
-    double slope_threshold = series->meta.variance > 0 ?
-                             sqrt(series->meta.variance / series->count) * 0.1 : 0.01;
+    /* Calculate residual variance (variance after removing linear trend) */
+    double sum_residual_sq = 0.0;
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t idx = (start + i) % PA_MAX_SAMPLES;
+        double predicted = series->slope * (double)i + series->intercept;
+        double residual = series->samples[idx].value - predicted;
+        sum_residual_sq += residual * residual;
+    }
+    double residual_std = n > 1 ? sqrt(sum_residual_sq / (n - 1)) : 0.0;
+
+    /* Determine trend type using residual variance for threshold
+     * WHY: Using raw variance would incorrectly mark monotonic data as STABLE
+     *      because the raw variance is high even though trend is clear.
+     *      Residual variance measures how well the linear fit captures the data. */
+    double slope_threshold = residual_std > 0 ? residual_std * 0.1 : 0.01;
 
     if (series->slope > slope_threshold) {
         series->meta.trend = PA_TREND_INCREASING;
@@ -728,7 +740,8 @@ bool pa_build_failure_graph(pa_context_t* ctx) {
     if (!ctx) return false;
 
     pthread_mutex_lock(&ctx->mutex);
-    ctx->failure_graph.edge_count = 0;
+    /* Note: Do NOT clear edge_count here - edges are added by pa_record_failure_sequence */
+    /* This function is called to finalize/validate the graph structure */
     pthread_mutex_unlock(&ctx->mutex);
 
     /* Graph is built from recorded failure sequences */
@@ -942,7 +955,14 @@ pa_trend_t pa_get_trend(pa_context_t* ctx, pa_series_type_t series) {
     if (series < 0 || series >= PA_MAX_SERIES) return PA_TREND_STABLE;
 
     pthread_mutex_lock(&ctx->mutex);
-    pa_trend_t trend = ctx->series[series].meta.trend;
+
+    /* Ensure trend is calculated for current data */
+    pa_series_data_t* s = &ctx->series[series];
+    if (s->count >= 2) {
+        pa_calculate_trend(s);
+    }
+
+    pa_trend_t trend = s->meta.trend;
     pthread_mutex_unlock(&ctx->mutex);
 
     return trend;

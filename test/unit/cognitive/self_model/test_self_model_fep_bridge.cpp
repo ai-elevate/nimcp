@@ -79,7 +79,7 @@ TEST_F(SelfModelFepBridgeTest, DefaultConfigNullPtr) {
     // WHY:  Verify null safety
     // HOW:  Pass nullptr, expect error
     int ret = self_model_fep_bridge_default_config(nullptr);
-    EXPECT_EQ(ret, -1);
+    EXPECT_NE(ret, 0);  /* Returns error code for NULL */
 }
 
 /* ============================================================================
@@ -195,8 +195,17 @@ TEST_F(SelfModelFepBridgeTest, ApplyBeliefPriors) {
     // WHAT: Test applying self-beliefs as FEP priors
     // WHY:  Self-beliefs constrain inference
     // HOW:  Apply priors, verify success
+    /* Must connect FEP system before applying priors */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    self_model_fep_bridge_connect_fep(bridge, fep);
     int ret = self_model_fep_apply_belief_priors(bridge);
     EXPECT_EQ(ret, 0);
+
+    fep_destroy(fep);
 }
 
 TEST_F(SelfModelFepBridgeTest, ApplyBeliefPriorsNull) {
@@ -211,8 +220,17 @@ TEST_F(SelfModelFepBridgeTest, ConstrainPolicies) {
     // WHAT: Test policy constraint by capabilities
     // WHY:  Don't plan beyond capabilities
     // HOW:  Constrain policies, verify success
+    /* Must connect FEP system before constraining policies */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    self_model_fep_bridge_connect_fep(bridge, fep);
     int ret = self_model_fep_constrain_policies(bridge);
     EXPECT_EQ(ret, 0);
+
+    fep_destroy(fep);
 }
 
 TEST_F(SelfModelFepBridgeTest, ConstrainPoliciesNull) {
@@ -227,11 +245,20 @@ TEST_F(SelfModelFepBridgeTest, ApplySensoryAttenuation) {
     // WHAT: Test sensory attenuation for self-generated actions
     // WHY:  Self-originated signals are predictable
     // HOW:  Apply attenuation for self-generated and external
+    /* Must connect FEP system before sensory attenuation */
+    fep_config_t fep_config;
+    fep_default_config(&fep_config);
+    fep_system_t* fep = fep_create(&fep_config, 8, 4);
+    ASSERT_NE(fep, nullptr);
+
+    self_model_fep_bridge_connect_fep(bridge, fep);
     int ret1 = self_model_fep_apply_sensory_attenuation(bridge, true);
     EXPECT_EQ(ret1, 0);
 
     int ret2 = self_model_fep_apply_sensory_attenuation(bridge, false);
     EXPECT_EQ(ret2, 0);
+
+    fep_destroy(fep);
 }
 
 TEST_F(SelfModelFepBridgeTest, ApplySensoryAttenuationNull) {
