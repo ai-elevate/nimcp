@@ -18,9 +18,9 @@
 
 class ReasoningImmuneBridgeTest : public ::testing::Test {
 protected:
-    reasoning_immune_bridge_t* bridge;
-    brain_immune_system_t* immune;
-    reasoning_integration_t* reasoning;
+    reasoning_immune_bridge_t* bridge = nullptr;
+    brain_immune_system_t* immune = nullptr;
+    reasoning_integration_t* reasoning = nullptr;
 
     void SetUp() override {
         /* Create immune system */

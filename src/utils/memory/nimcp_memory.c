@@ -1188,13 +1188,13 @@ static bool check_double_free(void* ptr)
         // 1. Actual double-free (already freed)
         // 2. Allocated via non-tracked path (different allocator)
         // 3. Tracking list bug (entry never added or incorrectly removed)
-        // For now, just warn but ALLOW the free to proceed
-        // If it's an actual double-free, the system will likely crash
+        // IMPORTANT: Return true to PREVENT the free from proceeding
+        // This avoids crashes from actual double-frees
         fprintf(stderr, "[MEMORY] Warning: Pointer %p not in tracking list (possible double-free or untracked allocation)\n", ptr);
-        return false;  // Allow the free to proceed - crash will indicate real double-free
+        return true;  // Block the free to prevent crash
     }
 
-    return false;
+    return false;  // Pointer found in tracking list, safe to free
 }
 
 //=============================================================================
@@ -1240,7 +1240,9 @@ void* nimcp_malloc(size_t size)
 
     // Use unified memory manager for all allocations
     // This provides CoW support, consistent tracking, and proper cleanup
-    if (g_unified_manager) {
+    // NOTE: Only use UMM when tracking is enabled, because we need to track the handle
+    // for proper cleanup. When tracking is disabled, fallback to direct malloc.
+    if (g_unified_manager && g_memory_state.tracking_enabled) {
         unified_mem_request_t req = unified_mem_request_direct(size);
         unified_mem_handle_t handle = unified_mem_alloc(g_unified_manager, &req);
 
@@ -1260,42 +1262,54 @@ void* nimcp_malloc(size_t size)
         }
     }
 
-    // Fallback to direct malloc if UMM not available
-    // Add guards for consistency with aligned allocations
-    const size_t guard_size = 8;  // Minimum guard size
-    size_t total_size = size + (2 * guard_size);
+    // Fallback to direct malloc if UMM not available or tracking disabled
+    // Only add guards if tracking is enabled (guards need tracking to be freed correctly)
+    if (g_memory_state.tracking_enabled) {
+        const size_t guard_size = 8;  // Minimum guard size
+        size_t total_size = size + (2 * guard_size);
 
-    void* real_ptr = malloc(total_size);
-    if (real_ptr) {
-        // Fill guard regions with canary pattern
-        uint64_t pattern = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
+        void* real_ptr = malloc(total_size);
+        if (real_ptr) {
+            // Fill guard regions with canary pattern
+            uint64_t pattern = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
 
-        // Head guard
-        ((uint64_t*)real_ptr)[0] = pattern;
+            // Head guard
+            ((uint64_t*)real_ptr)[0] = pattern;
 
-        // Tail guard
-        uint64_t* tail = (uint64_t*)((char*)real_ptr + total_size - guard_size);
-        tail[0] = pattern;
+            // Tail guard
+            uint64_t* tail = (uint64_t*)((char*)real_ptr + total_size - guard_size);
+            tail[0] = pattern;
 
-        // User pointer (after head guard)
-        void* user_ptr = (char*)real_ptr + guard_size;
+            // User pointer (after head guard)
+            void* user_ptr = (char*)real_ptr + guard_size;
 
-        // Track with guard size so nimcp_free can compute real_ptr correctly
-        track_allocation(user_ptr, size, guard_size, __FILE__, __LINE__, __func__);
+            // Track with guard size so nimcp_free can compute real_ptr correctly
+            track_allocation(user_ptr, size, guard_size, __FILE__, __LINE__, __func__);
 
-        if (g_memory_state.debug_output) {
-            printf("[MEMORY] Allocated via malloc: %zu bytes at %p (with guards)\n", size, user_ptr);
+            if (g_memory_state.debug_output) {
+                printf("[MEMORY] Allocated via malloc: %zu bytes at %p (with guards)\n", size, user_ptr);
+            }
+            return user_ptr;
         }
-        return user_ptr;
     } else {
-        nimcp_mutex_lock(&g_memory_state.lock);
-        g_memory_state.stats.failed_allocations++;
-        nimcp_mutex_unlock(&g_memory_state.lock);
-        if (g_memory_state.debug_output) {
-            fprintf(stderr, "[MEMORY] Allocation failed: %zu bytes\n", size);
+        // Tracking disabled - use plain malloc without guards
+        void* ptr = malloc(size);
+        if (ptr) {
+            if (g_memory_state.debug_output) {
+                printf("[MEMORY] Allocated via malloc (no tracking): %zu bytes at %p\n", size, ptr);
+            }
+            return ptr;
         }
-        return NULL;
     }
+
+    // Allocation failed
+    nimcp_mutex_lock(&g_memory_state.lock);
+    g_memory_state.stats.failed_allocations++;
+    nimcp_mutex_unlock(&g_memory_state.lock);
+    if (g_memory_state.debug_output) {
+        fprintf(stderr, "[MEMORY] Allocation failed: %zu bytes\n", size);
+    }
+    return NULL;
 }
 
 /**
@@ -1323,7 +1337,8 @@ void* nimcp_calloc(size_t count, size_t size)
     size_t user_size = count * size;
 
     // Use unified memory manager for all allocations
-    if (g_unified_manager) {
+    // NOTE: Only use UMM when tracking is enabled (see nimcp_malloc comment)
+    if (g_unified_manager && g_memory_state.tracking_enabled) {
         unified_mem_request_t req = unified_mem_request_direct(user_size);
         unified_mem_handle_t handle = unified_mem_alloc(g_unified_manager, &req);
 
@@ -1420,7 +1435,8 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     }
 
     // Use unified memory manager for all allocations
-    if (g_unified_manager) {
+    // NOTE: Only use UMM when tracking is enabled (see nimcp_malloc comment)
+    if (g_unified_manager && g_memory_state.tracking_enabled) {
         unified_mem_request_t req = unified_mem_request_direct(new_size);
         unified_mem_handle_t new_handle = unified_mem_alloc(g_unified_manager, &req);
 
@@ -1452,7 +1468,7 @@ void* nimcp_realloc(void* ptr, size_t new_size)
         }
     }
 
-    // Fallback to direct realloc if UMM not available
+    // Fallback to direct realloc if UMM not available or tracking disabled
     untrack_allocation(ptr);
     void* new_ptr = realloc(ptr, new_size);
     if (new_ptr) {

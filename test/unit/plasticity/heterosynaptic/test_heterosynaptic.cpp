@@ -262,22 +262,29 @@ TEST_F(HeterosynapticTest, DepressionProportionalToLTP) {
     /* WHAT: Test depression scales with LTP amount
      * WHY:  Δw_j ∝ Δw_i
      */
-    add_synapse_at(0.0f, 0.0f, 0.0f, 0.5f, 1);
-    add_synapse_at(10.0f, 0.0f, 0.0f, 0.8f, 2);
-
-    /* Small LTP */
+    /* Small LTP - use separate system */
     hetero_system_t* sys1 = hetero_create(&config, 10);
-    add_synapse_at(0.0f, 0.0f, 0.0f, 0.5f, 1);
-    add_synapse_at(10.0f, 0.0f, 0.0f, 0.8f, 2);
+    ASSERT_NE(sys1, nullptr);
+    hetero_spatial_coords_t pos1_1 = {0.0f, 0.0f, 0.0f};
+    hetero_spatial_coords_t pos1_2 = {10.0f, 0.0f, 0.0f};
+    hetero_add_synapse(sys1, &pos1_1, 0.5f, 1, 0);
+    hetero_add_synapse(sys1, &pos1_2, 0.8f, 2, 0);
     hetero_apply_depression(sys1, 1, 0.1f, 0);
-    float weight1 = hetero_get_synapse(sys1, 2)->weight;
+    hetero_synapse_t* syn1 = hetero_get_synapse(sys1, 2);
+    ASSERT_NE(syn1, nullptr);
+    float weight1 = syn1->weight;
 
-    /* Large LTP */
+    /* Large LTP - use separate system */
     hetero_system_t* sys2 = hetero_create(&config, 10);
-    add_synapse_at(0.0f, 0.0f, 0.0f, 0.5f, 1);
-    add_synapse_at(10.0f, 0.0f, 0.0f, 0.8f, 2);
+    ASSERT_NE(sys2, nullptr);
+    hetero_spatial_coords_t pos2_1 = {0.0f, 0.0f, 0.0f};
+    hetero_spatial_coords_t pos2_2 = {10.0f, 0.0f, 0.0f};
+    hetero_add_synapse(sys2, &pos2_1, 0.5f, 1, 0);
+    hetero_add_synapse(sys2, &pos2_2, 0.8f, 2, 0);
     hetero_apply_depression(sys2, 1, 0.3f, 0);
-    float weight2 = hetero_get_synapse(sys2, 2)->weight;
+    hetero_synapse_t* syn2 = hetero_get_synapse(sys2, 2);
+    ASSERT_NE(syn2, nullptr);
+    float weight2 = syn2->weight;
 
     /* Larger LTP → more depression */
     EXPECT_LT(weight2, weight1);
