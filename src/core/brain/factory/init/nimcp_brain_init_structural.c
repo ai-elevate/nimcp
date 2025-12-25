@@ -432,6 +432,28 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
         return true;  // Disabled, not an error
     }
 
+    // Check for lazy initialization mode - defer allocation until first use
+    if (brain->config.lazy_cortical_init) {
+        // Mark as needing initialization but don't allocate yet
+        brain->cortical_column_pool = NULL;
+        brain->hypercolumns = NULL;
+        brain->num_hypercolumns = 0;
+        brain->laminar_system = NULL;
+        brain->columnar_connectivity = NULL;
+        brain->visual_topographic_map = NULL;
+        brain->auditory_topographic_map = NULL;
+        brain->somatosensory_topographic_map = NULL;
+        brain->orientation_hypercolumns = NULL;
+        brain->num_orientation_hypercolumns = 0;
+        brain->feature_hypercolumns = NULL;
+        brain->num_feature_hypercolumns = 0;
+        brain->enable_cortical_columns = true;  // Mark as enabled but lazy
+        brain->cortical_needs_lazy_init = true;  // Flag for lazy initialization
+        brain->last_cortical_update_us = 0;
+        LOG_INFO("Cortical columns subsystem deferred (lazy initialization)");
+        return true;
+    }
+
     // Check if already initialized (prevent double initialization)
     if (brain->cortical_column_pool) {
         return true;  // Already initialized

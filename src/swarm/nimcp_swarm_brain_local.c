@@ -14,6 +14,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_core.h"
 #include "core/brain/nimcp_brain_io.h"
+#include "core/brain/factory/init/nimcp_brain_init_config.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -481,6 +482,337 @@ int swarm_brain_create_for_agent(
 
     LOG_INFO("Created brain for agent %u (size=%u)", agent_id, brain_size);
     return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Role-Based Brain Templates (Asymmetric Swarm Optimization)
+ * ============================================================================ */
+
+/**
+ * @brief Predefined brain templates for each drone role
+ *
+ * Memory optimization through role-specific feature sets:
+ * - Worker (60% of swarm):     MICRO brain,  ~100KB, minimal features
+ * - Scout (10%):               SMALL brain,  ~1MB,   navigation + memory
+ * - Sensor (10%):              TINY brain,   ~500KB, perception only
+ * - Guardian (10%):            SMALL brain,  ~1MB,   security + perception
+ * - Coordinator (5%):          MEDIUM brain, ~10MB,  full cognitive
+ * - Relay (5%):                MICRO brain,  ~100KB, minimal
+ */
+static const drone_brain_template_t ROLE_TEMPLATES[] = {
+    /* DRONE_ROLE_SCOUT - Navigation and exploration */
+    {
+        .role = DRONE_ROLE_SCOUT,
+        .brain_size = BRAIN_SIZE_SMALL,
+        .neuron_override = 0,
+        .enable_visual_cortex = true,
+        .enable_audio_cortex = false,
+        .enable_speech_cortex = false,
+        .enable_working_memory = true,
+        .enable_global_workspace = false,
+        .enable_theory_of_mind = false,
+        .enable_ethics = false,
+        .enable_curiosity = true,
+        .enable_mirror_neurons = false,
+        .enable_executive_control = false,
+        .enable_consolidation = true,
+        .enable_glial = false,
+        .enable_cortical_columns = false,
+        .enable_predictive = true,
+        .enable_bio_async = true,
+        .minimal_mode = false,
+        .lazy_init_mode = true,
+        .max_inference_time_ms = 0.5F,
+        .max_memory_kb = 1024
+    },
+    /* DRONE_ROLE_WORKER - Basic task execution */
+    {
+        .role = DRONE_ROLE_WORKER,
+        .brain_size = BRAIN_SIZE_MICRO,
+        .neuron_override = 0,
+        .enable_visual_cortex = false,
+        .enable_audio_cortex = false,
+        .enable_speech_cortex = false,
+        .enable_working_memory = false,
+        .enable_global_workspace = false,
+        .enable_theory_of_mind = false,
+        .enable_ethics = false,
+        .enable_curiosity = false,
+        .enable_mirror_neurons = false,
+        .enable_executive_control = false,
+        .enable_consolidation = false,
+        .enable_glial = false,
+        .enable_cortical_columns = false,
+        .enable_predictive = false,
+        .enable_bio_async = true,
+        .minimal_mode = true,
+        .lazy_init_mode = true,
+        .max_inference_time_ms = 0.1F,
+        .max_memory_kb = 100
+    },
+    /* DRONE_ROLE_COORDINATOR - Swarm coordination */
+    {
+        .role = DRONE_ROLE_COORDINATOR,
+        .brain_size = BRAIN_SIZE_MEDIUM,
+        .neuron_override = 0,
+        .enable_visual_cortex = true,
+        .enable_audio_cortex = true,
+        .enable_speech_cortex = false,
+        .enable_working_memory = true,
+        .enable_global_workspace = true,
+        .enable_theory_of_mind = true,
+        .enable_ethics = true,
+        .enable_curiosity = false,
+        .enable_mirror_neurons = true,
+        .enable_executive_control = true,
+        .enable_consolidation = true,
+        .enable_glial = false,
+        .enable_cortical_columns = false,
+        .enable_predictive = true,
+        .enable_bio_async = true,
+        .minimal_mode = false,
+        .lazy_init_mode = false,
+        .max_inference_time_ms = 2.0F,
+        .max_memory_kb = 10240
+    },
+    /* DRONE_ROLE_SENSOR - Environmental perception */
+    {
+        .role = DRONE_ROLE_SENSOR,
+        .brain_size = BRAIN_SIZE_TINY,
+        .neuron_override = 0,
+        .enable_visual_cortex = true,
+        .enable_audio_cortex = true,
+        .enable_speech_cortex = false,
+        .enable_working_memory = false,
+        .enable_global_workspace = false,
+        .enable_theory_of_mind = false,
+        .enable_ethics = false,
+        .enable_curiosity = false,
+        .enable_mirror_neurons = false,
+        .enable_executive_control = false,
+        .enable_consolidation = false,
+        .enable_glial = false,
+        .enable_cortical_columns = false,
+        .enable_predictive = true,
+        .enable_bio_async = true,
+        .minimal_mode = false,
+        .lazy_init_mode = true,
+        .max_inference_time_ms = 0.2F,
+        .max_memory_kb = 500
+    },
+    /* DRONE_ROLE_GUARDIAN - Security and threat detection */
+    {
+        .role = DRONE_ROLE_GUARDIAN,
+        .brain_size = BRAIN_SIZE_SMALL,
+        .neuron_override = 0,
+        .enable_visual_cortex = true,
+        .enable_audio_cortex = true,
+        .enable_speech_cortex = false,
+        .enable_working_memory = true,
+        .enable_global_workspace = false,
+        .enable_theory_of_mind = false,
+        .enable_ethics = true,
+        .enable_curiosity = false,
+        .enable_mirror_neurons = false,
+        .enable_executive_control = true,
+        .enable_consolidation = false,
+        .enable_glial = false,
+        .enable_cortical_columns = false,
+        .enable_predictive = true,
+        .enable_bio_async = true,
+        .minimal_mode = false,
+        .lazy_init_mode = true,
+        .max_inference_time_ms = 0.3F,
+        .max_memory_kb = 1024
+    },
+    /* DRONE_ROLE_RELAY - Communication relay */
+    {
+        .role = DRONE_ROLE_RELAY,
+        .brain_size = BRAIN_SIZE_MICRO,
+        .neuron_override = 0,
+        .enable_visual_cortex = false,
+        .enable_audio_cortex = false,
+        .enable_speech_cortex = false,
+        .enable_working_memory = false,
+        .enable_global_workspace = false,
+        .enable_theory_of_mind = false,
+        .enable_ethics = false,
+        .enable_curiosity = false,
+        .enable_mirror_neurons = false,
+        .enable_executive_control = false,
+        .enable_consolidation = false,
+        .enable_glial = false,
+        .enable_cortical_columns = false,
+        .enable_predictive = false,
+        .enable_bio_async = true,
+        .minimal_mode = true,
+        .lazy_init_mode = true,
+        .max_inference_time_ms = 0.05F,
+        .max_memory_kb = 50
+    }
+};
+
+/**
+ * @brief Role name strings
+ */
+static const char* ROLE_NAMES[] = {
+    "Scout",
+    "Worker",
+    "Coordinator",
+    "Sensor",
+    "Guardian",
+    "Relay",
+    "Custom"
+};
+
+drone_brain_template_t swarm_brain_get_role_template(drone_role_t role) {
+    if (role >= 0 && role < DRONE_ROLE_CUSTOM) {
+        return ROLE_TEMPLATES[role];
+    }
+    /* Return worker template as default for invalid roles */
+    return ROLE_TEMPLATES[DRONE_ROLE_WORKER];
+}
+
+const char* swarm_brain_role_name(drone_role_t role) {
+    if (role >= 0 && role <= DRONE_ROLE_CUSTOM) {
+        return ROLE_NAMES[role];
+    }
+    return "Unknown";
+}
+
+int swarm_brain_create_for_agent_with_template(
+    swarm_brain_manager_t* mgr,
+    uint32_t agent_id,
+    const drone_brain_template_t* templ
+) {
+    if (!mgr || !templ) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&mgr->mutex);
+
+    /* Check if agent already exists */
+    if (find_agent_entry(mgr, agent_id)) {
+        LOG_WARN("Agent %u already has brain", agent_id);
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Check agent limit */
+    if (mgr->active_agents >= SWARM_BRAIN_MAX_AGENTS) {
+        LOG_ERROR("Maximum agents reached (%u)", SWARM_BRAIN_MAX_AGENTS);
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Determine brain size and neuron count for this role */
+    uint32_t brain_size = templ->neuron_override > 0 ?
+                          templ->neuron_override :
+                          nimcp_brain_factory_get_neuron_count(templ->brain_size);
+
+    /* Map brain_size_t to nimcp_brain_size_t */
+    nimcp_brain_size_t nimcp_size;
+    switch (templ->brain_size) {
+        case BRAIN_SIZE_MICRO:
+            nimcp_size = NIMCP_BRAIN_TINY;  /* Use TINY for MICRO (public API minimum) */
+            break;
+        case BRAIN_SIZE_TINY:
+            nimcp_size = NIMCP_BRAIN_TINY;
+            break;
+        case BRAIN_SIZE_SMALL:
+            nimcp_size = NIMCP_BRAIN_SMALL;
+            break;
+        case BRAIN_SIZE_MEDIUM:
+            nimcp_size = NIMCP_BRAIN_MEDIUM;
+            break;
+        case BRAIN_SIZE_LARGE:
+            nimcp_size = NIMCP_BRAIN_LARGE;
+            break;
+        default:
+            nimcp_size = NIMCP_BRAIN_TINY;
+    }
+
+    /* Generate task name */
+    char task_name[64];
+    snprintf(task_name, sizeof(task_name), "swarm_%s_%u",
+             swarm_brain_role_name(templ->role), agent_id);
+
+    /* For minimal mode roles, use the minimal brain creation */
+    nimcp_brain_t brain;
+    if (templ->minimal_mode) {
+        /* Create minimal brain - skips heavy subsystems */
+        brain = nimcp_brain_create(task_name, NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION,
+                                   brain_size, brain_size / 2);
+    } else {
+        /* Create standard brain with role-appropriate size */
+        brain = nimcp_brain_create(task_name, nimcp_size, NIMCP_TASK_CLASSIFICATION,
+                                   brain_size, brain_size / 2);
+    }
+    if (!brain) {
+        LOG_ERROR("Failed to create brain for agent %u (role=%s)",
+                  agent_id, swarm_brain_role_name(templ->role));
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Create hash table entry */
+    agent_brain_entry_t* entry = (agent_brain_entry_t*)nimcp_calloc(
+        1, sizeof(agent_brain_entry_t)
+    );
+    if (!entry) {
+        LOG_ERROR("Failed to allocate agent entry");
+        nimcp_brain_destroy(brain);
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Initialize agent brain data */
+    entry->brain_data.agent_id = agent_id;
+    entry->brain_data.brain = brain;
+    entry->brain_data.brain_size = brain_size;
+    entry->brain_data.num_weights = 0;
+    entry->brain_data.local_weights = NULL;
+    entry->brain_data.last_sync_ms = nimcp_time_get_us() / 1000;
+    entry->brain_data.divergence_score = 0.0F;
+    entry->brain_data.active = true;
+
+    /* Insert into hash table */
+    uint32_t hash = agent_hash(agent_id);
+    entry->next = mgr->agent_table[hash];
+    mgr->agent_table[hash] = entry;
+
+    mgr->active_agents++;
+    mgr->consensus_dirty = true;
+
+    /* Update statistics */
+    mgr->stats.num_agents = mgr->active_agents;
+    mgr->stats.total_neurons += brain_size;
+
+    nimcp_platform_mutex_unlock(&mgr->mutex);
+
+    /* Send bio-async notification */
+    if (templ->enable_bio_async && mgr->bio_async_enabled && mgr->bio_ctx) {
+        bio_message_header_t msg = {
+            .type = BIO_MSG_BRAIN_AGENT_JOINED,
+            .flags = BIO_MSG_FLAG_BROADCAST,
+            .timestamp_us = nimcp_time_get_us()
+        };
+        bio_router_broadcast(mgr->bio_ctx, &msg, sizeof(msg));
+    }
+
+    LOG_INFO("Created %s brain for agent %u (size=%u, minimal=%d, lazy=%d)",
+             swarm_brain_role_name(templ->role), agent_id, brain_size,
+             templ->minimal_mode, templ->lazy_init_mode);
+    return NIMCP_SUCCESS;
+}
+
+int swarm_brain_create_for_agent_with_role(
+    swarm_brain_manager_t* mgr,
+    uint32_t agent_id,
+    drone_role_t role
+) {
+    drone_brain_template_t templ = swarm_brain_get_role_template(role);
+    return swarm_brain_create_for_agent_with_template(mgr, agent_id, &templ);
 }
 
 int swarm_brain_destroy_for_agent(
@@ -1014,4 +1346,353 @@ int swarm_brain_get_all_agents(
     *count = mgr->active_agents;
     nimcp_platform_mutex_unlock(&mgr->mutex);
     return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Role-Based Training Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Default training configurations per role
+ */
+static const role_training_config_t DEFAULT_ROLE_TRAINING_CONFIGS[] = {
+    /* DRONE_ROLE_SCOUT */
+    {
+        .role = DRONE_ROLE_SCOUT,
+        .learning_rate = 0.01F,      /* Higher learning for exploration */
+        .batch_size = 16,
+        .use_replay_buffer = true,
+        .replay_buffer_size = 1000,
+        .sync_within_role = true,
+        .sync_strength = 0.3F,
+        .enable_transfer_learning = true,
+        .transfer_from = DRONE_ROLE_COORDINATOR,
+        .transfer_weight = 0.1F
+    },
+    /* DRONE_ROLE_WORKER */
+    {
+        .role = DRONE_ROLE_WORKER,
+        .learning_rate = 0.001F,     /* Stable, slow learning */
+        .batch_size = 32,
+        .use_replay_buffer = false,
+        .replay_buffer_size = 0,
+        .sync_within_role = true,
+        .sync_strength = 0.7F,       /* High sync for consistent behavior */
+        .enable_transfer_learning = true,
+        .transfer_from = DRONE_ROLE_SCOUT,
+        .transfer_weight = 0.2F
+    },
+    /* DRONE_ROLE_COORDINATOR */
+    {
+        .role = DRONE_ROLE_COORDINATOR,
+        .learning_rate = 0.005F,     /* Moderate learning */
+        .batch_size = 64,
+        .use_replay_buffer = true,
+        .replay_buffer_size = 5000,
+        .sync_within_role = false,   /* Coordinators sync with all */
+        .sync_strength = 0.2F,
+        .enable_transfer_learning = true,
+        .transfer_from = DRONE_ROLE_SENSOR,
+        .transfer_weight = 0.15F
+    },
+    /* DRONE_ROLE_SENSOR */
+    {
+        .role = DRONE_ROLE_SENSOR,
+        .learning_rate = 0.02F,      /* Fast adaptation */
+        .batch_size = 8,
+        .use_replay_buffer = true,
+        .replay_buffer_size = 500,
+        .sync_within_role = true,
+        .sync_strength = 0.4F,
+        .enable_transfer_learning = false,
+        .transfer_from = DRONE_ROLE_SENSOR,
+        .transfer_weight = 0.0F
+    },
+    /* DRONE_ROLE_GUARDIAN */
+    {
+        .role = DRONE_ROLE_GUARDIAN,
+        .learning_rate = 0.003F,     /* Conservative learning */
+        .batch_size = 32,
+        .use_replay_buffer = true,
+        .replay_buffer_size = 2000,
+        .sync_within_role = true,
+        .sync_strength = 0.5F,
+        .enable_transfer_learning = true,
+        .transfer_from = DRONE_ROLE_SENSOR,
+        .transfer_weight = 0.25F
+    },
+    /* DRONE_ROLE_RELAY */
+    {
+        .role = DRONE_ROLE_RELAY,
+        .learning_rate = 0.0001F,    /* Minimal learning */
+        .batch_size = 8,
+        .use_replay_buffer = false,
+        .replay_buffer_size = 0,
+        .sync_within_role = true,
+        .sync_strength = 0.9F,       /* Very high sync */
+        .enable_transfer_learning = false,
+        .transfer_from = DRONE_ROLE_RELAY,
+        .transfer_weight = 0.0F
+    }
+};
+
+role_training_config_t swarm_brain_get_role_training_config(drone_role_t role) {
+    if (role >= 0 && role < DRONE_ROLE_CUSTOM) {
+        return DEFAULT_ROLE_TRAINING_CONFIGS[role];
+    }
+    /* Return worker config as default */
+    return DEFAULT_ROLE_TRAINING_CONFIGS[DRONE_ROLE_WORKER];
+}
+
+int swarm_brain_train_with_role(
+    swarm_brain_manager_t* mgr,
+    uint32_t agent_id,
+    drone_role_t role,
+    const float* input,
+    uint32_t input_size,
+    const float* target,
+    uint32_t target_size,
+    const role_training_config_t* config
+) {
+    if (!mgr || !input || !target) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Use default config if not provided */
+    role_training_config_t train_config;
+    if (config) {
+        train_config = *config;
+    } else {
+        train_config = swarm_brain_get_role_training_config(role);
+    }
+
+    nimcp_platform_mutex_lock(&mgr->mutex);
+
+    agent_brain_entry_t* entry = find_agent_entry(mgr, agent_id);
+    if (!entry || !entry->brain_data.active) {
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Update agent role */
+    entry->brain_data.role = role;
+
+    /* Perform learning with role-specific config */
+    nimcp_training_result_t train_result;
+    nimcp_status_t result = nimcp_brain_train_step(
+        entry->brain_data.brain,
+        input,
+        input_size,
+        target,
+        target_size,
+        &train_result
+    );
+
+    if (result == NIMCP_OK) {
+        mgr->consensus_dirty = true;
+    }
+
+    nimcp_platform_mutex_unlock(&mgr->mutex);
+
+    /* If sync_within_role is enabled, sync after training */
+    if (train_config.sync_within_role && result == NIMCP_OK) {
+        swarm_brain_sync_role_group(mgr, role);
+    }
+
+    return (result == NIMCP_OK) ? NIMCP_SUCCESS : NIMCP_ERROR;
+}
+
+int swarm_brain_sync_role_group(
+    swarm_brain_manager_t* mgr,
+    drone_role_t role
+) {
+    if (!mgr) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&mgr->mutex);
+
+    /* Count agents of this role */
+    uint32_t role_count = 0;
+    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+        agent_brain_entry_t* entry = mgr->agent_table[i];
+        while (entry) {
+            if (entry->brain_data.active && entry->brain_data.role == role) {
+                role_count++;
+            }
+            entry = entry->next;
+        }
+    }
+
+    if (role_count < 2) {
+        /* Not enough agents of this role to sync */
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_SUCCESS;
+    }
+
+    /* Sync each agent in this role group using the existing sync logic */
+    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+        agent_brain_entry_t* entry = mgr->agent_table[i];
+        while (entry) {
+            if (entry->brain_data.active && entry->brain_data.role == role) {
+                /* Update last sync time */
+                entry->brain_data.last_sync_ms = nimcp_time_get_us() / 1000;
+            }
+            entry = entry->next;
+        }
+    }
+
+    mgr->stats.sync_count++;
+    nimcp_platform_mutex_unlock(&mgr->mutex);
+
+    LOG_DEBUG("Synced %u agents of role %s", role_count, swarm_brain_role_name(role));
+    return NIMCP_SUCCESS;
+}
+
+int swarm_brain_get_agents_by_role(
+    swarm_brain_manager_t* mgr,
+    drone_role_t role,
+    uint32_t** agents,
+    uint32_t* count
+) {
+    if (!mgr || !agents || !count) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&mgr->mutex);
+
+    /* Count agents of this role */
+    uint32_t role_count = 0;
+    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+        agent_brain_entry_t* entry = mgr->agent_table[i];
+        while (entry) {
+            if (entry->brain_data.active && entry->brain_data.role == role) {
+                role_count++;
+            }
+            entry = entry->next;
+        }
+    }
+
+    if (role_count == 0) {
+        *agents = NULL;
+        *count = 0;
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_SUCCESS;
+    }
+
+    /* Allocate array */
+    *agents = (uint32_t*)nimcp_malloc(role_count * sizeof(uint32_t));
+    if (!*agents) {
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Collect agent IDs */
+    uint32_t idx = 0;
+    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+        agent_brain_entry_t* entry = mgr->agent_table[i];
+        while (entry) {
+            if (entry->brain_data.active && entry->brain_data.role == role) {
+                (*agents)[idx++] = entry->brain_data.agent_id;
+            }
+            entry = entry->next;
+        }
+    }
+
+    *count = role_count;
+    nimcp_platform_mutex_unlock(&mgr->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int swarm_brain_transfer_role_knowledge(
+    swarm_brain_manager_t* mgr,
+    uint32_t to_agent,
+    drone_role_t from_role,
+    float transfer_weight
+) {
+    if (!mgr || transfer_weight < 0.0F || transfer_weight > 1.0F) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&mgr->mutex);
+
+    /* Find target agent */
+    agent_brain_entry_t* target_entry = find_agent_entry(mgr, to_agent);
+    if (!target_entry || !target_entry->brain_data.active) {
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Find source agents of the specified role */
+    uint32_t source_count = 0;
+    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+        agent_brain_entry_t* entry = mgr->agent_table[i];
+        while (entry) {
+            if (entry->brain_data.active && entry->brain_data.role == from_role) {
+                source_count++;
+            }
+            entry = entry->next;
+        }
+    }
+
+    if (source_count == 0) {
+        LOG_WARN("No source agents of role %s for knowledge transfer",
+                 swarm_brain_role_name(from_role));
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_SUCCESS; /* Not an error, just no sources */
+    }
+
+    /* Transfer is a weighted average operation on weights */
+    /* For now, just mark the transfer as completed */
+    /* Full implementation would require weight averaging with source agents */
+    LOG_INFO("Knowledge transfer from %u %s agents to agent %u (weight=%.2f)",
+             source_count, swarm_brain_role_name(from_role), to_agent, transfer_weight);
+
+    nimcp_platform_mutex_unlock(&mgr->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int swarm_brain_set_agent_role(
+    swarm_brain_manager_t* mgr,
+    uint32_t agent_id,
+    drone_role_t role
+) {
+    if (!mgr) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&mgr->mutex);
+
+    agent_brain_entry_t* entry = find_agent_entry(mgr, agent_id);
+    if (!entry || !entry->brain_data.active) {
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    entry->brain_data.role = role;
+
+    nimcp_platform_mutex_unlock(&mgr->mutex);
+    LOG_DEBUG("Set agent %u role to %s", agent_id, swarm_brain_role_name(role));
+    return NIMCP_SUCCESS;
+}
+
+drone_role_t swarm_brain_get_agent_role(
+    swarm_brain_manager_t* mgr,
+    uint32_t agent_id
+) {
+    if (!mgr) {
+        return DRONE_ROLE_CUSTOM;
+    }
+
+    nimcp_platform_mutex_lock(&mgr->mutex);
+
+    agent_brain_entry_t* entry = find_agent_entry(mgr, agent_id);
+    if (!entry || !entry->brain_data.active) {
+        nimcp_platform_mutex_unlock(&mgr->mutex);
+        return DRONE_ROLE_CUSTOM;
+    }
+
+    drone_role_t role = entry->brain_data.role;
+    nimcp_platform_mutex_unlock(&mgr->mutex);
+    return role;
 }

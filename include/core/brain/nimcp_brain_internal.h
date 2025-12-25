@@ -506,6 +506,8 @@ struct brain_struct {
     feature_hypercolumn_t** feature_hypercolumns;     // Multi-dimensional feature hypercolumns
     uint32_t num_feature_hypercolumns;                // Number of feature hypercolumns
     bool enable_cortical_columns;                     // Master enable flag
+    bool cortical_needs_lazy_init;                    // Flag: cortical columns need lazy init
+    bool topographic_needs_lazy_init;                 // Flag: topographic maps need lazy init
     uint64_t last_cortical_update_us;                 // Last cortical column update timestamp
 
     // === PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS ===

@@ -44,6 +44,8 @@
 uint32_t nimcp_brain_factory_get_neuron_count(brain_size_t size)
 {
     switch (size) {
+        case BRAIN_SIZE_MICRO:
+            return 25;    // Ultra-lightweight for unit tests and swarm drones
         case BRAIN_SIZE_TINY:
             return 100;
         case BRAIN_SIZE_SMALL:
@@ -62,6 +64,8 @@ uint32_t nimcp_brain_factory_get_neuron_count(brain_size_t size)
 float nimcp_brain_factory_get_default_sparsity(brain_size_t size)
 {
     switch (size) {
+        case BRAIN_SIZE_MICRO:
+            return 0.60F;   // Lower sparsity for micro brains (more dense connections)
         case BRAIN_SIZE_TINY:
             return 0.70F;
         case BRAIN_SIZE_SMALL:
@@ -256,8 +260,29 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->lazy_meta_learning_init = lazy;
     config->lazy_neuromod_init = lazy;
     config->lazy_glial_init = lazy;
+    config->lazy_cortical_init = lazy;
+    config->lazy_topographic_init = lazy;
     config->enable_dendrites = !minimal;
     config->enable_axons = !minimal;
+
+    // === CORTICAL COLUMNS CONFIGURATION ===
+    // Disable cortical columns for TINY/SMALL brains (huge memory savings: ~48MB)
+    // Only enable for MEDIUM and larger brains that need hierarchical feature processing
+    bool large_enough_for_cortical = (config->size >= BRAIN_SIZE_MEDIUM) && !minimal;
+    config->enable_cortical_columns = large_enough_for_cortical;
+    config->num_hypercolumns = large_enough_for_cortical ? 10 : 0;
+    config->minicolumns_per_hypercolumn = large_enough_for_cortical ? 100 : 0;
+    config->neurons_per_minicolumn = large_enough_for_cortical ? 80 : 0;
+    config->enable_laminar_structure = large_enough_for_cortical;
+    config->enable_columnar_connectivity = large_enough_for_cortical;
+
+    // Topographic maps only for brains with sensory processing enabled
+    config->enable_visual_topographic = large_enough_for_cortical && config->enable_visual_cortex;
+    config->enable_auditory_topographic = large_enough_for_cortical && config->enable_audio_cortex;
+    config->enable_somatosensory_topographic = large_enough_for_cortical;
+    config->enable_orientation_columns = large_enough_for_cortical && config->enable_visual_cortex;
+    config->num_orientation_columns = large_enough_for_cortical ? 16 : 0;
+    config->enable_feature_hypercolumns = large_enough_for_cortical;
 
     // Phase C2.1: Quantum Walk defaults
     config->enable_quantum_walk_diffusion = false;

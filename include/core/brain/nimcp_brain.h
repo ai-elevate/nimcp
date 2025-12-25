@@ -128,10 +128,11 @@ typedef struct knowledge_system_struct* knowledge_system_t;
  * @brief Pre-configured brain sizes
  */
 typedef enum {
+    BRAIN_SIZE_MICRO,  /**< 25 neurons, <100KB, ~0.05ms inference (unit tests, swarm drones) */
     BRAIN_SIZE_TINY,   /**< 100 neurons, <1MB,  ~0.1ms inference */
-    BRAIN_SIZE_SMALL,  /**< 1K neurons,  ~10MB, ~0.5ms inference */
-    BRAIN_SIZE_MEDIUM, /**< 10K neurons, ~50MB, ~5ms inference */
-    BRAIN_SIZE_LARGE,  /**< 100K neurons, ~500MB, ~50ms inference */
+    BRAIN_SIZE_SMALL,  /**< 500 neurons, ~5MB,  ~0.3ms inference */
+    BRAIN_SIZE_MEDIUM, /**< 1K neurons,  ~10MB, ~0.5ms inference */
+    BRAIN_SIZE_LARGE,  /**< 5K neurons,  ~50MB, ~2ms inference */
     BRAIN_SIZE_CUSTOM  /**< User-defined size */
 } brain_size_t;
 
@@ -351,6 +352,8 @@ typedef struct {
     bool lazy_meta_learning_init;  /**< Defer meta-learning creation (default: false) */
     bool lazy_neuromod_init;  /**< Defer neuromodulator system creation (default: false) */
     bool lazy_glial_init;     /**< Defer glial integration creation (default: false) */
+    bool lazy_cortical_init;  /**< Defer cortical columns creation until first use (default: false) */
+    bool lazy_topographic_init; /**< Defer topographic maps creation until first use (default: false) */
     bool enable_dendrites;    /**< Enable dendrite subsystem entirely (default: true) */
     bool enable_axons;        /**< Enable axon subsystem entirely (default: true) */
 
