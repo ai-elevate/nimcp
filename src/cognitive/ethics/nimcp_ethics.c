@@ -172,7 +172,10 @@ static bool hash_table_remove_policy(hash_table_t* table, uint32_t policy_id)
 
 static brain_t create_golden_rule_network(uint32_t feature_size)
 {
-    return brain_create("golden_rule", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, feature_size, 1);
+    // Use brain_create_minimal to avoid infinite recursion:
+    // Full brain creation includes ethics engine, which creates golden_rule brain,
+    // which creates ethics engine, etc. Minimal brain skips cognitive subsystems.
+    return brain_create_minimal("golden_rule", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, feature_size, 1);
 }
 
 static empathy_network_t create_empathy_network(void)

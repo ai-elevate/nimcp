@@ -558,7 +558,8 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_salience_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // Phase 11: Ethics Engine (heavy - value alignment, constraint checking)
-    if (!brain->config.lazy_ethics_init) {
+    // Skip for minimal_mode to prevent recursive brain creation (ethics creates golden_rule brain)
+    if (!brain->config.lazy_ethics_init && !brain->config.minimal_mode) {
         if (!init_ethics_engine_subsystem(brain)) { brain_destroy(brain); return NULL; }
         if (!init_empathy_network_subsystem(brain)) { brain_destroy(brain); return NULL; }
         if (!init_empathetic_response_subsystem(brain)) { brain_destroy(brain); return NULL; }
@@ -600,35 +601,38 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // ========================================================================
     // BIO-ASYNC INTEGRATION
+    // Skip for minimal_mode - lightweight brains don't need async messaging
     // ========================================================================
 
-    // Initialize bio-router globally if not already initialized
-    if (!bio_router_is_initialized()) {
-        bio_router_config_t router_config = bio_router_default_config();
-        router_config.max_modules = 64;              // Support many brain modules
-        router_config.inbox_capacity = 128;          // Messages per module
-        router_config.outbox_capacity = 128;
-        router_config.max_message_size = 4096;       // 4KB max message
-        router_config.worker_threads = 2;            // Light async processing
-        router_config.enable_logging = true;
-        router_config.enable_statistics = true;
-        router_config.routing_timeout_ms = 100.0F;   // 100ms timeout
+    if (!brain->config.minimal_mode) {
+        // Initialize bio-router globally if not already initialized
+        if (!bio_router_is_initialized()) {
+            bio_router_config_t router_config = bio_router_default_config();
+            router_config.max_modules = 64;              // Support many brain modules
+            router_config.inbox_capacity = 128;          // Messages per module
+            router_config.outbox_capacity = 128;
+            router_config.max_message_size = 4096;       // 4KB max message
+            router_config.worker_threads = 2;            // Light async processing
+            router_config.enable_logging = true;
+            router_config.enable_statistics = true;
+            router_config.routing_timeout_ms = 100.0F;   // 100ms timeout
 
-        nimcp_error_t router_err = bio_router_init(&router_config);
-        if (router_err != NIMCP_SUCCESS) {
-            fprintf(stderr, "[WARN] Bio-router initialization failed! Bio-async features disabled.\n");
-            brain->bio_async_enabled = false;
+            nimcp_error_t router_err = bio_router_init(&router_config);
+            if (router_err != NIMCP_SUCCESS) {
+                fprintf(stderr, "[WARN] Bio-router initialization failed! Bio-async features disabled.\n");
+                brain->bio_async_enabled = false;
+            }
         }
-    }
 
-    // Initialize bio-async for this brain instance
-    if (bio_router_is_initialized()) {
-        nimcp_error_t async_err = brain_bio_async_init(brain);
-        if (async_err != NIMCP_SUCCESS) {
-            fprintf(stderr, "[WARN] Brain bio-async initialization failed! Async messaging disabled.\n");
-            brain->bio_async_enabled = false;
-        } else {
-            brain->bio_async_enabled = true;
+        // Initialize bio-async for this brain instance
+        if (bio_router_is_initialized()) {
+            nimcp_error_t async_err = brain_bio_async_init(brain);
+            if (async_err != NIMCP_SUCCESS) {
+                fprintf(stderr, "[WARN] Brain bio-async initialization failed! Async messaging disabled.\n");
+                brain->bio_async_enabled = false;
+            } else {
+                brain->bio_async_enabled = true;
+            }
         }
     }
 

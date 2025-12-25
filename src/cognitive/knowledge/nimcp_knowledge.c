@@ -1075,8 +1075,10 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
 
     // Create unified brain for knowledge system (provides curiosity module)
     // Previously created curiosity independently - now follows "one brain, many modules" pattern
-    system->knowledge_brain = brain_create(learner_name, BRAIN_SIZE_SMALL,
-                                           BRAIN_TASK_CLASSIFICATION, 20, 10);
+    // Use brain_create_lazy to defer heavyweight subsystem initialization until needed
+    // This prevents test hangs from spawning threads that wait indefinitely
+    system->knowledge_brain = brain_create_lazy(learner_name, BRAIN_SIZE_SMALL,
+                                                BRAIN_TASK_CLASSIFICATION, 20, 10);
     if (!system->knowledge_brain) {
         fprintf(stderr, "[ERROR] knowledge_system_create: failed to create brain\n"); fflush(stderr);
         knowledge_system_destroy(system);

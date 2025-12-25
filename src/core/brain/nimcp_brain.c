@@ -2243,6 +2243,19 @@ working_memory_t* brain_get_working_memory(brain_t brain)
     if (!brain) {
         return NULL;
     }
+
+    // Lazy initialization: Initialize on first access if deferred
+    if (!brain->working_memory && brain->config.lazy_working_memory_init) {
+        nimcp_platform_mutex_lock(&brain->cache_mutex);
+        // Double-check after acquiring lock (another thread may have initialized)
+        if (!brain->working_memory) {
+            // Call the init function (declared in nimcp_brain_init.h)
+            extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain);
+            nimcp_brain_factory_init_working_memory_subsystem(brain);
+        }
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    }
+
     return brain->working_memory;
 }
 
@@ -2263,6 +2276,18 @@ global_workspace_t* brain_get_global_workspace(brain_t brain)
     if (!brain) {
         return NULL;
     }
+
+    // Lazy initialization: Initialize on first access if deferred
+    if (!brain->global_workspace && brain->config.lazy_global_workspace_init) {
+        nimcp_platform_mutex_lock(&brain->cache_mutex);
+        // Double-check after acquiring lock (another thread may have initialized)
+        if (!brain->global_workspace) {
+            extern bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain);
+            nimcp_brain_factory_init_global_workspace_subsystem(brain);
+        }
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    }
+
     return brain->global_workspace;
 }
 
@@ -2307,6 +2332,17 @@ theory_of_mind_t brain_get_theory_of_mind(brain_t brain)
     /* Guard clause: Validate input */
     if (!brain) {
         return NULL;
+    }
+
+    // Lazy initialization: Initialize on first access if deferred
+    if (!brain->theory_of_mind && brain->config.lazy_theory_of_mind_init) {
+        nimcp_platform_mutex_lock(&brain->cache_mutex);
+        // Double-check after acquiring lock (another thread may have initialized)
+        if (!brain->theory_of_mind) {
+            extern bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t brain);
+            nimcp_brain_factory_init_theory_of_mind_subsystem(brain);
+        }
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
     }
 
     return brain->theory_of_mind;

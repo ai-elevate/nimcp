@@ -482,6 +482,17 @@ systems_consolidation_system_t* brain_get_systems_consolidation(brain_t brain)
         return NULL;
     }
 
+    // Lazy initialization: Initialize on first access if deferred
+    if (!brain->systems_consolidation && brain->config.lazy_consolidation_init) {
+        nimcp_platform_mutex_lock(&brain->cache_mutex);
+        // Double-check after acquiring lock (another thread may have initialized)
+        if (!brain->systems_consolidation) {
+            extern bool nimcp_brain_factory_init_consolidation_subsystem(brain_t brain);
+            nimcp_brain_factory_init_consolidation_subsystem(brain);
+        }
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    }
+
     return brain->systems_consolidation;
 }
 

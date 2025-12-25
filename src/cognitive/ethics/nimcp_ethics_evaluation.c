@@ -193,9 +193,10 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
      * WHY: Model other agents' mental states for ethical evaluation
      * HOW: Use BRAIN_SIZE_MEDIUM (10K neurons) for sufficient capacity
      * PATTERN: Composition - brain encapsulates neural network
+     * NOTE: Uses minimal brain to avoid infinite recursion (empathy -> ethics -> empathy)
      */
     network->perspective_network =
-        brain_create("perspective_taking", BRAIN_SIZE_MEDIUM, BRAIN_TASK_REGRESSION,
+        brain_create_minimal("perspective_taking", BRAIN_SIZE_MEDIUM, BRAIN_TASK_REGRESSION,
                      20,  // Action + agent features (input)
                      5    // Perspective dimensions (output)
         );

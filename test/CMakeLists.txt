@@ -231,6 +231,14 @@ set_tests_properties(
   PROPERTIES TIMEOUT 120
 )
 
+# Integration tests with heavyweight brain initialization
+set_tests_properties(
+  integration_cognitive_executive_test_executive_portia_integration
+  integration_cognitive_consolidation_test_systems_consolidation_integration
+  integration_cognitive_curiosity_test_curiosity_fep_bridge_integration
+  PROPERTIES TIMEOUT 180
+)
+
 # Disabled test that doesn't exist
 # set_tests_properties(
 #   unit_cognitive_knowledge_test_knowledge_comprehensive
@@ -240,6 +248,19 @@ set_tests_properties(
 set_tests_properties(
   integration_test_brain_oscillations_integration
   PROPERTIES TIMEOUT 90
+)
+
+# Brain API tests require extended timeout due to heavyweight brain initialization
+# Each brain creation initializes 50+ subsystems (neural network, cognitive systems,
+# plasticity mechanisms, immune system, ethics, etc.)
+# See: BRAIN_API_TEST_TIMEOUT_ANALYSIS.md for detailed analysis
+set_tests_properties(
+  unit_api_test_api_brain_lifecycle
+  unit_api_test_api_brain_cow
+  unit_api_test_api_brain_operations
+  unit_api_test_api_brain_persistence
+  unit_api_test_api_brain_snapshots
+  PROPERTIES TIMEOUT 180
 )
 
 # ============================================================================

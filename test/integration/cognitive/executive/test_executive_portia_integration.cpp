@@ -84,7 +84,8 @@ protected:
         std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
         // Process any pending bio-async messages for the executive
         if (exec) {
-            executive_process_messages(exec, 0);  // Process all pending
+            // Process up to 100 messages to avoid potential infinite loops
+            executive_process_messages(exec, 100);
         }
     }
 };
