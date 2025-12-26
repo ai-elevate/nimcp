@@ -33,6 +33,7 @@ homeostatic_fep_bridge_t* homeostatic_fep_bridge_create(const homeostatic_fep_co
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     bridge->effects.total_normalization_factor = 1.0f;
+    bridge->effects.precision_target_rate = 1.0f;  /* Initialize to 1.0 for proper get_effective_target_rate */
     NIMCP_LOGGING_INFO("Homeostatic-FEP bridge created");
     return bridge;
 }
@@ -54,7 +55,8 @@ int homeostatic_fep_bridge_connect_fep(homeostatic_fep_bridge_t* bridge, fep_sys
 }
 
 int homeostatic_fep_bridge_connect_homeostatic(homeostatic_fep_bridge_t* bridge, homeostatic_controller_t homeostatic) {
-    if (!bridge || !homeostatic) return -1;
+    if (!bridge) return -1;
+    /* Allow NULL homeostatic to disconnect/reset connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->homeostatic_system = homeostatic;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -72,7 +74,11 @@ int homeostatic_fep_bridge_disconnect(homeostatic_fep_bridge_t* bridge) {
 
 float homeostatic_fep_apply_precision_normalization(homeostatic_fep_bridge_t* bridge, float precision) {
     if (!bridge || !bridge->config.enable_precision_normalization) return 1.0f;
-    return fminf(fmaxf(precision, HOMEOSTATIC_FEP_PRECISION_MIN), HOMEOSTATIC_FEP_PRECISION_MAX);
+    float normalized = fminf(fmaxf(precision, HOMEOSTATIC_FEP_PRECISION_MIN), HOMEOSTATIC_FEP_PRECISION_MAX);
+    /* Store for get_effective_target_rate to use */
+    bridge->effects.precision_value = precision;
+    bridge->effects.precision_target_rate = normalized;
+    return normalized;
 }
 
 float homeostatic_fep_apply_fe_modulation(homeostatic_fep_bridge_t* bridge, float free_energy) {
@@ -123,7 +129,8 @@ int homeostatic_fep_bridge_get_stats(const homeostatic_fep_bridge_t* bridge, hom
 }
 
 int homeostatic_fep_bridge_connect_bio_async(homeostatic_fep_bridge_t* bridge) {
-    if (!bridge || bridge->base.bio_async_enabled) return 0;
+    if (!bridge) return -1;
+    if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_HOMEOSTATIC_BRIDGE,
         .module_name = "homeostatic_fep_bridge",
@@ -139,7 +146,8 @@ int homeostatic_fep_bridge_connect_bio_async(homeostatic_fep_bridge_t* bridge) {
 }
 
 int homeostatic_fep_bridge_disconnect_bio_async(homeostatic_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge) return -1;
+    if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;

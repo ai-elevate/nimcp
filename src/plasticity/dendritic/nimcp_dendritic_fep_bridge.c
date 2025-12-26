@@ -56,7 +56,8 @@ int dendritic_fep_bridge_connect_fep(dendritic_fep_bridge_t* bridge, fep_system_
 }
 
 int dendritic_fep_bridge_connect_dendritic(dendritic_fep_bridge_t* bridge, dendritic_tree_t dendritic) {
-    if (!bridge || !dendritic) return -1;
+    if (!bridge) return -1;
+    /* Allow NULL dendritic to disconnect/reset dendritic connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->dendritic_system = dendritic;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -74,7 +75,12 @@ int dendritic_fep_bridge_disconnect(dendritic_fep_bridge_t* bridge) {
 
 float dendritic_fep_apply_pe_nmda_modulation(dendritic_fep_bridge_t* bridge, float pe) {
     if (!bridge || !bridge->config.enable_pe_nmda_modulation) return 1.0f;
-    return 1.0f + fabsf(pe) * bridge->config.pe_nmda_gain;
+    float modulation = 1.0f + fabsf(pe) * bridge->config.pe_nmda_gain;
+    /* Store for get_effective_nmda_conductance to use */
+    bridge->effects.pe_magnitude = pe;
+    bridge->effects.pe_nmda_scaling = modulation;
+    bridge->effects.total_nmda_modulation = modulation;
+    return modulation;
 }
 
 float dendritic_fep_apply_precision_gain_control(dendritic_fep_bridge_t* bridge, float precision) {
@@ -139,7 +145,8 @@ int dendritic_fep_bridge_get_stats(const dendritic_fep_bridge_t* bridge, dendrit
 }
 
 int dendritic_fep_bridge_connect_bio_async(dendritic_fep_bridge_t* bridge) {
-    if (!bridge || bridge->base.bio_async_enabled) return 0;
+    if (!bridge) return -1;
+    if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_DENDRITIC_BRIDGE,
         .module_name = "dendritic_fep_bridge",
@@ -155,7 +162,8 @@ int dendritic_fep_bridge_connect_bio_async(dendritic_fep_bridge_t* bridge) {
 }
 
 int dendritic_fep_bridge_disconnect_bio_async(dendritic_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge) return -1;
+    if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;

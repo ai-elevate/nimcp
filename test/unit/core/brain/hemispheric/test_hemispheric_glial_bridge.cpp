@@ -246,6 +246,11 @@ TEST(HemisphericGlialMetabolicTest, TransferMetabolicUpdatesLevels) {
     hemispheric_glial_bridge_t* bridge = hemispheric_glial_create(nullptr, brain);
     ASSERT_NE(bridge, nullptr);
 
+    // First do a transfer from right to left (negative amount) to lower right's level
+    // This allows room for right to increase in the subsequent test
+    int pre_result = hemispheric_glial_transfer_metabolic(bridge, -0.3f);
+    EXPECT_EQ(pre_result, 0);
+
     float initial_left = hemispheric_glial_get_metabolic_support(bridge, HEMISPHERE_LEFT);
     float initial_right = hemispheric_glial_get_metabolic_support(bridge, HEMISPHERE_RIGHT);
 

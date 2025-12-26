@@ -80,11 +80,17 @@ float eligibility_fep_apply_pe_eligibility(eligibility_fep_bridge_t* bridge, flo
 float eligibility_fep_apply_precision_decay_modulation(eligibility_fep_bridge_t* bridge, float precision) {
     if (!bridge || !bridge->config.enable_precision_decay_modulation) return 1.0f;
     float decay = precision * bridge->config.precision_decay_sensitivity;
-    return fminf(fmaxf(decay, ELIGIBILITY_FEP_PRECISION_DECAY_MIN), ELIGIBILITY_FEP_PRECISION_DECAY_MAX);
+    decay = fminf(fmaxf(decay, ELIGIBILITY_FEP_PRECISION_DECAY_MIN), ELIGIBILITY_FEP_PRECISION_DECAY_MAX);
+    /* Store for get_effective_decay to use */
+    bridge->effects.precision_value = precision;
+    bridge->effects.precision_decay_modulation = decay;
+    bridge->effects.total_decay_modulation = decay;
+    return decay;
 }
 
 bool eligibility_fep_should_consolidate(const eligibility_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->config.enable_fe_gated_consolidation) return true;
+    if (!bridge) return false;
+    if (!bridge->config.enable_fe_gated_consolidation) return true;
     return bridge->effects.free_energy_value > bridge->config.fe_consolidation_threshold;
 }
 
@@ -131,7 +137,8 @@ int eligibility_fep_bridge_get_stats(const eligibility_fep_bridge_t* bridge, eli
 }
 
 int eligibility_fep_bridge_connect_bio_async(eligibility_fep_bridge_t* bridge) {
-    if (!bridge || bridge->base.bio_async_enabled) return 0;
+    if (!bridge) return -1;
+    if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_ELIGIBILITY_BRIDGE,
         .module_name = "eligibility_fep_bridge",
@@ -147,7 +154,8 @@ int eligibility_fep_bridge_connect_bio_async(eligibility_fep_bridge_t* bridge) {
 }
 
 int eligibility_fep_bridge_disconnect_bio_async(eligibility_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge) return -1;
+    if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;

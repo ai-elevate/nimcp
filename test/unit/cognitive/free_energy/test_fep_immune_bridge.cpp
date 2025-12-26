@@ -95,7 +95,8 @@ TEST_F(FEPImmuneBridgeTest, ConnectFEP) {
 
 TEST_F(FEPImmuneBridgeTest, ConnectFEPNullParams) {
     EXPECT_EQ(fep_immune_bridge_connect_fep(nullptr, fep), -1);
-    EXPECT_EQ(fep_immune_bridge_connect_fep(bridge, nullptr), -1);
+    // NULL fep is allowed (acts as disconnect/reset)
+    EXPECT_EQ(fep_immune_bridge_connect_fep(bridge, nullptr), 0);
 }
 
 TEST_F(FEPImmuneBridgeTest, ConnectImmune) {

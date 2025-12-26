@@ -89,7 +89,15 @@ int bcm_fep_bridge_disconnect(bcm_fep_bridge_t* bridge) {
 float bcm_fep_apply_complexity_regularization(bcm_fep_bridge_t* bridge, float complexity) {
     if (!bridge || !bridge->config.enable_complexity_regularization) return 1.0f;
     float clamped = fminf(fmaxf(complexity, BCM_FEP_COMPLEXITY_MIN), BCM_FEP_COMPLEXITY_MAX);
-    return 1.0f + clamped * bridge->config.complexity_threshold_gain;
+    float scaling = 1.0f + clamped * bridge->config.complexity_threshold_gain;
+    /* Store values for get_effective_threshold to use */
+    bridge->effects.complexity_value = complexity;
+    bridge->effects.complexity_threshold_scaling = scaling;
+    bridge->effects.total_threshold_modulation = scaling * bridge->effects.precision_selectivity_scaling;
+    if (bridge->effects.total_threshold_modulation == 0.0f) {
+        bridge->effects.total_threshold_modulation = scaling;
+    }
+    return scaling;
 }
 
 float bcm_fep_apply_precision_modulation(bcm_fep_bridge_t* bridge, float precision) {
@@ -177,7 +185,8 @@ int bcm_fep_bridge_get_stats(const bcm_fep_bridge_t* bridge, bcm_fep_stats_t* st
 }
 
 int bcm_fep_bridge_connect_bio_async(bcm_fep_bridge_t* bridge) {
-    if (!bridge || bridge->base.bio_async_enabled) return 0;
+    if (!bridge) return -1;
+    if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_BCM_BRIDGE,
         .module_name = "bcm_fep_bridge",
@@ -193,7 +202,8 @@ int bcm_fep_bridge_connect_bio_async(bcm_fep_bridge_t* bridge) {
 }
 
 int bcm_fep_bridge_disconnect_bio_async(bcm_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge) return -1;
+    if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
