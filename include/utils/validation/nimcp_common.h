@@ -219,10 +219,10 @@ typedef int32_t nimcp_result_t;
 #define NIMCP_INVALID_PARAM -2      /* Invalid parameter */
 #endif
 #ifndef NIMCP_ERROR_NULL_ARG
-#define NIMCP_ERROR_NULL_ARG -2     /* Null argument (alias for NIMCP_INVALID_PARAM) */
+#define NIMCP_ERROR_NULL_ARG -2     /* Null argument provided */
 #endif
 #ifndef NIMCP_ERROR_INVALID
-#define NIMCP_ERROR_INVALID -2      /* Invalid argument (alias for NIMCP_INVALID_PARAM) */
+#define NIMCP_ERROR_INVALID -3      /* Invalid argument value (distinct from NULL_ARG) */
 #endif
 #ifndef NIMCP_NO_MEMORY
 #define NIMCP_NO_MEMORY -3          /* Memory allocation failed */

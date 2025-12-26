@@ -542,13 +542,18 @@ static inline void atomic_store_float(nimcp_atomic_uint32_t* bits, float f) {
 
 /**
  * @brief Get current time in milliseconds
- * WHAT: Return simulation time when initialized, real time otherwise
- * WHY:  Allow deterministic testing with nimcp_bio_async_step()
- * HOW:  Check initialized flag and return appropriate time source
+ * WHAT: Return simulation time or real time based on config
+ * WHY:  Allow deterministic testing with nimcp_bio_async_step() when use_real_time=false
+ * HOW:  Check use_real_time config flag to select time source
+ *
+ * NOTE: When use_real_time=true (default), we use real wall-clock time.
+ *       This is critical for timeout handling in wait functions - otherwise
+ *       timeouts would never trigger unless nimcp_bio_async_step() is called.
  */
 static inline uint64_t bio_time_ms(void) {
-    if (g_bio_async.initialized) {
-        /* Use simulation time for deterministic decay calculations */
+    if (g_bio_async.initialized && !g_bio_async.config.use_real_time) {
+        /* Use simulation time for deterministic decay calculations
+         * Only when explicitly configured to NOT use real time */
         return g_bio_async.simulation_time_ms;
     }
     return nimcp_platform_time_monotonic_ms();

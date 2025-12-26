@@ -20,6 +20,7 @@
 
 #include <gtest/gtest.h>
 #include "core/brain/nimcp_brain.h"
+#include "nimcp.h"
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -39,6 +40,10 @@ protected:
     uint32_t output_dim;
 
     void SetUp() override {
+        // Initialize NIMCP library (required for bio-async, etc.)
+        nimcp_init();
+        brain_clear_error();
+
         // Create a small brain for testing
         brain = brain_create("finetune_test", BRAIN_SIZE_SMALL,
                             BRAIN_TASK_CLASSIFICATION, 10, 3);
@@ -73,6 +78,7 @@ protected:
             brain_destroy(brain);
             brain = nullptr;
         }
+        nimcp_shutdown();
     }
 };
 

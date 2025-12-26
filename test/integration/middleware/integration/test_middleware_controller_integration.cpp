@@ -301,7 +301,7 @@ TEST_F(MiddlewareControllerIntegrationTest, BatchCommandExecution) {
 
     batch.num_commands = 3;
 
-    command_result_t results[3];
+    command_execution_result_t results[3];
     uint32_t success = middleware_controller_execute_batch(controller, &batch, results);
 
     EXPECT_EQ(success, 3u);

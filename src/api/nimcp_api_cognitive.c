@@ -64,14 +64,7 @@ nimcp_status_t nimcp_brain_working_memory_add(
         return NIMCP_ERROR_INVALID;
     }
 
-    // Guard: Check if working memory enabled
-    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
-    if (!wm) {
-        set_error("Working memory not enabled in brain config");
-        return NIMCP_ERROR_INVALID;
-    }
-
-    // Guard: Validate parameters
+    // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!data) {
         set_error("NULL data provided to working_memory_add");
         return NIMCP_ERROR_NULL_ARG;
@@ -79,6 +72,13 @@ nimcp_status_t nimcp_brain_working_memory_add(
 
     if (size == 0) {
         set_error("Invalid size (0) provided to working_memory_add");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if working memory enabled (after parameter validation)
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    if (!wm) {
+        set_error("Working memory not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -226,14 +226,7 @@ nimcp_status_t nimcp_brain_workspace_compete(
         return NIMCP_ERROR_INVALID;
     }
 
-    // Guard: Check if global workspace enabled
-    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
-    if (!workspace) {
-        set_error("Global workspace not enabled in brain config");
-        return NIMCP_ERROR_INVALID;
-    }
-
-    // Guard: Validate parameters
+    // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!content) {
         set_error("NULL content provided to workspace_compete");
         return NIMCP_ERROR_NULL_ARG;
@@ -246,6 +239,13 @@ nimcp_status_t nimcp_brain_workspace_compete(
 
     if (strength < 0.0f || strength > 1.0f) {
         set_error("Strength must be in range [0.0, 1.0]");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if global workspace enabled (after parameter validation)
+    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
+    if (!workspace) {
+        set_error("Global workspace not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -280,14 +280,7 @@ nimcp_status_t nimcp_brain_workspace_read(
         return NIMCP_ERROR_INVALID;
     }
 
-    // Guard: Check if global workspace enabled
-    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
-    if (!workspace) {
-        set_error("Global workspace not enabled in brain config");
-        return NIMCP_ERROR_INVALID;
-    }
-
-    // Guard: Validate parameters
+    // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!content || !actual_dim || !source_module) {
         set_error("NULL output parameter provided to workspace_read");
         return NIMCP_ERROR_NULL_ARG;
@@ -295,6 +288,13 @@ nimcp_status_t nimcp_brain_workspace_read(
 
     if (max_dim == 0) {
         set_error("Invalid max_dim (0)");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if global workspace enabled (after parameter validation)
+    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
+    if (!workspace) {
+        set_error("Global workspace not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 

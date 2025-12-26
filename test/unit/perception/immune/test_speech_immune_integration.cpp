@@ -72,6 +72,11 @@ protected:
             &antigen_id
         );
 
+        /* CRITICAL: Must initiate inflammation to have cytokine effects tracked */
+        /* Cytokine level estimation depends on inflammation_sites count */
+        uint32_t site_id;
+        brain_immune_initiate_inflammation(immune_system, 0, antigen_id, &site_id);
+
         /* Release cytokine */
         uint32_t cytokine_id;
         brain_immune_release_cytokine(

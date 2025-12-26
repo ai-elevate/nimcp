@@ -18,16 +18,18 @@
 #include <gtest/gtest.h>
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
+#include "nimcp.h"
 #include <cmath>
 
 class BrainTaskStrategyTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_memory_init();
+        nimcp_init();
+        brain_clear_error();
     }
 
     void TearDown() override {
-        nimcp_memory_cleanup();
+        nimcp_shutdown();
     }
 };
 

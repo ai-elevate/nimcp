@@ -254,7 +254,7 @@ void hemispheric_glial_destroy(hemispheric_glial_bridge_t* bridge) {
 
 int hemispheric_glial_update(hemispheric_glial_bridge_t* bridge, float dt) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -293,7 +293,7 @@ int hemispheric_glial_update(hemispheric_glial_bridge_t* bridge, float dt) {
 
 int hemispheric_glial_apply_modulation(hemispheric_glial_bridge_t* bridge) {
     if (!bridge || !bridge->initialized || !bridge->brain) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -321,7 +321,7 @@ int hemispheric_glial_stimulate_astrocyte(
     float intensity
 ) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     glial_integration_t* glial = (hemisphere == HEMISPHERE_LEFT)
@@ -385,7 +385,7 @@ int hemispheric_glial_trigger_cross_wave(
     float intensity
 ) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_cross_hemisphere_waves) {
@@ -444,11 +444,11 @@ int hemispheric_glial_set_myelin_factor(
     float factor
 ) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (factor < 0.0f || factor > 2.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -486,7 +486,7 @@ int hemispheric_glial_transfer_metabolic(
     float amount
 ) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -605,7 +605,7 @@ int hemispheric_glial_connect_glial(
     glial_integration_t* glial
 ) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -630,7 +630,7 @@ int hemispheric_glial_connect_glial(
 
 int hemispheric_glial_connect_bio_async(hemispheric_glial_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -657,7 +657,7 @@ int hemispheric_glial_connect_bio_async(hemispheric_glial_bridge_t* bridge) {
 
 int hemispheric_glial_disconnect_bio_async(hemispheric_glial_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->base.bio_async_enabled) {

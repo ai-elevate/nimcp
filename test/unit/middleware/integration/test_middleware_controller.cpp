@@ -570,7 +570,7 @@ TEST_F(MiddlewareControllerTest, ExecuteBatchWithCommands) {
     batch.commands[0].payload.attention.priority = 0.8f;
     batch.num_commands = 1;
 
-    command_result_t results[1];
+    command_execution_result_t results[1];
     uint32_t success = middleware_controller_execute_batch(controller, &batch, results);
 
     EXPECT_EQ(success, 1u);

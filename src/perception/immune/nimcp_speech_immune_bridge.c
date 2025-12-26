@@ -227,7 +227,8 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
                             bridge->immune_system->cytokine_count : BRAIN_IMMUNE_MAX_CYTOKINES;
     for (size_t i = 0; i < cytokine_limit; i++) {
         brain_cytokine_t* cytokine = &bridge->immune_system->cytokines[i];
-        if (!cytokine->delivered) continue;
+        /* Include all cytokines (delivered flag is for bio-async routing).
+         * When no bio-async context, cytokines are effectively local/immediate. */
 
         switch (cytokine->type) {
             case BRAIN_CYTOKINE_IL1:

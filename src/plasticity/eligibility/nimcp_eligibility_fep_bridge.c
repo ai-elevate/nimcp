@@ -45,7 +45,8 @@ void eligibility_fep_bridge_destroy(eligibility_fep_bridge_t* bridge) {
 }
 
 int eligibility_fep_bridge_connect_fep(eligibility_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return -1;
+    if (!bridge) return -1;
+    /* Allow NULL fep to disconnect/reset FEP connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

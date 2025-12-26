@@ -92,7 +92,9 @@ protected:
         config.enable_multimodal_integration = enable_flag;
         config.enable_pink_noise = enable_flag;
         config.enable_quantum_walk_diffusion = false; // Keep off for simplicity
-        config.enable_multihead_attention = enable_flag;
+        // Note: multihead_attention requires additional config (num_attention_heads, etc.)
+        // It's tested separately in AttentionSubsystem tests with proper config
+        config.enable_multihead_attention = false;
         config.enable_brain_regions = enable_flag;
         config.enable_knowledge = enable_flag;
         config.enable_logic = enable_flag;
@@ -398,7 +400,17 @@ TEST_F(BrainInitSubsystemsPart1Test, AttentionSubsystem_NullBrain) {
 }
 
 TEST_F(BrainInitSubsystemsPart1Test, AttentionSubsystem_SuccessWhenEnabled) {
-    brain_t brain = create_brain_with_config("attention_enabled", true);
+    // Attention requires proper config: embed_dim divisible by num_heads
+    brain_config_t config = brain_config_default();
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 64;  // divisible by num_attention_heads
+    config.num_outputs = 2;
+    config.enable_multihead_attention = true;
+    config.num_attention_heads = 4;
+    strncpy(config.task_name, "attention_enabled", sizeof(config.task_name) - 1);
+
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     bool result = nimcp_brain_factory_init_attention_subsystem(brain);
@@ -419,7 +431,17 @@ TEST_F(BrainInitSubsystemsPart1Test, AttentionSubsystem_SuccessWhenDisabled) {
 }
 
 TEST_F(BrainInitSubsystemsPart1Test, AttentionSubsystem_DoubleInitialization) {
-    brain_t brain = create_brain_with_config("attention_double", true);
+    // Attention requires proper config: embed_dim divisible by num_heads
+    brain_config_t config = brain_config_default();
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 64;  // divisible by num_attention_heads
+    config.num_outputs = 2;
+    config.enable_multihead_attention = true;
+    config.num_attention_heads = 4;
+    strncpy(config.task_name, "attention_double", sizeof(config.task_name) - 1);
+
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     bool result1 = nimcp_brain_factory_init_attention_subsystem(brain);
