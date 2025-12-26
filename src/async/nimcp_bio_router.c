@@ -1369,8 +1369,8 @@ uint32_t bio_router_process_inbox(bio_module_context_t ctx, uint32_t max_message
                       header->type, entry->module_name);
         }
 
-        // Free message data
-        free(msg_data);
+        // Free message data (allocated via nimcp_malloc in bio_msg_queue_enqueue)
+        nimcp_free(msg_data);
 
         processed++;
     }

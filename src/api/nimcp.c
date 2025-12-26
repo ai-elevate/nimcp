@@ -27,6 +27,7 @@
 #include "utils/cache/nimcp_cache.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_blood_brain_barrier.h"  // Phase IS-1: BBB perimeter defense
+#include "security/nimcp_constant_time.h"        // Constant-time crypto operations
 #include "core/brain/nimcp_brain_internal.h"     // For accessing brain->bbb_system
 #include "middleware/training/nimcp_brain_training_integration.h"  // Training coordinator
 #include "middleware/training/nimcp_loss_functions.h"              // Loss functions
@@ -173,6 +174,10 @@ void nimcp_shutdown(void) {
     // Shutdown bio-async system
     LOG_DEBUG("Shutting down bio-async communication system");
     nimcp_bio_async_shutdown();
+
+    // Shutdown constant-time module (before memory cleanup to avoid double-free)
+    LOG_DEBUG("Shutting down constant-time module");
+    nimcp_ct_shutdown();
 
     // Cleanup memory tracking (last)
     LOG_DEBUG("Cleaning up memory tracking");
@@ -805,15 +810,16 @@ nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain) {
     msg.cow_shared_bytes = probe.cow_shared_bytes;
     msg.cow_private_bytes = probe.cow_private_bytes;
 
-    // Broadcast to all subscribers
+    // Broadcast to all subscribers (best-effort - failure is non-fatal)
     nimcp_error_t err = bio_router_broadcast(ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
-        LOG_WARN("Failed to broadcast brain probe: %d", err);
-        return NIMCP_ERROR;
+        // Log warning but don't fail - probe data was collected successfully,
+        // broadcast is secondary and optional
+        LOG_DEBUG("Probe broadcast incomplete (some modules may not have received): %d", err);
+    } else {
+        LOG_DEBUG("Brain probe broadcast: brain_id=%llu, neurons=%u, synapses=%u",
+                  (unsigned long long)msg.brain_id, msg.num_neurons, msg.num_synapses);
     }
-
-    LOG_DEBUG("Brain probe broadcast: brain_id=%llu, neurons=%u, synapses=%u",
-              (unsigned long long)msg.brain_id, msg.num_neurons, msg.num_synapses);
 
     set_error("No error");
     return NIMCP_OK;
@@ -1064,14 +1070,7 @@ nimcp_status_t nimcp_brain_working_memory_add(
         return NIMCP_ERROR_INVALID;
     }
 
-    // Guard: Check if working memory enabled
-    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
-    if (!wm) {
-        set_error("Working memory not enabled in brain config");
-        return NIMCP_ERROR_INVALID;
-    }
-
-    // Guard: Validate parameters
+    // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!data) {
         set_error("NULL data provided to working_memory_add");
         return NIMCP_ERROR_NULL_ARG;
@@ -1079,6 +1078,13 @@ nimcp_status_t nimcp_brain_working_memory_add(
 
     if (size == 0) {
         set_error("Invalid size (0) provided to working_memory_add");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if working memory enabled (after parameter validation)
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    if (!wm) {
+        set_error("Working memory not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -1247,14 +1253,7 @@ nimcp_status_t nimcp_brain_workspace_compete(
         return NIMCP_ERROR_INVALID;
     }
 
-    // Guard: Check if global workspace enabled
-    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
-    if (!workspace) {
-        set_error("Global workspace not enabled in brain config");
-        return NIMCP_ERROR_INVALID;
-    }
-
-    // Guard: Validate parameters
+    // Guard: Validate parameters FIRST (before checking workspace availability)
     if (!content) {
         set_error("NULL content provided to workspace_compete");
         return NIMCP_ERROR_NULL_ARG;
@@ -1267,6 +1266,13 @@ nimcp_status_t nimcp_brain_workspace_compete(
 
     if (strength < 0.0F || strength > 1.0F) {
         set_error("Strength must be in range [0.0, 1.0]");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if global workspace enabled (after parameter validation)
+    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
+    if (!workspace) {
+        set_error("Global workspace not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -1301,14 +1307,7 @@ nimcp_status_t nimcp_brain_workspace_read(
         return NIMCP_ERROR_INVALID;
     }
 
-    // Guard: Check if global workspace enabled
-    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
-    if (!workspace) {
-        set_error("Global workspace not enabled in brain config");
-        return NIMCP_ERROR_INVALID;
-    }
-
-    // Guard: Validate parameters
+    // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!content || !actual_dim || !source_module) {
         set_error("NULL output parameter provided to workspace_read");
         return NIMCP_ERROR_NULL_ARG;
@@ -1316,6 +1315,13 @@ nimcp_status_t nimcp_brain_workspace_read(
 
     if (max_dim == 0) {
         set_error("Invalid max_dim (0)");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if global workspace enabled (after parameter validation)
+    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
+    if (!workspace) {
+        set_error("Global workspace not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 

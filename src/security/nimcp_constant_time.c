@@ -694,6 +694,9 @@ static void __attribute__((constructor)) s_ct_module_init(void)
  * WHAT: Cleanup global constant-time context
  * WHY:  Prevent memory leaks on shutdown
  * HOW:  Destroy context at program exit
+ *
+ * NOTE: This destructor is a fallback. Normally, nimcp_ct_shutdown()
+ *       is called explicitly before memory cleanup to avoid double-free.
  */
 static void __attribute__((destructor)) s_ct_module_cleanup(void)
 {
@@ -701,5 +704,24 @@ static void __attribute__((destructor)) s_ct_module_cleanup(void)
         nimcp_ct_destroy(g_default_ctx);
         g_default_ctx = NULL;
         LOG_INFO("Constant-time module cleaned up");
+    }
+}
+
+/**
+ * WHAT: Explicit shutdown for constant-time module
+ * WHY:  Must be called before nimcp_memory_cleanup() to avoid double-free
+ * HOW:  Destroy context and set to NULL so destructor doesn't re-free
+ *
+ * LIFECYCLE:
+ * - nimcp_shutdown() calls this before nimcp_memory_cleanup()
+ * - Destructor sees g_default_ctx == NULL and skips cleanup
+ * - Prevents double-free when unified memory is destroyed
+ */
+void nimcp_ct_shutdown(void)
+{
+    if (g_default_ctx) {
+        nimcp_ct_destroy(g_default_ctx);
+        g_default_ctx = NULL;
+        LOG_INFO("Constant-time module explicitly shut down");
     }
 }

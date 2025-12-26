@@ -763,6 +763,12 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         // Non-fatal: use default stats if not available (backward compatibility)
         init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
                         brain->config.num_inputs, brain->config.learning_rate);
+        // Override with actual network neuron count if available
+        if (brain->network) {
+            brain->stats.num_neurons = adaptive_network_get_neuron_count(brain->network);
+            brain->stats.num_synapses = brain->stats.num_neurons * brain->config.num_inputs;
+            brain->stats.num_active_synapses = brain->stats.num_synapses;
+        }
     }
 
     // Load wellbeing state (Phase 9.3)
@@ -936,6 +942,12 @@ brain_t brain_load(const char* filepath)
     // Initialize statistics
     init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
                      brain->config.num_inputs, brain->config.learning_rate);
+
+    // CRITICAL: Override num_neurons with actual network neuron count
+    // init_brain_stats derives from size enum, but loaded network may differ
+    brain->stats.num_neurons = adaptive_network_get_neuron_count(brain->network);
+    brain->stats.num_synapses = brain->stats.num_neurons * brain->config.num_inputs;
+    brain->stats.num_active_synapses = brain->stats.num_synapses;
 
     // Re-initialize mirror neurons if enabled but not loaded from file
     // (Handles case where brain was saved without mirror neurons but loaded config has them enabled)

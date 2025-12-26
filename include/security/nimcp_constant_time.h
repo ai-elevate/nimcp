@@ -112,6 +112,17 @@ nimcp_ct_context_t nimcp_ct_create(void);
 void nimcp_ct_destroy(nimcp_ct_context_t ctx);
 
 /**
+ * @brief Shutdown constant-time module
+ *
+ * WHAT: Explicitly clean up global constant-time context
+ * WHY:  Must be called before nimcp_memory_cleanup() to avoid double-free
+ * HOW:  Destroys global context, sets to NULL so destructor skips cleanup
+ *
+ * Called by nimcp_shutdown() during library cleanup.
+ */
+void nimcp_ct_shutdown(void);
+
+/**
  * @brief Get statistics from context
  *
  * @param ctx Context handle
