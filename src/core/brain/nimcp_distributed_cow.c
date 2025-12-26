@@ -31,6 +31,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/platform/nimcp_platform_once.h"
 
 //=============================================================================
 // BIO-ASYNC MODULE REGISTRATION
@@ -38,28 +39,34 @@
 
 #define BIO_MODULE_DISTRIBUTED_COW 0x0680
 
-// Bio-async registration state
+// Bio-async registration state (thread-safe via nimcp_platform_once)
 static bool g_bio_async_registered = false;
 static bio_module_context_t g_bio_module_ctx = NULL;
+static nimcp_platform_once_t g_bio_async_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
- * @brief Ensure bio-async system is registered
+ * @brief Internal bio-async registration (called once via nimcp_platform_once)
+ */
+static void bio_async_register_internal(void) {
+    LOG_DEBUG("Registering distributed_cow module with bio-async router");
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_DISTRIBUTED_COW,
+        .module_name = "distributed_cow",
+        .inbox_capacity = 256,
+        .user_data = NULL
+    };
+    g_bio_module_ctx = bio_router_register_module(&info);
+    g_bio_async_registered = (g_bio_module_ctx != NULL);
+    if (!g_bio_async_registered) {
+        LOG_WARN("Failed to register distributed_cow with bio-async router");
+    }
+}
+
+/**
+ * @brief Ensure bio-async system is registered (thread-safe)
  */
 static void ensure_bio_async_registered(void) {
-    if (!g_bio_async_registered) {
-        LOG_DEBUG("Registering distributed_cow module with bio-async router");
-        bio_module_info_t info = {
-            .module_id = BIO_MODULE_DISTRIBUTED_COW,
-            .module_name = "distributed_cow",
-            .inbox_capacity = 256,
-            .user_data = NULL
-        };
-        g_bio_module_ctx = bio_router_register_module(&info);
-        g_bio_async_registered = (g_bio_module_ctx != NULL);
-        if (!g_bio_async_registered) {
-            LOG_WARN("Failed to register distributed_cow with bio-async router");
-        }
-    }
+    nimcp_platform_once(&g_bio_async_once, bio_async_register_internal);
 }
 
 /**
@@ -116,20 +123,24 @@ typedef struct {
 static distributed_cow_brain_t** g_dcow_brains = NULL;
 static uint32_t g_num_dcow_brains = 0;
 static nimcp_platform_mutex_t g_registry_mutex;
-static bool g_registry_mutex_initialized = false;
+static nimcp_platform_once_t g_registry_mutex_once = NIMCP_PLATFORM_ONCE_INIT;
 
 //=============================================================================
 // Registry Initialization
 //=============================================================================
 
 /**
- * @brief Ensure global registry mutex is initialized
+ * @brief Internal registry mutex init (called once via nimcp_platform_once)
+ */
+static void registry_mutex_init_internal(void) {
+    nimcp_platform_mutex_init(&g_registry_mutex, false);
+}
+
+/**
+ * @brief Ensure global registry mutex is initialized (thread-safe)
  */
 static void ensure_registry_mutex_initialized(void) {
-    if (!g_registry_mutex_initialized) {
-        nimcp_platform_mutex_init(&g_registry_mutex, false);
-        g_registry_mutex_initialized = true;
-    }
+    nimcp_platform_once(&g_registry_mutex_once, registry_mutex_init_internal);
 }
 
 //=============================================================================

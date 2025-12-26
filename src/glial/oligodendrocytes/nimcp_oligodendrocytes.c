@@ -30,6 +30,7 @@
 #include "utils/spatial/nimcp_kdtree.h"
 #include <string.h>
 #include <math.h>
+#include "utils/platform/nimcp_platform_once.h"
 
 //=============================================================================
 // Global Bio-Async Context
@@ -37,6 +38,8 @@
 
 static bio_module_context_t g_oligo_bio_ctx = NULL;
 static unified_mem_manager_t g_oligo_mem_mgr = NULL;
+static nimcp_platform_once_t g_oligo_bio_once = NIMCP_PLATFORM_ONCE_INIT;
+static nimcp_error_t g_oligo_bio_init_result = NIMCP_SUCCESS;
 static bool g_oligo_bio_initialized = false;
 
 //=============================================================================
@@ -176,21 +179,20 @@ static nimcp_error_t handle_glial_sync_message(
 }
 
 /**
- * @brief Initialize bio-async integration for oligodendrocytes module
+ * @brief Internal initialization function called by nimcp_platform_once
+ *
+ * Thread-safe initialization of bio-async integration.
+ * Result is stored in g_oligo_bio_init_result for callers to check.
  */
-static nimcp_error_t oligodendrocyte_bio_init(void)
+static void oligodendrocyte_bio_do_init(void)
 {
-    if (g_oligo_bio_initialized) {
-        LOG_MODULE_WARN("OLIGODENDROCYTE", "Bio-async already initialized");
-        return NIMCP_SUCCESS;
-    }
-
     // Initialize unified memory manager
     unified_mem_config_t mem_config = unified_mem_default_config();
     g_oligo_mem_mgr = unified_mem_create(&mem_config);
     if (!g_oligo_mem_mgr) {
         LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to create unified memory manager");
-        return NIMCP_ERROR_MEMORY;
+        g_oligo_bio_init_result = NIMCP_ERROR_MEMORY;
+        return;
     }
 
     // Register module with bio-router
@@ -206,7 +208,8 @@ static nimcp_error_t oligodendrocyte_bio_init(void)
         LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register with bio-router");
         unified_mem_destroy(g_oligo_mem_mgr);
         g_oligo_mem_mgr = NULL;
-        return NIMCP_ERROR_INVALID_PARAM;
+        g_oligo_bio_init_result = NIMCP_ERROR_INVALID_PARAM;
+        return;
     }
 
     // Register message handlers
@@ -244,16 +247,27 @@ static nimcp_error_t oligodendrocyte_bio_init(void)
         goto cleanup;
     }
 
-    g_oligo_bio_initialized = true;
+    g_oligo_bio_init_result = NIMCP_SUCCESS;
     LOG_MODULE_INFO("OLIGODENDROCYTE", "Bio-async integration initialized successfully (4 handlers registered)");
-    return NIMCP_SUCCESS;
+    return;
 
 cleanup:
     bio_router_unregister_module(g_oligo_bio_ctx);
     g_oligo_bio_ctx = NULL;
     unified_mem_destroy(g_oligo_mem_mgr);
     g_oligo_mem_mgr = NULL;
-    return result;
+    g_oligo_bio_init_result = result;
+}
+
+/**
+ * @brief Initialize bio-async integration for oligodendrocytes module
+ *
+ * Uses nimcp_platform_once for thread-safe initialization.
+ */
+static nimcp_error_t oligodendrocyte_bio_init(void)
+{
+    nimcp_platform_once(&g_oligo_bio_once, oligodendrocyte_bio_do_init);
+    return g_oligo_bio_init_result;
 }
 
 /**
@@ -261,7 +275,8 @@ cleanup:
  */
 static void oligodendrocyte_bio_shutdown(void)
 {
-    if (!g_oligo_bio_initialized) {
+    // Check if initialization was successful using context pointer
+    if (!g_oligo_bio_ctx && !g_oligo_mem_mgr) {
         return;
     }
 
@@ -277,7 +292,9 @@ static void oligodendrocyte_bio_shutdown(void)
         g_oligo_mem_mgr = NULL;
     }
 
-    g_oligo_bio_initialized = false;
+    // Reset nimcp_platform_once control for potential re-initialization
+    g_oligo_bio_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    g_oligo_bio_init_result = NIMCP_SUCCESS;
 }
 
 //=============================================================================
@@ -500,12 +517,10 @@ static void initialize_internodes(myelinated_axon_t* axon) {
 
 oligodendrocyte_t* oligodendrocyte_create(uint32_t id, float x, float y, float z,
                                            uint32_t max_axons) {
-    // Initialize bio-async on first create
-    if (!g_oligo_bio_initialized) {
-        nimcp_error_t result = oligodendrocyte_bio_init();
-        if (result != NIMCP_SUCCESS) {
-            LOG_MODULE_WARN("OLIGODENDROCYTE", "Bio-async init failed: %d (continuing anyway)", result);
-        }
+    // Initialize bio-async on first create (thread-safe via nimcp_platform_once)
+    nimcp_error_t init_result = oligodendrocyte_bio_init();
+    if (init_result != NIMCP_SUCCESS) {
+        LOG_MODULE_WARN("OLIGODENDROCYTE", "Bio-async init failed: %d (continuing anyway)", init_result);
     }
 
     if (max_axons == 0 || max_axons > NIMCP_OLIGO_MAX_AXONS) {
@@ -1506,7 +1521,7 @@ void oligodendrocyte_update_state_dynamics(oligodendrocyte_t* oligo, float dt) {
     if (!oligo || dt <= 0.0F) return;
 
     // Process pending bio-async messages before state update
-    if (g_oligo_bio_initialized && g_oligo_bio_ctx) {
+    if (g_oligo_bio_ctx) {
         bio_router_process_inbox(g_oligo_bio_ctx, 5);  // Process up to 5 messages
     }
 
@@ -1524,7 +1539,7 @@ void oligodendrocyte_update_state_dynamics(oligodendrocyte_t* oligo, float dt) {
     nimcp_spinlock_unlock(&oligo->lock);
 
     // Publish myelination state via SEROTONIN channel (slow, stabilizing)
-    if (g_oligo_bio_initialized && g_oligo_bio_ctx) {
+    if (g_oligo_bio_ctx) {
         bio_router_publish_signal(g_oligo_bio_ctx, "oligodendrocyte.myelination", oligo->myelination_rate);
         bio_router_publish_signal(g_oligo_bio_ctx, "oligodendrocyte.maturation", oligo->maturation_progress);
         LOG_MODULE_DEBUG("OLIGODENDROCYTE", "Published state: myelin_rate=%.3f, maturation=%.3f",

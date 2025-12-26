@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "utils/platform/nimcp_platform_once.h"
 
 //=============================================================================
 // Internal Structures
@@ -79,8 +80,8 @@ static uint64_t g_total_guards_created = 0;
 /** @brief Global mutex for guard creation */
 static nimcp_platform_mutex_t g_guard_creation_lock;
 
-/** @brief Initialization flag */
-static bool g_toctou_initialized = false;
+/** @brief nimcp_platform_once control for thread-safe initialization */
+static nimcp_platform_once_t g_toctou_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
 //=============================================================================
 // Internal Helper Functions
@@ -96,14 +97,18 @@ static uint64_t get_time_ms(void) {
 }
 
 /**
- * @brief Initialize module on first use
+ * @brief Internal initialization routine called by nimcp_platform_once
+ */
+static void toctou_module_init_internal(void) {
+    nimcp_platform_mutex_init(&g_guard_creation_lock, false);
+    LOG_MODULE_INFO("toctou_guard", "TOCTOU guard module initialized");
+}
+
+/**
+ * @brief Initialize module on first use (thread-safe via nimcp_platform_once)
  */
 static void toctou_module_init(void) {
-    if (!g_toctou_initialized) {
-        nimcp_platform_mutex_init(&g_guard_creation_lock, false);
-        g_toctou_initialized = true;
-        LOG_MODULE_INFO("toctou_guard", "TOCTOU guard module initialized");
-    }
+    nimcp_platform_once(&g_toctou_init_once, toctou_module_init_internal);
 }
 
 /**
