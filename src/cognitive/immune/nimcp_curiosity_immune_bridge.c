@@ -375,8 +375,15 @@ float curiosity_immune_compute_sickness_level(
     float il6 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL6);
     float tnf = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_TNF);
 
+    /* Get anti-inflammatory cytokine (IL-10) */
+    float il10 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL10);
+
     /* Weighted combination (IL-1β has strongest sickness effect) */
     float cytokine_sickness = (il1 * 0.5f) + (il6 * 0.3f) + (tnf * 0.2f);
+
+    /* IL-10 anti-inflammatory effect reduces sickness (recovery) */
+    float il10_recovery = il10 * 0.3f;
+    cytokine_sickness = cytokine_sickness - il10_recovery;
 
     /* Add inflammation contribution */
     brain_inflammation_level_t max_inflammation =

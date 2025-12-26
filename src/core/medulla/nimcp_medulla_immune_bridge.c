@@ -120,9 +120,10 @@ medulla_immune_bridge_t medulla_immune_create(
     bridge->medulla = medulla;
     bridge->immune = immune;
 
-    /* Initialize mutex */
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize bridge mutex");
+    /* Create mutex */
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
         return NULL;
     }

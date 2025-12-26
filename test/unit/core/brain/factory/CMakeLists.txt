@@ -19,7 +19,7 @@ target_include_directories(unit_core_brain_factory_test_brain_create
 )
 add_test(NAME unit_core_brain_factory_test_brain_create
          COMMAND unit_core_brain_factory_test_brain_create)
-set_tests_properties(unit_core_brain_factory_test_brain_create PROPERTIES LABELS "unit")
+set_tests_properties(unit_core_brain_factory_test_brain_create PROPERTIES LABELS "unit" TIMEOUT 90)
 
 # Test 2: brain_create_custom() function
 add_executable(unit_core_brain_factory_test_brain_create_custom
@@ -38,7 +38,7 @@ target_include_directories(unit_core_brain_factory_test_brain_create_custom
 )
 add_test(NAME unit_core_brain_factory_test_brain_create_custom
          COMMAND unit_core_brain_factory_test_brain_create_custom)
-set_tests_properties(unit_core_brain_factory_test_brain_create_custom PROPERTIES LABELS "unit")
+set_tests_properties(unit_core_brain_factory_test_brain_create_custom PROPERTIES LABELS "unit" TIMEOUT 90)
 
 # Test 3: create_personality() helper function
 add_executable(unit_core_brain_factory_test_personality

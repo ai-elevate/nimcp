@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 #include "plasticity/metaplasticity/nimcp_extended_metaplasticity.h"
+#include "utils/time/nimcp_time.h"
 #include <cmath>
 
 /* ============================================================================
@@ -341,14 +342,27 @@ TEST_F(ExtendedMetaplasticityTest, EffectiveThresholdIncorporatesHistory) {
     state = metaplasticity_state_create(&config);
     ASSERT_NE(state, nullptr);
 
-    // Add high activity to history
+    /* Verify history is enabled */
+    ASSERT_NE(state->history, nullptr);
+    ASSERT_GT(state->history_size, 0u);
+
+    /* Add high activity to history using realistic timestamps
+     * Use current time as base so entries are "recent" for decay calculation */
+    uint64_t now = nimcp_time_get_ms();
     for (int i = 0; i < 10; i++) {
-        metaplasticity_update_history(state, 5.0f, i * 1000, &config);
+        /* Recent entries (within last 10 seconds) */
+        int result = metaplasticity_update_history(state, 5.0f, now - (10 - i) * 1000, &config);
+        EXPECT_EQ(result, 0);
     }
+
+    /* Verify history was actually added */
+    ASSERT_EQ(state->history_count, 10u);
 
     float theta = metaplasticity_compute_effective_threshold(state, &config);
 
-    // Should be elevated due to history
+    /* History contribution: activity=5.0, squared=25.0
+     * With 20% contribution factor: theta = 1.0 + 25.0 * 0.2 = 6.0 (before clamping)
+     * With neuromod_factor = 1.0, should be > initial baseline */
     EXPECT_GT(theta, config.initial_theta_baseline);
 }
 

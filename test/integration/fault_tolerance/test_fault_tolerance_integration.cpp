@@ -79,6 +79,10 @@ protected:
         char cmd[256];
         snprintf(cmd, sizeof(cmd), "rm -f /tmp/fault_test_snapshot*.snapshot* 2>/dev/null");
         system(cmd);
+
+        // Clean up snap1, snap2, snap3 used by MultipleSnapshotManagement test
+        snprintf(cmd, sizeof(cmd), "rm -f snapshots/snap1_*.snapshot* snapshots/snap2_*.snapshot* snapshots/snap3_*.snapshot* 2>/dev/null");
+        system(cmd);
     }
 
     void train_brain(int iterations) {

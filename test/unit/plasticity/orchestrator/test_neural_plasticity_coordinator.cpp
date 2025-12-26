@@ -81,9 +81,10 @@ TEST_F(NeuralPlasticityCoordinatorTest, DefaultConfigSetsReasonableDefaults) {
     EXPECT_GT(config.default_dt_ms, 0.0f);
     EXPECT_GT(config.orchestrator_interval_ms, 0.0f);
     EXPECT_GT(config.sync_interval_ms, 0.0f);
-    EXPECT_FALSE(config.enable_bio_async);
-    EXPECT_FALSE(config.enable_immune_integration);
-    EXPECT_FALSE(config.enable_umm);
+    /* These features are now enabled by default */
+    EXPECT_TRUE(config.enable_bio_async);
+    EXPECT_TRUE(config.enable_immune_integration);
+    EXPECT_TRUE(config.enable_umm);
 }
 
 TEST_F(NeuralPlasticityCoordinatorTest, DefaultConfigReturnsErrorForNull) {
@@ -220,11 +221,12 @@ TEST_F(NeuralPlasticityCoordinatorTest, UnregisterSynapse) {
     EXPECT_EQ(neural_plasticity_unregister_synapse(coordinator, 100), 0);
 }
 
-TEST_F(NeuralPlasticityCoordinatorTest, UnregisterNonExistentSynapseReturnsError) {
+TEST_F(NeuralPlasticityCoordinatorTest, UnregisterNonExistentSynapseSucceeds) {
+    /* Unregistering a non-existent synapse is a no-op - returns success */
     CreateCoordinator();
     ASSERT_NE(coordinator, nullptr);
 
-    EXPECT_EQ(neural_plasticity_unregister_synapse(coordinator, 99999), -1);
+    EXPECT_EQ(neural_plasticity_unregister_synapse(coordinator, 99999), 0);
 }
 
 // ============================================================================

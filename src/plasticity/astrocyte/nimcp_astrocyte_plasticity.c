@@ -78,9 +78,11 @@ static float compute_d_serine_factor(float d_serine_level) {
         return 0.6f * (d_serine_level / ASTROCYTE_D_SERINE_LTP_THRESHOLD);
     }
 
-    /* Above threshold, normal to enhanced function */
+    /* Above threshold, normal to enhanced function
+     * Clamp normalized to [0, 1] to ensure factor stays in [0.6, 1.5] */
     float normalized = (d_serine_level - ASTROCYTE_D_SERINE_LTP_THRESHOLD) /
                        (1.0f - ASTROCYTE_D_SERINE_LTP_THRESHOLD);
+    normalized = clamp_f(normalized, 0.0f, 1.0f);
     return 0.6f + 0.9f * normalized;  /* Range: 0.6 - 1.5 */
 }
 
@@ -332,6 +334,28 @@ int astrocyte_plasticity_update(
     return 0;
 }
 
+/**
+ * @brief Internal unlocked version of trigger_calcium_wave
+ * @note Must be called while holding astro->mutex
+ */
+static int trigger_calcium_wave_unlocked(
+    astrocyte_plasticity_t astro,
+    uint32_t source_id,
+    float amplitude
+) {
+    if (!astro->config.enable_calcium_waves) return 0;
+
+    astrocyte_state_t* state = &astro->states[source_id];
+    state->calcium_wave_active = true;
+    state->calcium_wave_amplitude = clamp_f(amplitude, 0.0f, 1.0f);
+    state->calcium_current += amplitude * 0.5f;  /* Boost calcium */
+
+    astro->calcium_waves_triggered++;
+
+    NIMCP_LOGGING_DEBUG("Calcium wave triggered in astrocyte %u", source_id);
+    return 0;
+}
+
 int astrocyte_plasticity_trigger_calcium_wave(
     astrocyte_plasticity_t astro,
     uint32_t source_id,
@@ -343,18 +367,10 @@ int astrocyte_plasticity_trigger_calcium_wave(
     if (!astro->config.enable_calcium_waves) return 0;
 
     pthread_mutex_lock(astro->mutex);
-
-    astrocyte_state_t* state = &astro->states[source_id];
-    state->calcium_wave_active = true;
-    state->calcium_wave_amplitude = clamp_f(amplitude, 0.0f, 1.0f);
-    state->calcium_current += amplitude * 0.5f;  /* Boost calcium */
-
-    astro->calcium_waves_triggered++;
-
+    int result = trigger_calcium_wave_unlocked(astro, source_id, amplitude);
     pthread_mutex_unlock(astro->mutex);
 
-    NIMCP_LOGGING_DEBUG("Calcium wave triggered in astrocyte %u", source_id);
-    return 0;
+    return result;
 }
 
 int astrocyte_plasticity_release_gliotransmitter(
@@ -529,10 +545,10 @@ int astrocyte_plasticity_notify_glutamate_release(
     state->calcium_current += calcium_increase;
     state->calcium_current = clamp_f(state->calcium_current, 0.0f, 2.0f);
 
-    /* High calcium can trigger wave */
+    /* High calcium can trigger wave - use unlocked version since we hold mutex */
     if (state->calcium_current > astro->config.ca_wave_trigger_threshold) {
         if (!state->calcium_wave_active && astro->config.enable_calcium_waves) {
-            astrocyte_plasticity_trigger_calcium_wave(astro, astrocyte_id, 0.7f);
+            trigger_calcium_wave_unlocked(astro, astrocyte_id, 0.7f);
         }
     }
 
@@ -560,9 +576,9 @@ int astrocyte_plasticity_notify_ltp_induction(
         state->d_serine_level = clamp_f(state->d_serine_level + 0.2f, 0.0f, 1.5f);
     }
 
-    /* Trigger calcium wave for network coordination */
+    /* Trigger calcium wave for network coordination - use unlocked version since we hold mutex */
     if (astro->config.enable_calcium_waves) {
-        astrocyte_plasticity_trigger_calcium_wave(astro, astrocyte_id, 0.8f);
+        trigger_calcium_wave_unlocked(astro, astrocyte_id, 0.8f);
     }
 
     pthread_mutex_unlock(astro->mutex);
@@ -601,11 +617,14 @@ int astrocyte_plasticity_set_reactive_state(
             break;
 
         case ASTROCYTE_A1_REACTIVE:
-            /* Neurotoxic state: reduced D-serine, impaired uptake */
+            /* Neurotoxic state: reduced D-serine, impaired uptake
+             * Intensity modulates the severity of reduction */
             state->a1_factor = clamped_intensity;
             state->a2_factor = 0.0f;
-            state->d_serine_level = ASTROCYTE_D_SERINE_A1_REDUCTION;
-            state->glutamate_uptake_rate = ASTROCYTE_GLU_UPTAKE_A1_IMPAIRED;
+            state->d_serine_level = astro->config.baseline_d_serine -
+                (astro->config.baseline_d_serine - ASTROCYTE_D_SERINE_A1_REDUCTION) * clamped_intensity;
+            state->glutamate_uptake_rate = astro->config.baseline_glu_uptake -
+                (astro->config.baseline_glu_uptake - ASTROCYTE_GLU_UPTAKE_A1_IMPAIRED) * clamped_intensity;
             break;
 
         case ASTROCYTE_A2_REACTIVE:

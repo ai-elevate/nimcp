@@ -1269,3 +1269,62 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/training")
     add_subdirectory(integration/training)
 endif()
 
+# ============================================================================
+# Extended Timeout Configuration (Applied AFTER all tests are registered)
+# ============================================================================
+# WHAT: Extended timeouts for heavyweight brain tests
+# WHY:  These tests create full brain instances with all subsystems
+#       Each brain creation initializes 50+ subsystems and comprehensive tests
+#       run multiple brain instances with full validation
+# HOW:  Set 120s timeout for comprehensive tests, 90s for medium-weight tests
+# NOTE: These must come at the END of the file after all add_subdirectory calls
+#       so the tests actually exist when set_tests_properties is called
+
+# Comprehensive brain tests - these create multiple full brain instances
+set_tests_properties(
+  unit_core_brain_test_brain_comprehensive
+  unit_core_brain_test_brain_comprehensive_coverage
+  unit_core_brain_test_brain_exhaustive_scenarios
+  unit_core_brain_test_brain_advanced_coverage
+  unit_core_brain_test_brain_100_percent_coverage
+  unit_core_brain_test_brain_final_coverage
+  unit_core_brain_test_brain_final_push_95
+  PROPERTIES TIMEOUT 120
+)
+
+# Medium-weight brain tests - single brain instance with extensive validation
+set_tests_properties(
+  unit_core_brain_test_brain_master
+  unit_core_brain_test_brain_cache_threadsafe
+  unit_core_brain_test_brain_network_analyzer
+  unit_core_brain_test_brain_persistence
+  unit_core_brain_test_brain_error_paths
+  unit_core_brain_test_brain_snapshot_operations
+  unit_core_brain_test_oscillations_immune_full_integration
+  unit_core_brain_test_brain_oscillations_immune_integration
+  PROPERTIES TIMEOUT 90
+)
+
+# Hemispheric brain tests - timeouts set in unit/core/brain/hemispheric/CMakeLists.txt
+
+# Factory tests - brain creation and subsystem initialization
+# Timeouts set in unit/core/brain/factory/CMakeLists.txt
+
+# Utils async/fault tolerance tests
+# Note: timeout for test_async_checkpoint is set in unit/utils/fault_tolerance/CMakeLists.txt
+
+# Cognitive wellbeing tests - heavyweight mental health subsystem
+# Note: these are managed in unit/cognitive/wellbeing/CMakeLists.txt
+
+# Salience comprehensive test - full attention system
+# set_tests_properties(
+#   unit_cognitive_salience_test_salience_comprehensive
+#   PROPERTIES TIMEOUT 90
+# )
+
+# Working memory adapter - cognitive middleware integration
+# Note: managed in unit/middleware/CMakeLists.txt
+
+# Brain integration test - full system integration
+# Note: managed in unit/middleware/CMakeLists.txt
+

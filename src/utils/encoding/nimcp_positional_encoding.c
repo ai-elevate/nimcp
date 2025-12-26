@@ -1250,8 +1250,11 @@ int nimcp_pos_validate_config(const nimcp_pos_config_t* config)
         return NIMCP_POS_ERROR_INVALID_POS;
     }
 
-    if (base->embedding_dim == 0 || base->embedding_dim > NIMCP_POS_MAX_DIM) {
-        return NIMCP_POS_ERROR_INVALID_DIM;
+    /* ALiBi doesn't use embedding_dim, so skip check for that type */
+    if (config->type != NIMCP_POS_ALIBI) {
+        if (base->embedding_dim == 0 || base->embedding_dim > NIMCP_POS_MAX_DIM) {
+            return NIMCP_POS_ERROR_INVALID_DIM;
+        }
     }
 
     /* Type-specific validation */

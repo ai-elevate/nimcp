@@ -67,6 +67,25 @@ static synapse_structural_state_t* find_spine(
 }
 
 /**
+ * @brief Find spine by ID including eliminated spines (for state queries)
+ */
+static synapse_structural_state_t* find_spine_any_state(
+    structural_plasticity_system_t* system,
+    uint32_t synapse_id
+) {
+    if (!system || !system->spines) {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < system->num_spines; i++) {
+        if (system->spines[i].synapse_id == synapse_id) {
+            return &system->spines[i];
+        }
+    }
+    return NULL;
+}
+
+/**
  * WHAT: Initialize spine morphology for nascent state
  * WHY:  New spines start as thin, unstable structures
  * HOW:  Set small volume, PSD, high motility
@@ -704,8 +723,9 @@ int structural_plasticity_get_synapse_state(
 
     nimcp_platform_mutex_lock(system->mutex);
 
+    /* Use find_spine_any_state to allow querying eliminated spines */
     synapse_structural_state_t* spine =
-        find_spine((structural_plasticity_system_t*)system, synapse_id);
+        find_spine_any_state((structural_plasticity_system_t*)system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
         return -1;
@@ -728,8 +748,9 @@ int structural_plasticity_get_morphology(
 
     nimcp_platform_mutex_lock(system->mutex);
 
+    /* Use find_spine_any_state to allow querying eliminated spines */
     synapse_structural_state_t* spine =
-        find_spine((structural_plasticity_system_t*)system, synapse_id);
+        find_spine_any_state((structural_plasticity_system_t*)system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
         return -1;

@@ -384,6 +384,11 @@ int metabolic_plasticity_restore_atp(metabolic_plasticity_t* metabolic, float at
         METABOLIC_ATP_FULL_CAPACITY
     );
 
+    /* Update min ATP tracking */
+    if (metabolic->atp_state.current_atp < metabolic->stats.min_atp_reached) {
+        metabolic->stats.min_atp_reached = metabolic->atp_state.current_atp;
+    }
+
     update_energy_state(metabolic);
 
     nimcp_platform_mutex_unlock(metabolic->mutex);

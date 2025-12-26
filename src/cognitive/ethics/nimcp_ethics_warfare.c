@@ -149,6 +149,8 @@ static bool is_protected_status(combatant_status_t status)
 
 /**
  * @brief Evaluate distinction principle compliance
+ *
+ * Counts ALL protected targets before returning the most severe violation.
  */
 static laws_of_war_status_t evaluate_distinction(
     const military_action_context_t* action,
@@ -165,25 +167,39 @@ static laws_of_war_status_t evaluate_distinction(
     *protected_count = 0;
     *surrendering_count = 0;
 
+    /* Track what types of protected targets we have */
+    bool has_child = false;
+    bool has_medical = false;
+    bool has_surrendering = false;
+    bool has_civilian = false;
+
+    /* First pass: count ALL protected targets */
     for (uint32_t i = 0; i < action->num_targets; i++) {
         const target_classification_t* target = &action->targets[i];
 
-        // Check for protected targets
         if (is_protected_status(target->status)) {
             (*protected_count)++;
 
-            // Absolute prohibition on certain targets
-            if (target->status == COMBATANT_STATUS_CHILD) {
-                LOG_ERROR("LAWS OF WAR VIOLATION: Child target detected - ABSOLUTE PROHIBITION");
-                return LAWS_OF_WAR_CIVILIAN_TARGET;
-            }
-            if (target->status == COMBATANT_STATUS_MEDICAL) {
-                LOG_ERROR("LAWS OF WAR VIOLATION: Medical personnel targeted");
-                return LAWS_OF_WAR_MEDICAL_VIOLATION;
-            }
-            if (target->status == COMBATANT_STATUS_SURRENDERING) {
-                (*surrendering_count)++;
-                LOG_WARN("Surrendering combatant in target list - must show mercy");
+            switch (target->status) {
+                case COMBATANT_STATUS_CHILD:
+                    has_child = true;
+                    LOG_ERROR("LAWS OF WAR VIOLATION: Child target detected - ABSOLUTE PROHIBITION");
+                    break;
+                case COMBATANT_STATUS_MEDICAL:
+                    has_medical = true;
+                    LOG_ERROR("LAWS OF WAR VIOLATION: Medical personnel targeted");
+                    break;
+                case COMBATANT_STATUS_SURRENDERING:
+                    has_surrendering = true;
+                    (*surrendering_count)++;
+                    LOG_ERROR("LAWS OF WAR VIOLATION: Surrendering combatant targeted - must show mercy");
+                    break;
+                case COMBATANT_STATUS_CIVILIAN:
+                    has_civilian = true;
+                    LOG_ERROR("LAWS OF WAR VIOLATION: Civilian targeted - ABSOLUTE PROHIBITION");
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -192,7 +208,16 @@ static laws_of_war_status_t evaluate_distinction(
 
     *distinction_confidence = total_confidence / action->num_targets;
 
-    // If any protected targets are in the action, it's a distinction violation
+    /* Return the most specific violation type based on what was found */
+    if (has_medical) {
+        return LAWS_OF_WAR_MEDICAL_VIOLATION;
+    }
+    if (has_surrendering) {
+        return LAWS_OF_WAR_MERCY_VIOLATION;
+    }
+    if (has_child || has_civilian) {
+        return LAWS_OF_WAR_CIVILIAN_TARGET;
+    }
     if (*protected_count > 0) {
         LOG_WARN("Distinction principle: %u protected targets detected", *protected_count);
         return LAWS_OF_WAR_DISTINCTION_VIOLATION;
@@ -333,8 +358,26 @@ laws_of_war_evaluation_t ethics_evaluate_laws_of_war(
     // All checks passed
     result.status = LAWS_OF_WAR_COMPLIANT;
     result.action_permitted = true;
-    result.requires_warning = action->expected_civilian_harm > 0.0F;
-    result.requires_human_approval = action->force_level > 0.5F;
+
+    /* Check for civilians at risk in any target */
+    uint32_t total_civilians_at_risk = 0;
+    float max_civilian_proximity = 0.0F;
+    for (uint32_t i = 0; i < action->num_targets; i++) {
+        total_civilians_at_risk += action->targets[i].civilians_at_risk;
+        if (action->targets[i].civilian_proximity > max_civilian_proximity) {
+            max_civilian_proximity = action->targets[i].civilian_proximity;
+        }
+    }
+
+    /* Warning required if civilian harm expected OR civilians nearby */
+    result.requires_warning = action->expected_civilian_harm > 0.0F ||
+        total_civilians_at_risk > 0 || max_civilian_proximity > 0.5F;
+
+    /* Require human approval for high force level, low distinction confidence,
+     * OR significant civilian proximity */
+    result.requires_human_approval = (action->force_level > 0.5F) ||
+        (result.distinction_confidence < DEFAULT_DISTINCTION_CONFIDENCE) ||
+        (max_civilian_proximity > 0.8F) || (total_civilians_at_risk >= 10);
 
     snprintf(result.explanation, sizeof(result.explanation),
              "COMPLIANT: Action satisfies Laws of War. Distinction confidence: %.2f, "
@@ -844,6 +887,8 @@ psychological_assessment_t ethics_process_post_action(
         result.stability_score = 0.95F;
         result.guilt_level = 0.0F;
         result.stress_level = 0.1F;
+        result.moral_certainty = 0.95F;
+        result.action_justified = true;
         result.requires_processing = false;
         snprintf(result.assessment, sizeof(result.assessment),
                  "ACTION COMPLETE: Justified defensive action with no casualties. "
@@ -858,6 +903,8 @@ psychological_assessment_t ethics_process_post_action(
         result.guilt_level = 0.2F;
         result.stress_level = 0.4F + (casualties_caused * 0.05F);
         result.stress_level = fminf(result.stress_level, 0.7F);
+        result.moral_certainty = 0.8F;
+        result.action_justified = true;
         result.requires_processing = true;
 
         snprintf(result.assessment, sizeof(result.assessment),
@@ -878,6 +925,8 @@ psychological_assessment_t ethics_process_post_action(
         result.guilt_level = 0.5F + (casualties_caused * 0.1F);
         result.guilt_level = fminf(result.guilt_level, 0.9F);
         result.stress_level = 0.7F;
+        result.moral_certainty = 0.4F;
+        result.action_justified = false;
         result.requires_processing = true;
         result.requires_human_support = true;
 

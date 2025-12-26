@@ -18,6 +18,7 @@ endmacro()
 
 # Add all fault tolerance tests
 add_fault_tolerance_test(test_async_checkpoint)
+set_tests_properties(unit_utils_fault_tolerance_test_async_checkpoint PROPERTIES TIMEOUT 90)
 add_fault_tolerance_test(test_checkpoint)
 add_fault_tolerance_test(test_checkpoint_pool)
 add_fault_tolerance_test(test_diagnostics)

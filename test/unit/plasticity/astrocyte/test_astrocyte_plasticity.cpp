@@ -214,7 +214,7 @@ TEST_F(AstrocytePlasticityTest, DSerineFactorIncreasesWithLevel) {
 
     float factor = astrocyte_plasticity_get_d_serine_factor(astro, 0);
     EXPECT_GT(factor, 0.8f);
-    EXPECT_LT(factor, 1.5f);
+    EXPECT_LE(factor, 1.5f);  // Factor is capped at 1.5 (maximum enhancement)
 }
 
 TEST_F(AstrocytePlasticityTest, LowDSerineReducesFactor) {

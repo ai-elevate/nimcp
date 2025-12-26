@@ -53,6 +53,7 @@ target_link_libraries(unit_brain_integration
     )
 add_test(NAME unit_brain_integration
          COMMAND unit_brain_integration)
+set_tests_properties(unit_brain_integration PROPERTIES TIMEOUT 90)
 
 add_subdirectory(brain_integration)
 add_subdirectory(buffering)

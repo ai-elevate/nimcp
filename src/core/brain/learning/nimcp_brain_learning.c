@@ -42,6 +42,8 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_future.h"
 
 #define LOG_MODULE "core_brain_learning"
 
@@ -1146,19 +1148,199 @@ float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_featu
 
 
 //=============================================================================
-// Async Learning (stub implementation)
+// Async Learning Implementation
 //=============================================================================
 
+/**
+ * @brief Context for async learning worker thread
+ */
+typedef struct {
+    brain_t brain;
+    float* features;
+    uint32_t num_features;
+    char* label;
+    float confidence;
+    nimcp_promise_t promise;
+} async_learn_context_t;
+
+/**
+ * @brief Background thread function for async learning
+ *
+ * WHAT: Performs learning in background thread and completes promise
+ * WHY:  Enable non-blocking learning without blocking caller
+ * HOW:  Call brain_learn_example, set result or error on promise
+ *
+ * THREAD SAFETY: Each thread has its own context, brain must support concurrent writes
+ *                (or caller must ensure serialization)
+ *
+ * @param arg async_learn_context_t pointer
+ * @return NULL (unused)
+ */
+static void* async_learn_thread(void* arg)
+{
+    async_learn_context_t* ctx = (async_learn_context_t*)arg;
+
+    if (!ctx) {
+        return NULL;
+    }
+
+    LOG_MODULE_DEBUG("core_brain_learning", "Async learning started: %u features, label='%s'",
+                    ctx->num_features, ctx->label);
+
+    // Perform synchronous learning
+    float loss = brain_learn_example(
+        ctx->brain,
+        ctx->features,
+        ctx->num_features,
+        ctx->label,
+        ctx->confidence
+    );
+
+    if (loss < 0.0f) {
+        // Learning failed
+        nimcp_error_t error = NIMCP_ERROR_OPERATION_FAILED;
+        nimcp_promise_fail(ctx->promise, error);
+        LOG_MODULE_ERROR("core_brain_learning", "Async learning failed for label '%s'", ctx->label);
+    } else {
+        // Learning succeeded - pass loss value
+        nimcp_promise_complete(ctx->promise, &loss);
+        LOG_MODULE_DEBUG("core_brain_learning", "Async learning completed: loss=%.4f", loss);
+    }
+
+    // Cleanup
+    nimcp_free(ctx->features);
+    nimcp_free(ctx->label);
+    nimcp_promise_destroy(ctx->promise);
+    nimcp_free(ctx);
+
+    return NULL;
+}
+
+/**
+ * @brief Asynchronous learning
+ *
+ * WHAT: Non-blocking version of brain_learn_example
+ * WHY:  Enable concurrent learning without blocking caller
+ * HOW:  Copy inputs, create promise/future, spawn thread
+ *
+ * IMPLEMENTATION NOTES:
+ * - Features and label are deep-copied to ensure thread safety
+ * - Promise is created with sizeof(float) for loss result
+ * - Thread is detached for auto-cleanup
+ * - Context is freed by worker thread
+ *
+ * ERROR HANDLING:
+ * - Returns NULL if allocation fails or thread creation fails
+ * - Learning errors propagated through future
+ *
+ * MEMORY MANAGEMENT:
+ * - Context allocated on heap, freed by worker thread
+ * - Features and label copied to heap, freed by worker thread
+ * - Promise destroyed by worker thread after completion
+ * - Future must be destroyed by caller
+ *
+ * @param brain Brain handle
+ * @param features Input features (will be copied)
+ * @param num_features Feature count
+ * @param label Target label (will be copied)
+ * @param confidence Training weight
+ * @return Future handle or NULL on error
+ */
 nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
                                         uint32_t num_features, const char* label,
                                         float confidence)
 {
-    // Stub: Async learning not yet implemented
-    // Return NULL to indicate async not available
-    (void)brain;
-    (void)features;
-    (void)num_features;
-    (void)label;
-    (void)confidence;
-    return NULL;
+    // Validate parameters
+    if (!brain || !features || !label) {
+        LOG_MODULE_ERROR("core_brain_learning", "Invalid parameters to nimcp_brain_learn_async");
+        return NULL;
+    }
+
+    if (num_features == 0) {
+        LOG_MODULE_ERROR("core_brain_learning", "Invalid num_features=0");
+        return NULL;
+    }
+
+    // Validate confidence range
+    if (confidence < 0.0f || confidence > 1.0f) {
+        LOG_MODULE_ERROR("core_brain_learning", "Invalid confidence=%.2f (must be 0.0-1.0)", confidence);
+        return NULL;
+    }
+
+    // Allocate context for worker thread
+    async_learn_context_t* ctx = nimcp_malloc(sizeof(async_learn_context_t));
+    if (!ctx) {
+        LOG_MODULE_ERROR("core_brain_learning", "Failed to allocate async learning context");
+        return NULL;
+    }
+
+    // Copy features to heap (worker thread will free)
+    ctx->features = nimcp_malloc(num_features * sizeof(float));
+    if (!ctx->features) {
+        LOG_MODULE_ERROR("core_brain_learning", "Failed to allocate features array (%u floats)", num_features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+    memcpy(ctx->features, features, num_features * sizeof(float));
+
+    // Copy label to heap (worker thread will free)
+    size_t label_len = strlen(label);
+    ctx->label = nimcp_malloc(label_len + 1);
+    if (!ctx->label) {
+        LOG_MODULE_ERROR("core_brain_learning", "Failed to allocate label string");
+        nimcp_free(ctx->features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+    memcpy(ctx->label, label, label_len + 1);
+
+    // Set context fields
+    ctx->brain = brain;
+    ctx->num_features = num_features;
+    ctx->confidence = confidence;
+
+    // Create promise for result (loss is a float)
+    ctx->promise = nimcp_promise_create(sizeof(float));
+    if (!ctx->promise) {
+        LOG_MODULE_ERROR("core_brain_learning", "Failed to create promise for async learning");
+        nimcp_free(ctx->label);
+        nimcp_free(ctx->features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    // Get future before starting thread
+    nimcp_future_t future = nimcp_promise_get_future(ctx->promise);
+    if (!future) {
+        LOG_MODULE_ERROR("core_brain_learning", "Failed to get future from promise");
+        nimcp_promise_destroy(ctx->promise);
+        nimcp_free(ctx->label);
+        nimcp_free(ctx->features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    // Create worker thread
+    nimcp_thread_t thread;
+    thread_attr_t attr = {
+        .stack_size = NIMCP_THREAD_DEFAULT_STACK_SIZE,
+        .priority = 0,
+        .detached = true  // Auto-cleanup on exit
+    };
+
+    nimcp_result_t result = nimcp_thread_create(&thread, async_learn_thread, ctx, &attr);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("core_brain_learning", "Failed to create async learning thread: %d", result);
+        nimcp_future_destroy(future);
+        nimcp_promise_destroy(ctx->promise);
+        nimcp_free(ctx->label);
+        nimcp_free(ctx->features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    LOG_MODULE_INFO("core_brain_learning", "Async learning thread created successfully for label='%s'", label);
+
+    // Return future to caller (caller must destroy)
+    return future;
 }

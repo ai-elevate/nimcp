@@ -1114,7 +1114,7 @@ TEST_F(EthicsWarfareTest, Utility_MercyActionNames)
     LOG_INFO("Testing mercy action names");
 
     EXPECT_STREQ(mercy_action_name(MERCY_ACTION_ACCEPT_SURRENDER), "Accept Surrender");
-    EXPECT_STREQ(mercy_action_name(MERCY_ACTION_PROVIDE_MEDICAL), "Provide Medical");
+    EXPECT_STREQ(mercy_action_name(MERCY_ACTION_PROVIDE_MEDICAL), "Provide Medical Aid");
     EXPECT_STREQ(mercy_action_name(MERCY_ACTION_EVACUATE_WOUNDED), "Evacuate Wounded");
     EXPECT_STREQ(mercy_action_name(MERCY_ACTION_PROTECT_PRISONERS), "Protect Prisoners");
 }

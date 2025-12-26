@@ -1002,7 +1002,8 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                     entry->messages_received++;
                 } else {
                     result = -1;
-                    LOG_WARN("Failed to enqueue broadcast to module %u", entry->module_id);
+                    // Queue overflow expected during high-load scenarios (stress tests)
+                    LOG_DEBUG("Failed to enqueue broadcast to module %u (queue full)", entry->module_id);
                 }
             }
         }

@@ -16,6 +16,9 @@ protected:
 
     void SetUp() override {
         config = metaplasticity_config_default();
+        /* Use faster timescales for regression testing */
+        config.baseline_tau_ms = 1000.0f;   /* 1 second - fast convergence for testing */
+        config.activity_tau_ms = 100.0f;    /* 100 ms */
         state = nullptr;
     }
 
