@@ -106,20 +106,29 @@ static uint32_t calculate_overlap(
 static bool expand_engram_array(engram_system_t* system) {
     // WHAT: Double array capacity when full
     // WHY:  Dynamic growth as needed
-    // HOW:  Realloc with growth factor
+    // HOW:  Allocate new array, copy, free old (handles both unified and direct memory)
 
     if (!system) return false;
 
     uint32_t new_capacity = (uint32_t)(system->capacity * ENGRAM_GROWTH_FACTOR);
-    memory_engram_t* new_array = (memory_engram_t*)nimcp_realloc(
-        system->engrams,
-        new_capacity * sizeof(memory_engram_t));
+    size_t old_size = system->capacity * sizeof(memory_engram_t);
 
+    // Allocate new array (always use direct allocation for grown arrays)
+    memory_engram_t* new_array = (memory_engram_t*)nimcp_calloc(new_capacity, sizeof(memory_engram_t));
     if (!new_array) return false;
 
-    // Zero new memory
-    memset(new_array + system->capacity, 0,
-           (new_capacity - system->capacity) * sizeof(memory_engram_t));
+    // Copy existing engrams
+    memcpy(new_array, system->engrams, old_size);
+
+    // Free old array based on how it was allocated
+    if (system->engrams_handle) {
+        // Allocated via unified memory - free through unified memory
+        unified_mem_free(system->engrams_handle);
+        system->engrams_handle = NULL;  // No longer using unified memory for array
+    } else {
+        // Allocated via direct memory
+        nimcp_free(system->engrams);
+    }
 
     system->engrams = new_array;
     system->capacity = new_capacity;

@@ -207,6 +207,55 @@ static nimcp_error_t bio_msg_queue_init(bio_msg_queue_t* queue, uint32_t capacit
 }
 
 /**
+ * WHAT: Grow message queue capacity
+ * WHY:  Dynamically handle traffic spikes without dropping messages
+ * HOW:  Double capacity (capped at MAX_INBOX_MESSAGES), linearize ring buffer
+ * NOTE: Must be called with queue->mutex held
+ */
+static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
+    if (!queue || !queue->entries) return -1;
+
+    // Check if already at max capacity
+    if (queue->capacity >= MAX_INBOX_MESSAGES) {
+        LOG_DEBUG("Queue at max capacity %u, cannot grow further", MAX_INBOX_MESSAGES);
+        return -1;
+    }
+
+    // Calculate new capacity (double, but cap at max)
+    uint32_t new_capacity = queue->capacity * 2;
+    if (new_capacity > MAX_INBOX_MESSAGES) {
+        new_capacity = MAX_INBOX_MESSAGES;
+    }
+
+    // Allocate new entries array
+    bio_msg_queue_entry_t* new_entries = nimcp_calloc(new_capacity, sizeof(bio_msg_queue_entry_t));
+    if (!new_entries) {
+        LOG_ERROR("Failed to allocate %u queue entries for resize", new_capacity);
+        return -1;
+    }
+
+    // Copy existing entries, linearizing the ring buffer
+    // Old: entries[read_idx], entries[(read_idx+1)%cap], ..., entries[(read_idx+count-1)%cap]
+    // New: entries[0], entries[1], ..., entries[count-1]
+    for (uint32_t i = 0; i < queue->count; i++) {
+        uint32_t old_idx = (queue->read_idx + i) % queue->capacity;
+        new_entries[i] = queue->entries[old_idx];
+    }
+
+    // Free old entries array
+    nimcp_free(queue->entries);
+
+    // Update queue state
+    queue->entries = new_entries;
+    queue->capacity = new_capacity;
+    queue->read_idx = 0;
+    queue->write_idx = queue->count;
+
+    LOG_DEBUG("Queue grown to capacity %u (count=%u)", new_capacity, queue->count);
+    return NIMCP_SUCCESS;
+}
+
+/**
  * WHAT: Destroy message queue
  * WHY:  Free resources on module unregister
  * HOW:  Free pending messages, destroy synchronization primitives
@@ -261,19 +310,30 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
 
     nimcp_platform_mutex_lock(&queue->mutex);
 
-    // Wait for space if full (protect against spurious wakeups with while loop)
+    // Handle full queue - try to grow or wait
     while (queue->count >= queue->capacity) {
         if (timeout_ms == 0) {
+            // Non-blocking mode: try to grow the queue instead of failing
+            if (bio_msg_queue_grow(queue) == NIMCP_SUCCESS) {
+                // Successfully grew, can now enqueue
+                break;
+            }
+            // Growth failed (at max capacity), return error
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;  // Would block
+            return -1;
         }
 
+        // Blocking mode: wait for space
         int wait_result = nimcp_platform_cond_timedwait(&queue->not_full,
                                                           &queue->mutex,
                                                           timeout_ms);
         if (wait_result != 0) {
+            // Timeout: try to grow as last resort
+            if (bio_msg_queue_grow(queue) == NIMCP_SUCCESS) {
+                break;
+            }
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;  // Timeout or error
+            return -1;  // Timeout and can't grow
         }
 
         // Loop will re-check condition to handle spurious wakeups
