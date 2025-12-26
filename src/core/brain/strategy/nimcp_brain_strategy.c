@@ -440,8 +440,8 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats)
     stats->total_inferences = brain->stats.total_inferences;  // Use brain's counter, not network's
     stats->total_learning_steps = perf.total_learning_steps;
     stats->quantum_annealing_runs = brain->stats.quantum_annealing_runs;  // Copy quantum annealing counter
-    stats->avg_sparsity = perf.avg_sparsity;
-    stats->avg_inference_time_us = perf.avg_inference_time_us;
+    stats->avg_sparsity = brain->stats.avg_sparsity;  // Use brain's stats, updated by update_inference_stats
+    stats->avg_inference_time_us = brain->stats.avg_inference_time_us;  // Use brain's stats, updated by update_inference_stats
     stats->current_learning_rate = brain->config.learning_rate;
     stats->accuracy = perf.accuracy;
     stats->memory_bytes = perf.memory_usage_bytes;
@@ -460,6 +460,17 @@ uint32_t brain_get_num_inputs(brain_t brain)
         return 0;
     }
     return brain->config.num_inputs;
+}
+
+/**
+ * @brief Get number of output features for this brain
+ */
+uint32_t brain_get_num_outputs(brain_t brain)
+{
+    if (!brain) {
+        return 0;
+    }
+    return brain->config.num_outputs;
 }
 
 /**

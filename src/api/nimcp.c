@@ -16,6 +16,7 @@
 
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/strategy/nimcp_brain_strategy.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
@@ -692,10 +693,9 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
     probe->accuracy = internal_stats.accuracy;
     probe->memory_bytes = internal_stats.memory_bytes;
 
-    // Note: Input/output sizes are not directly accessible from internal API
-    // Set to 0 for now - could be extended if brain API exposes these
-    probe->num_inputs = 0;
-    probe->num_outputs = 0;
+    // Get input/output sizes from internal brain
+    probe->num_inputs = brain_get_num_inputs(brain->internal_brain);
+    probe->num_outputs = brain_get_num_outputs(brain->internal_brain);
 
     // Get COW statistics from internal brain
     brain_cow_stats_t cow_stats;

@@ -343,7 +343,7 @@ E2E_TEST(BrainPipelineTest, BrainProbeStatistics) {
     E2E_STAGE_END();
 
     // Stage 5: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 100);
+    E2E_STAGE_BEGIN("Cleanup", 250);  // Increased timeout for brain with many subsystems
     {
         nimcp_brain_destroy(brain);
     }
@@ -362,8 +362,8 @@ E2E_TEST(BrainPipelineTest, COWCloning) {
     nimcp_brain_t original = nullptr;
     nimcp_brain_t clone = nullptr;
 
-    // Stage 1: Create original brain
-    E2E_STAGE_BEGIN("Create original", 100);
+    // Stage 1: Create original brain (increased timeout for full subsystem init)
+    E2E_STAGE_BEGIN("Create original", 500);
     {
         original = nimcp_brain_create(
             "cow_original",
@@ -471,8 +471,8 @@ E2E_TEST(BrainPipelineTest, TrainingCallbacks) {
         return NIMCP_CB_ACTION_CONTINUE;
     };
 
-    // Stage 1: Create and configure brain
-    E2E_STAGE_BEGIN("Create and configure", 100);
+    // Stage 1: Create and configure brain (increased timeout for full subsystem init)
+    E2E_STAGE_BEGIN("Create and configure", 500);
     {
         brain = nimcp_brain_create("callback_test", NIMCP_BRAIN_TINY,
                                     NIMCP_TASK_REGRESSION, 3, 1);

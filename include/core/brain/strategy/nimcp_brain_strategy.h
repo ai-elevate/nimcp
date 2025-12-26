@@ -164,6 +164,16 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats);
 uint32_t brain_get_num_inputs(brain_t brain);
 
 /**
+ * @brief Get number of output features for this brain
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param brain Brain handle
+ * @return Number of outputs, or 0 if brain is NULL
+ */
+uint32_t brain_get_num_outputs(brain_t brain);
+
+/**
  * @brief Get systems consolidation subsystem
  *
  * WHAT: Access the brain's systems consolidation component
