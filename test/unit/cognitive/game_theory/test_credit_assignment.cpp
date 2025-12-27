@@ -320,10 +320,10 @@ TEST_F(CreditAssignmentTest, EqualSplit) {
 //=============================================================================
 
 TEST_F(CreditAssignmentTest, MethodNames) {
-    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_SHAPLEY), "Shapley");
-    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_SHAPLEY_APPROX), "Shapley-Approx");
-    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_BANZHAF), "Banzhaf");
-    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_EQUAL_SPLIT), "Equal-Split");
+    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_SHAPLEY), "Shapley Value (Exact)");
+    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_SHAPLEY_APPROX), "Shapley Value (Monte Carlo)");
+    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_BANZHAF), "Banzhaf Power Index");
+    EXPECT_STREQ(nimcp_credit_method_name(NIMCP_CREDIT_EQUAL_SPLIT), "Equal Split");
 }
 
 TEST_F(CreditAssignmentTest, VerifyAxioms) {

@@ -1223,6 +1223,8 @@ static double op_relu(double x) { return (x > 0) ? x : 0; }
 static double op_gelu(double x) {
     return 0.5 * x * (1.0 + tanh(sqrt(2.0 / M_PI) * (x + 0.044715 * x * x * x)));
 }
+static double op_silu(double x) { return x / (1.0 + exp(-x)); }
+static double op_softplus(double x) { return log(1.0 + exp(x)); }
 
 nimcp_tensor_t* nimcp_tensor_neg(const nimcp_tensor_t* t) { return unary_op(t, op_neg); }
 nimcp_tensor_t* nimcp_tensor_abs(const nimcp_tensor_t* t) { return unary_op(t, op_abs); }
@@ -1236,6 +1238,8 @@ nimcp_tensor_t* nimcp_tensor_tanh(const nimcp_tensor_t* t) { return unary_op(t, 
 nimcp_tensor_t* nimcp_tensor_sigmoid(const nimcp_tensor_t* t) { return unary_op(t, op_sigmoid); }
 nimcp_tensor_t* nimcp_tensor_relu(const nimcp_tensor_t* t) { return unary_op(t, op_relu); }
 nimcp_tensor_t* nimcp_tensor_gelu(const nimcp_tensor_t* t) { return unary_op(t, op_gelu); }
+nimcp_tensor_t* nimcp_tensor_silu(const nimcp_tensor_t* t) { return unary_op(t, op_silu); }
+nimcp_tensor_t* nimcp_tensor_softplus(const nimcp_tensor_t* t) { return unary_op(t, op_softplus); }
 
 //=============================================================================
 // Reduction Operations

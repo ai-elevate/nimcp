@@ -1057,8 +1057,9 @@ TEST_F(MultiGPUContextTest, SyncDevices_SameDevice) {
     // WHY:  Should be no-op
     // HOW:  Sync device 0 -> device 0
 
-    float data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    bool result = multigpu_sync_devices(ctx, 0, 0, data, sizeof(data));
+    float src_data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    float dst_data[10] = {0};
+    bool result = multigpu_sync_devices(ctx, 0, 0, src_data, dst_data, sizeof(src_data));
 
     EXPECT_TRUE(result) << "Same device sync should succeed";
 }
@@ -1073,8 +1074,9 @@ TEST_F(MultiGPUContextTest, SyncDevices_DifferentDevices) {
         GTEST_SKIP() << "Need at least 2 devices";
     }
 
-    float data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    bool result = multigpu_sync_devices(ctx, 0, 1, data, sizeof(data));
+    float src_data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    float dst_data[10] = {0};
+    bool result = multigpu_sync_devices(ctx, 0, 1, src_data, dst_data, sizeof(src_data));
 
     EXPECT_TRUE(result);
 }
@@ -1085,11 +1087,12 @@ TEST_F(MultiGPUContextTest, SyncDevices_AllPairs) {
     // HOW:  Sync all combinations
 
     uint32_t num_devices = multigpu_get_device_count(ctx);
-    float data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    float src_data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    float dst_data[10] = {0};
 
     for (uint32_t src = 0; src < num_devices; src++) {
         for (uint32_t dst = 0; dst < num_devices; dst++) {
-            bool result = multigpu_sync_devices(ctx, src, dst, data, sizeof(data));
+            bool result = multigpu_sync_devices(ctx, src, dst, src_data, dst_data, sizeof(src_data));
             EXPECT_TRUE(result) << "Sync " << src << " -> " << dst;
         }
     }
@@ -1100,19 +1103,33 @@ TEST_F(MultiGPUComprehensiveTest, SyncDevices_NullContext) {
     // WHY:  Guard clause validation
     // HOW:  Pass NULL
 
-    float data[10];
-    memset(data, 0, sizeof(data));
-    bool result = multigpu_sync_devices(nullptr, 0, 1, data, sizeof(data));
+    float src_data[10];
+    float dst_data[10];
+    memset(src_data, 0, sizeof(src_data));
+    memset(dst_data, 0, sizeof(dst_data));
+    bool result = multigpu_sync_devices(nullptr, 0, 1, src_data, dst_data, sizeof(src_data));
 
     EXPECT_FALSE(result);
 }
 
-TEST_F(MultiGPUContextTest, SyncDevices_NullData) {
-    // WHAT: Test NULL data
+TEST_F(MultiGPUContextTest, SyncDevices_NullSrcData) {
+    // WHAT: Test NULL source data
     // WHY:  Guard clause validation
-    // HOW:  Pass NULL data
+    // HOW:  Pass NULL src_data
 
-    bool result = multigpu_sync_devices(ctx, 0, 1, nullptr, 100);
+    float dst_data[10] = {0};
+    bool result = multigpu_sync_devices(ctx, 0, 1, nullptr, dst_data, 100);
+
+    EXPECT_FALSE(result);
+}
+
+TEST_F(MultiGPUContextTest, SyncDevices_NullDstData) {
+    // WHAT: Test NULL destination data
+    // WHY:  Guard clause validation
+    // HOW:  Pass NULL dst_data
+
+    float src_data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    bool result = multigpu_sync_devices(ctx, 0, 1, src_data, nullptr, 100);
 
     EXPECT_FALSE(result);
 }
@@ -1122,9 +1139,11 @@ TEST_F(MultiGPUContextTest, SyncDevices_InvalidSrcDevice) {
     // WHY:  Guard clause validation
     // HOW:  Use out-of-range device ID
 
-    float data[10];
-    memset(data, 0, sizeof(data));
-    bool result = multigpu_sync_devices(ctx, 999, 0, data, sizeof(data));
+    float src_data[10];
+    float dst_data[10];
+    memset(src_data, 0, sizeof(src_data));
+    memset(dst_data, 0, sizeof(dst_data));
+    bool result = multigpu_sync_devices(ctx, 999, 0, src_data, dst_data, sizeof(src_data));
 
     EXPECT_FALSE(result);
 }
@@ -1134,9 +1153,11 @@ TEST_F(MultiGPUContextTest, SyncDevices_InvalidDstDevice) {
     // WHY:  Guard clause validation
     // HOW:  Use out-of-range device ID
 
-    float data[10];
-    memset(data, 0, sizeof(data));
-    bool result = multigpu_sync_devices(ctx, 0, 999, data, sizeof(data));
+    float src_data[10];
+    float dst_data[10];
+    memset(src_data, 0, sizeof(src_data));
+    memset(dst_data, 0, sizeof(dst_data));
+    bool result = multigpu_sync_devices(ctx, 0, 999, src_data, dst_data, sizeof(src_data));
 
     EXPECT_FALSE(result);
 }

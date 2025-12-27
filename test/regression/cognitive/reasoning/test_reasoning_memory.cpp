@@ -34,19 +34,32 @@ protected:
 // Test 1: No memory leaks after 10000 inferences
 TEST_F(ReasoningMemoryTest, NoMemoryLeaksInferences) {
     // Add rules
+    uint32_t rules_added = 0;
     for (int i = 0; i < 100; i++) {
         char rule[256];
         snprintf(rule, sizeof(rule), "IF A_%d THEN B_%d", i, i);
-        add_learned_rule_to_kb(brain, rule, 0.8f);
+        bool added = add_learned_rule_to_kb(brain, rule, 0.8f);
+        if (added) rules_added++;
     }
 
-    // Perform 10000 inferences
+    // Verify rules were added
+    EXPECT_GT(rules_added, 0u) << "At least some rules should be added";
+
+    // Perform 10000 inferences using brain_predict
+    float input[100] = {0};
+    float output[50] = {0};
+    uint32_t successful_predictions = 0;
+
     for (int i = 0; i < 10000; i++) {
-        // TODO: Actual inference
-        // Check for leaks via valgrind in CI
+        // Create varied input
+        input[i % 100] = 0.5f + (i % 10) * 0.05f;
+        bool result = brain_predict(brain, input, 100, output, 50);
+        if (result) successful_predictions++;
     }
 
-    SUCCEED();
+    // Verify predictions completed (memory stability indicator)
+    EXPECT_GT(successful_predictions, 0u)
+        << "At least some predictions should succeed";
 }
 
 // Test 2: Memory usage under 100MB for 1000 rules

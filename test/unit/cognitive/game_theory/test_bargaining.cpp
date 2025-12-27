@@ -271,10 +271,10 @@ TEST_F(BargainingTest, GetCurrentOffer) {
 //=============================================================================
 
 TEST_F(BargainingTest, BargainingTypeNames) {
-    EXPECT_STREQ(nimcp_bargaining_type_name(NIMCP_BARGAINING_NASH), "Nash");
+    EXPECT_STREQ(nimcp_bargaining_type_name(NIMCP_BARGAINING_NASH), "Nash Bargaining");
     EXPECT_STREQ(nimcp_bargaining_type_name(NIMCP_BARGAINING_KALAI_SMORODINSKY), "Kalai-Smorodinsky");
     EXPECT_STREQ(nimcp_bargaining_type_name(NIMCP_BARGAINING_EGALITARIAN), "Egalitarian");
-    EXPECT_STREQ(nimcp_bargaining_type_name(NIMCP_BARGAINING_RUBINSTEIN), "Rubinstein");
+    EXPECT_STREQ(nimcp_bargaining_type_name(NIMCP_BARGAINING_RUBINSTEIN), "Rubinstein (Alternating Offers)");
 }
 
 TEST_F(BargainingTest, GetOutcome) {
@@ -283,10 +283,15 @@ TEST_F(BargainingTest, GetOutcome) {
     ASSERT_NE(bargaining, nullptr);
 
     SetLinearFeasibleSet(1.0f);
-    nimcp_bargaining_compute_nash_solution(bargaining, nullptr);
 
+    // Compute Nash solution first
+    nimcp_bargaining_outcome_t computed_outcome;
+    nimcp_error_t err = nimcp_bargaining_compute_nash_solution(bargaining, &computed_outcome);
+    EXPECT_EQ(err, NIMCP_SUCCESS);
+
+    // Now get the stored outcome
     nimcp_bargaining_outcome_t outcome;
-    nimcp_error_t err = nimcp_bargaining_get_outcome(bargaining, &outcome);
+    err = nimcp_bargaining_get_outcome(bargaining, &outcome);
     EXPECT_EQ(err, NIMCP_SUCCESS);
 
     // Allocations should sum to total

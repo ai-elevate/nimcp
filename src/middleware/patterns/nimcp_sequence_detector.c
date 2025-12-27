@@ -21,6 +21,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/thread/nimcp_thread.h"
 
 
 
@@ -85,6 +86,11 @@ struct sequence_detector {
     // Quantum Bridge
     sequence_quantum_bridge_t* quantum_bridge;  // Quantum-accelerated matching
     uint64_t quantum_matches;                    // Number of quantum-accelerated matches
+
+    /* Thread safety: mutex protects buffer, templates, ngrams, and statistics.
+     * Added to fix thread-safety issue - concurrent calls to sequence_detector
+     * functions could corrupt internal state. */
+    nimcp_mutex_t* mutex;
 };
 
 // ============================================================================
@@ -302,6 +308,14 @@ sequence_detector_t* sequence_detector_create(const sequence_detector_config_t* 
 
     detector->config = *config;
 
+    /* Thread safety: Create mutex to protect detector state.
+     * This fixes thread-safety issue where concurrent calls could corrupt state. */
+    detector->mutex = nimcp_mutex_create(NULL);
+    if (!detector->mutex) {
+        sequence_detector_destroy(detector);
+        return NULL;
+    }
+
     // Initialize spike buffer
     if (!init_spike_buffer(&detector->buffer, SPIKE_BUFFER_SIZE)) {
         sequence_detector_destroy(detector);
@@ -390,6 +404,12 @@ void sequence_detector_destroy(sequence_detector_t* detector) {
         sequence_quantum_bridge_destroy(detector->quantum_bridge);
     }
 
+    /* Thread safety: Clean up mutex */
+    if (detector->mutex) {
+        nimcp_mutex_destroy(detector->mutex);
+        nimcp_free(detector->mutex);
+    }
+
     nimcp_free(detector);
 }
 
@@ -398,6 +418,9 @@ bool sequence_detector_add_spike(sequence_detector_t* detector,
                                   double timestamp_ms) {
     if (!detector) return false;
 
+    /* Thread safety: Lock mutex to protect buffer and ngram access */
+    nimcp_mutex_lock(detector->mutex);
+
     buffer_add_spike(&detector->buffer, neuron_id, timestamp_ms);
 
     // Extract N-grams periodically
@@ -405,6 +428,7 @@ bool sequence_detector_add_spike(sequence_detector_t* detector,
         extract_ngrams(detector);
     }
 
+    nimcp_mutex_unlock(detector->mutex);
     return true;
 }
 
@@ -418,10 +442,16 @@ bool sequence_detector_learn_template(sequence_detector_t* detector,
         return false;
     }
 
+    /* Thread safety: Lock mutex to protect template storage */
+    nimcp_mutex_lock(detector->mutex);
+
     sequence_template_t* tmpl = &detector->templates[detector->num_templates];
 
     tmpl->elements = (sequence_element_t*)nimcp_malloc(length * sizeof(sequence_element_t));
-    if (!tmpl->elements) return false;
+    if (!tmpl->elements) {
+        nimcp_mutex_unlock(detector->mutex);
+        return false;
+    }
 
     memcpy(tmpl->elements, elements, length * sizeof(sequence_element_t));
     tmpl->length = length;
@@ -449,6 +479,7 @@ bool sequence_detector_learn_template(sequence_detector_t* detector,
         }
     }
 
+    nimcp_mutex_unlock(detector->mutex);
     return true;
 }
 
@@ -459,6 +490,9 @@ bool sequence_detector_detect(sequence_detector_t* detector,
     if (!detector || !detections || !num_detected || max_detections == 0) {
         return false;
     }
+
+    /* Thread safety: Lock mutex to protect buffer, templates, and statistics */
+    nimcp_mutex_lock(detector->mutex);
 
     *num_detected = 0;
 
@@ -535,6 +569,7 @@ bool sequence_detector_detect(sequence_detector_t* detector,
         }
     }
 
+    nimcp_mutex_unlock(detector->mutex);
     return true;
 }
 
@@ -590,12 +625,20 @@ bool sequence_detector_get_ngrams(const sequence_detector_t* detector,
 void sequence_detector_reset(sequence_detector_t* detector) {
     if (!detector) return;
 
+    /* Thread safety: Lock mutex to protect buffer access */
+    nimcp_mutex_lock(detector->mutex);
+
     detector->buffer.count = 0;
     detector->buffer.head = 0;
+
+    nimcp_mutex_unlock(detector->mutex);
 }
 
 void sequence_detector_clear_templates(sequence_detector_t* detector) {
     if (!detector) return;
+
+    /* Thread safety: Lock mutex to protect template storage */
+    nimcp_mutex_lock(detector->mutex);
 
     for (uint32_t i = 0; i < detector->num_templates; i++) {
         nimcp_free(detector->templates[i].elements);
@@ -603,6 +646,8 @@ void sequence_detector_clear_templates(sequence_detector_t* detector) {
 
     detector->num_templates = 0;
     detector->next_template_id = 1;
+
+    nimcp_mutex_unlock(detector->mutex);
 }
 
 bool sequence_detector_get_stats(const sequence_detector_t* detector,
@@ -684,6 +729,9 @@ bool sequence_detector_set_pe_config(sequence_detector_t* detector,
         return false;
     }
 
+    /* Thread safety: Lock mutex to protect PE encoder and config */
+    nimcp_mutex_lock(detector->mutex);
+
     // Destroy existing encoder if present
     if (detector->pe_encoder) {
         nimcp_pos_encoder_destroy(detector->pe_encoder);
@@ -694,6 +742,7 @@ bool sequence_detector_set_pe_config(sequence_detector_t* detector,
     detector->pe_encoder = nimcp_pos_encoder_create(pe_config);
     if (!detector->pe_encoder) {
         LOG_ERROR("SequenceDetector: Failed to create PE encoder");
+        nimcp_mutex_unlock(detector->mutex);
         return false;
     }
 
@@ -713,6 +762,7 @@ bool sequence_detector_set_pe_config(sequence_detector_t* detector,
              nimcp_pos_type_to_string(pe_config->type),
              detector->config.pe_embedding_dim);
 
+    nimcp_mutex_unlock(detector->mutex);
     return true;
 }
 
@@ -739,6 +789,9 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
         return false;
     }
 
+    /* Thread safety: Lock mutex to protect template access */
+    nimcp_mutex_lock(detector->mutex);
+
     // Find template
     sequence_template_t* tmpl = NULL;
     for (uint32_t i = 0; i < detector->num_templates; i++) {
@@ -750,6 +803,7 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
 
     if (!tmpl) {
         LOG_ERROR("SequenceDetector: Template %u not found", template_id);
+        nimcp_mutex_unlock(detector->mutex);
         return false;
     }
 
@@ -767,6 +821,7 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
         elem->position_embedding = (float*)nimcp_malloc(elem->embedding_dim * sizeof(float));
         if (!elem->position_embedding) {
             LOG_ERROR("SequenceDetector: Failed to allocate position embedding");
+            nimcp_mutex_unlock(detector->mutex);
             return false;
         }
 
@@ -775,6 +830,7 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
                                                elem->position_embedding);
         if (result != NIMCP_POS_SUCCESS) {
             LOG_ERROR("SequenceDetector: PE encoding failed: %d", result);
+            nimcp_mutex_unlock(detector->mutex);
             return false;
         }
     }
@@ -782,6 +838,7 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
     LOG_DEBUG("SequenceDetector: Template %u encoded with %u positions",
               template_id, tmpl->length);
 
+    nimcp_mutex_unlock(detector->mutex);
     return true;
 }
 

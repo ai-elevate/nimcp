@@ -937,11 +937,12 @@ bool multigpu_gather(multigpu_context_t ctx,
 bool multigpu_sync_devices(multigpu_context_t ctx,
                           uint32_t src_device,
                           uint32_t dst_device,
-                          const void* data,
+                          const void* src_data,
+                          void* dst_data,
                           size_t size)
 {
     // Guard: NULL checks
-    if (!ctx || !data) {
+    if (!ctx || !src_data || !dst_data) {
         return false;
     }
 
@@ -963,9 +964,9 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
                                       ctx->devices[dst_device].device_id)) {
             // Use P2P direct transfer (faster)
             cudaSetDevice(ctx->devices[src_device].device_id);
-            cudaError_t err = cudaMemcpyPeer((void*)data,
+            cudaError_t err = cudaMemcpyPeer(dst_data,
                                             ctx->devices[dst_device].device_id,
-                                            data,
+                                            src_data,
                                             ctx->devices[src_device].device_id,
                                             size);
             return (err == cudaSuccess);
@@ -978,11 +979,11 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
 
             // Device -> Host
             cudaSetDevice(ctx->devices[src_device].device_id);
-            cudaMemcpy(host_buffer, data, size, cudaMemcpyDeviceToHost);
+            cudaMemcpy(host_buffer, src_data, size, cudaMemcpyDeviceToHost);
 
             // Host -> Device
             cudaSetDevice(ctx->devices[dst_device].device_id);
-            cudaMemcpy((void*)data, host_buffer, size, cudaMemcpyHostToDevice);
+            cudaMemcpy(dst_data, host_buffer, size, cudaMemcpyHostToDevice);
 
             nimcp_free(host_buffer);
             return true;
@@ -991,7 +992,8 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
 #else
     (void)src_device;
     (void)dst_device;
-    (void)data;
+    (void)src_data;
+    (void)dst_data;
     (void)size;
 #endif
 

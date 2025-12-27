@@ -233,6 +233,7 @@ void astro_immune_base_cleanup(astrocyte_immune_base_t* base) {
     /* Destroy mutex */
     if (base->infra.mutex) {
         nimcp_platform_mutex_destroy(base->infra.mutex);
+        nimcp_free(base->infra.mutex);
         base->infra.mutex = NULL;
     }
 }

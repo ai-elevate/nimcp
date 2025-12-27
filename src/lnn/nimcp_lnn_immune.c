@@ -729,3 +729,22 @@ const char* lnn_instability_type_to_string(lnn_instability_type_t type)
         default:                                   return "UNKNOWN";
     }
 }
+
+/**
+ * @brief Connect network to immune bridge for modulation
+ *
+ * WHAT: Links LNN to immune system for learning modulation
+ * WHY:  Allow immune-based suppression during inflammation
+ * HOW:  Register network with immune bridge for callbacks
+ */
+int lnn_immune_connect(lnn_network_t* network, void* immune_bridge)
+{
+    if (!network) {
+        return -1;
+    }
+
+    // Stub implementation - immune connection
+    // Full implementation would register for immune modulation callbacks
+    (void)immune_bridge;  // Suppress unused warning
+    return 0;
+}

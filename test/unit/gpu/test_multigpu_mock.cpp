@@ -477,8 +477,9 @@ TEST_F(MultiGPUMockTest, SyncDevices_SameDevice) {
     multigpu_context_t ctx = multigpu_context_create(&config);
     ASSERT_NE(ctx, nullptr);
 
-    float data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    bool result = multigpu_sync_devices(ctx, 0, 0, data, sizeof(data));
+    float src_data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    float dst_data[10] = {0};
+    bool result = multigpu_sync_devices(ctx, 0, 0, src_data, dst_data, sizeof(src_data));
 
     EXPECT_TRUE(result) << "Same device sync should succeed (no-op)";
 

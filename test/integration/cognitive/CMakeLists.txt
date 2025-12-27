@@ -70,6 +70,9 @@ add_subdirectory(autobiographical_memory)
 # Cognitive Substrate Bridges Integration
 add_subdirectory(substrate)
 
+# Game Theory Integration
+add_subdirectory(game_theory)
+
 # Curiosity - FEP Bridge Integration Test
 add_executable(integration_cognitive_curiosity_fep_bridge
     curiosity/test_curiosity_fep_bridge_integration.cpp

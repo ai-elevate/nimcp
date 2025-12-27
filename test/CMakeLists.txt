@@ -93,6 +93,7 @@ function(add_test_binary TARGET_NAME SOURCE_FILE CATEGORY)
     target_link_libraries(${TARGET_NAME}
     PRIVATE
         nimcp
+        nimcp_lnn
         GTest::GTest
         GTest::Main
         Python3::Python
@@ -486,6 +487,11 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/jepa")
     message(STATUS "Adding JEPA regression tests...")
     add_subdirectory(regression/cognitive/jepa)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/game_theory")
+    message(STATUS "Adding Game Theory regression tests...")
+    add_subdirectory(regression/cognitive/game_theory)
 endif()
 
 # ============================================================================

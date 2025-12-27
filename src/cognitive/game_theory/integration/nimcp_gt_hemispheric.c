@@ -250,8 +250,9 @@ nimcp_error_t gt_hemi_negotiate_resources(
     memset(outcome, 0, sizeof(gt_hemi_outcome_t));
 
     // Create feasible set - all (x, y) such that x + y <= total_resources
-    const uint32_t num_samples = 11;
-    nimcp_feasible_point_t feasible[11];
+    // Use 101 samples for 1% resolution to find optimal Nash solution
+    const uint32_t num_samples = 101;
+    nimcp_feasible_point_t feasible[101];
 
     for (uint32_t i = 0; i < num_samples; i++) {
         float left_share = (float)i / (num_samples - 1);
@@ -264,9 +265,13 @@ nimcp_error_t gt_hemi_negotiate_resources(
         return err;
     }
 
-    // Get Nash bargaining solution
+    // Compute Nash bargaining solution
     nimcp_bargaining_outcome_t bargain_outcome;
-    err = nimcp_bargaining_get_outcome(ctx->bargaining, &bargain_outcome);
+    err = nimcp_bargaining_compute_nash_solution(ctx->bargaining, &bargain_outcome);
+    if (err != NIMCP_SUCCESS) {
+        // Fall back to getting stored outcome if Nash computation fails
+        err = nimcp_bargaining_get_outcome(ctx->bargaining, &bargain_outcome);
+    }
     if (err != NIMCP_SUCCESS) {
         return err;
     }

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 /* ============================================================================
  * Module Constants
@@ -28,11 +29,9 @@
  * ============================================================================ */
 
 static uint32_t crc32_table[256];
-static bool crc32_initialized = false;
+static pthread_once_t crc32_init_once = PTHREAD_ONCE_INIT;
 
-static void init_crc32_table(void) {
-    if (crc32_initialized) return;
-
+static void init_crc32_table_impl(void) {
     for (uint32_t i = 0; i < 256; i++) {
         uint32_t crc = i;
         for (int j = 0; j < 8; j++) {
@@ -44,7 +43,10 @@ static void init_crc32_table(void) {
         }
         crc32_table[i] = crc;
     }
-    crc32_initialized = true;
+}
+
+static void init_crc32_table(void) {
+    pthread_once(&crc32_init_once, init_crc32_table_impl);
 }
 
 uint32_t jepa_weights_crc32(const void* data, size_t size) {

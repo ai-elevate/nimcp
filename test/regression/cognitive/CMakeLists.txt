@@ -70,5 +70,6 @@ add_subdirectory(free_energy)
 add_subdirectory(substrate)
 add_subdirectory(curiosity)
 add_subdirectory(jepa)
+add_subdirectory(game_theory)
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)

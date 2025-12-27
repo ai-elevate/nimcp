@@ -506,7 +506,8 @@ NIMCP_EXPORT bool multigpu_gather(
  * @param ctx Context handle
  * @param src_device Source GPU index
  * @param dst_device Destination GPU index
- * @param data Pointer to data on src_device
+ * @param src_data Pointer to source data on src_device
+ * @param dst_data Pointer to destination buffer on dst_device
  * @param size Size in bytes
  * @return true on success
  *
@@ -516,7 +517,8 @@ NIMCP_EXPORT bool multigpu_sync_devices(
     multigpu_context_t ctx,
     uint32_t src_device,
     uint32_t dst_device,
-    const void* data,
+    const void* src_data,
+    void* dst_data,
     size_t size
 );
 

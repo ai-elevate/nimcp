@@ -388,6 +388,12 @@ add_e2e_test(e2e_test_medulla_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_medulla_pipeline.cpp
 )
 
+# Game Theory Pipeline E2E Test (Auctions, Bargaining, Credit Assignment)
+add_e2e_test(e2e_test_game_theory_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_game_theory_pipeline.cpp
+)
+
 # Bridge Pipelines E2E Test (Sleep + Immune Bridges Integration)
 add_executable(e2e_test_bridge_pipelines
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bridge_pipelines.cpp

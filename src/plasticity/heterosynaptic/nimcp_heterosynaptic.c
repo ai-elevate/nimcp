@@ -494,12 +494,115 @@ int hetero_find_neighbors(
 
     /* Linear search through all synapses
      * P2 fix: Use squared distance comparison to avoid sqrtf in hot loop
+     *
+     * WARNING: Returns pointers to internal data that may be invalidated
+     * by concurrent add/remove operations. Use hetero_find_neighbors_copy()
+     * for thread-safe access.
      */
     for (size_t i = 0; i < system->num_synapses && *num_found < max_neighbors; i++) {
         hetero_synapse_t* syn = &system->synapses[i];
         float dist_sq = hetero_compute_distance_squared(center_position, &syn->position);
 
         if (dist_sq <= radius_sq && dist_sq > 0.0f) {  /* Exclude self (dist_sq=0) */
+            neighbors[*num_found] = syn;
+            (*num_found)++;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Find neighbors within radius and copy their data (THREAD-SAFE)
+ * WHY:  hetero_find_neighbors() returns pointers that can be invalidated by realloc
+ * HOW:  Copy synapse data to caller-provided array while holding mutex
+ *
+ * This is the RECOMMENDED API for multi-threaded access.
+ */
+int hetero_find_neighbors_copy(
+    hetero_system_t* system,
+    const hetero_spatial_coords_t* center_position,
+    float radius,
+    hetero_synapse_t* neighbors_out,
+    size_t max_neighbors,
+    size_t* num_found)
+{
+    if (!system || !center_position || !neighbors_out || !num_found) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    *num_found = 0;
+    float radius_sq = radius * radius;
+
+    /* Linear search through all synapses, copying data while holding mutex */
+    for (size_t i = 0; i < system->num_synapses && *num_found < max_neighbors; i++) {
+        hetero_synapse_t* syn = &system->synapses[i];
+        float dist_sq = hetero_compute_distance_squared(center_position, &syn->position);
+
+        if (dist_sq <= radius_sq && dist_sq > 0.0f) {  /* Exclude self (dist_sq=0) */
+            /* Copy synapse data to output array (safe copy) */
+            neighbors_out[*num_found] = *syn;
+            (*num_found)++;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Internal Unlocked Helpers (called with system->mutex held)
+ * ============================================================================ */
+
+/**
+ * WHAT: Find synapse by ID without locking (internal use only)
+ * WHY:  Called by functions that already hold the system mutex
+ * HOW:  Linear search through synapse array
+ *
+ * THREAD SAFETY: Caller MUST hold system->mutex
+ */
+static hetero_synapse_t* hetero_get_synapse_unlocked(
+    hetero_system_t* system, uint32_t synapse_id)
+{
+    if (!system) return NULL;
+
+    for (size_t i = 0; i < system->num_synapses; i++) {
+        if (system->synapses[i].synapse_id == synapse_id) {
+            return &system->synapses[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * WHAT: Find neighbors without locking (internal use only)
+ * WHY:  Called by functions that already hold the system mutex
+ * HOW:  Linear search with distance comparison
+ *
+ * THREAD SAFETY: Caller MUST hold system->mutex
+ */
+static int hetero_find_neighbors_unlocked(
+    hetero_system_t* system,
+    const hetero_spatial_coords_t* center_position,
+    float radius,
+    hetero_synapse_t** neighbors,
+    size_t max_neighbors,
+    size_t* num_found)
+{
+    if (!system || !center_position || !neighbors || !num_found) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    *num_found = 0;
+    float radius_sq = radius * radius;
+
+    for (size_t i = 0; i < system->num_synapses && *num_found < max_neighbors; i++) {
+        hetero_synapse_t* syn = &system->synapses[i];
+        float dist_sq = hetero_compute_distance_squared(center_position, &syn->position);
+
+        if (dist_sq <= radius_sq && dist_sq > 0.0f) {
             neighbors[*num_found] = syn;
             (*num_found)++;
         }
@@ -520,27 +623,39 @@ int hetero_apply_depression(
 {
     if (!system || ltp_amount <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
 
-    hetero_synapse_t* potentiated = hetero_get_synapse(system, potentiated_id);
-    if (!potentiated) return NIMCP_ERROR_INVALID_PARAM;
+    /* Hold system mutex for entire operation to ensure pointer stability */
+    nimcp_platform_mutex_lock(system->mutex);
+
+    hetero_synapse_t* potentiated = hetero_get_synapse_unlocked(system, potentiated_id);
+    if (!potentiated) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Update potentiation tracking */
     potentiated->last_potentiation = ltp_amount;
     potentiated->last_potentiation_time_ms = current_time_ms;
 
-    /* Find neighbors */
+    /* Copy position for neighbor search (position is stable while we hold lock) */
+    hetero_spatial_coords_t potentiated_position = potentiated->position;
+
+    /* Find neighbors (unlocked version - we already hold mutex) */
     hetero_synapse_t* neighbors[HETERO_MAX_NEIGHBORS_PER_SYNAPSE];
     size_t num_neighbors = 0;
 
-    int result = hetero_find_neighbors(
+    int result = hetero_find_neighbors_unlocked(
         system,
-        &potentiated->position,
+        &potentiated_position,
         system->config.neighbor_radius,
         neighbors,
         HETERO_MAX_NEIGHBORS_PER_SYNAPSE,
         &num_neighbors
     );
 
-    if (result != 0) return result;
+    if (result != 0) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return result;
+    }
 
     /* Apply depression to each neighbor */
     for (size_t i = 0; i < num_neighbors; i++) {
@@ -550,44 +665,43 @@ int hetero_apply_depression(
         if (neighbor->synapse_id == potentiated_id) continue;
 
         /* Compute distance and depression factor */
-        float distance = hetero_compute_distance(&potentiated->position, &neighbor->position);
+        float distance = hetero_compute_distance(&potentiated_position, &neighbor->position);
         float factor = hetero_compute_depression_factor(
             distance,
             system->config.depression_factor,
             system->config.decay_lambda
         );
 
-        /* Sleep modulation */
+        /* Sleep modulation (note: accesses synapses[0] but we hold system mutex) */
         if (system->config.enable_sleep_modulation) {
             factor = hetero_get_sleep_modulated_factor(system, factor);
         }
 
-        /* Apply depression: Δw = -factor × LTP */
+        /* Apply depression: dw = -factor x LTP
+         * Note: We hold system mutex, so synapse array is stable.
+         * Individual synapse lock protects weight field for concurrent readers. */
         float depression = -factor * ltp_amount;
 
         nimcp_platform_mutex_lock(neighbor->lock);
-        /* Compute new weight and clamp atomically to avoid race window */
         float new_weight = neighbor->weight + depression;
         neighbor->weight = fmaxf(neighbor->w_min, fminf(neighbor->w_max, new_weight));
-        neighbor->last_depression = -depression;  /* Store absolute value */
+        neighbor->last_depression = -depression;
         neighbor->num_neighbor_depressions++;
         neighbor->total_hetero_ltd += -depression;
         nimcp_platform_mutex_unlock(neighbor->lock);
     }
 
-    /* CRITICAL: Use atomic operations for thread-safe statistics update
-     * WHY:  Statistics can be updated concurrently from multiple threads
-     * HOW:  Use __atomic_fetch_add for counters, mutex for floats
-     */
-    __atomic_fetch_add(&system->total_depressions, num_neighbors, __ATOMIC_RELAXED);
+    /* Update statistics while still holding system mutex */
+    float alpha = NIMCP_EMA_WEIGHT_FAST;
     if (num_neighbors > 0) {
-        /* Mutex needed for float EMA calculation (not atomically updateable) */
-        nimcp_platform_mutex_lock(system->mutex);
-        float alpha = NIMCP_EMA_WEIGHT_FAST;  /* Exponential moving average */
         system->avg_neighbors_per_competition =
             alpha * (float)num_neighbors + (NIMCP_EMA_WEIGHT_SLOW) * system->avg_neighbors_per_competition;
-        nimcp_platform_mutex_unlock(system->mutex);
     }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    /* Atomic counter update outside lock (lock-free) */
+    __atomic_fetch_add(&system->total_depressions, num_neighbors, __ATOMIC_RELAXED);
 
     return 0;
 }
@@ -605,11 +719,14 @@ int hetero_winner_take_all(
         radius = system->config.neighbor_radius;
     }
 
-    /* Find all competitors */
+    /* Hold system mutex for entire operation to ensure pointer stability */
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* Find all competitors (unlocked version - we already hold mutex) */
     hetero_synapse_t* competitors[HETERO_MAX_NEIGHBORS_PER_SYNAPSE];
     size_t num_competitors = 0;
 
-    int find_result = hetero_find_neighbors(
+    int find_result = hetero_find_neighbors_unlocked(
         system,
         center_position,
         radius,
@@ -618,8 +735,12 @@ int hetero_winner_take_all(
         &num_competitors
     );
 
-    if (find_result != 0) return find_result;
+    if (find_result != 0) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return find_result;
+    }
     if (num_competitors == 0) {
+        nimcp_platform_mutex_unlock(system->mutex);
         result->winner_id = 0;
         result->num_competitors = 0;
         return 0;
@@ -639,22 +760,27 @@ int hetero_winner_take_all(
 
     /* No winner found */
     if (!winner) {
+        nimcp_platform_mutex_unlock(system->mutex);
         result->winner_id = 0;
         result->num_competitors = num_competitors;
         return 0;
     }
 
-    /* Depress losers */
+    /* Allocate depressed_ids outside lock would be risky - do it now while safe */
     result->depressed_ids = nimcp_malloc(num_competitors * sizeof(uint32_t));
     result->num_depressed = 0;
     float total_strength = 0.0f;
+
+    /* Capture winner info before releasing any locks */
+    uint32_t winner_id = winner->synapse_id;
+    float winner_weight = winner->weight;
 
     for (size_t i = 0; i < num_competitors; i++) {
         hetero_synapse_t* syn = competitors[i];
         total_strength += syn->weight;
 
-        if (syn->synapse_id != winner->synapse_id) {
-            /* Apply suppression */
+        if (syn->synapse_id != winner_id) {
+            /* Apply suppression - still holding system mutex so pointer is stable */
             nimcp_platform_mutex_lock(syn->lock);
             syn->weight *= system->config.wta_suppression_factor;
             syn->num_competitions++;
@@ -670,24 +796,24 @@ int hetero_winner_take_all(
     winner->num_wins++;
     nimcp_platform_mutex_unlock(winner->lock);
 
-    /* Fill result */
-    result->winner_id = winner->synapse_id;
+    /* Copy callback data before releasing mutex to avoid race */
+    void (*callback)(uint32_t, uint32_t, void*) = system->config.on_competition_event;
+    void* callback_user_data = system->config.callback_user_data;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    /* Fill result (safe - only uses copied/scalar values) */
+    result->winner_id = winner_id;
     result->num_competitors = num_competitors;
-    result->winner_strength = winner->weight;
+    result->winner_strength = winner_weight;
     result->avg_competitor_strength = num_competitors > 0 ? total_strength / num_competitors : 0.0f;
 
-    /* CRITICAL: Use atomic increment for thread-safe statistics update
-     * WHY:  total_competitions can be updated concurrently from multiple threads
-     */
+    /* Atomic counter update outside lock (lock-free) */
     __atomic_fetch_add(&system->total_competitions, 1, __ATOMIC_RELAXED);
 
-    /* Callback */
-    if (system->config.on_competition_event) {
-        system->config.on_competition_event(
-            result->winner_id,
-            result->num_competitors,
-            system->config.callback_user_data
-        );
+    /* Invoke callback after releasing mutex to avoid deadlock */
+    if (callback) {
+        callback(result->winner_id, result->num_competitors, callback_user_data);
     }
 
     return 0;
@@ -699,10 +825,17 @@ float hetero_modulate_weight_change(
     float homosynaptic_dw,
     uint64_t current_time_ms)
 {
+    (void)current_time_ms;  /* Reserved for future use */
     if (!system) return homosynaptic_dw;
 
-    hetero_synapse_t* syn = hetero_get_synapse(system, synapse_id);
-    if (!syn) return homosynaptic_dw;
+    /* Use thread-safe access pattern with system mutex */
+    nimcp_platform_mutex_lock(system->mutex);
+
+    hetero_synapse_t* syn = hetero_get_synapse_unlocked(system, synapse_id);
+    if (!syn) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return homosynaptic_dw;
+    }
 
     /* Check for recent neighbor potentiation */
     float heterosynaptic_dw = 0.0f;
@@ -710,6 +843,7 @@ float hetero_modulate_weight_change(
     /* This is simplified - in full implementation, would track neighbor events */
     /* For now, just return homosynaptic change */
 
+    nimcp_platform_mutex_unlock(system->mutex);
     return homosynaptic_dw + heterosynaptic_dw;
 }
 

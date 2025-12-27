@@ -22,6 +22,8 @@
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <stdatomic.h>
 
 #ifdef __x86_64__
 #include <cpuid.h>

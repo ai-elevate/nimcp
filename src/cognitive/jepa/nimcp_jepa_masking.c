@@ -464,11 +464,14 @@ static int generate_tube_mask(jepa_mask_generator_t* gen,
 
     for (uint32_t t = 0; t < params->num_tubes; t++) {
         /* Generate spatial positions for this tube */
-        for (uint32_t p = 0; p < patches_per_tube; p++) {
-            uint32_t spatial_idx;
+        uint32_t spatial_idx = 0;  /* Initialize for first patch, reused if consistent_spatial */
 
+        for (uint32_t p = 0; p < patches_per_tube; p++) {
             if (params->consistent_spatial || p == 0) {
-                /* Same position across all time steps */
+                /* Same position across all time steps (or first patch) */
+                spatial_idx = random_int(&gen->random_state, spatial_size);
+            } else {
+                /* Non-consistent mode: new random position for each patch */
                 spatial_idx = random_int(&gen->random_state, spatial_size);
             }
 

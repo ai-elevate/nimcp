@@ -20,6 +20,7 @@
  */
 
 #include "security/nimcp_security.h"
+#include "security/nimcp_constant_time.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
@@ -297,6 +298,13 @@ static const char* injection_patterns[] = {
  *
  * PERFORMANCE: O(n) where n is data length
  * SECURITY:    NOT cryptographically secure - use SHA-256 for production
+ *
+ * TODO(security): FNV-1a is a weak hash for integrity verification - it's fast
+ *       but not collision-resistant against adversarial inputs. For security-
+ *       critical integrity checking (like directive tampering detection), this
+ *       should be replaced with SHA-256. The sha256_* functions in
+ *       nimcp_key_derivation.c and nimcp_bbb_code_signing.c could be exposed
+ *       as a public API for this purpose.
  *
  * @param data Input data to hash
  * @param len Length of input data
@@ -931,10 +939,11 @@ bool nimcp_directive_verify(nimcp_directive_system_t* system, uint32_t directive
     compute_hash(directive->text, strlen(directive->text), current_hash);
 
     /* WHAT: Compare current hash with stored hash using constant-time comparison
-     * WHY:  memcmp provides constant-time comparison to prevent timing attacks.
+     * WHY:  nimcp_ct_memcmp prevents timing attacks by not short-circuiting on
+     *       mismatch. Standard memcmp exits early, leaking information via timing.
      *       If hashes match, directive is intact. If not, tampering occurred.
      */
-    bool intact = (memcmp(current_hash, directive->hash, NIMCP_SECURITY_HASH_SIZE) == 0);
+    bool intact = (nimcp_ct_memcmp(current_hash, directive->hash, NIMCP_SECURITY_HASH_SIZE) == 0);
 
     /* WHAT: Update verification statistics
      * WHY:  Track how often directives are verified for security auditing

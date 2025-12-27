@@ -236,6 +236,16 @@ nimcp_error_t nimcp_auction_resolve(
 
     nimcp_platform_mutex_lock(&auction->mutex);
 
+    // Handle cancelled auction - return cancelled state in result
+    if (auction->state == NIMCP_AUCTION_STATE_CANCELLED) {
+        memset(result, 0, sizeof(nimcp_auction_result_t));
+        result->winner_id = NIMCP_GT_INVALID_PLAYER;
+        result->final_state = NIMCP_AUCTION_STATE_CANCELLED;
+        result->num_bids = auction->num_bids;
+        nimcp_platform_mutex_unlock(&auction->mutex);
+        return NIMCP_SUCCESS;
+    }
+
     if (auction->state != NIMCP_AUCTION_STATE_BIDDING &&
         auction->state != NIMCP_AUCTION_STATE_CREATED) {
         nimcp_platform_mutex_unlock(&auction->mutex);

@@ -43,6 +43,12 @@ extern "C" {
 
 typedef struct brain_struct* brain_t;
 
+/* Forward declaration for code immune system (optional integration) */
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+struct code_immune_system;
+typedef struct code_immune_system code_immune_system_t;
+#endif
+
 //=============================================================================
 // Signal Handler Configuration
 //=============================================================================
@@ -366,8 +372,141 @@ bool signal_handler_is_auto_recovery_enabled(void);
  */
 void signal_handler_set_max_recovery_attempts(int max_attempts);
 
+//=============================================================================
+// Code Immune System Integration
+//=============================================================================
+
+/**
+ * @brief Backtrace depth for crash context
+ */
+#define SIGNAL_HANDLER_BACKTRACE_DEPTH 32
+
+/**
+ * @brief Crash context captured by signal handler
+ *
+ * Contains full register state and memory region information
+ * captured when a crash signal is received.
+ */
+typedef struct signal_crash_context {
+    int signal;                               /**< Signal number */
+    void* fault_address;                      /**< Address that caused the fault */
+    void* instruction_pointer;                /**< IP/PC at crash time */
+    void* stack_pointer;                      /**< SP at crash time */
+    void* base_pointer;                       /**< BP/FP at crash time */
+    void* backtrace[SIGNAL_HANDLER_BACKTRACE_DEPTH]; /**< Stack backtrace */
+    int backtrace_depth;                      /**< Number of backtrace frames */
+    char memory_region[256];                  /**< Memory region from /proc/self/maps */
+} signal_crash_context_t;
+
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+/**
+ * @brief Register code immune system for crash handling
+ *
+ * WHAT: Associate code immune system with signal handler
+ * WHY:  Enable immune-based crash recovery and hot-patching
+ * HOW:  Store pointer for use in signal handler
+ *
+ * @param sys Code immune system instance (NULL to unregister)
+ */
+void signal_handler_set_code_immune(code_immune_system_t* sys);
+
+/**
+ * @brief Get registered code immune system
+ *
+ * @return Registered code immune system or NULL
+ */
+code_immune_system_t* signal_handler_get_code_immune(void);
+#else
+/* Stub declarations when code immune is disabled */
+void signal_handler_set_code_immune(void* sys);
+void* signal_handler_get_code_immune(void);
+#endif
+
+/**
+ * @brief Set recovery point for siglongjmp-based recovery
+ *
+ * WHAT: Save execution context for crash recovery
+ * WHY:  Allow resumption after code immune fixes a crash
+ * HOW:  Use sigsetjmp to save state; crashes jump back here
+ *
+ * USAGE:
+ *   if (signal_handler_set_recovery_point() != 0) {
+ *       // Crash occurred and code immune handled it
+ *       // Clean up and retry or exit gracefully
+ *   }
+ *   // Execute potentially crash-prone code here
+ *   signal_handler_clear_recovery_point();
+ *
+ * @return 0 on initial call, signal number on recovery jump
+ */
+int signal_handler_set_recovery_point(void);
+
+/**
+ * @brief Clear recovery point
+ *
+ * WHAT: Disable siglongjmp recovery
+ * WHY:  Prevent unexpected jumps after exiting crash-prone code
+ * HOW:  Clear internal flag
+ */
+void signal_handler_clear_recovery_point(void);
+
+/**
+ * @brief Check if a crash is pending deferred processing
+ *
+ * WHAT: Check for captured crash waiting for main thread processing
+ * WHY:  Allow signal handler to be minimal; defer complex processing
+ * HOW:  Check pending crash flag
+ *
+ * @return true if crash is pending
+ */
+bool signal_handler_has_pending_crash(void);
+
+/**
+ * @brief Get pending crash context
+ *
+ * WHAT: Retrieve crash details captured by signal handler
+ * WHY:  Allow main thread to analyze or respond to crash
+ * HOW:  Copy pending context to caller's buffer
+ *
+ * @param ctx Output buffer for crash context
+ * @return true if crash was pending and context copied
+ */
+bool signal_handler_get_pending_crash(signal_crash_context_t* ctx);
+
+/**
+ * @brief Clear pending crash flag
+ *
+ * WHAT: Acknowledge that pending crash has been processed
+ * WHY:  Prevent duplicate processing
+ * HOW:  Reset pending flag
+ */
+void signal_handler_clear_pending_crash(void);
+
+/**
+ * @brief Check if code immune integration is available
+ *
+ * WHAT: Query whether code immune system is registered
+ * WHY:  Allow conditional immune-dependent logic
+ * HOW:  Check compile flag and registration status
+ *
+ * @return true if code immune is available
+ */
+bool signal_handler_has_code_immune(void);
+
+/**
+ * @brief Get immune system recovery statistics
+ *
+ * WHAT: Query immune-based recovery metrics
+ * WHY:  Monitor immune system effectiveness
+ * HOW:  Return counts from internal state
+ *
+ * @param immune_recoveries Output for count of immune-handled recoveries
+ * @param total_crashes Output for total crash count
+ */
+void signal_handler_get_immune_stats(uint64_t* immune_recoveries, uint64_t* total_crashes);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif // NIMCP_SIGNAL_HANDLER_H
+#endif /* NIMCP_SIGNAL_HANDLER_H */

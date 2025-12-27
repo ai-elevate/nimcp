@@ -1178,3 +1178,23 @@ int lnn_training_validate_config(const lnn_training_config_t* config) {
 
     return LNN_SUCCESS;
 }
+
+/**
+ * @brief Connect network to external optimizer
+ *
+ * WHAT: Links network gradients to optimizer for parameter updates
+ * WHY:  Enable gradient-based learning with various optimizers
+ * HOW:  Store optimizer reference and register for gradient updates
+ */
+int lnn_training_connect_optimizer(lnn_network_t* network, void* optimizer) {
+    if (!network) {
+        NIMCP_LOGGING_ERROR("Null network in lnn_training_connect_optimizer");
+        return -1;
+    }
+
+    // Stub implementation - optimizer connection
+    // Full implementation would register optimizer for update callbacks
+    NIMCP_LOGGING_DEBUG("lnn_training_connect_optimizer: stub implementation");
+    (void)optimizer;  // Suppress unused warning
+    return 0;
+}

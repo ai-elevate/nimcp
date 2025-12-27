@@ -16,10 +16,19 @@
 #include "utils/logging/nimcp_logging.h"
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+#include <stdatomic.h>
 
-/* Global library state */
-static bool g_lnn_initialized = false;
-static uint32_t g_thread_count = 0;
+/* Thread-safe initialization using pthread_once */
+static pthread_once_t g_lnn_init_once = PTHREAD_ONCE_INIT;
+static pthread_once_t g_lnn_version_once = PTHREAD_ONCE_INIT;
+
+/* Global library state with atomic flag for thread-safe access */
+static atomic_bool g_lnn_initialized = false;
+static atomic_uint g_thread_count = 0;
+
+/* Static buffer for version string, initialized once */
+static char g_version_str[32];
 
 /**
  * @brief Initialize the LNN library
@@ -31,10 +40,13 @@ static uint32_t g_thread_count = 0;
  *
  * HOW: Calls lnn_parallel_init() to create thread pool, detects CPU
  *      core count if n_threads=0, and sets initialized flag.
+ *
+ * THREAD SAFETY: Uses atomic operations for the initialized flag to
+ *                prevent race conditions during concurrent init calls.
  */
 int lnn_init(uint32_t n_threads) {
-    // Guard: already initialized
-    if (g_lnn_initialized) {
+    // Guard: already initialized (atomic read)
+    if (atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_WARN("LNN already initialized");
         return 0;
     }
@@ -46,11 +58,11 @@ int lnn_init(uint32_t n_threads) {
         return ret;
     }
 
-    // Store thread count (0 means auto-detected)
-    g_thread_count = n_threads;
+    // Store thread count atomically (0 means auto-detected)
+    atomic_store(&g_thread_count, n_threads);
 
-    // Set initialized flag
-    g_lnn_initialized = true;
+    // Set initialized flag atomically
+    atomic_store(&g_lnn_initialized, true);
 
     NIMCP_LOGGING_INFO("LNN library initialized with %u threads",
                        n_threads == 0 ? lnn_parallel_get_num_threads() : n_threads);
@@ -67,21 +79,36 @@ int lnn_init(uint32_t n_threads) {
  *
  * HOW: Calls lnn_parallel_shutdown() to destroy worker threads,
  *      clears initialized flag. Safe to call multiple times.
+ *
+ * THREAD SAFETY: Uses atomic operations to prevent race conditions.
  */
 void lnn_shutdown(void) {
-    // Guard: not initialized
-    if (!g_lnn_initialized) {
+    // Guard: not initialized (atomic read)
+    if (!atomic_load(&g_lnn_initialized)) {
         return;
     }
+
+    // Clear initialized flag first atomically to prevent concurrent operations
+    atomic_store(&g_lnn_initialized, false);
 
     // Shutdown parallel subsystem
     lnn_parallel_shutdown();
 
-    // Clear state
-    g_lnn_initialized = false;
-    g_thread_count = 0;
+    // Clear state atomically
+    atomic_store(&g_thread_count, 0);
 
     NIMCP_LOGGING_INFO("LNN library shutdown complete");
+}
+
+/**
+ * @brief One-time version string initialization
+ *
+ * WHAT: Initializes the global version string buffer once.
+ * WHY: Thread-safe initialization via pthread_once.
+ */
+static void lnn_version_init_once(void) {
+    snprintf(g_version_str, sizeof(g_version_str), "%d.%d.%d",
+             LNN_VERSION_MAJOR, LNN_VERSION_MINOR, LNN_VERSION_PATCH);
 }
 
 /**
@@ -92,12 +119,13 @@ void lnn_shutdown(void) {
  * WHY: Enables runtime version checking and logging.
  *
  * HOW: Returns static string constructed from version macros.
+ *
+ * THREAD SAFETY: Uses pthread_once to ensure the version string
+ *                is initialized exactly once, even with concurrent calls.
  */
 const char* lnn_version(void) {
-    static char version_str[32];
-    snprintf(version_str, sizeof(version_str), "%d.%d.%d",
-             LNN_VERSION_MAJOR, LNN_VERSION_MINOR, LNN_VERSION_PATCH);
-    return version_str;
+    pthread_once(&g_lnn_version_once, lnn_version_init_once);
+    return g_version_str;
 }
 
 /**
@@ -108,9 +136,11 @@ const char* lnn_version(void) {
  * WHY: Allows guard clauses before LNN operations.
  *
  * HOW: Returns global initialized flag.
+ *
+ * THREAD SAFETY: Uses atomic load for thread-safe read.
  */
 bool lnn_is_initialized(void) {
-    return g_lnn_initialized;
+    return atomic_load(&g_lnn_initialized);
 }
 
 /* ========================================================================
@@ -136,8 +166,8 @@ int lnn_forward_step(lnn_network_t* network,
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    // Guard: not initialized
-    if (!g_lnn_initialized) {
+    // Guard: not initialized (atomic read)
+    if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -166,8 +196,8 @@ int lnn_forward_sequence(lnn_network_t* network,
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    // Guard: not initialized
-    if (!g_lnn_initialized) {
+    // Guard: not initialized (atomic read)
+    if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -203,8 +233,8 @@ int lnn_forward_batch(lnn_network_t* network,
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    // Guard: not initialized
-    if (!g_lnn_initialized) {
+    // Guard: not initialized (atomic read)
+    if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -261,8 +291,8 @@ int lnn_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    // Guard: not initialized
-    if (!g_lnn_initialized) {
+    // Guard: not initialized (atomic read)
+    if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
         return NIMCP_ERROR_INVALID_STATE;
     }

@@ -1,14 +1,24 @@
 /**
  * @file nimcp_signal_handler.c
- * @brief Signal handling implementation with graceful recovery
+ * @brief Signal handling implementation with graceful recovery and code immune integration
+ *
+ * WHAT: Comprehensive signal handling with code immune system integration
+ * WHY:  Enable self-healing through immune-based crash detection and response
+ * HOW:  Capture full crash context (ucontext, /proc/self/maps) and present to
+ *       code immune system for potential hot-patching and recovery
  *
  * @author NIMCP Team
  * @date 2025-11-09
  */
 
+#define _GNU_SOURCE  /* Required for REG_RIP, REG_RSP, REG_RBP on Linux */
+
 #include "utils/signal/nimcp_signal_handler.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+
+/* Alias crash_context_t to the public signal_crash_context_t from header */
+typedef signal_crash_context_t crash_context_t;
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -19,11 +29,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <execinfo.h>  // For backtrace()
+#include <execinfo.h>  /* For backtrace() */
 #include <time.h>
-#include <sys/stat.h>  // For directory operations
-#include <dirent.h>    // For directory scanning
+#include <sys/stat.h>  /* For directory operations */
+#include <dirent.h>    /* For directory scanning */
+#include <setjmp.h>    /* For siglongjmp/sigsetjmp recovery */
+#include <fcntl.h>     /* For open() */
+#include <ucontext.h>  /* For ucontext_t */
 #include "utils/memory/nimcp_unified_memory.h"
+
+/* Code immune system integration - include conditionally to avoid circular deps */
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+#include "cognitive/immune/nimcp_code_immune.h"
+#endif
 
 //=============================================================================
 // Signal-Safe Globals (accessed from signal handlers)
@@ -70,6 +88,52 @@ static struct sigaction g_old_sigill;
 static struct sigaction g_old_sigterm;
 static struct sigaction g_old_sigint;
 static struct sigaction g_old_sighup;
+
+//=============================================================================
+// Code Immune System Integration
+//=============================================================================
+
+/**
+ * @brief Global code immune system reference
+ *
+ * WHAT: Pointer to code immune system for crash handling
+ * WHY:  Enable hot-patching and self-healing on crashes
+ * HOW:  Set via signal_handler_set_code_immune()
+ */
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+static code_immune_system_t* g_code_immune = NULL;
+#else
+static void* g_code_immune = NULL;  /* Placeholder when disabled */
+#endif
+
+/**
+ * @brief Recovery jump buffer for siglongjmp
+ *
+ * WHAT: Jump buffer for non-local goto from signal handler
+ * WHY:  Allow resumption after code immune handles crash
+ * HOW:  Set by sigsetjmp in main code, jumped to from handler
+ */
+static volatile sig_atomic_t g_recovery_jump_valid = 0;
+static sigjmp_buf g_recovery_jump_buf;
+
+/**
+ * @brief Flag indicating crash is being handled by code immune
+ *
+ * WHAT: Reentrance guard for code immune handling
+ * WHY:  Prevent recursive crash handling during recovery
+ * HOW:  Set before calling code immune, cleared after
+ */
+static volatile sig_atomic_t g_in_immune_handling = 0;
+
+/**
+ * @brief Pending crash context for deferred processing
+ *
+ * WHAT: Crash details captured in signal handler
+ * WHY:  Signal handler should be minimal; defer processing
+ * HOW:  Captured in handler, processed in main thread
+ */
+static volatile sig_atomic_t g_pending_crash = 0;
+static crash_context_t g_pending_crash_context;
 
 //=============================================================================
 // Signal-Safe Utility Functions
@@ -181,6 +245,420 @@ static void log_stack_trace(void)
     // backtrace_symbols_fd() is async-signal-safe according to man pages
     backtrace_symbols_fd(buffer, nptrs, STDERR_FILENO);
     safe_write("===================\n");
+}
+
+/**
+ * WHAT: Write hex pointer to stderr (signal-safe)
+ * WHY:  Display addresses without sprintf
+ * HOW:  Manual hex digit extraction
+ */
+static void safe_write_hex(uintptr_t value)
+{
+    char buf[32];
+    const char* hex = "0123456789abcdef";
+    int i = 0;
+
+    /* Handle zero specially */
+    if (value == 0) {
+        write(STDERR_FILENO, "0x0", 3);
+        return;
+    }
+
+    /* Extract hex digits in reverse */
+    while (value > 0 && i < 16) {
+        buf[i++] = hex[value & 0xF];
+        value >>= 4;
+    }
+
+    /* Write "0x" prefix */
+    write(STDERR_FILENO, "0x", 2);
+
+    /* Write in forward order */
+    for (int j = i - 1; j >= 0; j--) {
+        write(STDERR_FILENO, &buf[j], 1);
+    }
+}
+
+//=============================================================================
+// Crash Context Capture Functions
+//=============================================================================
+
+/**
+ * WHAT: Parse /proc/self/maps to find memory region for address
+ * WHY:  Understand what memory region fault address belongs to
+ * HOW:  Read /proc/self/maps line by line, parse address ranges
+ *
+ * NOTE: This is NOT fully async-signal-safe (uses open/read/close)
+ *       but is called in best-effort mode for diagnostics
+ *
+ * @param addr Address to look up
+ * @param out_buf Buffer to write region info
+ * @param buf_size Size of output buffer
+ * @return true if region found, false otherwise
+ */
+static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_size)
+{
+    if (!out_buf || buf_size == 0) return false;
+
+    out_buf[0] = '\0';
+
+    int fd = open("/proc/self/maps", O_RDONLY);
+    if (fd < 0) return false;
+
+    char line_buf[512];
+    ssize_t bytes_read;
+    size_t line_pos = 0;
+    uintptr_t target = (uintptr_t)addr;
+
+    while ((bytes_read = read(fd, line_buf + line_pos,
+                              sizeof(line_buf) - line_pos - 1)) > 0) {
+        line_pos += bytes_read;
+        line_buf[line_pos] = '\0';
+
+        /* Process complete lines */
+        char* line_start = line_buf;
+        char* newline;
+
+        while ((newline = strchr(line_start, '\n')) != NULL) {
+            *newline = '\0';
+
+            /* Parse line: "start-end perms offset dev inode pathname" */
+            uintptr_t start = 0, end = 0;
+            char perms[8] = {0};
+
+            /* Manual parsing to avoid sscanf (not async-signal-safe) */
+            char* p = line_start;
+
+            /* Parse start address */
+            while (*p && *p != '-') {
+                if (*p >= '0' && *p <= '9') {
+                    start = (start << 4) | (*p - '0');
+                } else if (*p >= 'a' && *p <= 'f') {
+                    start = (start << 4) | (*p - 'a' + 10);
+                }
+                p++;
+            }
+            if (*p == '-') p++;
+
+            /* Parse end address */
+            while (*p && *p != ' ') {
+                if (*p >= '0' && *p <= '9') {
+                    end = (end << 4) | (*p - '0');
+                } else if (*p >= 'a' && *p <= 'f') {
+                    end = (end << 4) | (*p - 'a' + 10);
+                }
+                p++;
+            }
+            if (*p == ' ') p++;
+
+            /* Parse permissions */
+            int perm_idx = 0;
+            while (*p && *p != ' ' && perm_idx < 7) {
+                perms[perm_idx++] = *p++;
+            }
+            perms[perm_idx] = '\0';
+
+            /* Check if target is in this range */
+            if (target >= start && target < end) {
+                /* Find pathname at end of line */
+                char* pathname = strrchr(line_start, ' ');
+                if (pathname) pathname++;
+                else pathname = "";
+
+                /* Format output */
+                snprintf(out_buf, buf_size,
+                         "0x%lx-0x%lx %s %s",
+                         (unsigned long)start,
+                         (unsigned long)end,
+                         perms, pathname);
+
+                close(fd);
+                return true;
+            }
+
+            line_start = newline + 1;
+        }
+
+        /* Move remaining partial line to start of buffer */
+        size_t remaining = line_pos - (line_start - line_buf);
+        if (remaining > 0 && remaining < sizeof(line_buf)) {
+            memmove(line_buf, line_start, remaining);
+        }
+        line_pos = remaining;
+    }
+
+    close(fd);
+    return false;
+}
+
+/**
+ * WHAT: Capture full crash context from signal handler
+ * WHY:  Provide complete crash info for code immune processing
+ * HOW:  Extract registers from ucontext, capture backtrace, lookup memory region
+ *
+ * @param sig Signal number
+ * @param info Signal info structure
+ * @param uc Ucontext structure
+ * @param ctx Output crash context
+ * @return true on success
+ */
+static bool capture_crash_context(int sig, siginfo_t* info,
+                                   ucontext_t* uc, crash_context_t* ctx)
+{
+    if (!ctx) return false;
+
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->signal = sig;
+
+    /* Extract fault address from siginfo */
+    if (info) {
+        ctx->fault_address = info->si_addr;
+    }
+
+    /* Extract register state from ucontext (platform-specific) */
+#if defined(__linux__) && defined(__x86_64__)
+    if (uc) {
+        mcontext_t* mctx = &uc->uc_mcontext;
+        ctx->instruction_pointer = (void*)mctx->gregs[REG_RIP];
+        ctx->stack_pointer = (void*)mctx->gregs[REG_RSP];
+        ctx->base_pointer = (void*)mctx->gregs[REG_RBP];
+    }
+#elif defined(__linux__) && defined(__i386__)
+    if (uc) {
+        mcontext_t* mctx = &uc->uc_mcontext;
+        ctx->instruction_pointer = (void*)mctx->gregs[REG_EIP];
+        ctx->stack_pointer = (void*)mctx->gregs[REG_ESP];
+        ctx->base_pointer = (void*)mctx->gregs[REG_EBP];
+    }
+#elif defined(__linux__) && defined(__aarch64__)
+    if (uc) {
+        mcontext_t* mctx = &uc->uc_mcontext;
+        ctx->instruction_pointer = (void*)mctx->pc;
+        ctx->stack_pointer = (void*)mctx->sp;
+        ctx->base_pointer = (void*)mctx->regs[29];  /* x29/fp */
+    }
+#else
+    /* Fallback: mark registers as unavailable */
+    if (uc) {
+        (void)uc;  /* Suppress unused warning */
+    }
+#endif
+
+    /* Capture backtrace */
+    ctx->backtrace_depth = backtrace(ctx->backtrace, SIGNAL_HANDLER_BACKTRACE_DEPTH);
+
+    /* Get memory region info for fault address (best-effort) */
+    if (ctx->fault_address) {
+        parse_proc_maps_for_address(ctx->fault_address,
+                                    ctx->memory_region,
+                                    sizeof(ctx->memory_region));
+    }
+
+    return true;
+}
+
+/**
+ * WHAT: Log crash context details (signal-safe)
+ * WHY:  Provide diagnostic output for crash analysis
+ * HOW:  Use signal-safe write functions
+ *
+ * @param ctx Crash context to log
+ */
+static void log_crash_context(const crash_context_t* ctx)
+{
+    if (!ctx) return;
+
+    safe_write("\n=== CRASH CONTEXT ===\n");
+
+    safe_write("  Fault Address: ");
+    safe_write_hex((uintptr_t)ctx->fault_address);
+    safe_write("\n");
+
+    safe_write("  Instruction Pointer: ");
+    safe_write_hex((uintptr_t)ctx->instruction_pointer);
+    safe_write("\n");
+
+    safe_write("  Stack Pointer: ");
+    safe_write_hex((uintptr_t)ctx->stack_pointer);
+    safe_write("\n");
+
+    safe_write("  Base Pointer: ");
+    safe_write_hex((uintptr_t)ctx->base_pointer);
+    safe_write("\n");
+
+    if (ctx->memory_region[0] != '\0') {
+        safe_write("  Memory Region: ");
+        safe_write(ctx->memory_region);
+        safe_write("\n");
+    }
+
+    safe_write("=====================\n");
+}
+
+//=============================================================================
+// Code Immune Integration
+//=============================================================================
+
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+/**
+ * WHAT: Present crash to code immune system
+ * WHY:  Allow immune system to potentially fix and recover from crash
+ * HOW:  Call code_immune_present_crash with captured context
+ *
+ * @param ctx Crash context
+ * @return true if immune system handled the crash
+ */
+static bool present_crash_to_code_immune(const crash_context_t* ctx)
+{
+    if (!g_code_immune || !ctx) return false;
+
+    /* Prevent recursive handling */
+    if (g_in_immune_handling) return false;
+    g_in_immune_handling = 1;
+
+    int result = code_immune_present_crash(
+        g_code_immune,
+        ctx->signal,
+        NULL,  /* ucontext not stored in ctx */
+        ctx->fault_address
+    );
+
+    g_in_immune_handling = 0;
+
+    return (result == 0);
+}
+#endif /* NIMCP_ENABLE_CODE_IMMUNE */
+
+//=============================================================================
+// SA_SIGINFO Signal Handlers (Enhanced with full context)
+//=============================================================================
+
+/**
+ * WHAT: Enhanced fatal signal handler with full context capture
+ * WHY:  Capture complete crash info for immune system integration
+ * HOW:  Use SA_SIGINFO to get siginfo_t and ucontext_t
+ *
+ * @param sig Signal number
+ * @param info Signal info structure
+ * @param context Ucontext (cast to void* by sigaction)
+ */
+static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context)
+{
+    ucontext_t* uc = (ucontext_t*)context;
+    crash_context_t ctx;
+
+    g_last_signal = sig;
+    g_fatal_crashes++;
+
+    /* Update signal-specific counter */
+    switch (sig) {
+        case SIGSEGV: g_sigsegv_count++; break;
+        case SIGABRT: g_sigabrt_count++; break;
+        case SIGBUS:  g_sigbus_count++; break;
+        case SIGFPE:  g_sigfpe_count++; break;
+        case SIGILL:  g_sigill_count++; break;
+    }
+
+    /* Log crash (signal-safe) */
+    safe_write("\n!!! FATAL SIGNAL RECEIVED: ");
+    safe_write_int(sig);
+    safe_write(" (");
+    safe_write(signal_handler_get_signal_name(sig));
+    safe_write(")\n");
+
+    /* Capture full crash context */
+    if (capture_crash_context(sig, info, uc, &ctx)) {
+        /* Store for potential deferred processing */
+        memcpy((void*)&g_pending_crash_context, &ctx, sizeof(ctx));
+        g_pending_crash = 1;
+
+        /* Log crash context */
+        log_crash_context(&ctx);
+
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+        /* Try code immune system first */
+        if (g_code_immune && present_crash_to_code_immune(&ctx)) {
+            safe_write("!!! Code immune system handling crash...\n");
+            g_recoveries++;
+
+            /* If recovery jump is valid, jump to recovery point */
+            if (g_recovery_jump_valid) {
+                safe_write("!!! Attempting recovery via siglongjmp\n");
+                g_recovery_jump_valid = 0;
+                siglongjmp(g_recovery_jump_buf, sig);
+                /* Should not reach here */
+            }
+
+            /* Otherwise return (crash may recur) */
+            return;
+        }
+#endif /* NIMCP_ENABLE_CODE_IMMUNE */
+    }
+
+    /* Log stack trace if enabled */
+    if (g_config.enable_stack_trace) {
+        log_stack_trace();
+    }
+
+    /* Call custom crash callback if set */
+    if (g_config.on_fatal_signal) {
+        g_config.on_fatal_signal(sig);
+    }
+
+    /* Attempt checkpoint save if enabled */
+    if (g_config.enable_checkpoint_save && g_registered_brain) {
+        safe_write("\n!!! Attempting checkpoint save (signal handler context)\n");
+        attempt_checkpoint_save_unsafe();
+    }
+
+    safe_write("!!! Process terminating due to fatal signal\n");
+
+    /* Restore default handler and re-raise to generate core dump */
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+/**
+ * WHAT: Enhanced SIGFPE handler with context capture
+ * WHY:  Allow FPE recovery with full diagnostic info
+ * HOW:  Capture context, try to continue if configured
+ *
+ * @param sig Signal number
+ * @param info Signal info structure
+ * @param context Ucontext
+ */
+static void handle_sigfpe_extended(int sig, siginfo_t* info, void* context)
+{
+    ucontext_t* uc = (ucontext_t*)context;
+    crash_context_t ctx;
+
+    g_last_signal = sig;
+    g_sigfpe_count++;
+
+    safe_write("\n*** FLOATING POINT EXCEPTION (SIGFPE) ***\n");
+
+    /* Capture context for diagnostics */
+    if (capture_crash_context(sig, info, uc, &ctx)) {
+        log_crash_context(&ctx);
+
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+        /* Try code immune system */
+        if (g_code_immune && present_crash_to_code_immune(&ctx)) {
+            g_recoveries++;
+            safe_write("*** Code immune handled FPE\n");
+            return;
+        }
+#endif
+    }
+
+    if (g_config.sigfpe_mode == SIGNAL_MODE_LOG_CONTINUE) {
+        safe_write("*** Attempting to continue (may propagate NaN/Inf)\n");
+        g_recoveries++;
+        return;
+    }
+
+    /* Treat as fatal */
+    handle_fatal_signal_extended(sig, info, context);
 }
 
 //=============================================================================
@@ -355,10 +833,10 @@ signal_handler_config_t signal_handler_default_config(void)
 bool signal_handler_install(const signal_handler_config_t* config)
 {
     if (g_installed) {
-        return false;  // Already installed
+        return false;  /* Already installed */
     }
 
-    // Use defaults if config is NULL
+    /* Use defaults if config is NULL */
     if (config) {
         g_config = *config;
     } else {
@@ -369,51 +847,71 @@ bool signal_handler_install(const signal_handler_config_t* config)
     memset(&sa, 0, sizeof(sa));
     sigemptyset(&sa.sa_mask);
 
-    // Install SIGSEGV handler
+    /*
+     * Install crash signal handlers with SA_SIGINFO for full context capture.
+     * This enables code immune system integration with register state and
+     * detailed fault information.
+     */
+
+    /* Install SIGSEGV handler with SA_SIGINFO */
     if (g_config.sigsegv_mode != SIGNAL_MODE_IGNORE) {
-        sa.sa_handler = handle_fatal_signal;
-        sa.sa_flags = SA_RESETHAND;  // Reset to default after first signal
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
+        sa.sa_sigaction = handle_fatal_signal_extended;
+        sa.sa_flags = SA_SIGINFO | SA_RESETHAND;  /* Get siginfo, reset after first signal */
         if (sigaction(SIGSEGV, &sa, &g_old_sigsegv) != 0) {
             return false;
         }
     }
 
-    // Install SIGABRT handler
+    /* Install SIGABRT handler with SA_SIGINFO */
     if (g_config.sigabrt_mode != SIGNAL_MODE_IGNORE) {
-        sa.sa_handler = handle_fatal_signal;
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
+        sa.sa_sigaction = handle_fatal_signal_extended;
+        sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
         if (sigaction(SIGABRT, &sa, &g_old_sigabrt) != 0) {
             return false;
         }
     }
 
-    // Install SIGBUS handler
+    /* Install SIGBUS handler with SA_SIGINFO */
     if (g_config.sigbus_mode != SIGNAL_MODE_IGNORE) {
-        sa.sa_handler = handle_fatal_signal;
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
+        sa.sa_sigaction = handle_fatal_signal_extended;
+        sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
         if (sigaction(SIGBUS, &sa, &g_old_sigbus) != 0) {
             return false;
         }
     }
 
-    // Install SIGFPE handler
+    /* Install SIGFPE handler with SA_SIGINFO (no reset - want to recover) */
     if (g_config.sigfpe_mode != SIGNAL_MODE_IGNORE) {
-        sa.sa_handler = handle_sigfpe;
-        sa.sa_flags = 0;  // Don't reset for FPE (want to recover)
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
+        sa.sa_sigaction = handle_sigfpe_extended;
+        sa.sa_flags = SA_SIGINFO;  /* No SA_RESETHAND - allow recovery */
         if (sigaction(SIGFPE, &sa, &g_old_sigfpe) != 0) {
             return false;
         }
     }
 
-    // Install SIGILL handler
+    /* Install SIGILL handler with SA_SIGINFO */
     if (g_config.sigill_mode != SIGNAL_MODE_IGNORE) {
-        sa.sa_handler = handle_fatal_signal;
-        sa.sa_flags = SA_RESETHAND;
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
+        sa.sa_sigaction = handle_fatal_signal_extended;
+        sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
         if (sigaction(SIGILL, &sa, &g_old_sigill) != 0) {
             return false;
         }
     }
 
-    // Install SIGTERM handler
+    /* Install SIGTERM handler (simple handler, no SA_SIGINFO needed) */
     if (g_config.sigterm_mode != SIGNAL_MODE_IGNORE) {
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
         sa.sa_handler = handle_shutdown_signal;
         sa.sa_flags = 0;
         if (sigaction(SIGTERM, &sa, &g_old_sigterm) != 0) {
@@ -421,17 +919,23 @@ bool signal_handler_install(const signal_handler_config_t* config)
         }
     }
 
-    // Install SIGINT handler
+    /* Install SIGINT handler (simple handler) */
     if (g_config.sigint_mode != SIGNAL_MODE_IGNORE) {
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
         sa.sa_handler = handle_shutdown_signal;
+        sa.sa_flags = 0;
         if (sigaction(SIGINT, &sa, &g_old_sigint) != 0) {
             return false;
         }
     }
 
-    // Install SIGHUP handler
+    /* Install SIGHUP handler (simple handler) */
     if (g_config.sighup_mode != SIGNAL_MODE_IGNORE) {
+        memset(&sa, 0, sizeof(sa));
+        sigemptyset(&sa.sa_mask);
         sa.sa_handler = handle_sighup;
+        sa.sa_flags = 0;
         if (sigaction(SIGHUP, &sa, &g_old_sighup) != 0) {
             return false;
         }
@@ -775,4 +1279,149 @@ bool signal_handler_is_auto_recovery_enabled(void)
 void signal_handler_set_max_recovery_attempts(int max_attempts)
 {
     g_max_recovery_attempts = max_attempts;
+}
+
+//=============================================================================
+// Code Immune System Integration API
+//=============================================================================
+
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+/**
+ * WHAT: Register code immune system with signal handler
+ * WHY:  Enable immune-based crash handling and recovery
+ * HOW:  Store reference to immune system for use in crash handlers
+ *
+ * @param sys Code immune system instance
+ */
+void signal_handler_set_code_immune(code_immune_system_t* sys)
+{
+    g_code_immune = sys;
+}
+
+/**
+ * WHAT: Get registered code immune system
+ * WHY:  Allow external code to check immune system status
+ * HOW:  Return stored reference
+ *
+ * @return Code immune system or NULL
+ */
+code_immune_system_t* signal_handler_get_code_immune(void)
+{
+    return g_code_immune;
+}
+#else
+/* Stub implementations when code immune is disabled */
+void signal_handler_set_code_immune(void* sys)
+{
+    g_code_immune = sys;
+}
+
+void* signal_handler_get_code_immune(void)
+{
+    return g_code_immune;
+}
+#endif /* NIMCP_ENABLE_CODE_IMMUNE */
+
+/**
+ * WHAT: Set recovery point for siglongjmp-based recovery
+ * WHY:  Enable resumption after code immune fixes a crash
+ * HOW:  Use sigsetjmp to save execution context
+ *
+ * NOTE: Call this in a safe location before entering crash-prone code.
+ *       If a crash occurs and code immune handles it, execution will
+ *       resume from this point with the signal number as return value.
+ *
+ * @return 0 on initial call, signal number on recovery jump
+ */
+int signal_handler_set_recovery_point(void)
+{
+    int result = sigsetjmp(g_recovery_jump_buf, 1);
+    if (result == 0) {
+        g_recovery_jump_valid = 1;
+    }
+    return result;
+}
+
+/**
+ * WHAT: Clear recovery point
+ * WHY:  Disable recovery jump when exiting crash-prone code
+ * HOW:  Clear validity flag
+ */
+void signal_handler_clear_recovery_point(void)
+{
+    g_recovery_jump_valid = 0;
+}
+
+/**
+ * WHAT: Check if a crash is pending deferred processing
+ * WHY:  Allow main thread to process crash after signal handler returns
+ * HOW:  Check pending flag
+ *
+ * @return true if crash is pending
+ */
+bool signal_handler_has_pending_crash(void)
+{
+    return (g_pending_crash != 0);
+}
+
+/**
+ * WHAT: Get pending crash context
+ * WHY:  Access crash details for analysis or recovery
+ * HOW:  Copy pending context to output buffer
+ *
+ * @param ctx Output buffer for crash context
+ * @return true if crash was pending and copied
+ */
+bool signal_handler_get_pending_crash(signal_crash_context_t* ctx)
+{
+    if (!ctx || !g_pending_crash) {
+        return false;
+    }
+
+    memcpy(ctx, (void*)&g_pending_crash_context, sizeof(*ctx));
+    return true;
+}
+
+/**
+ * WHAT: Clear pending crash flag
+ * WHY:  Acknowledge crash has been processed
+ * HOW:  Reset pending flag
+ */
+void signal_handler_clear_pending_crash(void)
+{
+    g_pending_crash = 0;
+}
+
+/**
+ * WHAT: Check if code immune integration is enabled
+ * WHY:  Allow runtime check of immune system availability
+ * HOW:  Check compile-time flag and runtime registration
+ *
+ * @return true if code immune is available
+ */
+bool signal_handler_has_code_immune(void)
+{
+#ifdef NIMCP_ENABLE_CODE_IMMUNE
+    return (g_code_immune != NULL);
+#else
+    return false;
+#endif
+}
+
+/**
+ * WHAT: Get immune system recovery statistics
+ * WHY:  Monitor immune-based recovery effectiveness
+ * HOW:  Return counts from global state
+ *
+ * @param immune_recoveries Output for immune-handled recoveries
+ * @param total_crashes Output for total crash count
+ */
+void signal_handler_get_immune_stats(uint64_t* immune_recoveries, uint64_t* total_crashes)
+{
+    if (immune_recoveries) {
+        *immune_recoveries = g_recoveries;
+    }
+    if (total_crashes) {
+        *total_crashes = g_fatal_crashes;
+    }
 }

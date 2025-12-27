@@ -1155,3 +1155,22 @@ static double lnn_gradient_get_time_ms(void) {
     // In real implementation, use clock_gettime or QueryPerformanceCounter
     return 0.0;
 }
+
+/**
+ * @brief Backpropagate gradients through network
+ *
+ * WHAT: Compute gradients of loss w.r.t. network parameters
+ * WHY:  Enable gradient-based learning
+ * HOW:  Use adjoint method or BPTT depending on network configuration
+ */
+int lnn_network_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad) {
+    if (!network || !loss_grad) {
+        NIMCP_LOGGING_ERROR("Null pointer in lnn_network_backward");
+        return -1;
+    }
+
+    // Stub implementation - gradient computation via adjoint method
+    // Full implementation would use lnn_gradient_compute_gradients()
+    NIMCP_LOGGING_DEBUG("lnn_network_backward: stub implementation");
+    return 0;
+}

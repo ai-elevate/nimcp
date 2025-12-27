@@ -255,7 +255,9 @@ bool brain_get_forward_chain_stats(
     }
 
     if (time_ms) {
-        *time_ms = (uint64_t)(stats.avg_inference_time * stats.inferences_performed);
+        // Note: stats.avg_inference_time actually contains the last inference time,
+        // not a true running average. Return it directly as the most recent time.
+        *time_ms = (uint64_t)stats.avg_inference_time;
     }
 
     return true;

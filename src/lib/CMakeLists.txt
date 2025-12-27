@@ -9,6 +9,14 @@ else()
     message(STATUS "libsodium not found - encryption will return errors")
 endif()
 
+# Find libcurl for Claude API healer support
+find_package(CURL QUIET)
+if(CURL_FOUND)
+    message(STATUS "libcurl found - enabling Claude API healer support")
+else()
+    message(STATUS "libcurl not found - Claude API healer will be disabled")
+endif()
+
 # Core library sources - New hierarchical structure
 set(NIMCP_CORE_SOURCES
     # Public API facade (unified interface for all bindings) - REFACTORED (2025-12-08)
@@ -314,6 +322,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_immune.c  # Ethics-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_bridge_coordinator.c  # Immune Bridge Coordinator - central registry for all immune bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_self_heal.c  # Self-Healing Engine - pattern + LNN based crash recovery
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_claude_healer.c  # Claude API Fallback Healer - external AI-assisted code repair
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_cognitive_meta_controller.c  # Cognitive Meta-Controller - unified arbitrator for cognitive subsystems
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # DISABLED: depends on brain_region_predictive  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration
@@ -595,6 +605,20 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/sleep/nimcp_oligodendrocytes_sleep_bridge.c  # Oligodendrocyte-sleep integration (myelin maintenance)
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_sleep_bridge.c  # LNN-sleep integration (tau modulation, ODE solver adaptation)
 
+    # LNN Core (Liquid Neural Networks) - included in main lib to avoid circular deps
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_neuron.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_layer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_network.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_ode.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_wiring.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_gradient.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_training.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_bio_async.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_immune.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_parallel.c
+
     # Cognitive Substrate Bridges (Phase 6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_substrate_bridge.c  # Attention-substrate integration (focus, shifting, filtering)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_emotion_substrate_bridge.c  # Emotion-substrate integration (intensity, regulation)
@@ -734,6 +758,12 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Function Dispatch (Hot-swappable function pointers with versioning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/dispatch/nimcp_fn_dispatch.c  # Function dispatch table with quarantine
+
+    # Utils - Code Recompilation (Self-healing dynamic patching)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/code/nimcp_source_cache.c      # Memory-mapped source file cache
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/code/nimcp_recompiler.c        # Dynamic recompilation pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/code/nimcp_hot_inject.c        # Hot injection for runtime patching
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/code/nimcp_dwarf_symbols.c     # DWARF debug symbols parser
 
     # Utils - Math (Phase 0.5: Complex Number Support for Neural Phase Coding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c  # Complex phasor operations, FFT, PAC detection (SIMD optimized)
@@ -1225,6 +1255,14 @@ endif()
 # Add libsodium library if available
 if(SODIUM_FOUND)
     target_link_libraries(nimcp PUBLIC ${SODIUM_LIBRARIES})
+endif()
+
+# Add libcurl for Claude API healer
+if(CURL_FOUND)
+    target_include_directories(nimcp PRIVATE ${CURL_INCLUDE_DIRS})
+    target_link_libraries(nimcp PUBLIC ${CURL_LIBRARIES})
+    target_compile_definitions(nimcp PRIVATE HAVE_LIBCURL)
+    message(STATUS "libcurl found: ${CURL_VERSION_STRING}")
 endif()
 
 # Add OpenSSL library for cryptographic operations (post-quantum, encrypted audit)

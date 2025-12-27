@@ -501,14 +501,23 @@ float hetero_modulate_weight_change(
  * ============================================================================ */
 
 /**
- * WHAT: Find neighbors within radius
+ * WHAT: Find neighbors within radius (DEPRECATED - UNSAFE)
  * WHY:  Identify synapses for competition
  * HOW:  Query spatial index or linear search
  *
+ * @deprecated This function is DEPRECATED for multi-threaded code.
+ *             Use hetero_find_neighbors_copy() instead for thread-safe access.
+ *
+ * CRITICAL WARNING: Returns pointers that may be invalidated by concurrent
+ * add/remove operations. The pointers can become dangling if another thread
+ * calls hetero_add_synapse() (triggering realloc) or hetero_remove_synapse().
+ *
+ * For thread-safe access, use hetero_find_neighbors_copy() instead.
+ *
  * @param system Heterosynaptic system
  * @param center_position Query center
- * @param radius Search radius (μm)
- * @param neighbors Output array (caller allocates)
+ * @param radius Search radius (um)
+ * @param neighbors Output array of POINTERS (caller allocates) - UNSAFE
  * @param max_neighbors Maximum neighbors to return
  * @param num_found Output: number found
  * @return 0 on success, -1 on error
@@ -518,6 +527,30 @@ int hetero_find_neighbors(
     const hetero_spatial_coords_t* center_position,
     float radius,
     hetero_synapse_t** neighbors,
+    size_t max_neighbors,
+    size_t* num_found
+);
+
+/**
+ * WHAT: Find neighbors within radius and copy their data (THREAD-SAFE)
+ * WHY:  hetero_find_neighbors() returns pointers that can be invalidated by realloc
+ * HOW:  Copy synapse data to caller-provided array while holding mutex
+ *
+ * This is the RECOMMENDED API for multi-threaded access.
+ *
+ * @param system Heterosynaptic system
+ * @param center_position Query center
+ * @param radius Search radius (um)
+ * @param neighbors_out Output array of COPIES (caller allocates) - SAFE
+ * @param max_neighbors Maximum neighbors to return
+ * @param num_found Output: number found
+ * @return 0 on success, NIMCP_ERROR_NULL_POINTER if NULL params
+ */
+int hetero_find_neighbors_copy(
+    hetero_system_t* system,
+    const hetero_spatial_coords_t* center_position,
+    float radius,
+    hetero_synapse_t* neighbors_out,
     size_t max_neighbors,
     size_t* num_found
 );
