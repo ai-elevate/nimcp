@@ -135,6 +135,13 @@ metabolic_immune_bridge_t* metabolic_immune_bridge_create(
     bridge->immune_system = immune_system;
     bridge->metabolic = metabolic;
 
+    /* Initialize default effect values (1.0 = no modification) */
+    bridge->cytokine_effects.total_cost_multiplier = 1.0f;
+    bridge->inflammation_state.energy_cost_increase = 1.0f;
+    bridge->inflammation_state.recovery_impairment = 1.0f;
+    bridge->atp_effects.immune_capacity = 1.0f;
+    bridge->atp_effects.cytokine_production = 1.0f;
+
     /* Apply configuration */
     if (config) {
         bridge->enable_cytokine_metabolic_burden = config->enable_cytokine_metabolic_burden;

@@ -19601,6 +19601,30 @@ __/utils/thread/nimcp_thread.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_thread.c.s
 .PHONY : __/utils/thread/nimcp_thread.c.s
 
+__/utils/thread/nimcp_thread_mutex.o: __/utils/thread/nimcp_thread_mutex.c.o
+.PHONY : __/utils/thread/nimcp_thread_mutex.o
+
+# target to build an object file
+__/utils/thread/nimcp_thread_mutex.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_thread_mutex.c.o
+.PHONY : __/utils/thread/nimcp_thread_mutex.c.o
+
+__/utils/thread/nimcp_thread_mutex.i: __/utils/thread/nimcp_thread_mutex.c.i
+.PHONY : __/utils/thread/nimcp_thread_mutex.i
+
+# target to preprocess a source file
+__/utils/thread/nimcp_thread_mutex.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_thread_mutex.c.i
+.PHONY : __/utils/thread/nimcp_thread_mutex.c.i
+
+__/utils/thread/nimcp_thread_mutex.s: __/utils/thread/nimcp_thread_mutex.c.s
+.PHONY : __/utils/thread/nimcp_thread_mutex.s
+
+# target to generate assembly for a file
+__/utils/thread/nimcp_thread_mutex.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_thread_mutex.c.s
+.PHONY : __/utils/thread/nimcp_thread_mutex.c.s
+
 __/utils/thread/nimcp_thread_pool.o: __/utils/thread/nimcp_thread_pool.c.o
 .PHONY : __/utils/thread/nimcp_thread_pool.o
 
@@ -22210,6 +22234,9 @@ help:
 	@echo "... __/utils/thread/nimcp_thread.o"
 	@echo "... __/utils/thread/nimcp_thread.i"
 	@echo "... __/utils/thread/nimcp_thread.s"
+	@echo "... __/utils/thread/nimcp_thread_mutex.o"
+	@echo "... __/utils/thread/nimcp_thread_mutex.i"
+	@echo "... __/utils/thread/nimcp_thread_mutex.s"
 	@echo "... __/utils/thread/nimcp_thread_pool.o"
 	@echo "... __/utils/thread/nimcp_thread_pool.i"
 	@echo "... __/utils/thread/nimcp_thread_pool.s"

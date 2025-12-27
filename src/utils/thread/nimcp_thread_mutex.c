@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
@@ -76,6 +77,36 @@ nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr)
     }
 
     return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Create and initialize a mutex (dynamically allocated)
+ *
+ * WHY CREATE FUNCTION:
+ * - Convenience wrapper for heap-allocated mutexes
+ * - Matches nimcp_platform_mutex_create() but with thread-layer features
+ * - Supports mutex attributes (NORMAL/RECURSIVE/ERRORCHECK)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Fully safe (creates new independent mutex)
+ *
+ * @param attr Mutex attributes (NULL for default NORMAL type)
+ * @return Pointer to initialized mutex or NULL on failure
+ */
+nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr)
+{
+    nimcp_mutex_t* mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    if (!mutex) {
+        set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate mutex");
+        return NULL;
+    }
+
+    if (nimcp_mutex_init(mutex, attr) != NIMCP_SUCCESS) {
+        nimcp_free(mutex);
+        return NULL;
+    }
+
+    return mutex;
 }
 
 /**

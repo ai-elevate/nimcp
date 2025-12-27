@@ -180,6 +180,13 @@ nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void)
 nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr);
 
 /**
+ * @brief Create and initialize a mutex (dynamically allocated)
+ * @param attr Mutex attributes (NULL for default NORMAL type)
+ * @return Pointer to initialized mutex or NULL on failure
+ */
+nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr);
+
+/**
  * @brief Destroy mutex
  */
 nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex);

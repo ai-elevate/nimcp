@@ -713,6 +713,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_layer_pools.c     # Layer-level specialized pools
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_unified_pools.c   # Unified pool management
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread_mutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread_pool.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_deadlock_detector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_semaphore.c     # Counting semaphore primitive

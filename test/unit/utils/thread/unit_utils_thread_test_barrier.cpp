@@ -647,10 +647,10 @@ protected:
  * WHY:  Verify BUSY error when unsafe to reset
  */
 TEST_F(BarrierResetBusyTest, ResetWhileWaiting) {
-    // Create barrier requiring more threads than we'll create
-    ASSERT_EQ(NIMCP_SUCCESS, nimcp_barrier_init(&barrier, NUM_THREADS + 1));
+    // Create barrier requiring 2 threads (worker + main can complete it)
+    ASSERT_EQ(NIMCP_SUCCESS, nimcp_barrier_init(&barrier, 2));
 
-    // Create fewer threads (they will block at barrier)
+    // Create worker thread that will block at barrier
     nimcp_thread_t thread;
     ASSERT_EQ(NIMCP_SUCCESS,
               nimcp_thread_create(&thread, waiting_worker, this, nullptr));
@@ -664,10 +664,10 @@ TEST_F(BarrierResetBusyTest, ResetWhileWaiting) {
     // Verify thread is waiting
     EXPECT_GT(nimcp_barrier_get_waiting(barrier), 0);
 
-    // Try to reset - should fail with BUSY
+    // Try to reset - should fail with BUSY (thread is blocked)
     EXPECT_EQ(NIMCP_BUSY, nimcp_barrier_reset(barrier, 2));
 
-    // Complete the barrier by arriving ourselves
+    // Complete the barrier by arriving ourselves (2 threads now met)
     nimcp_barrier_wait(barrier);
 
     // Join thread

@@ -86,6 +86,11 @@ hetero_immune_bridge_t* hetero_immune_bridge_create(
     bridge->inflammation_state.current_level = INFLAMMATION_NONE;
     bridge->inflammation_state.inflammation_duration_sec = 0.0f;
     bridge->inflammation_state.is_chronic = false;
+    bridge->inflammation_state.competition_suppression = INFLAMMATION_COMPETITION_NONE;
+    bridge->inflammation_state.radius_narrowing = INFLAMMATION_RADIUS_NONE;
+    bridge->inflammation_state.wta_weakening = 0.0f;
+    bridge->inflammation_state.pruning_excess = 0.0f;
+    bridge->inflammation_state.competition_deficit = 0.0f;
 
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();

@@ -60,7 +60,12 @@ git add -A && git commit --no-verify -m "message" && git push
 ## Critical GOTCHAs
 
 - `nimcp_tensor_sum()` returns `nimcp_tensor_t*`, not scalar
-- `nimcp_tensor_create` requires 3 args: `(dims, ndims, NIMCP_DTYPE_F32)`
-- `nimcp_mutex_create()` does NOT exist - use `nimcp_mutex_init()`
+- `nimcp_tensor_create(dims, rank, dtype)` requires 3 args (rank, not ndims)
+- Mutex API (use thread layer, not platform layer):
+  - `nimcp_mutex_create(attr)` - allocate and init, returns `nimcp_mutex_t*`
+  - `nimcp_mutex_init(mutex, attr)` - init existing struct
+  - `mutex_attr_t` supports MUTEX_TYPE_NORMAL/RECURSIVE/ERRORCHECK
 - Platform tiers: `PLATFORM_TIER_FULL/MEDIUM/CONSTRAINED/MINIMAL`
 - B cells must be in PLASMA state to produce antibodies
+- FEP bridges return `0` for success, `-1` for errors (not NIMCP_OK/NIMCP_ERROR_*)
+- Deadlock pattern: Never call public mutex-locking functions from within locked code - create `*_unlocked()` helpers
