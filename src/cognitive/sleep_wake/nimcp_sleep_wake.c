@@ -223,10 +223,15 @@ void sleep_system_destroy(sleep_system_t sleep)
         return;
     }
 
-    /* WHAT: Free callback list */
-    /* WHY:  Prevent memory leaks */
-    /* HOW:  Walk linked list and free each entry */
+    /* WHAT: Free callback list under lock */
+    /* WHY:  Prevent race with callback registration/invocation */
+    /* HOW:  Hold mutex while clearing, then take local copy */
+    nimcp_mutex_lock(&sleep->lock);
     sleep_callback_entry_t* current = sleep->callbacks;
+    sleep->callbacks = NULL;  /* Prevent other threads from accessing */
+    nimcp_mutex_unlock(&sleep->lock);
+
+    /* Free callbacks outside lock to avoid deadlock */
     while (current != NULL) {
         sleep_callback_entry_t* next = current->next;
         nimcp_free(current);
@@ -302,7 +307,11 @@ float sleep_get_pressure(const sleep_system_t sleep)
         return 0.0F;
     }
 
-    return sleep->sleep_pressure;
+    nimcp_mutex_lock((nimcp_mutex_t*)&sleep->lock);
+    float pressure = sleep->sleep_pressure;
+    nimcp_mutex_unlock((nimcp_mutex_t*)&sleep->lock);
+
+    return pressure;
 }
 
 /**
@@ -311,7 +320,7 @@ float sleep_get_pressure(const sleep_system_t sleep)
  * HOW:  Compare pressure to threshold
  *
  * COMPLEXITY: O(1)
- * THREAD-SAFE: Yes (read-only operation)
+ * THREAD-SAFE: Yes (mutex protected)
  */
 bool sleep_is_needed(const sleep_system_t sleep)
 {
@@ -319,6 +328,8 @@ bool sleep_is_needed(const sleep_system_t sleep)
     if (sleep == NULL) {
         return false;
     }
+
+    nimcp_mutex_lock((nimcp_mutex_t*)&sleep->lock);
 
     /* WHAT: Get circadian modulation from medulla if available */
     /* WHY:  Circadian phase affects sleep propensity (night = more sleepy) */
@@ -357,7 +368,11 @@ bool sleep_is_needed(const sleep_system_t sleep)
     /* WHAT: Check if pressure exceeds circadian-adjusted threshold */
     /* WHY:  Threshold indicates when sleep is biologically necessary */
     float adjusted_threshold = sleep->config.sleep_pressure_threshold * threshold_modifier;
-    return sleep->sleep_pressure >= adjusted_threshold;
+    bool needed = sleep->sleep_pressure >= adjusted_threshold;
+
+    nimcp_mutex_unlock((nimcp_mutex_t*)&sleep->lock);
+
+    return needed;
 }
 
 /* ========================================================================

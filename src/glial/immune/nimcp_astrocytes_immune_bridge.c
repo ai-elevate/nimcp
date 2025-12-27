@@ -1,8 +1,15 @@
 /**
  * @file nimcp_astrocytes_immune_bridge.c
- * @brief Astrocytes-Immune Bridge Implementation
- * @version 1.0.0
- * @date 2025-12-21
+ * @brief Single-Cell Astrocyte-Immune Bridge Implementation
+ * @version 2.0.0
+ * @date 2025-12-27
+ *
+ * WHAT: Bridge for individual astrocyte phenotype switching (A1/A2)
+ * WHY:  Single-cell level immune-astrocyte interaction
+ * HOW:  Works with nimcp_astrocyte_t (individual cells)
+ *
+ * NOTE: This module uses "astro_cell_*" prefix to avoid conflicts
+ * with the polymorphic base class (astro_immune_*)
  */
 
 #include "glial/immune/nimcp_astrocytes_immune_bridge.h"
@@ -15,7 +22,7 @@
 
 /* NOTE: Message handlers are registered separately via bio_router_register_handler() */
 
-int astro_immune_default_config(astro_immune_config_t* config)
+int astro_cell_default_config(astro_immune_config_t* config)
 {
     if (!config) return -1;
     memset(config, 0, sizeof(*config));
@@ -30,7 +37,7 @@ int astro_immune_default_config(astro_immune_config_t* config)
     return 0;
 }
 
-astro_immune_bridge_t* astro_immune_create(
+astro_immune_bridge_t* astro_cell_create(
     const astro_immune_config_t* config,
     nimcp_astrocyte_t* astrocyte,
     brain_immune_system_t* immune_system)
@@ -40,7 +47,7 @@ astro_immune_bridge_t* astro_immune_create(
     memset(bridge, 0, sizeof(*bridge));
 
     if (config) bridge->config = *config;
-    else astro_immune_default_config(&bridge->config);
+    else astro_cell_default_config(&bridge->config);
 
     bridge->astrocyte = astrocyte;
     bridge->immune_system = immune_system;
@@ -56,19 +63,19 @@ astro_immune_bridge_t* astro_immune_create(
     }
 
     bridge->initialized = true;
-    NIMCP_LOGGING_INFO("Created astro-immune bridge");
+    NIMCP_LOGGING_INFO("Created single-cell astro-immune bridge");
     return bridge;
 }
 
-void astro_immune_destroy(astro_immune_bridge_t* bridge)
+void astro_cell_destroy(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    if (bridge->base.bio_async_enabled) astro_immune_disconnect_bio_async(bridge);
+    if (bridge->base.bio_async_enabled) astro_cell_disconnect_bio_async(bridge);
     if (bridge->base.mutex) { nimcp_mutex_destroy(bridge->base.mutex); nimcp_free(bridge->base.mutex); }
     nimcp_free(bridge);
 }
 
-int astro_immune_connect_bio_async(astro_immune_bridge_t* bridge)
+int astro_cell_connect_bio_async(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (bridge->base.bio_async_enabled) return 0;
@@ -85,7 +92,7 @@ int astro_immune_connect_bio_async(astro_immune_bridge_t* bridge)
     return 0;
 }
 
-int astro_immune_disconnect_bio_async(astro_immune_bridge_t* bridge)
+int astro_cell_disconnect_bio_async(astro_immune_bridge_t* bridge)
 {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
     if (bridge->base.bio_ctx) { bio_router_unregister_module(bridge->base.bio_ctx); bridge->base.bio_ctx = NULL; }
@@ -93,15 +100,14 @@ int astro_immune_disconnect_bio_async(astro_immune_bridge_t* bridge)
     return 0;
 }
 
-bool astro_immune_is_bio_async_connected(const astro_immune_bridge_t* bridge)
+bool astro_cell_is_bio_async_connected(const astro_immune_bridge_t* bridge)
 {
     return bridge && bridge->base.bio_async_enabled;
 }
 
-int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge)
+int astro_cell_update_cytokine_effects(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    /* Validate mutex exists before locking */
     if (!bridge->base.mutex) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -130,31 +136,26 @@ int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge)
     return 0;
 }
 
-int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
+int astro_cell_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    /* Validate dt_ms is positive and finite */
     if (dt_ms <= 0.0f || !isfinite(dt_ms)) return NIMCP_ERROR_INVALID_PARAM;
-    /* Validate mutex exists before locking */
     if (!bridge->base.mutex) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     astrocyte_reactivity_t old_state = bridge->reactivity_state;
 
-    /* Determine phenotype based on cytokine drives */
     float a1 = bridge->cytokine_effects.a1_drive;
     float a2 = bridge->cytokine_effects.a2_drive;
 
     if (a1 > 0.5f && a1 > a2) {
         bridge->reactivity_state = ASTRO_A1_REACTIVE;
         bridge->reactivity_level = a1;
-        /* A1 reduces glutamate clearance (neurotoxic) */
         bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base * (1.0f - a1 * 0.5f);
     } else if (a2 > 0.3f) {
         bridge->reactivity_state = ASTRO_A2_REACTIVE;
         bridge->reactivity_level = a2;
-        /* A2 increases gliotransmitter release (neuroprotective) */
         bridge->gliotransmitter_release = a2 * 0.5f;
         bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base;
     } else {
@@ -163,7 +164,6 @@ int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
         bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base;
     }
 
-    /* Track scar formation from chronic A1 */
     if (bridge->reactivity_state == ASTRO_A1_REACTIVE) {
         bridge->scar_formation_progress += 0.001f * (dt_ms / 1000.0f);
         if (bridge->scar_formation_progress >= bridge->config.scar_formation_threshold) {
@@ -172,7 +172,6 @@ int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
         }
     }
 
-    /* Update stats */
     if (old_state != bridge->reactivity_state) {
         bridge->stats.reactivity_changes++;
         if (bridge->reactivity_state == ASTRO_A1_REACTIVE) bridge->stats.a1_activations++;
@@ -186,34 +185,44 @@ int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
     return 0;
 }
 
-int astro_immune_update(astro_immune_bridge_t* bridge, float dt_ms)
+int astro_cell_update(astro_immune_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->initialized) return NIMCP_ERROR_INVALID_PARAM;
-    /* Validate dt_ms is positive and finite */
     if (dt_ms <= 0.0f || !isfinite(dt_ms)) return NIMCP_ERROR_INVALID_PARAM;
 
-    astro_immune_update_cytokine_effects(bridge);
-    astro_immune_update_reactivity(bridge, dt_ms);
+    astro_cell_update_cytokine_effects(bridge);
+    astro_cell_update_reactivity(bridge, dt_ms);
     return 0;
 }
 
-astrocyte_reactivity_t astro_immune_get_reactivity(const astro_immune_bridge_t* bridge)
+astrocyte_reactivity_t astro_cell_get_reactivity(const astro_immune_bridge_t* bridge)
 {
-    return bridge ? bridge->reactivity_state : ASTRO_QUIESCENT;
+    if (!bridge) return ASTRO_QUIESCENT;
+    if (!bridge->base.mutex) return bridge->reactivity_state;
+
+    nimcp_mutex_lock(((astro_immune_bridge_t*)bridge)->base.mutex);
+    astrocyte_reactivity_t state = bridge->reactivity_state;
+    nimcp_mutex_unlock(((astro_immune_bridge_t*)bridge)->base.mutex);
+    return state;
 }
 
-float astro_immune_get_glutamate_clearance(const astro_immune_bridge_t* bridge)
+float astro_cell_get_glutamate_clearance(const astro_immune_bridge_t* bridge)
 {
-    return bridge ? bridge->glutamate_clearance_rate : 1.0f;
+    if (!bridge) return 1.0f;
+    if (!bridge->base.mutex) return bridge->glutamate_clearance_rate;
+
+    nimcp_mutex_lock(((astro_immune_bridge_t*)bridge)->base.mutex);
+    float rate = bridge->glutamate_clearance_rate;
+    nimcp_mutex_unlock(((astro_immune_bridge_t*)bridge)->base.mutex);
+    return rate;
 }
 
-int astro_immune_get_stats(const astro_immune_bridge_t* bridge, astro_immune_stats_t* stats)
+int astro_cell_get_stats(const astro_immune_bridge_t* bridge, astro_immune_stats_t* stats)
 {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->base.mutex) return NIMCP_ERROR_INVALID_STATE;
 
-    /* Lock mutex for consistent read of stats structure.
-     * Cast away const since mutex lock doesn't modify logical state. */
     nimcp_mutex_lock(((astro_immune_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((astro_immune_bridge_t*)bridge)->base.mutex);
@@ -221,7 +230,7 @@ int astro_immune_get_stats(const astro_immune_bridge_t* bridge, astro_immune_sta
     return 0;
 }
 
-void astro_immune_reset_stats(astro_immune_bridge_t* bridge)
+void astro_cell_reset_stats(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return;
     nimcp_mutex_lock(bridge->base.mutex);

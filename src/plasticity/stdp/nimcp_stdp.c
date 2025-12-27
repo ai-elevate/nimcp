@@ -409,16 +409,35 @@ void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {
         return;
     }
 
+    /* THREAD SAFETY: Acquire spinlock before reading synapse fields.
+     * Cast away const for locking (lock is mutable state, not logical state).
+     * This ensures consistent reads of weight, traces, and statistics
+     * that could be modified concurrently by stdp_update/record functions. */
+    stdp_synapse_t* mutable_synapse = (stdp_synapse_t*)synapse;
+    nimcp_spinlock_lock(&mutable_synapse->lock);
+
+    /* Copy all values while holding lock to ensure consistent snapshot */
+    float weight = synapse->weight;
+    float w_max = synapse->w_max;
+    uint64_t num_pot = synapse->num_potentiation_events;
+    float total_ltp = synapse->total_ltp;
+    uint64_t num_dep = synapse->num_depression_events;
+    float total_ltd = synapse->total_ltd;
+    float pre_trace = synapse->pre_trace;
+    float post_trace = synapse->post_trace;
+    bool enable_da = synapse->enable_da_modulation;
+    float da_gain = synapse->da_modulation_gain;
+    float burst_amp = synapse->burst_amplification;
+
+    nimcp_spinlock_unlock(&mutable_synapse->lock);
+
+    /* Print using copied values (no locks held during I/O) */
     printf("STDP Synapse Statistics:\n");
-    printf("  Weight: %.4f / %.4f\n", synapse->weight, synapse->w_max);
-    printf("  Potentiation events: %lu (total LTP: %.6f)\n",
-           synapse->num_potentiation_events, synapse->total_ltp);
-    printf("  Depression events: %lu (total LTD: %.6f)\n",
-           synapse->num_depression_events, synapse->total_ltd);
-    printf("  Net change: %.6f\n", synapse->total_ltp - synapse->total_ltd);
-    printf("  Pre trace: %.6f, Post trace: %.6f\n",
-           synapse->pre_trace, synapse->post_trace);
+    printf("  Weight: %.4f / %.4f\n", weight, w_max);
+    printf("  Potentiation events: %lu (total LTP: %.6f)\n", num_pot, total_ltp);
+    printf("  Depression events: %lu (total LTD: %.6f)\n", num_dep, total_ltd);
+    printf("  Net change: %.6f\n", total_ltp - total_ltd);
+    printf("  Pre trace: %.6f, Post trace: %.6f\n", pre_trace, post_trace);
     printf("  DA modulation: %s (gain: %.1f, burst amp: %.1fx)\n",
-           synapse->enable_da_modulation ? "ENABLED" : "DISABLED",
-           synapse->da_modulation_gain, synapse->burst_amplification);
+           enable_da ? "ENABLED" : "DISABLED", da_gain, burst_amp);
 }

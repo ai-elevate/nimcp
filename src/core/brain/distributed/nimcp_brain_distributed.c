@@ -58,8 +58,31 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/cache/nimcp_cache.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_once.h"
 
 #define LOG_MODULE "BRAIN_DISTRIBUTED"
+
+//=============================================================================
+// COW Clone Synchronization
+//=============================================================================
+
+/**
+ * @brief Global mutex for COW clone first-clone initialization
+ *
+ * WHAT: Protects the first-clone initialization race condition
+ * WHY:  Two threads cloning the same brain simultaneously could both see
+ *       network_refcount==NULL and both try to allocate/initialize it
+ * HOW:  Use a global mutex to serialize first-clone initialization
+ *
+ * NOTE: This is only held briefly during refcount initialization, not
+ *       during the entire clone operation, to minimize contention.
+ */
+static nimcp_platform_mutex_t g_cow_refcount_mutex;
+static nimcp_platform_once_t g_cow_refcount_once = NIMCP_PLATFORM_ONCE_INIT;
+
+static void init_cow_refcount_mutex(void) {
+    nimcp_platform_mutex_init(&g_cow_refcount_mutex, false);
+}
 
 //=============================================================================
 // Error Handling
@@ -295,6 +318,13 @@ brain_t brain_clone_cow(brain_t original)
     clone->network_is_cached = false;  // Not using nimcp_cache yet
 
     // Phase 3: Set up reference counting for shared network
+    // THREAD SAFETY FIX: Use global mutex to prevent race condition when
+    // two threads simultaneously try to create the first clone and both
+    // see network_refcount==NULL. Without this, both would allocate refcount
+    // structures, leading to memory leaks and incorrect reference counts.
+    nimcp_platform_once(&g_cow_refcount_once, init_cow_refcount_mutex);
+    nimcp_platform_mutex_lock(&g_cow_refcount_mutex);
+
     if (!original->network_refcount) {
         // First clone - original needs to initialize shared refcount
         original->network_refcount = nimcp_malloc(sizeof(uint32_t));
@@ -307,10 +337,13 @@ brain_t brain_clone_cow(brain_t original)
         }
     } else {
         // Additional clone - increment existing refcount
+        // Note: We already hold g_cow_refcount_mutex, so safe to access refcount_mutex
         nimcp_platform_mutex_lock(original->refcount_mutex);
         (*original->network_refcount)++;
         nimcp_platform_mutex_unlock(original->refcount_mutex);
     }
+
+    nimcp_platform_mutex_unlock(&g_cow_refcount_mutex);
 
     // Clone shares the refcount and mutex with original
     clone->network_refcount = original->network_refcount;

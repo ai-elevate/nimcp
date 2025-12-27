@@ -1738,17 +1738,23 @@ int brain_immune_release_cytokine(
         LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME, "Cytokine storm risk detected!");
     }
 
+    /* Copy callback data before unlock to prevent race condition */
+    brain_immune_cytokine_cb_t callback = system->on_cytokine;
+    void* callback_data = system->callback_user_data;
+    bio_module_context_t bio_ctx = system->bio_context;
+    brain_cytokine_t cytokine_copy = *cytokine;
+
     nimcp_mutex_unlock(system->mutex);
 
     /* Send bio-async message if connected */
-    if (system->bio_context && target_region == 0) {
+    if (bio_ctx && target_region == 0) {
         /* Broadcast - would construct and send bio message here */
         cytokine->delivered = true;
     }
 
-    /* Trigger callback */
-    if (system->on_cytokine) {
-        system->on_cytokine(system, cytokine, system->callback_user_data);
+    /* Trigger callback with copied data */
+    if (callback) {
+        callback(system, &cytokine_copy, callback_data);
     }
 
     return 0;

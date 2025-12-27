@@ -101,6 +101,7 @@ typedef struct {
     tracked_mutex_t* waiting_on;   /**< Mutex being waited on */
     tracked_mutex_t* holding[MAX_LOCKS_PER_THREAD]; /**< Mutexes held */
     uint32_t num_holding;          /**< Number of locks held */
+    bool in_use;                   /**< Slot is in use (portable check, don't compare pthread_t to 0) */
 } lock_dependency_t;
 
 //=============================================================================

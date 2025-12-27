@@ -97,14 +97,15 @@ static inline bool tensor_is_valid(const nimcp_tensor_t* t)
 }
 
 /**
- * @brief Update global statistics
+ * @brief Update global statistics using atomic operations
+ *
+ * WHY ATOMICS: Reduces lock contention for frequently-called statistics updates.
+ * Lock-free atomic increments are much faster than mutex lock/unlock pairs.
  */
 static void stats_update_op(uint64_t* counter)
 {
-    nimcp_mutex_lock(&g_stats_lock);
-    (*counter)++;
-    g_stats.operations_total++;
-    nimcp_mutex_unlock(&g_stats_lock);
+    __atomic_fetch_add(counter, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_add(&g_stats.operations_total, 1, __ATOMIC_RELAXED);
 }
 
 //=============================================================================
@@ -309,14 +310,20 @@ nimcp_tensor_t* nimcp_tensor_create(
         /* Note: Data is uninitialized. Use nimcp_tensor_zeros() if zero initialization is needed. */
     }
 
-    /* Update stats */
-    nimcp_mutex_lock(&g_stats_lock);
-    g_stats.tensors_created++;
-    g_stats.memory_current += t->shape.nbytes + sizeof(nimcp_tensor_t);
-    if (g_stats.memory_current > g_stats.memory_peak) {
-        g_stats.memory_peak = g_stats.memory_current;
+    /* Update stats using atomic operations to reduce lock contention */
+    __atomic_fetch_add(&g_stats.tensors_created, 1, __ATOMIC_RELAXED);
+    size_t new_current = __atomic_add_fetch(&g_stats.memory_current,
+                                             t->shape.nbytes + sizeof(nimcp_tensor_t),
+                                             __ATOMIC_RELAXED);
+    /* Update peak if needed - use compare-exchange loop for correctness */
+    size_t old_peak = __atomic_load_n(&g_stats.memory_peak, __ATOMIC_RELAXED);
+    while (new_current > old_peak) {
+        if (__atomic_compare_exchange_n(&g_stats.memory_peak, &old_peak, new_current,
+                                        false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+            break;
+        }
+        /* old_peak was updated by compare_exchange, loop to retry */
     }
-    nimcp_mutex_unlock(&g_stats_lock);
 
     return t;
 }
@@ -569,10 +576,19 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
     /* Guard: NULL is no-op */
     if (!t) return;
 
+    /* Pre-check magic BEFORE locking to avoid locking a destroyed object.
+     * This is a best-effort check - the definitive check is inside the lock.
+     * If magic is invalid here, the tensor was already destroyed or corrupted,
+     * and we should not attempt to lock its mutex (lock-after-free risk). */
+    if (t->magic != NIMCP_TENSOR_MAGIC) {
+        /* Already destroyed or corrupted - do not touch the mutex */
+        return;
+    }
+
     pthread_mutex_lock(&t->lock);
 
     /* Guard: Invalid magic means already destroyed or corrupted */
-    /* MUST be checked INSIDE lock to prevent race condition */
+    /* MUST be re-checked INSIDE lock to handle race between pre-check and lock */
     if (!tensor_is_valid(t)) {
         /* Already destroyed or never initialized properly */
         pthread_mutex_unlock(&t->lock);
@@ -601,11 +617,9 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
     nimcp_mutex_unlock(&t->lock);
     nimcp_mutex_destroy(&t->lock);
 
-    /* Update stats after lock release (uses its own lock) */
-    nimcp_mutex_lock(&g_stats_lock);
-    g_stats.tensors_destroyed++;
-    g_stats.memory_current -= t->shape.nbytes + sizeof(nimcp_tensor_t);
-    nimcp_mutex_unlock(&g_stats_lock);
+    /* Update stats using atomic operations (lock-free) */
+    __atomic_fetch_add(&g_stats.tensors_destroyed, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_sub(&g_stats.memory_current, t->shape.nbytes + sizeof(nimcp_tensor_t), __ATOMIC_RELAXED);
 
     /* Free gradient if exists (recursive destroy - now safe, lock released) */
     if (grad_to_destroy) {

@@ -213,10 +213,14 @@ hetero_system_t* hetero_create(const hetero_config_t* config, size_t initial_cap
 void hetero_destroy(hetero_system_t* system) {
     if (!system) return;
 
-    /* Destroy all synapse mutexes (P0 fix: NULL after free to prevent double-free) */
+    /* Destroy all synapse mutexes (heap-allocated for realloc safety) */
     if (system->synapses) {
         for (size_t i = 0; i < system->num_synapses; i++) {
-            nimcp_platform_mutex_destroy(&system->synapses[i].lock);
+            if (system->synapses[i].lock) {
+                nimcp_platform_mutex_destroy(system->synapses[i].lock);
+                nimcp_free(system->synapses[i].lock);
+                system->synapses[i].lock = NULL;
+            }
         }
         nimcp_free(system->synapses);
         system->synapses = NULL;
@@ -269,15 +273,9 @@ int hetero_add_synapse(
         system->synapses = new_synapses;
         system->synapse_capacity = new_capacity;
 
-        /* NOTE: Existing synapses have already-initialized locks that are
-         * preserved by realloc (memcpy semantics). We do NOT re-initialize
-         * them here - only the NEW synapse (added below) gets its lock
-         * initialized. Re-initializing existing locks would corrupt their
-         * internal state and cause undefined behavior.
-         *
-         * IMPORTANT: On platforms where mutex contains self-referential
-         * pointers, realloc may invalidate mutexes. The nimcp_platform_mutex_t
-         * implementation must be realloc-safe or use pointer indirection. */
+        /* NOTE: Existing synapses have heap-allocated locks (pointers) that
+         * survive realloc since only the pointer is copied, not the mutex.
+         * We only initialize the NEW synapse's lock below. */
     }
 
     /* Initialize the NEW synapse (at index num_synapses) */
@@ -297,8 +295,14 @@ int hetero_add_synapse(
     syn->num_wins = 0;
     syn->num_neighbor_depressions = 0;
     syn->total_hetero_ltd = 0.0f;
-    /* Initialize lock ONLY for the newly added synapse, not existing ones */
-    nimcp_platform_mutex_init(&syn->lock, false);
+
+    /* Allocate lock on heap for realloc safety - pointer survives realloc */
+    syn->lock = nimcp_platform_mutex_create();
+    if (!syn->lock) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_LOGGING_ERROR("Failed to create synapse mutex");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
 
     system->num_synapses++;
 
@@ -325,8 +329,12 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    /* Destroy mutex */
-    nimcp_platform_mutex_destroy(&system->synapses[found_idx].lock);
+    /* Destroy and free heap-allocated mutex */
+    if (system->synapses[found_idx].lock) {
+        nimcp_platform_mutex_destroy(system->synapses[found_idx].lock);
+        nimcp_free(system->synapses[found_idx].lock);
+        system->synapses[found_idx].lock = NULL;
+    }
 
     /* Shift remaining synapses */
     if (found_idx < system->num_synapses - 1) {
@@ -345,29 +353,38 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
  * WHY:  Locate synapse in array for direct manipulation
  * HOW:  Linear search with mutex protection
  *
- * THREAD SAFETY WARNING:
- * This function returns a pointer to internal data. The returned pointer
- * is ONLY VALID while the caller ensures no concurrent modifications that
- * could invalidate it (specifically: hetero_add_synapse with realloc, or
- * hetero_remove_synapse). The pointer may become invalid if:
+ * CRITICAL THREAD SAFETY WARNING - POINTER INVALIDATION RISK:
+ * ============================================================
+ * The returned pointer points into the internal synapses array and becomes
+ * INVALID if realloc or removal occurs. The mutex is released BEFORE return,
+ * creating a race condition window.
+ *
+ * POINTER INVALIDATION SCENARIOS:
  *   1. Another thread calls hetero_add_synapse() and triggers realloc
  *   2. Another thread calls hetero_remove_synapse() on any synapse
+ *   3. hetero_destroy() is called
  *
- * SAFE USAGE PATTERNS:
+ * SAFE USAGE PATTERNS (caller MUST ensure one of these):
  *   - Single-threaded access to the hetero_system
- *   - Caller holds external synchronization preventing add/remove
+ *   - Caller holds external synchronization preventing add/remove/destroy
  *   - Use individual synapse->lock for weight field modifications only
- *   - For fully thread-safe queries, copy the synapse data instead
+ *   - Copy needed data immediately after call, don't store pointer
+ *
+ * FOR THREAD-SAFE QUERIES: Use hetero_get_synapse_copy() instead, which
+ * returns a copy of the synapse data that is safe to use across threads.
  *
  * The individual synapse->lock protects weight modifications but does NOT
  * protect against the pointer itself becoming invalid due to realloc/remove.
+ *
+ * RISK LEVEL: HIGH - Use with extreme caution in multi-threaded code.
  */
 hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_id) {
     if (!system) return NULL;
 
     /* Lock during search to prevent concurrent modification during lookup.
-     * NOTE: After unlock, returned pointer stability depends on caller
-     * coordination - see warning above. */
+     * CRITICAL: After unlock, returned pointer stability depends on caller
+     * coordination - see warning above. Caller must immediately copy data
+     * or hold external synchronization. */
     nimcp_platform_mutex_lock(system->mutex);
 
     hetero_synapse_t* result = NULL;
@@ -380,6 +397,40 @@ hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_i
 
     nimcp_platform_mutex_unlock(system->mutex);
 
+    /* WARNING: result pointer may be invalidated by concurrent operations.
+     * Caller must use immediately or hold external synchronization. */
+    return result;
+}
+
+/**
+ * WHAT: Get a thread-safe copy of synapse data by ID
+ * WHY:  hetero_get_synapse() returns pointer that can be invalidated by realloc
+ * HOW:  Copy synapse data while holding mutex, return copy via out parameter
+ *
+ * This is the RECOMMENDED API for multi-threaded access.
+ *
+ * @param system Heterosynaptic system
+ * @param synapse_id Synapse identifier
+ * @param out_synapse Output: copy of synapse data (caller-allocated)
+ * @return 0 on success, -1 if not found, -2 if NULL parameters
+ */
+int hetero_get_synapse_copy(hetero_system_t* system, uint32_t synapse_id,
+                            hetero_synapse_t* out_synapse) {
+    if (!system || !out_synapse) return -2;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    int result = -1;
+    for (size_t i = 0; i < system->num_synapses; i++) {
+        if (system->synapses[i].synapse_id == synapse_id) {
+            /* Copy synapse data while holding mutex */
+            *out_synapse = system->synapses[i];
+            result = 0;
+            break;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
     return result;
 }
 
@@ -510,14 +561,14 @@ int hetero_apply_depression(
         /* Apply depression: Δw = -factor × LTP */
         float depression = -factor * ltp_amount;
 
-        nimcp_platform_mutex_lock(&neighbor->lock);
+        nimcp_platform_mutex_lock(neighbor->lock);
         /* Compute new weight and clamp atomically to avoid race window */
         float new_weight = neighbor->weight + depression;
         neighbor->weight = fmaxf(neighbor->w_min, fminf(neighbor->w_max, new_weight));
         neighbor->last_depression = -depression;  /* Store absolute value */
         neighbor->num_neighbor_depressions++;
         neighbor->total_hetero_ltd += -depression;
-        nimcp_platform_mutex_unlock(&neighbor->lock);
+        nimcp_platform_mutex_unlock(neighbor->lock);
     }
 
     /* CRITICAL: Use atomic operations for thread-safe statistics update
@@ -600,20 +651,20 @@ int hetero_winner_take_all(
 
         if (syn->synapse_id != winner->synapse_id) {
             /* Apply suppression */
-            nimcp_platform_mutex_lock(&syn->lock);
+            nimcp_platform_mutex_lock(syn->lock);
             syn->weight *= system->config.wta_suppression_factor;
             syn->num_competitions++;
-            nimcp_platform_mutex_unlock(&syn->lock);
+            nimcp_platform_mutex_unlock(syn->lock);
 
             result->depressed_ids[result->num_depressed++] = syn->synapse_id;
         }
     }
 
     /* Update winner */
-    nimcp_platform_mutex_lock(&winner->lock);
+    nimcp_platform_mutex_lock(winner->lock);
     winner->num_competitions++;
     winner->num_wins++;
-    nimcp_platform_mutex_unlock(&winner->lock);
+    nimcp_platform_mutex_unlock(winner->lock);
 
     /* Fill result */
     result->winner_id = winner->synapse_id;

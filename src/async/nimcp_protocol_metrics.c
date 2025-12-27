@@ -509,21 +509,36 @@ bool protocol_metrics_query(protocol_metrics_t metrics, const char* pattern,
 // Export Implementation
 //=============================================================================
 
+/**
+ * @brief Helper to safely add snprintf result to offset
+ * @note Caps offset at size to handle truncation correctly
+ */
+static inline size_t safe_snprintf_advance(size_t offset, size_t size, int written) {
+    if (written < 0) {
+        return offset;  /* Error, don't advance */
+    }
+    size_t new_offset = offset + (size_t)written;
+    return (new_offset > size) ? size : new_offset;
+}
+
 static size_t export_json(protocol_metrics_t metrics, char* buffer, size_t size) {
     size_t offset = 0;
+    int written;
 
-    offset += snprintf(buffer + offset, size - offset, "{\n  \"metrics\": [\n");
+    written = snprintf(buffer + offset, size - offset, "{\n  \"metrics\": [\n");
+    offset = safe_snprintf_advance(offset, size, written);
 
     bool first = true;
-    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE && offset < size; i++) {
         metric_entry_t* entry = metrics->hash_table[i];
         while (entry && offset < size - 256) {
             if (!first) {
-                offset += snprintf(buffer + offset, size - offset, ",\n");
+                written = snprintf(buffer + offset, size - offset, ",\n");
+                offset = safe_snprintf_advance(offset, size, written);
             }
             first = false;
 
-            offset += snprintf(buffer + offset, size - offset,
+            written = snprintf(buffer + offset, size - offset,
                 "    {\n"
                 "      \"name\": \"%s\",\n"
                 "      \"type\": \"%s\",\n"
@@ -539,32 +554,38 @@ static size_t export_json(protocol_metrics_t metrics, char* buffer, size_t size)
                 entry->metric.timestamp_ms,
                 entry->metric.sample_count
             );
+            offset = safe_snprintf_advance(offset, size, written);
 
             entry = entry->next;
         }
     }
 
-    offset += snprintf(buffer + offset, size - offset, "\n  ]\n}\n");
+    if (offset < size) {
+        written = snprintf(buffer + offset, size - offset, "\n  ]\n}\n");
+        offset = safe_snprintf_advance(offset, size, written);
+    }
 
     return offset;
 }
 
 static size_t export_prometheus(protocol_metrics_t metrics, char* buffer, size_t size) {
     size_t offset = 0;
+    int written;
 
-    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE && offset < size; i++) {
         metric_entry_t* entry = metrics->hash_table[i];
         while (entry && offset < size - 256) {
             const char* type_str =
                 entry->metric.type == METRIC_TYPE_COUNTER ? "counter" :
                 entry->metric.type == METRIC_TYPE_GAUGE ? "gauge" : "histogram";
 
-            offset += snprintf(buffer + offset, size - offset,
+            written = snprintf(buffer + offset, size - offset,
                 "# TYPE %s %s\n%s %.6f %llu\n",
                 entry->metric.name, type_str,
                 entry->metric.name, entry->metric.value,
                 entry->metric.timestamp_ms
             );
+            offset = safe_snprintf_advance(offset, size, written);
 
             entry = entry->next;
         }

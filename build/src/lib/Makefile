@@ -8921,6 +8921,30 @@ __/glial/astrocytes/nimcp_astrocytes_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/astrocytes/nimcp_astrocytes_fep_bridge.c.s
 .PHONY : __/glial/astrocytes/nimcp_astrocytes_fep_bridge.c.s
 
+__/glial/immune/nimcp_astrocyte_immune_base.o: __/glial/immune/nimcp_astrocyte_immune_base.c.o
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_base.o
+
+# target to build an object file
+__/glial/immune/nimcp_astrocyte_immune_base.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_base.c.o
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_base.c.o
+
+__/glial/immune/nimcp_astrocyte_immune_base.i: __/glial/immune/nimcp_astrocyte_immune_base.c.i
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_base.i
+
+# target to preprocess a source file
+__/glial/immune/nimcp_astrocyte_immune_base.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_base.c.i
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_base.c.i
+
+__/glial/immune/nimcp_astrocyte_immune_base.s: __/glial/immune/nimcp_astrocyte_immune_base.c.s
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_base.s
+
+# target to generate assembly for a file
+__/glial/immune/nimcp_astrocyte_immune_base.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_base.c.s
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_base.c.s
+
 __/glial/immune/nimcp_astrocyte_immune_bridge.o: __/glial/immune/nimcp_astrocyte_immune_bridge.c.o
 .PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.o
 
@@ -8944,6 +8968,30 @@ __/glial/immune/nimcp_astrocyte_immune_bridge.s: __/glial/immune/nimcp_astrocyte
 __/glial/immune/nimcp_astrocyte_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_bridge.c.s
 .PHONY : __/glial/immune/nimcp_astrocyte_immune_bridge.c.s
+
+__/glial/immune/nimcp_astrocyte_immune_plasticity.o: __/glial/immune/nimcp_astrocyte_immune_plasticity.c.o
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_plasticity.o
+
+# target to build an object file
+__/glial/immune/nimcp_astrocyte_immune_plasticity.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_plasticity.c.o
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_plasticity.c.o
+
+__/glial/immune/nimcp_astrocyte_immune_plasticity.i: __/glial/immune/nimcp_astrocyte_immune_plasticity.c.i
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_plasticity.i
+
+# target to preprocess a source file
+__/glial/immune/nimcp_astrocyte_immune_plasticity.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_plasticity.c.i
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_plasticity.c.i
+
+__/glial/immune/nimcp_astrocyte_immune_plasticity.s: __/glial/immune/nimcp_astrocyte_immune_plasticity.c.s
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_plasticity.s
+
+# target to generate assembly for a file
+__/glial/immune/nimcp_astrocyte_immune_plasticity.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/immune/nimcp_astrocyte_immune_plasticity.c.s
+.PHONY : __/glial/immune/nimcp_astrocyte_immune_plasticity.c.s
 
 __/glial/immune/nimcp_astrocytes_immune_bridge.o: __/glial/immune/nimcp_astrocytes_immune_bridge.c.o
 .PHONY : __/glial/immune/nimcp_astrocytes_immune_bridge.o
@@ -11848,6 +11896,30 @@ __/plasticity/adaptive/nimcp_adaptive_fep_bridge.s: __/plasticity/adaptive/nimcp
 __/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s
 .PHONY : __/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s
+
+__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.o: __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.o
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.o
+
+# target to build an object file
+__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.o
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.o
+
+__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.i: __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.i
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.i
+
+# target to preprocess a source file
+__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.i
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.i
+
+__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.s: __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.s
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.s
+.PHONY : __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.s
 
 __/plasticity/astrocyte/nimcp_astrocyte_plasticity.o: __/plasticity/astrocyte/nimcp_astrocyte_plasticity.c.o
 .PHONY : __/plasticity/astrocyte/nimcp_astrocyte_plasticity.o
@@ -20803,9 +20875,15 @@ help:
 	@echo "... __/glial/astrocytes/nimcp_astrocytes_fep_bridge.o"
 	@echo "... __/glial/astrocytes/nimcp_astrocytes_fep_bridge.i"
 	@echo "... __/glial/astrocytes/nimcp_astrocytes_fep_bridge.s"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_base.o"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_base.i"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_base.s"
 	@echo "... __/glial/immune/nimcp_astrocyte_immune_bridge.o"
 	@echo "... __/glial/immune/nimcp_astrocyte_immune_bridge.i"
 	@echo "... __/glial/immune/nimcp_astrocyte_immune_bridge.s"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_plasticity.o"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_plasticity.i"
+	@echo "... __/glial/immune/nimcp_astrocyte_immune_plasticity.s"
 	@echo "... __/glial/immune/nimcp_astrocytes_immune_bridge.o"
 	@echo "... __/glial/immune/nimcp_astrocytes_immune_bridge.i"
 	@echo "... __/glial/immune/nimcp_astrocytes_immune_bridge.s"
@@ -21169,6 +21247,9 @@ help:
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.o"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.i"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.s"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.o"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.i"
+	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.s"
 	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_plasticity.o"
 	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_plasticity.i"
 	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_plasticity.s"

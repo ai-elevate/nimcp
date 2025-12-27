@@ -97,6 +97,17 @@ void nimcp_brain_factory_cache_decision(brain_t brain, const float* features, ui
 {
     // CRITICAL: This function must only be called while cache_mutex is locked!
     // Caller is responsible for mutex protection.
+#ifndef NDEBUG
+    // DEBUG: Verify caller holds the cache_mutex (trylock should fail if held)
+    int trylock_result = nimcp_platform_mutex_trylock(&brain->cache_mutex);
+    if (trylock_result == 0) {
+        // We acquired the lock, which means caller didn't hold it - programming error!
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
+        LOG_MODULE_ERROR(LOG_MODULE, "CRITICAL: nimcp_brain_factory_cache_decision called without cache_mutex locked!");
+        return;  // Abort to prevent data race
+    }
+    // If trylock_result == EBUSY, that's expected - lock is held (presumably by caller)
+#endif
 
     // Resize input buffer if needed (defensive: handle size changes)
     if (!brain->last_input || brain->input_size != num_features) {

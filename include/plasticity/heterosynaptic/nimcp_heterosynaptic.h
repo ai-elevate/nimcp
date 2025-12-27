@@ -121,6 +121,7 @@
 #include "cognitive/nimcp_sleep_wake.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/memory/nimcp_memory.h"
 
 /* Bio-async integration */
 #include "async/nimcp_bio_async.h"
@@ -175,6 +176,15 @@ typedef struct {
  *
  * WHAT: Per-synapse heterosynaptic plasticity state
  * WHY:  Track position, competition events, and modulation
+ *
+ * THREAD SAFETY NOTE:
+ * The lock field uses pointer indirection (nimcp_platform_mutex_t*) instead
+ * of embedding the mutex directly. This is REQUIRED because:
+ *   1. The synapse array may be reallocated (via nimcp_realloc)
+ *   2. On some platforms, mutexes contain self-referential pointers
+ *   3. realloc would invalidate those internal pointers, causing UB
+ * By using a pointer to a separately-allocated mutex, the mutex memory
+ * stays fixed even when the synapse struct moves during realloc.
  */
 typedef struct {
     /* Synaptic state */
@@ -202,8 +212,8 @@ typedef struct {
     uint64_t num_neighbor_depressions;  /**< Times depressed by neighbor */
     float total_hetero_ltd;             /**< Cumulative heterosynaptic LTD */
 
-    /* Thread safety */
-    nimcp_platform_mutex_t lock;        /**< Mutex for concurrent access */
+    /* Thread safety - pointer indirection for realloc safety */
+    nimcp_platform_mutex_t* lock;       /**< Mutex for concurrent access (heap-allocated) */
 } hetero_synapse_t;
 
 /**
@@ -285,15 +295,40 @@ typedef struct {
 
 /**
  * @brief Competition event result
+ *
+ * MEMORY OWNERSHIP: The depressed_ids array is heap-allocated and MUST be
+ * freed by the caller when no longer needed. Use hetero_competition_result_free()
+ * for proper cleanup, or manually call nimcp_free(result.depressed_ids).
+ *
+ * Example usage:
+ *   hetero_competition_result_t result = {0};
+ *   hetero_run_competition(system, center, &result);
+ *   // ... use result ...
+ *   hetero_competition_result_free(&result);  // Required to avoid memory leak
  */
 typedef struct {
     uint32_t winner_id;                 /**< ID of winning synapse */
     uint32_t num_competitors;           /**< Number of synapses in competition */
     float winner_strength;              /**< Strength of winner */
     float avg_competitor_strength;      /**< Average strength of losers */
-    uint32_t* depressed_ids;            /**< IDs of depressed synapses */
+    uint32_t* depressed_ids;            /**< IDs of depressed synapses (caller must free) */
     size_t num_depressed;               /**< Number depressed */
 } hetero_competition_result_t;
+
+/**
+ * WHAT: Free competition result resources
+ * WHY:  depressed_ids is heap-allocated and must be freed to avoid leaks
+ * HOW:  Free depressed_ids array and reset to NULL
+ *
+ * @param result Competition result to clean up (may be NULL)
+ */
+static inline void hetero_competition_result_free(hetero_competition_result_t* result) {
+    if (result && result->depressed_ids) {
+        nimcp_free(result->depressed_ids);
+        result->depressed_ids = NULL;
+        result->num_depressed = 0;
+    }
+}
 
 /* ============================================================================
  * Lifecycle API
@@ -365,15 +400,33 @@ int hetero_add_synapse(
 int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id);
 
 /**
- * WHAT: Get synapse by ID
+ * WHAT: Get synapse by ID (UNSAFE - see warning)
  * WHY:  Query or modify synapse state
  * HOW:  Linear search (use sparingly, prefer batch operations)
+ *
+ * WARNING: Returns pointer that may be invalidated by concurrent add/remove.
+ * For thread-safe access, use hetero_get_synapse_copy() instead.
  *
  * @param system Heterosynaptic system
  * @param synapse_id Synapse identifier
  * @return Synapse pointer or NULL if not found
  */
 hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_id);
+
+/**
+ * WHAT: Get thread-safe copy of synapse data by ID
+ * WHY:  hetero_get_synapse() returns pointer that can be invalidated by realloc
+ * HOW:  Copy synapse data while holding mutex
+ *
+ * This is the RECOMMENDED API for multi-threaded access.
+ *
+ * @param system Heterosynaptic system
+ * @param synapse_id Synapse identifier
+ * @param out_synapse Output: copy of synapse data (caller-allocated)
+ * @return 0 on success, -1 if not found, -2 if NULL parameters
+ */
+int hetero_get_synapse_copy(hetero_system_t* system, uint32_t synapse_id,
+                            hetero_synapse_t* out_synapse);
 
 /* ============================================================================
  * Heterosynaptic Plasticity API

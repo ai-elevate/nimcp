@@ -43,8 +43,15 @@ struct circular_buffer {
     _Alignas(CACHE_LINE_SIZE) atomic_size_t write_pos;  /**< Write position */
     _Alignas(CACHE_LINE_SIZE) atomic_size_t read_pos;   /**< Read position */
 
-    // Statistics
+    // Statistics (non-atomic version for API compatibility)
     _Alignas(CACHE_LINE_SIZE) circular_buffer_stats_t stats;
+
+    // THREAD SAFETY FIX: Atomic statistics counters for lock-free updates
+    _Alignas(CACHE_LINE_SIZE) atomic_size_t atomic_total_writes;
+    atomic_size_t atomic_total_reads;
+    atomic_size_t atomic_overflows;
+    atomic_size_t atomic_underflows;
+    atomic_size_t atomic_peak_usage;
 
     // Data storage (allocated separately for alignment)
     void* data;  /**< Element storage */
@@ -161,6 +168,13 @@ circular_buffer_t* circular_buffer_create(
     // Initialize statistics
     memset(&buf->stats, 0, sizeof(circular_buffer_stats_t));
 
+    // THREAD SAFETY FIX: Initialize atomic statistics counters
+    atomic_init(&buf->atomic_total_writes, 0);
+    atomic_init(&buf->atomic_total_reads, 0);
+    atomic_init(&buf->atomic_overflows, 0);
+    atomic_init(&buf->atomic_underflows, 0);
+    atomic_init(&buf->atomic_peak_usage, 0);
+
     // Initialize PE encoder as NULL (not configured by default)
     buf->pe_encoder = NULL;
 
@@ -196,7 +210,7 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
 
     // Check if buffer full
     if (next_write == read) {
-        buffer->stats.overflows++;
+        atomic_fetch_add(&buffer->atomic_overflows, 1);  // THREAD SAFETY FIX
 
         switch (buffer->strategy) {
             case OVERFLOW_OVERWRITE:
@@ -217,7 +231,7 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
                     sched_yield();  // Yield CPU to allow consumer to run
                     spin_count++;
                     if (spin_count >= max_spins) {
-                        buffer->stats.overflows++;  /* Count as overflow */
+                        atomic_fetch_add(&buffer->atomic_overflows, 1);  // THREAD SAFETY FIX
                         return false;  /* Timeout - prevent infinite loop */
                     }
                 }
@@ -237,11 +251,16 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
     // Advance write pointer (release semantics for synchronization)
     atomic_store(&buffer->write_pos, next_write);
 
-    // Update statistics
-    buffer->stats.total_writes++;
+    // Update statistics atomically (THREAD SAFETY FIX)
+    atomic_fetch_add(&buffer->atomic_total_writes, 1);
     size_t current_size = circular_buffer_size(buffer);
-    update_avg_utilization(buffer, current_size);
-    update_peak_utilization(buffer, current_size);
+    // Update peak usage atomically using compare-and-swap
+    size_t current_peak = atomic_load(&buffer->atomic_peak_usage);
+    while (current_size > current_peak) {
+        if (atomic_compare_exchange_weak(&buffer->atomic_peak_usage, &current_peak, current_size)) {
+            break;
+        }
+    }
 
     return true;
 }
@@ -256,7 +275,7 @@ bool circular_buffer_pop(circular_buffer_t* buffer, void* element) {
 
     // Check if buffer empty
     if (read == write) {
-        buffer->stats.underflows++;
+        atomic_fetch_add(&buffer->atomic_underflows, 1);  // THREAD SAFETY FIX
         return false;
     }
 
@@ -267,10 +286,8 @@ bool circular_buffer_pop(circular_buffer_t* buffer, void* element) {
     // Advance read pointer
     atomic_store(&buffer->read_pos, (read + 1) % buffer->capacity);
 
-    // Update statistics
-    buffer->stats.total_reads++;
-    size_t current_size = circular_buffer_size(buffer);
-    update_avg_utilization(buffer, current_size);
+    // Update statistics atomically (THREAD SAFETY FIX)
+    atomic_fetch_add(&buffer->atomic_total_reads, 1);
 
     return true;
 }
@@ -426,8 +443,13 @@ void circular_buffer_get_stats(
     // Guard: validate inputs
     if (!buffer || !stats) return;
 
-    // Copy statistics
-    memcpy(stats, &buffer->stats, sizeof(circular_buffer_stats_t));
+    // THREAD SAFETY FIX: Read from atomic counters to get accurate stats
+    stats->total_writes = atomic_load(&buffer->atomic_total_writes);
+    stats->total_reads = atomic_load(&buffer->atomic_total_reads);
+    stats->overflows = atomic_load(&buffer->atomic_overflows);
+    stats->underflows = atomic_load(&buffer->atomic_underflows);
+    stats->peak_usage = atomic_load(&buffer->atomic_peak_usage);
+    stats->avg_usage = buffer->stats.avg_usage;  // Keep non-atomic for float
 }
 
 void circular_buffer_reset_stats(circular_buffer_t* buffer) {
@@ -436,6 +458,13 @@ void circular_buffer_reset_stats(circular_buffer_t* buffer) {
 
     // Reset all statistics
     memset(&buffer->stats, 0, sizeof(circular_buffer_stats_t));
+
+    // THREAD SAFETY FIX: Also reset atomic counters
+    atomic_store(&buffer->atomic_total_writes, 0);
+    atomic_store(&buffer->atomic_total_reads, 0);
+    atomic_store(&buffer->atomic_overflows, 0);
+    atomic_store(&buffer->atomic_underflows, 0);
+    atomic_store(&buffer->atomic_peak_usage, 0);
 }
 
 //=============================================================================

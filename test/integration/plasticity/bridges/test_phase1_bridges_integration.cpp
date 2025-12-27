@@ -53,7 +53,7 @@ protected:
         axon_bridge = axon_plasticity_create(nullptr, nullptr, nullptr);
 
         // Create glial-immune bridges
-        astro_bridge = astro_immune_create(nullptr, nullptr, nullptr);
+        astro_bridge = astro_cell_create(nullptr, nullptr, nullptr);
         oligo_bridge = oligo_immune_create(nullptr, nullptr, nullptr);
         myelin_bridge = myelin_immune_create(nullptr, nullptr, nullptr);
 
@@ -69,7 +69,7 @@ protected:
         if (dendrite_bridge) dendrite_plasticity_destroy(dendrite_bridge);
         if (synapse_bridge) synapse_plasticity_destroy(synapse_bridge);
         if (axon_bridge) axon_plasticity_destroy(axon_bridge);
-        if (astro_bridge) astro_immune_destroy(astro_bridge);
+        if (astro_bridge) astro_cell_destroy(astro_bridge);
         if (oligo_bridge) oligo_immune_destroy(oligo_bridge);
         if (myelin_bridge) myelin_immune_destroy(myelin_bridge);
     }
@@ -104,7 +104,7 @@ TEST_F(Phase1BridgesIntegrationTest, AllBridgesCanUpdate) {
     EXPECT_EQ(dendrite_plasticity_update(dendrite_bridge, dt_ms), 0);
     EXPECT_EQ(synapse_plasticity_update(synapse_bridge, dt_ms), 0);
     EXPECT_EQ(axon_plasticity_update(axon_bridge, dt_ms), 0);
-    EXPECT_EQ(astro_immune_update(astro_bridge, dt_ms), 0);
+    EXPECT_EQ(astro_cell_update(astro_bridge, dt_ms), 0);
     EXPECT_EQ(oligo_immune_update(oligo_bridge, dt_ms), 0);
     EXPECT_EQ(myelin_immune_update(myelin_bridge, dt_ms), 0);
 }
@@ -217,12 +217,12 @@ TEST_F(Phase1BridgesIntegrationTest, InflammatoryDamageChain) {
     float dt_ms = 100.0f;
 
     // Update all bridges
-    astro_immune_update_reactivity(astro_bridge, dt_ms);
+    astro_cell_update_reactivity(astro_bridge, dt_ms);
     oligo_immune_accumulate_damage(oligo_bridge, dt_ms);
     myelin_immune_apply_damage(myelin_bridge, dt_ms);
 
     // Verify inflammatory state
-    EXPECT_EQ(astro_immune_get_reactivity(astro_bridge), ASTRO_A1_REACTIVE);
+    EXPECT_EQ(astro_cell_get_reactivity(astro_bridge), ASTRO_A1_REACTIVE);
     EXPECT_GT(oligo_bridge->damage_level, 0.0f);
     EXPECT_LT(myelin_immune_get_integrity(myelin_bridge), 1.0f);
 }
@@ -232,12 +232,12 @@ TEST_F(Phase1BridgesIntegrationTest, AntiInflammatoryProtection) {
     astro_bridge->cytokine_effects.a2_drive = 0.8f;
     astro_bridge->cytokine_effects.a1_drive = 0.1f;
 
-    astro_immune_update_reactivity(astro_bridge, 10.0f);
+    astro_cell_update_reactivity(astro_bridge, 10.0f);
 
-    EXPECT_EQ(astro_immune_get_reactivity(astro_bridge), ASTRO_A2_REACTIVE);
+    EXPECT_EQ(astro_cell_get_reactivity(astro_bridge), ASTRO_A2_REACTIVE);
 
     // Glutamate clearance should be normal in A2 state
-    float clearance = astro_immune_get_glutamate_clearance(astro_bridge);
+    float clearance = astro_cell_get_glutamate_clearance(astro_bridge);
     EXPECT_FLOAT_EQ(clearance, astro_bridge->config.glutamate_clearance_base);
 }
 
@@ -279,12 +279,12 @@ TEST_F(Phase1BridgesIntegrationTest, SimultaneousUpdatesDoNotInterfere) {
     dendrite_plasticity_update(dendrite_bridge, dt_ms);
     synapse_plasticity_update(synapse_bridge, dt_ms);
     axon_plasticity_update(axon_bridge, dt_ms);
-    astro_immune_update(astro_bridge, dt_ms);
+    astro_cell_update(astro_bridge, dt_ms);
     oligo_immune_update(oligo_bridge, dt_ms);
     myelin_immune_update(myelin_bridge, dt_ms);
 
     // Order 2: Immune first
-    astro_immune_update(astro_bridge, dt_ms);
+    astro_cell_update(astro_bridge, dt_ms);
     oligo_immune_update(oligo_bridge, dt_ms);
     myelin_immune_update(myelin_bridge, dt_ms);
     dendrite_plasticity_update(dendrite_bridge, dt_ms);
@@ -308,7 +308,7 @@ TEST_F(Phase1BridgesIntegrationTest, StatisticsAccumulateAcrossUpdates) {
     axon_plasticity_on_spike(axon_bridge, 0, 120);
 
     astro_bridge->cytokine_effects.a1_drive = 0.8f;
-    astro_immune_update_reactivity(astro_bridge, 10.0f);
+    astro_cell_update_reactivity(astro_bridge, 10.0f);
 
     oligo_bridge->cytokine_effects.net_damage_signal = 0.3f;
     oligo_immune_accumulate_damage(oligo_bridge, 100.0f);
@@ -327,7 +327,7 @@ TEST_F(Phase1BridgesIntegrationTest, StatisticsAccumulateAcrossUpdates) {
     dendrite_plasticity_get_stats(dendrite_bridge, &d_stats);
     synapse_plasticity_get_stats(synapse_bridge, &s_stats);
     axon_plasticity_get_stats(axon_bridge, &a_stats);
-    astro_immune_get_stats(astro_bridge, &ast_stats);
+    astro_cell_get_stats(astro_bridge, &ast_stats);
     oligo_immune_get_stats(oligo_bridge, &olg_stats);
     myelin_immune_get_stats(myelin_bridge, &myl_stats);
 
@@ -348,7 +348,7 @@ TEST_F(Phase1BridgesIntegrationTest, ResetAllStatistics) {
     dendrite_plasticity_reset_stats(dendrite_bridge);
     synapse_plasticity_reset_stats(synapse_bridge);
     axon_plasticity_reset_stats(axon_bridge);
-    astro_immune_reset_stats(astro_bridge);
+    astro_cell_reset_stats(astro_bridge);
     oligo_immune_reset_stats(oligo_bridge);
     myelin_immune_reset_stats(myelin_bridge);
 
@@ -376,7 +376,7 @@ TEST_F(Phase1BridgesIntegrationTest, HighFrequencyUpdates) {
         dendrite_plasticity_update(dendrite_bridge, 0.1f);
         synapse_plasticity_update(synapse_bridge, 0.1f);
         axon_plasticity_update(axon_bridge, 0.1f);
-        astro_immune_update(astro_bridge, 0.1f);
+        astro_cell_update(astro_bridge, 0.1f);
         oligo_immune_update(oligo_bridge, 0.1f);
         myelin_immune_update(myelin_bridge, 0.1f);
     }
@@ -417,7 +417,7 @@ TEST_F(Phase1BridgesIntegrationTest, ExtremeInflammation) {
     myelin_bridge->cytokine_effects.net_damage = 1.0f;
 
     for (int i = 0; i < 100; i++) {
-        astro_immune_update_reactivity(astro_bridge, 100.0f);
+        astro_cell_update_reactivity(astro_bridge, 100.0f);
         oligo_immune_accumulate_damage(oligo_bridge, 100.0f);
         myelin_immune_apply_damage(myelin_bridge, 100.0f);
     }

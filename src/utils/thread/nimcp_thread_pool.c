@@ -845,6 +845,8 @@ void nimcp_pool_destroy(nimcp_thread_pool_t* pool)
     pool->shutdown = true;
     // WHY BROADCAST: Wake all workers so they can check shutdown flag
     nimcp_cond_broadcast(&pool->task_available);
+    // Also broadcast to task_complete to wake any threads waiting in pool_wait() or pool_submit()
+    nimcp_cond_broadcast(&pool->task_complete);
     nimcp_mutex_unlock(&pool->lock);
 
     // Wait for all threads to finish

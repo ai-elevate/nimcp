@@ -131,8 +131,8 @@
  * @author NIMCP Development Team
  */
 
-#ifndef NIMCP_ASTROCYTE_IMMUNE_BRIDGE_H
-#define NIMCP_ASTROCYTE_IMMUNE_BRIDGE_H
+#ifndef NIMCP_ASTRO_NETWORK_IMMUNE_BRIDGE_H
+#define NIMCP_ASTRO_NETWORK_IMMUNE_BRIDGE_H
 
 #include <stdint.h>
 #include "utils/bridge/nimcp_bridge_base.h"
@@ -228,7 +228,7 @@ typedef struct {
     float total_reactivity;              /**< Combined reactivity [0-1] */
     bool is_reactive;                    /**< Above reactive threshold */
     bool is_astrogliosis;                /**< Severe reactivity */
-} cytokine_astrocyte_effects_t;
+} cytokine_astro_network_effects_t;
 
 /**
  * @brief Inflammation astrocyte state
@@ -251,7 +251,7 @@ typedef struct {
     /* Glial scar formation */
     bool glial_scar_forming;            /**< Chronic reactivity → scarring */
     float scar_progression;             /**< Scar formation progress [0-1] */
-} inflammation_astrocyte_state_t;
+} inflammation_astro_network_state_t;
 
 /**
  * @brief Astrocyte-driven immune modulation
@@ -276,7 +276,7 @@ typedef struct {
     /* Calcium wave immune propagation */
     bool calcium_wave_immune_trigger;   /**< High Ca²⁺ → immune alert */
     uint32_t calcium_triggered_alerts;  /**< Count of Ca²⁺-triggered alerts */
-} astrocyte_immune_modulation_t;
+} astro_network_modulation_t;
 
 /**
  * @brief Complete astrocyte-immune bridge state
@@ -289,9 +289,9 @@ typedef struct {
     astrocyte_network_t* astrocyte_network;
 
     /* Current state */
-    cytokine_astrocyte_effects_t cytokine_effects;
-    inflammation_astrocyte_state_t inflammation_state;
-    astrocyte_immune_modulation_t astrocyte_modulation;
+    cytokine_astro_network_effects_t cytokine_effects;
+    inflammation_astro_network_state_t inflammation_state;
+    astro_network_modulation_t astrocyte_modulation;
 
     /* Integration flags */
     bool enable_cytokine_reactivity;
@@ -311,7 +311,7 @@ typedef struct {
     uint32_t calcium_immune_triggers;
     uint32_t bbb_disruption_events;
 
-    } astrocyte_immune_bridge_t;
+    } astro_network_bridge_t;
 
 /**
  * @brief Bridge configuration
@@ -333,7 +333,7 @@ typedef struct {
     float reactive_threshold;           /**< Reactivity for cytokine production [0.3-0.5] */
     float astrogliosis_threshold;       /**< Severe reactivity threshold [0.6-0.8] */
     float calcium_immune_threshold;     /**< Calcium (µM) for immune alert [2.0-3.0] */
-} astrocyte_immune_config_t;
+} astro_network_config_t;
 
 /* ============================================================================
  * Lifecycle API
@@ -349,7 +349,7 @@ typedef struct {
  * @param config Output configuration
  * @return 0 on success, -1 on error
  */
-int astrocyte_immune_default_config(astrocyte_immune_config_t* config);
+int astro_network_default_config(astro_network_config_t* config);
 
 /**
  * @brief Create astrocyte-immune bridge
@@ -363,8 +363,8 @@ int astrocyte_immune_default_config(astrocyte_immune_config_t* config);
  * @param astrocyte_network Astrocyte network
  * @return New bridge or NULL on failure
  */
-astrocyte_immune_bridge_t* astrocyte_immune_bridge_create(
-    const astrocyte_immune_config_t* config,
+astro_network_bridge_t* astro_network_bridge_create(
+    const astro_network_config_t* config,
     brain_immune_system_t* immune_system,
     astrocyte_network_t* astrocyte_network
 );
@@ -378,7 +378,7 @@ astrocyte_immune_bridge_t* astrocyte_immune_bridge_create(
  *
  * @param bridge Bridge to destroy
  */
-void astrocyte_immune_bridge_destroy(astrocyte_immune_bridge_t* bridge);
+void astro_network_bridge_destroy(astro_network_bridge_t* bridge);
 
 /* ============================================================================
  * Immune → Astrocyte API
@@ -394,7 +394,7 @@ void astrocyte_immune_bridge_destroy(astrocyte_immune_bridge_t* bridge);
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success
  */
-int astrocyte_immune_apply_cytokine_effects(astrocyte_immune_bridge_t* bridge);
+int astro_network_apply_cytokine_effects(astro_network_bridge_t* bridge);
 
 /**
  * @brief Apply inflammation effects to astrocytes
@@ -406,7 +406,7 @@ int astrocyte_immune_apply_cytokine_effects(astrocyte_immune_bridge_t* bridge);
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success
  */
-int astrocyte_immune_apply_inflammation_effects(astrocyte_immune_bridge_t* bridge);
+int astro_network_apply_inflammation_effects(astro_network_bridge_t* bridge);
 
 /**
  * @brief Compute astrocyte reactivity from immune state
@@ -418,7 +418,7 @@ int astrocyte_immune_apply_inflammation_effects(astrocyte_immune_bridge_t* bridg
  * @param bridge Astrocyte-immune bridge
  * @return Reactivity factor [0-1] (0.0 = resting, 1.0 = full astrogliosis)
  */
-float astrocyte_immune_compute_reactivity(const astrocyte_immune_bridge_t* bridge);
+float astro_network_compute_reactivity(const astro_network_bridge_t* bridge);
 
 /**
  * @brief Compute glutamate clearance efficiency from inflammation
@@ -430,7 +430,7 @@ float astrocyte_immune_compute_reactivity(const astrocyte_immune_bridge_t* bridg
  * @param bridge Astrocyte-immune bridge
  * @return Clearance efficiency [0-1] (1.0 = normal, 0.0 = complete failure)
  */
-float astrocyte_immune_compute_glutamate_clearance(const astrocyte_immune_bridge_t* bridge);
+float astro_network_compute_glutamate_clearance(const astro_network_bridge_t* bridge);
 
 /* ============================================================================
  * Astrocyte → Immune API
@@ -446,7 +446,7 @@ float astrocyte_immune_compute_glutamate_clearance(const astrocyte_immune_bridge
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success
  */
-int astrocyte_immune_release_cytokines_from_reactive(astrocyte_immune_bridge_t* bridge);
+int astro_network_release_cytokines_from_reactive(astro_network_bridge_t* bridge);
 
 /**
  * @brief Trigger immune alert from calcium waves
@@ -458,7 +458,7 @@ int astrocyte_immune_release_cytokines_from_reactive(astrocyte_immune_bridge_t* 
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success
  */
-int astrocyte_immune_trigger_calcium_immune_alert(astrocyte_immune_bridge_t* bridge);
+int astro_network_trigger_calcium_immune_alert(astro_network_bridge_t* bridge);
 
 /**
  * @brief Increase BBB permeability from astrocyte dysfunction
@@ -470,7 +470,7 @@ int astrocyte_immune_trigger_calcium_immune_alert(astrocyte_immune_bridge_t* bri
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success
  */
-int astrocyte_immune_modulate_bbb_permeability(astrocyte_immune_bridge_t* bridge);
+int astro_network_modulate_bbb_permeability(astro_network_bridge_t* bridge);
 
 /**
  * @brief Release IL-10 from resting astrocytes
@@ -482,7 +482,7 @@ int astrocyte_immune_modulate_bbb_permeability(astrocyte_immune_bridge_t* bridge
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success
  */
-int astrocyte_immune_release_il10_homeostatic(astrocyte_immune_bridge_t* bridge);
+int astro_network_release_il10_homeostatic(astro_network_bridge_t* bridge);
 
 /* ============================================================================
  * Bidirectional Update API
@@ -499,8 +499,8 @@ int astrocyte_immune_release_il10_homeostatic(astrocyte_immune_bridge_t* bridge)
  * @param delta_ms Time since last update
  * @return 0 on success
  */
-int astrocyte_immune_bridge_update(
-    astrocyte_immune_bridge_t* bridge,
+int astro_network_bridge_update(
+    astro_network_bridge_t* bridge,
     uint64_t delta_ms
 );
 
@@ -515,9 +515,9 @@ int astrocyte_immune_bridge_update(
  * @param effects Output effects structure
  * @return 0 on success
  */
-int astrocyte_immune_get_cytokine_effects(
-    const astrocyte_immune_bridge_t* bridge,
-    cytokine_astrocyte_effects_t* effects
+int astro_network_get_cytokine_effects(
+    const astro_network_bridge_t* bridge,
+    cytokine_astro_network_effects_t* effects
 );
 
 /**
@@ -527,9 +527,9 @@ int astrocyte_immune_get_cytokine_effects(
  * @param state Output state structure
  * @return 0 on success
  */
-int astrocyte_immune_get_inflammation_state(
-    const astrocyte_immune_bridge_t* bridge,
-    inflammation_astrocyte_state_t* state
+int astro_network_get_inflammation_state(
+    const astro_network_bridge_t* bridge,
+    inflammation_astro_network_state_t* state
 );
 
 /**
@@ -542,7 +542,7 @@ int astrocyte_immune_get_inflammation_state(
  * @param bridge Astrocyte-immune bridge
  * @return true if astrogliosis (reactivity > threshold)
  */
-bool astrocyte_immune_has_astrogliosis(const astrocyte_immune_bridge_t* bridge);
+bool astro_network_has_astrogliosis(const astro_network_bridge_t* bridge);
 
 /**
  * @brief Get current astrocyte reactivity factor
@@ -550,7 +550,7 @@ bool astrocyte_immune_has_astrogliosis(const astrocyte_immune_bridge_t* bridge);
  * @param bridge Astrocyte-immune bridge
  * @return Reactivity factor [0-1]
  */
-float astrocyte_immune_get_reactivity_factor(const astrocyte_immune_bridge_t* bridge);
+float astro_network_get_reactivity_factor(const astro_network_bridge_t* bridge);
 
 /**
  * @brief Get current BBB permeability
@@ -558,7 +558,7 @@ float astrocyte_immune_get_reactivity_factor(const astrocyte_immune_bridge_t* br
  * @param bridge Astrocyte-immune bridge
  * @return BBB permeability [0-1] (0 = intact, 1 = fully compromised)
  */
-float astrocyte_immune_get_bbb_permeability(const astrocyte_immune_bridge_t* bridge);
+float astro_network_get_bbb_permeability(const astro_network_bridge_t* bridge);
 
 /* ============================================================================
  * Bio-Async Integration API
@@ -574,7 +574,7 @@ float astrocyte_immune_get_bbb_permeability(const astrocyte_immune_bridge_t* bri
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success, -1 on error
  */
-int astrocyte_immune_connect_bio_async(astrocyte_immune_bridge_t* bridge);
+int astro_network_connect_bio_async(astro_network_bridge_t* bridge);
 
 /**
  * @brief Disconnect from bio-async router
@@ -586,7 +586,7 @@ int astrocyte_immune_connect_bio_async(astrocyte_immune_bridge_t* bridge);
  * @param bridge Astrocyte-immune bridge
  * @return 0 on success
  */
-int astrocyte_immune_disconnect_bio_async(astrocyte_immune_bridge_t* bridge);
+int astro_network_disconnect_bio_async(astro_network_bridge_t* bridge);
 
 /**
  * @brief Check if bio-async is connected
@@ -594,10 +594,10 @@ int astrocyte_immune_disconnect_bio_async(astrocyte_immune_bridge_t* bridge);
  * @param bridge Astrocyte-immune bridge
  * @return true if connected
  */
-bool astrocyte_immune_is_bio_async_connected(const astrocyte_immune_bridge_t* bridge);
+bool astro_network_is_bio_async_connected(const astro_network_bridge_t* bridge);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* NIMCP_ASTROCYTE_IMMUNE_BRIDGE_H */
+#endif /* NIMCP_ASTRO_NETWORK_IMMUNE_BRIDGE_H */

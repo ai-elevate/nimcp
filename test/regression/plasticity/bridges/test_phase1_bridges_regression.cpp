@@ -51,7 +51,7 @@ protected:
         dendrite_bridge = dendrite_plasticity_create(nullptr, nullptr, nullptr);
         synapse_bridge = synapse_plasticity_create(nullptr, nullptr, nullptr);
         axon_bridge = axon_plasticity_create(nullptr, nullptr, nullptr);
-        astro_bridge = astro_immune_create(nullptr, nullptr, nullptr);
+        astro_bridge = astro_cell_create(nullptr, nullptr, nullptr);
         oligo_bridge = oligo_immune_create(nullptr, nullptr, nullptr);
         myelin_bridge = myelin_immune_create(nullptr, nullptr, nullptr);
 
@@ -67,7 +67,7 @@ protected:
         if (dendrite_bridge) dendrite_plasticity_destroy(dendrite_bridge);
         if (synapse_bridge) synapse_plasticity_destroy(synapse_bridge);
         if (axon_bridge) axon_plasticity_destroy(axon_bridge);
-        if (astro_bridge) astro_immune_destroy(astro_bridge);
+        if (astro_bridge) astro_cell_destroy(astro_bridge);
         if (oligo_bridge) oligo_immune_destroy(oligo_bridge);
         if (myelin_bridge) myelin_immune_destroy(myelin_bridge);
     }
@@ -132,10 +132,10 @@ TEST_F(Phase1BridgesRegressionTest, AstrocytesImmuneNumericalStability10000Updat
         // Oscillate between A1 and A2 drive
         astro_bridge->cytokine_effects.a1_drive = (i % 200) < 100 ? 0.8f : 0.2f;
         astro_bridge->cytokine_effects.a2_drive = (i % 200) < 100 ? 0.2f : 0.8f;
-        astro_immune_update(astro_bridge, dt_ms);
+        astro_cell_update(astro_bridge, dt_ms);
     }
 
-    float clearance = astro_immune_get_glutamate_clearance(astro_bridge);
+    float clearance = astro_cell_get_glutamate_clearance(astro_bridge);
 
     EXPECT_FALSE(std::isnan(clearance));
     EXPECT_FALSE(std::isinf(clearance));
@@ -221,7 +221,7 @@ TEST_F(Phase1BridgesRegressionTest, AxonPlasticityConfigBounds) {
 
 TEST_F(Phase1BridgesRegressionTest, AstrocytesImmuneConfigBounds) {
     astro_immune_config_t config;
-    astro_immune_default_config(&config);
+    astro_cell_default_config(&config);
 
     EXPECT_GE(config.il1_a1_induction, 0.0f);
     EXPECT_LE(config.il1_a1_induction, 1.0f);
@@ -288,10 +288,10 @@ TEST_F(Phase1BridgesRegressionTest, RepeatedCreateDestroyAxonPlasticity) {
 
 TEST_F(Phase1BridgesRegressionTest, RepeatedCreateDestroyAstrocytesImmune) {
     for (int i = 0; i < 100; i++) {
-        astro_immune_bridge_t* b = astro_immune_create(nullptr, nullptr, nullptr);
+        astro_immune_bridge_t* b = astro_cell_create(nullptr, nullptr, nullptr);
         ASSERT_NE(b, nullptr);
-        astro_immune_update(b, 10.0f);
-        astro_immune_destroy(b);
+        astro_cell_update(b, 10.0f);
+        astro_cell_destroy(b);
     }
     SUCCEED();
 }
@@ -413,16 +413,16 @@ TEST_F(Phase1BridgesRegressionTest, ExtremeCytokineValuesDoNotCrash) {
     // Max values
     astro_bridge->cytokine_effects.a1_drive = 1.0f;
     astro_bridge->cytokine_effects.a2_drive = 1.0f;
-    EXPECT_EQ(astro_immune_update(astro_bridge, 10.0f), 0);
+    EXPECT_EQ(astro_cell_update(astro_bridge, 10.0f), 0);
 
     // Zero values
     astro_bridge->cytokine_effects.a1_drive = 0.0f;
     astro_bridge->cytokine_effects.a2_drive = 0.0f;
-    EXPECT_EQ(astro_immune_update(astro_bridge, 10.0f), 0);
+    EXPECT_EQ(astro_cell_update(astro_bridge, 10.0f), 0);
 
     // Negative values (edge case)
     astro_bridge->cytokine_effects.a1_drive = -1.0f;
-    EXPECT_EQ(astro_immune_update(astro_bridge, 10.0f), 0);
+    EXPECT_EQ(astro_cell_update(astro_bridge, 10.0f), 0);
 }
 
 TEST_F(Phase1BridgesRegressionTest, MaxDamageIsClamped) {
@@ -473,7 +473,7 @@ TEST_F(Phase1BridgesRegressionTest, BridgesRemainValidAfterStress) {
 
         // Immune bridges
         astro_bridge->cytokine_effects.a1_drive = 0.5f;
-        astro_immune_update(astro_bridge, 10.0f);
+        astro_cell_update(astro_bridge, 10.0f);
 
         oligo_bridge->cytokine_effects.net_damage_signal = 0.2f;
         oligo_immune_update(oligo_bridge, 10.0f);
@@ -496,12 +496,12 @@ TEST_F(Phase1BridgesRegressionTest, ResetRestoresInitialState) {
     dendrite_plasticity_update_calcium(dendrite_bridge, 0, 0.5f);
     synapse_plasticity_on_pre_spike(synapse_bridge, 100);
     astro_bridge->cytokine_effects.a1_drive = 0.8f;
-    astro_immune_update_reactivity(astro_bridge, 10.0f);
+    astro_cell_update_reactivity(astro_bridge, 10.0f);
 
     // Reset stats
     dendrite_plasticity_reset_stats(dendrite_bridge);
     synapse_plasticity_reset_stats(synapse_bridge);
-    astro_immune_reset_stats(astro_bridge);
+    astro_cell_reset_stats(astro_bridge);
 
     // Verify stats are cleared
     dendrite_plasticity_stats_t d_stats;
@@ -510,7 +510,7 @@ TEST_F(Phase1BridgesRegressionTest, ResetRestoresInitialState) {
 
     dendrite_plasticity_get_stats(dendrite_bridge, &d_stats);
     synapse_plasticity_get_stats(synapse_bridge, &s_stats);
-    astro_immune_get_stats(astro_bridge, &a_stats);
+    astro_cell_get_stats(astro_bridge, &a_stats);
 
     EXPECT_EQ(d_stats.calcium_events, 0u);
     EXPECT_EQ(s_stats.pre_spike_count, 0u);

@@ -136,6 +136,7 @@ typedef struct astrocyte_t {
     // === HOMEOSTATIC REGULATION ===
     float target_activity_level;        /**< Desired average network activity */
     float scaling_factor;               /**< Current synaptic scaling multiplier */
+    float integral_error;               /**< Accumulated integral error for PID scaling (anti-windup bounded) */
 
     // === THREAD SAFETY ===
     nimcp_spinlock_t lock;              /**< Spinlock for concurrent calcium updates */

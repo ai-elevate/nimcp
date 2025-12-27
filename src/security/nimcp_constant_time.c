@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #define LOG_MODULE "constant_time"
 
@@ -137,6 +138,14 @@ struct nimcp_ct_context {
 //=============================================================================
 
 static nimcp_ct_context_t g_default_ctx = NULL;
+
+/**
+ * WHAT: Atomic counters for thread-safe global statistics updates
+ * WHY:  Prevent race conditions when multiple threads update stats
+ * HOW:  Use stdatomic for lock-free concurrent updates
+ */
+static _Atomic uint64_t g_atomic_hash_comparisons = 0;
+static _Atomic uint64_t g_atomic_total_bytes_compared = 0;
 
 //=============================================================================
 // Bio-Async Message Handlers
@@ -298,6 +307,11 @@ nimcp_result_t nimcp_ct_get_stats(nimcp_ct_context_t ctx, nimcp_ct_stats_t* stat
     }
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_ct_stats_t));
+
+    // Sync global atomic counters to stats (thread-safe read)
+    stats->hash_comparisons = atomic_load(&g_atomic_hash_comparisons);
+    stats->total_bytes_compared = atomic_load(&g_atomic_total_bytes_compared);
+
     return NIMCP_SUCCESS;
 }
 
@@ -561,11 +575,10 @@ bool nimcp_ct_hash_equal(const uint8_t* hash1, const uint8_t* hash2, size_t hash
         return true;
     }
 
-    // Update global stats if available
-    if (g_default_ctx && g_default_ctx->magic == NIMCP_CT_MAGIC) {
-        g_default_ctx->stats.hash_comparisons++;
-        g_default_ctx->stats.total_bytes_compared += hash_len;
-    }
+    // Update global stats atomically (thread-safe)
+    // SECURITY FIX: Use atomic operations to prevent race conditions
+    atomic_fetch_add(&g_atomic_hash_comparisons, 1);
+    atomic_fetch_add(&g_atomic_total_bytes_compared, hash_len);
 
     int result = nimcp_ct_memcmp(hash1, hash2, hash_len);
 

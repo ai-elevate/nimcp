@@ -99,22 +99,16 @@ static uint64_t generate_canary(void)
         }
     }
 
-    // SECURITY: No weak fallback - fail securely
-    // Log error and return a value that will likely cause detection
+    // SECURITY FIX: No weak fallback - fail securely by returning 0
+    // A zero canary will cause shadow stack creation to fail, which is
+    // safer than proceeding with a predictable canary that attackers could guess.
     LOG_ERROR("Failed to generate secure canary - no entropy source available");
     nimcp_security_log_event(
         NIMCP_SECURITY_EVENT_THREAT_DETECTED,
         NIMCP_THREAT_CRITICAL,
-        "Shadow stack: No secure entropy source for canary generation"
+        "Shadow stack: No secure entropy source for canary generation - refusing to use weak fallback"
     );
-
-    // SECURITY WARNING: Falling back to predictable canary value.
-    // XOR with stack address and timestamp to add some variability,
-    // but this is NOT cryptographically secure - an attacker who can
-    // read memory or predict timing may be able to guess this value.
-    LOG_WARN("Using predictable canary fallback - security degraded");
-    canary = 0xDEADBEEFCAFEBABEULL ^ (uint64_t)(uintptr_t)&canary ^ (uint64_t)time(NULL);
-    return canary;
+    return 0;  // Return 0 to signal failure - caller must check for this
 #else
     // Non-Linux platforms: use /dev/urandom if available
     int fd = open("/dev/urandom", O_RDONLY);
@@ -126,13 +120,16 @@ static uint64_t generate_canary(void)
         }
     }
 
-    // SECURITY WARNING: Falling back to predictable canary value.
-    // XOR with stack address and timestamp to add some variability,
-    // but this is NOT cryptographically secure - an attacker who can
-    // read memory or predict timing may be able to guess this value.
-    LOG_WARN("Using predictable canary fallback - security degraded");
-    canary = 0xDEADBEEFCAFEBABEULL ^ (uint64_t)(uintptr_t)&canary ^ (uint64_t)time(NULL);
-    return canary;
+    // SECURITY FIX: No weak fallback - fail securely by returning 0
+    // A zero canary will cause shadow stack creation to fail, which is
+    // safer than proceeding with a predictable canary that attackers could guess.
+    LOG_ERROR("Failed to generate secure canary - no entropy source available");
+    nimcp_security_log_event(
+        NIMCP_SECURITY_EVENT_THREAT_DETECTED,
+        NIMCP_THREAT_CRITICAL,
+        "Shadow stack: No secure entropy source for canary generation - refusing to use weak fallback"
+    );
+    return 0;  // Return 0 to signal failure - caller must check for this
 #endif
 }
 
@@ -351,6 +348,14 @@ nimcp_ss_result_t nimcp_shadow_stack_push_frame(
     entry->return_address = return_address;
     entry->frame_pointer = frame_pointer;
     entry->canary = generate_canary();
+
+    // SECURITY FIX: Fail if canary generation failed (returned 0)
+    // A zero canary indicates no secure entropy source is available
+    if (entry->canary == 0) {
+        LOG_ERROR("Shadow stack push failed - no secure entropy for canary");
+        ss->stats.mismatches++;  // Count as security failure
+        return NIMCP_SS_CORRUPTED;  // Fail securely rather than continue with weak protection
+    }
 
     ss->top++;
     ss->stats.pushes++;
@@ -705,10 +710,15 @@ nimcp_result_t nimcp_shadow_stack_set_thread_local(nimcp_shadow_stack_t* ss)
 {
     pthread_once(&tls_key_once, tls_init_key);
 
-    // Clean up existing
+    // THREAD SAFETY FIX: Get and clear the old value atomically before destroying.
+    // This prevents double-free if the TLS destructor fires during destruction.
     nimcp_shadow_stack_t* old = pthread_getspecific(tls_shadow_stack_key);
     if (old && old != ss) {
+        // Set new value first to prevent TLS destructor from re-destroying old
+        pthread_setspecific(tls_shadow_stack_key, ss);
+        // Now safe to destroy old value
         nimcp_shadow_stack_destroy(old);
+        return NIMCP_SUCCESS;
     }
 
     pthread_setspecific(tls_shadow_stack_key, ss);

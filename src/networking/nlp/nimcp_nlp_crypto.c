@@ -60,6 +60,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include <string.h>
 #include <time.h>
 
@@ -84,10 +85,15 @@
     #define NLP_USE_LIBSODIUM 0
 #endif
 
-// Neither available - software fallback only (insecure, for testing)
+// Neither available - software fallback requires explicit opt-in
 #if !NLP_USE_OPENSSL && !NLP_USE_LIBSODIUM
-    #define NLP_USE_SOFTWARE_FALLBACK 1
-    #warning "NLP crypto using insecure software fallback - do not use in production!"
+    #ifdef NIMCP_ALLOW_INSECURE_FALLBACK
+        #define NLP_USE_SOFTWARE_FALLBACK 1
+        #warning "NLP crypto using insecure software fallback - do not use in production!"
+    #else
+        #define NLP_USE_SOFTWARE_FALLBACK 0
+        #error "No secure crypto library available. Define NIMCP_ALLOW_INSECURE_FALLBACK for testing only."
+    #endif
 #else
     #define NLP_USE_SOFTWARE_FALLBACK 0
 #endif
@@ -109,12 +115,14 @@
 static bio_module_context_t g_crypto_bio_ctx = NULL;
 // Use atomic for thread-safe operation ID generation (avoid data races)
 static _Atomic uint32_t g_crypto_operation_id = 0;
+// Thread-safe one-time initialization for bio-async registration
+static nimcp_platform_once_t g_crypto_bio_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
- * @brief Initialize crypto module bio-async registration
+ * @brief Internal one-time bio-async registration routine
+ * @note Called via nimcp_platform_once() to ensure thread-safe initialization
  */
-static void nlp_crypto_ensure_bio_registered(void) {
-    if (g_crypto_bio_ctx) return;
+static void nlp_crypto_bio_register_once(void) {
     if (!bio_router_is_initialized()) return;
 
     bio_module_info_t info = {
@@ -129,6 +137,13 @@ static void nlp_crypto_ensure_bio_registered(void) {
         NIMCP_LOGGING_DEBUG(NLP_CRYPTO_MODULE,
             "Registered with bio-router for crypto events");
     }
+}
+
+/**
+ * @brief Initialize crypto module bio-async registration (thread-safe)
+ */
+static void nlp_crypto_ensure_bio_registered(void) {
+    nimcp_platform_once(&g_crypto_bio_once, nlp_crypto_bio_register_once);
 }
 
 /**

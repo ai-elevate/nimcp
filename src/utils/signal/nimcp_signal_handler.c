@@ -76,14 +76,30 @@ static struct sigaction g_old_sighup;
 //=============================================================================
 
 /**
+ * WHAT: Compute string length (signal-safe version)
+ * WHY:  strlen() may not be async-signal-safe on all systems
+ * HOW:  Simple manual loop
+ */
+static size_t safe_strlen(const char* s)
+{
+    size_t len = 0;
+    if (s) {
+        while (s[len] != '\0') {
+            len++;
+        }
+    }
+    return len;
+}
+
+/**
  * WHAT: Write string to stderr (signal-safe)
  * WHY:  printf() is NOT signal-safe
- * HOW:  Use write() syscall
+ * HOW:  Use write() syscall with signal-safe strlen
  */
 static void safe_write(const char* msg)
 {
     if (msg) {
-        write(STDERR_FILENO, msg, strlen(msg));
+        write(STDERR_FILENO, msg, safe_strlen(msg));
     }
 }
 
@@ -203,6 +219,8 @@ static void handle_fatal_signal(int sig)
     }
 
     // Call custom crash callback if set
+    // WARNING: The callback MUST be async-signal-safe!
+    // If callback uses non-async-signal-safe functions, behavior is undefined.
     if (g_config.on_fatal_signal) {
         g_config.on_fatal_signal(sig);
     }
@@ -267,6 +285,8 @@ static void handle_shutdown_signal(int sig)
     safe_write("=== Graceful shutdown initiated ===\n");
 
     // Call custom shutdown callback if set
+    // WARNING: The callback MUST be async-signal-safe!
+    // If callback uses non-async-signal-safe functions, behavior is undefined.
     if (g_config.on_graceful_shutdown) {
         g_config.on_graceful_shutdown();
     }
@@ -287,6 +307,8 @@ static void handle_sighup(int sig)
     safe_write("\n=== CONFIG RELOAD REQUESTED (SIGHUP) ===\n");
 
     // Call custom reload callback if set
+    // WARNING: The callback MUST be async-signal-safe!
+    // If callback uses non-async-signal-safe functions, behavior is undefined.
     if (g_config.on_reload_config) {
         g_config.on_reload_config();
     }

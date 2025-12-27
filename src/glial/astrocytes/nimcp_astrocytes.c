@@ -785,14 +785,13 @@ float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t ne
     // Error signal
     float error = astro->target_activity_level - avg_calcium_normalized;
 
-    // Integral error (accumulated in scaling_factor over time as simple integrator)
-    // Note: This is a simplification. Full implementation would track integral separately
-    static float integral_error = 0.0F;
-    integral_error += error * 0.001F; // Accumulate (assuming 1ms timestep)
-    integral_error = fmaxf(-1.0F, fminf(1.0F, integral_error)); // Anti-windup
+    // Integral error (accumulated per-astrocyte for thread safety)
+    // Uses astro->integral_error instead of static variable
+    astro->integral_error += error * 0.001F; // Accumulate (assuming 1ms timestep)
+    astro->integral_error = fmaxf(-1.0F, fminf(1.0F, astro->integral_error)); // Anti-windup
 
     // PID controller
-    float scaling = 1.0F + Kp * error + Ki * integral_error;
+    float scaling = 1.0F + Kp * error + Ki * astro->integral_error;
 
     // Clamp to stability range [0.3, 3.0]
     scaling = fmaxf(0.3F, fminf(3.0F, scaling));
@@ -1132,9 +1131,13 @@ nimcp_result_t astrocyte_network_establish_coupling(astrocyte_network_t* network
 
         // Allocate arrays for neighbors
         astro->coupled_astrocyte_ids = (uint32_t*) nimcp_malloc(neighbor_count * sizeof(uint32_t));
+        if (!astro->coupled_astrocyte_ids) {
+            return NIMCP_ERROR_MEMORY;
+        }
         astro->coupling_strengths = (float*) nimcp_malloc(neighbor_count * sizeof(float));
-
-        if (!astro->coupled_astrocyte_ids || !astro->coupling_strengths) {
+        if (!astro->coupling_strengths) {
+            nimcp_free(astro->coupled_astrocyte_ids);
+            astro->coupled_astrocyte_ids = NULL;
             return NIMCP_ERROR_MEMORY;
         }
 

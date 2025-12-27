@@ -231,6 +231,11 @@ static uint32_t compute_hash(hash_table_t* table, const void* key, size_t key_si
         char* lowercase_key = (char*)nimcp_malloc(key_size);
         if (!lowercase_key) {
             // Fallback to original key on allocation failure
+            // WARNING: This may cause case-insensitive lookups to fail for mixed-case keys
+            LOG_WARN("nimcp_hash_table",
+                     "Failed to allocate %zu bytes for lowercase key normalization. "
+                     "Falling back to original key - case-insensitive matching may fail.",
+                     key_size);
             goto hash_original_key;
         }
 
@@ -429,7 +434,9 @@ hash_table_t* hash_table_create(const hash_table_config_t* config)
             LOG_ERROR("nimcp_hash_table",
                       "thread_safe=true requested but NOT IMPLEMENTED. "
                       "Hash table operations are NOT thread-safe. "
-                      "Caller must provide external synchronization.");
+                      "Caller MUST provide external synchronization (e.g., nimcp_mutex_t) "
+                      "around ALL hash table operations including create, insert, lookup, "
+                      "remove, iterate, and destroy. Failing to do so will cause data races.");
             nimcp_free(table);
             return NULL;
         }

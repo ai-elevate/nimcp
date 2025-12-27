@@ -67,9 +67,8 @@ void microglia_fep_destroy(microglia_fep_bridge_t* bridge) {
     NIMCP_LOGGING_INFO("Microglia-FEP bridge destroyed");
 }
 
-int microglia_fep_update_fep_to_microglia(microglia_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
-
+/* Internal helper: update FEP to microglia effects (caller must hold lock) */
+static int microglia_fep_update_fep_to_microglia_locked(microglia_fep_bridge_t* bridge) {
     float free_energy = fep_get_free_energy(bridge->fep_system);
     float prediction_error = fep_get_prediction_error(bridge->fep_system, 0);
 
@@ -94,16 +93,17 @@ int microglia_fep_update_fep_to_microglia(microglia_fep_bridge_t* bridge) {
     return 0;
 }
 
-int microglia_fep_update_microglia_to_fep(microglia_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->microglia_network) return NIMCP_ERROR_NULL_POINTER;
-
+/* Internal helper: update microglia to FEP effects (caller must hold lock) */
+static int microglia_fep_update_microglia_to_fep_locked(microglia_fep_bridge_t* bridge) {
     microglia_network_stats_t stats;
     microglia_network_get_stats(bridge->microglia_network, &stats);
 
     // Pruning increases structural uncertainty
+    // Guard against division by zero with max(1, monitored_synapses)
     bridge->micro_effects.synapses_pruned = stats.total_pruned;
+    uint32_t denominator = (stats.total_monitored_synapses > 0) ? stats.total_monitored_synapses : 1;
     bridge->micro_effects.structural_uncertainty =
-        (float)stats.total_pruned / (float)(stats.total_monitored_synapses + 1);
+        (float)stats.total_pruned / (float)denominator;
 
     // Cytokines modulate network precision
     float inflammation = stats.total_pro_inflammatory - stats.total_anti_inflammatory;
@@ -118,11 +118,35 @@ int microglia_fep_update_microglia_to_fep(microglia_fep_bridge_t* bridge) {
     return 0;
 }
 
+int microglia_fep_update_fep_to_microglia(microglia_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    int ret = microglia_fep_update_fep_to_microglia_locked(bridge);
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return ret;
+}
+
+int microglia_fep_update_microglia_to_fep(microglia_fep_bridge_t* bridge) {
+    if (!bridge || !bridge->microglia_network) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    int ret = microglia_fep_update_microglia_to_fep_locked(bridge);
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return ret;
+}
+
 int microglia_fep_update(microglia_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    int ret = microglia_fep_update_fep_to_microglia(bridge);
-    if (ret != 0) return ret;
-    return microglia_fep_update_microglia_to_fep(bridge);
+    if (!bridge->fep_system || !bridge->microglia_network) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    int ret = microglia_fep_update_fep_to_microglia_locked(bridge);
+    if (ret == 0) {
+        ret = microglia_fep_update_microglia_to_fep_locked(bridge);
+    }
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return ret;
 }
 
 int microglia_fep_apply_modulation(microglia_fep_bridge_t* bridge) {

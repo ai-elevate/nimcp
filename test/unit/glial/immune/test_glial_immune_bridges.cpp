@@ -52,7 +52,7 @@ class AstrocyteImmuneBridgeTest : public ::testing::Test {
 protected:
     brain_immune_system_t* immune_system = nullptr;
     astrocyte_network_t mock_astrocyte_network;
-    astrocyte_immune_bridge_t* bridge = nullptr;
+    astro_network_bridge_t* bridge = nullptr;
 
     void SetUp() override {
         /* Create brain immune system */
@@ -66,9 +66,9 @@ protected:
         memset(&mock_astrocyte_network, 0, sizeof(mock_astrocyte_network));
 
         /* Create bridge */
-        astrocyte_immune_config_t bridge_config;
-        astrocyte_immune_default_config(&bridge_config);
-        bridge = astrocyte_immune_bridge_create(
+        astro_network_config_t bridge_config;
+        astro_network_default_config(&bridge_config);
+        bridge = astro_network_bridge_create(
             &bridge_config,
             immune_system,
             &mock_astrocyte_network
@@ -78,7 +78,7 @@ protected:
 
     void TearDown() override {
         if (bridge) {
-            astrocyte_immune_bridge_destroy(bridge);
+            astro_network_bridge_destroy(bridge);
             bridge = nullptr;
         }
         if (immune_system) {
@@ -94,8 +94,8 @@ protected:
  * ============================================================================ */
 
 TEST_F(AstrocyteImmuneBridgeTest, DefaultConfigIsValid) {
-    astrocyte_immune_config_t config;
-    int result = astrocyte_immune_default_config(&config);
+    astro_network_config_t config;
+    int result = astro_network_default_config(&config);
     EXPECT_EQ(result, 0);
     EXPECT_TRUE(config.enable_cytokine_reactivity);
     EXPECT_TRUE(config.enable_inflammation_astrogliosis);
@@ -103,35 +103,35 @@ TEST_F(AstrocyteImmuneBridgeTest, DefaultConfigIsValid) {
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, DefaultConfigNullFails) {
-    int result = astrocyte_immune_default_config(nullptr);
+    int result = astro_network_default_config(nullptr);
     EXPECT_EQ(result, -1);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, CreateWithNullImmuneFails) {
-    astrocyte_immune_bridge_t* b = astrocyte_immune_bridge_create(
+    astro_network_bridge_t* b = astro_network_bridge_create(
         nullptr, nullptr, &mock_astrocyte_network
     );
     EXPECT_EQ(b, nullptr);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, CreateWithNullNetworkFails) {
-    astrocyte_immune_bridge_t* b = astrocyte_immune_bridge_create(
+    astro_network_bridge_t* b = astro_network_bridge_create(
         nullptr, immune_system, nullptr
     );
     EXPECT_EQ(b, nullptr);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, CreateWithDefaultConfig) {
-    astrocyte_immune_bridge_t* b = astrocyte_immune_bridge_create(
+    astro_network_bridge_t* b = astro_network_bridge_create(
         nullptr, immune_system, &mock_astrocyte_network
     );
     ASSERT_NE(b, nullptr);
-    astrocyte_immune_bridge_destroy(b);
+    astro_network_bridge_destroy(b);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, DestroyNull) {
     /* Should not crash */
-    astrocyte_immune_bridge_destroy(nullptr);
+    astro_network_bridge_destroy(nullptr);
 }
 
 /* ============================================================================
@@ -139,33 +139,33 @@ TEST_F(AstrocyteImmuneBridgeTest, DestroyNull) {
  * ============================================================================ */
 
 TEST_F(AstrocyteImmuneBridgeTest, ApplyCytokineEffects) {
-    int result = astrocyte_immune_apply_cytokine_effects(bridge);
+    int result = astro_network_apply_cytokine_effects(bridge);
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, ApplyCytokineEffectsNullBridge) {
-    int result = astrocyte_immune_apply_cytokine_effects(nullptr);
+    int result = astro_network_apply_cytokine_effects(nullptr);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, ApplyInflammationEffects) {
-    int result = astrocyte_immune_apply_inflammation_effects(bridge);
+    int result = astro_network_apply_inflammation_effects(bridge);
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, ComputeReactivity) {
-    float reactivity = astrocyte_immune_compute_reactivity(bridge);
+    float reactivity = astro_network_compute_reactivity(bridge);
     EXPECT_GE(reactivity, 0.0f);
     EXPECT_LE(reactivity, 1.0f);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, ComputeReactivityNull) {
-    float reactivity = astrocyte_immune_compute_reactivity(nullptr);
+    float reactivity = astro_network_compute_reactivity(nullptr);
     EXPECT_FLOAT_EQ(reactivity, 0.0f);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, ComputeGlutamateClearance) {
-    float clearance = astrocyte_immune_compute_glutamate_clearance(bridge);
+    float clearance = astro_network_compute_glutamate_clearance(bridge);
     EXPECT_GE(clearance, 0.0f);
     EXPECT_LE(clearance, 1.0f);
 }
@@ -175,13 +175,13 @@ TEST_F(AstrocyteImmuneBridgeTest, ComputeGlutamateClearance) {
  * ============================================================================ */
 
 TEST_F(AstrocyteImmuneBridgeTest, BridgeUpdate) {
-    int result = astrocyte_immune_bridge_update(bridge, 100);
+    int result = astro_network_bridge_update(bridge, 100);
     EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(bridge->total_updates, 0u);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, BridgeUpdateNull) {
-    int result = astrocyte_immune_bridge_update(nullptr, 100);
+    int result = astro_network_bridge_update(nullptr, 100);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
@@ -190,30 +190,30 @@ TEST_F(AstrocyteImmuneBridgeTest, BridgeUpdateNull) {
  * ============================================================================ */
 
 TEST_F(AstrocyteImmuneBridgeTest, GetCytokineEffects) {
-    cytokine_astrocyte_effects_t effects;
-    int result = astrocyte_immune_get_cytokine_effects(bridge, &effects);
+    cytokine_astro_network_effects_t effects;
+    int result = astro_network_get_cytokine_effects(bridge, &effects);
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, GetInflammationState) {
-    inflammation_astrocyte_state_t state;
-    int result = astrocyte_immune_get_inflammation_state(bridge, &state);
+    inflammation_astro_network_state_t state;
+    int result = astro_network_get_inflammation_state(bridge, &state);
     EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, HasAstrogliosis) {
-    bool has_astrogliosis = astrocyte_immune_has_astrogliosis(bridge);
+    bool has_astrogliosis = astro_network_has_astrogliosis(bridge);
     /* Initially false */
     EXPECT_FALSE(has_astrogliosis);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, GetReactivityFactor) {
-    float factor = astrocyte_immune_get_reactivity_factor(bridge);
+    float factor = astro_network_get_reactivity_factor(bridge);
     EXPECT_GE(factor, 0.0f);
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, GetBBBPermeability) {
-    float permeability = astrocyte_immune_get_bbb_permeability(bridge);
+    float permeability = astro_network_get_bbb_permeability(bridge);
     EXPECT_GE(permeability, 0.0f);
 }
 
@@ -222,21 +222,21 @@ TEST_F(AstrocyteImmuneBridgeTest, GetBBBPermeability) {
  * ============================================================================ */
 
 TEST_F(AstrocyteImmuneBridgeTest, ConnectBioAsync) {
-    int result = astrocyte_immune_connect_bio_async(bridge);
+    int result = astro_network_connect_bio_async(bridge);
     EXPECT_EQ(result, NIMCP_SUCCESS);
     /* Note: bio_async_enabled only becomes true when bio_router is initialized */
     /* In unit tests without bio_router, connection succeeds but enabled stays false */
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, DisconnectBioAsync) {
-    astrocyte_immune_connect_bio_async(bridge);
-    int result = astrocyte_immune_disconnect_bio_async(bridge);
+    astro_network_connect_bio_async(bridge);
+    int result = astro_network_disconnect_bio_async(bridge);
     EXPECT_EQ(result, NIMCP_SUCCESS);
-    EXPECT_FALSE(astrocyte_immune_is_bio_async_connected(bridge));
+    EXPECT_FALSE(astro_network_is_bio_async_connected(bridge));
 }
 
 TEST_F(AstrocyteImmuneBridgeTest, IsBioAsyncConnectedNull) {
-    bool connected = astrocyte_immune_is_bio_async_connected(nullptr);
+    bool connected = astro_network_is_bio_async_connected(nullptr);
     EXPECT_FALSE(connected);
 }
 

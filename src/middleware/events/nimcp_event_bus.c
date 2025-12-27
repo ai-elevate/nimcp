@@ -36,6 +36,9 @@ static nimcp_platform_once_t g_security_init_once = NIMCP_PLATFORM_ONCE_INIT;
  *
  * THREAD-SAFETY: Called via nimcp_platform_once(), guaranteed single execution
  */
+/* Forward declaration for atexit registration */
+static void event_bus_security_cleanup(void);
+
 static void event_bus_security_init_internal(void) {
     bbb_config_t config = bbb_default_config();
     config.strict_mode = false;  // Don't block, just log
@@ -48,6 +51,10 @@ static void event_bus_security_init_internal(void) {
     if (!g_bbb_system) {
         LOG_ERROR("event_bus: Failed to initialize security subsystem");
     } else {
+        /* MEMORY LEAK FIX: Register cleanup with atexit to prevent memory leak */
+        if (atexit(event_bus_security_cleanup) != 0) {
+            LOG_WARN("event_bus: Failed to register atexit cleanup handler");
+        }
         LOG_INFO("event_bus: Security subsystem initialized");
     }
 }

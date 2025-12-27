@@ -41,6 +41,7 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <stdatomic.h>
 
 //=============================================================================
 // Constants
@@ -109,6 +110,10 @@ struct bbb_system_struct {
 
     /* Brain immune system integration */
     brain_immune_system_t* immune_system;
+
+    /* SECURITY FIX: Atomic counter for pending immune operations
+     * Prevents use-after-free if immune system is detached while operations pending */
+    _Atomic int pending_immune_ops;
 };
 
 //=============================================================================
@@ -339,6 +344,7 @@ NIMCP_EXPORT bbb_system_t bbb_system_create(const bbb_config_t* config)
 
     /* Initialize immune system integration */
     system->immune_system = NULL;
+    atomic_init(&system->pending_immune_ops, 0);
 
     return system;
 }
@@ -489,6 +495,25 @@ NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t*
     }
 
     nimcp_mutex_lock(&system->mutex);
+
+    /* SECURITY FIX: If disconnecting (setting to NULL), wait for pending operations.
+     * This prevents use-after-free when immune system is being detached. */
+    if (immune_system == NULL && system->immune_system != NULL) {
+        /* Spin-wait for pending immune operations to complete (with timeout) */
+        int max_wait_cycles = 10000;
+        while (atomic_load(&system->pending_immune_ops) > 0 && max_wait_cycles > 0) {
+            nimcp_mutex_unlock(&system->mutex);
+            /* Brief yield to allow pending ops to complete */
+            struct timespec ts = {0, 100000}; /* 100 microseconds */
+            nanosleep(&ts, NULL);
+            nimcp_mutex_lock(&system->mutex);
+            max_wait_cycles--;
+        }
+        if (max_wait_cycles == 0) {
+            LOG_WARN("bbb_connect_immune: Timeout waiting for pending immune operations");
+        }
+    }
+
     system->immune_system = immune_system;
     nimcp_mutex_unlock(&system->mutex);
 
@@ -835,21 +860,16 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     /* Update statistics */
     system->stats.threats_quarantined++;
 
-    /* THREAD SAFETY FIX: Copy immune pointer while holding mutex, use after unlock
-     * This prevents nested locking (BBB mutex -> immune mutex) which could deadlock.
-     * We safely copy the pointer while holding our mutex, then release our mutex
-     * before calling immune functions that acquire their own mutex.
-     *
-     * IMPORTANT: Caller must ensure the immune system remains valid during this call.
-     * The immune system pointer could theoretically be invalidated by another thread
-     * after we release the BBB mutex. In practice, the immune system lifetime is
-     * managed by the brain's lifecycle and is not destroyed while the BBB is active.
-     * If immune system destruction during BBB operation becomes possible, add a
-     * reference count to brain_immune_system_t to prevent use-after-free. */
+    /* SECURITY FIX: Use atomic reference count to prevent use-after-free.
+     * Increment counter before copying pointer, decrement after immune call.
+     * This prevents immune system from being detached while we're using it. */
     brain_immune_system_t* immune = system->immune_system;
     bool has_immune = (immune != NULL);
+    if (has_immune) {
+        atomic_fetch_add(&system->pending_immune_ops, 1);
+    }
 
-    /* Release BBB mutex BEFORE calling immune functions */
+    /* Release BBB mutex BEFORE calling immune functions (prevents deadlock) */
     nimcp_mutex_unlock(&system->mutex);
 
     /* Activate killer T cell to handle quarantined region (without holding BBB mutex) */
@@ -874,6 +894,9 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
         /* Activate killer T cell for direct action */
         uint32_t t_cell_id = 0;
         brain_immune_activate_killer_t(immune, antigen_id, &t_cell_id);
+
+        /* SECURITY FIX: Decrement pending operations counter */
+        atomic_fetch_sub(&system->pending_immune_ops, 1);
     }
 
     return true;

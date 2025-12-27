@@ -41,6 +41,13 @@ struct structural_plasticity_system {
 };
 
 /* ============================================================================
+ * Forward Declarations
+ * ============================================================================ */
+
+/* Forward declaration for find_eliminated_slot_locked used by structural_plasticity_form_synapse */
+static uint32_t find_eliminated_slot_locked(structural_plasticity_system_t* system);
+
+/* ============================================================================
  * Helper Functions
  * ============================================================================ */
 
@@ -84,6 +91,9 @@ static synapse_structural_state_t* find_spine_any_state(
     }
     return NULL;
 }
+
+/* Forward declaration for slot reclamation helper (defined at end of file) */
+static uint32_t find_eliminated_slot_locked(structural_plasticity_system_t* system);
 
 /**
  * WHAT: Initialize spine morphology for nascent state
@@ -292,14 +302,21 @@ int structural_plasticity_form_synapse(
         return -1;
     }
 
-    if (system->num_spines >= system->max_spines) {
-        NIMCP_LOGGING_WARN("Spine limit reached");
-        nimcp_platform_mutex_unlock(system->mutex);
-        return -1;
+    /* Try to reuse an eliminated slot first to avoid unbounded growth */
+    uint32_t slot = find_eliminated_slot_locked(system);
+    bool reusing_slot = (slot != (uint32_t)-1);
+
+    if (!reusing_slot) {
+        /* No eliminated slot available, use next free slot */
+        if (system->num_spines >= system->max_spines) {
+            NIMCP_LOGGING_WARN("Spine limit reached, no eliminated slots available");
+            nimcp_platform_mutex_unlock(system->mutex);
+            return -1;
+        }
+        slot = system->num_spines;
     }
 
-    /* Find free slot with explicit bounds check */
-    uint32_t slot = system->num_spines;
+    /* Bounds check (defensive - should not be reachable) */
     if (slot >= system->max_spines) {
         NIMCP_LOGGING_ERROR("Slot index exceeds max_spines");
         nimcp_platform_mutex_unlock(system->mutex);
@@ -323,7 +340,10 @@ int structural_plasticity_form_synapse(
     spine->pruning_urgency = 0.0f;
     spine->formation_events = 1;
 
-    system->num_spines++;
+    /* Only increment num_spines if using a new slot, not reusing eliminated */
+    if (!reusing_slot) {
+        system->num_spines++;
+    }
     system->total_formations++;
     *synapse_id = spine->synapse_id;
 
@@ -1071,4 +1091,95 @@ int structural_plasticity_get_complement_tagged(
 
     nimcp_platform_mutex_unlock(system->mutex);
     return 0;
+}
+
+/* ============================================================================
+ * Slot Reclamation Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Compact spine array by removing eliminated slots
+ * WHY:  Eliminated spines consume memory and slow down iteration
+ * HOW:  Shift non-eliminated spines to fill gaps left by eliminated ones
+ *
+ * THREAD SAFETY: Caller must hold system mutex
+ * COMPLEXITY: O(n) where n = num_spines
+ *
+ * @param system Structural plasticity system
+ * @return Number of slots reclaimed
+ */
+static uint32_t compact_eliminated_spines_locked(structural_plasticity_system_t* system) {
+    if (!system || !system->spines) return 0;
+
+    uint32_t write_idx = 0;
+    uint32_t reclaimed = 0;
+
+    for (uint32_t read_idx = 0; read_idx < system->num_spines; read_idx++) {
+        if (system->spines[read_idx].state != SYNAPSE_STATE_ELIMINATED) {
+            /* Keep this spine */
+            if (write_idx != read_idx) {
+                system->spines[write_idx] = system->spines[read_idx];
+            }
+            write_idx++;
+        } else {
+            /* Reclaim this slot */
+            reclaimed++;
+        }
+    }
+
+    system->num_spines = write_idx;
+    return reclaimed;
+}
+
+/**
+ * WHAT: Find a reusable eliminated slot in the spine array
+ * WHY:  Avoid compaction overhead by reusing eliminated slots for new spines
+ * HOW:  Linear scan for first ELIMINATED slot
+ *
+ * THREAD SAFETY: Caller must hold system mutex
+ *
+ * @param system Structural plasticity system
+ * @return Index of eliminated slot, or (uint32_t)-1 if none found
+ */
+static uint32_t find_eliminated_slot_locked(structural_plasticity_system_t* system) {
+    if (!system || !system->spines) return (uint32_t)-1;
+
+    for (uint32_t i = 0; i < system->num_spines; i++) {
+        if (system->spines[i].state == SYNAPSE_STATE_ELIMINATED) {
+            return i;
+        }
+    }
+    return (uint32_t)-1;
+}
+
+int structural_plasticity_compact(structural_plasticity_system_t* system) {
+    if (!system) return -1;
+
+    nimcp_platform_mutex_lock(system->mutex);
+    uint32_t reclaimed = compact_eliminated_spines_locked(system);
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    if (reclaimed > 0) {
+        NIMCP_LOGGING_INFO("Compacted spine array: reclaimed %u slots", reclaimed);
+    }
+
+    return (int)reclaimed;
+}
+
+uint32_t structural_plasticity_count_eliminated(
+    const structural_plasticity_system_t* system
+) {
+    if (!system) return 0;
+
+    nimcp_platform_mutex_lock(((structural_plasticity_system_t*)system)->mutex);
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < system->num_spines; i++) {
+        if (system->spines[i].state == SYNAPSE_STATE_ELIMINATED) {
+            count++;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(((structural_plasticity_system_t*)system)->mutex);
+    return count;
 }

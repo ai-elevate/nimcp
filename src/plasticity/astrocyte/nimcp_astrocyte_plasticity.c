@@ -13,9 +13,9 @@
 #include "plasticity/astrocyte/nimcp_astrocyte_plasticity.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 
 /* ============================================================================
  * Internal Structure
@@ -35,8 +35,8 @@ struct astrocyte_plasticity_struct {
     uint64_t calcium_waves_triggered;
     uint64_t gliotransmitter_releases;
 
-    /* Thread safety */
-    pthread_mutex_t* mutex;
+    /* Thread safety - using platform-agnostic mutex */
+    nimcp_platform_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -220,14 +220,13 @@ astrocyte_plasticity_t astrocyte_plasticity_create(
         state->delta_time_s = 0.0f;
     }
 
-    /* Create mutex */
-    astro->mutex = (pthread_mutex_t*)nimcp_malloc(sizeof(pthread_mutex_t));
+    /* Create mutex using platform-agnostic API */
+    astro->mutex = nimcp_platform_mutex_create();
     if (!astro->mutex) {
         nimcp_free(astro->states);
         nimcp_free(astro);
         return NULL;
     }
-    pthread_mutex_init(astro->mutex, NULL);
 
     NIMCP_LOGGING_INFO("Astrocyte plasticity system created with %u astrocytes",
                        num_astrocytes);
@@ -237,9 +236,9 @@ astrocyte_plasticity_t astrocyte_plasticity_create(
 void astrocyte_plasticity_destroy(astrocyte_plasticity_t astro) {
     if (!astro) return;
 
-    /* Destroy mutex */
+    /* Destroy mutex using platform-agnostic API */
     if (astro->mutex) {
-        pthread_mutex_destroy(astro->mutex);
+        nimcp_platform_mutex_destroy(astro->mutex);
         nimcp_free(astro->mutex);
     }
 
@@ -267,7 +266,7 @@ int astrocyte_plasticity_update(
     if (!astro) return -1;
     if (astrocyte_id >= astro->num_astrocytes) return -1;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
 
     astrocyte_state_t* state = &astro->states[astrocyte_id];
     float dt_s = delta_ms / 1000.0f;
@@ -330,7 +329,7 @@ int astrocyte_plasticity_update(
     }
 
     astro->total_updates++;
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
     return 0;
 }
 
@@ -366,9 +365,9 @@ int astrocyte_plasticity_trigger_calcium_wave(
     if (source_id >= astro->num_astrocytes) return -1;
     if (!astro->config.enable_calcium_waves) return 0;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
     int result = trigger_calcium_wave_unlocked(astro, source_id, amplitude);
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     return result;
 }
@@ -383,7 +382,7 @@ int astrocyte_plasticity_release_gliotransmitter(
     if (!astro) return -1;
     if (astrocyte_id >= astro->num_astrocytes) return -1;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
 
     astrocyte_state_t* state = &astro->states[astrocyte_id];
     float clamped_amount = clamp_f(amount, 0.0f, 1.0f);
@@ -416,7 +415,7 @@ int astrocyte_plasticity_release_gliotransmitter(
             break;
 
         default:
-            pthread_mutex_unlock(astro->mutex);
+            nimcp_platform_mutex_unlock(astro->mutex);
             return -1;
     }
 
@@ -428,7 +427,7 @@ int astrocyte_plasticity_release_gliotransmitter(
                                                 astro->config.callback_user_data);
     }
 
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
     return 0;
 }
 
@@ -445,7 +444,7 @@ int astrocyte_plasticity_get_effects(
     if (!astro || !effects) return -1;
     if (astrocyte_id >= astro->num_astrocytes) return -1;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
 
     const astrocyte_state_t* state = &astro->states[astrocyte_id];
 
@@ -479,7 +478,7 @@ int astrocyte_plasticity_get_effects(
         effects->spatial_correlation = 0.0f;
     }
 
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
     return 0;
 }
 
@@ -489,9 +488,9 @@ float astrocyte_plasticity_get_d_serine_factor(
 ) {
     if (!astro || astrocyte_id >= astro->num_astrocytes) return 1.0f;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
     float d_serine = astro->states[astrocyte_id].d_serine_level;
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     return compute_d_serine_factor(d_serine);
 }
@@ -503,9 +502,9 @@ float astrocyte_plasticity_get_glu_clearance_time(
     if (!astro || astrocyte_id >= astro->num_astrocytes)
         return ASTROCYTE_GLU_UPTAKE_TIME_MS;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
     float uptake_rate = astro->states[astrocyte_id].glutamate_uptake_rate;
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     return compute_glu_clearance_time(uptake_rate);
 }
@@ -516,9 +515,9 @@ float astrocyte_plasticity_get_a1r_inhibition(
 ) {
     if (!astro || astrocyte_id >= astro->num_astrocytes) return 0.0f;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
     float adenosine = astro->states[astrocyte_id].adenosine_level;
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     return compute_a1r_inhibition(adenosine);
 }
@@ -536,7 +535,7 @@ int astrocyte_plasticity_notify_glutamate_release(
     if (!astro) return -1;
     if (astrocyte_id >= astro->num_astrocytes) return -1;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
 
     astrocyte_state_t* state = &astro->states[astrocyte_id];
 
@@ -552,7 +551,7 @@ int astrocyte_plasticity_notify_glutamate_release(
         }
     }
 
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
     return 0;
 }
 
@@ -564,7 +563,7 @@ int astrocyte_plasticity_notify_ltp_induction(
     if (!astro) return -1;
     if (astrocyte_id >= astro->num_astrocytes) return -1;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
 
     astrocyte_state_t* state = &astro->states[astrocyte_id];
 
@@ -581,7 +580,7 @@ int astrocyte_plasticity_notify_ltp_induction(
         trigger_calcium_wave_unlocked(astro, astrocyte_id, 0.8f);
     }
 
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
     return 0;
 }
 
@@ -600,7 +599,7 @@ int astrocyte_plasticity_set_reactive_state(
     if (astrocyte_id >= astro->num_astrocytes) return -1;
     if (!astro->config.enable_reactive_astrogliosis) return 0;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
 
     astrocyte_state_t* state = &astro->states[astrocyte_id];
     float clamped_intensity = clamp_f(intensity, 0.0f, 1.0f);
@@ -642,7 +641,7 @@ int astrocyte_plasticity_set_reactive_state(
             break;
     }
 
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     NIMCP_LOGGING_INFO("Astrocyte %u set to reactive state %d (intensity %.2f)",
                        astrocyte_id, state_type, clamped_intensity);
@@ -656,9 +655,9 @@ astrocyte_reactive_state_t astrocyte_plasticity_get_reactive_state(
     if (!astro || astrocyte_id >= astro->num_astrocytes)
         return ASTROCYTE_RESTING;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
     astrocyte_reactive_state_t state = astro->states[astrocyte_id].reactive_state;
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     return state;
 }
@@ -676,9 +675,9 @@ int astrocyte_plasticity_get_state(
     if (!astro || !state) return -1;
     if (astrocyte_id >= astro->num_astrocytes) return -1;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
     memcpy(state, &astro->states[astrocyte_id], sizeof(astrocyte_state_t));
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     return 0;
 }
@@ -689,9 +688,9 @@ bool astrocyte_plasticity_is_calcium_wave_active(
 ) {
     if (!astro || astrocyte_id >= astro->num_astrocytes) return false;
 
-    pthread_mutex_lock(astro->mutex);
+    nimcp_platform_mutex_lock(astro->mutex);
     bool active = astro->states[astrocyte_id].calcium_wave_active;
-    pthread_mutex_unlock(astro->mutex);
+    nimcp_platform_mutex_unlock(astro->mutex);
 
     return active;
 }

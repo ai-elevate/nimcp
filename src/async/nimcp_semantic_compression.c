@@ -414,8 +414,8 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
     compressor->next_primitive_id = 1;
     compressor->active_primitive_count = 0;
 
-    /* Initialize mutex */
-    if (nimcp_platform_mutex_init(&compressor->mutex) != 0) {
+    /* Initialize mutex (non-recursive) */
+    if (nimcp_platform_mutex_init(&compressor->mutex, false) != 0) {
         LOG_ERROR(COMPRESSION_MODULE, "Failed to initialize mutex");
         nimcp_free(compressor->primitive_hash);
         nimcp_free(compressor);

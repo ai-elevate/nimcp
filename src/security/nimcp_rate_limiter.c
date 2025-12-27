@@ -627,6 +627,10 @@ bool nimcp_rate_limiter_allow(
 
         check_good_behavior(limiter, bucket);
 
+        // LOCK ORDERING FIX: Release bucket lock BEFORE acquiring limiter_lock
+        // This prevents potential deadlock from inconsistent lock ordering
+        nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
+
         nimcp_platform_mutex_lock(&limiter->limiter_lock);
         // SECURITY: Overflow protection for global counter
         if (limiter->stats.requests_allowed < UINT64_MAX) {
@@ -639,6 +643,8 @@ bool nimcp_rate_limiter_allow(
                 (float)limiter->stats.total_requests * 100.0F;
         }
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+
+        return true;  // Return here since we already released bucket lock
     } else {
         // SECURITY: Overflow protection for per-client counter
         if (bucket->stats.requests_denied < UINT64_MAX) {
@@ -649,6 +655,10 @@ bool nimcp_rate_limiter_allow(
         // Store callback info for deferred invocation outside critical section
         deferred_callback_info_t deferred_cb = {0};
         apply_penalty(limiter, bucket, &deferred_cb);
+
+        // LOCK ORDERING FIX: Release bucket lock BEFORE acquiring limiter_lock
+        // This prevents potential deadlock from inconsistent lock ordering
+        nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
 
         nimcp_platform_mutex_lock(&limiter->limiter_lock);
         // SECURITY: Overflow protection for global counter
@@ -663,20 +673,14 @@ bool nimcp_rate_limiter_allow(
         }
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
 
-        // Release bucket lock before invoking callback
-        nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
-
         // Invoke callback outside critical section to prevent deadlocks
         if (deferred_cb.should_invoke) {
             deferred_cb.callback(deferred_cb.client_id, deferred_cb.violations,
                                  deferred_cb.action, deferred_cb.user_data);
         }
 
-        return allowed;
+        return false;  // Request was denied
     }
-
-    nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
-    return allowed;
 }
 
 bool nimcp_rate_limiter_allow_resource(

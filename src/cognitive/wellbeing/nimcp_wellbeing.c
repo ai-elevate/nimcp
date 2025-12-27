@@ -70,6 +70,8 @@ static bool memory_locked = false;
  */
 static bio_module_context_t wellbeing_bio_ctx = NULL;
 static bool wellbeing_bio_async_enabled = false;
+static nimcp_platform_mutex_t bio_async_mutex;
+static nimcp_platform_once_t bio_async_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
  * WHAT: B-tree index for efficient temporal queries
@@ -147,6 +149,16 @@ static void free_event(void* data)
     // No-op: events are stored in static circular buffer
     // B-tree only holds pointers, doesn't own the memory
     (void)data;
+}
+
+/**
+ * WHAT: Initialize bio-async mutex
+ * WHY: Thread-safe bio-async registration/unregistration
+ * HOW: Called via nimcp_once for thread-safe init
+ */
+static void init_bio_async_mutex(void)
+{
+    nimcp_platform_mutex_init(&bio_async_mutex, false);
 }
 
 /**
@@ -265,8 +277,12 @@ bool wellbeing_init(void)
     // Ensure initialization and memory locking
     ensure_event_log_init();
 
-    // Register with bio-async router if available
+    // Initialize bio-async mutex (thread-safe one-time init)
+    nimcp_platform_once(&bio_async_init_once, init_bio_async_mutex);
+
+    // Register with bio-async router if available (thread-safe)
     NIMCP_LOGGING_DEBUG("wellbeing: Checking bio-async router initialization...");
+    nimcp_platform_mutex_lock(&bio_async_mutex);
     if (bio_router_is_initialized() && !wellbeing_bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("wellbeing: Bio-router initialized, registering module (id=%d, inbox_capacity=64)...",
                            BIO_MODULE_WELLBEING);
@@ -287,6 +303,7 @@ bool wellbeing_init(void)
     } else if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_DEBUG("wellbeing: Bio-router not initialized, skipping async registration");
     }
+    nimcp_platform_mutex_unlock(&bio_async_mutex);
 
     NIMCP_LOGGING_INFO("wellbeing: Initialization complete (memory_locked=%s, bio_async=%s)",
                        memory_locked ? "true" : "false",
@@ -315,7 +332,11 @@ void wellbeing_shutdown(void)
     // Disconnect from immune system
     wellbeing_disconnect_immune();
 
-    // Unregister from bio-async router
+    // Initialize bio-async mutex if not already done (thread-safe one-time init)
+    nimcp_platform_once(&bio_async_init_once, init_bio_async_mutex);
+
+    // Unregister from bio-async router (thread-safe)
+    nimcp_platform_mutex_lock(&bio_async_mutex);
     if (wellbeing_bio_async_enabled && wellbeing_bio_ctx) {
         NIMCP_LOGGING_DEBUG("wellbeing: Unregistering from bio-async router...");
         bio_router_unregister_module(wellbeing_bio_ctx);
@@ -323,6 +344,7 @@ void wellbeing_shutdown(void)
         wellbeing_bio_async_enabled = false;
         NIMCP_LOGGING_INFO("wellbeing: Bio-async communication disabled");
     }
+    nimcp_platform_mutex_unlock(&bio_async_mutex);
 
     // Unlock memory if it was locked
     if (memory_locked) {

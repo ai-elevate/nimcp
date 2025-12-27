@@ -413,6 +413,18 @@ bool checkpoint_validate(const char* path) {
         return false;
     }
 
+    // Handle zero-size data case
+    if (header.data_size == 0) {
+        fclose(fp);
+        // For empty data, CRC32 should be 0 (no data to checksum)
+        if (header.crc32 != 0) {
+            set_error("CRC32 mismatch for empty data (expected 0x00000000, got 0x%08X)",
+                      header.crc32);
+            return false;
+        }
+        return true;
+    }
+
     // Read data section
     uint8_t* data = (uint8_t*)nimcp_malloc(header.data_size);
     if (!data) {
@@ -629,14 +641,40 @@ bool checkpoint_cleanup_old(const char* dir, uint32_t keep_count) {
     // For now, assume list is already sorted
 
     // Delete old checkpoints
+    // NOTE: There is an inherent TOCTOU race between checkpoint_list() and unlink().
+    // Another process could modify the directory between these operations.
+    // We handle this gracefully by logging warnings but not failing the operation.
+    uint32_t deleted_count = 0;
+    uint32_t failed_count = 0;
     for (uint32_t i = keep_count; i < count; i++) {
         NIMCP_LOGGING_INFO("Deleting old checkpoint: %s", list[i].path);
         if (unlink(list[i].path) != 0) {
-            NIMCP_LOGGING_WARN("Failed to delete %s: %s", list[i].path, strerror(errno));
+            // Handle specific error cases
+            if (errno == ENOENT) {
+                // File was already deleted (race condition) - not an error
+                NIMCP_LOGGING_DEBUG("Checkpoint already deleted (race): %s", list[i].path);
+            } else if (errno == EACCES || errno == EPERM) {
+                // Permission denied - log warning but continue
+                NIMCP_LOGGING_WARN("Permission denied deleting %s: %s", list[i].path, strerror(errno));
+                failed_count++;
+            } else {
+                // Other errors - log warning
+                NIMCP_LOGGING_WARN("Failed to delete %s: %s (errno=%d)", list[i].path, strerror(errno), errno);
+                failed_count++;
+            }
+        } else {
+            deleted_count++;
         }
     }
 
     nimcp_free(list);
+
+    // Log summary
+    if (failed_count > 0) {
+        NIMCP_LOGGING_WARN("Checkpoint cleanup: deleted %u, failed %u of %u targeted",
+                           deleted_count, failed_count, count - keep_count);
+    }
+
     return true;
 }
 

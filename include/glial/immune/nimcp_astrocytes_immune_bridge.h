@@ -1,12 +1,15 @@
 /**
  * @file nimcp_astrocytes_immune_bridge.h
- * @brief Astrocytes-Immune Bridge - Models reactive astrogliosis (A1/A2 phenotypes)
- * @version 1.0.0
- * @date 2025-12-21
+ * @brief Single-Cell Astrocyte-Immune Bridge (A1/A2 Phenotypes)
+ * @version 2.0.0
+ * @date 2025-12-27
  *
- * WHAT: Bridge connecting astrocytes to brain immune system
- * WHY:  Astrocytes become reactive during inflammation (A1 neurotoxic, A2 neuroprotective)
- * HOW:  Routes cytokine signals to modulate astrocyte phenotype and function
+ * WHAT: Bridge for individual astrocyte phenotype switching
+ * WHY:  Single-cell level A1/A2 transitions during inflammation
+ * HOW:  Works with nimcp_astrocyte_t (individual cells)
+ *
+ * NOTE: Uses "astro_cell_*" prefix to avoid conflicts with the
+ * polymorphic base class (astro_immune_*) in nimcp_astrocyte_immune_base.h
  *
  * BIOLOGICAL BASIS:
  * - A1 astrocytes (neurotoxic): Induced by IL-1alpha, TNF, C1q from microglia
@@ -32,13 +35,13 @@
 extern "C" {
 #endif
 
-#define ASTRO_IMMUNE_MODULE_NAME "astro_immune_bridge"
+#define ASTRO_IMMUNE_MODULE_NAME "astro_cell_immune_bridge"
 
 typedef struct astro_immune_bridge astro_immune_bridge_t;
 typedef struct nimcp_astrocyte nimcp_astrocyte_t;
 
 /**
- * @brief Astrocyte reactivity phenotype
+ * @brief Astrocyte reactivity phenotype (single-cell)
  */
 typedef enum {
     ASTRO_QUIESCENT = 0,    /**< Normal resting state */
@@ -92,25 +95,47 @@ struct astro_immune_bridge {
     bool initialized;
 };
 
-int astro_immune_default_config(astro_immune_config_t* config);
-astro_immune_bridge_t* astro_immune_create(
+/* ============================================================================
+ * Lifecycle API (astro_cell_* prefix)
+ * ============================================================================ */
+
+int astro_cell_default_config(astro_immune_config_t* config);
+
+astro_immune_bridge_t* astro_cell_create(
     const astro_immune_config_t* config,
     nimcp_astrocyte_t* astrocyte,
     brain_immune_system_t* immune_system);
-void astro_immune_destroy(astro_immune_bridge_t* bridge);
 
-int astro_immune_connect_bio_async(astro_immune_bridge_t* bridge);
-int astro_immune_disconnect_bio_async(astro_immune_bridge_t* bridge);
-bool astro_immune_is_bio_async_connected(const astro_immune_bridge_t* bridge);
+void astro_cell_destroy(astro_immune_bridge_t* bridge);
 
-int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge);
-int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms);
-int astro_immune_update(astro_immune_bridge_t* bridge, float dt_ms);
+/* ============================================================================
+ * Bio-Async Integration API
+ * ============================================================================ */
 
-astrocyte_reactivity_t astro_immune_get_reactivity(const astro_immune_bridge_t* bridge);
-float astro_immune_get_glutamate_clearance(const astro_immune_bridge_t* bridge);
-int astro_immune_get_stats(const astro_immune_bridge_t* bridge, astro_immune_stats_t* stats);
-void astro_immune_reset_stats(astro_immune_bridge_t* bridge);
+int astro_cell_connect_bio_async(astro_immune_bridge_t* bridge);
+int astro_cell_disconnect_bio_async(astro_immune_bridge_t* bridge);
+bool astro_cell_is_bio_async_connected(const astro_immune_bridge_t* bridge);
+
+/* ============================================================================
+ * Update API
+ * ============================================================================ */
+
+int astro_cell_update_cytokine_effects(astro_immune_bridge_t* bridge);
+int astro_cell_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms);
+int astro_cell_update(astro_immune_bridge_t* bridge, float dt_ms);
+
+/* ============================================================================
+ * Query API
+ * ============================================================================ */
+
+astrocyte_reactivity_t astro_cell_get_reactivity(const astro_immune_bridge_t* bridge);
+float astro_cell_get_glutamate_clearance(const astro_immune_bridge_t* bridge);
+int astro_cell_get_stats(const astro_immune_bridge_t* bridge, astro_immune_stats_t* stats);
+void astro_cell_reset_stats(astro_immune_bridge_t* bridge);
+
+/* ============================================================================
+ * Utility
+ * ============================================================================ */
 
 const char* astrocyte_reactivity_to_string(astrocyte_reactivity_t state);
 

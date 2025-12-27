@@ -359,9 +359,16 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
         }
     }
 
+    /* Track overflow occurrences for monitoring */
+    static _Atomic uint32_t s_overflow_count = 0;
+    uint32_t overflow_count = nimcp_atomic_fetch_add_u32(&s_overflow_count, 1, NIMCP_MEMORY_ORDER_RELAXED) + 1;
+
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
-    LOG_ERROR("Handle tracker full (%d entries) - cannot track allocation at %p",
-              BIO_MAX_TRACKED_HANDLES, ptr);
+
+    /* Log with overflow count to help diagnose if this is a transient or persistent issue */
+    LOG_ERROR("Handle tracker full (%d entries) - cannot track allocation at %p "
+              "(overflow count: %u, consider increasing BIO_MAX_TRACKED_HANDLES)",
+              BIO_MAX_TRACKED_HANDLES, ptr, overflow_count);
     return false;
 }
 

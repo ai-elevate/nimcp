@@ -545,7 +545,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/heterosynaptic/nimcp_heterosynaptic_immune_bridge.c  # Heterosynaptic-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/astrocyte/nimcp_astrocyte_plasticity.c  # Astrocyte plasticity - gliotransmitter modulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.c  # Astrocyte-sleep integration
-    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c  # Astrocyte-immune integration (for plasticity module)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c  # Plasticity-level astrocyte-immune bridge (works with astrocyte_plasticity_t)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_substrate_bridge.c  # Plasticity-substrate integration (STDP/BCM/homeostatic LR modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_coordinator.c  # Plasticity Coordinator - unified manager for all plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_plasticity_orchestrator.c  # Plasticity Orchestrator - coordinates STDP/BCM/homeostatic/structural/metabolic mechanisms
@@ -883,11 +883,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/cortical/nimcp_speech_cortical_bridge.c  # Speech-cortical bridge
 
     # Glial-Immune Integration (Phase BII-G: Glial immune bridges)
-    # Note: nimcp_astrocyte_immune_bridge.c is defined in plasticity/astrocyte/ (uses astrocyte_plasticity_t API)
+    # OO Inheritance Pattern: Base class + derived types
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocyte_immune_base.c  # Abstract base for astrocyte-immune bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocyte_immune_plasticity.c  # Derived: plasticity-focused bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocyte_immune_bridge.c  # Network-level astrocyte-immune bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocytes_immune_bridge.c  # Single-cell astrocyte-immune (A1/A2 phenotypes)
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_microglia_immune_bridge.c  # Microglia-immune integration (brain macrophages)
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_oligodendrocytes_immune_bridge.c  # Oligodendrocytes-immune integration (OPC differentiation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_myelin_immune_bridge.c  # Myelin-immune integration (MS pathophysiology)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/immune/nimcp_astrocytes_immune_bridge.c  # Astrocytes-immune integration (A1/A2 phenotypes)
 
     # Networking-Immune Integration (Phase BII-N: Distributed cognition immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/immune/nimcp_distributed_immune_bridge.c  # Distributed cognition-immune integration

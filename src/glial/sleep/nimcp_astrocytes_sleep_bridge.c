@@ -74,6 +74,12 @@ static void astro_on_sleep_state_change(sleep_state_t new_state, void* user_data
         return;
     }
 
+    /* Guard clause: Validate sleep system */
+    if (!bridge->sleep_system) {
+        NIMCP_LOGGING_ERROR("NULL sleep system in bridge during state callback");
+        return;
+    }
+
     NIMCP_LOGGING_DEBUG("Astrocyte bridge received sleep state: %d", new_state);
 
     nimcp_mutex_lock(bridge->base.mutex);

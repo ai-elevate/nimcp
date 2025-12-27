@@ -706,24 +706,37 @@ float calcium_omega_function(
     /**
      * WHAT: Omega function for learning rate
      * WHY:  Maps [Ca²⁺] to learning rate (LTD negative, LTP positive)
-     * HOW:  Sigmoidal function centered between θ_LTD and θ_LTP
+     * HOW:  Sigmoidal function centered between theta_LTD and theta_LTP
      *
-     * ω([Ca²⁺]) = ω_max * ((Ca - θ_LTD) / (θ_LTP - θ_LTD))^p
+     * omega([Ca2+]) = omega_max * ((Ca - theta_LTD) / (theta_LTP - theta_LTD))^p
      *
      * Normalized so:
-     *   Ca < θ_LTD → negative (LTD)
-     *   Ca = midpoint → ~0 (transition)
-     *   Ca > θ_LTP → positive (LTP)
+     *   Ca < theta_LTD -> negative (LTD)
+     *   Ca = midpoint -> ~0 (transition)
+     *   Ca > theta_LTP -> positive (LTP)
      *
      * Reference: Shouval et al. (2002) PNAS 99:10831-10836
      */
 
-    /* CRITICAL: Check for division by zero
+    /* CRITICAL: Input validation for numerical stability
+     * WHY:  NaN/Inf inputs would propagate and corrupt all calculations
+     * FIX:  Return 0 (no learning) for invalid inputs
+     */
+    if (!isfinite(ca_concentration) || !isfinite(threshold_ltd) ||
+        !isfinite(threshold_ltp) || !isfinite(omega_max) || !isfinite(power)) {
+        return 0.0f;
+    }
+
+    /* CRITICAL: Check for division by zero and near-zero ranges
      * WHY:  If threshold_ltp == threshold_ltd, denominator is zero
-     * FIX:  Return 0 if range is too small to compute meaningful omega
+     *       Small ranges cause numerical instability in float division
+     * FIX:  Return 0 if range is too small relative to the threshold scale
+     *       Using 1e-6 as epsilon (larger than 1e-9 for float stability)
      */
     float range = threshold_ltp - threshold_ltd;
-    if (fabsf(range) < 1e-9f) {
+    float epsilon = fmaxf(1e-6f, fabsf(threshold_ltp) * 1e-6f);
+    if (fabsf(range) < epsilon) {
+        /* Range is too small for meaningful omega computation */
         return 0.0f;
     }
 

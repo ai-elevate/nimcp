@@ -60,6 +60,7 @@
 
 #include "networking/nlp/nimcp_nlp_internal.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
@@ -122,7 +123,7 @@ static inline bool nlp_session_state_is_valid(nlp_session_state_t state);
 
 // Static bio-async context for session module (protected by nimcp_platform_once)
 static bio_module_context_t g_session_bio_ctx = NULL;
-static nimcp_once_t g_session_bio_once = NIMCP_ONCE_INIT;
+static nimcp_platform_once_t g_session_bio_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
  * @brief Internal callback for once-only bio-async registration
@@ -470,6 +471,13 @@ int nlp_session_init(nlp_peer_t* peer) {
 
     // Initialize sequence numbers with cryptographically secure random start
     // WHY: Predictable sequence numbers enable TCP-style sequence prediction attacks
+    //
+    // LIMITATION: 16-bit sequence numbers wrap after 65,535 messages per session.
+    // This is acceptable for typical NLP usage patterns where sessions are
+    // re-established periodically. For high-throughput scenarios (>1000 msg/sec),
+    // consider session re-keying before wraparound (~65 seconds at 1000 msg/sec).
+    // The random initial value mitigates replay attacks across sessions but
+    // does not prevent replay within a single session after wraparound.
     uint8_t seq_bytes[2];
     if (nlp_generate_nonce(seq_bytes, sizeof(seq_bytes)) == 0) {
         peer->tx_sequence = ((uint16_t)seq_bytes[0] << 8) | seq_bytes[1];
@@ -1115,7 +1123,10 @@ int nlp_peer_remove(nlp_node_t node, uint32_t peer_id) {
  * @param peer_id Peer brain ID
  * @return Peer pointer or NULL if not found
  * @warning NOT THREAD-SAFE - see documentation above
+ * @deprecated Use nlp_peer_find_copy() for thread-safe access. This function
+ *             returns a pointer that may be invalidated after the mutex is released.
  */
+__attribute__((deprecated("use nlp_peer_find_copy() for thread-safe access")))
 nlp_peer_t* nlp_peer_find(nlp_node_t node, uint32_t peer_id) {
     if (!nlp_validate_node(node)) {
         return NULL;

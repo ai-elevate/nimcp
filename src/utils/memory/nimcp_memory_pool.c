@@ -351,6 +351,34 @@ NIMCP_EXPORT void* memory_pool_acquire(memory_pool_t pool) {
 
     // Pop block from free-list (O(1))
     block_header_t* block = p->free_list;
+
+    // Validate next pointer before dereferencing
+    // The next pointer should either be NULL or point within our memory region
+    if (block->next != NULL) {
+        // Verify next pointer is within pool bounds
+        if ((void*)block->next < p->memory_region ||
+            (void*)block->next >= p->memory_region_end) {
+            // Corrupted free list detected - next pointer is out of bounds
+            LOG_ERROR("MEMORY_POOL", "Corrupted free list: next pointer %p is outside pool bounds [%p, %p)",
+                      (void*)block->next, p->memory_region, p->memory_region_end);
+            if (p->enable_tracking) {
+                p->failed_allocations++;
+            }
+            nimcp_platform_mutex_unlock(&p->mutex);
+            return NULL;
+        }
+        // Verify next block has valid magic
+        if (block->next->magic != BLOCK_MAGIC) {
+            LOG_ERROR("MEMORY_POOL", "Corrupted free list: next block at %p has invalid magic 0x%08X",
+                      (void*)block->next, block->next->magic);
+            if (p->enable_tracking) {
+                p->failed_allocations++;
+            }
+            nimcp_platform_mutex_unlock(&p->mutex);
+            return NULL;
+        }
+    }
+
     p->free_list = block->next;
 
     // Mark as allocated

@@ -713,6 +713,39 @@ int structural_plasticity_get_complement_tagged(
     uint32_t* count
 );
 
+/* ============================================================================
+ * Slot Reclamation API
+ * ============================================================================ */
+
+/**
+ * @brief Compact spine array by removing eliminated slots
+ *
+ * WHAT: Remove eliminated spines from the array to reclaim memory
+ * WHY:  Eliminated spines consume memory and slow down iteration
+ * HOW:  Shift non-eliminated spines to fill gaps
+ *
+ * NOTE: This is called automatically during form_synapse when no eliminated
+ * slots are available for reuse. Call manually for batch compaction.
+ *
+ * @param system Structural plasticity system
+ * @return Number of slots reclaimed, or -1 on error
+ */
+int structural_plasticity_compact(structural_plasticity_system_t* system);
+
+/**
+ * @brief Count eliminated (reclaimable) spine slots
+ *
+ * WHAT: Count how many slots are occupied by eliminated spines
+ * WHY:  Monitor fragmentation before deciding to compact
+ * HOW:  Linear scan of spine array
+ *
+ * @param system Structural plasticity system
+ * @return Number of eliminated slots
+ */
+uint32_t structural_plasticity_count_eliminated(
+    const structural_plasticity_system_t* system
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -54,9 +54,9 @@ static uint64_t get_time_us(void) {
 static lock_dependency_t* find_thread_deps(pthread_t thread_id) {
     int first_empty = -1;
     for (uint32_t i = 0; i < MAX_THREADS; i++) {
-        /* Use pthread_equal for portable thread comparison */
-        if (g_thread_deps[i].num_holding > 0 || g_thread_deps[i].waiting_on != NULL) {
-            /* Slot is in use, check if it's our thread */
+        /* Use in_use flag for portable slot detection (don't compare pthread_t to 0) */
+        if (g_thread_deps[i].in_use) {
+            /* Slot is in use, check if it's our thread using pthread_equal */
             if (pthread_equal(g_thread_deps[i].thread_id, thread_id)) {
                 return &g_thread_deps[i];
             }
@@ -70,6 +70,7 @@ static lock_dependency_t* find_thread_deps(pthread_t thread_id) {
         g_thread_deps[first_empty].thread_id = thread_id;
         g_thread_deps[first_empty].waiting_on = NULL;
         g_thread_deps[first_empty].num_holding = 0;
+        g_thread_deps[first_empty].in_use = true;  /* Mark slot as in use */
         return &g_thread_deps[first_empty];
     }
     return NULL; // Table full
@@ -125,9 +126,9 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
 
     tracked_mutex_t* waiting_on = deps->waiting_on;
 
-    // Mark as visited (use pthread_equal for portability)
+    // Mark as visited (use in_use flag and pthread_equal for portability)
     for (uint32_t i = 0; i < MAX_THREADS; i++) {
-        if ((g_thread_deps[i].num_holding > 0 || g_thread_deps[i].waiting_on != NULL) &&
+        if (g_thread_deps[i].in_use &&
             pthread_equal(g_thread_deps[i].thread_id, current_thread)) {
             visited[i] = true;
             break;
@@ -138,9 +139,9 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
     if (waiting_on->is_locked && waiting_on->owner != 0) {
         pthread_t owner = waiting_on->owner;
 
-        // Check if already visited (cycle) - use pthread_equal for portability
+        // Check if already visited (cycle) - use in_use flag and pthread_equal for portability
         for (uint32_t i = 0; i < MAX_THREADS; i++) {
-            if ((g_thread_deps[i].num_holding > 0 || g_thread_deps[i].waiting_on != NULL) &&
+            if (g_thread_deps[i].in_use &&
                 pthread_equal(g_thread_deps[i].thread_id, owner) && visited[i]) {
                 return true; // Cycle found
             }
@@ -289,8 +290,22 @@ void tracked_mutex_destroy(tracked_mutex_t* mutex) {
 bool tracked_mutex_lock(tracked_mutex_t* mutex) {
     if (!mutex) return false;
 
-    if (!g_initialized || !g_config.enable_detector) {
-        // Fallback to standard lock
+    /* Use atomic load to safely check g_initialized without holding the detector lock.
+     * This avoids the race condition where g_initialized could change between check and use. */
+    bool is_initialized = __atomic_load_n(&g_initialized, __ATOMIC_ACQUIRE);
+    if (!is_initialized) {
+        // Fallback to standard lock when detector not initialized
+        pthread_mutex_lock(&mutex->mutex);
+        return true;
+    }
+
+    /* Now check enable_detector under the detector lock for full consistency */
+    lock_detector();
+    bool detector_enabled = g_config.enable_detector;
+    unlock_detector();
+
+    if (!detector_enabled) {
+        // Fallback to standard lock when detector disabled
         pthread_mutex_lock(&mutex->mutex);
         return true;
     }
@@ -445,7 +460,7 @@ uint32_t deadlock_detector_check(void) {
 
     // Check each thread for cycles
     for (uint32_t i = 0; i < MAX_THREADS; i++) {
-        if (g_thread_deps[i].thread_id == 0) continue;
+        if (!g_thread_deps[i].in_use) continue;  /* Use in_use flag for portability */
         if (g_thread_deps[i].waiting_on == NULL) continue;
 
         // Check for cycle starting from this thread
@@ -519,7 +534,7 @@ void deadlock_detector_print_dependencies(void) {
     printf("\n=== Thread Dependencies ===\n");
 
     for (uint32_t i = 0; i < MAX_THREADS; i++) {
-        if (g_thread_deps[i].thread_id == 0) continue;
+        if (!g_thread_deps[i].in_use) continue;  /* Use in_use flag for portability */
 
         printf("Thread %lu:\n", (unsigned long)g_thread_deps[i].thread_id);
 

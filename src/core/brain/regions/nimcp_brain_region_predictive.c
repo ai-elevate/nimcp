@@ -878,6 +878,11 @@ nimcp_result_t brain_region_connect_predictive(brain_region_t* higher_region,
 
     // Guard clauses
     if (!higher_region || !lower_region) return NIMCP_ERROR_NULL_POINTER;
+    // CRITICAL: Prevent deadlock from double-locking same region
+    if (higher_region == lower_region) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Cannot connect region to itself");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (!has_predictive_extension(higher_region) ||
         !has_predictive_extension(lower_region)) {
         return NIMCP_ERROR_NOT_INITIALIZED;
@@ -939,6 +944,11 @@ nimcp_result_t brain_region_disconnect_predictive(brain_region_t* higher_region,
 
     // Guard clauses
     if (!higher_region || !lower_region) return NIMCP_ERROR_NULL_POINTER;
+    // CRITICAL: Prevent deadlock from double-locking same region
+    if (higher_region == lower_region) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Cannot disconnect region from itself");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (!has_predictive_extension(higher_region) ||
         !has_predictive_extension(lower_region)) {
         return NIMCP_ERROR_NOT_INITIALIZED;
@@ -947,7 +957,7 @@ nimcp_result_t brain_region_disconnect_predictive(brain_region_t* higher_region,
     brain_region_predictive_t* higher_pred = higher_region->predictive_extension;
     brain_region_predictive_t* lower_pred = lower_region->predictive_extension;
 
-    // Lock both regions
+    // Lock both regions (always lock in consistent order to prevent deadlock)
     brain_region_t* first = (higher_region->id < lower_region->id) ? higher_region : lower_region;
     brain_region_t* second = (higher_region->id < lower_region->id) ? lower_region : higher_region;
 

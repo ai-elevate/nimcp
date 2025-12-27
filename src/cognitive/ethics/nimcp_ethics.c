@@ -368,6 +368,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         return NULL;
     }
     if (!allocate_violation_storage(engine)) {
+        nimcp_free(engine->policies);
         empathy_network_destroy(engine->empathy_net);
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);

@@ -38,14 +38,14 @@ protected:
     astro_immune_config_t config;
 
     void SetUp() override {
-        astro_immune_default_config(&config);
-        bridge = astro_immune_create(&config, nullptr, nullptr);
+        astro_cell_default_config(&config);
+        bridge = astro_cell_create(&config, nullptr, nullptr);
         ASSERT_NE(bridge, nullptr);
     }
 
     void TearDown() override {
         if (bridge) {
-            astro_immune_destroy(bridge);
+            astro_cell_destroy(bridge);
             bridge = nullptr;
         }
     }
@@ -57,7 +57,7 @@ protected:
 
 TEST_F(AstrocytesImmuneBridgeTest, DefaultConfigHasReasonableValues) {
     astro_immune_config_t cfg;
-    int result = astro_immune_default_config(&cfg);
+    int result = astro_cell_default_config(&cfg);
 
     EXPECT_EQ(result, 0);
     EXPECT_GE(cfg.il1_a1_induction, 0.0f);
@@ -69,30 +69,30 @@ TEST_F(AstrocytesImmuneBridgeTest, DefaultConfigHasReasonableValues) {
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, DefaultConfigNullReturnsError) {
-    int result = astro_immune_default_config(nullptr);
+    int result = astro_cell_default_config(nullptr);
     EXPECT_EQ(result, -1);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, CreateWithNullConfigUsesDefaults) {
-    astro_immune_bridge_t* b = astro_immune_create(nullptr, nullptr, nullptr);
+    astro_immune_bridge_t* b = astro_cell_create(nullptr, nullptr, nullptr);
     ASSERT_NE(b, nullptr);
     EXPECT_TRUE(b->initialized);
-    astro_immune_destroy(b);
+    astro_cell_destroy(b);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, CreateWithConfigAppliesSettings) {
     config.il1_a1_induction = 0.8f;
     config.scar_formation_threshold = 0.5f;
 
-    astro_immune_bridge_t* b = astro_immune_create(&config, nullptr, nullptr);
+    astro_immune_bridge_t* b = astro_cell_create(&config, nullptr, nullptr);
     ASSERT_NE(b, nullptr);
     EXPECT_FLOAT_EQ(b->config.il1_a1_induction, 0.8f);
     EXPECT_FLOAT_EQ(b->config.scar_formation_threshold, 0.5f);
-    astro_immune_destroy(b);
+    astro_cell_destroy(b);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, DestroyNullIsNoOp) {
-    astro_immune_destroy(nullptr);
+    astro_cell_destroy(nullptr);
     // Should not crash
 }
 
@@ -110,22 +110,22 @@ TEST_F(AstrocytesImmuneBridgeTest, InitialStateIsQuiescent) {
 //=============================================================================
 
 TEST_F(AstrocytesImmuneBridgeTest, GetReactivityNullReturnsQuiescent) {
-    astrocyte_reactivity_t state = astro_immune_get_reactivity(nullptr);
+    astrocyte_reactivity_t state = astro_cell_get_reactivity(nullptr);
     EXPECT_EQ(state, ASTRO_QUIESCENT);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, GetReactivityReturnsCurrentState) {
-    astrocyte_reactivity_t state = astro_immune_get_reactivity(bridge);
+    astrocyte_reactivity_t state = astro_cell_get_reactivity(bridge);
     EXPECT_EQ(state, ASTRO_QUIESCENT);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateReactivityNullReturnsError) {
-    int result = astro_immune_update_reactivity(nullptr, 10.0f);
+    int result = astro_cell_update_reactivity(nullptr, 10.0f);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateReactivitySucceeds) {
-    int result = astro_immune_update_reactivity(bridge, 10.0f);
+    int result = astro_cell_update_reactivity(bridge, 10.0f);
     EXPECT_EQ(result, 0);
 }
 
@@ -134,7 +134,7 @@ TEST_F(AstrocytesImmuneBridgeTest, HighA1DriveTriggersA1State) {
     bridge->cytokine_effects.a1_drive = 0.8f;
     bridge->cytokine_effects.a2_drive = 0.1f;
 
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     EXPECT_EQ(bridge->reactivity_state, ASTRO_A1_REACTIVE);
 }
@@ -144,7 +144,7 @@ TEST_F(AstrocytesImmuneBridgeTest, HighA2DriveTriggersA2State) {
     bridge->cytokine_effects.a1_drive = 0.1f;
     bridge->cytokine_effects.a2_drive = 0.8f;
 
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     EXPECT_EQ(bridge->reactivity_state, ASTRO_A2_REACTIVE);
 }
@@ -153,14 +153,14 @@ TEST_F(AstrocytesImmuneBridgeTest, LowDriveRemainsQuiescent) {
     bridge->cytokine_effects.a1_drive = 0.2f;
     bridge->cytokine_effects.a2_drive = 0.1f;
 
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     EXPECT_EQ(bridge->reactivity_state, ASTRO_QUIESCENT);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, ChronicA1LeadsToScar) {
     config.scar_formation_threshold = 0.001f; // Very low threshold for test
-    astro_immune_bridge_t* b = astro_immune_create(&config, nullptr, nullptr);
+    astro_immune_bridge_t* b = astro_cell_create(&config, nullptr, nullptr);
     ASSERT_NE(b, nullptr);
 
     // Maintain high A1 for very long time
@@ -168,14 +168,14 @@ TEST_F(AstrocytesImmuneBridgeTest, ChronicA1LeadsToScar) {
     b->cytokine_effects.a2_drive = 0.0f;
 
     for (int i = 0; i < 2000; i++) {
-        astro_immune_update_reactivity(b, 100.0f);
+        astro_cell_update_reactivity(b, 100.0f);
     }
 
     // State should progress through A1 and eventually reach scar forming
     // At minimum, should be in A1_REACTIVE state
     EXPECT_GE((int)b->reactivity_state, (int)ASTRO_A1_REACTIVE);
 
-    astro_immune_destroy(b);
+    astro_cell_destroy(b);
 }
 
 //=============================================================================
@@ -183,13 +183,13 @@ TEST_F(AstrocytesImmuneBridgeTest, ChronicA1LeadsToScar) {
 //=============================================================================
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateCytokineEffectsNullReturnsError) {
-    int result = astro_immune_update_cytokine_effects(nullptr);
+    int result = astro_cell_update_cytokine_effects(nullptr);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateCytokineEffectsSucceeds) {
     // Without immune system connected, should still succeed
-    int result = astro_immune_update_cytokine_effects(bridge);
+    int result = astro_cell_update_cytokine_effects(bridge);
     EXPECT_EQ(result, 0);
 }
 
@@ -205,12 +205,12 @@ TEST_F(AstrocytesImmuneBridgeTest, CytokineEffectsInitiallyZero) {
 //=============================================================================
 
 TEST_F(AstrocytesImmuneBridgeTest, GetGlutamateClearanceNullReturnsDefault) {
-    float rate = astro_immune_get_glutamate_clearance(nullptr);
+    float rate = astro_cell_get_glutamate_clearance(nullptr);
     EXPECT_FLOAT_EQ(rate, 1.0f);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, GetGlutamateClearanceReturnsBaseInitially) {
-    float rate = astro_immune_get_glutamate_clearance(bridge);
+    float rate = astro_cell_get_glutamate_clearance(bridge);
     EXPECT_FLOAT_EQ(rate, config.glutamate_clearance_base);
 }
 
@@ -218,9 +218,9 @@ TEST_F(AstrocytesImmuneBridgeTest, A1ReducesGlutamateClearance) {
     // Set A1 state
     bridge->cytokine_effects.a1_drive = 0.9f;
     bridge->cytokine_effects.a2_drive = 0.0f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
-    float rate = astro_immune_get_glutamate_clearance(bridge);
+    float rate = astro_cell_get_glutamate_clearance(bridge);
     EXPECT_LT(rate, config.glutamate_clearance_base);
 }
 
@@ -228,9 +228,9 @@ TEST_F(AstrocytesImmuneBridgeTest, A2MaintainsNormalClearance) {
     // Set A2 state
     bridge->cytokine_effects.a1_drive = 0.0f;
     bridge->cytokine_effects.a2_drive = 0.9f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
-    float rate = astro_immune_get_glutamate_clearance(bridge);
+    float rate = astro_cell_get_glutamate_clearance(bridge);
     EXPECT_FLOAT_EQ(rate, config.glutamate_clearance_base);
 }
 
@@ -239,23 +239,23 @@ TEST_F(AstrocytesImmuneBridgeTest, A2MaintainsNormalClearance) {
 //=============================================================================
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateNullReturnsError) {
-    int result = astro_immune_update(nullptr, 10.0f);
+    int result = astro_cell_update(nullptr, 10.0f);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateSucceeds) {
-    int result = astro_immune_update(bridge, 10.0f);
+    int result = astro_cell_update(bridge, 10.0f);
     EXPECT_EQ(result, 0);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateCallsBothSubfunctions) {
     // Update should call both cytokine effects and reactivity updates
-    int result = astro_immune_update(bridge, 10.0f);
+    int result = astro_cell_update(bridge, 10.0f);
     EXPECT_EQ(result, 0);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateWithZeroTimestep) {
-    int result = astro_immune_update(bridge, 0.0f);
+    int result = astro_cell_update(bridge, 0.0f);
     EXPECT_EQ(result, 0);
 }
 
@@ -265,12 +265,12 @@ TEST_F(AstrocytesImmuneBridgeTest, UpdateWithZeroTimestep) {
 
 TEST_F(AstrocytesImmuneBridgeTest, GetStatsNullReturnsError) {
     astro_immune_stats_t stats;
-    int result = astro_immune_get_stats(nullptr, &stats);
+    int result = astro_cell_get_stats(nullptr, &stats);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, GetStatsNullOutputReturnsError) {
-    int result = astro_immune_get_stats(bridge, nullptr);
+    int result = astro_cell_get_stats(bridge, nullptr);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
@@ -278,27 +278,27 @@ TEST_F(AstrocytesImmuneBridgeTest, GetStatsReturnsValidData) {
     astro_immune_stats_t stats;
     memset(&stats, 0xFF, sizeof(stats));
 
-    int result = astro_immune_get_stats(bridge, &stats);
+    int result = astro_cell_get_stats(bridge, &stats);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(stats.reactivity_changes, 0u);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, ResetStatsNullIsNoOp) {
-    astro_immune_reset_stats(nullptr);
+    astro_cell_reset_stats(nullptr);
     // Should not crash
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, ResetStatsClearsCounters) {
     // Generate some state changes
     bridge->cytokine_effects.a1_drive = 0.9f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     // Reset
-    astro_immune_reset_stats(bridge);
+    astro_cell_reset_stats(bridge);
 
     // Verify stats are cleared
     astro_immune_stats_t stats;
-    astro_immune_get_stats(bridge, &stats);
+    astro_cell_get_stats(bridge, &stats);
     EXPECT_EQ(stats.reactivity_changes, 0u);
     EXPECT_EQ(stats.a1_activations, 0u);
     EXPECT_EQ(stats.a2_activations, 0u);
@@ -306,31 +306,31 @@ TEST_F(AstrocytesImmuneBridgeTest, ResetStatsClearsCounters) {
 
 TEST_F(AstrocytesImmuneBridgeTest, StatsTrackReactivityChanges) {
     astro_immune_stats_t stats_before, stats_after;
-    astro_immune_get_stats(bridge, &stats_before);
+    astro_cell_get_stats(bridge, &stats_before);
 
     // Trigger state change
     bridge->cytokine_effects.a1_drive = 0.9f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
-    astro_immune_get_stats(bridge, &stats_after);
+    astro_cell_get_stats(bridge, &stats_after);
     EXPECT_GT(stats_after.reactivity_changes, stats_before.reactivity_changes);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, StatsTrackA1Activations) {
     bridge->cytokine_effects.a1_drive = 0.9f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     astro_immune_stats_t stats;
-    astro_immune_get_stats(bridge, &stats);
+    astro_cell_get_stats(bridge, &stats);
     EXPECT_GT(stats.a1_activations, 0u);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, StatsTrackA2Activations) {
     bridge->cytokine_effects.a2_drive = 0.9f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     astro_immune_stats_t stats;
-    astro_immune_get_stats(bridge, &stats);
+    astro_cell_get_stats(bridge, &stats);
     EXPECT_GT(stats.a2_activations, 0u);
 }
 
@@ -339,22 +339,22 @@ TEST_F(AstrocytesImmuneBridgeTest, StatsTrackA2Activations) {
 //=============================================================================
 
 TEST_F(AstrocytesImmuneBridgeTest, ConnectBioAsyncNullReturnsError) {
-    int result = astro_immune_connect_bio_async(nullptr);
+    int result = astro_cell_connect_bio_async(nullptr);
     EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, DisconnectBioAsyncNullReturnsSuccess) {
-    int result = astro_immune_disconnect_bio_async(nullptr);
+    int result = astro_cell_disconnect_bio_async(nullptr);
     EXPECT_EQ(result, 0);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, IsBioAsyncConnectedNullReturnsFalse) {
-    bool connected = astro_immune_is_bio_async_connected(nullptr);
+    bool connected = astro_cell_is_bio_async_connected(nullptr);
     EXPECT_FALSE(connected);
 }
 
 TEST_F(AstrocytesImmuneBridgeTest, IsBioAsyncConnectedInitiallyFalse) {
-    bool connected = astro_immune_is_bio_async_connected(bridge);
+    bool connected = astro_cell_is_bio_async_connected(bridge);
     EXPECT_FALSE(connected);
 }
 
@@ -376,16 +376,16 @@ TEST_F(AstrocytesImmuneBridgeTest, ReactivityToStringReturnsValidStrings) {
 TEST_F(AstrocytesImmuneBridgeTest, StateTransitionsTracked) {
     // Multiple state transitions
     bridge->cytokine_effects.a1_drive = 0.9f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
     EXPECT_EQ(bridge->reactivity_state, ASTRO_A1_REACTIVE);
 
     bridge->cytokine_effects.a1_drive = 0.0f;
     bridge->cytokine_effects.a2_drive = 0.9f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
     EXPECT_EQ(bridge->reactivity_state, ASTRO_A2_REACTIVE);
 
     astro_immune_stats_t stats;
-    astro_immune_get_stats(bridge, &stats);
+    astro_cell_get_stats(bridge, &stats);
     EXPECT_GE(stats.reactivity_changes, 2u);
 }
 
@@ -393,7 +393,7 @@ TEST_F(AstrocytesImmuneBridgeTest, ScarProgressResets) {
     // Partial scar progress, then resolve
     bridge->cytokine_effects.a1_drive = 0.9f;
     for (int i = 0; i < 5; i++) {
-        astro_immune_update_reactivity(bridge, 100.0f);
+        astro_cell_update_reactivity(bridge, 100.0f);
     }
     float progress_during = bridge->scar_formation_progress;
     EXPECT_GT(progress_during, 0.0f);
@@ -405,7 +405,7 @@ TEST_F(AstrocytesImmuneBridgeTest, ConcurrentDrivesPickDominant) {
     // Both drives high, A1 should dominate if higher
     bridge->cytokine_effects.a1_drive = 0.8f;
     bridge->cytokine_effects.a2_drive = 0.7f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     EXPECT_EQ(bridge->reactivity_state, ASTRO_A1_REACTIVE);
 }
@@ -413,7 +413,7 @@ TEST_F(AstrocytesImmuneBridgeTest, ConcurrentDrivesPickDominant) {
 TEST_F(AstrocytesImmuneBridgeTest, VerySmallDrivesRemainQuiescent) {
     bridge->cytokine_effects.a1_drive = 0.01f;
     bridge->cytokine_effects.a2_drive = 0.01f;
-    astro_immune_update_reactivity(bridge, 10.0f);
+    astro_cell_update_reactivity(bridge, 10.0f);
 
     EXPECT_EQ(bridge->reactivity_state, ASTRO_QUIESCENT);
 }

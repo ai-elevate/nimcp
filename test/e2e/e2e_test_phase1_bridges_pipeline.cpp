@@ -57,7 +57,7 @@ protected:
         dendrite_bridge = dendrite_plasticity_create(nullptr, nullptr, nullptr);
         synapse_bridge = synapse_plasticity_create(nullptr, nullptr, nullptr);
         axon_bridge = axon_plasticity_create(nullptr, nullptr, nullptr);
-        astro_bridge = astro_immune_create(nullptr, nullptr, nullptr);
+        astro_bridge = astro_cell_create(nullptr, nullptr, nullptr);
         oligo_bridge = oligo_immune_create(nullptr, nullptr, nullptr);
         myelin_bridge = myelin_immune_create(nullptr, nullptr, nullptr);
 
@@ -73,7 +73,7 @@ protected:
         if (dendrite_bridge) dendrite_plasticity_destroy(dendrite_bridge);
         if (synapse_bridge) synapse_plasticity_destroy(synapse_bridge);
         if (axon_bridge) axon_plasticity_destroy(axon_bridge);
-        if (astro_bridge) astro_immune_destroy(astro_bridge);
+        if (astro_bridge) astro_cell_destroy(astro_bridge);
         if (oligo_bridge) oligo_immune_destroy(oligo_bridge);
         if (myelin_bridge) myelin_immune_destroy(myelin_bridge);
     }
@@ -97,7 +97,7 @@ protected:
         dendrite_plasticity_update(dendrite_bridge, dt);
         synapse_plasticity_update(synapse_bridge, dt);
         axon_plasticity_update(axon_bridge, dt);
-        astro_immune_update(astro_bridge, dt);
+        astro_cell_update(astro_bridge, dt);
         oligo_immune_update(oligo_bridge, dt);
         myelin_immune_update(myelin_bridge, dt);
     }
@@ -169,7 +169,7 @@ TEST_F(Phase1BridgesPipelineTest, ImmuneScenario_CytokineStormAndRecovery) {
         updateAllBridges(10.0f);
     }
 
-    EXPECT_EQ(astro_immune_get_reactivity(astro_bridge), ASTRO_QUIESCENT);
+    EXPECT_EQ(astro_cell_get_reactivity(astro_bridge), ASTRO_QUIESCENT);
 
     // Phase 2: Cytokine storm (inflammation)
     astro_bridge->cytokine_effects.a1_drive = 0.9f;
@@ -177,13 +177,13 @@ TEST_F(Phase1BridgesPipelineTest, ImmuneScenario_CytokineStormAndRecovery) {
     myelin_bridge->cytokine_effects.net_damage = 0.7f;
 
     for (int i = 0; i < 200; i++) {
-        astro_immune_update_reactivity(astro_bridge, 10.0f);
+        astro_cell_update_reactivity(astro_bridge, 10.0f);
         oligo_immune_accumulate_damage(oligo_bridge, 10.0f);
         myelin_immune_apply_damage(myelin_bridge, 10.0f);
     }
 
     // Should have progressed to reactive state
-    astrocyte_reactivity_t react_state = astro_immune_get_reactivity(astro_bridge);
+    astrocyte_reactivity_t react_state = astro_cell_get_reactivity(astro_bridge);
     EXPECT_EQ(react_state, ASTRO_A1_REACTIVE);
 
     // Myelin should be damaged
@@ -198,13 +198,13 @@ TEST_F(Phase1BridgesPipelineTest, ImmuneScenario_CytokineStormAndRecovery) {
     myelin_bridge->cytokine_effects.net_damage = 0.0f;
 
     for (int i = 0; i < 300; i++) {
-        astro_immune_update_reactivity(astro_bridge, 10.0f);
+        astro_cell_update_reactivity(astro_bridge, 10.0f);
         myelin_immune_apply_repair(myelin_bridge, 10.0f);
         updateAllBridges(10.0f);
     }
 
     // Should shift toward protective state or remain at A1 (depending on recovery dynamics)
-    react_state = astro_immune_get_reactivity(astro_bridge);
+    react_state = astro_cell_get_reactivity(astro_bridge);
     // Either A2 or return to quiescent is valid recovery outcome
     EXPECT_NE(react_state, ASTRO_SCAR_FORMING);
 
@@ -215,15 +215,15 @@ TEST_F(Phase1BridgesPipelineTest, ImmuneScenario_CytokineStormAndRecovery) {
 
 TEST_F(Phase1BridgesPipelineTest, ImmuneScenario_GlutamateClearanceDuringInflammation) {
     // Get baseline clearance
-    float baseline_clearance = astro_immune_get_glutamate_clearance(astro_bridge);
+    float baseline_clearance = astro_cell_get_glutamate_clearance(astro_bridge);
 
     // Induce A1 reactive state (impairs clearance)
     astro_bridge->cytokine_effects.a1_drive = 0.9f;
     for (int i = 0; i < 100; i++) {
-        astro_immune_update_reactivity(astro_bridge, 10.0f);
+        astro_cell_update_reactivity(astro_bridge, 10.0f);
     }
 
-    float a1_clearance = astro_immune_get_glutamate_clearance(astro_bridge);
+    float a1_clearance = astro_cell_get_glutamate_clearance(astro_bridge);
 
     // A1 state should reduce glutamate clearance
     EXPECT_LE(a1_clearance, baseline_clearance);
@@ -381,7 +381,7 @@ TEST_F(Phase1BridgesPipelineTest, CoordinatedScenario_ResetAndRestart) {
     dendrite_plasticity_reset_stats(dendrite_bridge);
     synapse_plasticity_reset_stats(synapse_bridge);
     axon_plasticity_reset_stats(axon_bridge);
-    astro_immune_reset_stats(astro_bridge);
+    astro_cell_reset_stats(astro_bridge);
     oligo_immune_reset_stats(oligo_bridge);
     myelin_immune_reset_stats(myelin_bridge);
 
@@ -427,7 +427,7 @@ TEST_F(Phase1BridgesPipelineTest, StressScenario_RapidStateChanges) {
         astro_bridge->cytokine_effects.a1_drive = (i % 2) ? 1.0f : 0.0f;
         astro_bridge->cytokine_effects.a2_drive = (i % 2) ? 0.0f : 1.0f;
 
-        astro_immune_update_reactivity(astro_bridge, 1.0f);
+        astro_cell_update_reactivity(astro_bridge, 1.0f);
         updateAllBridges(1.0f);
     }
 

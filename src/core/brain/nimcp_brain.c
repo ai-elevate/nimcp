@@ -1408,7 +1408,12 @@ bool init_brain_regions_subsystem(brain_t brain)
         brain_region_t* v1 = brain_module_get_region_by_type(brain->brain_regions, REGION_VISUAL_V1);
         brain_region_t* pfc = brain_module_get_region_by_type(brain->brain_regions, REGION_PREFRONTAL);
         if (v1 && pfc) {
-            brain_module_connect_regions(brain->brain_regions, v1->id, pfc->id, 0.3F);
+            nimcp_result_t result = brain_module_connect_regions(brain->brain_regions, v1->id, pfc->id, 0.3F);
+            if (result != NIMCP_SUCCESS) {
+                LOG_MODULE_WARN("BRAIN", "Failed to connect V1→PFC regions (error=%d), visual processing pathway unavailable", result);
+            }
+        } else {
+            LOG_MODULE_WARN("BRAIN", "Cannot establish V1→PFC connection: V1=%p, PFC=%p", (void*)v1, (void*)pfc);
         }
     }
 
@@ -1417,7 +1422,12 @@ bool init_brain_regions_subsystem(brain_t brain)
         brain_region_t* a1 = brain_module_get_region_by_type(brain->brain_regions, REGION_AUDITORY_A1);
         brain_region_t* pfc = brain_module_get_region_by_type(brain->brain_regions, REGION_PREFRONTAL);
         if (a1 && pfc) {
-            brain_module_connect_regions(brain->brain_regions, a1->id, pfc->id, 0.3F);
+            nimcp_result_t result = brain_module_connect_regions(brain->brain_regions, a1->id, pfc->id, 0.3F);
+            if (result != NIMCP_SUCCESS) {
+                LOG_MODULE_WARN("BRAIN", "Failed to connect A1→PFC regions (error=%d), auditory processing pathway unavailable", result);
+            }
+        } else {
+            LOG_MODULE_WARN("BRAIN", "Cannot establish A1→PFC connection: A1=%p, PFC=%p", (void*)a1, (void*)pfc);
         }
     }
 
@@ -2250,14 +2260,18 @@ void brain_destroy(brain_t brain)
 
 
     // Bio-Async: Unregister from router (if initialized)
-    // Use atomic operations for thread-safe access to global state
+    // THREAD SAFETY FIX: Use compare-and-swap to ensure only one thread
+    // performs the unregistration. Without this, multiple brain_destroy calls
+    // could race to unregister the same context, causing double-free issues.
     bio_module_context_t ctx = __atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE);
-    if (__atomic_load_n(&g_brain_bio_initialized, __ATOMIC_ACQUIRE) && ctx) {
+    if (ctx && __atomic_compare_exchange_n(&g_brain_bio_ctx, &ctx, NULL,
+                                           false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+        // We won the race - we're responsible for cleanup
         LOG_MODULE_INFO("BRAIN", "Unregistering brain from bio-async router");
         bio_router_unregister_module(ctx);
-        __atomic_store_n(&g_brain_bio_ctx, NULL, __ATOMIC_RELEASE);
         __atomic_store_n(&g_brain_bio_initialized, false, __ATOMIC_RELEASE);
     }
+    // If CAS failed, another thread already cleaned up - nothing to do
 
     // Per-brain bio-async cleanup
     if (brain->bio_async_enabled) {
@@ -2536,32 +2550,53 @@ bool ensure_writable_network(brain_t brain)
  * COMPLEXITY: O(k) where k = num_existing_labels
  * OPTIMIZATION: Linear search sufficient for small label sets
  *
+ * THREAD SAFETY: Uses cache_mutex for protection. This prevents race conditions
+ * when multiple threads try to create labels concurrently, which could cause
+ * duplicate labels or data corruption.
+ *
  * @param brain Brain handle
  * @param label Label string
  * @return Label index
  */
 static uint32_t get_or_create_label_index(brain_t brain, const char* label)
 {
+    uint32_t result = 0;
+
+    // THREAD SAFETY FIX: Protect label creation with mutex
+    // Without this, concurrent threads could:
+    // 1. Both see label doesn't exist
+    // 2. Both create the same label at same index
+    // 3. Result in duplicate labels or memory corruption
+    nimcp_platform_mutex_lock(&brain->cache_mutex);
+
     // Search existing labels - O(k)
     for (uint32_t i = 0; i < brain->num_output_labels; i++) {
         if (strcmp(brain->output_labels[i], label) == 0) {
-            return i;
+            result = i;
+            goto done;
         }
     }
 
     // Guard: Check capacity
     if (brain->num_output_labels >= brain->config.num_outputs) {
-        return 0;
+        result = 0;
+        goto done;
     }
 
     // Create new label (use nimcp_malloc to match nimcp_free in brain_destroy)
     size_t label_len = strlen(label);
     brain->output_labels[brain->num_output_labels] = nimcp_malloc(label_len + 1);
-    if (!brain->output_labels[brain->num_output_labels])
-        return 0;
+    if (!brain->output_labels[brain->num_output_labels]) {
+        result = 0;
+        goto done;
+    }
     strncpy(brain->output_labels[brain->num_output_labels], label, label_len + 1);
     brain->output_labels[brain->num_output_labels][label_len] = '\0';
-    return brain->num_output_labels++;
+    result = brain->num_output_labels++;
+
+done:
+    nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    return result;
 }
 
 /**

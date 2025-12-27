@@ -295,10 +295,12 @@ bool nimcp_config_load(const char* filepath, nimcp_brain_config_t* config) {
     // Auto-detect format based on extension
     size_t len = strlen(filepath);
 
-    if (len > 5 && (strcmp(filepath + len - 5, ".yaml") == 0 ||
-                    strcmp(filepath + len - 4, ".yml") == 0)) {
+    // Check for .yaml (5 chars) or .yml (4 chars) - need len >= 5 for .yaml, len >= 4 for .yml
+    if (len >= 5 && strcmp(filepath + len - 5, ".yaml") == 0) {
         return nimcp_config_load_yaml(filepath, config);
-    } else if (len > 5 && strcmp(filepath + len - 5, ".json") == 0) {
+    } else if (len >= 4 && strcmp(filepath + len - 4, ".yml") == 0) {
+        return nimcp_config_load_yaml(filepath, config);
+    } else if (len >= 5 && strcmp(filepath + len - 5, ".json") == 0) {
         return nimcp_config_load_json(filepath, config);
     }
 

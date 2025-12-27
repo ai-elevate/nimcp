@@ -305,10 +305,16 @@ int jepa_latent_update_precision(jepa_latent_t* latent) {
     }
 
     /* Update avg_precision with exponential moving average.
-     * Note: Simple assignment is used for the float since aligned 32-bit
-     * float access is atomic on x86/x64. The slight race in read-modify-write
-     * is acceptable for an approximate running average. */
-    g_latent_stats.avg_precision = 0.9f * g_latent_stats.avg_precision + 0.1f * latent->precision;
+     * Use CAS loop for thread-safe float update. */
+    {
+        union { float f; uint32_t u; } old_val, new_val;
+        do {
+            old_val.u = __atomic_load_n((uint32_t*)&g_latent_stats.avg_precision, __ATOMIC_RELAXED);
+            new_val.f = 0.9f * old_val.f + 0.1f * latent->precision;
+        } while (!__atomic_compare_exchange_n((uint32_t*)&g_latent_stats.avg_precision,
+                                              &old_val.u, new_val.u, false,
+                                              __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+    }
 
     return NIMCP_SUCCESS;
 }

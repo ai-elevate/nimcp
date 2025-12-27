@@ -53,21 +53,52 @@ middleware_context_t* middleware_context_create(brain_t brain,
                                                  uint32_t max_patterns,
                                                  uint32_t event_history_size,
                                                  uint32_t num_stages) {
+    // VALIDATION FIX: Check for integer overflow in size calculations
+    // Each allocation multiplies count * element_size, check for overflow
+    if (max_features > SIZE_MAX / sizeof(float) ||
+        max_patterns > SIZE_MAX / sizeof(uint32_t) ||
+        max_patterns > SIZE_MAX / sizeof(float) ||
+        event_history_size > SIZE_MAX / sizeof(brain_event_t) ||
+        num_stages > SIZE_MAX / sizeof(uint64_t)) {
+        return NULL;  // Overflow would occur
+    }
+
     middleware_context_t* ctx = nimcp_calloc(1, sizeof(middleware_context_t));
     if (!ctx) return NULL;
 
     ctx->brain = brain;
+
+    // ALLOCATION FIX: Check each allocation and clean up on failure
     ctx->cached_features = nimcp_calloc(max_features, sizeof(float));
+    if (max_features > 0 && !ctx->cached_features) goto cleanup;
     ctx->num_cached_features = max_features;
+
     ctx->detected_patterns = nimcp_calloc(max_patterns, sizeof(uint32_t));
+    if (max_patterns > 0 && !ctx->detected_patterns) goto cleanup;
+
     ctx->pattern_confidences = nimcp_calloc(max_patterns, sizeof(float));
+    if (max_patterns > 0 && !ctx->pattern_confidences) goto cleanup;
     ctx->num_detected_patterns = max_patterns;
+
     ctx->recent_events = nimcp_calloc(event_history_size, sizeof(brain_event_t));
+    if (event_history_size > 0 && !ctx->recent_events) goto cleanup;
     ctx->recent_event_capacity = event_history_size;
+
     ctx->stage_timings_us = nimcp_calloc(num_stages, sizeof(uint64_t));
+    if (num_stages > 0 && !ctx->stage_timings_us) goto cleanup;
     ctx->num_stages = num_stages;
 
     return ctx;
+
+cleanup:
+    // Clean up any successful allocations before returning NULL
+    nimcp_free(ctx->cached_features);
+    nimcp_free(ctx->detected_patterns);
+    nimcp_free(ctx->pattern_confidences);
+    nimcp_free(ctx->recent_events);
+    nimcp_free(ctx->stage_timings_us);
+    nimcp_free(ctx);
+    return NULL;
 }
 
 void middleware_context_destroy(middleware_context_t* context) {
