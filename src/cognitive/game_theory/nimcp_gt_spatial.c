@@ -117,6 +117,12 @@ static uint32_t random_range(uint64_t* state, uint32_t max) {
 }
 
 //=============================================================================
+// Forward Declarations
+//=============================================================================
+
+static bool is_ess_unlocked(const nimcp_spatial_game_t ctx, uint32_t strategy);
+
+//=============================================================================
 // Network Building Functions
 //=============================================================================
 
@@ -1651,9 +1657,9 @@ nimcp_error_t nimcp_spatial_run(
             }
         }
 
-        // Check if dominant is ESS
+        // Check if dominant is ESS (use unlocked version since we hold mutex)
         if (result->dominant_strategy >= 0 && result->dominance_ratio > 0.95f) {
-            result->is_ess = nimcp_spatial_is_ess(ctx, (uint32_t)result->dominant_strategy);
+            result->is_ess = is_ess_unlocked(ctx, (uint32_t)result->dominant_strategy);
         }
 
         nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1779,14 +1785,14 @@ nimcp_error_t nimcp_spatial_get_population(
 // Evolutionary Stability Analysis
 //=============================================================================
 
-bool nimcp_spatial_is_ess(
+/**
+ * @brief Internal unlocked version of is_ess check
+ * @note Caller must hold mutex
+ */
+static bool is_ess_unlocked(
     const nimcp_spatial_game_t ctx,
     uint32_t strategy
 ) {
-    if (!ctx || strategy >= ctx->config.num_strategies) return false;
-
-    nimcp_platform_mutex_lock(&ctx->mutex);
-
     uint32_t n = ctx->config.num_strategies;
     const float* A = ctx->payoff_matrix;
 
@@ -1804,18 +1810,27 @@ bool nimcp_spatial_is_ess(
         float Ajj = A[j * n + j];
 
         if (Aji > Aii) {
-            nimcp_platform_mutex_unlock(&ctx->mutex);
             return false;  // Not Nash
         }
 
         if (fabsf(Aji - Aii) < 1e-10f && Ajj >= Aij) {
-            nimcp_platform_mutex_unlock(&ctx->mutex);
             return false;  // Stability condition fails
         }
     }
 
-    nimcp_platform_mutex_unlock(&ctx->mutex);
     return true;
+}
+
+bool nimcp_spatial_is_ess(
+    const nimcp_spatial_game_t ctx,
+    uint32_t strategy
+) {
+    if (!ctx || strategy >= ctx->config.num_strategies) return false;
+
+    nimcp_platform_mutex_lock(&ctx->mutex);
+    bool result = is_ess_unlocked(ctx, strategy);
+    nimcp_platform_mutex_unlock(&ctx->mutex);
+    return result;
 }
 
 float nimcp_spatial_invasion_fitness(
