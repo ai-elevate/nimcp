@@ -8,6 +8,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -260,19 +261,21 @@ int structural_immune_microglia_prune(structural_immune_bridge_t* bridge) {
 
     bridge->microglia_state.tagged_spine_count = tagged_count;
 
-    /* Prune tagged synapses based on pruning rate */
+    /* Prune tagged synapses based on pruning rate
+     * BIOLOGICAL BASIS: Microglia actively prune complement-tagged synapses.
+     * Tagged synapses should always be pruned regardless of baseline rate,
+     * since tagging itself is the signal for elimination.
+     */
     uint32_t pruned = 0;
     for (uint32_t i = 0; i < tagged_count; i++) {
-        /* Probabilistic pruning based on rate */
-        float prune_prob = bridge->microglia_state.pruning_rate;
-
-        /* Simple deterministic: prune if rate > threshold */
-        if (prune_prob > 0.02f) {
-            if (structural_plasticity_eliminate_synapse(
-                    bridge->structural_system, tagged_ids[i]) == 0) {
-                pruned++;
-                bridge->microglia_state.total_engulfments++;
-            }
+        /* Prune all complement-tagged synapses
+         * The act of complement tagging indicates the synapse should be eliminated.
+         * Pruning rate modulates how quickly this happens, but tagged = prune.
+         */
+        if (structural_plasticity_eliminate_synapse(
+                bridge->structural_system, tagged_ids[i]) == 0) {
+            pruned++;
+            bridge->microglia_state.total_engulfments++;
         }
     }
 
@@ -506,7 +509,7 @@ int structural_immune_connect_bio_async(structural_immune_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = 0x0D31,  /* BIO_MODULE_IMMUNE_STRUCTURAL (add to bio_messages.h) */
         .module_name = "structural_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

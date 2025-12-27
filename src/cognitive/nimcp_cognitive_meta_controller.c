@@ -15,6 +15,7 @@
 /* Platform-specific includes */
 #include "utils/platform/nimcp_platform.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 
 /* ============================================================================
  * Internal Helper Functions
@@ -337,7 +338,7 @@ int meta_controller_default_config(meta_controller_config_t* config) {
 
     /* Arbitration */
     config->strategy = ARBITRATION_WINNER_TAKE_ALL;
-    config->priority_threshold = 0.1f;
+    config->priority_threshold = NIMCP_PLASTICITY_RATE_DEFAULT;
 
     /* Metacognitive control */
     config->enable_uncertainty_modulation = true;
@@ -792,11 +793,10 @@ int meta_controller_update(
     uint64_t end_time_us = nimcp_time_get_us();
     float update_time_us = (float)(end_time_us - start_time_us);
 
-    /* Running average */
-    float alpha = 0.1f;
+    /* Running average using EMA weights */
     controller->stats.avg_update_time_us =
-        alpha * update_time_us +
-        (1.0f - alpha) * controller->stats.avg_update_time_us;
+        NIMCP_EMA_WEIGHT_FAST * update_time_us +
+        NIMCP_EMA_WEIGHT_SLOW * controller->stats.avg_update_time_us;
 
     if (update_time_us > controller->stats.max_update_time_us) {
         controller->stats.max_update_time_us = update_time_us;
@@ -929,7 +929,7 @@ int meta_controller_connect_bio_async(
     bio_module_info_t info = {
         .module_id = BIO_MODULE_COGNITIVE_META_CONTROLLER,
         .module_name = META_CONTROLLER_MODULE_NAME,
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = controller
     };
 

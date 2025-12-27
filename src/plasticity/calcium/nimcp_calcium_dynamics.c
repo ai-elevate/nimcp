@@ -13,6 +13,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -321,24 +322,25 @@ int calcium_update(calcium_dynamics_t calcium, float delta_ms) {
     float ca = calcium->state.ca_concentration;
     float baseline = calcium->config.baseline_concentration;
 
-    /* Compute fluxes */
-    float j_extrusion = 0.0f;
-    float j_buffering = 0.0f;
-    float j_influx = calcium->state.last_influx; /* From NMDA trigger */
+    /* Get influx from NMDA trigger */
+    float j_influx = calcium->state.last_influx;
 
-    /* Pump extrusion: J_pump = pump_rate * [Ca²⁺] */
-    if (calcium->config.enable_pumps) {
-        j_extrusion = calcium->config.pump_rate * ca * delta_ms;
+    /* Apply exponential decay toward baseline using time constant
+     * Formula: ca_new = baseline + (ca - baseline) * exp(-dt/tau)
+     * This is more numerically stable than incremental updates */
+    float tau = calcium->config.decay_tau_ms;
+    if (tau > 0.0f) {
+        float decay_factor = expf(-delta_ms / tau);
+        ca = baseline + (ca - baseline) * decay_factor;
     }
 
-    /* Buffering: J_buffer = buffer_capacity * ([Ca²⁺] - baseline) */
-    if (calcium->config.enable_buffering) {
-        j_buffering = calcium->config.buffer_capacity * (ca - baseline) * delta_ms / 1000.0f;
-    }
+    /* Add influx after decay */
+    ca += j_influx;
 
-    /* Update concentration: d[Ca²⁺]/dt = J_in - J_out */
-    float delta_ca = j_influx - j_extrusion - j_buffering;
-    ca += delta_ca;
+    /* Store last extrusion/buffering as the effective decay amount for reporting */
+    float decay_amount = calcium->state.ca_concentration - ca + j_influx;
+    calcium->state.last_extrusion = decay_amount > 0.0f ? decay_amount : 0.0f;
+    calcium->state.last_buffering = 0.0f;
 
     /* Clamp to valid range */
     ca = clamp_f(ca, CALCIUM_MIN_CONCENTRATION, calcium->config.max_concentration);
@@ -346,22 +348,21 @@ int calcium_update(calcium_dynamics_t calcium, float delta_ms) {
     /* Decay NMDA influx (clear for next update) */
     calcium->state.last_influx = 0.0f;
 
-    /* Update state */
-    calcium->state.ca_concentration = ca;
-    calcium->state.last_extrusion = j_extrusion;
-    calcium->state.last_buffering = j_buffering;
-    calcium->state.total_updates++;
-
-    /* Update regime */
-    update_plasticity_regime(calcium);
-
-    /* Track time in regimes */
+    /* Track time in regimes BEFORE update (time spent in current regime) */
     if (calcium->state.regime == CALCIUM_REGIME_LTD) {
         calcium->state.time_in_ltd_ms += (uint64_t)delta_ms;
     } else if (calcium->state.regime == CALCIUM_REGIME_LTP ||
                calcium->state.regime == CALCIUM_REGIME_SATURATED) {
         calcium->state.time_in_ltp_ms += (uint64_t)delta_ms;
     }
+
+    /* Update state */
+    calcium->state.ca_concentration = ca;
+    /* Note: last_extrusion and last_buffering already set above */
+    calcium->state.total_updates++;
+
+    /* Update regime for next step */
+    update_plasticity_regime(calcium);
 
     /* Compute learning rate - use inline call to avoid mutex re-lock */
     if (calcium->config.enable_omega_function) {
@@ -631,7 +632,7 @@ int calcium_connect_bio_async(calcium_dynamics_t calcium) {
     bio_module_info_t info = {
         .module_id = 0x0E00, /* BIO_MODULE_CALCIUM_DYNAMICS placeholder */
         .module_name = "calcium_dynamics",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = calcium
     };
 

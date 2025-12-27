@@ -10,6 +10,7 @@
 #include "plasticity/noise/nimcp_pink_noise_correlated.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -69,9 +70,9 @@ static float random_normal(uint32_t* state) {
      * WHY:  Needed for white noise generation
      * HOW:  Box-Muller transform
      */
-    *state = *state * 1103515245 + 12345;
+    *state = *state * NIMCP_LCG_MULTIPLIER + NIMCP_LCG_INCREMENT;
     float u1 = (float)(*state % 65536) / 65536.0f;
-    *state = *state * 1103515245 + 12345;
+    *state = *state * NIMCP_LCG_MULTIPLIER + NIMCP_LCG_INCREMENT;
     float u2 = (float)(*state % 65536) / 65536.0f;
 
     // Avoid log(0)

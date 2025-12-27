@@ -209,6 +209,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
 
 /**
  * WHAT: Undefine macro redirections
@@ -428,7 +429,7 @@ static uint64_t timespec_diff_ms(const timespec_internal_t* end, const timespec_
 {
     uint64_t sec_diff = end->sec - start->sec;
     int64_t nsec_diff = end->nsec - start->nsec;
-    return (sec_diff * 1000) + (nsec_diff / 1000000);
+    return (sec_diff * NIMCP_MS_PER_SEC) + (nsec_diff / NIMCP_NS_PER_MS);
 }
 
 /**

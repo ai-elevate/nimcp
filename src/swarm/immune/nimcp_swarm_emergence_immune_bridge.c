@@ -16,6 +16,7 @@
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
@@ -277,7 +278,7 @@ int swarm_emergence_immune_connect_bio_async(swarm_emergence_immune_bridge_t* br
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SWARM_EMERGENCE,
         .module_name = "swarm_emergence_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

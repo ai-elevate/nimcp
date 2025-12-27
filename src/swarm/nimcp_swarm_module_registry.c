@@ -8,6 +8,7 @@
 #include "swarm/nimcp_swarm_module_registry.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -675,7 +676,7 @@ int swarm_registry_connect_bio_async(swarm_module_registry_t* registry) {
     bio_module_info_t info = {
         .module_id = SWARM_REGISTRY_BIO_MODULE_ID,
         .module_name = "swarm_registry",
-        .inbox_capacity = 64,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_MEDIUM,
         .user_data = registry
     };
 

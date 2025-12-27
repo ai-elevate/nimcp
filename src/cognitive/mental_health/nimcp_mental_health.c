@@ -45,6 +45,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/validation/nimcp_common.h"
 
 #define LOG_MODULE "cognitive.mental_health.core"
 #define BIO_MODULE_COGNITIVE_MENTAL_HEALTH_CORE 0x035F
@@ -340,7 +341,7 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
         bio_module_info_t bio_info = {
             .module_id = BIO_MODULE_WELLBEING_MENTAL_HEALTH,
             .module_name = "mental_health",
-            .inbox_capacity = 32,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
             .user_data = monitor
         };
         monitor->bio_ctx = bio_router_register_module(&bio_info);

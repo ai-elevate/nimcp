@@ -11,6 +11,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -240,8 +241,8 @@ int bcm_pink_noise_update_with_activity(
 
     // Update activity tracking
     bridge->current_activity = clamp_value(activity, 0.0f, 1.0f);
-    bridge->activity_ema = (bridge->activity_ema * 0.95f) +
-                           (bridge->current_activity * 0.05f);
+    bridge->activity_ema = (bridge->activity_ema * NIMCP_EMA_WEIGHT_MEDIUM) +
+                           (bridge->current_activity * NIMCP_EMA_WEIGHT_MEDIUM_NEW);
 
     return bcm_pink_noise_update(bridge);
 }

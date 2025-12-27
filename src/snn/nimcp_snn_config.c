@@ -17,6 +17,7 @@
 #include "snn/nimcp_snn_config.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -53,7 +54,7 @@ int snn_config_default(snn_config_t* config) {
     config->encoder.max_rate = 100.0f;  /* Max 100 Hz */
     config->encoder.min_rate = 0.0f;
     config->encoder.time_window = 100.0f;  /* 100 ms window */
-    config->encoder.threshold = 0.5f;
+    config->encoder.threshold = NIMCP_DEFAULT_SYNAPSE_STRENGTH;
     config->encoder.population_size = 1;
     config->encoder.sigma = 0.1f;
 
@@ -67,7 +68,7 @@ int snn_config_default(snn_config_t* config) {
     config->train_mode = SNN_TRAIN_STDP;
     config->surrogate = SNN_SURROGATE_FAST_SIGMOID;
     config->surrogate_beta = 10.0f;
-    config->learning_rate = 0.01f;
+    config->learning_rate = NIMCP_DEFAULT_LEARNING_RATE;
     config->enable_stdp = true;
     config->enable_reward_modulation = false;
 

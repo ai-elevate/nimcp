@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <math.h>
@@ -331,7 +332,7 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
         bio_module_info_t bio_info = {
             .module_id = BIO_MODULE_SWARM_QUORUM,
             .module_name = "swarm_quorum",
-            .inbox_capacity = 32,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
             .user_data = quorum
         };
         quorum->bio_ctx = bio_router_register_module(&bio_info);

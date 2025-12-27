@@ -13,6 +13,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -105,6 +106,16 @@ calcium_immune_bridge_t* calcium_immune_bridge_create(
     /* Link systems */
     bridge->immune_system = immune_system;
     bridge->calcium = calcium;
+
+    /* Initialize modulation factors to neutral values (1.0 = no modification) */
+    bridge->cytokine_effects.total_influx_modulation = 1.0f;
+    bridge->cytokine_effects.total_clearance_modulation = 1.0f;
+    bridge->cytokine_effects.total_buffer_modulation = 1.0f;
+    bridge->cytokine_effects.il1_influx_impairment = 1.0f;
+    bridge->cytokine_effects.il6_influx_impairment = 1.0f;
+    bridge->cytokine_effects.tnf_influx_impairment = 1.0f;
+    bridge->cytokine_effects.ifn_gamma_influx_impairment = 1.0f;
+    bridge->cytokine_effects.il10_influx_restoration = 1.0f;
 
     /* Apply configuration */
     if (config) {
@@ -534,7 +545,7 @@ int calcium_immune_connect_bio_async(calcium_immune_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = 0x0E01,  /* BIO_MODULE_IMMUNE_CALCIUM placeholder */
         .module_name = "calcium_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

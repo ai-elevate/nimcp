@@ -258,6 +258,21 @@ bool neuromodulator_set_level(neuromodulator_system_t system, neuromodulator_typ
  */
 bool neuromodulator_update(neuromodulator_system_t system, float dt);
 
+/**
+ * @brief Process pending bio-async messages for neuromodulator system
+ *
+ * WHAT: Polls inbox and invokes handlers for pending messages
+ * WHY:  Messages are queued; must be explicitly processed
+ * HOW:  Delegates to bio_router_process_inbox
+ *
+ * NOTE: This function should be called periodically when using bio-async
+ *       messaging with the neuromodulator system.
+ *
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ */
+uint32_t neuromodulator_bio_async_process(uint32_t max_messages);
+
 //=============================================================================
 // Event-Driven Neuromodulator Release
 //=============================================================================

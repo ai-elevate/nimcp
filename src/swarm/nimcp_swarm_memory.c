@@ -108,8 +108,8 @@ static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
 #define NIMCP_MIN_MEMORY_STRENGTH 0.01f
 #define NIMCP_MAX_PATTERN_HASH 0xFFFFFFFF
 
-/* Default forgetting curve parameters */
-#define NIMCP_DEFAULT_DECAY_RATE 0.0001f
+/* Default forgetting curve parameters - slower decay for long-term swarm memory */
+#define SWARM_MEMORY_DECAY_RATE 0.0001f
 #define NIMCP_DEFAULT_REHEARSAL_BOOST 0.1f
 #define NIMCP_DEFAULT_HALF_LIFE_MS 86400000  /* 1 day */
 
@@ -2916,7 +2916,7 @@ static NimcpMemoryEntry *create_memory_entry(
     entry->access_count = 0;
     entry->rehearsal_count = 0;
     entry->strength = 1.0F;
-    entry->decay_rate = NIMCP_DEFAULT_DECAY_RATE;
+    entry->decay_rate = SWARM_MEMORY_DECAY_RATE;
     entry->novelty_score = 0.0F;
     entry->is_compressed = false;
     entry->is_consolidated = false;
@@ -3074,7 +3074,7 @@ static void initialize_default_forgetting_curves(NimcpSwarmMemory *memory)
 {
     for (int i = 0; i < NIMCP_MEMORY_TYPE_COUNT; i++) {
         memory->curves[i].initial_strength = 1.0F;
-        memory->curves[i].decay_rate = NIMCP_DEFAULT_DECAY_RATE;
+        memory->curves[i].decay_rate = SWARM_MEMORY_DECAY_RATE;
         memory->curves[i].importance_modifier = 0.5F;
         memory->curves[i].rehearsal_boost = NIMCP_DEFAULT_REHEARSAL_BOOST;
         memory->curves[i].half_life_ms = NIMCP_DEFAULT_HALF_LIFE_MS;

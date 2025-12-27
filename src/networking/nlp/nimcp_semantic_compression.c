@@ -10,6 +10,7 @@
 #include "networking/nlp/nimcp_semantic_compression.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include <stdlib.h>
 #include <string.h>
@@ -768,7 +769,7 @@ void semantic_get_default_config(semantic_compression_config_t* out_config) {
     out_config->quantization_bits = 0;  // No quantization
     out_config->enable_entropy_coding = false;
     out_config->enable_bio_async = false;
-    out_config->broadcast_interval_ms = 1000;
+    out_config->broadcast_interval_ms = NIMCP_TIMEOUT_LONG_MS;
 }
 
 nimcp_result_t semantic_validate_config(const semantic_compression_config_t* config) {

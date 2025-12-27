@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include <string.h>
 
@@ -138,7 +139,7 @@ int astro_immune_connect_bio_async(astrocyte_immune_base_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_ASTROCYTE,
         .module_name = ASTRO_IMMUNE_MODULE_NAME,
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

@@ -137,6 +137,25 @@ gtest_discover_tests(regression_plasticity_attention_pe_test
         LABELS "regression;plasticity;attention;positional_encoding"
 )
 
+# Attention regression tests (backwards compatibility)
+add_executable(regression_plasticity_attention_test
+    attention/test_attention_regression.cpp
+)
+target_link_libraries(regression_plasticity_attention_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_attention_test PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_attention_test
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;attention"
+)
+
 # Heterosynaptic plasticity subdirectory
 add_subdirectory(heterosynaptic)
 

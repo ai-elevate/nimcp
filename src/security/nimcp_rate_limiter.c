@@ -98,7 +98,7 @@ struct nimcp_rate_limiter_impl {
 static uint64_t get_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+    return (uint64_t)ts.tv_sec * NIMCP_MS_PER_SEC + (uint64_t)ts.tv_nsec / NIMCP_NS_PER_MS;
 }
 
 /**
@@ -155,7 +155,7 @@ static void refill_tokens(float* tokens, uint64_t* last_refill_ms,
             elapsed_ms = MAX_ELAPSED_MS;
         }
 
-        float new_tokens = ((float)elapsed_ms / 1000.0F) * rate_per_second;
+        float new_tokens = ((float)elapsed_ms / (float)NIMCP_MS_PER_SEC) * rate_per_second;
         *tokens += new_tokens;
 
         if (*tokens > max_tokens) {
@@ -782,7 +782,7 @@ uint64_t nimcp_rate_limiter_time_until_ready(
 
         /* Guard against division by zero or very small rates */
         if (bucket->stats.current_rate > 1e-6F) {
-            float wait_time = tokens_needed / bucket->stats.current_rate * 1000.0F;
+            float wait_time = tokens_needed / bucket->stats.current_rate * (float)NIMCP_MS_PER_SEC;
 
             /* Cap maximum wait time to prevent overflow (max 1 hour) */
             const uint64_t MAX_WAIT_MS = 3600000ULL;  /* 1 hour in milliseconds */

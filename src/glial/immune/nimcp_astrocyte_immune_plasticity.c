@@ -13,6 +13,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -133,7 +134,7 @@ static int plasticity_apply_inflammation_effects(astrocyte_immune_base_t* base) 
         base->chronic_accumulator += 1.0f;
         base->inflammation.is_chronic = base->chronic_accumulator >= 30.0f;
     } else {
-        base->chronic_accumulator *= 0.9f;
+        base->chronic_accumulator *= NIMCP_EMA_WEIGHT_SLOW;
     }
 
     nimcp_platform_mutex_unlock(base->infra.mutex);

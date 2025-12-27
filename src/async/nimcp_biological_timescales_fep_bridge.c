@@ -10,6 +10,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -142,7 +143,7 @@ int biological_timescales_fep_update_effects(biological_timescales_fep_bridge_t*
     /* Get current free energy */
     float free_energy = fep_get_free_energy(bridge->fep_system);
     bridge->stats.avg_free_energy =
-        0.9f * bridge->stats.avg_free_energy + 0.1f * free_energy;
+        NIMCP_EMA_WEIGHT_SLOW * bridge->stats.avg_free_energy + NIMCP_EMA_WEIGHT_FAST * free_energy;
 
     /* Map free energy to timescale selection */
     /* Low FE = high certainty = fast timescales (gamma) */

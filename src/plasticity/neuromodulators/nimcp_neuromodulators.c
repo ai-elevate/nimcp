@@ -63,12 +63,43 @@
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "security/nimcp_security.h"
 #include <math.h>
 #include <string.h>
 #include <stdatomic.h>
 
 #define LOG_MODULE "plasticity_neuromodulators"
+
+//=============================================================================
+// Bio-Async Integration State (Global for module registration)
+//=============================================================================
+
+/**
+ * @brief Bio-async state for neuromodulator system
+ *
+ * WHAT: Global singleton state for bio-async integration
+ * WHY:  Bio-router requires static module registration
+ * HOW:  Registered once, routes messages to appropriate system instance
+ */
+typedef struct {
+    bio_module_context_t module_ctx;        /**< Bio-router module context */
+    neuromodulator_system_t current_system; /**< Currently active system (set by last create) */
+    bool initialized;                       /**< Whether bio-async is initialized */
+    atomic_uint_fast64_t messages_processed;/**< Message processing counter */
+    pthread_mutex_t init_mutex;             /**< Mutex protecting initialization */
+    bool mutex_initialized;                 /**< Whether mutex is initialized */
+} neuromod_bio_state_t;
+
+/** Global bio-async state for neuromodulator module */
+static neuromod_bio_state_t g_neuromod_bio_state = {
+    .module_ctx = NULL,
+    .current_system = NULL,
+    .initialized = false,
+    .messages_processed = 0,
+    .init_mutex = PTHREAD_MUTEX_INITIALIZER,
+    .mutex_initialized = true
+};
 
 //=============================================================================
 // Medulla Integration: Forward Declarations
@@ -425,6 +456,299 @@ static inline float update_ema(float current_avg, float new_value, float alpha) 
 }
 
 //=============================================================================
+// Bio-Async Message Handlers
+//=============================================================================
+
+/**
+ * @brief Map bio channel type to neuromodulator type
+ *
+ * WHAT: Converts bio-async channel enum to neuromodulator enum
+ * WHY:  Message uses BIO_CHANNEL_*, system uses NEUROMOD_*
+ */
+static neuromodulator_type_t bio_channel_to_neuromod_type(nimcp_bio_channel_type_t channel) {
+    switch (channel) {
+        case BIO_CHANNEL_DOPAMINE:      return NEUROMOD_DOPAMINE;
+        case BIO_CHANNEL_SEROTONIN:     return NEUROMOD_SEROTONIN;
+        case BIO_CHANNEL_ACETYLCHOLINE: return NEUROMOD_ACETYLCHOLINE;
+        case BIO_CHANNEL_NOREPINEPHRINE: return NEUROMOD_NOREPINEPHRINE;
+        default:                        return NEUROMOD_DOPAMINE;  // Default
+    }
+}
+
+/**
+ * @brief Handle neuromodulator release message
+ *
+ * WHAT: Processes BIO_MSG_NEUROMODULATOR_RELEASE messages
+ * WHY:  Allows other modules to trigger neuromodulator release via bio-async
+ * HOW:  Extract amount and type, call appropriate release function
+ */
+static nimcp_error_t neuromod_handle_release_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)user_data;
+
+    if (!msg || msg_size < sizeof(bio_msg_neuromodulator_release_t)) {
+        LOG_ERROR("Invalid neuromodulator release message size: %zu < %zu",
+                  msg_size, sizeof(bio_msg_neuromodulator_release_t));
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_INVALID_PARAMETER);
+        }
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    neuromodulator_system_t system = g_neuromod_bio_state.current_system;
+    if (!system) {
+        LOG_WARN("No neuromodulator system registered for bio-async");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_NOT_INITIALIZED);
+        }
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    const bio_msg_neuromodulator_release_t* release_msg =
+        (const bio_msg_neuromodulator_release_t*)msg;
+
+    neuromodulator_type_t type = bio_channel_to_neuromod_type(release_msg->neuromodulator);
+    float amount = release_msg->release_amount;
+
+    // Release neuromodulator based on type
+    float released = 0.0f;
+    switch (type) {
+        case NEUROMOD_DOPAMINE:
+            released = neuromodulator_release_dopamine(system, amount, 0.0f);
+            break;
+        case NEUROMOD_SEROTONIN:
+            released = neuromodulator_release_serotonin(system, amount);
+            break;
+        case NEUROMOD_ACETYLCHOLINE:
+            released = neuromodulator_release_acetylcholine(system, amount);
+            break;
+        case NEUROMOD_NOREPINEPHRINE:
+            released = neuromodulator_release_norepinephrine(system, amount, 0.5f);
+            break;
+        default:
+            break;
+    }
+
+    atomic_fetch_add(&g_neuromod_bio_state.messages_processed, 1);
+
+    LOG_DEBUG("Released %.3f of neuromodulator type %d via bio-async (actual: %.3f)",
+              amount, type, released);
+
+    // Complete promise with updated concentration
+    if (response_promise) {
+        bio_msg_neuromodulator_release_t response;
+        memcpy(&response, release_msg, sizeof(response));
+        response.header.source_module = BIO_MODULE_NEUROMODULATOR;
+        response.header.target_module = release_msg->header.source_module;
+        response.current_concentration = neuromodulator_get_level(system, type);
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle learning rate update message
+ *
+ * WHAT: Processes BIO_MSG_LEARNING_RATE_UPDATE messages
+ * WHY:  Returns modulated learning rate based on current neuromodulator levels
+ */
+static nimcp_error_t neuromod_handle_learning_rate_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)user_data;
+
+    if (!msg || msg_size < sizeof(bio_msg_learning_rate_update_t)) {
+        LOG_ERROR("Invalid learning rate update message size");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_INVALID_PARAMETER);
+        }
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    neuromodulator_system_t system = g_neuromod_bio_state.current_system;
+    if (!system) {
+        LOG_WARN("No neuromodulator system registered for bio-async");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_NOT_INITIALIZED);
+        }
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    const bio_msg_learning_rate_update_t* lr_msg =
+        (const bio_msg_learning_rate_update_t*)msg;
+
+    // Get current neuromodulator levels
+    float da_level = neuromodulator_get_level(system, NEUROMOD_DOPAMINE);
+    float serotonin_level = neuromodulator_get_level(system, NEUROMOD_SEROTONIN);
+
+    // Compute modulated learning rate
+    // Simple modulation: high DA increases learning, high 5-HT decreases
+    float modulation = 1.0f + (da_level * 0.5f) - (serotonin_level * 0.3f);
+    if (modulation < 0.1f) modulation = 0.1f;
+    if (modulation > 2.0f) modulation = 2.0f;
+
+    float modulated_lr = lr_msg->base_learning_rate * modulation;
+
+    atomic_fetch_add(&g_neuromod_bio_state.messages_processed, 1);
+
+    // Complete promise with modulated learning rate
+    if (response_promise) {
+        bio_msg_learning_rate_update_t response;
+        memcpy(&response, lr_msg, sizeof(response));
+        response.header.source_module = BIO_MODULE_NEUROMODULATOR;
+        response.header.target_module = lr_msg->header.source_module;
+        response.modulated_learning_rate = modulated_lr;
+        response.dopamine_level = da_level;
+        response.serotonin_level = serotonin_level;
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Initialize bio-async integration for neuromodulator system
+ *
+ * WHAT: Register with bio-router and set up message handlers
+ * WHY:  Enable async communication with other NIMCP modules
+ * HOW:  Register handlers for release and learning rate messages
+ *
+ * NOTE: If spatial neuromodulator already registered BIO_MODULE_NEUROMODULATOR,
+ *       this function will fail to register (which is expected).
+ *       The spatial system will handle the messages instead.
+ *
+ * @param system Neuromodulator system to register
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
+    if (!system) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    // Check if bio-router is initialized
+    if (!bio_router_is_initialized()) {
+        LOG_DEBUG("Bio-router not initialized, skipping neuromodulator bio-async integration");
+        return NIMCP_SUCCESS;
+    }
+
+    // Thread-safe initialization check with mutex
+    pthread_mutex_lock(&g_neuromod_bio_state.init_mutex);
+
+    // If already initialized, just update the current system
+    if (g_neuromod_bio_state.initialized) {
+        g_neuromod_bio_state.current_system = system;
+        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+        LOG_DEBUG("Updated neuromodulator bio-async with new system instance");
+        return NIMCP_SUCCESS;
+    }
+
+    // Register module with bio-router
+    // NOTE: This may fail if spatial neuromodulator already registered
+    bio_module_info_t module_info = {
+        .module_id = BIO_MODULE_NEUROMODULATOR,
+        .module_name = "neuromodulator",
+        .inbox_capacity = 64,
+        .user_data = &g_neuromod_bio_state
+    };
+
+    g_neuromod_bio_state.module_ctx = bio_router_register_module(&module_info);
+    if (!g_neuromod_bio_state.module_ctx) {
+        // This is expected if spatial neuromodulator is already registered
+        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+        LOG_DEBUG("Could not register neuromodulator module - another handler may be active");
+        return NIMCP_SUCCESS;  // Not an error - spatial system handles messages
+    }
+
+    // Register message handlers
+    nimcp_error_t err;
+
+    // Handler for neuromodulator release events
+    err = bio_router_register_handler(
+        g_neuromod_bio_state.module_ctx,
+        BIO_MSG_NEUROMODULATOR_RELEASE,
+        neuromod_handle_release_message
+    );
+    if (err != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to register neuromodulator release handler: %d", err);
+        bio_router_unregister_module(g_neuromod_bio_state.module_ctx);
+        g_neuromod_bio_state.module_ctx = NULL;
+        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+        return err;
+    }
+
+    // Handler for learning rate modulation
+    err = bio_router_register_handler(
+        g_neuromod_bio_state.module_ctx,
+        BIO_MSG_LEARNING_RATE_UPDATE,
+        neuromod_handle_learning_rate_message
+    );
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to register learning rate handler: %d (non-fatal)", err);
+        // Continue anyway - release handler is more important
+    }
+
+    g_neuromod_bio_state.current_system = system;
+    g_neuromod_bio_state.initialized = true;
+    atomic_init(&g_neuromod_bio_state.messages_processed, 0);
+
+    pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+
+    LOG_INFO("Neuromodulator bio-async integration initialized");
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Shutdown bio-async integration for neuromodulator system
+ *
+ * WHAT: Unregister from bio-router
+ * WHY:  Clean shutdown, prevent dangling references
+ */
+static void neuromod_bio_async_shutdown(void) {
+    pthread_mutex_lock(&g_neuromod_bio_state.init_mutex);
+
+    if (!g_neuromod_bio_state.initialized) {
+        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+        return;
+    }
+
+    if (g_neuromod_bio_state.module_ctx) {
+        bio_router_unregister_module(g_neuromod_bio_state.module_ctx);
+        g_neuromod_bio_state.module_ctx = NULL;
+    }
+
+    uint64_t processed = atomic_load(&g_neuromod_bio_state.messages_processed);
+    g_neuromod_bio_state.current_system = NULL;
+    g_neuromod_bio_state.initialized = false;
+
+    pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+
+    LOG_INFO("Neuromodulator bio-async shutdown (processed %lu messages)", processed);
+}
+
+/**
+ * @brief Process pending bio-async messages for neuromodulator system
+ *
+ * WHAT: Polls inbox and invokes handlers for pending messages
+ * WHY:  Messages are queued; must be explicitly processed
+ * HOW:  Delegates to bio_router_process_inbox
+ *
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ */
+uint32_t neuromodulator_bio_async_process(uint32_t max_messages) {
+    if (!g_neuromod_bio_state.initialized || !g_neuromod_bio_state.module_ctx) {
+        return 0;
+    }
+
+    return bio_router_process_inbox(g_neuromod_bio_state.module_ctx, max_messages);
+}
+
+//=============================================================================
 // System Creation and Destruction
 //=============================================================================
 
@@ -661,6 +985,13 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
     // Sleep integration: Initialize to awake state
     system->current_sleep_state = SLEEP_STATE_AWAKE;
 
+    // Bio-async integration: Register with bio-router for inter-module messaging
+    nimcp_error_t bio_err = neuromod_bio_async_init(system);
+    if (bio_err != NIMCP_SUCCESS) {
+        LOG_DEBUG("Bio-async integration not available: %d (non-fatal)", bio_err);
+        // Continue anyway - bio-async is optional
+    }
+
     return system;
 }
 
@@ -675,6 +1006,14 @@ void neuromodulator_system_destroy(neuromodulator_system_t system) {
      * WHY:  Early return, no nested if
      */
     if (!system) return;
+
+    /* WHAT: Cleanup bio-async integration if this was the registered system
+     * WHY:  Prevent dangling references to destroyed system
+     * NOTE: Only unregister if we're destroying the currently registered system
+     */
+    if (g_neuromod_bio_state.current_system == system) {
+        neuromod_bio_async_shutdown();
+    }
 
     /* WHAT: Destroy reader-writer lock using NIMCP platform abstraction
      * WHY:  Release OS resources (lock handle, kernel data structures)

@@ -22,6 +22,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "utils/time/nimcp_time.h"
 #include "core/nimcp_error.h"
+#include "utils/validation/nimcp_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -827,7 +828,7 @@ bool mental_health_intervene(
 
         // Reduce learning rate to prevent harmful learning
         brain_config_t config = brain_get_config(brain);
-        config.learning_rate *= 0.1f;
+        config.learning_rate *= NIMCP_EMA_WEIGHT_FAST;
         brain_update_config(brain, &config);
 
         safe_increment(&monitor->stats.interventions_by_type[INTERVENTION_QUARANTINE]);
@@ -859,7 +860,7 @@ bool mental_health_intervene(
                     break;
                 default:
                     // General stabilization
-                    brain_modulate_neurotransmitter(brain, NEUROMOD_SEROTONIN, 0.1f);
+                    brain_modulate_neurotransmitter(brain, NEUROMOD_SEROTONIN, NIMCP_PLASTICITY_RATE_DEFAULT);
                     break;
             }
         }

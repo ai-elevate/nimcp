@@ -19,6 +19,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -31,12 +32,12 @@ void snn_stdp_config_default(snn_stdp_config_t* config) {
     if (!config) return;
 
     /* Bi & Poo 1998 parameters */
-    config->a_plus = 0.01f;         /* LTP amplitude */
+    config->a_plus = NIMCP_DEFAULT_LEARNING_RATE;         /* LTP amplitude */
     config->a_minus = 0.0105f;      /* LTD slightly stronger (asymmetric) */
     config->tau_plus = 20.0f;       /* 20 ms LTP window */
     config->tau_minus = 20.0f;      /* 20 ms LTD window */
-    config->w_min = 0.0f;
-    config->w_max = 1.0f;
+    config->w_min = NIMCP_SYNAPSE_STRENGTH_MIN;
+    config->w_max = NIMCP_SYNAPSE_STRENGTH_MAX;
     config->soft_bounds = true;     /* Multiplicative bounds */
     config->symmetric = false;
 }
@@ -78,7 +79,7 @@ void snn_homeostatic_config_default(snn_homeostatic_config_t* config) {
 
     config->target_rate = 5.0f;         /* 5 Hz target (cortical) */
     config->rate_tau = 1000.0f;         /* 1 second rate estimation */
-    config->adaptation_rate = 0.01f;    /* Slow adaptation */
+    config->adaptation_rate = NIMCP_DEFAULT_LEARNING_RATE;    /* Slow adaptation */
     config->adjust_threshold = true;
     config->adjust_weights = false;
 }
@@ -210,13 +211,13 @@ float snn_stdp_compute_delta_w(const snn_training_ctx_t* ctx,
                                 float current_weight) {
     if (!ctx) return 0.0f;
 
-    /* Use default STDP parameters */
-    const float a_plus = 0.01f;
+    /* Use default STDP parameters from common.h */
+    const float a_plus = NIMCP_DEFAULT_LEARNING_RATE;
     const float a_minus = 0.0105f;
     const float tau_plus = 20.0f;
     const float tau_minus = 20.0f;
-    const float w_min = 0.0f;
-    const float w_max = 1.0f;
+    const float w_min = NIMCP_SYNAPSE_STRENGTH_MIN;
+    const float w_max = NIMCP_SYNAPSE_STRENGTH_MAX;
 
     float delta_w = 0.0f;
 

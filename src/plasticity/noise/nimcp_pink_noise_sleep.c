@@ -6,6 +6,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -135,8 +136,8 @@ float pink_sleep_generate_sample(pink_sleep_bridge_t* bridge) {
     // Add spindle if in N2 and probability triggers
     pink_sleep_stage_params_t* params = &bridge->config.stages[bridge->current_stage];
     if (params->spindle_probability > 0.0f) {
-        static uint32_t rng = 12345;
-        rng = rng * 1103515245 + 12345;
+        static uint32_t rng = NIMCP_LCG_INCREMENT;
+        rng = rng * NIMCP_LCG_MULTIPLIER + NIMCP_LCG_INCREMENT;
         float r = (float)(rng % 10000) / 10000.0f;
 
         if (r < params->spindle_probability || bridge->in_spindle) {

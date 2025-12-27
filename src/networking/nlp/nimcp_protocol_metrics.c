@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
@@ -109,7 +110,7 @@ typedef struct {
  * @brief Check if current window has expired
  */
 static bool is_window_expired(protocol_metrics_t* pm) {
-    uint64_t now_ms = nimcp_time_get_us() / 1000;
+    uint64_t now_ms = nimcp_time_get_us() / NIMCP_US_PER_MS;
     return (now_ms - pm->current_window_start_ms) >= pm->config.metrics_window_ms;
 }
 
@@ -134,7 +135,7 @@ static void rotate_window(protocol_metrics_t* pm) {
     uint64_t window_duration_ms = pm->config.metrics_window_ms;
     if (window_duration_ms > 0) {
         pm->current_stats.throughput_msgs_per_sec =
-            (float)pm->window_message_count * 1000.0F / (float)window_duration_ms;
+            (float)pm->window_message_count * (float)NIMCP_MS_PER_SEC / (float)window_duration_ms;
     }
 
     /* Calculate final average latency */
@@ -147,7 +148,7 @@ static void rotate_window(protocol_metrics_t* pm) {
     pm->latency_sum = 0.0F;
     pm->latency_count = 0;
     pm->window_message_count = 0;
-    pm->current_window_start_ms = nimcp_time_get_us() / 1000;
+    pm->current_window_start_ms = nimcp_time_get_us() / NIMCP_US_PER_MS;
 }
 
 /**
@@ -188,8 +189,8 @@ static primitive_entry_t* find_or_create_primitive(
  */
 static void trigger_alert(protocol_metrics_t* pm, const char* alert_msg) {
     /* Rate limit alerts (min 1 second between) */
-    uint64_t now_ms = nimcp_time_get_us() / 1000;
-    if (now_ms - pm->last_alert_time_ms < 1000) {
+    uint64_t now_ms = nimcp_time_get_us() / NIMCP_US_PER_MS;
+    if (now_ms - pm->last_alert_time_ms < NIMCP_TIMEOUT_LONG_MS) {
         return;
     }
 
@@ -283,7 +284,7 @@ protocol_metrics_t* protocol_metrics_create(const metrics_config_t* config) {
     }
 
     /* Initialize timing */
-    pm->creation_time_ms = nimcp_time_get_us() / 1000;
+    pm->creation_time_ms = nimcp_time_get_us() / NIMCP_US_PER_MS;
     pm->current_window_start_ms = pm->creation_time_ms;
 
     /* Register with bio-async if enabled */
@@ -783,7 +784,7 @@ int metrics_reset_all(protocol_metrics_t* pm) {
     }
 
     /* Reset timing */
-    pm->current_window_start_ms = nimcp_time_get_us() / 1000;
+    pm->current_window_start_ms = nimcp_time_get_us() / NIMCP_US_PER_MS;
 
     nimcp_platform_mutex_unlock(&pm->mutex);
 
@@ -797,7 +798,7 @@ uint64_t metrics_get_uptime_ms(protocol_metrics_t* pm) {
     }
 
     nimcp_platform_mutex_lock(&pm->mutex);
-    uint64_t uptime = (nimcp_time_get_us() / 1000) - pm->creation_time_ms;
+    uint64_t uptime = (nimcp_time_get_us() / NIMCP_US_PER_MS) - pm->creation_time_ms;
     nimcp_platform_mutex_unlock(&pm->mutex);
 
     return uptime;

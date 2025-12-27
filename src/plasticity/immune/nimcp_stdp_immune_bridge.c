@@ -13,6 +13,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -664,7 +665,7 @@ int stdp_immune_connect_bio_async(stdp_immune_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_STDP,
         .module_name = STDP_IMMUNE_MODULE_NAME,
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

@@ -96,6 +96,7 @@ typedef struct {
     spatial_neuromod_system_t* system;         /**< Associated spatial system */
     bool initialized;                          /**< Initialization status */
     uint64_t messages_processed;               /**< Statistics counter */
+    pthread_mutex_t init_mutex;                /**< Mutex protecting initialization */
 } spatial_neuromod_bio_state_t;
 
 /** Global bio-async state (singleton) */
@@ -103,7 +104,8 @@ static spatial_neuromod_bio_state_t g_spatial_bio_state = {
     .module_ctx = NULL,
     .system = NULL,
     .initialized = false,
-    .messages_processed = 0
+    .messages_processed = 0,
+    .init_mutex = PTHREAD_MUTEX_INITIALIZER
 };
 
 //=============================================================================
@@ -287,11 +289,6 @@ static nimcp_error_t handle_concentration_query(
  * @return NIMCP_SUCCESS or error code
  */
 static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* system) {
-    if (g_spatial_bio_state.initialized) {
-        LOG_WARNING("Spatial neuromodulator bio-async already initialized");
-        return NIMCP_SUCCESS;
-    }
-
     if (!system) {
         LOG_ERROR("NULL system in bio-async init");
         return NIMCP_SUCCESS - 1;
@@ -300,6 +297,16 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
     // Check if bio-router is initialized
     if (!bio_router_is_initialized()) {
         LOG_WARN("Bio-router not initialized, skipping bio-async integration");
+        return NIMCP_SUCCESS;
+    }
+
+    // Thread-safe initialization check with mutex
+    pthread_mutex_lock(&g_spatial_bio_state.init_mutex);
+
+    if (g_spatial_bio_state.initialized) {
+        g_spatial_bio_state.system = system;  // Update system reference
+        pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+        LOG_DEBUG("Spatial neuromodulator bio-async already initialized, updated system ref");
         return NIMCP_SUCCESS;
     }
 
@@ -314,6 +321,7 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
 
     g_spatial_bio_state.module_ctx = bio_router_register_module(&module_info);
     if (!g_spatial_bio_state.module_ctx) {
+        pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
         LOG_ERROR("Failed to register spatial neuromodulator module with bio-router");
         return NIMCP_SUCCESS - 1;
     }
@@ -331,6 +339,7 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
         LOG_ERROR("Failed to register neuromodulator release handler");
         bio_router_unregister_module(g_spatial_bio_state.module_ctx);
         g_spatial_bio_state.module_ctx = NULL;
+        pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
         return err;
     }
 
@@ -338,6 +347,8 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
     g_spatial_bio_state.system = system;
     g_spatial_bio_state.initialized = true;
     g_spatial_bio_state.messages_processed = 0;
+
+    pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
 
     LOG_INFO("Spatial neuromodulator bio-async integration initialized");
 
@@ -348,7 +359,10 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
  * @brief Shutdown bio-async integration
  */
 static void spatial_neuromod_bio_async_shutdown(void) {
+    pthread_mutex_lock(&g_spatial_bio_state.init_mutex);
+
     if (!g_spatial_bio_state.initialized) {
+        pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
         return;
     }
 
@@ -357,11 +371,14 @@ static void spatial_neuromod_bio_async_shutdown(void) {
         g_spatial_bio_state.module_ctx = NULL;
     }
 
+    uint64_t processed = g_spatial_bio_state.messages_processed;
     g_spatial_bio_state.system = NULL;
     g_spatial_bio_state.initialized = false;
 
+    pthread_mutex_unlock(&g_spatial_bio_state.init_mutex);
+
     LOG_INFO("Spatial neuromodulator bio-async integration shutdown (processed %lu messages)",
-             g_spatial_bio_state.messages_processed);
+             processed);
 }
 
 /**

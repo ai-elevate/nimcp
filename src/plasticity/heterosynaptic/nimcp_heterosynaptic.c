@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -579,9 +580,9 @@ int hetero_apply_depression(
     if (num_neighbors > 0) {
         /* Mutex needed for float EMA calculation (not atomically updateable) */
         nimcp_platform_mutex_lock(system->mutex);
-        float alpha = 0.1f;  /* Exponential moving average */
+        float alpha = NIMCP_EMA_WEIGHT_FAST;  /* Exponential moving average */
         system->avg_neighbors_per_competition =
-            alpha * (float)num_neighbors + (1.0f - alpha) * system->avg_neighbors_per_competition;
+            alpha * (float)num_neighbors + (NIMCP_EMA_WEIGHT_SLOW) * system->avg_neighbors_per_competition;
         nimcp_platform_mutex_unlock(system->mutex);
     }
 
@@ -760,7 +761,7 @@ int hetero_connect_bio_async(hetero_system_t* system) {
     bio_module_info_t info = {
         .module_id = 0x0D40,  /* BIO_MODULE_IMMUNE_HETEROSYNAPTIC (would be added to nimcp_bio_messages.h) */
         .module_name = "heterosynaptic_plasticity",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = system
     };
 

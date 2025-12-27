@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <string.h>
@@ -436,7 +437,7 @@ int triplet_stdp_immune_connect_bio_async(triplet_stdp_immune_bridge_t bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_TRIPLET_STDP,
         .module_name = "triplet_stdp_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

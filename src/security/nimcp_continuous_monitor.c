@@ -23,6 +23,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
 
 #define LOG_MODULE "security_continuous_monitor"
 
@@ -104,7 +105,7 @@ static uint64_t get_timestamp_ms(void)
 {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    return (uint64_t)(ts.tv_sec * NIMCP_MS_PER_SEC + ts.tv_nsec / NIMCP_NS_PER_MS);
 }
 
 /**
@@ -405,8 +406,8 @@ static void* monitor_thread_func(void* arg)
 
         // Sleep for configured interval
         struct timespec ts;
-        ts.tv_sec = monitor->config.interval_ms / 1000;
-        ts.tv_nsec = (monitor->config.interval_ms % 1000) * 1000000;
+        ts.tv_sec = monitor->config.interval_ms / NIMCP_MS_PER_SEC;
+        ts.tv_nsec = (monitor->config.interval_ms % NIMCP_MS_PER_SEC) * NIMCP_NS_PER_MS;
         nanosleep(&ts, NULL);
     }
 

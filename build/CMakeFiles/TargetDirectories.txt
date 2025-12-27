@@ -2373,6 +2373,7 @@
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_second_messengers_module_test.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_metaplasticity.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_attention_pe_test.dir
+/home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_attention_test.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_protein.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_triplet_stdp.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_modules_test.dir

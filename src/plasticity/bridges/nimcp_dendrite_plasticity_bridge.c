@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -103,7 +104,7 @@ int dendrite_plasticity_default_config(dendrite_plasticity_config_t* config)
 
     /* Bio-async */
     config->enable_bio_async = true;
-    config->inbox_capacity = 32;
+    config->inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL;
 
     return 0;
 }

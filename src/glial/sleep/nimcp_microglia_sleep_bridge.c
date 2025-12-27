@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <string.h>
@@ -546,7 +547,7 @@ int microglia_sleep_connect_bio_async(microglia_sleep_bridge_t bridge)
     bio_module_info_t info = {
         .module_id = BIO_MODULE_MICROGLIA_SLEEP,
         .module_name = "microglia_sleep_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

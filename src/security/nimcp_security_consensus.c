@@ -130,7 +130,7 @@ static const char* role_names[] = {
 static uint64_t get_time_ms(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (uint64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    return (uint64_t)tv.tv_sec * NIMCP_MS_PER_SEC + tv.tv_usec / NIMCP_US_PER_MS;
 }
 
 /**
@@ -160,8 +160,8 @@ static bool is_election_timeout(nimcp_security_consensus_t c) {
     struct timeval now;
     gettimeofday(&now, NULL);
 
-    uint64_t elapsed = (now.tv_sec - c->election_timeout.tv_sec) * 1000 +
-                      (now.tv_usec - c->election_timeout.tv_usec) / 1000;
+    uint64_t elapsed = (now.tv_sec - c->election_timeout.tv_sec) * NIMCP_MS_PER_SEC +
+                      (now.tv_usec - c->election_timeout.tv_usec) / NIMCP_US_PER_MS;
 
     return elapsed >= c->current_election_timeout_ms;
 }
@@ -445,8 +445,8 @@ static void* timer_thread_func(void* arg) {
             /* Send heartbeats */
             struct timeval now;
             gettimeofday(&now, NULL);
-            uint64_t elapsed = (now.tv_sec - c->last_heartbeat_sent.tv_sec) * 1000 +
-                             (now.tv_usec - c->last_heartbeat_sent.tv_usec) / 1000;
+            uint64_t elapsed = (now.tv_sec - c->last_heartbeat_sent.tv_sec) * NIMCP_MS_PER_SEC +
+                             (now.tv_usec - c->last_heartbeat_sent.tv_usec) / NIMCP_US_PER_MS;
 
             if (elapsed >= c->heartbeat_interval_ms) {
                 if (c->router) {

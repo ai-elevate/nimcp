@@ -29,6 +29,7 @@
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -261,7 +262,7 @@ static nimcp_error_t encrypt_entry(
 #endif
 
     uint64_t end_time = get_time_ns();
-    float encrypt_time_us = (float)(end_time - start_time) / 1000.0F;
+    float encrypt_time_us = (float)(end_time - start_time) / (float)NIMCP_NS_PER_US;
 
     // Update statistics
     audit->stats.entries_encrypted++;
@@ -331,7 +332,7 @@ static nimcp_error_t decrypt_entry(
 #endif
 
     uint64_t end_time = get_time_ns();
-    float decrypt_time_us = (float)(end_time - start_time) / 1000.0F;
+    float decrypt_time_us = (float)(end_time - start_time) / (float)NIMCP_NS_PER_US;
 
     // Update statistics
     audit->stats.entries_decrypted++;

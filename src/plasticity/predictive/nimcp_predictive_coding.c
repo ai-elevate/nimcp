@@ -27,6 +27,7 @@
 #include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
@@ -392,8 +393,8 @@ pc_prediction_weights_t* pc_prediction_weights_create(uint32_t num_lower,
     /* Initialize with small random-like values (deterministic for reproducibility) */
     float scale = 1.0F / sqrtf((float)num_higher);
     for (uint32_t i = 0; i < num_lower * num_higher; i++) {
-        /* Simple pseudo-random initialization */
-        float pseudo = ((float)((i * 1103515245 + 12345) % 1000) / 1000.0F) - 0.5F;
+        /* Simple pseudo-random initialization using LCG */
+        float pseudo = ((float)((i * NIMCP_LCG_MULTIPLIER + NIMCP_LCG_INCREMENT) % 1000) / 1000.0F) - 0.5F;
         weights->weights[i] = pseudo * scale;
     }
 

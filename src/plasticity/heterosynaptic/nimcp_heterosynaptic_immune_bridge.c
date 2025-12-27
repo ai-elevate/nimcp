@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -468,7 +469,7 @@ int hetero_immune_connect_bio_async(hetero_immune_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = 0x0D40,  /* BIO_MODULE_IMMUNE_HETEROSYNAPTIC */
         .module_name = "heterosynaptic_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

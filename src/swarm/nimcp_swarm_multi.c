@@ -9,6 +9,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/containers/nimcp_darray.h"
 #include "async/nimcp_bio_router.h"
@@ -480,7 +481,7 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
         bio_module_info_t module_info = {
             .module_id = BIO_MODULE_SWARM_COORDINATOR,
             .module_name = "swarm_coordinator",
-            .inbox_capacity = 128,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_LARGE,
             .user_data = coordinator
         };
 

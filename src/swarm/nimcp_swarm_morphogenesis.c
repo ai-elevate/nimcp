@@ -9,6 +9,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "async/nimcp_bio_router.h"
@@ -394,7 +395,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_init_bio_async(
     bio_module_info_t bio_info = {
         .module_id = 0,  /* Auto-assign */
         .module_name = "morphogenesis",
-        .inbox_capacity = 100,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_LARGE,
         .user_data = morph
     };
 

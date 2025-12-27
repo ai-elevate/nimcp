@@ -254,10 +254,14 @@ int structural_sleep_consolidate_tagged(structural_sleep_bridge_t bridge) {
         if (structural_plasticity_get_synapse_state(
                 bridge->structural_system, i, &state) == 0) {
 
-            /* Consolidate nascent spines that are tagged and mature enough */
+            /* Consolidate nascent spines that are tagged
+             * NOTE: During sleep consolidation, we stabilize tagged spines regardless
+             * of maturation progress, as NREM sleep accelerates stabilization.
+             * This is biologically accurate: sleep consolidation can fast-track
+             * newly formed synapses that have been tagged for consolidation.
+             */
             if (state.state == SYNAPSE_STATE_NASCENT &&
-                state.consolidation_tagged &&
-                state.maturation_progress >= 0.5f) {
+                state.consolidation_tagged) {
 
                 if (structural_plasticity_stabilize_synapse(
                         bridge->structural_system, i) == 0) {

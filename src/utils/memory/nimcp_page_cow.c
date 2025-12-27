@@ -45,6 +45,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/validation/nimcp_common.h"
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,7 +189,7 @@ static struct {
 static inline uint64_t get_time_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+    return (uint64_t)ts.tv_sec * NIMCP_NS_PER_SEC + (uint64_t)ts.tv_nsec;
 }
 
 /**

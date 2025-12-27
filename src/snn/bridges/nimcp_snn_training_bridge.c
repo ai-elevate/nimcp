@@ -15,6 +15,7 @@
 #include "snn/nimcp_snn_types.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -35,7 +36,7 @@ void snn_training_bridge_config_default(snn_training_bridge_config_t* config) {
     config->gradient_vanishing_threshold = 1e-7f;
 
     /* Modulation parameters */
-    config->immune_modulation_strength = 0.5f;
+    config->immune_modulation_strength = NIMCP_DEFAULT_SYNAPSE_STRENGTH;
     config->homeostatic_modulation_strength = 0.3f;
     config->sleep_consolidation_boost = 1.5f;
     config->attention_gating_strength = 0.4f;
@@ -43,7 +44,7 @@ void snn_training_bridge_config_default(snn_training_bridge_config_t* config) {
     /* Metaplasticity */
     config->enable_metaplasticity = true;
     config->metaplasticity_tau = 10000.0f;  /* 10 seconds */
-    config->bcm_theta_init = 0.5f;
+    config->bcm_theta_init = NIMCP_DEFAULT_SYNAPSE_STRENGTH;
 
     /* Consolidation */
     config->enable_offline_consolidation = true;
@@ -95,7 +96,7 @@ snn_training_bridge_t* snn_training_bridge_create(
     bridge->state.metrics.lr_modulation_factor = 1.0f;
 
     /* Initialize base learning rate from training context */
-    bridge->base_lr = 0.01f;  /* Default base LR */
+    bridge->base_lr = NIMCP_DEFAULT_LEARNING_RATE;  /* Default base LR */
 
     /* Allocate rate estimation array */
     /* Note: Could get neuron count from network stats if needed */

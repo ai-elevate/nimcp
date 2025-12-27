@@ -527,6 +527,122 @@ typedef struct {
 #define NIMCP_ARRAY_ALIGNMENT 8
 
 /* ============================================================================
+ * Common Mathematical & Algorithm Constants
+ * ============================================================================ */
+
+/* Linear Congruential Generator (LCG) constants - POSIX standard */
+#define NIMCP_LCG_MULTIPLIER    1103515245U
+#define NIMCP_LCG_INCREMENT     12345U
+#define NIMCP_LCG_MODULUS       0x80000000U  /* 2^31 */
+
+/* Exponential Moving Average (EMA) weights */
+#define NIMCP_EMA_WEIGHT_SLOW       0.9f    /* High smoothing */
+#define NIMCP_EMA_WEIGHT_FAST       0.1f    /* Low smoothing (1 - slow) */
+#define NIMCP_EMA_WEIGHT_MEDIUM     0.95f   /* Very high smoothing */
+#define NIMCP_EMA_WEIGHT_MEDIUM_NEW 0.05f   /* Very low new value weight */
+
+/* Adaptive rate control */
+#define NIMCP_RATE_INCREASE_FACTOR  1.1f    /* Default rate increase multiplier */
+#define NIMCP_RATE_DECREASE_FACTOR  0.9f    /* Default rate decrease multiplier */
+
+/* ============================================================================
+ * Bio-Async Module Inbox Capacities
+ * ============================================================================ */
+
+#define NIMCP_INBOX_CAPACITY_SMALL      32   /* Low-traffic modules */
+#define NIMCP_INBOX_CAPACITY_MEDIUM     64   /* Standard modules */
+#define NIMCP_INBOX_CAPACITY_LARGE      128  /* High-traffic modules */
+#define NIMCP_INBOX_CAPACITY_XLARGE     256  /* Critical/hub modules */
+#define NIMCP_INBOX_CAPACITY_DEFAULT    NIMCP_INBOX_CAPACITY_MEDIUM
+
+/* ============================================================================
+ * Time Conversion Constants
+ * ============================================================================ */
+
+#define NIMCP_MS_PER_SEC        1000U
+#define NIMCP_US_PER_MS         1000U
+#define NIMCP_NS_PER_US         1000U
+#define NIMCP_NS_PER_MS         1000000U
+#define NIMCP_NS_PER_SEC        1000000000ULL
+#define NIMCP_US_PER_SEC        1000000U
+
+/* Common timeout values (milliseconds) */
+#define NIMCP_TIMEOUT_SHORT_MS      100U
+#define NIMCP_TIMEOUT_MEDIUM_MS     500U
+#define NIMCP_TIMEOUT_LONG_MS       1000U
+#define NIMCP_TIMEOUT_VERY_LONG_MS  5000U
+
+/* ============================================================================
+ * Biological Simulation Constants
+ * ============================================================================ */
+
+/* Neuron/synapse defaults */
+#define NIMCP_DEFAULT_SYNAPSE_STRENGTH      0.5f
+#define NIMCP_DEFAULT_LEARNING_RATE         0.01f
+#define NIMCP_DEFAULT_DECAY_RATE            0.001f
+#define NIMCP_SYNAPSE_STRENGTH_MIN          0.0f
+#define NIMCP_SYNAPSE_STRENGTH_MAX          1.0f
+
+/* Plasticity constants */
+#define NIMCP_PLASTICITY_RATE_DEFAULT       0.1f
+#define NIMCP_PLASTICITY_THRESHOLD_LOW      0.3f
+#define NIMCP_PLASTICITY_THRESHOLD_HIGH     0.7f
+
+/* Energy/metabolic defaults */
+#define NIMCP_ATP_LEVEL_FULL                1.0f
+#define NIMCP_ATP_LEVEL_HEALTHY             0.7f
+#define NIMCP_ATP_LEVEL_IMPAIRED            0.5f
+#define NIMCP_ATP_LEVEL_SUPPRESSED          0.3f
+#define NIMCP_ATP_LEVEL_CRITICAL            0.1f
+
+/* ============================================================================
+ * Memory Pool Constants
+ * ============================================================================ */
+
+#define NIMCP_POOL_BLOCK_SIZE_TINY          64
+#define NIMCP_POOL_BLOCK_SIZE_SMALL         256
+#define NIMCP_POOL_BLOCK_SIZE_MEDIUM        1024
+#define NIMCP_POOL_BLOCK_SIZE_LARGE         4096
+#define NIMCP_POOL_BLOCK_SIZE_HUGE          16384
+
+#define NIMCP_POOL_INITIAL_BLOCKS           16
+#define NIMCP_POOL_GROWTH_FACTOR            2
+#define NIMCP_POOL_MAX_BLOCKS               65536
+
+/* ============================================================================
+ * Thread Pool Constants
+ * ============================================================================ */
+
+#define NIMCP_THREAD_POOL_MIN_THREADS       1
+#define NIMCP_THREAD_POOL_MAX_THREADS       256
+#define NIMCP_THREAD_POOL_DEFAULT_THREADS   4
+#define NIMCP_THREAD_POOL_QUEUE_SIZE        1024
+
+/* ============================================================================
+ * Cognitive/Mental Health Thresholds
+ * ============================================================================ */
+
+#define NIMCP_STRESS_LEVEL_LOW              0.2f
+#define NIMCP_STRESS_LEVEL_MODERATE         0.5f
+#define NIMCP_STRESS_LEVEL_HIGH             0.7f
+#define NIMCP_STRESS_LEVEL_CRITICAL         0.9f
+
+#define NIMCP_COGNITIVE_LOAD_LOW            0.3f
+#define NIMCP_COGNITIVE_LOAD_OPTIMAL        0.6f
+#define NIMCP_COGNITIVE_LOAD_HIGH           0.8f
+#define NIMCP_COGNITIVE_LOAD_OVERLOAD       0.95f
+
+/* ============================================================================
+ * Network/Protocol Constants
+ * ============================================================================ */
+
+#define NIMCP_MAX_CONNECTIONS               1024
+#define NIMCP_MAX_RETRIES                   3
+#define NIMCP_RETRY_DELAY_MS                100
+#define NIMCP_KEEPALIVE_INTERVAL_MS         30000
+#define NIMCP_CONNECTION_TIMEOUT_MS         5000
+
+/* ============================================================================
  * Validation Macros
  * ============================================================================ */
 

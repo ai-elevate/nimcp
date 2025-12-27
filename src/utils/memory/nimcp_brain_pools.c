@@ -28,6 +28,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include "utils/logging/nimcp_logging.h"
@@ -177,7 +178,7 @@ static void calculate_queuing_metrics(
         return;
     }
 
-    float elapsed_sec = (float)elapsed_ms / 1000.0F;
+    float elapsed_sec = (float)elapsed_ms / (float)NIMCP_MS_PER_SEC;
 
     /* Arrival and service rates */
     metrics->arrival_rate_lambda = (float)alloc_count / elapsed_sec;
@@ -200,7 +201,7 @@ static void calculate_queuing_metrics(
     /* Wait time */
     float rate_diff = metrics->service_rate_mu - metrics->arrival_rate_lambda;
     if (rate_diff > 0.0F) {
-        metrics->avg_wait_time_us = 1000000.0F / rate_diff;
+        metrics->avg_wait_time_us = (float)NIMCP_US_PER_SEC / rate_diff;
     } else {
         metrics->avg_wait_time_us = INFINITY;
     }
@@ -890,7 +891,7 @@ bool brain_pools_get_recommended_config(
     uint64_t elapsed_ms = pools->last_alloc_time_ms - pools->first_alloc_time_ms;
     if (elapsed_ms == 0) elapsed_ms = 1;
 
-    float elapsed_sec = (float)elapsed_ms / 1000.0F;
+    float elapsed_sec = (float)elapsed_ms / (float)NIMCP_MS_PER_SEC;
     float k = pools->config.safety_factor_k;
 
     /* Decision pool recommendation */

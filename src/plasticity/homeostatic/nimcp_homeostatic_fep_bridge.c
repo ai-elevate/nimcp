@@ -8,6 +8,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 
@@ -134,7 +135,7 @@ int homeostatic_fep_bridge_connect_bio_async(homeostatic_fep_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_HOMEOSTATIC_BRIDGE,
         .module_name = "homeostatic_fep_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
     bridge->base.bio_ctx = bio_router_register_module(&info);

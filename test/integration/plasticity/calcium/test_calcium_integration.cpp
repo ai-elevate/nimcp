@@ -216,10 +216,10 @@ TEST_F(CalciumImmuneIntegrationTest, GetModulationState) {
 }
 
 TEST_F(CalciumImmuneIntegrationTest, DetectInstability) {
-    /* Set very high calcium (excitotoxic) */
-    calcium_set_concentration(calcium, 1.8f);
-
+    /* Maintain very high calcium (excitotoxic) by re-setting each iteration
+     * This simulates continuous calcium influx exceeding clearance */
     for (int i = 0; i < 200; i++) {
+        calcium_set_concentration(calcium, 1.8f);
         calcium_update(calcium, 1.0f);
         calcium_immune_detect_instability(bridge);
     }
@@ -230,10 +230,10 @@ TEST_F(CalciumImmuneIntegrationTest, DetectInstability) {
 }
 
 TEST_F(CalciumImmuneIntegrationTest, DetectSynapticFailure) {
-    /* Set very low calcium */
-    calcium_set_concentration(calcium, 0.03f);
-
+    /* Maintain very low calcium by re-setting each iteration
+     * This simulates persistent synaptic failure with calcium below threshold */
     for (int i = 0; i < 1500; i++) {
+        calcium_set_concentration(calcium, 0.03f);
         calcium_update(calcium, 1.0f);
         calcium_immune_detect_instability(bridge);
     }

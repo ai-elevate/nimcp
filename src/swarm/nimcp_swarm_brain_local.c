@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
@@ -320,7 +321,7 @@ swarm_brain_manager_t* swarm_brain_manager_create(
     if (mgr->config.enable_bio_async) {
         bio_module_info_t info = {
             .module_name = SWARM_BRAIN_MODULE,
-            .inbox_capacity = 64,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_MEDIUM,
             .user_data = mgr
         };
 

@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -1447,7 +1448,7 @@ nimcp_result_t conflict_resolver_register_bioasync(
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SWARM_MULTI,
         .module_name = "swarm_conflict",
-        .inbox_capacity = 100,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_LARGE,
         .user_data = resolver
     };
 

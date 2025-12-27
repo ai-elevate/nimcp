@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include <string.h>
 #include <math.h>
@@ -298,7 +299,7 @@ int astro_network_apply_inflammation_effects(astro_network_bridge_t* bridge) {
         bridge->inflammation_state.is_chronic =
             bridge->chronic_inflammation_accumulator >= 30.0f; /* 30 updates */
     } else {
-        bridge->chronic_inflammation_accumulator *= 0.9f; /* Decay */
+        bridge->chronic_inflammation_accumulator *= NIMCP_EMA_WEIGHT_SLOW; /* Decay */
         if (bridge->chronic_inflammation_accumulator < 1.0f) {
             bridge->inflammation_state.is_chronic = false;
         }
@@ -609,7 +610,7 @@ int astro_network_connect_bio_async(astro_network_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_ASTROCYTE,
         .module_name = "astrocyte_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

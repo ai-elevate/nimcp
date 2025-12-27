@@ -17,6 +17,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -33,7 +34,7 @@ int astro_cell_default_config(astro_immune_config_t* config)
     config->scar_formation_threshold = 0.8f;
     config->glutamate_clearance_base = 1.0f;
     config->enable_bio_async = true;
-    config->inbox_capacity = 32;
+    config->inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL;
     return 0;
 }
 

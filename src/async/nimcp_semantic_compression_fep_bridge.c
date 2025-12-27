@@ -9,6 +9,7 @@
 #include "async/nimcp_semantic_compression_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -116,7 +117,7 @@ int semantic_compression_fep_update_effects(semantic_compression_fep_bridge_t* b
     /* Get current free energy */
     float free_energy = fep_get_free_energy(bridge->fep_system);
     bridge->stats.avg_free_energy =
-        0.9f * bridge->stats.avg_free_energy + 0.1f * free_energy;
+        NIMCP_EMA_WEIGHT_SLOW * bridge->stats.avg_free_energy + NIMCP_EMA_WEIGHT_FAST * free_energy;
 
     /* Low free energy = high predictability = high compression potential */
     bridge->fep_effects.predicted_compressibility = expf(-free_energy / 5.0f);

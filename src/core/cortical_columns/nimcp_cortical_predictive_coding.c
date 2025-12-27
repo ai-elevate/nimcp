@@ -6,6 +6,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_predictive_coding.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 
@@ -13,8 +14,8 @@
  * Constants
  * ============================================================================ */
 
-#define PC_DEFAULT_PREDICTION_LR    0.01f
-#define PC_DEFAULT_PRECISION_LR     0.001f
+#define PC_DEFAULT_PREDICTION_LR    NIMCP_DEFAULT_LEARNING_RATE
+#define PC_DEFAULT_PRECISION_LR     NIMCP_DEFAULT_DECAY_RATE
 #define PC_DEFAULT_ERROR_GAIN       1.0f
 #define PC_DEFAULT_PREDICTION_DECAY 0.0001f
 #define PC_DEFAULT_HIERARCHY_DEPTH  3

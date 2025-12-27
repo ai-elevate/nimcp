@@ -24,6 +24,7 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_cow_manager.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
 
 #define LOG_MODULE "security_integration"
 
@@ -129,7 +130,7 @@ static uint64_t get_timestamp_ms(void)
 {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return (uint64_t)ts.tv_sec * NIMCP_MS_PER_SEC + ts.tv_nsec / NIMCP_NS_PER_MS;
 }
 
 static void push_event(nimcp_sec_integration_t* ctx, const nimcp_sec_event_t* event)
@@ -605,7 +606,7 @@ nimcp_sec_integration_config_t nimcp_sec_integration_default_config(void)
     config.trust_threshold = 0.5;
     config.entropy_deviation_threshold = 3.0;
     config.privacy_budget = 10.0;
-    config.integrity_check_interval_ms = 1000;
+    config.integrity_check_interval_ms = NIMCP_TIMEOUT_LONG_MS;
     config.self_check_interval_ms = 5000;
     config.enable_continuous_monitoring = true;
     config.enable_self_monitoring = true;

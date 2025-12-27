@@ -1048,7 +1048,7 @@ bool swarm_signal_connect_bio_async(nimcp_swarm_signal_adapter_t* adapter)
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SWARM_SIGNAL,
         .module_name = "swarm_signal",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = adapter
     };
 

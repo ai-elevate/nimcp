@@ -16,6 +16,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/containers/nimcp_hash_table.h"
 
@@ -243,7 +244,7 @@ nimcp_result_t gossip_beliefs_init(gossip_beliefs_t* gb, void* bio_ctx)
         bio_module_info_t module_info = {
             .module_id = BIO_MODULE_SWARM_MEMORY,
             .module_name = "gossip_beliefs",
-            .inbox_capacity = 200,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_XLARGE,
             .user_data = gb
         };
 

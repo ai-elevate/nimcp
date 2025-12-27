@@ -89,8 +89,10 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, SendDopamineReleaseMessage) {
     nimcp_error_t result = bio_router_send(test_module_ctx_, &msg, sizeof(msg), 1000);
     ASSERT_EQ(NIMCP_SUCCESS, result);
 
-    // Give time for message processing
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Process pending messages in neuromodulator inbox
+    // Messages are queued and must be explicitly processed
+    uint32_t processed = neuromodulator_bio_async_process(10);
+    EXPECT_GT(processed, 0u);
 
     // Verify dopamine increased
     float da_after = neuromodulator_get_level(neuromod_system_, NEUROMOD_DOPAMINE);
@@ -119,8 +121,8 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, SendLearningRateUpdateRequest) {
     nimcp_error_t result = bio_router_send(test_module_ctx_, &msg, sizeof(msg), 1000);
     ASSERT_EQ(NIMCP_SUCCESS, result);
 
-    // Give time for processing
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Process pending messages
+    neuromodulator_bio_async_process(10);
 
     // Verify system still functioning
     neuromodulator_pool_t pool;
@@ -160,8 +162,8 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, MultipleModulatorsSequential) {
     ne_msg.release_amount = 0.6f;
     bio_router_send(test_module_ctx_, &ne_msg, sizeof(ne_msg), 1000);
 
-    // Wait for processing
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Process all pending messages
+    neuromodulator_bio_async_process(0);  // 0 = process all
 
     // Verify all increased
     EXPECT_GT(neuromodulator_get_level(neuromod_system_, NEUROMOD_DOPAMINE), da_initial);
@@ -225,8 +227,9 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, HighVolumeMessages) {
         bio_router_send(test_module_ctx_, &msg, sizeof(msg), 1000);
     }
 
-    // Wait for all processing
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    // Process all pending messages
+    uint32_t processed = neuromodulator_bio_async_process(0);  // 0 = process all
+    EXPECT_GT(processed, 0u);
 
     // System should still be functional
     neuromodulator_pool_t pool;
@@ -265,8 +268,8 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, RouterStatisticsTracking) {
         bio_router_send(test_module_ctx_, &msg, sizeof(msg), 1000);
     }
 
-    // Wait for processing
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Process pending messages
+    neuromodulator_bio_async_process(0);
 
     // Get updated stats
     bio_router_stats_t stats_after;
@@ -289,6 +292,10 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, HandleMalformedMessage) {
     // Send with wrong size (should not crash)
     nimcp_error_t result = bio_router_send(test_module_ctx_, &msg, 10, 1000);
     // Result may be error or success depending on router validation
+    (void)result;
+
+    // Process any messages (malformed ones should be handled gracefully)
+    neuromodulator_bio_async_process(10);
 
     // System should still be functional
     neuromodulator_pool_t pool;

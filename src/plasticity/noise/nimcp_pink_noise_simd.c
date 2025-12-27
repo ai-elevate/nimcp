@@ -5,6 +5,7 @@
 #include "plasticity/noise/nimcp_pink_noise_simd.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -230,7 +231,7 @@ pink_simd_generator_t* pink_simd_create(const pink_simd_config_t* config) {
 
     // Initialize RNG states
     for (uint32_t i = 0; i < 8; i++) {
-        gen->rng_state[i] = config->seed + i * 12345;
+        gen->rng_state[i] = config->seed + i * NIMCP_LCG_INCREMENT;
     }
 
     NIMCP_LOGGING_INFO("Created SIMD pink noise generator (%s)",
@@ -302,7 +303,7 @@ int pink_simd_reset(pink_simd_generator_t* gen, uint32_t new_seed) {
 
     uint32_t seed = (new_seed != 0) ? new_seed : gen->config.seed;
     for (uint32_t i = 0; i < 8; i++) {
-        gen->rng_state[i] = seed + i * 12345;
+        gen->rng_state[i] = seed + i * NIMCP_LCG_INCREMENT;
     }
 
     memset(gen->octave_values, 0,

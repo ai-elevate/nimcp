@@ -15122,6 +15122,19 @@ regression_plasticity_attention_pe_test/fast:
 .PHONY : regression_plasticity_attention_pe_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_plasticity_attention_test
+
+# Build rule for target.
+regression_plasticity_attention_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_attention_test
+.PHONY : regression_plasticity_attention_test
+
+# fast build rule for target.
+regression_plasticity_attention_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_attention_test.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_attention_test.dir/build
+.PHONY : regression_plasticity_attention_test/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_protein
 
 # Build rule for target.
@@ -18522,6 +18535,7 @@ help:
 	@echo "... regression_plasticity_adaptive_test_adaptive_routing_backward_compat"
 	@echo "... regression_plasticity_astrocyte_test_astrocyte_regression"
 	@echo "... regression_plasticity_attention_pe_test"
+	@echo "... regression_plasticity_attention_test"
 	@echo "... regression_plasticity_attention_test_attention_pe_regression"
 	@echo "... regression_plasticity_attention_test_attention_regression"
 	@echo "... regression_plasticity_bcm_test_bcm_backward_compat"

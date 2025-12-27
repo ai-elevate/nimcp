@@ -1641,6 +1641,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/regression/plasticity/CMakeFiles/regression_plasticity_second_messengers_module_test.dir/DependInfo.cmake"
   "test/regression/plasticity/CMakeFiles/regression_plasticity_metaplasticity.dir/DependInfo.cmake"
   "test/regression/plasticity/CMakeFiles/regression_plasticity_attention_pe_test.dir/DependInfo.cmake"
+  "test/regression/plasticity/CMakeFiles/regression_plasticity_attention_test.dir/DependInfo.cmake"
   "test/regression/plasticity/CMakeFiles/regression_plasticity_protein.dir/DependInfo.cmake"
   "test/regression/plasticity/CMakeFiles/regression_plasticity_triplet_stdp.dir/DependInfo.cmake"
   "test/regression/plasticity/CMakeFiles/regression_plasticity_modules_test.dir/DependInfo.cmake"

@@ -236,18 +236,15 @@ TEST_F(StructuralIntegrationTest, ImmuneTagsWeakSpines) {
     structural_immune_bridge_t* bridge = structural_immune_bridge_create(
         &config, immune_system, structural_system);
 
-    /* Create spines */
+    /* Create spines with LOW activity (< 2.0 Hz threshold for weak spine tagging)
+     * This simulates synapses that have been inactive and should be tagged
+     * for complement-mediated pruning.
+     */
     for (int i = 0; i < 10; i++) {
         uint32_t id;
+        /* Form with low activity (0.5 Hz) to make them "weak" */
         structural_plasticity_form_synapse(
-            structural_system, i, i+1, 50.0f, &id);
-
-        /* Set low activity for some */
-        if (i < 5) {
-            synapse_structural_state_t state;
-            structural_plasticity_get_synapse_state(structural_system, id, &state);
-            /* Would need to set activity low, but structure is internal */
-        }
+            structural_system, i, i+1, 0.5f, &id);
     }
 
     /* Tag weak spines */

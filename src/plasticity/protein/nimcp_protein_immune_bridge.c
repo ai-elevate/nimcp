@@ -16,6 +16,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -462,7 +463,7 @@ int protein_immune_connect_bio_async(protein_immune_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_PROTEIN,
         .module_name = "protein_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

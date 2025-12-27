@@ -29,6 +29,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -83,7 +84,7 @@ static void cortical_layers_bio_cleanup(void) {
 #define NORMALIZATION_SIGMA 0.1f
 #define NORMALIZATION_EXPONENT 2.0f
 #define BURST_THRESHOLD 0.8f
-#define PREDICTION_LEARNING_RATE 0.01f
+#define PREDICTION_LEARNING_RATE NIMCP_DEFAULT_LEARNING_RATE
 
 //=============================================================================
 // Internal Structures

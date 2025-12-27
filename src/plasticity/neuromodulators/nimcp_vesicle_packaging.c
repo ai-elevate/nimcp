@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include "security/nimcp_security.h"
 #include <math.h>
 #include <string.h>
@@ -39,7 +40,7 @@
  */
 static inline float random_uniform(void) {
     static uint32_t seed = 123456789;
-    seed = (1103515245 * seed + 12345) & 0x7fffffff;
+    seed = (NIMCP_LCG_MULTIPLIER * seed + NIMCP_LCG_INCREMENT) & 0x7fffffff;
     return (float)seed / (float)0x7fffffff;
 }
 

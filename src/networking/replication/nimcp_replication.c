@@ -32,6 +32,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -550,7 +551,7 @@ static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint3
         strncpy(nodes[count].node_id, node_id, sizeof(nodes[count].node_id) - 1);
         nodes[count].status = is_alive ? NODE_STATUS_FOLLOWER : NODE_STATUS_DEAD;
         nodes[count].last_heartbeat = st.st_mtime;
-        nodes[count].lag_ms = age * 1000;  // Convert to ms
+        nodes[count].lag_ms = age * NIMCP_MS_PER_SEC;  // Convert seconds to ms
         nodes[count].version = 0;          // Filesystem doesn't track versions
 
         count++;
@@ -1235,7 +1236,7 @@ replication_cluster_t replication_create_redis_cluster(const char* redis_url,
 {
     replication_config_t config = {.backend = REPLICATION_BACKEND_REDIS,
                                    .strategy = REPLICATION_STRATEGY_LEADER_FOLLOWER,
-                                   .sync_interval_ms = 1000,
+                                   .sync_interval_ms = NIMCP_TIMEOUT_LONG_MS,
                                    .heartbeat_interval_ms = 5000,
                                    .node_timeout_ms = 15000,
                                    .enable_vector_clock = false,

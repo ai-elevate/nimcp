@@ -18,6 +18,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
@@ -287,7 +288,7 @@ int neural_plasticity_connect_bio_async(neural_plasticity_coordinator_t* coordin
     bio_module_info_t info = {
         .module_id = BIO_MODULE_NEURAL_PLASTICITY_COORDINATOR,
         .module_name = "neural_plasticity_coordinator",
-        .inbox_capacity = 128,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_LARGE,
         .user_data = coordinator
     };
 

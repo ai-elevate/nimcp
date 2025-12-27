@@ -31,6 +31,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/validation/nimcp_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -736,8 +737,8 @@ nimcp_result_t nimcp_kdf_derive_with_ad(
         ctx->stats.derivations_performed++;
         ctx->stats.total_bytes_derived += key_len;
 
-        double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
-                           (end.tv_nsec - start.tv_nsec) / 1e6;
+        double elapsed_ms = (end.tv_sec - start.tv_sec) * (double)NIMCP_MS_PER_SEC +
+                           (end.tv_nsec - start.tv_nsec) / (double)NIMCP_NS_PER_MS;
 
         ctx->stats.total_derivation_time_ms += elapsed_ms;
         ctx->stats.avg_derivation_time_ms =

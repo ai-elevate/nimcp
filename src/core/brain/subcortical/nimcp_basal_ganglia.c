@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 
 #include <string.h>
@@ -78,7 +79,7 @@ void basal_ganglia_default_config(basal_ganglia_config_t* config) {
     config->num_actions = 8;
     config->dopamine_baseline = BG_DOPAMINE_BASELINE;
     config->action_threshold = BG_ACTION_THRESHOLD;
-    config->habit_learning_rate = 0.01f;
+    config->habit_learning_rate = NIMCP_DEFAULT_LEARNING_RATE;
     config->exploration_rate = 0.1f;
     config->enable_hyperdirect = true;
     config->enable_habit_learning = true;

@@ -14,6 +14,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 
 #include <math.h>
 #include <string.h>
@@ -40,8 +41,8 @@ int feedback_default_policy(feedback_policy_t* policy) {
     policy->gate_open = true;
 
     policy->adaptive_rate = false;
-    policy->rate_increase_factor = 1.1f;
-    policy->rate_decrease_factor = 0.9f;
+    policy->rate_increase_factor = NIMCP_RATE_INCREASE_FACTOR;
+    policy->rate_decrease_factor = NIMCP_EMA_WEIGHT_SLOW;
 
     policy->cooldown_ms = 10;
 
@@ -58,8 +59,8 @@ int feedback_conservative_policy(feedback_policy_t* policy) {
     policy->momentum = 0.95f;
     policy->decay = 0.999f;
 
-    policy->min_threshold = 0.1f;
-    policy->max_threshold = 0.9f;
+    policy->min_threshold = NIMCP_PLASTICITY_RATE_DEFAULT;
+    policy->max_threshold = NIMCP_EMA_WEIGHT_SLOW;
 
     policy->gate_threshold = 0.5f;
     policy->gate_open = true;
@@ -81,7 +82,7 @@ int feedback_aggressive_policy(feedback_policy_t* policy) {
     policy->transfer_func = TRANSFER_LINEAR;
     policy->learning_rate = 0.5f;
     policy->momentum = 0.5f;
-    policy->decay = 0.9f;
+    policy->decay = NIMCP_EMA_WEIGHT_SLOW;
 
     policy->min_threshold = 0.0f;
     policy->max_threshold = 1.0f;
@@ -194,7 +195,7 @@ int feedback_system_init(feedback_system_t* system) {
 
     system->total_transfers = 0;
     system->total_failures = 0;
-    system->analysis_interval_ms = 1000;
+    system->analysis_interval_ms = NIMCP_TIMEOUT_LONG_MS;
     system->last_global_analysis_ms = 0;
     system->initialized = true;
 
@@ -319,7 +320,7 @@ int feedback_record_transfer(
         /* Adaptive rate decrease */
         if (mgr->policy.adaptive_rate && mgr->consecutive_failures >= 2) {
             float new_rate = mgr->current_learning_rate * mgr->policy.rate_decrease_factor;
-            float min_rate = mgr->policy.learning_rate * 0.1f;
+            float min_rate = mgr->policy.learning_rate * NIMCP_EMA_WEIGHT_FAST;
             if (new_rate >= min_rate) {
                 mgr->current_learning_rate = new_rate;
             }
@@ -491,9 +492,9 @@ int feedback_analyze_loop(
 
     /* Determine trend type */
     if (analysis->trend_confidence > 0.5f) {
-        if (analysis->trend_slope > 0.1f) {
+        if (analysis->trend_slope > NIMCP_PLASTICITY_RATE_DEFAULT) {
             analysis->trend = TREND_INCREASING;
-        } else if (analysis->trend_slope < -0.1f) {
+        } else if (analysis->trend_slope < -NIMCP_PLASTICITY_RATE_DEFAULT) {
             analysis->trend = TREND_DECREASING;
         } else {
             analysis->trend = TREND_STABLE;

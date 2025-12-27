@@ -44,6 +44,7 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -103,7 +104,7 @@ struct buffer_pool_struct {
 static inline uint64_t get_time_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+    return (uint64_t)ts.tv_sec * NIMCP_NS_PER_SEC + (uint64_t)ts.tv_nsec;
 }
 
 /**
@@ -645,7 +646,7 @@ NIMCP_EXPORT bool buffer_pool_get_stats(
     stats->fast_allocations = pool->total_acquires - pool->cow_triggers;
     stats->slow_allocations = pool->cow_triggers;
     stats->avg_alloc_time_us = pool->total_acquires > 0 ?
-        (float)pool->total_alloc_time_ns / (float)pool->total_acquires / 1000.0F : 0.0F;
+        (float)pool->total_alloc_time_ns / (float)pool->total_acquires / (float)NIMCP_NS_PER_US : 0.0F;
 
     nimcp_platform_mutex_unlock(&pool->mutex);
 

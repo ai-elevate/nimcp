@@ -22,6 +22,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
 
 #define LOG_MODULE "security_fractal"
 
@@ -1228,5 +1229,5 @@ static bool verify_hash(nimcp_fsc_node_t* node) {
 static uint64_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+    return (uint64_t)ts.tv_sec * NIMCP_MS_PER_SEC + (uint64_t)ts.tv_nsec / NIMCP_NS_PER_MS;
 }

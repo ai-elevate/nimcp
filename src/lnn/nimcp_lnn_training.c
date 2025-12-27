@@ -15,6 +15,7 @@
 #include "nimcp.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/validation/nimcp_common.h"
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
 #include "middleware/training/nimcp_training_logic_bridge.h"
 #include "middleware/immune/nimcp_training_immune.h"
@@ -27,7 +28,7 @@
  * Constants
  *===========================================================================*/
 
-#define LNN_TRAINING_DEFAULT_LR           0.001f
+#define LNN_TRAINING_DEFAULT_LR           NIMCP_DEFAULT_DECAY_RATE
 #define LNN_TRAINING_DEFAULT_WEIGHT_DECAY 0.0f
 #define LNN_TRAINING_DEFAULT_BETA1        0.9f
 #define LNN_TRAINING_DEFAULT_BETA2        0.999f

@@ -38,6 +38,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -700,7 +701,7 @@ static void* neuromod_sync_worker(void* arg)
                 nimcp_rwlock_rdlock(&dc->rwlock);
                 registered_neuromod_t* reg = &dc->neuromod_pools[i];
                 uint64_t now = nimcp_time_get_us();
-                uint64_t elapsed_ms = (now - reg->last_sync_time) / 1000;
+                uint64_t elapsed_ms = (now - reg->last_sync_time) / NIMCP_US_PER_MS;
                 nimcp_rwlock_unlock(&dc->rwlock);
 
                 if (elapsed_ms >= dc->config.neuromod_broadcast_interval_ms) {
@@ -743,7 +744,7 @@ static void* glial_sync_worker(void* arg)
                 nimcp_rwlock_rdlock(&dc->rwlock);
                 registered_glial_t* reg = &dc->glial_systems[i];
                 uint64_t now = nimcp_time_get_us();
-                uint64_t elapsed_ms = (now - reg->last_sync_time) / 1000;
+                uint64_t elapsed_ms = (now - reg->last_sync_time) / NIMCP_US_PER_MS;
                 nimcp_rwlock_unlock(&dc->rwlock);
 
                 if (elapsed_ms >= dc->config.glial_sync_interval_ms) {
@@ -786,7 +787,7 @@ static void* region_sync_worker(void* arg)
                 nimcp_rwlock_rdlock(&dc->rwlock);
                 registered_region_t* reg = &dc->brain_regions[i];
                 uint64_t now = nimcp_time_get_us();
-                uint64_t elapsed_ms = (now - reg->last_sync_time) / 1000;
+                uint64_t elapsed_ms = (now - reg->last_sync_time) / NIMCP_US_PER_MS;
                 nimcp_rwlock_unlock(&dc->rwlock);
 
                 if (elapsed_ms >= dc->config.region_sync_interval_ms) {

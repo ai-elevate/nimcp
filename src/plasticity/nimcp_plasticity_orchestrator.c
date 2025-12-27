@@ -35,6 +35,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "cognitive/nimcp_sleep_wake.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include <string.h>
@@ -1147,7 +1148,7 @@ int plasticity_orchestrator_post_spike(
     }
 
     /* Update neuron firing rate estimate */
-    neuron->firing_rate = (neuron->firing_rate * 0.9f) + 0.1f;
+    neuron->firing_rate = (neuron->firing_rate * NIMCP_EMA_WEIGHT_SLOW) + NIMCP_EMA_WEIGHT_FAST;
 
     /* Check metabolic constraints */
     bool can_ltp = true;

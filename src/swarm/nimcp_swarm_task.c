@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
@@ -249,7 +250,7 @@ swarm_task_manager_t* swarm_task_manager_create(
         bio_module_info_t info = {
             .module_id = BIO_MODULE_SWARM_TASK,
             .module_name = "swarm_task_manager",
-            .inbox_capacity = 64,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_MEDIUM,
             .user_data = manager
         };
         manager->bio_ctx = bio_router_register_module(&info);

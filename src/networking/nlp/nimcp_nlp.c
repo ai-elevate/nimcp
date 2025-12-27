@@ -21,6 +21,7 @@
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -1159,7 +1160,7 @@ int nlp_set_mode(nlp_node_t node, nlp_mode_t mode) {
             pthread_create(&node->stealth_thread, NULL, nlp_stealth_thread, node);
         }
         node->next_burst_time = nimcp_platform_time_monotonic_ms() +
-                                node->config.burst_interval_s * 1000;
+                                node->config.burst_interval_s * NIMCP_MS_PER_SEC;
     }
 
     // Update statistics
@@ -1631,7 +1632,7 @@ static void* nlp_heartbeat_thread(void* arg) {
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Heartbeat thread started");
 
     while (node->threads_running) {
-        usleep(node->config.heartbeat_interval_ms * 1000);
+        usleep(node->config.heartbeat_interval_ms * NIMCP_US_PER_MS);
 
         if (!node->threads_running) break;
 
@@ -1722,7 +1723,7 @@ static void* nlp_stealth_thread(void* arg) {
 
             nimcp_mutex_unlock(&node->burst_mutex);
 
-            node->next_burst_time = now + node->config.burst_interval_s * 1000;
+            node->next_burst_time = now + node->config.burst_interval_s * NIMCP_MS_PER_SEC;
         }
 
         usleep(100000);  // 100ms

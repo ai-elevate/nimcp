@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -112,7 +113,7 @@ snn_bcm_bridge_t* snn_bcm_bridge_create(
     bridge->threshold_updates = 0;
 
     /* Initialize effects */
-    bridge->effects.effective_learning_rate = 0.01f;
+    bridge->effects.effective_learning_rate = NIMCP_DEFAULT_LEARNING_RATE;
     bridge->effects.avg_threshold = 1.0f;
     bridge->effects.threshold_range = 0.0f;
     bridge->effects.avg_activity = 0.0f;

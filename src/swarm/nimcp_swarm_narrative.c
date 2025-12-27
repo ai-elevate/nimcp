@@ -16,6 +16,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/containers/nimcp_hash_table.h"
 
@@ -229,7 +230,7 @@ nimcp_result_t swarm_narrative_init(swarm_narrative_t* sn, void* bio_ctx)
         bio_module_info_t module_info = {
             .module_id = BIO_MODULE_SWARM_MEMORY,
             .module_name = "swarm_narrative",
-            .inbox_capacity = 100,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_LARGE,
             .user_data = sn
         };
 

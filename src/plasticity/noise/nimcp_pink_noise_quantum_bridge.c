@@ -11,6 +11,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -20,7 +21,7 @@
 //=============================================================================
 
 static float uniform_random(uint32_t* state) {
-    *state = *state * 1103515245 + 12345;
+    *state = *state * NIMCP_LCG_MULTIPLIER + NIMCP_LCG_INCREMENT;
     return (float)(*state % 65536) / 65536.0f;
 }
 

@@ -51,6 +51,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "networking/protocol/nimcp_protocol.h"
@@ -1658,7 +1659,7 @@ uint32_t p2p_node_check_peer_health(p2p_node_t node, uint32_t timeout_ms)
 
     // Get current time once for all comparisons
     uint64_t current_time_us = nimcp_time_get_us();
-    uint64_t timeout_us = (uint64_t)timeout_ms * 1000;
+    uint64_t timeout_us = (uint64_t)timeout_ms * NIMCP_US_PER_MS;
     uint32_t unhealthy_count = 0;
 
     // Single-pass iteration through peers

@@ -13,6 +13,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/validation/nimcp_common.h"
 #include <errno.h>
 #include <sys/time.h>
 #include <time.h>
@@ -44,7 +45,7 @@ uint64_t nimcp_time_get_us(void)
      */
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-        return (uint64_t) ts.tv_sec * 1000000ULL + (uint64_t) ts.tv_nsec / 1000ULL;
+        return (uint64_t) ts.tv_sec * NIMCP_US_PER_SEC + (uint64_t) ts.tv_nsec / NIMCP_NS_PER_US;
     }
 
     /**
@@ -53,7 +54,7 @@ uint64_t nimcp_time_get_us(void)
      */
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (uint64_t) tv.tv_sec * 1000000ULL + (uint64_t) tv.tv_usec;
+    return (uint64_t) tv.tv_sec * NIMCP_US_PER_SEC + (uint64_t) tv.tv_usec;
 #else
     /**
      * WHAT: Windows fallback (if needed in future)
@@ -66,13 +67,13 @@ uint64_t nimcp_time_get_us(void)
 uint64_t nimcp_time_get_ms(void)
 {
     LOG_DEBUG("Entering nimcp_time_get_ms");
-    return nimcp_time_get_us() / 1000;
+    return nimcp_time_get_us() / NIMCP_US_PER_MS;
 }
 
 uint64_t nimcp_time_get_sec(void)
 {
     LOG_DEBUG("Entering nimcp_time_get_sec");
-    return nimcp_time_get_us() / 1000000;
+    return nimcp_time_get_us() / NIMCP_US_PER_SEC;
 }
 
 //=============================================================================
@@ -98,7 +99,7 @@ uint64_t nimcp_time_monotonic_ns(void)
         clock_gettime(CLOCK_REALTIME, &ts);
     }
 
-    return (uint64_t) ts.tv_sec * 1000000000ULL + (uint64_t) ts.tv_nsec;
+    return (uint64_t) ts.tv_sec * NIMCP_NS_PER_SEC + (uint64_t) ts.tv_nsec;
 #else
     #error "Platform not supported - implement monotonic time for this platform"
 #endif
@@ -107,13 +108,13 @@ uint64_t nimcp_time_monotonic_ns(void)
 uint64_t nimcp_time_monotonic_us(void)
 {
     LOG_DEBUG("Entering nimcp_time_monotonic_us");
-    return nimcp_time_monotonic_ns() / 1000;
+    return nimcp_time_monotonic_ns() / NIMCP_NS_PER_US;
 }
 
 uint64_t nimcp_time_monotonic_ms(void)
 {
     LOG_DEBUG("Entering nimcp_time_monotonic_ms");
-    return nimcp_time_monotonic_ns() / 1000000;
+    return nimcp_time_monotonic_ns() / NIMCP_NS_PER_MS;
 }
 
 //=============================================================================
@@ -180,8 +181,8 @@ void nimcp_time_sleep_us(uint64_t us)
      * HOW: Convert microseconds to timespec
      */
     struct timespec ts;
-    ts.tv_sec = us / 1000000;
-    ts.tv_nsec = (us % 1000000) * 1000;
+    ts.tv_sec = us / NIMCP_US_PER_SEC;
+    ts.tv_nsec = (us % NIMCP_US_PER_SEC) * NIMCP_NS_PER_US;
 
     /**
      * WHAT: Handle EINTR (interrupted by signal)
@@ -214,5 +215,5 @@ void nimcp_time_sleep_us(uint64_t us)
 void nimcp_time_sleep_ms(uint64_t ms)
 {
     LOG_DEBUG("Entering nimcp_time_sleep_ms");
-    nimcp_time_sleep_us(ms * 1000);
+    nimcp_time_sleep_us(ms * NIMCP_US_PER_MS);
 }

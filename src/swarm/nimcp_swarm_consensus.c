@@ -28,6 +28,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/validation/nimcp_common.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -1087,7 +1088,7 @@ nimcp_error_t swarm_consensus_connect_bio_async(swarm_consensus_t ctx)
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SWARM_CONSENSUS,
         .module_name = "swarm_consensus",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = ctx
     };
 

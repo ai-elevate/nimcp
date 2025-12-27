@@ -8,6 +8,7 @@
 #include "plasticity/neuromodulators/nimcp_neuromod_substrate_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 
@@ -324,7 +325,7 @@ int neuromod_substrate_connect_bio_async(neuromod_substrate_bridge_t* bridge)
     bio_module_info_t info = {
         .module_id = BIO_MODULE_NEUROMOD_SUBSTRATE,
         .module_name = "neuromod_substrate_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

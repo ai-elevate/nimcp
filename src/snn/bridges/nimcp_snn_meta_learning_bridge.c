@@ -10,6 +10,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
@@ -18,7 +19,7 @@
 
 void snn_meta_learning_config_default(snn_meta_learning_config_t* config) {
     if (!config) return;
-    config->meta_learning_rate = 0.01f;
+    config->meta_learning_rate = NIMCP_DEFAULT_LEARNING_RATE;
     config->adaptation_threshold = 0.65f;
     config->integration_time_window_ms = 500.0f;
     config->enable_efficiency_tracking = true;

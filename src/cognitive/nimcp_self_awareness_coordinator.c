@@ -13,6 +13,7 @@
 #include "cognitive/nimcp_self_awareness_coordinator.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 
 #include <string.h>
@@ -121,8 +122,8 @@ static void update_phi_monitoring(self_awareness_coordinator_t* coord) {
             if (result->phi < coord->stats.min_phi) {
                 coord->stats.min_phi = result->phi;
             }
-            /* Running average */
-            coord->stats.avg_phi = (coord->stats.avg_phi * 0.99f) + (result->phi * 0.01f);
+            /* Running average using EMA weights */
+            coord->stats.avg_phi = (coord->stats.avg_phi * NIMCP_EMA_WEIGHT_MEDIUM) + (result->phi * NIMCP_EMA_WEIGHT_MEDIUM_NEW);
         }
 
         /* Check for alert conditions */
@@ -189,7 +190,7 @@ int sac_default_config(sac_config_t* config) {
     config->phi_alert_threshold = SAC_DEFAULT_PHI_ALERT_THRESHOLD;
 
     config->update_interval_ms = SAC_DEFAULT_UPDATE_INTERVAL_MS;
-    config->coherence_check_interval_ms = 1000;  /* Check every second */
+    config->coherence_check_interval_ms = NIMCP_TIMEOUT_LONG_MS;  /* Check every second */
 
     config->auto_resolve_minor = true;
     config->max_conflicts_before_alert = 5;
@@ -249,7 +250,7 @@ self_awareness_coordinator_t* sac_create(
 
     /* Initialize phi alert */
     coord->phi_alert.alert_threshold = coord->config.phi_alert_threshold;
-    coord->phi_alert.recovery_threshold = coord->config.phi_alert_threshold + 0.1f;
+    coord->phi_alert.recovery_threshold = coord->config.phi_alert_threshold + NIMCP_PLASTICITY_RATE_DEFAULT;
     coord->phi_alert.alert_active = false;
     coord->phi_alert.alert_start_time_ms = 0;
     coord->phi_alert.total_alert_time_ms = 0;
@@ -421,7 +422,7 @@ int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
 
         if (ret && found > 0) {
             /* Check if recent failures contradict capability beliefs */
-            float memory_coherence = 1.0f - (found * 0.1f);
+            float memory_coherence = 1.0f - (found * NIMCP_PLASTICITY_RATE_DEFAULT);
             if (memory_coherence < 0.5f) memory_coherence = 0.5f;
             total_coherence *= memory_coherence;
             checks_performed++;
@@ -431,7 +432,7 @@ int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
     /* Check 3: Theory of Mind consistency with self */
     if (coord->tom && coord->self_model) {
         /* Check if ToM predictions for self match actual self-model */
-        float tom_coherence = 0.9f;  /* Simplified - assume mostly coherent */
+        float tom_coherence = NIMCP_EMA_WEIGHT_SLOW;  /* Simplified - assume mostly coherent */
         total_coherence *= tom_coherence;
         checks_performed++;
     }
@@ -497,7 +498,7 @@ int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
 
         /* Update latency tracking */
         float latency = (float)(get_current_time_ms() - start_time);
-        loop->avg_latency_ms = (loop->avg_latency_ms * 0.9f) + (latency * 0.1f);
+        loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
         return 0;
     } else {
         loop->error_count++;
@@ -531,7 +532,7 @@ int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
         coord->stats.total_feedback_transfers++;
 
         float latency = (float)(get_current_time_ms() - start_time);
-        loop->avg_latency_ms = (loop->avg_latency_ms * 0.9f) + (latency * 0.1f);
+        loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
         return 0;
     } else {
         loop->error_count++;
@@ -563,7 +564,7 @@ int sac_ground_tom_in_self(self_awareness_coordinator_t* coord) {
     coord->stats.total_feedback_transfers++;
 
     float latency = (float)(get_current_time_ms() - start_time);
-    loop->avg_latency_ms = (loop->avg_latency_ms * 0.9f) + (latency * 0.1f);
+    loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
 
     return 0;
 }
@@ -770,7 +771,7 @@ int sac_connect_bio_async(self_awareness_coordinator_t* coord) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SELF_AWARENESS_COORDINATOR,
         .module_name = "self_awareness_coordinator",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = coord
     };
 

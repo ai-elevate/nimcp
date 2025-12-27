@@ -6,6 +6,7 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 
@@ -13,7 +14,7 @@
 
 // Constants
 #define CALCIUM_DECAY_RATE 0.1f
-#define META_PLASTICITY_RATE 0.001f
+#define META_PLASTICITY_RATE NIMCP_DEFAULT_DECAY_RATE
 #define HOMEOSTATIC_DECAY 0.999f
 #define MAX_SYNAPTIC_STRENGTH 10.0f
 #define NORMALIZATION_INTERVAL 1000
@@ -266,8 +267,8 @@ bool neural_network_apply_immune_metabolic_load(neural_network_t network,
 
         float plasticity_reduction = 1.0f - (metabolic_load * 0.5f);
         neuron->plasticity_rate *= plasticity_reduction;
-        if (neuron->plasticity_rate < 0.001f) {
-            neuron->plasticity_rate = 0.001f;
+        if (neuron->plasticity_rate < NIMCP_DEFAULT_DECAY_RATE) {
+            neuron->plasticity_rate = NIMCP_DEFAULT_DECAY_RATE;
         }
     }
 

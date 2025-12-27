@@ -5,6 +5,7 @@
 
 #include "glial/astrocytes/nimcp_astrocytes_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -248,7 +249,7 @@ int astrocytes_fep_connect_bio_async(astrocytes_fep_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_ASTROCYTE,
         .module_name = "astrocytes_fep_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

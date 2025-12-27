@@ -18,6 +18,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include <string.h>
 #include <math.h>
@@ -690,7 +691,7 @@ int microglia_immune_connect_bio_async(microglia_immune_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_MICROGLIA,
         .module_name = "microglia_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

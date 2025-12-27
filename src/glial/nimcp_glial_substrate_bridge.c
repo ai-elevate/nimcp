@@ -7,6 +7,7 @@
 
 #include "glial/nimcp_glial_substrate_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 
@@ -255,7 +256,7 @@ int glial_substrate_connect_bio_async(glial_substrate_bridge_t* bridge) {
     bio_module_info_t info = {
         .module_id = BIO_MODULE_GLIAL_SUBSTRATE,
         .module_name = "glial_substrate_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

@@ -467,7 +467,7 @@ static float detect_anxiety(mental_health_monitor_t* monitor, brain_t brain)
     // Criterion 3: Decision paralysis (20% weight)
     // TODO: Add baseline_latency marker when available
     // For now, use absolute latency threshold
-    if (monitor->current_markers.decision_latency_avg > 1000.0f) {  // > 1 second
+    if (monitor->current_markers.decision_latency_avg > (float)NIMCP_TIMEOUT_LONG_MS) {  // > 1 second
         score += 0.2f;
     }
 
@@ -1261,7 +1261,7 @@ static float detect_dependent(mental_health_monitor_t* monitor, brain_t brain)
     }
 
     // Criterion 4: Decision paralysis (10% weight)
-    if (monitor->current_markers.decision_latency_avg > 1000.0f) {
+    if (monitor->current_markers.decision_latency_avg > (float)NIMCP_TIMEOUT_LONG_MS) {
         score += 0.1f;
     }
 

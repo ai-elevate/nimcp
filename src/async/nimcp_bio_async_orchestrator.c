@@ -7,6 +7,7 @@
 
 #include "async/nimcp_bio_async_orchestrator.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -138,7 +139,7 @@ bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_
         bio_module_info_t info = {
             .module_id = BIO_MODULE_BIO_ASYNC_ORCHESTRATOR,
             .module_name = BIO_ORCHESTRATOR_MODULE_NAME,
-            .inbox_capacity = 32,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
             .user_data = orch
         };
 

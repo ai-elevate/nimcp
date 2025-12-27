@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
 
@@ -644,7 +645,7 @@ int metaplasticity_immune_connect_bio_async(metaplasticity_immune_bridge_t* brid
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_METAPLASTICITY,
         .module_name = "metaplasticity_immune_bridge",
-        .inbox_capacity = 32,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL,
         .user_data = bridge
     };
 

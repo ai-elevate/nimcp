@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_bbb_helpers.h"
@@ -1033,7 +1034,7 @@ nimcp_result_t nimcp_pheromone_register_bioasync(
     bio_module_info_t bio_info = {
         .module_id = 0,  /* Auto-assign */
         .module_name = "pheromone",
-        .inbox_capacity = 64,
+        .inbox_capacity = NIMCP_INBOX_CAPACITY_MEDIUM,
         .user_data = system
     };
 

@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 
@@ -25,7 +26,7 @@ int myelin_immune_default_config(myelin_immune_config_t* config)
     config->il10_repair_rate = 0.1f;
     config->integrity_repair_rate = 0.01f;
     config->enable_bio_async = true;
-    config->inbox_capacity = 32;
+    config->inbox_capacity = NIMCP_INBOX_CAPACITY_SMALL;
     return 0;
 }
 

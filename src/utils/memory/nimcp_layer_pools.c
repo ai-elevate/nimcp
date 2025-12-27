@@ -25,9 +25,16 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
 #include "utils/logging/nimcp_logging.h"
+
+/* Layer pool subscriber entry size (bytes) */
+#define LAYER_POOL_SUBSCRIBER_ENTRY_SIZE 80
+
+/* Layer pool gradient buffer size (bytes) */
+#define LAYER_POOL_GRADIENT_BUFFER_SIZE NIMCP_POOL_BLOCK_SIZE_LARGE
 
 //=============================================================================
 // Internal Structures
@@ -397,7 +404,7 @@ layer_pools_t layer_pools_create(
 
     if (!init_layer_pool(&pools->subscriber_pool,
                          config->subscriber_pool_capacity,
-                         80)) {  /* subscriber entry ~80 bytes */
+                         LAYER_POOL_SUBSCRIBER_ENTRY_SIZE)) {
         layer_pools_destroy(pools);
         return NULL;
     }
@@ -412,7 +419,7 @@ layer_pools_t layer_pools_create(
 
     if (!init_layer_pool(&pools->gradient_pool,
                          config->gradient_pool_capacity,
-                         4096)) {  /* gradient buffer ~4KB */
+                         LAYER_POOL_GRADIENT_BUFFER_SIZE)) {
         layer_pools_destroy(pools);
         return NULL;
     }
@@ -1110,11 +1117,11 @@ size_t layer_pools_calculate_memory(const layer_pools_config_t* config)
     total += config->event_pool_capacity * config->event_entry_size;
     total += config->pattern_pool_capacity * config->pattern_node_size;
     total += config->route_pool_capacity * config->route_node_size;
-    total += config->subscriber_pool_capacity * 80;
+    total += config->subscriber_pool_capacity * LAYER_POOL_SUBSCRIBER_ENTRY_SIZE;
 
     /* Training layer */
     total += config->signal_pool_capacity * config->signal_entry_size;
-    total += config->gradient_pool_capacity * 4096;
+    total += config->gradient_pool_capacity * LAYER_POOL_GRADIENT_BUFFER_SIZE;
 
     /* Add brain pools estimate */
     brain_pools_config_t bp_config = brain_pools_default_config();
