@@ -18,6 +18,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/spatial/nimcp_kdtree.h"
+#include "utils/thread/nimcp_atomic.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -28,7 +30,9 @@
 
 static bio_module_context_t g_astrocyte_bio_ctx = NULL;
 static unified_mem_manager_t g_astrocyte_mem_mgr = NULL;
-static bool g_astrocyte_bio_initialized = false;
+static nimcp_atomic_bool_t g_astrocyte_bio_initialized = { .value = false };
+static nimcp_platform_once_t g_astrocyte_bio_once = NIMCP_PLATFORM_ONCE_INIT;
+static nimcp_error_t g_astrocyte_bio_init_result = NIMCP_SUCCESS;
 
 //=============================================================================
 // Bio-Async Message Handlers
@@ -186,23 +190,20 @@ static nimcp_error_t handle_glial_sync_message(
 }
 
 /**
- * @brief Initialize bio-async integration for astrocytes module
+ * @brief Internal initialization function called by nimcp_platform_once
  *
- * Registers module with bio-router and sets up message handlers.
+ * Thread-safe initialization of bio-async integration.
+ * Result is stored in g_astrocyte_bio_init_result for callers to check.
  */
-static nimcp_error_t astrocyte_bio_init(void)
+static void astrocyte_bio_init_once_impl(void)
 {
-    if (g_astrocyte_bio_initialized) {
-        LOG_MODULE_WARN("ASTROCYTE", "Bio-async already initialized");
-        return NIMCP_SUCCESS;
-    }
-
     // Initialize unified memory manager
     unified_mem_config_t mem_config = unified_mem_default_config();
     g_astrocyte_mem_mgr = unified_mem_create(&mem_config);
     if (!g_astrocyte_mem_mgr) {
         LOG_MODULE_ERROR("ASTROCYTE", "Failed to create unified memory manager");
-        return NIMCP_ERROR_MEMORY;
+        g_astrocyte_bio_init_result = NIMCP_ERROR_MEMORY;
+        return;
     }
 
     // Register module with bio-router
@@ -218,7 +219,8 @@ static nimcp_error_t astrocyte_bio_init(void)
         LOG_MODULE_ERROR("ASTROCYTE", "Failed to register with bio-router");
         unified_mem_destroy(g_astrocyte_mem_mgr);
         g_astrocyte_mem_mgr = NULL;
-        return NIMCP_ERROR_INVALID_PARAM;
+        g_astrocyte_bio_init_result = NIMCP_ERROR_INVALID_PARAM;
+        return;
     }
 
     // Register message handlers
@@ -256,16 +258,29 @@ static nimcp_error_t astrocyte_bio_init(void)
         goto cleanup;
     }
 
-    g_astrocyte_bio_initialized = true;
+    nimcp_atomic_store_bool(&g_astrocyte_bio_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
+    g_astrocyte_bio_init_result = NIMCP_SUCCESS;
     LOG_MODULE_INFO("ASTROCYTE", "Bio-async integration initialized successfully (4 handlers registered)");
-    return NIMCP_SUCCESS;
+    return;
 
 cleanup:
     bio_router_unregister_module(g_astrocyte_bio_ctx);
     g_astrocyte_bio_ctx = NULL;
     unified_mem_destroy(g_astrocyte_mem_mgr);
     g_astrocyte_mem_mgr = NULL;
-    return result;
+    g_astrocyte_bio_init_result = result;
+}
+
+/**
+ * @brief Initialize bio-async integration for astrocytes module (thread-safe)
+ *
+ * Uses nimcp_platform_once to ensure initialization runs exactly once
+ * across all threads calling this function.
+ */
+static nimcp_error_t astrocyte_bio_init(void)
+{
+    nimcp_platform_once(&g_astrocyte_bio_once, astrocyte_bio_init_once_impl);
+    return g_astrocyte_bio_init_result;
 }
 
 /**
@@ -273,7 +288,7 @@ cleanup:
  */
 static void astrocyte_bio_shutdown(void)
 {
-    if (!g_astrocyte_bio_initialized) {
+    if (!nimcp_atomic_load_bool(&g_astrocyte_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return;
     }
 
@@ -289,7 +304,7 @@ static void astrocyte_bio_shutdown(void)
         g_astrocyte_mem_mgr = NULL;
     }
 
-    g_astrocyte_bio_initialized = false;
+    nimcp_atomic_store_bool(&g_astrocyte_bio_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
 }
 
 //=============================================================================
@@ -314,15 +329,20 @@ void astrocyte_unregister_bio_handlers(void)
 
 astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float y, float z, float coverage_radius)
 {
-    // Initialize bio-async on first create
-    if (!g_astrocyte_bio_initialized) {
-        nimcp_error_t result = astrocyte_bio_init();
-        if (result != NIMCP_SUCCESS) {
-            LOG_MODULE_WARN("ASTROCYTE", "Bio-async init failed: %d (continuing anyway)", result);
-        }
+    /* Initialize bio-async on first create (thread-safe via nimcp_platform_once) */
+    nimcp_error_t init_result = astrocyte_bio_init();
+    if (init_result != NIMCP_SUCCESS) {
+        LOG_MODULE_WARN("ASTROCYTE", "Bio-async init failed: %d (continuing anyway)", init_result);
     }
 
-    if (coverage_radius < 0.0F) {
+    /* Validate spatial coordinates are finite (not NaN or Inf) */
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z)) {
+        LOG_MODULE_ERROR("ASTROCYTE", "Invalid spatial coordinates: (%.2f, %.2f, %.2f)", x, y, z);
+        return NULL;
+    }
+
+    /* Validate coverage radius is positive and finite */
+    if (coverage_radius < 0.0F || !isfinite(coverage_radius)) {
         LOG_MODULE_ERROR("ASTROCYTE", "Invalid coverage radius: %.2f", coverage_radius);
         return NULL;
     }
@@ -502,12 +522,12 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
     nimcp_spinlock_unlock(&astro->lock);
 
     // Process pending bio-async messages
-    if (g_astrocyte_bio_initialized && g_astrocyte_bio_ctx) {
+    if (nimcp_atomic_load_bool(&g_astrocyte_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) && g_astrocyte_bio_ctx) {
         bio_router_process_inbox(g_astrocyte_bio_ctx, 5);
     }
 
     // Publish calcium concentration via predictive signal
-    if (g_astrocyte_bio_initialized && g_astrocyte_bio_ctx) {
+    if (nimcp_atomic_load_bool(&g_astrocyte_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) && g_astrocyte_bio_ctx) {
         bio_router_publish_signal(g_astrocyte_bio_ctx, "astrocyte.calcium", ca);
         LOG_MODULE_DEBUG("ASTROCYTE", "Published calcium signal: %.2f μM", ca);
     }
@@ -582,7 +602,7 @@ float astrocyte_compute_glutamate_release(astrocyte_t* astro, uint32_t synapse_i
         astro->glutamate_pool = fmaxf(0.0F, astro->glutamate_pool); // Clamp to [0, 1]
 
         // Publish glutamate release via predictive signal
-        if (g_astrocyte_bio_initialized && g_astrocyte_bio_ctx) {
+        if (nimcp_atomic_load_bool(&g_astrocyte_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) && g_astrocyte_bio_ctx) {
             bio_router_publish_signal(g_astrocyte_bio_ctx, "astrocyte.glutamate", release_amount);
             LOG_MODULE_DEBUG("ASTROCYTE", "Published glutamate release: %.4f", release_amount);
         }
@@ -878,7 +898,7 @@ void astrocyte_update_atp_level(astrocyte_t* astro, float neural_activity, float
     nimcp_spinlock_unlock(&astro->lock);
 
     // Publish ATP level via predictive signal
-    if (g_astrocyte_bio_initialized && g_astrocyte_bio_ctx) {
+    if (nimcp_atomic_load_bool(&g_astrocyte_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) && g_astrocyte_bio_ctx) {
         bio_router_publish_signal(g_astrocyte_bio_ctx, "astrocyte.atp", astro->atp_level);
         LOG_MODULE_DEBUG("ASTROCYTE", "Published ATP level: %.3f", astro->atp_level);
     }
@@ -1027,8 +1047,19 @@ astrocyte_t* astrocyte_network_find_nearest(astrocyte_network_t* network, const 
     if (!network || !point || network->num_astrocytes == 0) {
         return NULL;
     }
+    if (!network->astrocytes) {
+        return NULL;
+    }
+    /* Validate spatial coordinates are finite */
+    if (!isfinite(point[0]) || !isfinite(point[1]) || !isfinite(point[2])) {
+        return NULL;
+    }
+    /* Bounds check: num_astrocytes should not exceed capacity */
+    if (network->num_astrocytes > network->capacity) {
+        return NULL;
+    }
 
-    // Use KD-tree for O(log N) lookup if available
+    /* Use KD-tree for O(log N) lookup if available */
     if (network->spatial_index) {
         kdtree_t* kdtree = (kdtree_t*)network->spatial_index;
         return (astrocyte_t*)kdtree_nearest(kdtree, point, NULL);
@@ -1059,8 +1090,15 @@ nimcp_result_t astrocyte_network_establish_coupling(astrocyte_network_t* network
     if (!network) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+    if (!network->astrocytes || network->num_astrocytes == 0) {
+        return NIMCP_SUCCESS;  /* Nothing to couple */
+    }
+    /* Bounds check: num_astrocytes should not exceed capacity */
+    if (network->num_astrocytes > network->capacity) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
-    // For each astrocyte, find neighbors within coupling radius
+    /* For each astrocyte, find neighbors within coupling radius */
     for (uint32_t i = 0; i < network->num_astrocytes; i++) {
         astrocyte_t* astro = network->astrocytes[i];
 
@@ -1144,9 +1182,20 @@ void astrocyte_network_step(astrocyte_network_t* network, float dt)
     if (!network || dt <= 0.0F) {
         return;
     }
+    if (!network->astrocytes) {
+        return;
+    }
+    /* Bounds check: num_astrocytes should not exceed capacity */
+    if (network->num_astrocytes > network->capacity) {
+        return;
+    }
+    /* Validate dt is finite and within reasonable range */
+    if (!isfinite(dt) || dt > 1.0F) {
+        return;  /* Cap at 1 second per step */
+    }
 
-    // TODO: Implement full network dynamics
-    // For now, simple update of all astrocytes
+    /* TODO: Implement full network dynamics */
+    /* For now, simple update of all astrocytes */
 
     for (uint32_t i = 0; i < network->num_astrocytes; i++) {
         astrocyte_t* astro = network->astrocytes[i];

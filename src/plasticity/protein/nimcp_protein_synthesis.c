@@ -615,6 +615,7 @@ int protein_synthesis_update(
 
     system->current_time_ms += delta_ms;
     float delta_sec = (float)delta_ms / 1000.0f;
+    (void)delta_sec;  /* Suppress unused warning */
 
     /* Check induced boost expiration */
     if (system->induced_boost_factor > 1.0f &&
@@ -622,31 +623,85 @@ int protein_synthesis_update(
         system->induced_boost_factor = 1.0f;
     }
 
-    /* Compute effective synthesis rate */
-    float effective_rate = system->config.base_synthesis_rate;
-    effective_rate *= system->prp_state.sleep_modulation;
-    effective_rate *= system->prp_state.immune_suppression;
-    effective_rate *= system->induced_boost_factor;
+    /* PARAMETER VALIDATION: Validate synthesis rate components before use
+     * WHAT: Ensure all rate multipliers are positive and finite
+     * WHY:  Invalid rates cause numerical instability and incorrect pool dynamics
+     * HOW:  Clamp each component to valid range
+     */
+    float base_rate = system->config.base_synthesis_rate;
+    if (isnan(base_rate) || base_rate < 0.0f) {
+        base_rate = PROTEIN_BASE_SYNTHESIS_RATE;  /* Use default */
+    }
+
+    float sleep_mod = system->prp_state.sleep_modulation;
+    if (isnan(sleep_mod) || sleep_mod < 0.0f) {
+        sleep_mod = 1.0f;  /* Default to no modulation */
+    }
+    if (sleep_mod > 10.0f) sleep_mod = 10.0f;  /* Cap at reasonable maximum */
+
+    float immune_supp = system->prp_state.immune_suppression;
+    if (isnan(immune_supp) || immune_supp < 0.0f) {
+        immune_supp = 1.0f;  /* Default to no suppression */
+    }
+    if (immune_supp > 1.0f) immune_supp = 1.0f;  /* Cap at 100% */
+
+    float boost = system->induced_boost_factor;
+    if (isnan(boost) || boost < 1.0f) {
+        boost = 1.0f;  /* No boost below 1.0 */
+    }
+    if (boost > 10.0f) boost = 10.0f;  /* Cap at reasonable maximum */
+
+    /* Compute effective synthesis rate with validated components */
+    float effective_rate = base_rate * sleep_mod * immune_supp * boost;
+
+    /* Final validation of effective rate */
+    if (isnan(effective_rate) || isinf(effective_rate) || effective_rate < 0.0f) {
+        effective_rate = PROTEIN_BASE_SYNTHESIS_RATE;  /* Fallback to default */
+    }
 
     system->prp_state.synthesis_rate = effective_rate;
 
-    /* Synthesize PRPs */
+    /* Synthesize PRPs with numerical validation */
     float prps_synthesized = effective_rate * (float)delta_ms;
+    if (isnan(prps_synthesized) || prps_synthesized < 0.0f) {
+        prps_synthesized = 0.0f;  /* Skip invalid synthesis */
+    }
     system->prp_state.current_prp_pool += prps_synthesized;
 
+    /* Clamp PRP pool to valid range */
     if (system->prp_state.current_prp_pool > system->prp_state.max_prp_pool) {
         system->prp_state.current_prp_pool = system->prp_state.max_prp_pool;
+    }
+    if (system->prp_state.current_prp_pool < 0.0f) {
+        system->prp_state.current_prp_pool = 0.0f;
     }
 
     system->prp_state.total_prps_synthesized += (uint64_t)prps_synthesized;
 
-    /* Decay PRPs */
-    float decay_amount = system->prp_state.current_prp_pool *
-                         system->config.decay_rate * (float)delta_ms;
+    /* Validate decay rate before use */
+    float decay_rate = system->config.decay_rate;
+    if (isnan(decay_rate) || decay_rate < 0.0f) {
+        decay_rate = PROTEIN_DECAY_RATE;  /* Use default */
+    }
+    if (decay_rate > 1.0f) decay_rate = 1.0f;  /* Cap at 100% per ms */
+
+    /* Decay PRPs with numerical validation */
+    float decay_amount = system->prp_state.current_prp_pool * decay_rate * (float)delta_ms;
+    if (isnan(decay_amount) || decay_amount < 0.0f) {
+        decay_amount = 0.0f;  /* Skip invalid decay */
+    }
+    /* Don't decay more than available */
+    if (decay_amount > system->prp_state.current_prp_pool) {
+        decay_amount = system->prp_state.current_prp_pool;
+    }
     system->prp_state.current_prp_pool -= decay_amount;
 
+    /* Final bounds check for PRP pool */
     if (system->prp_state.current_prp_pool < 0.0f) {
         system->prp_state.current_prp_pool = 0.0f;
+    }
+    if (isnan(system->prp_state.current_prp_pool)) {
+        system->prp_state.current_prp_pool = system->config.initial_prp_pool;
     }
 
     system->prp_state.total_prps_decayed += (uint64_t)decay_amount;

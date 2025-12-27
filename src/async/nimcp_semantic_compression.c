@@ -540,16 +540,18 @@ nimcp_compressed_signal_t* nimcp_semantic_compressor_compress(
         primitive_entry_t* best = find_best_primitive(compressor, segment, seg_len, &distance);
 
         if (best) {
-            /* Use existing primitive */
-            compressed->primitive_ids[compressed->num_primitives++] = best->primitive.primitive_id;
-            best->primitive.usage_count++;
-            best->primitive.last_used = nimcp_time_get_current_time_ns();
+            /* Use existing primitive - bounds check before storing */
+            if (compressed->num_primitives < max_primitives) {
+                compressed->primitive_ids[compressed->num_primitives++] = best->primitive.primitive_id;
+                best->primitive.usage_count++;
+                best->primitive.last_used = nimcp_time_get_current_time_ns();
+            }
         } else {
             /* Create new primitive if space available
              * Use unlocked version since we already hold the mutex */
             uint32_t new_id = add_primitive_unlocked(
                 compressor, segment, (uint32_t)seg_len);
-            if (new_id > 0) {
+            if (new_id > 0 && compressed->num_primitives < max_primitives) {
                 compressed->primitive_ids[compressed->num_primitives++] = new_id;
             }
         }
@@ -637,6 +639,15 @@ nimcp_decompressed_signal_t* nimcp_semantic_compressor_decompress(
     }
 
     decompressed->len = 0;
+
+    /* Guard: check primitive_ids array before accessing */
+    if (!compressed->primitive_ids && compressed->num_primitives > 0) {
+        LOG_ERROR(COMPRESSION_MODULE, "Corrupted compressed signal: NULL primitive_ids");
+        nimcp_free(decompressed->signal);
+        nimcp_free(decompressed);
+        nimcp_platform_mutex_unlock(&compressor->mutex);
+        return NULL;
+    }
 
     /* Reconstruct signal from primitives */
     for (uint32_t i = 0; i < compressed->num_primitives; i++) {

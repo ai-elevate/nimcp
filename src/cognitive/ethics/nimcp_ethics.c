@@ -596,7 +596,7 @@ static void build_evaluation_result(ethics_engine_t engine, const action_context
     if (!result->allowed) {
         result->recommended_action = ETHICS_ACTION_BLOCK;
         result->primary_violation = worst_violation;
-        engine->violations_detected++;
+        __atomic_fetch_add(&engine->violations_detected, 1, __ATOMIC_RELAXED);
 
         record_violation(engine, action, worst_violation, worst_severity, golden_rule_score);
         generate_blocked_explanation(result, golden_rule_score, engine->golden_rule_threshold,
@@ -650,7 +650,7 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
         return result;
     }
 
-    engine->total_evaluations++;
+    __atomic_fetch_add(&engine->total_evaluations, 1, __ATOMIC_RELAXED);
 
     // Step 2: Evaluate Golden Rule (PRIME DIRECTIVE - Always First)
     float golden_rule_score = ethics_evaluate_golden_rule(engine, action);
@@ -662,7 +662,7 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
         result.golden_rule_score = golden_rule_score;
         result.recommended_action = ETHICS_ACTION_BLOCK;
         result.primary_violation = ETHICS_VIOLATION_TYPE_GOLDEN_RULE;
-        engine->violations_detected++;
+        __atomic_fetch_add(&engine->violations_detected, 1, __ATOMIC_RELAXED);
         snprintf(result.explanation, sizeof(result.explanation),
                  "PRIME DIRECTIVE VIOLATION: Golden Rule score %.2f indicates severe "
                  "ethical violation. Action would cause harm you would not want done to you.",
@@ -697,7 +697,7 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
                      asimov_result.explanation);
         }
 
-        engine->violations_detected++;
+        __atomic_fetch_add(&engine->violations_detected, 1, __ATOMIC_RELAXED);
         return result;
     }
 
@@ -759,8 +759,9 @@ bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats)
     if (!engine || !stats)
         return false;
 
-    stats->total_evaluations = engine->total_evaluations;
-    stats->violations_detected = engine->violations_detected;
+    /* Thread-safe reads of atomically-updated counters */
+    stats->total_evaluations = __atomic_load_n(&engine->total_evaluations, __ATOMIC_RELAXED);
+    stats->violations_detected = __atomic_load_n(&engine->violations_detected, __ATOMIC_RELAXED);
     stats->actions_blocked = engine->actions_blocked;
     stats->num_policies = engine->num_policies;
     stats->num_violations_logged = engine->num_violations;
@@ -823,13 +824,13 @@ void ethics_engine_release_buffer(ethics_engine_t engine, float* buffer) {
 
 void ethics_engine_increment_violations_detected(ethics_engine_t engine) {
     if (engine) {
-        engine->violations_detected++;
+        __atomic_fetch_add(&engine->violations_detected, 1, __ATOMIC_RELAXED);
     }
 }
 
 void ethics_engine_increment_asimov_violations(ethics_engine_t engine) {
     if (engine) {
-        engine->asimov_violations++;
+        __atomic_fetch_add(&engine->asimov_violations, 1, __ATOMIC_RELAXED);
     }
 }
 

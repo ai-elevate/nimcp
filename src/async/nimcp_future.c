@@ -970,8 +970,17 @@ bool nimcp_future_wait(nimcp_future_t future)
 
 bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
 {
+    /* Guard: validate future handle */
     if (!future || future->magic != FUTURE_MAGIC) {
         return false;
+    }
+
+    /* Note: timeout_ms of 0 means immediate timeout (no wait).
+     * Use nimcp_future_wait() for indefinite waiting. */
+    if (timeout_ms == 0) {
+        /* For zero timeout, just check current state without blocking */
+        return nimcp_future_is_ready(future) &&
+               (nimcp_future_state(future) == NIMCP_FUTURE_COMPLETED);
     }
 
     uint64_t wait_start_ns = nimcp_platform_time_monotonic_ms() * 1000000ULL;

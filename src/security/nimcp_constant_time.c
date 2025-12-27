@@ -346,8 +346,16 @@ int nimcp_ct_memcmp(const void* a, const void* b, size_t len)
 
     // WHAT: Convert to 0 or 1 without branches
     // WHY:  Standard return value convention (0 = equal)
-    // HOW:  Bitwise OR forces MSB to indicate difference
-    return (diff != 0) ? 1 : 0;
+    // HOW:  Branchless conversion: (diff | -diff) >> 7 produces 0 or 1
+    //       Using volatile to prevent compiler optimization of ternary
+    //       Alternative: use bitwise operations to derive result
+    //
+    // SECURITY: The ternary operator can be optimized by compiler into a branch.
+    //           Instead, we use branchless arithmetic:
+    //           If diff != 0, then (diff | (-diff)) has MSB set, >> 7 gives 1 (for uint8_t)
+    //           If diff == 0, then 0 | 0 = 0, >> 7 gives 0
+    volatile uint8_t result = (uint8_t)((diff | ((uint8_t)(-(int8_t)diff))) >> 7);
+    return (int)result;
 }
 
 int nimcp_ct_memcmp_tracked(nimcp_ct_context_t ctx, const void* a, const void* b, size_t len)
@@ -409,9 +417,12 @@ int nimcp_ct_strcmp(const char* a, const char* b)
 
     // WHAT: Constant-time length comparison
     // WHY:  Combine both checks without branches
-    int len_diff = (len_a != len_b) ? 1 : 0;
+    // SECURITY: Branchless conversion of length mismatch to 0 or 1
+    //           XOR lengths, then use same branchless trick as memcmp
+    size_t len_xor = len_a ^ len_b;
+    volatile int len_diff = (int)((len_xor | ((size_t)(-(intptr_t)(len_xor != 0)))) != 0);
 
-    // Return combined result
+    // Return combined result using bitwise OR (no branch)
     return mem_diff | len_diff;
 }
 
@@ -437,7 +448,10 @@ int nimcp_ct_strncmp(const char* a, const char* b, size_t n)
     }
 
     int mem_diff = nimcp_ct_memcmp(a, b, min_len);
-    int len_diff = (len_a != len_b) ? 1 : 0;
+
+    // SECURITY: Branchless length comparison (same pattern as nimcp_ct_strcmp)
+    size_t len_xor = len_a ^ len_b;
+    volatile int len_diff = (int)((len_xor | ((size_t)(-(intptr_t)(len_xor != 0)))) != 0);
 
     return mem_diff | len_diff;
 }

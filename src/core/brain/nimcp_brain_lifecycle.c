@@ -282,14 +282,49 @@ void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t 
 //=============================================================================
 
 /**
+ * @brief Validate brain size enum is in valid range
+ * @complexity O(1)
+ *
+ * STATE MACHINE: brain_size_t valid values
+ * - BRAIN_SIZE_MICRO (0) -> BRAIN_SIZE_CUSTOM (5)
+ */
+static bool validate_brain_size(brain_size_t size)
+{
+    return size <= BRAIN_SIZE_CUSTOM;
+}
+
+/**
+ * @brief Validate brain task enum is in valid range
+ * @complexity O(1)
+ *
+ * STATE MACHINE: brain_task_t valid values
+ * - BRAIN_TASK_CLASSIFICATION (0) -> BRAIN_TASK_CUSTOM (5)
+ */
+static bool validate_brain_task(brain_task_t task)
+{
+    return task <= BRAIN_TASK_CUSTOM;
+}
+
+/**
  * @brief Validate brain creation parameters
  * @complexity O(1)
+ *
+ * STATE MACHINE VALIDATION:
+ * This function validates the initial state for brain creation.
+ * After successful validation, brain enters HEALTHY state.
+ *
+ * Valid initial state: (NULL brain) -> (HEALTHY brain with valid config)
  */
 static bool validate_creation_params(const char* task_name, uint32_t num_inputs,
                                      uint32_t num_outputs)
 {
     if (!task_name) {
         set_error("task_name cannot be NULL");
+        return false;
+    }
+    // Validate task_name is not empty
+    if (task_name[0] == '\0') {
+        set_error("task_name cannot be empty string");
         return false;
     }
     if (num_inputs == 0) {
@@ -613,11 +648,31 @@ static personality_profile_t* create_personality(const brain_config_t* config)
 /**
  * @brief Destroy brain and free resources
  * @complexity O(n) where n = num_neurons
+ *
+ * STATE MACHINE TRANSITION:
+ * Valid transitions into destroy:
+ * - HEALTHY -> SHUTDOWN (normal cleanup)
+ * - DEGRADED -> SHUTDOWN (cleanup in degraded mode)
+ * - RECOVERING -> SHUTDOWN (abort recovery and cleanup)
+ * - FAILED -> SHUTDOWN (cleanup after failure)
+ *
+ * Cleanup order (reverse of initialization):
+ * 1. Save final snapshot (if configured)
+ * 2. Destroy network (with refcount handling)
+ * 3. Destroy strategy
+ * 4. Free output labels
+ * 5. Destroy cognitive subsystems (reverse order)
+ * 6. Destroy coordinators/orchestrators (reverse order)
+ * 7. Cleanup cache and mutexes
+ * 8. Free brain structure
  */
 void brain_destroy(brain_t brain)
 {
     if (!brain)
         return;
+
+    // STATE TRANSITION: * -> SHUTDOWN
+    // All brain states can transition to SHUTDOWN for cleanup
 
     // Save final snapshot if configured
     if (brain->config.snapshot_dir && brain->config.save_final_snapshot) {

@@ -965,6 +965,84 @@ unit_cognitive_grief_test_grief_and_loss/fast:
 .PHONY : unit_cognitive_grief_test_grief_and_loss/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_context
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_context: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_context
+.PHONY : unit_cognitive_jepa_test_jepa_context
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_context/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_context.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_context.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_context/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_latent
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_latent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_latent
+.PHONY : unit_cognitive_jepa_test_jepa_latent
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_latent/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_latent.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_latent.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_latent/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_masking
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_masking: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_masking
+.PHONY : unit_cognitive_jepa_test_jepa_masking
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_masking/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_masking.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_masking.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_masking/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_multimodal
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_multimodal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_multimodal
+.PHONY : unit_cognitive_jepa_test_jepa_multimodal
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_multimodal/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_multimodal.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_multimodal.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_multimodal/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_predictor
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_predictor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_predictor
+.PHONY : unit_cognitive_jepa_test_jepa_predictor
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_predictor/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_predictor.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_predictor.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_predictor/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_weights
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_weights: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_weights
+.PHONY : unit_cognitive_jepa_test_jepa_weights
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_weights/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_weights.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_weights.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_weights/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_joy_test_joy_euphoria
 
 # Build rule for target.
@@ -6282,6 +6360,19 @@ e2e_test_swarm_threat_response/fast:
 .PHONY : e2e_test_swarm_threat_response/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_asymmetric_swarm
+
+# Build rule for target.
+e2e_test_asymmetric_swarm: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_asymmetric_swarm
+.PHONY : e2e_test_asymmetric_swarm
+
+# fast build rule for target.
+e2e_test_asymmetric_swarm/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_asymmetric_swarm.dir/build.make test/e2e/CMakeFiles/e2e_test_asymmetric_swarm.dir/build
+.PHONY : e2e_test_asymmetric_swarm/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_server_swarm_pipeline
 
 # Build rule for target.
@@ -9610,6 +9701,84 @@ unit_cognitive_self_awareness_coordinator/fast:
 .PHONY : unit_cognitive_self_awareness_coordinator/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_jepa_latent
+
+# Build rule for target.
+unit_cognitive_jepa_latent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_latent
+.PHONY : unit_cognitive_jepa_latent
+
+# fast build rule for target.
+unit_cognitive_jepa_latent/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_latent.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_latent.dir/build
+.PHONY : unit_cognitive_jepa_latent/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_masking
+
+# Build rule for target.
+unit_cognitive_jepa_masking: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_masking
+.PHONY : unit_cognitive_jepa_masking
+
+# fast build rule for target.
+unit_cognitive_jepa_masking/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_masking.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_masking.dir/build
+.PHONY : unit_cognitive_jepa_masking/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_multimodal
+
+# Build rule for target.
+unit_cognitive_jepa_multimodal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_multimodal
+.PHONY : unit_cognitive_jepa_multimodal
+
+# fast build rule for target.
+unit_cognitive_jepa_multimodal/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_multimodal.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_multimodal.dir/build
+.PHONY : unit_cognitive_jepa_multimodal/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_jepa_predictor
+
+# Build rule for target.
+unit_cognitive_test_jepa_predictor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_jepa_predictor
+.PHONY : unit_cognitive_test_jepa_predictor
+
+# fast build rule for target.
+unit_cognitive_test_jepa_predictor/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_predictor.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_predictor.dir/build
+.PHONY : unit_cognitive_test_jepa_predictor/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_weights
+
+# Build rule for target.
+unit_cognitive_jepa_weights: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_weights
+.PHONY : unit_cognitive_jepa_weights
+
+# fast build rule for target.
+unit_cognitive_jepa_weights/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_weights.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_weights.dir/build
+.PHONY : unit_cognitive_jepa_weights/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_jepa_context
+
+# Build rule for target.
+unit_cognitive_test_jepa_context: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_jepa_context
+.PHONY : unit_cognitive_test_jepa_context
+
+# fast build rule for target.
+unit_cognitive_test_jepa_context/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_context.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_context.dir/build
+.PHONY : unit_cognitive_test_jepa_context/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -10596,6 +10765,19 @@ regression_cognitive_curiosity_enhanced: cmake_check_build_system
 regression_cognitive_curiosity_enhanced/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_enhanced.dir/build.make test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_enhanced.dir/build
 .PHONY : regression_cognitive_curiosity_enhanced/fast
+
+#=============================================================================
+# Target rules for targets named regression_jepa
+
+# Build rule for target.
+regression_jepa: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_jepa
+.PHONY : regression_jepa
+
+# fast build rule for target.
+regression_jepa/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/jepa/CMakeFiles/regression_jepa.dir/build.make test/regression/cognitive/jepa/CMakeFiles/regression_jepa.dir/build
+.PHONY : regression_jepa/fast
 
 #=============================================================================
 # Target rules for targets named test_protocol_control_message
@@ -15070,6 +15252,32 @@ unit_perception_test_speech_cortex_pe/fast:
 .PHONY : unit_perception_test_speech_cortex_pe/fast
 
 #=============================================================================
+# Target rules for targets named unit_perception_test_speech_jepa_bridge
+
+# Build rule for target.
+unit_perception_test_speech_jepa_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_test_speech_jepa_bridge
+.PHONY : unit_perception_test_speech_jepa_bridge
+
+# fast build rule for target.
+unit_perception_test_speech_jepa_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/CMakeFiles/unit_perception_test_speech_jepa_bridge.dir/build.make test/unit/perception/CMakeFiles/unit_perception_test_speech_jepa_bridge.dir/build
+.PHONY : unit_perception_test_speech_jepa_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_perception_test_visual_jepa_bridge
+
+# Build rule for target.
+unit_perception_test_visual_jepa_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_test_visual_jepa_bridge
+.PHONY : unit_perception_test_visual_jepa_bridge
+
+# fast build rule for target.
+unit_perception_test_visual_jepa_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/CMakeFiles/unit_perception_test_visual_jepa_bridge.dir/build.make test/unit/perception/CMakeFiles/unit_perception_test_visual_jepa_bridge.dir/build
+.PHONY : unit_perception_test_visual_jepa_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_perception_cortical_test_visual_cortical_bridge
 
 # Build rule for target.
@@ -15107,6 +15315,71 @@ unit_perception_cortical_test_speech_cortical_bridge: cmake_check_build_system
 unit_perception_cortical_test_speech_cortical_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_speech_cortical_bridge.dir/build.make test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_speech_cortical_bridge.dir/build
 .PHONY : unit_perception_cortical_test_speech_cortical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_jepa_fep
+
+# Build rule for target.
+integration_jepa_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_jepa_fep
+.PHONY : integration_jepa_fep
+
+# fast build rule for target.
+integration_jepa_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_fep.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_fep.dir/build
+.PHONY : integration_jepa_fep/fast
+
+#=============================================================================
+# Target rules for targets named integration_jepa_visual_speech
+
+# Build rule for target.
+integration_jepa_visual_speech: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_jepa_visual_speech
+.PHONY : integration_jepa_visual_speech
+
+# fast build rule for target.
+integration_jepa_visual_speech/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_visual_speech.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_visual_speech.dir/build
+.PHONY : integration_jepa_visual_speech/fast
+
+#=============================================================================
+# Target rules for targets named integration_jepa_context
+
+# Build rule for target.
+integration_jepa_context: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_jepa_context
+.PHONY : integration_jepa_context
+
+# fast build rule for target.
+integration_jepa_context/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_context.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_context.dir/build
+.PHONY : integration_jepa_context/fast
+
+#=============================================================================
+# Target rules for targets named integration_jepa_e2e
+
+# Build rule for target.
+integration_jepa_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_jepa_e2e
+.PHONY : integration_jepa_e2e
+
+# fast build rule for target.
+integration_jepa_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_e2e.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_e2e.dir/build
+.PHONY : integration_jepa_e2e/fast
+
+#=============================================================================
+# Target rules for targets named integration_jepa_full
+
+# Build rule for target.
+integration_jepa_full: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_jepa_full
+.PHONY : integration_jepa_full
+
+# fast build rule for target.
+integration_jepa_full/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_full.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_full.dir/build
+.PHONY : integration_jepa_full/fast
 
 #=============================================================================
 # Target rules for targets named test_swarm_protocol
@@ -15185,6 +15458,19 @@ test_swarm_brain: cmake_check_build_system
 test_swarm_brain/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_swarm_brain.dir/build.make test/unit/swarm/CMakeFiles/test_swarm_brain.dir/build
 .PHONY : test_swarm_brain/fast
+
+#=============================================================================
+# Target rules for targets named test_swarm_brain_local
+
+# Build rule for target.
+test_swarm_brain_local: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_brain_local
+.PHONY : test_swarm_brain_local
+
+# fast build rule for target.
+test_swarm_brain_local/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_swarm_brain_local.dir/build.make test/unit/swarm/CMakeFiles/test_swarm_brain_local.dir/build
+.PHONY : test_swarm_brain_local/fast
 
 #=============================================================================
 # Target rules for targets named test_swarm_gateway
@@ -15538,6 +15824,19 @@ test_swarm_logic_consensus_integration/fast:
 .PHONY : test_swarm_logic_consensus_integration/fast
 
 #=============================================================================
+# Target rules for targets named test_swarm_brain_local_integration
+
+# Build rule for target.
+test_swarm_brain_local_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_brain_local_integration
+.PHONY : test_swarm_brain_local_integration
+
+# fast build rule for target.
+test_swarm_brain_local_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/swarm/CMakeFiles/test_swarm_brain_local_integration.dir/build.make test/integration/swarm/CMakeFiles/test_swarm_brain_local_integration.dir/build
+.PHONY : test_swarm_brain_local_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_swarm_sleep_bridges
 
 # Build rule for target.
@@ -15679,6 +15978,19 @@ test_swarm_logic_bridge_enhanced_regression: cmake_check_build_system
 test_swarm_logic_bridge_enhanced_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/swarm/CMakeFiles/test_swarm_logic_bridge_enhanced_regression.dir/build.make test/regression/swarm/CMakeFiles/test_swarm_logic_bridge_enhanced_regression.dir/build
 .PHONY : test_swarm_logic_bridge_enhanced_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_swarm_brain_local_regression
+
+# Build rule for target.
+test_swarm_brain_local_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_brain_local_regression
+.PHONY : test_swarm_brain_local_regression
+
+# fast build rule for target.
+test_swarm_brain_local_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/swarm/CMakeFiles/test_swarm_brain_local_regression.dir/build.make test/regression/swarm/CMakeFiles/test_swarm_brain_local_regression.dir/build
+.PHONY : test_swarm_brain_local_regression/fast
 
 #=============================================================================
 # Target rules for targets named test_platform_tier
@@ -17769,6 +18081,7 @@ help:
 	@echo "... cow_snapshot_learning"
 	@echo "... distributed_cow_demo"
 	@echo "... e2e_test_amygdala_pipeline"
+	@echo "... e2e_test_asymmetric_swarm"
 	@echo "... e2e_test_bio_async_cognitive_pipeline"
 	@echo "... e2e_test_bio_async_pipeline"
 	@echo "... e2e_test_bio_async_plasticity_pipeline"
@@ -17929,6 +18242,11 @@ help:
 	@echo "... integration_information_test_shannon_integration"
 	@echo "... integration_io_test_io_integration"
 	@echo "... integration_io_test_metabolic_pathways_integration"
+	@echo "... integration_jepa_context"
+	@echo "... integration_jepa_e2e"
+	@echo "... integration_jepa_fep"
+	@echo "... integration_jepa_full"
+	@echo "... integration_jepa_visual_speech"
 	@echo "... integration_lib_cognitive_test_hierarchical_integration"
 	@echo "... integration_middleware_bio_async"
 	@echo "... integration_middleware_controller"
@@ -18150,6 +18468,7 @@ help:
 	@echo "... regression_io_test_serialization_regression"
 	@echo "... regression_io_test_stream_regression"
 	@echo "... regression_io_test_vesicle_packaging_backward_compat"
+	@echo "... regression_jepa"
 	@echo "... regression_microglia_performance"
 	@echo "... regression_middleware_bio_async"
 	@echo "... regression_middleware_buffering_integration_buffer"
@@ -18429,6 +18748,9 @@ help:
 	@echo "... test_swarm_brain"
 	@echo "... test_swarm_brain_fep_bridge"
 	@echo "... test_swarm_brain_integration"
+	@echo "... test_swarm_brain_local"
+	@echo "... test_swarm_brain_local_integration"
+	@echo "... test_swarm_brain_local_regression"
 	@echo "... test_swarm_communication_integration"
 	@echo "... test_swarm_conflict_resolution"
 	@echo "... test_swarm_conflict_resolution_integration"
@@ -18561,6 +18883,16 @@ help:
 	@echo "... unit_cognitive_introspection_immune_integration"
 	@echo "... unit_cognitive_introspection_substrate_bridge"
 	@echo "... unit_cognitive_introspection_temporal_patterns"
+	@echo "... unit_cognitive_jepa_latent"
+	@echo "... unit_cognitive_jepa_masking"
+	@echo "... unit_cognitive_jepa_multimodal"
+	@echo "... unit_cognitive_jepa_test_jepa_context"
+	@echo "... unit_cognitive_jepa_test_jepa_latent"
+	@echo "... unit_cognitive_jepa_test_jepa_masking"
+	@echo "... unit_cognitive_jepa_test_jepa_multimodal"
+	@echo "... unit_cognitive_jepa_test_jepa_predictor"
+	@echo "... unit_cognitive_jepa_test_jepa_weights"
+	@echo "... unit_cognitive_jepa_weights"
 	@echo "... unit_cognitive_joy_test_joy_euphoria"
 	@echo "... unit_cognitive_logic_test_logic_sleep_bridge"
 	@echo "... unit_cognitive_memory_substrate_bridge"
@@ -18600,6 +18932,8 @@ help:
 	@echo "... unit_cognitive_test_curiosity_immune"
 	@echo "... unit_cognitive_test_fep_bridges"
 	@echo "... unit_cognitive_test_global_workspace_immune"
+	@echo "... unit_cognitive_test_jepa_context"
+	@echo "... unit_cognitive_test_jepa_predictor"
 	@echo "... unit_cognitive_test_meta_controller"
 	@echo "... unit_cognitive_test_working_memory_immune"
 	@echo "... unit_cognitive_theory_of_mind_test_theory_of_mind"
@@ -18879,6 +19213,8 @@ help:
 	@echo "... unit_perception_immune_test_speech_immune_integration"
 	@echo "... unit_perception_immune_test_visual_immune_integration"
 	@echo "... unit_perception_test_speech_cortex_pe"
+	@echo "... unit_perception_test_speech_jepa_bridge"
+	@echo "... unit_perception_test_visual_jepa_bridge"
 	@echo "... unit_plasticity_adaptive_test_adaptive"
 	@echo "... unit_plasticity_adaptive_test_adaptive_bioasync"
 	@echo "... unit_plasticity_adaptive_test_adaptive_comprehensive"

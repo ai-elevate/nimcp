@@ -222,14 +222,17 @@ int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
         return NIMCP_SUCCESS; /* Feature disabled */
     }
 
-    nimcp_mutex_lock(bridge->base.mutex);
-
-    /* Query cytokine levels from immune system */
+    /* Query cytokine levels BEFORE acquiring bridge mutex to avoid deadlock.
+     * get_cytokine_concentration() acquires immune->mutex internally.
+     * Acquiring bridge->base.mutex first then immune->mutex creates a
+     * lock ordering violation if any code path does the reverse. */
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
     float il6 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL6);
     float tnf = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_TNF);
     float il10 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL10);
     float ifn_gamma = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IFN_GAMMA);
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute M1 polarization drivers (pro-inflammatory) */
     bridge->cytokine_effects.il1_m1_drive = il1 * CYTOKINE_IL1_ACTIVATION_FACTOR;

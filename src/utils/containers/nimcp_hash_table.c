@@ -523,8 +523,12 @@ void hash_table_clear(hash_table_t* table)
 static bool hash_table_insert_generic(hash_table_t* table, const void* key, size_t key_size,
                                       const void* value, size_t value_size)
 {
-    if (!table || !key || !value) {
+    if (!table || !key || !value || !table->buckets) {
         return false;
+    }
+
+    if (table->bucket_count == 0) {
+        return false;  // Defensive check for zero buckets
     }
 
     // Compute hash
@@ -576,8 +580,12 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
  */
 static void* hash_table_lookup_generic(hash_table_t* table, const void* key, size_t key_size)
 {
-    if (!table || !key) {
+    if (!table || !key || !table->buckets) {
         return NULL;
+    }
+
+    if (table->bucket_count == 0) {
+        return NULL;  // Defensive check for zero buckets
     }
 
     // Compute hash
@@ -598,8 +606,12 @@ static void* hash_table_lookup_generic(hash_table_t* table, const void* key, siz
  */
 static bool hash_table_remove_generic(hash_table_t* table, const void* key, size_t key_size)
 {
-    if (!table || !key) {
+    if (!table || !key || !table->buckets) {
         return false;
+    }
+
+    if (table->bucket_count == 0) {
+        return false;  // Defensive check for zero buckets
     }
 
     // Compute hash

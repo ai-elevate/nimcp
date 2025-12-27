@@ -1250,43 +1250,72 @@ bool global_workspace_unsubscribe(
 
 bool global_workspace_has_broadcast(const global_workspace_t* workspace) {
     if (workspace == NULL) return false;
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
-    return ws->current_broadcast.is_valid;
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    /* Thread-safe read with mutex */
+    nimcp_platform_mutex_lock(&ws->mutex);
+    bool result = ws->current_broadcast.is_valid;
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 cognitive_module_t global_workspace_get_broadcast_source(
     const global_workspace_t* workspace)
 {
     if (workspace == NULL) return MODULE_NONE;
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
-    if (!ws->current_broadcast.is_valid) return MODULE_NONE;
-    return ws->current_broadcast.source_module;
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    /* Thread-safe read with mutex */
+    nimcp_platform_mutex_lock(&ws->mutex);
+    cognitive_module_t result = MODULE_NONE;
+    if (ws->current_broadcast.is_valid) {
+        result = ws->current_broadcast.source_module;
+    }
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 float global_workspace_get_broadcast_strength(
     const global_workspace_t* workspace)
 {
     if (workspace == NULL) return 0.0F;
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
-    if (!ws->current_broadcast.is_valid) return 0.0F;
-    return ws->current_broadcast.source_strength;
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    /* Thread-safe read with mutex */
+    nimcp_platform_mutex_lock(&ws->mutex);
+    float result = 0.0F;
+    if (ws->current_broadcast.is_valid) {
+        result = ws->current_broadcast.source_strength;
+    }
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 uint32_t global_workspace_get_subscriber_count(const global_workspace_t* workspace) {
     if (workspace == NULL) return 0;
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
-    return ws->num_subscribers;
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    /* Thread-safe read with mutex */
+    nimcp_platform_mutex_lock(&ws->mutex);
+    uint32_t result = ws->num_subscribers;
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 uint32_t global_workspace_get_competitor_count(const global_workspace_t* workspace) {
     if (workspace == NULL) return 0;
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
-    return ws->num_active_competitors;
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    /* Thread-safe read with mutex */
+    nimcp_platform_mutex_lock(&ws->mutex);
+    uint32_t result = ws->num_active_competitors;
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 bool global_workspace_is_competing(
@@ -1294,15 +1323,20 @@ bool global_workspace_is_competing(
     cognitive_module_t module)
 {
     if (workspace == NULL) return false;
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
 
+    /* Thread-safe read with mutex */
+    nimcp_platform_mutex_lock(&ws->mutex);
+    bool result = false;
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
         if (ws->competitors[i].is_active && ws->competitors[i].module == module) {
-            return true;
+            result = true;
+            break;
         }
     }
-    return false;
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 //=============================================================================

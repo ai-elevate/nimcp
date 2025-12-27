@@ -483,6 +483,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/curiosity")
     add_subdirectory(regression/cognitive/curiosity)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/jepa")
+    message(STATUS "Adding JEPA regression tests...")
+    add_subdirectory(regression/cognitive/jepa)
+endif()
+
 # ============================================================================
 # Networking Protocol Tests
 # ============================================================================
@@ -1095,6 +1100,18 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/perception")
     message(STATUS "Adding perception regression tests...")
     add_subdirectory(regression/perception)
+endif()
+
+# ============================================================================
+# JEPA Integration Tests (Joint Embedding Predictive Architecture)
+# ============================================================================
+# WHAT: Tests for JEPA modules (latent, predictor, multimodal, context)
+# WHY:  Verify JEPA system integration with FEP, perception bridges, and context
+# HOW:  Integration tests for cross-modal prediction, FEP coordination, context encoding
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/jepa")
+    message(STATUS "Adding JEPA integration tests...")
+    add_subdirectory(integration/jepa)
 endif()
 
 # ============================================================================

@@ -281,7 +281,10 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
 
     entry->metric.value = value;
     entry->metric.timestamp_ms = nimcp_time_get_ms();
-    entry->metric.sample_count++;
+    /* Saturating increment to prevent overflow */
+    if (entry->metric.sample_count < UINT64_MAX) {
+        entry->metric.sample_count++;
+    }
 
     nimcp_platform_mutex_unlock(&metrics->mutex);
 
@@ -307,9 +310,15 @@ bool protocol_metrics_increment(protocol_metrics_t metrics, const char* name,
                                       delta, labels, label_count);
     }
 
-    entry->metric.value += delta;
+    /* Saturating addition to prevent overflow */
+    if (entry->metric.value <= DBL_MAX - fabs(delta)) {
+        entry->metric.value += delta;
+    }
     entry->metric.timestamp_ms = nimcp_time_get_ms();
-    entry->metric.sample_count++;
+    /* Saturating increment to prevent overflow */
+    if (entry->metric.sample_count < UINT64_MAX) {
+        entry->metric.sample_count++;
+    }
 
     nimcp_platform_mutex_unlock(&metrics->mutex);
 
@@ -338,6 +347,13 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
 
     metric_entry_t* entry = find_metric(metrics, key);
     if (!entry) {
+        /* Check metric limit before creating new entry */
+        if (metrics->metric_count >= metrics->config.max_metrics) {
+            LOG_ERROR("Maximum metrics reached (%u)", metrics->config.max_metrics);
+            nimcp_platform_mutex_unlock(&metrics->mutex);
+            return false;
+        }
+
         entry = create_metric_entry(key, METRIC_TYPE_HISTOGRAM, labels, label_count);
         if (!entry) {
             nimcp_platform_mutex_unlock(&metrics->mutex);
@@ -351,18 +367,28 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
     }
 
     if (entry->histogram) {
-        entry->histogram->sum += value;
-        entry->histogram->count++;
+        /* Saturating additions to prevent overflow */
+        if (entry->histogram->sum <= DBL_MAX - fabs(value)) {
+            entry->histogram->sum += value;
+        }
+        if (entry->histogram->count < UINT64_MAX) {
+            entry->histogram->count++;
+        }
 
         for (uint32_t i = 0; i < entry->histogram->bucket_count; i++) {
             if (value <= entry->histogram->buckets[i].upper_bound) {
-                entry->histogram->buckets[i].count++;
+                if (entry->histogram->buckets[i].count < UINT64_MAX) {
+                    entry->histogram->buckets[i].count++;
+                }
             }
         }
     }
 
     entry->metric.timestamp_ms = nimcp_time_get_ms();
-    entry->metric.sample_count++;
+    /* Saturating increment to prevent overflow */
+    if (entry->metric.sample_count < UINT64_MAX) {
+        entry->metric.sample_count++;
+    }
 
     nimcp_platform_mutex_unlock(&metrics->mutex);
 

@@ -298,6 +298,23 @@ nimcp_ss_result_t nimcp_shadow_stack_push_frame(
     if (!ss->initialized)
         return NIMCP_SS_NOT_INITIALIZED;
 
+    // SECURITY: Validate entries pointer before access
+    if (!ss->entries) {
+        ss->stats.corruptions++;
+        nimcp_security_log_event(
+            NIMCP_SECURITY_EVENT_DIRECTIVE_TAMPERED,
+            NIMCP_THREAT_CRITICAL,
+            "Shadow stack entries pointer is NULL"
+        );
+        return NIMCP_SS_CORRUPTED;
+    }
+
+    // SECURITY: Validate size is reasonable (prevent wrap-around)
+    if (ss->size == 0 || ss->size > NIMCP_SHADOW_STACK_MAX_SIZE) {
+        ss->stats.corruptions++;
+        return NIMCP_SS_CORRUPTED;
+    }
+
     // Check for overflow
     if (ss->top >= ss->size) {
         ss->stats.overflows++;
@@ -349,6 +366,18 @@ nimcp_ss_result_t nimcp_shadow_stack_pop(
     if (!ss->initialized)
         return NIMCP_SS_NOT_INITIALIZED;
 
+    // SECURITY: Validate entries pointer before access
+    if (!ss->entries) {
+        ss->stats.corruptions++;
+        return NIMCP_SS_CORRUPTED;
+    }
+
+    // SECURITY: Validate size is reasonable
+    if (ss->size == 0 || ss->size > NIMCP_SHADOW_STACK_MAX_SIZE) {
+        ss->stats.corruptions++;
+        return NIMCP_SS_CORRUPTED;
+    }
+
     // Check for underflow
     if (ss->top == 0) {
         ss->stats.underflows++;
@@ -358,6 +387,12 @@ nimcp_ss_result_t nimcp_shadow_stack_pop(
             "Shadow stack underflow"
         );
         return NIMCP_SS_UNDERFLOW;
+    }
+
+    // SECURITY: Validate top is within bounds before decrement
+    if (ss->top > ss->size) {
+        ss->stats.corruptions++;
+        return NIMCP_SS_CORRUPTED;
     }
 
     // Verify guards
@@ -405,9 +440,21 @@ nimcp_ss_result_t nimcp_shadow_stack_pop_unchecked(
     if (!ss->initialized)
         return NIMCP_SS_NOT_INITIALIZED;
 
+    // SECURITY: Validate entries pointer and bounds
+    if (!ss->entries || ss->size == 0 || ss->size > NIMCP_SHADOW_STACK_MAX_SIZE) {
+        ss->stats.corruptions++;
+        return NIMCP_SS_CORRUPTED;
+    }
+
     if (ss->top == 0) {
         ss->stats.underflows++;
         return NIMCP_SS_UNDERFLOW;
+    }
+
+    // SECURITY: Validate top is within bounds
+    if (ss->top > ss->size) {
+        ss->stats.corruptions++;
+        return NIMCP_SS_CORRUPTED;
     }
 
     ss->top--;

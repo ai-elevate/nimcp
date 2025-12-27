@@ -631,6 +631,8 @@ event_subscription_handle_t event_bus_subscribe(
 
 /**
  * @brief Subscribe with priority filter
+ *
+ * @note Enforces EVENT_BUS_MAX_SUBSCRIBERS limit per event type bucket
  */
 event_subscription_handle_t event_bus_subscribe_priority(
     event_bus_t bus,
@@ -643,11 +645,42 @@ event_subscription_handle_t event_bus_subscribe_priority(
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
-    // Create subscriber
-    subscriber_t* sub = (subscriber_t*)nimcp_calloc(1, sizeof(subscriber_t));
-    if (!sub) return INVALID_SUBSCRIPTION_HANDLE;
-
     nimcp_mutex_lock(&internal->subscriber_mutex);
+
+    // Check global subscriber limit
+    if (internal->subscriber_count >= EVENT_BUS_MAX_SUBSCRIBERS) {
+        nimcp_mutex_unlock(&internal->subscriber_mutex);
+        snprintf(internal->last_error, sizeof(internal->last_error),
+                "Subscriber limit reached (%u/%u)",
+                internal->subscriber_count, EVENT_BUS_MAX_SUBSCRIBERS);
+        return INVALID_SUBSCRIPTION_HANDLE;
+    }
+
+    // Count subscribers in target bucket to prevent per-bucket overflow
+    uint32_t bucket = hash_event_type(type);
+    uint32_t bucket_count = 0;
+    subscriber_t* check = internal->subscribers[bucket];
+    while (check) {
+        bucket_count++;
+        check = check->next;
+    }
+
+    // Limit per-bucket subscribers to prevent hash collision DoS
+    const uint32_t max_per_bucket = EVENT_BUS_MAX_SUBSCRIBERS / 4;  // 128 per bucket
+    if (bucket_count >= max_per_bucket) {
+        nimcp_mutex_unlock(&internal->subscriber_mutex);
+        snprintf(internal->last_error, sizeof(internal->last_error),
+                "Bucket %u subscriber limit reached (%u/%u)",
+                bucket, bucket_count, max_per_bucket);
+        return INVALID_SUBSCRIPTION_HANDLE;
+    }
+
+    // Create subscriber while still holding lock (allocation is fast)
+    subscriber_t* sub = (subscriber_t*)nimcp_calloc(1, sizeof(subscriber_t));
+    if (!sub) {
+        nimcp_mutex_unlock(&internal->subscriber_mutex);
+        return INVALID_SUBSCRIPTION_HANDLE;
+    }
 
     sub->handle = internal->next_handle++;
     sub->type = type;

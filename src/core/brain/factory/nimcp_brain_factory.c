@@ -305,8 +305,18 @@ brain_t brain_create_custom(const brain_config_t* config)
         set_error("Invalid learning_rate in config (NaN or Inf)");
         return NULL;
     }
+    // Validate learning_rate is in sensible range (0.0001 to 1.0)
+    if (config->learning_rate < 0.0001f || config->learning_rate > 1.0f) {
+        set_error("learning_rate must be in range [0.0001, 1.0], got %f", config->learning_rate);
+        return NULL;
+    }
     if (!nimcp_validate_float_field(&config->sparsity_target, sizeof(config->sparsity_target))) {
         set_error("Invalid sparsity_target in config (NaN or Inf)");
+        return NULL;
+    }
+    // Validate sparsity_target is in valid range (0.0 to 1.0)
+    if (config->sparsity_target < 0.0f || config->sparsity_target > 1.0f) {
+        set_error("sparsity_target must be in range [0.0, 1.0], got %f", config->sparsity_target);
         return NULL;
     }
 

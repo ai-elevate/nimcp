@@ -66,6 +66,28 @@ nimcp_result_t nimcp_queue_blocking_create(
         return NIMCP_INVALID_PARAM;
     }
 
+    // Validate capacity - must be non-zero and not overflow when adding sentinel slot
+    if (config->max_size == 0) {
+        LOG_ERROR(LOG_MODULE, "Invalid queue capacity: max_size cannot be 0");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    if (config->item_size == 0) {
+        LOG_ERROR(LOG_MODULE, "Invalid item_size: cannot be 0");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    // Check for overflow when computing buffer size: (max_size + 1) * item_size
+    if (config->max_size > SIZE_MAX - 1) {
+        LOG_ERROR(LOG_MODULE, "Capacity overflow: max_size too large");
+        return NIMCP_INVALID_PARAM;
+    }
+    size_t capacity_with_sentinel = config->max_size + 1;
+    if (capacity_with_sentinel > SIZE_MAX / config->item_size) {
+        LOG_ERROR(LOG_MODULE, "Buffer size overflow: capacity * item_size too large");
+        return NIMCP_INVALID_PARAM;
+    }
+
     LOG_DEBUG(LOG_MODULE, "Creating blocking queue (capacity=%zu, item_size=%zu)",
               config->max_size, config->item_size);
 

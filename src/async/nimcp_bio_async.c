@@ -1213,7 +1213,11 @@ nimcp_error_t nimcp_bio_promise_fail(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    shared->error = error;
+    /* Store error BEFORE state transition CAS to ensure another thread
+     * reading the FAILED state will always see the error value.
+     * Use release ordering to prevent CPU reordering the error store
+     * after the state change. */
+    __atomic_store_n(&shared->error, error, __ATOMIC_RELEASE);
 
     /* Transition state */
     uint32_t expected = BIO_FUTURE_PENDING;
@@ -1671,8 +1675,10 @@ nimcp_error_t nimcp_phase_sync_add_future(
 
     /* Recalculate order parameter after adding oscillator */
     if (sync->count > 0) {
-        float phases[128];  /* Max sync futures per header definition */
-        size_t count = sync->count < 128 ? sync->count : 128;
+        /* Use BIO_MAX_OSCILLATORS as the limit since oscillators array is sized to capacity */
+        const size_t MAX_PHASES = 256;  /* Match BIO_MAX_OSCILLATORS */
+        float phases[256];
+        size_t count = sync->count < MAX_PHASES ? sync->count : MAX_PHASES;
         for (size_t i = 0; i < count; i++) {
             phases[i] = sync->oscillators[i].phase;
         }

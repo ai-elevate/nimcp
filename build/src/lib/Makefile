@@ -3017,6 +3017,150 @@ __/cognitive/introspection/nimcp_temporal_patterns.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_temporal_patterns.c.s
 .PHONY : __/cognitive/introspection/nimcp_temporal_patterns.c.s
 
+__/cognitive/jepa/nimcp_jepa_context.o: __/cognitive/jepa/nimcp_jepa_context.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_context.o
+
+# target to build an object file
+__/cognitive/jepa/nimcp_jepa_context.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_context.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_context.c.o
+
+__/cognitive/jepa/nimcp_jepa_context.i: __/cognitive/jepa/nimcp_jepa_context.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_context.i
+
+# target to preprocess a source file
+__/cognitive/jepa/nimcp_jepa_context.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_context.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_context.c.i
+
+__/cognitive/jepa/nimcp_jepa_context.s: __/cognitive/jepa/nimcp_jepa_context.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_context.s
+
+# target to generate assembly for a file
+__/cognitive/jepa/nimcp_jepa_context.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_context.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_context.c.s
+
+__/cognitive/jepa/nimcp_jepa_latent.o: __/cognitive/jepa/nimcp_jepa_latent.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_latent.o
+
+# target to build an object file
+__/cognitive/jepa/nimcp_jepa_latent.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_latent.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_latent.c.o
+
+__/cognitive/jepa/nimcp_jepa_latent.i: __/cognitive/jepa/nimcp_jepa_latent.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_latent.i
+
+# target to preprocess a source file
+__/cognitive/jepa/nimcp_jepa_latent.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_latent.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_latent.c.i
+
+__/cognitive/jepa/nimcp_jepa_latent.s: __/cognitive/jepa/nimcp_jepa_latent.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_latent.s
+
+# target to generate assembly for a file
+__/cognitive/jepa/nimcp_jepa_latent.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_latent.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_latent.c.s
+
+__/cognitive/jepa/nimcp_jepa_masking.o: __/cognitive/jepa/nimcp_jepa_masking.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_masking.o
+
+# target to build an object file
+__/cognitive/jepa/nimcp_jepa_masking.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_masking.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_masking.c.o
+
+__/cognitive/jepa/nimcp_jepa_masking.i: __/cognitive/jepa/nimcp_jepa_masking.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_masking.i
+
+# target to preprocess a source file
+__/cognitive/jepa/nimcp_jepa_masking.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_masking.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_masking.c.i
+
+__/cognitive/jepa/nimcp_jepa_masking.s: __/cognitive/jepa/nimcp_jepa_masking.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_masking.s
+
+# target to generate assembly for a file
+__/cognitive/jepa/nimcp_jepa_masking.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_masking.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_masking.c.s
+
+__/cognitive/jepa/nimcp_jepa_multimodal.o: __/cognitive/jepa/nimcp_jepa_multimodal.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_multimodal.o
+
+# target to build an object file
+__/cognitive/jepa/nimcp_jepa_multimodal.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_multimodal.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_multimodal.c.o
+
+__/cognitive/jepa/nimcp_jepa_multimodal.i: __/cognitive/jepa/nimcp_jepa_multimodal.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_multimodal.i
+
+# target to preprocess a source file
+__/cognitive/jepa/nimcp_jepa_multimodal.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_multimodal.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_multimodal.c.i
+
+__/cognitive/jepa/nimcp_jepa_multimodal.s: __/cognitive/jepa/nimcp_jepa_multimodal.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_multimodal.s
+
+# target to generate assembly for a file
+__/cognitive/jepa/nimcp_jepa_multimodal.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_multimodal.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_multimodal.c.s
+
+__/cognitive/jepa/nimcp_jepa_predictor.o: __/cognitive/jepa/nimcp_jepa_predictor.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_predictor.o
+
+# target to build an object file
+__/cognitive/jepa/nimcp_jepa_predictor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_predictor.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_predictor.c.o
+
+__/cognitive/jepa/nimcp_jepa_predictor.i: __/cognitive/jepa/nimcp_jepa_predictor.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_predictor.i
+
+# target to preprocess a source file
+__/cognitive/jepa/nimcp_jepa_predictor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_predictor.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_predictor.c.i
+
+__/cognitive/jepa/nimcp_jepa_predictor.s: __/cognitive/jepa/nimcp_jepa_predictor.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_predictor.s
+
+# target to generate assembly for a file
+__/cognitive/jepa/nimcp_jepa_predictor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_predictor.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_predictor.c.s
+
+__/cognitive/jepa/nimcp_jepa_weights.o: __/cognitive/jepa/nimcp_jepa_weights.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_weights.o
+
+# target to build an object file
+__/cognitive/jepa/nimcp_jepa_weights.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_weights.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_weights.c.o
+
+__/cognitive/jepa/nimcp_jepa_weights.i: __/cognitive/jepa/nimcp_jepa_weights.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_weights.i
+
+# target to preprocess a source file
+__/cognitive/jepa/nimcp_jepa_weights.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_weights.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_weights.c.i
+
+__/cognitive/jepa/nimcp_jepa_weights.s: __/cognitive/jepa/nimcp_jepa_weights.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_weights.s
+
+# target to generate assembly for a file
+__/cognitive/jepa/nimcp_jepa_weights.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_weights.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_weights.c.s
+
 __/cognitive/joy/nimcp_joy_euphoria.o: __/cognitive/joy/nimcp_joy_euphoria.c.o
 .PHONY : __/cognitive/joy/nimcp_joy_euphoria.o
 
@@ -11561,6 +11705,30 @@ __/perception/nimcp_speech_cortex_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_speech_cortex_fep_bridge.c.s
 .PHONY : __/perception/nimcp_speech_cortex_fep_bridge.c.s
 
+__/perception/nimcp_speech_jepa_bridge.o: __/perception/nimcp_speech_jepa_bridge.c.o
+.PHONY : __/perception/nimcp_speech_jepa_bridge.o
+
+# target to build an object file
+__/perception/nimcp_speech_jepa_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_speech_jepa_bridge.c.o
+.PHONY : __/perception/nimcp_speech_jepa_bridge.c.o
+
+__/perception/nimcp_speech_jepa_bridge.i: __/perception/nimcp_speech_jepa_bridge.c.i
+.PHONY : __/perception/nimcp_speech_jepa_bridge.i
+
+# target to preprocess a source file
+__/perception/nimcp_speech_jepa_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_speech_jepa_bridge.c.i
+.PHONY : __/perception/nimcp_speech_jepa_bridge.c.i
+
+__/perception/nimcp_speech_jepa_bridge.s: __/perception/nimcp_speech_jepa_bridge.c.s
+.PHONY : __/perception/nimcp_speech_jepa_bridge.s
+
+# target to generate assembly for a file
+__/perception/nimcp_speech_jepa_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_speech_jepa_bridge.c.s
+.PHONY : __/perception/nimcp_speech_jepa_bridge.c.s
+
 __/perception/nimcp_visual_cortex_fep_bridge.o: __/perception/nimcp_visual_cortex_fep_bridge.c.o
 .PHONY : __/perception/nimcp_visual_cortex_fep_bridge.o
 
@@ -11584,6 +11752,54 @@ __/perception/nimcp_visual_cortex_fep_bridge.s: __/perception/nimcp_visual_corte
 __/perception/nimcp_visual_cortex_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_cortex_fep_bridge.c.s
 .PHONY : __/perception/nimcp_visual_cortex_fep_bridge.c.s
+
+__/perception/nimcp_visual_jepa_bridge.o: __/perception/nimcp_visual_jepa_bridge.c.o
+.PHONY : __/perception/nimcp_visual_jepa_bridge.o
+
+# target to build an object file
+__/perception/nimcp_visual_jepa_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_bridge.c.o
+.PHONY : __/perception/nimcp_visual_jepa_bridge.c.o
+
+__/perception/nimcp_visual_jepa_bridge.i: __/perception/nimcp_visual_jepa_bridge.c.i
+.PHONY : __/perception/nimcp_visual_jepa_bridge.i
+
+# target to preprocess a source file
+__/perception/nimcp_visual_jepa_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_bridge.c.i
+.PHONY : __/perception/nimcp_visual_jepa_bridge.c.i
+
+__/perception/nimcp_visual_jepa_bridge.s: __/perception/nimcp_visual_jepa_bridge.c.s
+.PHONY : __/perception/nimcp_visual_jepa_bridge.s
+
+# target to generate assembly for a file
+__/perception/nimcp_visual_jepa_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_bridge.c.s
+.PHONY : __/perception/nimcp_visual_jepa_bridge.c.s
+
+__/perception/nimcp_visual_jepa_fep_bridge.o: __/perception/nimcp_visual_jepa_fep_bridge.c.o
+.PHONY : __/perception/nimcp_visual_jepa_fep_bridge.o
+
+# target to build an object file
+__/perception/nimcp_visual_jepa_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_fep_bridge.c.o
+.PHONY : __/perception/nimcp_visual_jepa_fep_bridge.c.o
+
+__/perception/nimcp_visual_jepa_fep_bridge.i: __/perception/nimcp_visual_jepa_fep_bridge.c.i
+.PHONY : __/perception/nimcp_visual_jepa_fep_bridge.i
+
+# target to preprocess a source file
+__/perception/nimcp_visual_jepa_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_fep_bridge.c.i
+.PHONY : __/perception/nimcp_visual_jepa_fep_bridge.c.i
+
+__/perception/nimcp_visual_jepa_fep_bridge.s: __/perception/nimcp_visual_jepa_fep_bridge.c.s
+.PHONY : __/perception/nimcp_visual_jepa_fep_bridge.s
+
+# target to generate assembly for a file
+__/perception/nimcp_visual_jepa_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_fep_bridge.c.s
+.PHONY : __/perception/nimcp_visual_jepa_fep_bridge.c.s
 
 __/plasticity/adaptive/nimcp_adaptive.o: __/plasticity/adaptive/nimcp_adaptive.c.o
 .PHONY : __/plasticity/adaptive/nimcp_adaptive.o
@@ -19849,6 +20065,24 @@ help:
 	@echo "... __/cognitive/introspection/nimcp_temporal_patterns.o"
 	@echo "... __/cognitive/introspection/nimcp_temporal_patterns.i"
 	@echo "... __/cognitive/introspection/nimcp_temporal_patterns.s"
+	@echo "... __/cognitive/jepa/nimcp_jepa_context.o"
+	@echo "... __/cognitive/jepa/nimcp_jepa_context.i"
+	@echo "... __/cognitive/jepa/nimcp_jepa_context.s"
+	@echo "... __/cognitive/jepa/nimcp_jepa_latent.o"
+	@echo "... __/cognitive/jepa/nimcp_jepa_latent.i"
+	@echo "... __/cognitive/jepa/nimcp_jepa_latent.s"
+	@echo "... __/cognitive/jepa/nimcp_jepa_masking.o"
+	@echo "... __/cognitive/jepa/nimcp_jepa_masking.i"
+	@echo "... __/cognitive/jepa/nimcp_jepa_masking.s"
+	@echo "... __/cognitive/jepa/nimcp_jepa_multimodal.o"
+	@echo "... __/cognitive/jepa/nimcp_jepa_multimodal.i"
+	@echo "... __/cognitive/jepa/nimcp_jepa_multimodal.s"
+	@echo "... __/cognitive/jepa/nimcp_jepa_predictor.o"
+	@echo "... __/cognitive/jepa/nimcp_jepa_predictor.i"
+	@echo "... __/cognitive/jepa/nimcp_jepa_predictor.s"
+	@echo "... __/cognitive/jepa/nimcp_jepa_weights.o"
+	@echo "... __/cognitive/jepa/nimcp_jepa_weights.i"
+	@echo "... __/cognitive/jepa/nimcp_jepa_weights.s"
 	@echo "... __/cognitive/joy/nimcp_joy_euphoria.o"
 	@echo "... __/cognitive/joy/nimcp_joy_euphoria.i"
 	@echo "... __/cognitive/joy/nimcp_joy_euphoria.s"
@@ -20917,9 +21151,18 @@ help:
 	@echo "... __/perception/nimcp_speech_cortex_fep_bridge.o"
 	@echo "... __/perception/nimcp_speech_cortex_fep_bridge.i"
 	@echo "... __/perception/nimcp_speech_cortex_fep_bridge.s"
+	@echo "... __/perception/nimcp_speech_jepa_bridge.o"
+	@echo "... __/perception/nimcp_speech_jepa_bridge.i"
+	@echo "... __/perception/nimcp_speech_jepa_bridge.s"
 	@echo "... __/perception/nimcp_visual_cortex_fep_bridge.o"
 	@echo "... __/perception/nimcp_visual_cortex_fep_bridge.i"
 	@echo "... __/perception/nimcp_visual_cortex_fep_bridge.s"
+	@echo "... __/perception/nimcp_visual_jepa_bridge.o"
+	@echo "... __/perception/nimcp_visual_jepa_bridge.i"
+	@echo "... __/perception/nimcp_visual_jepa_bridge.s"
+	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.o"
+	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.i"
+	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.s"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.o"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.i"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.s"

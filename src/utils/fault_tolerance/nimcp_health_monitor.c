@@ -147,7 +147,8 @@ static void free_metric_history_contents(metric_history_t* history) {
  * @brief Add value to metric history
  */
 static void add_to_history(metric_history_t* history, double value) {
-    if (!history) return;
+    if (!history || !history->values) return;
+    if (history->capacity == 0) return;  // Defensive: prevent modulo by zero
 
     history->values[history->head] = value;
     history->head = (history->head + 1) % history->capacity;
@@ -161,7 +162,7 @@ static void add_to_history(metric_history_t* history, double value) {
  * @brief Calculate mean of metric history
  */
 static double calculate_mean(const metric_history_t* history) {
-    if (!history || history->size == 0) return 0.0;
+    if (!history || !history->values || history->size == 0) return 0.0;
 
     double sum = 0.0;
     for (uint32_t i = 0; i < history->size; i++) {
@@ -175,7 +176,7 @@ static double calculate_mean(const metric_history_t* history) {
  * @brief Calculate standard deviation of metric history
  */
 static double calculate_std_dev(const metric_history_t* history, double mean) {
-    if (!history || history->size < 2) return 0.0;
+    if (!history || !history->values || history->size < 2) return 0.0;
 
     double sum_sq_diff = 0.0;
     for (uint32_t i = 0; i < history->size; i++) {
@@ -190,7 +191,7 @@ static double calculate_std_dev(const metric_history_t* history, double mean) {
  * @brief Calculate linear regression trend
  */
 static double calculate_trend(const metric_history_t* history) {
-    if (!history || history->size < 2) return 0.0;
+    if (!history || !history->values || history->size < 2) return 0.0;
 
     double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_xx = 0.0;
     uint32_t n = history->size;
@@ -215,6 +216,7 @@ static double calculate_trend(const metric_history_t* history) {
  */
 static void update_metric_stats(metric_stats_t* stats, double value, double alpha) {
     if (!stats) return;
+    if (alpha < 0.0 || alpha > 1.0) alpha = 0.1;  // Defensive: clamp alpha to valid range
 
     if (stats->count == 0) {
         stats->mean = value;
@@ -1299,7 +1301,10 @@ bool health_monitor_set_interval(health_monitor_t monitor, uint32_t interval_ms)
 void health_monitor_report(health_monitor_t monitor, FILE* output) {
     if (!monitor || !output) return;
 
-    nimcp_mutex_lock(&monitor->mutex);
+    if (nimcp_mutex_lock(&monitor->mutex) != NIMCP_SUCCESS) {
+        NIMCP_LOGGING_ERROR("Failed to acquire mutex for health report");
+        return;
+    }
 
     fprintf(output, "\n");
     fprintf(output, "=== NIMCP Health Monitor Report ===\n");

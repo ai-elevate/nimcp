@@ -1385,7 +1385,8 @@ nimcp_error_t bio_router_request(bio_module_context_t ctx,
     nimcp_error_t wait_result = nimcp_bio_future_wait(future, response,
                                                         timeout_ms > 0 ? timeout_ms : DEFAULT_TIMEOUT_MS);
 
-    // Cleanup
+    // Cleanup - destroy both future and promise to avoid memory leak
+    nimcp_bio_future_destroy(future);
     nimcp_bio_promise_destroy(promise);
 
     if (wait_result != NIMCP_SUCCESS) {

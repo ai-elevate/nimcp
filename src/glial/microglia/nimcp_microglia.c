@@ -333,9 +333,14 @@ void microglia_unregister_bio_handlers(void)
 
 /**
  * @brief Find synapse index in monitoring array
+ *
+ * Bounds checking: Validates mg pointer and synapses array before access.
  */
 static int32_t find_synapse_index(const microglia_t* mg, uint32_t synapse_id)
 {
+    if (!mg || !mg->synapses) return -1;
+    if (mg->num_monitored_synapses > mg->max_monitored_synapses) return -1;
+
     for (uint32_t i = 0; i < mg->num_monitored_synapses; i++) {
         if (mg->synapses[i].synapse_id == synapse_id) {
             return (int32_t)i;
@@ -1253,9 +1258,11 @@ bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
 nimcp_result_t microglia_network_add(microglia_network_t* network, microglia_t* mg)
 {
     if (!network || !mg) return NIMCP_ERROR_INVALID_PARAM;
+    if (!network->microglia) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(&network->lock);
 
+    /* Bounds check: ensure we don't exceed allocated capacity */
     if (network->num_microglia >= network->capacity) {
         nimcp_mutex_unlock(&network->lock);
         return NIMCP_ERROR_INVALID_PARAM;
@@ -1263,7 +1270,7 @@ nimcp_result_t microglia_network_add(microglia_network_t* network, microglia_t* 
 
     network->microglia[network->num_microglia] = mg;
     network->num_microglia++;
-    network->spatial_index_valid = false;  // Need to rebuild KD-tree
+    network->spatial_index_valid = false;  /* Need to rebuild KD-tree */
 
     nimcp_mutex_unlock(&network->lock);
     return NIMCP_SUCCESS;
@@ -1272,10 +1279,13 @@ nimcp_result_t microglia_network_add(microglia_network_t* network, microglia_t* 
 void microglia_network_rebuild_spatial_index(microglia_network_t* network)
 {
     if (!network || network->num_microglia == 0) return;
+    if (!network->microglia) return;
+    /* Bounds validation: num_microglia should not exceed capacity */
+    if (network->num_microglia > network->capacity) return;
 
     nimcp_mutex_lock(&network->lock);
 
-    // Rebuild microglia KD-tree
+    /* Rebuild microglia KD-tree */
     if (network->microglia_tree) {
         kdtree_destroy(network->microglia_tree);
     }
@@ -1328,6 +1338,9 @@ void microglia_network_update_centrality(microglia_network_t* network, void* syn
 void microglia_network_step(microglia_network_t* network, uint64_t current_time)
 {
     if (!network) return;
+    if (!network->microglia) return;
+    /* Bounds validation: num_microglia should not exceed capacity */
+    if (network->num_microglia > network->capacity) return;
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1468,8 +1481,11 @@ uint32_t microglia_network_find_in_radius(microglia_network_t* network,
 void microglia_network_diffuse_cytokines(microglia_network_t* network, float dt)
 {
     if (!network || dt <= 0.0F || network->num_microglia < 2) return;
+    if (!network->microglia) return;
+    /* Bounds validation: num_microglia should not exceed capacity */
+    if (network->num_microglia > network->capacity) return;
 
-    // Simple diffusion: each microglia shares cytokines with nearby neighbors
+    /* Simple diffusion: each microglia shares cytokines with nearby neighbors */
     float diffusion_radius = 200.0F;  // µm
     float diffusion_rate = NIMCP_CYTOKINE_DIFFUSION_COEFF * dt / (diffusion_radius * diffusion_radius);
 
@@ -1513,6 +1529,9 @@ void microglia_network_get_stats(const microglia_network_t* network,
     memset(stats, 0, sizeof(microglia_network_stats_t));
 
     if (!network) return;
+    if (!network->microglia) return;
+    /* Bounds validation: num_microglia should not exceed capacity */
+    if (network->num_microglia > network->capacity) return;
 
     stats->total_microglia = network->num_microglia;
 

@@ -222,10 +222,16 @@ NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config
     pool->enable_tracking = config->enable_tracking;
     pool->num_blocks = config->num_blocks;
 
-    // Calculate aligned block sizes
+    // Calculate aligned block sizes with overflow protection
     // Each block needs: header + user_data (aligned)
     pool->block_size = align_size(config->block_size, alignment);
     pool->total_block_size = sizeof(block_header_t) + pool->block_size;
+
+    // Check for overflow: total_block_size * num_blocks
+    if (pool->num_blocks > SIZE_MAX / pool->total_block_size) {
+        nimcp_free(pool);
+        return NULL;  // Overflow would occur
+    }
     pool->total_size = pool->total_block_size * pool->num_blocks;
 
     // Allocate large memory region

@@ -163,18 +163,35 @@ void eligibility_trace_update(
         }
     }
 
-    // STEP 3: Add spike contribution
-    // WHAT: Increment trace by spike amount
-    // WHY: Spike marks synapse as eligible
-    // HOW: Simple addition
+    // STEP 3: Add spike contribution with overflow protection
+    // WHAT: Increment trace by spike amount with bounds checking
+    // WHY: Spike marks synapse as eligible; prevent unbounded growth
+    // HOW: Validate spike_contribution, add, then clamp
+    // NUMERICAL STABILITY: Check for NaN/Inf in spike_contribution
+    if (isnan(spike_contribution) || isinf(spike_contribution)) {
+        spike_contribution = 0.0f;  /* Skip corrupted contribution */
+    }
+
+    /* Clamp spike contribution to reasonable range [0, 1] */
+    if (spike_contribution < 0.0f) spike_contribution = 0.0f;
+    if (spike_contribution > 1.0f) spike_contribution = 1.0f;
+
     trace->trace += spike_contribution;
 
     // STEP 4: Clamp trace to [0, 1]
-    // WHAT: Prevent trace from exceeding 1.0
+    // WHAT: Prevent trace from exceeding 1.0 or going negative
     // WHY: Traces represent eligibility probability
-    // HOW: fminf() with 1.0 upper bound
+    // HOW: Explicit bounds checking for both limits
+    if (trace->trace < 0.0F) {
+        trace->trace = 0.0F;
+    }
     if (trace->trace > 1.0F) {
         trace->trace = 1.0F;
+    }
+
+    /* Final NaN check to ensure numerical stability */
+    if (isnan(trace->trace)) {
+        trace->trace = 0.0F;
     }
 
     // STEP 5: Update timestamp
@@ -207,6 +224,16 @@ void eligibility_trace_decay(
         return;
     }
 
+    // PARAMETER VALIDATION: Ensure decay_lambda is in valid range
+    // WHAT: Validate decay_lambda is in (0, 1] range
+    // WHY:  Invalid lambda values cause numerical instability
+    // HOW:  Clamp or skip if out of range
+    float decay_lambda = config->decay_lambda;
+    if (isnan(decay_lambda) || decay_lambda <= 0.0f || decay_lambda > 1.0f) {
+        /* Invalid decay parameter - skip decay to preserve trace */
+        return;
+    }
+
     // WHAT: Compute and apply exponential decay
     // WHY: Update trace to current time
     // HOW: Same as eligibility_trace_update but without spike contribution
@@ -218,7 +245,15 @@ void eligibility_trace_decay(
     uint64_t delta_t = current_time - trace->last_update;
 
     if (delta_t > 0) {
-        float decay_factor = powf(config->decay_lambda, (float)delta_t);
+        float decay_factor = powf(decay_lambda, (float)delta_t);
+
+        // NUMERICAL STABILITY: Validate decay_factor result
+        if (isnan(decay_factor) || isinf(decay_factor)) {
+            trace->trace = 0.0f;  /* Reset on numerical error */
+            trace->last_update = current_time;
+            return;
+        }
+
         // NUMERICAL STABILITY: Early cutoff for large delta_t
         // WHAT: Zero out trace if decay becomes negligible
         // WHY: Avoid denormal floats and numerical errors
@@ -238,6 +273,10 @@ void eligibility_trace_decay(
     if (trace->trace < 0.0001F) {
         trace->trace = 0.0F;
     }
+
+    /* Final bounds enforcement */
+    if (trace->trace < 0.0F) trace->trace = 0.0F;
+    if (trace->trace > 1.0F) trace->trace = 1.0F;
 }
 
 //=============================================================================

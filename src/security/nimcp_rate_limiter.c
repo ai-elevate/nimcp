@@ -27,6 +27,8 @@
 #include <time.h>
 #include <math.h>
 #include <stdatomic.h>
+#include <stdint.h>
+#include <limits.h>
 
 //=============================================================================
 // Internal Structures
@@ -121,14 +123,38 @@ static inline bool is_valid_limiter(nimcp_rate_limiter_t limiter) {
 
 /**
  * @brief Refill tokens based on elapsed time (token bucket algorithm)
+ *
+ * SECURITY: Added overflow protection for elapsed_ms calculation.
+ *           If now < last_refill (clock skew/wrap), we skip refill to avoid
+ *           underflow that could grant unlimited tokens.
  */
 static void refill_tokens(float* tokens, uint64_t* last_refill_ms,
                           float rate_per_second, float max_tokens)
 {
+    // Defensive null checks
+    if (!tokens || !last_refill_ms) {
+        return;
+    }
+
     uint64_t now = get_time_ms();
+
+    // SECURITY: Prevent underflow if clock goes backwards (time skew)
+    if (now < *last_refill_ms) {
+        // Clock skew detected - reset to current time, don't grant extra tokens
+        *last_refill_ms = now;
+        return;
+    }
+
     uint64_t elapsed_ms = now - *last_refill_ms;
 
     if (elapsed_ms > 0) {
+        // SECURITY: Cap elapsed_ms to prevent huge token grants after long idle
+        // Maximum 1 hour of token accumulation
+        const uint64_t MAX_ELAPSED_MS = 3600000ULL;
+        if (elapsed_ms > MAX_ELAPSED_MS) {
+            elapsed_ms = MAX_ELAPSED_MS;
+        }
+
         float new_tokens = ((float)elapsed_ms / 1000.0F) * rate_per_second;
         *tokens += new_tokens;
 
@@ -445,6 +471,8 @@ void nimcp_rate_limiter_destroy(nimcp_rate_limiter_t limiter) {
             client_bucket_t* bucket = limiter->client_table->buckets[i];
             while (bucket) {
                 client_bucket_t* next = bucket->next;
+                // SECURITY: Zero sensitive data before freeing
+                memset(bucket, 0, sizeof(client_bucket_t));
                 free(bucket);
                 bucket = next;
             }
@@ -452,6 +480,8 @@ void nimcp_rate_limiter_destroy(nimcp_rate_limiter_t limiter) {
             nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[i]);
             nimcp_platform_mutex_destroy(&limiter->client_table->bucket_locks[i]);
         }
+        // SECURITY: Zero table before freeing
+        memset(limiter->client_table, 0, sizeof(client_hash_table_t));
         free(limiter->client_table);
     }
 
@@ -478,9 +508,12 @@ bool nimcp_rate_limiter_allow(
         return false;
     }
 
-    // Update statistics
+    // Update statistics with overflow protection
     nimcp_platform_mutex_lock(&limiter->limiter_lock);
-    limiter->stats.total_requests++;
+    // SECURITY: Prevent overflow - cap at UINT64_MAX
+    if (limiter->stats.total_requests < UINT64_MAX) {
+        limiter->stats.total_requests++;
+    }
     nimcp_platform_mutex_unlock(&limiter->limiter_lock);
 
     // Global limit if no client_id
@@ -495,9 +528,15 @@ bool nimcp_rate_limiter_allow(
         bool allowed = (limiter->global_tokens >= 1.0F);
         if (allowed) {
             limiter->global_tokens -= 1.0F;
-            limiter->stats.requests_allowed++;
+            // SECURITY: Overflow protection for counter
+            if (limiter->stats.requests_allowed < UINT64_MAX) {
+                limiter->stats.requests_allowed++;
+            }
         } else {
-            limiter->stats.requests_denied++;
+            // SECURITY: Overflow protection for counter
+            if (limiter->stats.requests_denied < UINT64_MAX) {
+                limiter->stats.requests_denied++;
+            }
         }
 
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
@@ -549,7 +588,10 @@ bool nimcp_rate_limiter_allow(
 
     if (allowed) {
         bucket->tokens -= 1.0F;
-        bucket->stats.requests_allowed++;
+        // SECURITY: Overflow protection for per-client counter
+        if (bucket->stats.requests_allowed < UINT64_MAX) {
+            bucket->stats.requests_allowed++;
+        }
         bucket->stats.last_request_time_ms = get_time_ms();
         bucket->stats.tokens_available = (uint32_t)bucket->tokens;
         bucket->consecutive_good++;
@@ -557,22 +599,37 @@ bool nimcp_rate_limiter_allow(
         check_good_behavior(limiter, bucket);
 
         nimcp_platform_mutex_lock(&limiter->limiter_lock);
-        limiter->stats.requests_allowed++;
-        limiter->stats.overall_allow_rate =
-            (float)limiter->stats.requests_allowed /
-            (float)limiter->stats.total_requests * 100.0F;
+        // SECURITY: Overflow protection for global counter
+        if (limiter->stats.requests_allowed < UINT64_MAX) {
+            limiter->stats.requests_allowed++;
+        }
+        // SECURITY: Prevent divide-by-zero in rate calculation
+        if (limiter->stats.total_requests > 0) {
+            limiter->stats.overall_allow_rate =
+                (float)limiter->stats.requests_allowed /
+                (float)limiter->stats.total_requests * 100.0F;
+        }
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
     } else {
-        bucket->stats.requests_denied++;
+        // SECURITY: Overflow protection for per-client counter
+        if (bucket->stats.requests_denied < UINT64_MAX) {
+            bucket->stats.requests_denied++;
+        }
         bucket->consecutive_good = 0;
 
         apply_penalty(limiter, bucket);
 
         nimcp_platform_mutex_lock(&limiter->limiter_lock);
-        limiter->stats.requests_denied++;
-        limiter->stats.overall_allow_rate =
-            (float)limiter->stats.requests_allowed /
-            (float)limiter->stats.total_requests * 100.0F;
+        // SECURITY: Overflow protection for global counter
+        if (limiter->stats.requests_denied < UINT64_MAX) {
+            limiter->stats.requests_denied++;
+        }
+        // SECURITY: Prevent divide-by-zero in rate calculation
+        if (limiter->stats.total_requests > 0) {
+            limiter->stats.overall_allow_rate =
+                (float)limiter->stats.requests_allowed /
+                (float)limiter->stats.total_requests * 100.0F;
+        }
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
     }
 

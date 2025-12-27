@@ -108,8 +108,8 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
     latent->norm_type = config->norm_type;
     latent->ref_count = 1;
 
-    /* Update statistics */
-    g_latent_stats.latents_created++;
+    /* Update statistics - thread-safe atomic increment */
+    __atomic_fetch_add(&g_latent_stats.latents_created, 1, __ATOMIC_RELAXED);
 
     NIMCP_LOGGING_DEBUG(LOG_MODULE " Created latent: dim=%u, variance=%s, modality=%s",
                        latent->latent_dim,
@@ -187,8 +187,8 @@ void jepa_latent_destroy(jepa_latent_t* latent) {
     /* Free structure */
     nimcp_free(latent);
 
-    /* Update statistics */
-    g_latent_stats.latents_destroyed++;
+    /* Update statistics - thread-safe atomic increment */
+    __atomic_fetch_add(&g_latent_stats.latents_destroyed, 1, __ATOMIC_RELAXED);
 }
 
 int jepa_latent_reset(jepa_latent_t* latent) {
@@ -304,9 +304,11 @@ int jepa_latent_update_precision(jepa_latent_t* latent) {
         latent->precision = JEPA_LATENT_MAX_PRECISION;
     }
 
-    /* Update stats */
-    g_latent_stats.avg_precision = 0.9f * g_latent_stats.avg_precision +
-                                    0.1f * latent->precision;
+    /* Update avg_precision with exponential moving average.
+     * Note: Simple assignment is used for the float since aligned 32-bit
+     * float access is atomic on x86/x64. The slight race in read-modify-write
+     * is acceptable for an approximate running average. */
+    g_latent_stats.avg_precision = 0.9f * g_latent_stats.avg_precision + 0.1f * latent->precision;
 
     return NIMCP_SUCCESS;
 }
@@ -347,7 +349,7 @@ int jepa_latent_normalize(jepa_latent_t* latent) {
 
     latent->is_normalized = true;
     latent->norm_type = JEPA_NORM_L2;
-    g_latent_stats.normalizations++;
+    __atomic_fetch_add(&g_latent_stats.normalizations, 1, __ATOMIC_RELAXED);
 
     return NIMCP_SUCCESS;
 }
@@ -381,7 +383,7 @@ int jepa_latent_layer_normalize(jepa_latent_t* latent) {
 
     latent->is_normalized = true;
     latent->norm_type = JEPA_NORM_LAYERNORM;
-    g_latent_stats.normalizations++;
+    __atomic_fetch_add(&g_latent_stats.normalizations, 1, __ATOMIC_RELAXED);
 
     return NIMCP_SUCCESS;
 }
@@ -426,7 +428,7 @@ float jepa_latent_cosine_similarity(const jepa_latent_t* a, const jepa_latent_t*
         return 0.0f;  /* Zero vector has no direction */
     }
 
-    g_latent_stats.similarity_ops++;
+    __atomic_fetch_add(&g_latent_stats.similarity_ops, 1, __ATOMIC_RELAXED);
     return dot / (norm_a * norm_b);
 }
 
@@ -479,7 +481,7 @@ float jepa_latent_precision_similarity(const jepa_latent_t* a, const jepa_latent
         total_precision += prec;
     }
 
-    g_latent_stats.similarity_ops++;
+    __atomic_fetch_add(&g_latent_stats.similarity_ops, 1, __ATOMIC_RELAXED);
 
     if (total_precision < JEPA_LATENT_EPSILON) {
         return 0.0f;
@@ -542,7 +544,7 @@ int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
     }
 
     result->is_normalized = false;
-    g_latent_stats.interpolations++;
+    __atomic_fetch_add(&g_latent_stats.interpolations, 1, __ATOMIC_RELAXED);
 
     return NIMCP_SUCCESS;
 }
@@ -589,7 +591,7 @@ int jepa_latent_slerp(const jepa_latent_t* a, const jepa_latent_t* b,
 
     result->is_normalized = true;  /* SLERP preserves normalization */
     result->norm_type = JEPA_NORM_L2;
-    g_latent_stats.interpolations++;
+    __atomic_fetch_add(&g_latent_stats.interpolations, 1, __ATOMIC_RELAXED);
 
     return NIMCP_SUCCESS;
 }
@@ -760,12 +762,24 @@ int jepa_latent_get_stats(jepa_latent_stats_t* stats) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    *stats = g_latent_stats;
+    /* Thread-safe copy using atomic loads for integers, direct read for float */
+    stats->latents_created = __atomic_load_n(&g_latent_stats.latents_created, __ATOMIC_RELAXED);
+    stats->latents_destroyed = __atomic_load_n(&g_latent_stats.latents_destroyed, __ATOMIC_RELAXED);
+    stats->normalizations = __atomic_load_n(&g_latent_stats.normalizations, __ATOMIC_RELAXED);
+    stats->similarity_ops = __atomic_load_n(&g_latent_stats.similarity_ops, __ATOMIC_RELAXED);
+    stats->interpolations = __atomic_load_n(&g_latent_stats.interpolations, __ATOMIC_RELAXED);
+    stats->avg_precision = g_latent_stats.avg_precision;  /* Aligned float read is atomic on x86 */
     return NIMCP_SUCCESS;
 }
 
 int jepa_latent_reset_stats(void) {
-    memset(&g_latent_stats, 0, sizeof(g_latent_stats));
+    /* Thread-safe reset using atomic stores for integers, direct write for float */
+    __atomic_store_n(&g_latent_stats.latents_created, 0, __ATOMIC_RELAXED);
+    __atomic_store_n(&g_latent_stats.latents_destroyed, 0, __ATOMIC_RELAXED);
+    __atomic_store_n(&g_latent_stats.normalizations, 0, __ATOMIC_RELAXED);
+    __atomic_store_n(&g_latent_stats.similarity_ops, 0, __ATOMIC_RELAXED);
+    __atomic_store_n(&g_latent_stats.interpolations, 0, __ATOMIC_RELAXED);
+    g_latent_stats.avg_precision = 0.0f;  /* Aligned float write is atomic on x86 */
     return NIMCP_SUCCESS;
 }
 

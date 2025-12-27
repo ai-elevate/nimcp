@@ -838,9 +838,11 @@ int fep_orchestrator_get_stats(
 ) {
     if (!orchestrator || !stats) return NIMCP_ERROR_NULL_POINTER;
 
-    // Note: Reading stats without lock is safe as stats fields are atomically updated
-    // If strict consistency is needed, caller should use non-const orchestrator pointer
+    /* Thread-safe copy under lock for consistency */
+    fep_orchestrator_t* mutable_orch = (fep_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
     *stats = orchestrator->stats;
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
 
     return 0;
 }

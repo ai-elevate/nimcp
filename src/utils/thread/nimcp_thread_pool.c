@@ -603,9 +603,16 @@ struct nimcp_thread_pool {
 static void* worker_thread(void* arg)
 {
     nimcp_thread_pool_t* pool = (nimcp_thread_pool_t*) arg;
+    if (!pool) {
+        return NULL;  // Defensive null check
+    }
 
     while (1) {
-        nimcp_mutex_lock(&pool->lock);
+        if (nimcp_mutex_lock(&pool->lock) != NIMCP_SUCCESS) {
+            // Mutex lock failed - exit worker thread
+            LOG_ERROR("THREAD_POOL", "Worker thread failed to acquire mutex");
+            break;
+        }
 
         // WHY LOOP: Condition variables can have spurious wakeups
         // Must re-check condition after each wakeup
@@ -710,7 +717,13 @@ nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads)
     // Validate parameters
     // WHY CHECK 0: Pool with no threads can't do work
     // WHY CHECK MAX: Prevent array overflow
-    if (num_threads == 0 || num_threads > NIMCP_POOL_MAX_THREADS) {
+    if (num_threads == 0) {
+        LOG_ERROR("THREAD_POOL", "Invalid num_threads: cannot be 0");
+        return NULL;
+    }
+    if (num_threads > NIMCP_POOL_MAX_THREADS) {
+        LOG_ERROR("THREAD_POOL", "Invalid num_threads %zu: exceeds max %d",
+                  num_threads, NIMCP_POOL_MAX_THREADS);
         return NULL;
     }
 

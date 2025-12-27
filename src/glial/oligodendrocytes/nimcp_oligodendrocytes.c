@@ -40,7 +40,6 @@ static bio_module_context_t g_oligo_bio_ctx = NULL;
 static unified_mem_manager_t g_oligo_mem_mgr = NULL;
 static nimcp_platform_once_t g_oligo_bio_once = NIMCP_PLATFORM_ONCE_INIT;
 static nimcp_error_t g_oligo_bio_init_result = NIMCP_SUCCESS;
-static bool g_oligo_bio_initialized = false;
 
 //=============================================================================
 // Bio-Async Message Handlers

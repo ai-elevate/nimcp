@@ -385,3 +385,231 @@ gtest_discover_tests(unit_cognitive_self_awareness_coordinator
         LABELS "unit;cognitive;self-awareness;coordinator"
         TIMEOUT 60
 )
+
+# ============================================================================
+# JEPA Latent Space Tests
+# ============================================================================
+# WHAT: Unit tests for JEPA Latent Space Representation Module
+# WHY:  Latent space is core to JEPA prediction/comparison - must be correct
+# HOW:  Test creation, similarity, interpolation, normalization, pooling
+# ============================================================================
+
+add_executable(unit_cognitive_jepa_latent
+    jepa/test_jepa_latent.cpp
+)
+
+target_link_libraries(unit_cognitive_jepa_latent
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_jepa_latent
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_jepa_latent PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_jepa_latent
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;latent"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# JEPA Masking Tests
+# ============================================================================
+# WHAT: Unit tests for JEPA Masking Module
+# WHY:  Validate all masking strategies (random, block, attention, curriculum,
+#       tube, causal) and mask operations for self-supervised learning
+# HOW:  Test lifecycle, all strategies, mask operations, edge cases
+# ============================================================================
+
+add_executable(unit_cognitive_jepa_masking
+    jepa/test_jepa_masking.cpp
+)
+
+target_link_libraries(unit_cognitive_jepa_masking
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_jepa_masking
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_jepa_masking PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_jepa_masking
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;masking"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# JEPA Multimodal Tests
+# ============================================================================
+# WHAT: Unit tests for Multimodal JEPA module
+# WHY:  Validate joint embedding space for visual and speech modalities,
+#       cross-modal prediction, alignment training, and fusion strategies
+# HOW:  Test creation, encoding, fusion (all types), similarity, prediction,
+#       alignment training, batch management, edge cases
+# ============================================================================
+
+add_executable(unit_cognitive_jepa_multimodal
+    jepa/test_jepa_multimodal.cpp
+)
+
+target_link_libraries(unit_cognitive_jepa_multimodal
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_jepa_multimodal
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_jepa_multimodal PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_jepa_multimodal
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;multimodal"
+        TIMEOUT 180
+)
+
+# ============================================================================
+# JEPA Predictor Tests
+# ============================================================================
+# WHAT: Unit tests for JEPA Predictor module
+# WHY:  Predictor is core to JEPA - predicts embeddings in latent space
+# HOW:  Test creation, MLP forward pass, error computation, training, weights
+# ============================================================================
+
+add_executable(unit_cognitive_test_jepa_predictor
+    jepa/test_jepa_predictor.cpp
+)
+
+target_link_libraries(unit_cognitive_test_jepa_predictor
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_jepa_predictor
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_jepa_predictor PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_jepa_predictor
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;predictor"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# JEPA Weights Tests
+# ============================================================================
+# WHAT: Unit tests for JEPA Weight Loading and Management Module
+# WHY:  Weight loading/saving is critical for transfer learning from V-JEPA 2
+# HOW:  Test file format (NJWT magic), load/save, round-trip, validation
+# ============================================================================
+
+add_executable(unit_cognitive_jepa_weights
+    jepa/test_jepa_weights.cpp
+)
+
+target_link_libraries(unit_cognitive_jepa_weights
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_jepa_weights
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_definitions(unit_cognitive_jepa_weights PRIVATE NIMCP_TESTING)
+target_compile_features(unit_cognitive_jepa_weights PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_jepa_weights
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;weights"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# JEPA Context Tests
+# ============================================================================
+# WHAT: Unit tests for JEPA Context Encoder module
+# WHY:  Context-conditioned encoding enables task-specific representations
+# HOW:  Test creation, context setting, encoding with FiLM/cross-attention,
+#       bio-async integration, statistics tracking
+# ============================================================================
+
+add_executable(unit_cognitive_test_jepa_context
+    jepa/test_jepa_context.cpp
+)
+
+target_link_libraries(unit_cognitive_test_jepa_context
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_jepa_context
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_definitions(unit_cognitive_test_jepa_context PRIVATE NIMCP_TESTING)
+target_compile_features(unit_cognitive_test_jepa_context PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_jepa_context
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;context"
+        TIMEOUT 180
+)

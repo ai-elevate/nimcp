@@ -94,6 +94,18 @@ static nimcp_pos_encoder_t* create_priority_encoder(uint32_t max_seq, uint32_t d
  */
 static float compute_attention_width(float arousal, float valence,
                                      const emotion_attention_config_t* config) {
+    /* Guard: Validate config pointer */
+    if (!config) {
+        return 0.5F;  /* Return neutral width on invalid config */
+    }
+
+    /* WHAT: Clamp input parameters to valid ranges */
+    /* WHY:  Prevent unexpected behavior from out-of-range values */
+    if (arousal < 0.0F) arousal = 0.0F;
+    if (arousal > 1.0F) arousal = 1.0F;
+    if (valence < -1.0F) valence = -1.0F;
+    if (valence > 1.0F) valence = 1.0F;
+
     /* WHAT: Start with neutral width */
     float width = 0.5F;
 
@@ -128,6 +140,13 @@ static float compute_attention_width(float arousal, float valence,
  * HOW:  Compare emotion categories, check for similarity
  */
 static bool is_emotion_congruent(emotion_primary_t current, emotion_primary_t stimulus) {
+    /* WHAT: Validate enum values are in expected range */
+    /* WHY:  Prevent undefined behavior from invalid enum values */
+    if ((int)current < 0 || (int)current > 7 ||
+        (int)stimulus < 0 || (int)stimulus > 7) {
+        return false;
+    }
+
     /* WHAT: Exact match is always congruent */
     if (current == stimulus) {
         return true;

@@ -273,17 +273,39 @@ int structural_plasticity_form_synapse(
         return -1;
     }
 
+    /* Validate activity_hz to prevent NaN propagation */
+    if (isnan(activity_hz) || isinf(activity_hz)) {
+        activity_hz = 0.0f;
+    }
+    if (activity_hz < 0.0f) activity_hz = 0.0f;
+
     nimcp_platform_mutex_lock(system->mutex);
 
-    /* Check spine limit */
+    /* BOUNDS VALIDATION: Check spine array limits
+     * WHAT: Verify we have room in the spine array
+     * WHY:  Prevent array overflow and memory corruption
+     * HOW:  Check both num_spines < max_spines and spines array exists
+     */
+    if (!system->spines) {
+        NIMCP_LOGGING_ERROR("Spine array not initialized");
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
     if (system->num_spines >= system->max_spines) {
         NIMCP_LOGGING_WARN("Spine limit reached");
         nimcp_platform_mutex_unlock(system->mutex);
         return -1;
     }
 
-    /* Find free slot */
+    /* Find free slot with explicit bounds check */
     uint32_t slot = system->num_spines;
+    if (slot >= system->max_spines) {
+        NIMCP_LOGGING_ERROR("Slot index exceeds max_spines");
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
     synapse_structural_state_t* spine = &system->spines[slot];
 
     /* Initialize spine */
@@ -654,13 +676,30 @@ int structural_plasticity_update(
         return -1;
     }
 
+    /* Validate delta_sec to prevent numerical issues */
+    if (isnan(delta_sec) || isinf(delta_sec) || delta_sec < 0.0f) {
+        return 0;  /* Skip update with invalid time step */
+    }
+    /* Cap delta_sec to prevent extreme values */
+    if (delta_sec > 3600.0f) {  /* 1 hour max */
+        delta_sec = 3600.0f;
+    }
+
     /* Deferred callbacks to invoke after releasing mutex */
     deferred_callback_t deferred[MAX_DEFERRED_CALLBACKS];
     uint32_t num_deferred = 0;
 
     nimcp_platform_mutex_lock(system->mutex);
 
+    /* BOUNDS VALIDATION: Verify spine array before iteration */
+    if (!system->spines || system->num_spines > system->max_spines) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1;
+    }
+
     for (uint32_t i = 0; i < system->num_spines; i++) {
+        /* Defensive bounds check per iteration */
+        if (i >= system->max_spines) break;
         synapse_structural_state_t* spine = &system->spines[i];
 
         if (spine->state == SYNAPSE_STATE_ELIMINATED) {

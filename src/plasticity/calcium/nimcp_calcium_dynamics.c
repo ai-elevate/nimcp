@@ -492,18 +492,24 @@ int calcium_register_threshold_callback(
 
     nimcp_platform_mutex_lock(calcium->mutex);
 
-    /* Find empty slot */
+    /* Find empty slot with explicit bounds validation
+     * WHAT: Search for inactive callback slot with bounds check
+     * WHY:  Prevent array index out-of-bounds access
+     * HOW:  Verify index < CALCIUM_MAX_THRESHOLD_CALLBACKS before access
+     */
     int slot = -1;
     for (int i = 0; i < CALCIUM_MAX_THRESHOLD_CALLBACKS; i++) {
+        /* Defensive bounds check (compile-time constant, but validates at runtime) */
+        if (i >= CALCIUM_MAX_THRESHOLD_CALLBACKS) break;
         if (!calcium->callbacks[i].active) {
             slot = i;
             break;
         }
     }
 
-    if (slot < 0) {
+    if (slot < 0 || slot >= CALCIUM_MAX_THRESHOLD_CALLBACKS) {
         nimcp_platform_mutex_unlock(calcium->mutex);
-        NIMCP_LOGGING_WARN("Callback array full");
+        NIMCP_LOGGING_WARN("Callback array full or invalid slot");
         return -1;
     }
 
