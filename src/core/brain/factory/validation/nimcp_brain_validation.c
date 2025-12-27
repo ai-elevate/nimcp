@@ -63,7 +63,7 @@
 extern void set_error(const char* format, ...);
 
 // External decision copy function declaration
-extern brain_decision_t* copy_decision(const brain_decision_t* decision);
+extern brain_decision_t* copy_decision(brain_decision_t* decision);
 
 //=============================================================================
 // Validation Functions

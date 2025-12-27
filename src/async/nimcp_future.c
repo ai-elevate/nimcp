@@ -1643,25 +1643,40 @@ nimcp_future_t nimcp_future_any(nimcp_future_t* futures, size_t count)
 /**
  * WHAT: Tracking structure for map() combinator
  * WHY:  Transform future result when it completes
- * HOW:  Apply transformation function asynchronously
+ * HOW:  Apply transformation function asynchronously with reference counting
  */
 typedef struct {
     nimcp_promise_t output_promise;
     nimcp_future_transform_t transform;
     void* user_data;
     size_t output_size;
+    nimcp_atomic_uint32_t refcount;  /**< Reference count for safe cleanup */
 } map_tracker_t;
+
+/**
+ * WHAT: Release reference to map tracker
+ * WHY:  Clean up when all references are gone (prevents double-free)
+ * HOW:  Atomic decrement, free on zero
+ */
+static void map_tracker_release(map_tracker_t* tracker)
+{
+    uint32_t old_ref = nimcp_atomic_fetch_sub_u32(&tracker->refcount, 1, NIMCP_MEMORY_ORDER_ACQ_REL);
+    if (old_ref == 1) {
+        // Last reference - clean up
+        nimcp_promise_destroy(tracker->output_promise);
+        future_free(tracker);
+    }
+}
 
 /**
  * WHAT: Destructor for map_tracker_t
  * WHY:  Clean up when callback is not invoked (future destroyed while pending)
- * HOW:  Destroy promise and free tracker
+ * HOW:  Release tracker reference (may free if last reference)
  */
 static void map_callback_destructor(void* user_data)
 {
     map_tracker_t* tracker = (map_tracker_t*)user_data;
-    nimcp_promise_destroy(tracker->output_promise);
-    future_free(tracker);
+    map_tracker_release(tracker);
 }
 
 /**
@@ -1696,9 +1711,8 @@ static void map_callback(const void* result, nimcp_error_t error, void* user_dat
         }
     }
 
-    // Clean up: destroy promise and free tracker
-    nimcp_promise_destroy(tracker->output_promise);
-    future_free(tracker);
+    // Release our reference to tracker (may free if last reference)
+    map_tracker_release(tracker);
 }
 
 nimcp_future_t nimcp_future_map(
@@ -1737,6 +1751,8 @@ nimcp_future_t nimcp_future_map(
     tracker->transform = transform;
     tracker->user_data = user_data;
     tracker->output_size = output_size;
+    // Initialize refcount to 1 (one reference for the callback/destructor)
+    nimcp_atomic_init_u32(&tracker->refcount, 1);
 
     // Register callback on source future with destructor for cleanup
     future_then_with_destructor(source, map_callback, tracker, map_callback_destructor);

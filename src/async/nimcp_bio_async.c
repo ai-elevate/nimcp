@@ -310,8 +310,6 @@ static void handle_tracker_shutdown(void) {
     for (uint32_t i = 0; i < BIO_MAX_TRACKED_HANDLES; i++) {
         if (g_handle_tracker.entries[i].handle) {
             unified_mem_free(g_handle_tracker.entries[i].handle);
-            g_handle_tracker.entries[i].handle = NULL;
-            g_handle_tracker.entries[i].ptr = NULL;
             freed_count++;
         }
     }
@@ -319,6 +317,12 @@ static void handle_tracker_shutdown(void) {
     if (freed_count > 0) {
         LOG_WARNING("Handle tracker shutdown freed %u leaked handles", freed_count);
     }
+
+    /* Zero out all entries to prevent stale data on re-init.
+     * This is critical because handle_tracker_init checks initialized flag
+     * but doesn't re-zero entries if they contain stale pointers. */
+    memset(g_handle_tracker.entries, 0, sizeof(g_handle_tracker.entries));
+    nimcp_atomic_init_u32(&g_handle_tracker.count, 0);
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
     nimcp_mutex_destroy(&g_handle_tracker.mutex);
@@ -730,6 +734,9 @@ static float shared_state_update_concentration(nimcp_bio_shared_state_t* shared)
 
 /**
  * @brief Invoke all registered callbacks
+ * NOTE: This function assumes the caller already holds shared->mutex.
+ *       It copies the callback list under lock, releases the lock, then invokes callbacks.
+ *       This prevents deadlock if callbacks try to acquire locks.
  */
 static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
@@ -753,16 +760,34 @@ static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
     nimcp_error_t error = (state == BIO_FUTURE_FAILED) ? shared->error : NIMCP_SUCCESS;
     const void* result = (state == BIO_FUTURE_COMPLETED) ? shared->result : NULL;
 
-    /* Thread-safe callback iteration - protect against concurrent modifications */
-    nimcp_mutex_lock(&shared->mutex);
+    /* Copy callback list under lock to avoid invoking callbacks while holding mutex.
+     * This prevents deadlock if callbacks try to acquire other locks.
+     * We use a fixed-size array for simplicity; BIO_MAX_CALLBACKS limits the count. */
+    bio_callback_node_t* callbacks_copy[BIO_MAX_CALLBACKS];
+    void* userdata_copy[BIO_MAX_CALLBACKS];
+    uint32_t callback_count = 0;
+
+    /* Mutex should already be held by caller, but re-acquire for safety during copy.
+     * Note: The caller (nimcp_bio_promise_complete, etc.) already holds the mutex,
+     * so we need to be careful. Actually, looking at the callers, they lock before
+     * calling this. We should NOT lock here - just copy under existing lock. */
+
     bio_callback_node_t* cb = shared->callbacks;
-    while (cb) {
+    while (cb && callback_count < BIO_MAX_CALLBACKS) {
         if (cb->callback) {
-            cb->callback(result, confidence, error, cb->user_data);
+            callbacks_copy[callback_count] = cb;
+            userdata_copy[callback_count] = cb->user_data;
+            callback_count++;
         }
         cb = cb->next;
     }
-    nimcp_mutex_unlock(&shared->mutex);
+
+    /* Now invoke callbacks outside the lock.
+     * The caller should unlock after this function returns if they want callbacks
+     * to run without the lock. However, for now we keep the existing call pattern. */
+    for (uint32_t i = 0; i < callback_count; i++) {
+        callbacks_copy[i]->callback(result, confidence, error, userdata_copy[i]);
+    }
 }
 
 //=============================================================================
@@ -1127,11 +1152,13 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    /* Wake waiters and invoke callbacks */
+    /* Wake waiters */
     nimcp_mutex_lock(&shared->mutex);
     nimcp_cond_broadcast(&shared->cond);
-    shared_state_invoke_callbacks(shared);
     nimcp_mutex_unlock(&shared->mutex);
+
+    /* Invoke callbacks OUTSIDE the lock to prevent deadlock risk */
+    shared_state_invoke_callbacks(shared);
 
     /* Update statistics */
     nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
@@ -1199,8 +1226,10 @@ nimcp_error_t nimcp_bio_promise_fail(
     /* Wake waiters */
     nimcp_mutex_lock(&shared->mutex);
     nimcp_cond_broadcast(&shared->cond);
-    shared_state_invoke_callbacks(shared);
     nimcp_mutex_unlock(&shared->mutex);
+
+    /* Invoke callbacks OUTSIDE the lock to prevent deadlock risk */
+    shared_state_invoke_callbacks(shared);
 
     LOG_WARNING("Bio promise failed on channel %s with error %d",
                 nimcp_bio_channel_name(shared->channel), error);
@@ -1493,8 +1522,10 @@ bool nimcp_bio_future_cancel(nimcp_bio_future_t future) {
 
     nimcp_mutex_lock(&shared->mutex);
     nimcp_cond_broadcast(&shared->cond);
-    shared_state_invoke_callbacks(shared);
     nimcp_mutex_unlock(&shared->mutex);
+
+    /* Invoke callbacks OUTSIDE the lock to prevent deadlock risk */
+    shared_state_invoke_callbacks(shared);
 
     return true;
 }

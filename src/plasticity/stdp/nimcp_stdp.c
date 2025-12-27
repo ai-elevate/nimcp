@@ -134,8 +134,11 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + weight_change));
     synapse->weight = new_weight;
 
-    /* Increment presynaptic trace */
-    synapse->pre_trace += 1.0F;
+    /* Increment presynaptic trace with upper bound to prevent unbounded growth
+     * WHY:  Without clamping, rapid spike bursts can cause trace overflow
+     * HOW:  Cap trace at 10.0 (typical biological saturation)
+     */
+    synapse->pre_trace = fminf(synapse->pre_trace + 1.0F, 10.0F);
 
     nimcp_spinlock_unlock(&synapse->lock);
 
@@ -176,8 +179,11 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + weight_change));
     synapse->weight = new_weight;
 
-    /* Increment postsynaptic trace */
-    synapse->post_trace += 1.0F;
+    /* Increment postsynaptic trace with upper bound to prevent unbounded growth
+     * WHY:  Without clamping, rapid spike bursts can cause trace overflow
+     * HOW:  Cap trace at 10.0 (typical biological saturation)
+     */
+    synapse->post_trace = fminf(synapse->post_trace + 1.0F, 10.0F);
 
     nimcp_spinlock_unlock(&synapse->lock);
 
@@ -264,8 +270,11 @@ float stdp_pre_spike_modulated(stdp_synapse_t* synapse,
     float modulated_weight_change = stdp_apply_modulated_weight_change(
         synapse, base_weight_change, neuromod);
 
-    /* Increment presynaptic trace */
-    synapse->pre_trace += 1.0F;
+    /* Increment presynaptic trace with upper bound to prevent unbounded growth
+     * WHY:  Without clamping, rapid spike bursts can cause trace overflow
+     * HOW:  Cap trace at 10.0 (typical biological saturation)
+     */
+    synapse->pre_trace = fminf(synapse->pre_trace + 1.0F, 10.0F);
 
     return modulated_weight_change;
 }
@@ -287,8 +296,11 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
     float modulated_weight_change = stdp_apply_modulated_weight_change(
         synapse, base_weight_change, neuromod);
 
-    /* Increment postsynaptic trace */
-    synapse->post_trace += 1.0F;
+    /* Increment postsynaptic trace with upper bound to prevent unbounded growth
+     * WHY:  Without clamping, rapid spike bursts can cause trace overflow
+     * HOW:  Cap trace at 10.0 (typical biological saturation)
+     */
+    synapse->post_trace = fminf(synapse->post_trace + 1.0F, 10.0F);
 
     return modulated_weight_change;
 }

@@ -26,6 +26,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <stdatomic.h>
 
 //=============================================================================
 // Internal Structures
@@ -59,6 +60,9 @@ typedef struct {
 
 /**
  * @brief Internal rate limiter structure
+ *
+ * NOTE: Some statistics fields are atomic to allow lock-free updates from
+ *       apply_penalty() without causing deadlock (bucket lock -> limiter lock).
  */
 struct nimcp_rate_limiter_impl {
     uint32_t magic;                             /**< Magic number */
@@ -67,7 +71,15 @@ struct nimcp_rate_limiter_impl {
     client_hash_table_t* client_table;          /**< Per-client buckets */
     float global_tokens;                        /**< Global bucket tokens */
     uint64_t global_last_refill_ms;             /**< Global refill time */
-    nimcp_rate_limit_stats_t stats;             /**< Statistics */
+
+    // Atomic statistics - updated from apply_penalty() while holding bucket lock
+    // Using atomic prevents deadlock (nested locking: bucket -> limiter)
+    atomic_uint_fast64_t atomic_clients_blocked_temp;  /**< Clients temporarily blocked */
+    atomic_uint_fast64_t atomic_clients_blocked_perm;  /**< Clients permanently blocked */
+    atomic_uint_fast64_t atomic_penalties_applied;     /**< Penalties applied */
+    atomic_uint_fast64_t atomic_active_clients;        /**< Currently tracked clients */
+
+    nimcp_rate_limit_stats_t stats;             /**< Non-atomic statistics */
     nimcp_rate_limit_violation_callback_t violation_callback;
     void* violation_callback_data;
     bio_module_context_t bio_context;           /**< Bio-async context */
@@ -191,9 +203,8 @@ static void apply_penalty(nimcp_rate_limiter_t limiter,
             bucket->state = CLIENT_STATE_BLOCKED_TEMP;
             bucket->block_until_ms = get_time_ms() + limiter->config.penalty.cooldown_ms;
             bucket->penalty_level++;
-            nimcp_platform_mutex_lock(&limiter->limiter_lock);
-            limiter->stats.clients_blocked_temp++;
-            nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+            // Use atomic to avoid deadlock (we're holding bucket lock)
+            atomic_fetch_add_explicit(&limiter->atomic_clients_blocked_temp, 1, memory_order_relaxed);
             LOG_MODULE_WARN("rate_limiter",
                 "Client %s temporarily blocked for %ums (violations=%u)",
                 bucket->client_id, limiter->config.penalty.cooldown_ms,
@@ -203,19 +214,16 @@ static void apply_penalty(nimcp_rate_limiter_t limiter,
         case PENALTY_BLOCK_PERMANENT:
             bucket->state = CLIENT_STATE_BLOCKED_PERM;
             bucket->penalty_level++;
-            nimcp_platform_mutex_lock(&limiter->limiter_lock);
-            limiter->stats.clients_blocked_perm++;
-            nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+            // Use atomic to avoid deadlock (we're holding bucket lock)
+            atomic_fetch_add_explicit(&limiter->atomic_clients_blocked_perm, 1, memory_order_relaxed);
             LOG_MODULE_ERROR("rate_limiter",
                 "Client %s permanently blocked (violations=%u)",
                 bucket->client_id, bucket->violations);
             break;
     }
 
-    // Update statistics
-    nimcp_platform_mutex_lock(&limiter->limiter_lock);
-    limiter->stats.penalties_applied++;
-    nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+    // Update statistics atomically to avoid deadlock (we may be holding bucket lock)
+    atomic_fetch_add_explicit(&limiter->atomic_penalties_applied, 1, memory_order_relaxed);
 
     // Fire callback if registered
     if (limiter->violation_callback) {
@@ -258,6 +266,13 @@ static void check_good_behavior(nimcp_rate_limiter_t limiter,
 
 /**
  * @brief Find or create client bucket
+ *
+ * THREAD-SAFETY: Lock is held for entire search-and-create operation to prevent
+ * TOCTOU race condition where two threads could create duplicate buckets.
+ *
+ * WHAT: Find existing bucket or atomically create new one
+ * WHY:  Prevent race where check-then-create creates duplicates
+ * HOW:  Hold bucket_lock throughout entire operation (search + create)
  */
 static client_bucket_t* get_client_bucket(nimcp_rate_limiter_t limiter,
                                            const char* client_id,
@@ -266,23 +281,26 @@ static client_bucket_t* get_client_bucket(nimcp_rate_limiter_t limiter,
     uint32_t hash = hash_client_id(client_id);
     nimcp_platform_mutex_lock(&limiter->client_table->bucket_locks[hash]);
 
-    // Search chain
+    // Search chain - lock is held throughout
     client_bucket_t* bucket = limiter->client_table->buckets[hash];
     while (bucket) {
         if (strcmp(bucket->client_id, client_id) == 0) {
+            // Found existing bucket - return while still holding lock briefly
+            // for consistency, but we can release now since we have the pointer
             nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
             return bucket;
         }
         bucket = bucket->next;
     }
 
-    // Not found
+    // Not found - still holding lock to prevent TOCTOU
     if (!create) {
         nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
         return NULL;
     }
 
-    // Create new bucket
+    // Create new bucket - lock still held, preventing race condition
+    // Another thread cannot insert the same client_id between our search and insert
     bucket = (client_bucket_t*)calloc(1, sizeof(client_bucket_t));
     if (!bucket) {
         nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
@@ -297,14 +315,12 @@ static client_bucket_t* get_client_bucket(nimcp_rate_limiter_t limiter,
     bucket->stats.tokens_available = (uint32_t)bucket->tokens;
     strncpy(bucket->stats.client_id, client_id, NIMCP_RATE_LIMIT_MAX_CLIENT_ID - 1);
 
-    // Add to chain
+    // Add to chain - atomic insert while lock held
     bucket->next = limiter->client_table->buckets[hash];
     limiter->client_table->buckets[hash] = bucket;
 
-    // Update statistics
-    nimcp_platform_mutex_lock(&limiter->limiter_lock);
-    limiter->stats.active_clients++;
-    nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+    // Update statistics atomically (we're holding bucket lock, avoid nested locking)
+    atomic_fetch_add_explicit(&limiter->atomic_active_clients, 1, memory_order_relaxed);
 
     nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
     return bucket;
@@ -378,6 +394,12 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     limiter->global_last_refill_ms = get_time_ms();
     limiter->bio_registered = false;
     memset(&limiter->stats, 0, sizeof(nimcp_rate_limit_stats_t));
+
+    // Initialize atomic statistics
+    atomic_init(&limiter->atomic_clients_blocked_temp, 0);
+    atomic_init(&limiter->atomic_clients_blocked_perm, 0);
+    atomic_init(&limiter->atomic_penalties_applied, 0);
+    atomic_init(&limiter->atomic_active_clients, 0);
 
     // Initialize main lock
     if (nimcp_platform_mutex_init(&limiter->limiter_lock, false) != 0) {
@@ -692,6 +714,12 @@ nimcp_error_t nimcp_rate_limiter_get_stats(
     *stats = limiter->stats;
     nimcp_platform_mutex_unlock(&limiter->limiter_lock);
 
+    // Read atomic statistics (these are updated without holding limiter_lock)
+    stats->clients_blocked_temp = atomic_load_explicit(&limiter->atomic_clients_blocked_temp, memory_order_relaxed);
+    stats->clients_blocked_perm = atomic_load_explicit(&limiter->atomic_clients_blocked_perm, memory_order_relaxed);
+    stats->penalties_applied = atomic_load_explicit(&limiter->atomic_penalties_applied, memory_order_relaxed);
+    stats->active_clients = (uint32_t)atomic_load_explicit(&limiter->atomic_active_clients, memory_order_relaxed);
+
     return NIMCP_SUCCESS;
 }
 
@@ -713,11 +741,8 @@ uint32_t nimcp_rate_limiter_get_active_clients(nimcp_rate_limiter_t limiter) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock(&limiter->limiter_lock);
-    uint32_t count = limiter->stats.active_clients;
-    nimcp_platform_mutex_unlock(&limiter->limiter_lock);
-
-    return count;
+    // Read from atomic (lock-free)
+    return (uint32_t)atomic_load_explicit(&limiter->atomic_active_clients, memory_order_relaxed);
 }
 
 nimcp_error_t nimcp_rate_limiter_reset_client(
@@ -767,9 +792,8 @@ nimcp_error_t nimcp_rate_limiter_block_client(
 
     bucket->state = CLIENT_STATE_BLOCKED_PERM;
 
-    nimcp_platform_mutex_lock(&limiter->limiter_lock);
-    limiter->stats.clients_blocked_perm++;
-    nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+    // Use atomic to avoid nested locking (we're holding bucket lock)
+    atomic_fetch_add_explicit(&limiter->atomic_clients_blocked_perm, 1, memory_order_relaxed);
 
     nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
 
@@ -794,9 +818,8 @@ nimcp_error_t nimcp_rate_limiter_unblock_client(
     nimcp_platform_mutex_lock(&limiter->client_table->bucket_locks[hash]);
 
     if (bucket->state == CLIENT_STATE_BLOCKED_PERM) {
-        nimcp_platform_mutex_lock(&limiter->limiter_lock);
-        limiter->stats.clients_blocked_perm--;
-        nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+        // Use atomic to avoid nested locking (we're holding bucket lock)
+        atomic_fetch_sub_explicit(&limiter->atomic_clients_blocked_perm, 1, memory_order_relaxed);
     }
 
     bucket->state = CLIENT_STATE_NORMAL;

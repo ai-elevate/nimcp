@@ -629,16 +629,25 @@ void brain_destroy(brain_t brain)
         if (brain->owns_network) {
             adaptive_network_destroy(brain->network);
         } else if (brain->network_refcount && brain->refcount_mutex) {
-            nimcp_platform_mutex_lock(brain->refcount_mutex);
-            (*brain->network_refcount)--;
-            uint32_t remaining_refs = *brain->network_refcount;
-            nimcp_platform_mutex_unlock(brain->refcount_mutex);
+            // THREAD SAFETY FIX: Save local copies to avoid use-after-free.
+            // See nimcp_brain.c brain_destroy() for detailed explanation.
+            nimcp_platform_mutex_t* mutex = brain->refcount_mutex;
+            uint32_t* refcount_ptr = brain->network_refcount;
+            adaptive_network_t network = brain->network;
+
+            nimcp_platform_mutex_lock(mutex);
+            (*refcount_ptr)--;
+            uint32_t remaining_refs = *refcount_ptr;
 
             if (remaining_refs == 0) {
-                adaptive_network_destroy(brain->network);
-                nimcp_platform_mutex_destroy(brain->refcount_mutex);
-                nimcp_free(brain->refcount_mutex);
-                nimcp_free(brain->network_refcount);
+                // Last reference - unlock before destroying to avoid UB
+                nimcp_platform_mutex_unlock(mutex);
+                adaptive_network_destroy(network);
+                nimcp_platform_mutex_destroy(mutex);
+                nimcp_free(mutex);
+                nimcp_free(refcount_ptr);
+            } else {
+                nimcp_platform_mutex_unlock(mutex);
             }
         }
     }

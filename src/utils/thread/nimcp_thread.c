@@ -579,7 +579,7 @@ static nimcp_once_t init_once = NIMCP_ONCE_INIT;
  * @param format Printf-style format string
  * @param ... Variable arguments for format
  */
-static void set_thread_error(int error_code, const char* format, ...)
+void set_thread_error(int error_code, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -2505,8 +2505,9 @@ nimcp_result_t nimcp_thread_set_name(const char* name)
         strncpy(truncated_name, name, NIMCP_THREAD_NAME_MAX - 1);
         truncated_name[NIMCP_THREAD_NAME_MAX - 1] = '\0';
     } else {
-        // Name fits, copy as-is
-        strcpy(truncated_name, name);
+        // Name fits, copy as-is (use strncpy for consistency/safety)
+        strncpy(truncated_name, name, NIMCP_THREAD_NAME_MAX - 1);
+        truncated_name[NIMCP_THREAD_NAME_MAX - 1] = '\0';
     }
 
     // Linux and macOS support pthread_setname_np

@@ -363,6 +363,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_sleep.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_orchestrator.c  # FEP Orchestrator - coordinates all FEP bridges
 
+    # JEPA (Joint Embedding Predictive Architecture) - Phase JEPA
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_latent.c           # Latent space embeddings
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_predictor.c        # MLP predictor network
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_masking.c          # Masking strategies
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_weights.c          # V-JEPA weight import
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_multimodal.c       # Multimodal joint embeddings
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_context.c          # Context-conditioned encoding
+
     # FEP Module Bridges - Bidirectional integration with FEP system
     # Cognitive FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_fep_bridge.c
@@ -859,6 +867,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_speech_cortex.c
+
+    # Perception JEPA Bridges (Joint Embedding Predictive Architecture)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_visual_jepa_bridge.c         # Visual-JEPA encoding bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_visual_jepa_fep_bridge.c     # Visual JEPA-FEP integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_speech_jepa_bridge.c         # Speech-JEPA encoding bridge
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_visual_immune_bridge.c  # Visual cortex-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_audio_immune_bridge.c  # Audio cortex-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/immune/nimcp_speech_immune_bridge.c  # Speech cortex-immune integration

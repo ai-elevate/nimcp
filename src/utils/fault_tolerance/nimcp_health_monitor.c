@@ -333,7 +333,8 @@ static bool detect_memory_leak(health_monitor_t monitor, anomaly_t* anomaly) {
             anomaly->metric_value = mean;
             anomaly->expected_value = monitor->memory.baseline_bytes;
             anomaly->deviation = trend;
-            strcpy(anomaly->affected_component, "memory");
+            strncpy(anomaly->affected_component, "memory", sizeof(anomaly->affected_component) - 1);
+            anomaly->affected_component[sizeof(anomaly->affected_component) - 1] = '\0';
             anomaly->resolved = false;
         }
         return true;
@@ -368,7 +369,8 @@ static bool detect_performance_degradation(
                 anomaly->metric_value = mean;
                 anomaly->expected_value = mean - trend * monitor->latency_history.size / 2;
                 anomaly->deviation = trend;
-                strcpy(anomaly->affected_component, "performance");
+                strncpy(anomaly->affected_component, "performance", sizeof(anomaly->affected_component) - 1);
+                anomaly->affected_component[sizeof(anomaly->affected_component) - 1] = '\0';
                 anomaly->resolved = false;
             }
             return true;
@@ -406,7 +408,8 @@ static bool detect_error_spike(health_monitor_t monitor, anomaly_t* anomaly) {
             anomaly->metric_value = (double)recent_errors;
             anomaly->expected_value = mean;
             anomaly->deviation = z_score;
-            strcpy(anomaly->affected_component, "error_handling");
+            strncpy(anomaly->affected_component, "error_handling", sizeof(anomaly->affected_component) - 1);
+            anomaly->affected_component[sizeof(anomaly->affected_component) - 1] = '\0';
             anomaly->resolved = false;
         }
         return true;
@@ -437,7 +440,8 @@ static bool detect_cache_thrashing(health_monitor_t monitor, anomaly_t* anomaly)
             anomaly->metric_value = hit_rate;
             anomaly->expected_value = avg_hit_rate;
             anomaly->deviation = (avg_hit_rate - hit_rate) / avg_hit_rate;
-            strcpy(anomaly->affected_component, "cache");
+            strncpy(anomaly->affected_component, "cache", sizeof(anomaly->affected_component) - 1);
+            anomaly->affected_component[sizeof(anomaly->affected_component) - 1] = '\0';
             anomaly->resolved = false;
         }
         return true;
@@ -468,7 +472,8 @@ static bool detect_throughput_drop(health_monitor_t monitor, anomaly_t* anomaly)
             anomaly->metric_value = current_ops;
             anomaly->expected_value = avg_ops;
             anomaly->deviation = (avg_ops - current_ops) / avg_ops;
-            strcpy(anomaly->affected_component, "throughput");
+            strncpy(anomaly->affected_component, "throughput", sizeof(anomaly->affected_component) - 1);
+            anomaly->affected_component[sizeof(anomaly->affected_component) - 1] = '\0';
             anomaly->resolved = false;
         }
         return true;
@@ -496,7 +501,8 @@ static bool detect_thread_contention(health_monitor_t monitor, anomaly_t* anomal
             anomaly->metric_value = contention_rate;
             anomaly->expected_value = 0.1;  // Expected < 10%
             anomaly->deviation = contention_rate;
-            strcpy(anomaly->affected_component, "threading");
+            strncpy(anomaly->affected_component, "threading", sizeof(anomaly->affected_component) - 1);
+            anomaly->affected_component[sizeof(anomaly->affected_component) - 1] = '\0';
             anomaly->resolved = false;
         }
         return true;

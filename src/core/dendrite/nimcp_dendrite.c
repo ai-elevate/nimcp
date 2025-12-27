@@ -351,16 +351,19 @@ uint32_t dendrite_add_branch(
 
     // Reallocate segments array
     uint32_t new_id = dendrite->num_segments;
-    dendrite->num_segments++;
+    uint32_t new_count = dendrite->num_segments + 1;
 
-    dendrite->segments = (dendritic_segment_t*)nimcp_realloc(
+    // Use temp variable to prevent memory leak if realloc fails
+    dendritic_segment_t* new_segments = (dendritic_segment_t*)nimcp_realloc(
         dendrite->segments,
-        dendrite->num_segments * sizeof(dendritic_segment_t)
+        new_count * sizeof(dendritic_segment_t)
     );
-    if (!dendrite->segments) {
+    if (!new_segments) {
         LOG_ERROR(LOG_MODULE, "dendrite_add_branch: Failed to reallocate segments");
         return UINT32_MAX;
     }
+    dendrite->segments = new_segments;
+    dendrite->num_segments = new_count;
 
     // Re-get parent pointer after realloc (memory may have moved)
     parent = &dendrite->segments[parent_segment_id];
@@ -434,16 +437,19 @@ uint32_t dendrite_add_spine(
 
     // Reallocate spines array
     uint32_t new_id = dendrite->num_spines;
-    dendrite->num_spines++;
+    uint32_t new_count = dendrite->num_spines + 1;
 
-    dendrite->spines = (dendritic_spine_t*)nimcp_realloc(
+    // Use temp variable to prevent memory leak if realloc fails
+    dendritic_spine_t* new_spines = (dendritic_spine_t*)nimcp_realloc(
         dendrite->spines,
-        dendrite->num_spines * sizeof(dendritic_spine_t)
+        new_count * sizeof(dendritic_spine_t)
     );
-    if (!dendrite->spines) {
+    if (!new_spines) {
         LOG_ERROR(LOG_MODULE, "dendrite_add_spine: Failed to reallocate spines");
         return UINT32_MAX;
     }
+    dendrite->spines = new_spines;
+    dendrite->num_spines = new_count;
 
     // Initialize new spine
     dendritic_spine_t* spine = &dendrite->spines[new_id];

@@ -1012,12 +1012,16 @@ nimcp_result_t nimcp_pool_wait(nimcp_thread_pool_t* pool)
         nimcp_cond_wait(&pool->task_complete, &pool->lock);
     }
 
+    // Cache shutdown value BEFORE releasing lock to avoid race condition
+    // where pool could be destroyed after unlock but before we read shutdown
+    bool was_shutdown = pool->shutdown;
+
     nimcp_mutex_unlock(&pool->lock);
 
     // WHY RETURN ERROR ON SHUTDOWN:
     // - Caller should know pool was destroyed during wait
     // - Prevents further use of pool
-    return pool->shutdown ? NIMCP_ERROR_SYSTEM : NIMCP_SUCCESS;
+    return was_shutdown ? NIMCP_ERROR_SYSTEM : NIMCP_SUCCESS;
 }
 
 /**

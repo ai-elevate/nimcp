@@ -97,6 +97,14 @@ static int init_belief(fep_belief_t* belief, uint32_t dim, float initial_precisi
     belief->precision = (float*)nimcp_calloc(dim, sizeof(float));
 
     if (!belief->mean || !belief->variance || !belief->precision) {
+        /* Clean up partially allocated memory on failure */
+        if (belief->mean) nimcp_free(belief->mean);
+        if (belief->variance) nimcp_free(belief->variance);
+        if (belief->precision) nimcp_free(belief->precision);
+        belief->mean = NULL;
+        belief->variance = NULL;
+        belief->precision = NULL;
+        belief->dim = 0;
         return -1;
     }
 
@@ -136,6 +144,14 @@ static int init_prediction_error(fep_prediction_error_t* error, uint32_t dim) {
     error->precision = (float*)nimcp_calloc(dim, sizeof(float));
 
     if (!error->error || !error->weighted_error || !error->precision) {
+        /* Clean up partially allocated memory on failure */
+        if (error->error) nimcp_free(error->error);
+        if (error->weighted_error) nimcp_free(error->weighted_error);
+        if (error->precision) nimcp_free(error->precision);
+        error->error = NULL;
+        error->weighted_error = NULL;
+        error->precision = NULL;
+        error->dim = 0;
         return -1;
     }
 
@@ -184,18 +200,37 @@ static int init_level(
     level->prediction_dim = prediction_dim;
     if (prediction_dim > 0) {
         level->predictions = (float*)nimcp_calloc(prediction_dim, sizeof(float));
-        if (!level->predictions) return -1;
+        if (!level->predictions) {
+            /* Clean up beliefs before returning */
+            free_belief(&level->beliefs);
+            return -1;
+        }
     }
 
     /* Initialize prediction errors */
     if (init_prediction_error(&level->errors, prediction_dim > 0 ? prediction_dim : state_dim) != 0) {
+        /* Clean up beliefs and predictions before returning */
+        free_belief(&level->beliefs);
+        if (level->predictions) nimcp_free(level->predictions);
+        level->predictions = NULL;
         return -1;
     }
 
     /* Prior initialization */
     level->prior_mean = (float*)nimcp_calloc(state_dim, sizeof(float));
     level->prior_precision = (float*)nimcp_calloc(state_dim, sizeof(float));
-    if (!level->prior_mean || !level->prior_precision) return -1;
+    if (!level->prior_mean || !level->prior_precision) {
+        /* Clean up all previously allocated resources */
+        free_belief(&level->beliefs);
+        free_prediction_error(&level->errors);
+        if (level->predictions) nimcp_free(level->predictions);
+        if (level->prior_mean) nimcp_free(level->prior_mean);
+        if (level->prior_precision) nimcp_free(level->prior_precision);
+        level->predictions = NULL;
+        level->prior_mean = NULL;
+        level->prior_precision = NULL;
+        return -1;
+    }
 
     for (uint32_t i = 0; i < state_dim; i++) {
         level->prior_precision[i] = initial_precision;

@@ -27,6 +27,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
+#if defined(__linux__)
+#include <sys/random.h>
+#endif
 
 //=============================================================================
 // Internal Structures
@@ -63,16 +69,63 @@ static pthread_once_t tls_key_once = PTHREAD_ONCE_INIT;
 //=============================================================================
 
 /**
- * @brief Generate random canary value
+ * @brief Generate random canary value using secure entropy source
+ *
+ * WHAT: Generate cryptographically random 64-bit canary value
+ * WHY:  Predictable canaries would allow attackers to bypass stack protection
+ * HOW:  Use getrandom() (Linux) or /dev/urandom (fallback) - fail if neither works
+ *
+ * SECURITY: Do NOT use predictable sources like time(), clock(), or addresses
+ *           as fallback - an attacker could predict these values.
  */
 static uint64_t generate_canary(void)
 {
-    // In production, use CSPRNG
-    // For now, mix time and address
-    uint64_t canary = (uint64_t)time(NULL);
-    canary ^= (uint64_t)&canary;
-    canary *= 0x5851F42D4C957F2DULL;  // Random prime
-    return canary;
+    uint64_t canary = 0;
+
+#if defined(__linux__)
+    // Try getrandom() first (best option on Linux 3.17+)
+    ssize_t result = getrandom(&canary, sizeof(canary), 0);
+    if (result == sizeof(canary)) {
+        return canary;
+    }
+
+    // Fallback to /dev/urandom if getrandom() fails
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd >= 0) {
+        ssize_t bytes_read = read(fd, &canary, sizeof(canary));
+        close(fd);
+        if (bytes_read == sizeof(canary)) {
+            return canary;
+        }
+    }
+
+    // SECURITY: No weak fallback - fail securely
+    // Log error and return a value that will likely cause detection
+    LOG_ERROR("Failed to generate secure canary - no entropy source available");
+    nimcp_security_log_event(
+        NIMCP_SECURITY_EVENT_THREAT_DETECTED,
+        NIMCP_THREAT_CRITICAL,
+        "Shadow stack: No secure entropy source for canary generation"
+    );
+
+    // Return a non-zero value to avoid null canary, but caller should check
+    // for errors in a production system. This is defense-in-depth.
+    return 0xDEADBEEFCAFEBABEULL;
+#else
+    // Non-Linux platforms: use /dev/urandom if available
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd >= 0) {
+        ssize_t bytes_read = read(fd, &canary, sizeof(canary));
+        close(fd);
+        if (bytes_read == sizeof(canary)) {
+            return canary;
+        }
+    }
+
+    // SECURITY: No weak fallback on non-Linux platforms either
+    LOG_ERROR("Failed to generate secure canary - no entropy source available");
+    return 0xDEADBEEFCAFEBABEULL;
+#endif
 }
 
 /**

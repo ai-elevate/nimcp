@@ -521,6 +521,125 @@ static inline bool nimcp_tier_feature_enabled(uint32_t feature_tier) {
 }
 
 //=============================================================================
+// JEPA Tier Optimization Constants
+//=============================================================================
+
+/**
+ * @brief JEPA latent embedding dimension
+ *
+ * WHAT: Dimension of JEPA latent space embeddings
+ * WHY:  Larger dimensions capture more detail but use more memory
+ * HOW:  Scale with tier (64-512)
+ */
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL
+    #define NIMCP_JEPA_LATENT_DIM 64
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_CONSTRAINED
+    #define NIMCP_JEPA_LATENT_DIM 128
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
+    #define NIMCP_JEPA_LATENT_DIM 256
+#else
+    #define NIMCP_JEPA_LATENT_DIM 512
+#endif
+
+/**
+ * @brief JEPA number of patches for visual encoding
+ *
+ * WHAT: Number of spatial patches for visual JEPA
+ * WHY:  More patches = finer spatial resolution, more memory
+ * HOW:  Scale from 4 (2x2) to 49 (7x7)
+ */
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL
+    #define NIMCP_JEPA_NUM_PATCHES 4
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_CONSTRAINED
+    #define NIMCP_JEPA_NUM_PATCHES 9
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
+    #define NIMCP_JEPA_NUM_PATCHES 16
+#else
+    #define NIMCP_JEPA_NUM_PATCHES 49
+#endif
+
+/**
+ * @brief JEPA predictor hidden dimension
+ *
+ * WHAT: Hidden layer size in JEPA MLP predictor
+ * WHY:  Larger = more expressive prediction, more memory
+ * HOW:  Scale with tier (32-256)
+ */
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL
+    #define NIMCP_JEPA_PREDICTOR_HIDDEN 32
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_CONSTRAINED
+    #define NIMCP_JEPA_PREDICTOR_HIDDEN 64
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
+    #define NIMCP_JEPA_PREDICTOR_HIDDEN 128
+#else
+    #define NIMCP_JEPA_PREDICTOR_HIDDEN 256
+#endif
+
+/**
+ * @brief JEPA multimodal enable flag
+ *
+ * WHAT: Enable/disable multimodal JEPA (visual-speech fusion)
+ * WHY:  Multimodal requires additional memory for projection layers
+ * HOW:  Disable on MINIMAL tier
+ */
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL
+    #define NIMCP_JEPA_ENABLE_MULTIMODAL 0
+#else
+    #define NIMCP_JEPA_ENABLE_MULTIMODAL 1
+#endif
+
+/**
+ * @brief JEPA speech sequence length
+ *
+ * WHAT: Number of frames in speech JEPA sequence
+ * WHY:  Longer sequences capture more temporal context
+ * HOW:  Scale from 16 to 64 frames
+ */
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL
+    #define NIMCP_JEPA_SPEECH_SEQUENCE_LEN 16
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_CONSTRAINED
+    #define NIMCP_JEPA_SPEECH_SEQUENCE_LEN 32
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
+    #define NIMCP_JEPA_SPEECH_SEQUENCE_LEN 50
+#else
+    #define NIMCP_JEPA_SPEECH_SEQUENCE_LEN 64
+#endif
+
+/**
+ * @brief JEPA context encoder dimension
+ *
+ * WHAT: Dimension of context vectors for context-conditioned encoding
+ * WHY:  Larger context = more task discrimination
+ * HOW:  Scale from 32 to 128
+ */
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL
+    #define NIMCP_JEPA_CONTEXT_DIM 32
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_CONSTRAINED
+    #define NIMCP_JEPA_CONTEXT_DIM 64
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
+    #define NIMCP_JEPA_CONTEXT_DIM 96
+#else
+    #define NIMCP_JEPA_CONTEXT_DIM 128
+#endif
+
+/**
+ * @brief JEPA joint embedding dimension (multimodal)
+ *
+ * WHAT: Dimension of joint visual-speech embedding space
+ * WHY:  Larger = more capacity for cross-modal alignment
+ * HOW:  Scale from 64 to 512
+ */
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL
+    #define NIMCP_JEPA_JOINT_DIM 64
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_CONSTRAINED
+    #define NIMCP_JEPA_JOINT_DIM 128
+#elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
+    #define NIMCP_JEPA_JOINT_DIM 256
+#else
+    #define NIMCP_JEPA_JOINT_DIM 512
+#endif
+
+//=============================================================================
 // Tier-Aware Allocation Helpers
 //=============================================================================
 

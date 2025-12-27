@@ -63,14 +63,20 @@ typedef enum {
  * WHAT: Distress assessment result
  * WHY: Provide actionable information about system wellbeing
  * HOW: Combine detection, severity, and recommended actions
+ *
+ * MEMORY OWNERSHIP:
+ * The 'description' and 'recommended_action' fields are dynamically
+ * allocated by wellbeing_assess_distress() and MUST be freed by the caller
+ * using wellbeing_free_assessment() or nimcp_free() on each field.
+ * These may be NULL if no distress is detected or allocation fails.
  */
 typedef struct {
     distress_type_t type;           /* Type of distress detected */
     distress_severity_t severity;   /* How severe is it */
     float distress_score;           /* Quantitative measure (0-1) */
     uint64_t duration_ms;           /* How long in this state */
-    char* description;              /* Human-readable explanation */
-    char* recommended_action;       /* What to do about it */
+    char* description;              /* Human-readable explanation (CALLER MUST FREE) */
+    char* recommended_action;       /* What to do about it (CALLER MUST FREE) */
     uint64_t timestamp;             /* When assessed */
 } distress_assessment_t;
 
@@ -87,12 +93,34 @@ typedef struct {
  * 5. Assess self-model coherence
  *
  * @param ctx Introspection context with recent history
- * @return Distress assessment (caller must free description/action strings)
+ * @return Distress assessment (caller must free via wellbeing_free_assessment())
+ *
+ * MEMORY OWNERSHIP:
+ * The returned assessment's 'description' and 'recommended_action' fields
+ * are dynamically allocated. Use wellbeing_free_assessment() to free them,
+ * or manually call nimcp_free() on each non-NULL pointer.
  *
  * COMPLEXITY: O(n) where n = history size
  * THREAD-SAFE: Yes
  */
 distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx);
+
+/**
+ * WHAT: Free allocated fields in a distress assessment
+ * WHY: Proper cleanup of dynamically allocated strings
+ * HOW: Free description and recommended_action if non-NULL
+ *
+ * @param assessment Assessment to clean up (struct itself is not freed)
+ *
+ * USAGE:
+ *   distress_assessment_t assessment = wellbeing_assess_distress(ctx);
+ *   // ... use assessment ...
+ *   wellbeing_free_assessment(&assessment);
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void wellbeing_free_assessment(distress_assessment_t* assessment);
 
 /**
  * WHAT: Provide relief from detected distress

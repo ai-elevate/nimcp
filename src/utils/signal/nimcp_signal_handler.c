@@ -616,9 +616,10 @@ static void cleanup_old_checkpoints(const char* dir_path, int max_count)
                     entries = new_entries;
                 }
 
-                entries[entry_count].filename = nimcp_malloc(strlen(entry->d_name) + 1);
+                size_t name_len = strlen(entry->d_name);
+                entries[entry_count].filename = nimcp_malloc(name_len + 1);
                 if (entries[entry_count].filename) {
-                    strcpy(entries[entry_count].filename, entry->d_name);
+                    memcpy(entries[entry_count].filename, entry->d_name, name_len + 1);
                     entries[entry_count].mtime = st.st_mtime;
                     entry_count++;
                 }

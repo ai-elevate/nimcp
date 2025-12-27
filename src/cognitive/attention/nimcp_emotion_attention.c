@@ -389,7 +389,9 @@ bool emotion_attention_modulate(emotion_attention_system_t* system) {
         float base_gate = 0.5F + (system->current_arousal * 0.5F);
         float modulated_gate = base_gate * sleep_vigilance;
         multihead_attention_set_gate(system->attention, modulated_gate);
-        system->stats.emotional_gating_events++;
+        /* WHAT: Use atomic increment for thread safety under read lock */
+        /* WHY:  Avoid data race - we only hold read lock */
+        __atomic_fetch_add(&((emotion_attention_system_t*)system)->stats.emotional_gating_events, 1, __ATOMIC_RELAXED);
     }
 
     pthread_rwlock_unlock(&system->lock);
@@ -426,9 +428,9 @@ float emotion_attention_compute_salience(
             /* WHAT: Boost salience for emotion-congruent stimuli */
             modulated_salience *= system->config.emotion_salience_boost;
 
-            /* Update stats (note: this is a read lock, stats update is informational) */
-            /* In production, would use atomic increment */
-            ((emotion_attention_system_t*)system)->stats.congruency_biases++;
+            /* WHAT: Use atomic increment for thread safety under read lock */
+            /* WHY:  Avoid data race - we only hold read lock */
+            __atomic_fetch_add(&((emotion_attention_system_t*)system)->stats.congruency_biases, 1, __ATOMIC_RELAXED);
         }
     }
 

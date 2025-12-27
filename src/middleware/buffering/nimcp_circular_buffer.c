@@ -15,6 +15,7 @@
 #define LOG_MODULE "middleware_circular_buffer"
 
 #include <string.h>
+#include <stdint.h>
 #include <stdatomic.h>
 #include <sched.h>  /* For sched_yield() */
 
@@ -106,6 +107,26 @@ circular_buffer_t* circular_buffer_create(
     // Guard: validate inputs
     if (element_size == 0 || capacity == 0) return NULL;
 
+    // Guard: check for integer overflow in data_size calculation
+    // We need to compute element_size * (capacity + 1) safely
+    // First check capacity + 1 won't overflow
+    if (capacity > SIZE_MAX - 1) {
+        LOG_ERROR("circular_buffer_create: capacity overflow (capacity=%zu)", capacity);
+        return NULL;
+    }
+
+    size_t adjusted_capacity = capacity + 1;  // +1 for full/empty distinction
+
+    // Check that element_size * adjusted_capacity won't overflow
+    // Safe check: if element_size > SIZE_MAX / adjusted_capacity, overflow would occur
+    if (element_size > SIZE_MAX / adjusted_capacity) {
+        LOG_ERROR("circular_buffer_create: data_size overflow (element_size=%zu, capacity=%zu)",
+                  element_size, capacity);
+        return NULL;
+    }
+
+    size_t data_size = element_size * adjusted_capacity;
+
     // Allocate control structure (cache-aligned due to _Alignas members)
     circular_buffer_t* buf = nimcp_aligned_alloc(CACHE_LINE_SIZE, sizeof(circular_buffer_t));
     if (!buf) return NULL;
@@ -113,10 +134,13 @@ circular_buffer_t* circular_buffer_create(
     // Zero-initialize the structure
     memset(buf, 0, sizeof(circular_buffer_t));
 
-    // Allocate data storage (cache-aligned)
-    size_t data_size = element_size * (capacity + 1);  // +1 for full/empty distinction
-
     // Round up to cache line boundary for nimcp_aligned_alloc
+    // Check for overflow when adding CACHE_LINE_SIZE - 1
+    if (data_size > SIZE_MAX - (CACHE_LINE_SIZE - 1)) {
+        LOG_ERROR("circular_buffer_create: aligned_size overflow");
+        nimcp_free(buf);
+        return NULL;
+    }
     size_t aligned_size = ((data_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
 
     buf->data = nimcp_aligned_alloc(CACHE_LINE_SIZE, aligned_size);

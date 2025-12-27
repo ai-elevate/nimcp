@@ -224,8 +224,10 @@ int jepa_latent_set_embedding(jepa_latent_t* latent, const float* values, uint32
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    if (dim > latent->latent_dim) {
-        dim = latent->latent_dim;
+    if (dim != latent->latent_dim) {
+        NIMCP_LOGGING_ERROR(LOG_MODULE " Dimension mismatch in set_embedding: %u vs %u",
+                           dim, latent->latent_dim);
+        return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     memcpy(latent->embedding, values, dim * sizeof(float));
@@ -256,7 +258,7 @@ int jepa_latent_set_variance(jepa_latent_t* latent, const float* variance, uint3
         /* Allocate variance array if not present */
         latent->variance = nimcp_malloc(latent->latent_dim * sizeof(float));
         if (!latent->variance) {
-            return NIMCP_ERROR_MEMORY;
+            return NIMCP_ERROR_NO_MEMORY;
         }
     }
 

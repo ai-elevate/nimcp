@@ -1,0 +1,821 @@
+/**
+ * @file nimcp_jepa_masking.c
+ * @brief JEPA Masking Implementation
+ * @version 1.0.0
+ * @date 2025-12-26
+ *
+ * WHAT: Implementation of mask generation strategies for JEPA
+ * WHY:  Masking is core to self-supervised JEPA training
+ * HOW:  Multiple strategies: random, block, attention-guided, curriculum
+ */
+
+#include "cognitive/jepa/nimcp_jepa_masking.h"
+#include <math.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+
+/* ============================================================================
+ * Module Constants
+ * ============================================================================ */
+
+#define LOG_MODULE "[JEPA_MASK]"
+
+/* ============================================================================
+ * Internal Helpers - PRNG
+ * ============================================================================ */
+
+/**
+ * @brief Fast xorshift64 PRNG
+ */
+static uint64_t xorshift64(uint64_t* state) {
+    uint64_t x = *state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *state = x;
+    return x;
+}
+
+/**
+ * @brief Random float in [0, 1)
+ */
+static float random_float(uint64_t* state) {
+    return (float)(xorshift64(state) & 0x7FFFFFFF) / (float)0x80000000;
+}
+
+/**
+ * @brief Random integer in [0, max)
+ */
+static uint32_t random_int(uint64_t* state, uint32_t max) {
+    return (uint32_t)(xorshift64(state) % max);
+}
+
+/* ============================================================================
+ * Internal Helpers - Block Generation
+ * ============================================================================ */
+
+typedef struct {
+    uint32_t x, y, w, h;
+} mask_block_t;
+
+static void generate_random_block(uint64_t* state,
+                                   uint32_t width, uint32_t height,
+                                   const jepa_block_params_t* params,
+                                   mask_block_t* block) {
+    /* Calculate block size range */
+    uint32_t total = width * height;
+    uint32_t min_size = (uint32_t)(params->min_block_ratio * total);
+    uint32_t max_size = (uint32_t)(params->max_block_ratio * total);
+
+    if (min_size < 1) min_size = 1;
+    if (max_size < min_size) max_size = min_size;
+
+    /* Random size in range */
+    uint32_t block_area = min_size + random_int(state, max_size - min_size + 1);
+
+    /* Random aspect ratio */
+    float aspect = params->min_aspect_ratio +
+                   random_float(state) * (params->max_aspect_ratio - params->min_aspect_ratio);
+
+    /* Calculate dimensions */
+    float block_h = sqrtf((float)block_area / aspect);
+    float block_w = block_h * aspect;
+
+    block->w = (uint32_t)fmaxf(1.0f, fminf(block_w, (float)width));
+    block->h = (uint32_t)fmaxf(1.0f, fminf(block_h, (float)height));
+
+    /* Random position */
+    block->x = random_int(state, width - block->w + 1);
+    block->y = random_int(state, height - block->h + 1);
+}
+
+static void apply_block_to_mask(jepa_mask_t* mask, const mask_block_t* block,
+                                 jepa_mask_shape_t shape) {
+    float cx = block->x + block->w * 0.5f;
+    float cy = block->y + block->h * 0.5f;
+    float rx = block->w * 0.5f;
+    float ry = block->h * 0.5f;
+
+    for (uint32_t y = block->y; y < block->y + block->h && y < mask->height; y++) {
+        for (uint32_t x = block->x; x < block->x + block->w && x < mask->width; x++) {
+            bool in_mask = true;
+
+            if (shape == JEPA_MASK_SHAPE_ELLIPSE) {
+                /* Check if inside ellipse */
+                float dx = (x - cx) / rx;
+                float dy = (y - cy) / ry;
+                in_mask = (dx * dx + dy * dy) <= 1.0f;
+            }
+            /* RECT and SQUARE are always in_mask=true within bounds */
+
+            if (in_mask) {
+                uint32_t idx = y * mask->width + x;
+                mask->data[idx] = 1.0f;
+            }
+        }
+    }
+}
+
+/* ============================================================================
+ * Internal Helpers - Curriculum Schedule
+ * ============================================================================ */
+
+static float linear_schedule(float t) {
+    return t;  /* Linear interpolation */
+}
+
+static float cosine_schedule(float t) {
+    /* Cosine annealing: slower at ends, faster in middle */
+    return 0.5f * (1.0f - cosf(t * 3.14159265f));
+}
+
+/* ============================================================================
+ * Configuration API
+ * ============================================================================ */
+
+int jepa_mask_default_config(jepa_mask_config_t* config, jepa_mask_strategy_t strategy) {
+    if (!config) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    memset(config, 0, sizeof(jepa_mask_config_t));
+
+    config->strategy = strategy;
+    config->mode = JEPA_MASK_MODE_PATCH;
+    config->target_ratio = JEPA_MASK_DEFAULT_RATIO;
+    config->seed = (uint32_t)time(NULL);
+    config->use_fixed_seed = false;
+
+    switch (strategy) {
+        case JEPA_MASK_BLOCK:
+        case JEPA_MASK_BLOCK_MULTI:
+            config->params.block.num_blocks = 4;
+            config->params.block.min_block_ratio = 0.05f;
+            config->params.block.max_block_ratio = 0.25f;
+            config->params.block.min_aspect_ratio = JEPA_MASK_MIN_ASPECT_RATIO;
+            config->params.block.max_aspect_ratio = JEPA_MASK_MAX_ASPECT_RATIO;
+            config->params.block.allow_overlap = true;
+            config->params.block.shape = JEPA_MASK_SHAPE_RECT;
+            break;
+
+        case JEPA_MASK_ATTENTION_GUIDED:
+            config->params.attention.attention_scores = NULL;
+            config->params.attention.attention_threshold = 0.5f;
+            config->params.attention.mask_high_attention = true;
+            config->params.attention.temperature = 1.0f;
+            break;
+
+        case JEPA_MASK_CURRICULUM:
+            config->params.curriculum.start_ratio = JEPA_MASK_CURRICULUM_START_RATIO;
+            config->params.curriculum.end_ratio = JEPA_MASK_CURRICULUM_END_RATIO;
+            config->params.curriculum.warmup_steps = JEPA_MASK_CURRICULUM_EPOCHS;
+            config->params.curriculum.current_step = 0;
+            config->params.curriculum.schedule_fn = cosine_schedule;
+            break;
+
+        case JEPA_MASK_TUBE:
+            config->params.tube.num_tubes = 8;
+            config->params.tube.tube_ratio = 0.75f;
+            config->params.tube.consistent_spatial = true;
+            break;
+
+        default:
+            /* RANDOM, CAUSAL - no special params */
+            break;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* config) {
+    jepa_mask_config_t default_config;
+
+    if (!config) {
+        jepa_mask_default_config(&default_config, JEPA_MASK_RANDOM);
+        config = &default_config;
+    }
+
+    /* Allocate generator */
+    jepa_mask_generator_t* gen = nimcp_malloc(sizeof(jepa_mask_generator_t));
+    if (!gen) {
+        NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate generator");
+        return NULL;
+    }
+    memset(gen, 0, sizeof(jepa_mask_generator_t));
+
+    /* Initialize bridge base */
+    if (bridge_base_init(&gen->base, BIO_MODULE_JEPA_MASKING, "jepa_masking") != 0) {
+        nimcp_free(gen);
+        return NULL;
+    }
+
+    /* Store config */
+    gen->config = *config;
+
+    /* Initialize PRNG */
+    gen->random_state = config->seed;
+    if (gen->random_state == 0) {
+        gen->random_state = (uint64_t)time(NULL) ^ 0xDEADBEEF;
+    }
+
+    /* Initialize curriculum state */
+    if (config->strategy == JEPA_MASK_CURRICULUM) {
+        gen->current_ratio = config->params.curriculum.start_ratio;
+        gen->curriculum_step = config->params.curriculum.current_step;
+    } else {
+        gen->current_ratio = config->target_ratio;
+    }
+
+    /* Allocate temp buffer (for largest expected mask) */
+    gen->temp_buffer_size = JEPA_MASK_MAX_WIDTH * JEPA_MASK_MAX_HEIGHT;
+    gen->temp_buffer = nimcp_malloc(gen->temp_buffer_size * sizeof(float));
+    if (!gen->temp_buffer) {
+        bridge_base_cleanup(&gen->base);
+        nimcp_free(gen);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO(LOG_MODULE " Created generator: strategy=%s, ratio=%.2f",
+                      jepa_mask_strategy_to_string(config->strategy),
+                      gen->current_ratio);
+
+    return gen;
+}
+
+void jepa_mask_generator_destroy(jepa_mask_generator_t* generator) {
+    if (!generator) return;
+
+    nimcp_free(generator->temp_buffer);
+    bridge_base_cleanup(&generator->base);
+    nimcp_free(generator);
+}
+
+int jepa_mask_generator_reset(jepa_mask_generator_t* generator, uint32_t new_seed) {
+    if (!generator) return NIMCP_ERROR_NULL_POINTER;
+
+    if (new_seed != 0) {
+        generator->random_state = new_seed;
+    }
+
+    generator->masks_generated = 0;
+    generator->curriculum_step = 0;
+
+    if (generator->config.strategy == JEPA_MASK_CURRICULUM) {
+        generator->current_ratio = generator->config.params.curriculum.start_ratio;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Mask Creation/Destruction
+ * ============================================================================ */
+
+jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal) {
+    if (width == 0 || height == 0 || temporal == 0) {
+        return NULL;
+    }
+    if (width > JEPA_MASK_MAX_WIDTH || height > JEPA_MASK_MAX_HEIGHT ||
+        temporal > JEPA_MASK_MAX_TEMPORAL) {
+        NIMCP_LOGGING_ERROR(LOG_MODULE " Mask dimensions exceed limits");
+        return NULL;
+    }
+
+    jepa_mask_t* mask = nimcp_malloc(sizeof(jepa_mask_t));
+    if (!mask) return NULL;
+
+    mask->width = width;
+    mask->height = height;
+    mask->temporal = temporal;
+    mask->total_size = width * height * temporal;
+
+    mask->data = nimcp_malloc(mask->total_size * sizeof(float));
+    if (!mask->data) {
+        nimcp_free(mask);
+        return NULL;
+    }
+
+    /* Initialize to all visible (0) */
+    memset(mask->data, 0, mask->total_size * sizeof(float));
+    mask->mask_ratio = 0.0f;
+    mask->num_masked = 0;
+    mask->num_visible = mask->total_size;
+
+    return mask;
+}
+
+void jepa_mask_destroy(jepa_mask_t* mask) {
+    if (!mask) return;
+    nimcp_free(mask->data);
+    nimcp_free(mask);
+}
+
+jepa_mask_t* jepa_mask_clone(const jepa_mask_t* src) {
+    if (!src) return NULL;
+
+    jepa_mask_t* dst = jepa_mask_create(src->width, src->height, src->temporal);
+    if (!dst) return NULL;
+
+    memcpy(dst->data, src->data, src->total_size * sizeof(float));
+    dst->mask_ratio = src->mask_ratio;
+    dst->num_masked = src->num_masked;
+    dst->num_visible = src->num_visible;
+
+    return dst;
+}
+
+/* ============================================================================
+ * Mask Generation - Random
+ * ============================================================================ */
+
+static int generate_random_mask(jepa_mask_generator_t* gen,
+                                 jepa_mask_t* mask,
+                                 float target_ratio) {
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        mask->data[i] = (random_float(&gen->random_state) < target_ratio) ? 1.0f : 0.0f;
+    }
+
+    jepa_mask_compute_stats(mask);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Mask Generation - Block
+ * ============================================================================ */
+
+static int generate_block_mask(jepa_mask_generator_t* gen,
+                                jepa_mask_t* mask) {
+    /* Clear mask */
+    memset(mask->data, 0, mask->total_size * sizeof(float));
+
+    const jepa_block_params_t* params = &gen->config.params.block;
+    uint32_t num_blocks = params->num_blocks;
+    if (gen->config.strategy == JEPA_MASK_BLOCK) {
+        num_blocks = 1;  /* Single block for BLOCK mode */
+    }
+
+    /* Generate and apply blocks */
+    for (uint32_t b = 0; b < num_blocks; b++) {
+        mask_block_t block;
+        generate_random_block(&gen->random_state, mask->width, mask->height,
+                             params, &block);
+        apply_block_to_mask(mask, &block, params->shape);
+    }
+
+    jepa_mask_compute_stats(mask);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Mask Generation - Attention Guided
+ * ============================================================================ */
+
+static int generate_attention_mask(jepa_mask_generator_t* gen,
+                                    const float* attention,
+                                    jepa_mask_t* mask) {
+    if (!attention) {
+        /* Fall back to random if no attention provided */
+        return generate_random_mask(gen, mask, gen->current_ratio);
+    }
+
+    const jepa_attention_params_t* params = &gen->config.params.attention;
+    float target_ratio = gen->current_ratio;
+
+    /* Apply temperature and normalize attention */
+    float* probs = gen->temp_buffer;
+    double sum = 0.0;
+    float temp = fmaxf(0.01f, params->temperature);
+
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        float a = attention[i];
+        if (!params->mask_high_attention) {
+            a = 1.0f - a;  /* Invert to mask low attention */
+        }
+        probs[i] = expf(a / temp);
+        sum += probs[i];
+    }
+
+    /* Normalize to probabilities */
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        probs[i] /= (float)sum;
+    }
+
+    /* Sample without replacement to reach target ratio */
+    uint32_t target_masked = (uint32_t)(target_ratio * mask->total_size);
+    memset(mask->data, 0, mask->total_size * sizeof(float));
+
+    for (uint32_t m = 0; m < target_masked; m++) {
+        /* Weighted random selection */
+        float r = random_float(&gen->random_state);
+        float cumsum = 0.0f;
+        uint32_t selected = mask->total_size - 1;
+
+        for (uint32_t i = 0; i < mask->total_size; i++) {
+            cumsum += probs[i];
+            if (r <= cumsum && mask->data[i] < 0.5f) {
+                selected = i;
+                break;
+            }
+        }
+
+        mask->data[selected] = 1.0f;
+        probs[selected] = 0.0f;  /* Remove from future selection */
+
+        /* Re-normalize */
+        sum = 0.0;
+        for (uint32_t i = 0; i < mask->total_size; i++) {
+            sum += probs[i];
+        }
+        if (sum > 0.0) {
+            for (uint32_t i = 0; i < mask->total_size; i++) {
+                probs[i] /= (float)sum;
+            }
+        }
+    }
+
+    jepa_mask_compute_stats(mask);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Mask Generation - Tube (for video)
+ * ============================================================================ */
+
+static int generate_tube_mask(jepa_mask_generator_t* gen,
+                               jepa_mask_t* mask) {
+    if (mask->temporal <= 1) {
+        /* Not a video, fall back to block */
+        return generate_block_mask(gen, mask);
+    }
+
+    const jepa_tube_params_t* params = &gen->config.params.tube;
+    uint32_t spatial_size = mask->width * mask->height;
+
+    /* Clear mask */
+    memset(mask->data, 0, mask->total_size * sizeof(float));
+
+    /* Generate tubes (consistent spatial positions across time) */
+    uint32_t patches_per_tube = (uint32_t)(params->tube_ratio * spatial_size / params->num_tubes);
+
+    for (uint32_t t = 0; t < params->num_tubes; t++) {
+        /* Generate spatial positions for this tube */
+        for (uint32_t p = 0; p < patches_per_tube; p++) {
+            uint32_t spatial_idx;
+
+            if (params->consistent_spatial || p == 0) {
+                /* Same position across all time steps */
+                spatial_idx = random_int(&gen->random_state, spatial_size);
+            }
+
+            /* Apply across all time steps */
+            for (uint32_t f = 0; f < mask->temporal; f++) {
+                uint32_t idx = f * spatial_size + spatial_idx;
+                mask->data[idx] = 1.0f;
+            }
+        }
+    }
+
+    jepa_mask_compute_stats(mask);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Mask Generation - Causal
+ * ============================================================================ */
+
+static int generate_causal_mask(jepa_mask_generator_t* gen,
+                                 jepa_mask_t* mask) {
+    /* Causal: mask everything after random position */
+    uint32_t visible_length = random_int(&gen->random_state, mask->total_size);
+    if (visible_length == 0) visible_length = 1;
+
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        mask->data[i] = (i >= visible_length) ? 1.0f : 0.0f;
+    }
+
+    jepa_mask_compute_stats(mask);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Mask Generation API
+ * ============================================================================ */
+
+int jepa_mask_generate_2d(jepa_mask_generator_t* generator,
+                           uint32_t width,
+                           uint32_t height,
+                           jepa_mask_t* mask) {
+    if (!generator || !mask) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (mask->width != width || mask->height != height || mask->temporal != 1) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    /* Reset PRNG if fixed seed */
+    if (generator->config.use_fixed_seed) {
+        generator->random_state = generator->config.seed;
+    }
+
+    int result;
+
+    switch (generator->config.strategy) {
+        case JEPA_MASK_RANDOM:
+            result = generate_random_mask(generator, mask, generator->current_ratio);
+            break;
+
+        case JEPA_MASK_BLOCK:
+        case JEPA_MASK_BLOCK_MULTI:
+            result = generate_block_mask(generator, mask);
+            break;
+
+        case JEPA_MASK_ATTENTION_GUIDED:
+            result = generate_attention_mask(generator,
+                                             generator->config.params.attention.attention_scores,
+                                             mask);
+            break;
+
+        case JEPA_MASK_CURRICULUM:
+            result = generate_random_mask(generator, mask, generator->current_ratio);
+            break;
+
+        case JEPA_MASK_CAUSAL:
+            result = generate_causal_mask(generator, mask);
+            break;
+
+        default:
+            result = generate_random_mask(generator, mask, generator->current_ratio);
+    }
+
+    if (result == NIMCP_SUCCESS) {
+        generator->masks_generated++;
+    }
+
+    return result;
+}
+
+int jepa_mask_generate_3d(jepa_mask_generator_t* generator,
+                           uint32_t width,
+                           uint32_t height,
+                           uint32_t temporal,
+                           jepa_mask_t* mask) {
+    if (!generator || !mask) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (mask->width != width || mask->height != height || mask->temporal != temporal) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    /* Reset PRNG if fixed seed */
+    if (generator->config.use_fixed_seed) {
+        generator->random_state = generator->config.seed;
+    }
+
+    int result;
+
+    if (generator->config.strategy == JEPA_MASK_TUBE) {
+        result = generate_tube_mask(generator, mask);
+    } else {
+        /* Apply 2D strategy per frame or globally */
+        result = generate_random_mask(generator, mask, generator->current_ratio);
+    }
+
+    if (result == NIMCP_SUCCESS) {
+        generator->masks_generated++;
+    }
+
+    return result;
+}
+
+int jepa_mask_generate_1d(jepa_mask_generator_t* generator,
+                           uint32_t length,
+                           jepa_mask_t* mask) {
+    /* 1D is just 2D with height=1 */
+    return jepa_mask_generate_2d(generator, length, 1, mask);
+}
+
+int jepa_mask_generate_attention(jepa_mask_generator_t* generator,
+                                  const float* attention,
+                                  uint32_t width,
+                                  uint32_t height,
+                                  jepa_mask_t* mask) {
+    if (!generator || !attention || !mask) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (mask->width != width || mask->height != height) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    return generate_attention_mask(generator, attention, mask);
+}
+
+/* ============================================================================
+ * Mask Operations
+ * ============================================================================ */
+
+int jepa_mask_apply(const jepa_mask_t* mask,
+                     const float* input,
+                     float* output,
+                     uint32_t dim) {
+    if (!mask || !input || !output) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Apply mask: out[i,j] = input[i,j] * (1 - mask[i]) */
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        float m = 1.0f - mask->data[i];
+        for (uint32_t j = 0; j < dim; j++) {
+            output[i * dim + j] = input[i * dim + j] * m;
+        }
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+int jepa_mask_get_visible_indices(const jepa_mask_t* mask,
+                                   uint32_t* indices,
+                                   uint32_t* num_indices) {
+    if (!mask || !indices || !num_indices) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        if (mask->data[i] < 0.5f) {
+            indices[count++] = i;
+        }
+    }
+    *num_indices = count;
+
+    return NIMCP_SUCCESS;
+}
+
+int jepa_mask_get_masked_indices(const jepa_mask_t* mask,
+                                  uint32_t* indices,
+                                  uint32_t* num_indices) {
+    if (!mask || !indices || !num_indices) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        if (mask->data[i] >= 0.5f) {
+            indices[count++] = i;
+        }
+    }
+    *num_indices = count;
+
+    return NIMCP_SUCCESS;
+}
+
+int jepa_mask_invert(jepa_mask_t* mask) {
+    if (!mask) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        mask->data[i] = 1.0f - mask->data[i];
+    }
+
+    /* Swap counts */
+    uint32_t tmp = mask->num_masked;
+    mask->num_masked = mask->num_visible;
+    mask->num_visible = tmp;
+    mask->mask_ratio = 1.0f - mask->mask_ratio;
+
+    return NIMCP_SUCCESS;
+}
+
+int jepa_mask_compute_stats(jepa_mask_t* mask) {
+    if (!mask) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    uint32_t masked = 0;
+    for (uint32_t i = 0; i < mask->total_size; i++) {
+        if (mask->data[i] >= 0.5f) {
+            masked++;
+        }
+    }
+
+    mask->num_masked = masked;
+    mask->num_visible = mask->total_size - masked;
+    mask->mask_ratio = (float)masked / (float)mask->total_size;
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Curriculum Learning API
+ * ============================================================================ */
+
+int jepa_mask_curriculum_step(jepa_mask_generator_t* generator) {
+    if (!generator) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (generator->config.strategy != JEPA_MASK_CURRICULUM) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    const jepa_curriculum_params_t* params = &generator->config.params.curriculum;
+
+    generator->curriculum_step++;
+
+    /* Calculate progress t in [0, 1] */
+    float t = (float)generator->curriculum_step / (float)params->warmup_steps;
+    if (t > 1.0f) t = 1.0f;
+
+    /* Apply schedule function */
+    float schedule_t = t;
+    if (params->schedule_fn) {
+        schedule_t = params->schedule_fn(t);
+    }
+
+    /* Interpolate ratio */
+    generator->current_ratio = params->start_ratio +
+                               schedule_t * (params->end_ratio - params->start_ratio);
+
+    return NIMCP_SUCCESS;
+}
+
+int jepa_mask_curriculum_set_step(jepa_mask_generator_t* generator, uint32_t step) {
+    if (!generator) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    generator->curriculum_step = step;
+
+    /* Recalculate ratio */
+    if (generator->config.strategy == JEPA_MASK_CURRICULUM) {
+        const jepa_curriculum_params_t* params = &generator->config.params.curriculum;
+
+        float t = (float)step / (float)params->warmup_steps;
+        if (t > 1.0f) t = 1.0f;
+
+        float schedule_t = t;
+        if (params->schedule_fn) {
+            schedule_t = params->schedule_fn(t);
+        }
+
+        generator->current_ratio = params->start_ratio +
+                                   schedule_t * (params->end_ratio - params->start_ratio);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+float jepa_mask_curriculum_get_ratio(const jepa_mask_generator_t* generator) {
+    if (!generator) return 0.0f;
+    return generator->current_ratio;
+}
+
+/* ============================================================================
+ * Bio-Async API
+ * ============================================================================ */
+
+BRIDGE_DEFINE_BIO_ASYNC_FUNCS(jepa_mask_generator)
+
+/* ============================================================================
+ * String Conversion API
+ * ============================================================================ */
+
+const char* jepa_mask_strategy_to_string(jepa_mask_strategy_t strategy) {
+    switch (strategy) {
+        case JEPA_MASK_RANDOM:           return "random";
+        case JEPA_MASK_BLOCK:            return "block";
+        case JEPA_MASK_BLOCK_MULTI:      return "block_multi";
+        case JEPA_MASK_ATTENTION_GUIDED: return "attention_guided";
+        case JEPA_MASK_CURRICULUM:       return "curriculum";
+        case JEPA_MASK_TUBE:             return "tube";
+        case JEPA_MASK_CAUSAL:           return "causal";
+        default:                         return "unknown";
+    }
+}
+
+const char* jepa_mask_shape_to_string(jepa_mask_shape_t shape) {
+    switch (shape) {
+        case JEPA_MASK_SHAPE_RECT:      return "rectangle";
+        case JEPA_MASK_SHAPE_SQUARE:    return "square";
+        case JEPA_MASK_SHAPE_ELLIPSE:   return "ellipse";
+        case JEPA_MASK_SHAPE_IRREGULAR: return "irregular";
+        default:                        return "unknown";
+    }
+}
+
+const char* jepa_mask_mode_to_string(jepa_mask_mode_t mode) {
+    switch (mode) {
+        case JEPA_MASK_MODE_PATCH:   return "patch";
+        case JEPA_MASK_MODE_PIXEL:   return "pixel";
+        case JEPA_MASK_MODE_FEATURE: return "feature";
+        default:                     return "unknown";
+    }
+}

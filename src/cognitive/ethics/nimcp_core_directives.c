@@ -68,6 +68,10 @@ struct core_directives_system {
     fep_orchestrator_t* fep_orchestrator;
     directive_fep_bridge_t* fep_bridge;
 
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
+
     // Thread safety
     nimcp_platform_mutex_t mutex;
 };

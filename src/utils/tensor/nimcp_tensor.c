@@ -569,13 +569,15 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
     /* Guard: NULL is no-op */
     if (!t) return;
 
+    pthread_mutex_lock(&t->lock);
+
     /* Guard: Invalid magic means already destroyed or corrupted */
+    /* MUST be checked INSIDE lock to prevent race condition */
     if (!tensor_is_valid(t)) {
         /* Already destroyed or never initialized properly */
+        pthread_mutex_unlock(&t->lock);
         return;
     }
-
-    pthread_mutex_lock(&t->lock);
 
     /* Refcount management */
     t->refcount--;

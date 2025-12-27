@@ -591,13 +591,25 @@ int brain_immune_connect_bft(brain_immune_system_t* system, bft_context_t* bft_c
     system->bft_context = bft_context;
     nimcp_mutex_unlock(system->mutex);
 
-    // Register callbacks for automatic integration
-    bft_register_accusation_callback(bft_context, bft_accusation_cb, system);
-    bft_register_quarantine_callback(bft_context, bft_quarantine_cb, system);
-    bft_register_trust_recovery_callback(bft_context, bft_trust_recovery_cb, system);
+    /* Register callbacks for automatic integration, check return values */
+    bool accusation_ok = bft_register_accusation_callback(bft_context, bft_accusation_cb, system);
+    if (!accusation_ok) {
+        LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME, "Failed to register BFT accusation callback");
+    }
+
+    bool quarantine_ok = bft_register_quarantine_callback(bft_context, bft_quarantine_cb, system);
+    if (!quarantine_ok) {
+        LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME, "Failed to register BFT quarantine callback");
+    }
+
+    bool trust_ok = bft_register_trust_recovery_callback(bft_context, bft_trust_recovery_cb, system);
+    if (!trust_ok) {
+        LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME, "Failed to register BFT trust recovery callback");
+    }
 
     if (system->config.enable_logging) {
-        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to BFT with callbacks");
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Connected to BFT with callbacks (accusation=%d, quarantine=%d, trust=%d)",
+            accusation_ok, quarantine_ok, trust_ok);
     }
 
     return 0;
@@ -1077,11 +1089,16 @@ int brain_immune_present_antigen(
         system->phase = IMMUNE_PHASE_RECOGNITION;
     }
 
+    /* Copy antigen data before unlocking for safe callback invocation */
+    brain_antigen_t antigen_copy = *antigen;
+    void* callback_user_data = system->callback_user_data;
+    brain_immune_antigen_cb_t antigen_callback = system->on_antigen;
+
     nimcp_mutex_unlock(system->mutex);
 
-    /* Trigger callback */
-    if (system->on_antigen) {
-        system->on_antigen(system, antigen, system->callback_user_data);
+    /* Trigger callback with copied data (safe after unlock) */
+    if (antigen_callback) {
+        antigen_callback(system, &antigen_copy, callback_user_data);
     }
 
     if (system->config.enable_logging) {
@@ -1611,27 +1628,39 @@ int brain_immune_neutralize(
     antibody->neutralizations++;
     system->stats.threats_neutralized++;
 
-    nimcp_mutex_unlock(system->mutex);
+    /* Copy IDs before unlock for safe access after critical section */
+    uint32_t producer_b_cell_id = antibody->producer_b_cell_id;
+    brain_antibody_t antibody_copy = *antibody;
 
     /* AUTO-LEARNING: Convert producing B cell to memory for future recognition */
-    brain_b_cell_t* producer = find_b_cell_by_id(system, antibody->producer_b_cell_id);
-    if (producer && producer->state != B_CELL_MEMORY) {
-        /* Successful neutralization triggers memory formation */
-        brain_immune_b_cell_to_memory(system, antibody->producer_b_cell_id);
+    /* Done inside critical section to safely access B cell state */
+    brain_b_cell_t* producer = find_b_cell_by_id(system, producer_b_cell_id);
+    bool should_convert_to_memory = (producer && producer->state != B_CELL_MEMORY);
 
-        if (system->config.enable_logging) {
+    /* Copy callback info before unlock */
+    void* callback_user_data = system->callback_user_data;
+    brain_immune_neutralize_cb_t neutralize_callback = system->on_neutralize;
+    bool enable_logging = system->config.enable_logging;
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Perform memory conversion outside lock (function handles its own locking) */
+    if (should_convert_to_memory) {
+        brain_immune_b_cell_to_memory(system, producer_b_cell_id);
+
+        if (enable_logging) {
             LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
                 "Auto-learning: B cell %u converted to memory after neutralizing antigen %u",
-                antibody->producer_b_cell_id, antigen_id);
+                producer_b_cell_id, antigen_id);
         }
     }
 
-    /* Trigger callback */
-    if (system->on_neutralize) {
-        system->on_neutralize(system, antigen_id, antibody, system->callback_user_data);
+    /* Trigger callback with copied data (safe after unlock) */
+    if (neutralize_callback) {
+        neutralize_callback(system, antigen_id, &antibody_copy, callback_user_data);
     }
 
-    if (system->config.enable_logging) {
+    if (enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
             "Antigen %u neutralized by antibody %u", antigen_id, antibody_id);
     }

@@ -210,10 +210,35 @@ static nimcp_error_t bio_msg_queue_init(bio_msg_queue_t* queue, uint32_t capacit
  * WHAT: Grow message queue capacity
  * WHY:  Dynamically handle traffic spikes without dropping messages
  * HOW:  Double capacity (capped at MAX_INBOX_MESSAGES), linearize ring buffer
- * NOTE: Must be called with queue->mutex held
+ *
+ * THREAD SAFETY:
+ *   - MUST be called with queue->mutex held by the calling thread
+ *   - The mutex ensures atomic visibility of all queue state updates
+ *   - All readers (dequeue, count) also acquire the mutex before access
+ *   - The grow operation is atomic from the perspective of other threads
+ *     because no other thread can access the queue while mutex is held
+ *
+ * MEMORY ORDERING:
+ *   - The mutex unlock after grow provides a release barrier
+ *   - The mutex lock before any subsequent access provides an acquire barrier
+ *   - This guarantees that all writes (entries, capacity, read_idx, write_idx)
+ *     are visible to any thread that later acquires the mutex
  */
 static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
     if (!queue || !queue->entries) return -1;
+
+    // DEBUG: Verify mutex is held by attempting trylock (should fail if held)
+    // This assertion helps catch incorrect usage during development
+#ifndef NDEBUG
+    int trylock_result = nimcp_platform_mutex_trylock(&queue->mutex);
+    if (trylock_result == 0) {
+        // Trylock succeeded means mutex was NOT held - this is a bug!
+        nimcp_platform_mutex_unlock(&queue->mutex);
+        LOG_ERROR("bio_msg_queue_grow called without holding mutex!");
+        return -1;
+    }
+    // trylock returning non-zero (EBUSY) is expected - mutex is properly held
+#endif
 
     // Check if already at max capacity
     if (queue->capacity >= MAX_INBOX_MESSAGES) {
@@ -300,6 +325,9 @@ static void bio_msg_queue_destroy(bio_msg_queue_t* queue) {
  * WHAT: Enqueue message to queue
  * WHY:  Add message to module inbox
  * HOW:  Blocking if full, copy message data, signal waiters
+ *
+ * DEADLOCK PREVENTION: Checks shutdown_requested flag after waking from
+ * condition variable wait to allow clean shutdown without deadlock.
  */
 static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
                                             const void* msg,
@@ -308,10 +336,21 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
                                             uint32_t timeout_ms) {
     if (!queue || !msg || msg_size == 0) return -1;
 
+    // DEADLOCK FIX: Early check for shutdown before acquiring any locks
+    if (g_router && g_router->shutdown_requested) {
+        return -1;
+    }
+
     nimcp_platform_mutex_lock(&queue->mutex);
 
     // Handle full queue - try to grow or wait
     while (queue->count >= queue->capacity) {
+        // DEADLOCK FIX: Check shutdown flag after waking from wait
+        if (g_router && g_router->shutdown_requested) {
+            nimcp_platform_mutex_unlock(&queue->mutex);
+            return -1;
+        }
+
         if (timeout_ms == 0) {
             // Non-blocking mode: try to grow the queue instead of failing
             if (bio_msg_queue_grow(queue) == NIMCP_SUCCESS) {
@@ -327,6 +366,13 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
         int wait_result = nimcp_platform_cond_timedwait(&queue->not_full,
                                                           &queue->mutex,
                                                           timeout_ms);
+
+        // DEADLOCK FIX: Check shutdown after waking from condition wait
+        if (g_router && g_router->shutdown_requested) {
+            nimcp_platform_mutex_unlock(&queue->mutex);
+            return -1;
+        }
+
         if (wait_result != 0) {
             // Timeout: try to grow as last resort
             if (bio_msg_queue_grow(queue) == NIMCP_SUCCESS) {
@@ -368,6 +414,9 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
  * WHAT: Dequeue message from queue
  * WHY:  Process next message from inbox
  * HOW:  Blocking if empty, return message data
+ *
+ * DEADLOCK PREVENTION: Checks shutdown_requested flag after waking from
+ * condition variable wait to allow clean shutdown without deadlock.
  */
 static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
                                             void** out_msg,
@@ -376,10 +425,21 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
                                             uint32_t timeout_ms) {
     if (!queue || !out_msg || !out_size) return -1;
 
+    // DEADLOCK FIX: Early check for shutdown before acquiring any locks
+    if (g_router && g_router->shutdown_requested) {
+        return -1;
+    }
+
     nimcp_platform_mutex_lock(&queue->mutex);
 
     // Wait for message if empty
-    if (queue->count == 0) {
+    while (queue->count == 0) {
+        // DEADLOCK FIX: Check shutdown flag in wait loop
+        if (g_router && g_router->shutdown_requested) {
+            nimcp_platform_mutex_unlock(&queue->mutex);
+            return -1;
+        }
+
         if (timeout_ms == 0) {
             nimcp_platform_mutex_unlock(&queue->mutex);
             return -1;  // Would block
@@ -388,15 +448,19 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
         int wait_result = nimcp_platform_cond_timedwait(&queue->not_empty,
                                                           &queue->mutex,
                                                           timeout_ms);
+
+        // DEADLOCK FIX: Check shutdown after waking from condition wait
+        if (g_router && g_router->shutdown_requested) {
+            nimcp_platform_mutex_unlock(&queue->mutex);
+            return -1;
+        }
+
         if (wait_result != 0) {
             nimcp_platform_mutex_unlock(&queue->mutex);
             return -1;  // Timeout or error
         }
 
-        if (queue->count == 0) {
-            nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;  // Still empty after wait
-        }
+        // Loop will re-check condition (count == 0) to handle spurious wakeups
     }
 
     // Remove from queue
@@ -576,16 +640,50 @@ void bio_router_shutdown(void) {
 
     LOG_INFO("Shutting down bio-router");
 
+    // DEADLOCK FIX: Set shutdown flag first, then acquire lock to ensure
+    // all operations see the flag before we start cleanup.
+    // Use volatile-style memory barrier semantics via the mutex.
+    nimcp_platform_mutex_lock(&g_router->modules_mutex);
     g_router->shutdown_requested = true;
 
-    // Cleanup immune integration if connected
+    // Wake up any threads blocked on queue condition variables.
+    // This prevents deadlock where a thread is waiting on a full/empty queue
+    // while we're trying to destroy those queues.
+    for (uint32_t i = 0; i < g_router->module_count; i++) {
+        bio_module_entry_t* entry = &g_router->modules[i];
+        if (entry->magic == BIO_MODULE_MAGIC) {
+            // Signal all waiters to wake up and check shutdown flag
+            nimcp_platform_mutex_lock(&entry->inbox.mutex);
+            nimcp_platform_cond_broadcast(&entry->inbox.not_empty);
+            nimcp_platform_cond_broadcast(&entry->inbox.not_full);
+            nimcp_platform_mutex_unlock(&entry->inbox.mutex);
+        }
+    }
+    nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+
+    // Brief yield to allow blocked threads to wake and exit
+    // This is a best-effort approach; proper shutdown would use a barrier
+    nimcp_platform_sleep_ms(1);  // 1ms
+
+    // DEADLOCK FIX: Clear immune context reference BEFORE unregistering.
+    // This prevents the unregister call from racing with other code
+    // that might check immune_ctx.
+    bio_module_context_t immune_ctx_to_cleanup = NULL;
+    nimcp_platform_mutex_lock(&g_router->modules_mutex);
     if (g_router->immune_ctx) {
-        bio_router_unregister_module(g_router->immune_ctx);
+        immune_ctx_to_cleanup = g_router->immune_ctx;
         g_router->immune_ctx = NULL;
         g_router->brain_immune_system = NULL;
     }
+    nimcp_platform_mutex_unlock(&g_router->modules_mutex);
 
-    // Unregister all modules
+    // Cleanup immune integration if connected (outside lock to avoid deadlock)
+    if (immune_ctx_to_cleanup) {
+        bio_router_unregister_module(immune_ctx_to_cleanup);
+    }
+
+    // Unregister all remaining modules
+    // DEADLOCK FIX: Hold lock for entire cleanup to prevent races
     nimcp_platform_mutex_lock(&g_router->modules_mutex);
     for (uint32_t i = 0; i < g_router->module_count; i++) {
         bio_module_entry_t* entry = &g_router->modules[i];

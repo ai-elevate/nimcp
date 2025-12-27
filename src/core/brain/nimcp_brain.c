@@ -45,6 +45,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_once.h"  // Thread-safe one-time initialization
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"  // Phase 11: Biological attack defense
 #include "async/nimcp_bio_async.h"    // Bio-async messaging system
@@ -148,6 +149,8 @@
 
 static bio_module_context_t g_brain_bio_ctx = NULL;
 static bool g_brain_bio_initialized = false;
+static nimcp_platform_once_t g_brain_bio_once = NIMCP_PLATFORM_ONCE_INIT;
+static nimcp_error_t g_brain_bio_init_result = NIMCP_SUCCESS;
 
 //=============================================================================
 // Forward Declarations - Strategy Pattern
@@ -180,21 +183,12 @@ bool ensure_writable_network(brain_t brain);
 //=============================================================================
 
 /**
- * @brief Initialize bio-async integration for brain module
+ * @brief Internal once-only initialization routine for bio-async
  *
- * WHAT: Registers brain with bio-router and sets up message handlers
- * WHY:  Enable event-driven inter-module communication
- * HOW:  Create module context, register handlers for brain messages
- *
- * @return NIMCP_SUCCESS or error code
+ * Called exactly once via nimcp_platform_once to avoid race conditions.
  */
-static nimcp_error_t brain_bio_init(void)
+static void brain_bio_init_once_routine(void)
 {
-    if (g_brain_bio_initialized) {
-        LOG_MODULE_WARN("BRAIN", "Bio-async already initialized");
-        return NIMCP_SUCCESS;
-    }
-
     LOG_MODULE_INFO("BRAIN", "Initializing bio-async integration");
 
     // Register module with bio-router
@@ -208,12 +202,29 @@ static nimcp_error_t brain_bio_init(void)
     g_brain_bio_ctx = bio_router_register_module(&info);
     if (!g_brain_bio_ctx) {
         LOG_MODULE_ERROR("BRAIN", "Failed to register with bio-router");
-        return NIMCP_ERROR_INVALID_PARAM;
+        g_brain_bio_init_result = NIMCP_ERROR_INVALID_PARAM;
+        return;
     }
 
-    g_brain_bio_initialized = true;
+    __atomic_store_n(&g_brain_bio_initialized, true, __ATOMIC_RELEASE);
     LOG_MODULE_INFO("BRAIN", "Bio-async integration initialized successfully");
-    return NIMCP_SUCCESS;
+    g_brain_bio_init_result = NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Initialize bio-async integration for brain module
+ *
+ * WHAT: Registers brain with bio-router and sets up message handlers
+ * WHY:  Enable event-driven inter-module communication
+ * HOW:  Uses nimcp_platform_once for thread-safe one-time initialization
+ *
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t brain_bio_init(void)
+{
+    // Use platform_once for thread-safe one-time initialization
+    nimcp_platform_once(&g_brain_bio_once, brain_bio_init_once_routine);
+    return g_brain_bio_init_result;
 }
 
 /**
@@ -227,7 +238,9 @@ static void brain_publish_state_event(bio_message_type_t event_type,
                                        uint32_t neuron_count,
                                        nimcp_bio_channel_type_t channel)
 {
-    if (!g_brain_bio_initialized || !g_brain_bio_ctx) {
+    // Use atomic load for thread-safe access to global state
+    if (!__atomic_load_n(&g_brain_bio_initialized, __ATOMIC_ACQUIRE) ||
+        !__atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE)) {
         return;  // Graceful degradation
     }
 
@@ -256,7 +269,9 @@ static void brain_publish_state_event(bio_message_type_t event_type,
  */
 static void brain_publish_processing_event(const char* processing_type, float confidence)
 {
-    if (!g_brain_bio_initialized || !g_brain_bio_ctx) {
+    // Use atomic load for thread-safe access to global state
+    if (!__atomic_load_n(&g_brain_bio_initialized, __ATOMIC_ACQUIRE) ||
+        !__atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE)) {
         return;  // Graceful degradation
     }
 
@@ -852,7 +867,7 @@ void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t 
 //=============================================================================
 
 // Forward declaration
-brain_decision_t* copy_decision(const brain_decision_t* source);
+brain_decision_t* copy_decision(brain_decision_t* source);
 
 /**
  * @brief Check if input matches cached input
@@ -1231,12 +1246,10 @@ bool init_attention_subsystem(brain_t brain)
         return false;
     }
 
-    // Bio-Async: Initialize on first subsystem init
-    if (!g_brain_bio_initialized) {
-        nimcp_error_t bio_result = brain_bio_init();
-        if (bio_result != NIMCP_SUCCESS) {
-            LOG_MODULE_WARN("BRAIN", "Bio-async init failed: %d (continuing anyway)", bio_result);
-        }
+    // Bio-Async: Initialize on first subsystem init (uses platform_once internally)
+    nimcp_error_t bio_result = brain_bio_init();
+    if (bio_result != NIMCP_SUCCESS) {
+        LOG_MODULE_WARN("BRAIN", "Bio-async init failed: %d (continuing anyway)", bio_result);
     }
 
     // WHAT: Check if already initialized
@@ -1674,18 +1687,44 @@ void brain_destroy(brain_t brain)
             // Brain owns the network - destroy immediately
             adaptive_network_destroy(brain->network);
         } else if (brain->network_refcount && brain->refcount_mutex) {
-            // Brain shares network - decrement refcount
-            nimcp_platform_mutex_lock(brain->refcount_mutex);
-            (*brain->network_refcount)--;
-            uint32_t remaining_refs = *brain->network_refcount;
-            nimcp_platform_mutex_unlock(brain->refcount_mutex);
+            // Brain shares network - decrement refcount with proper synchronization
+            //
+            // THREAD SAFETY FIX: The original code had a race condition where:
+            // 1. Thread A checks brain->refcount_mutex is valid
+            // 2. Thread B decrements refcount to 0 and frees mutex
+            // 3. Thread A tries to lock the now-freed mutex -> use-after-free
+            //
+            // FIX: Save local copies of pointers before any synchronization.
+            // The refcount semantics guarantee that if this thread still holds
+            // a reference (refcount > 0), the mutex and refcount memory remain valid.
+            // We hold the lock during the entire check-and-cleanup sequence to
+            // ensure atomicity of the "decrement and conditionally destroy" operation.
+            nimcp_platform_mutex_t* mutex = brain->refcount_mutex;
+            uint32_t* refcount_ptr = brain->network_refcount;
+            adaptive_network_t network = brain->network;
 
-            // If this was the last reference, destroy shared resources
+            nimcp_platform_mutex_lock(mutex);
+            (*refcount_ptr)--;
+            uint32_t remaining_refs = *refcount_ptr;
+
             if (remaining_refs == 0) {
-                adaptive_network_destroy(brain->network);
-                nimcp_platform_mutex_destroy(brain->refcount_mutex);
-                nimcp_free(brain->refcount_mutex);
-                nimcp_free(brain->network_refcount);
+                // Last reference - we are the only thread with access to these resources.
+                // All other clones have already completed their brain_destroy() calls
+                // (otherwise refcount would still be > 0).
+                //
+                // IMPORTANT: We must unlock BEFORE destroying the mutex to avoid
+                // undefined behavior. Since refcount is 0, no other thread can be
+                // waiting on or will ever try to acquire this mutex again.
+                nimcp_platform_mutex_unlock(mutex);
+
+                // Safe to destroy now - guaranteed no concurrent access
+                adaptive_network_destroy(network);
+                nimcp_platform_mutex_destroy(mutex);
+                nimcp_free(mutex);
+                nimcp_free(refcount_ptr);
+            } else {
+                // Not last reference - other clones still exist
+                nimcp_platform_mutex_unlock(mutex);
             }
         }
         // else: Neither owns nor has refcount - strange but safe (network leaked)
@@ -2211,11 +2250,13 @@ void brain_destroy(brain_t brain)
 
 
     // Bio-Async: Unregister from router (if initialized)
-    if (g_brain_bio_initialized && g_brain_bio_ctx) {
+    // Use atomic operations for thread-safe access to global state
+    bio_module_context_t ctx = __atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE);
+    if (__atomic_load_n(&g_brain_bio_initialized, __ATOMIC_ACQUIRE) && ctx) {
         LOG_MODULE_INFO("BRAIN", "Unregistering brain from bio-async router");
-        bio_router_unregister_module(g_brain_bio_ctx);
-        g_brain_bio_ctx = NULL;
-        g_brain_bio_initialized = false;
+        bio_router_unregister_module(ctx);
+        __atomic_store_n(&g_brain_bio_ctx, NULL, __ATOMIC_RELEASE);
+        __atomic_store_n(&g_brain_bio_initialized, false, __ATOMIC_RELEASE);
     }
 
     // Per-brain bio-async cleanup
@@ -2414,13 +2455,20 @@ bool ensure_writable_network(brain_t brain)
     // Phase 2 workaround: Use save/load to clone the network
     // TODO: Phase 3 should implement proper adaptive_network_clone() or incremental COW
 
-    // Generate unique temporary filename
+    // Generate unique temporary filename using mkstemp for security
+    // (prevents symlink attacks and race conditions)
     char temp_file[256];
-    snprintf(temp_file, sizeof(temp_file), "/tmp/nimcp_cow_temp_%p_%ld.bin",
-             (void*)brain, (long)time(NULL));
+    snprintf(temp_file, sizeof(temp_file), "/tmp/nimcp_cow_temp_XXXXXX");
+    int fd = mkstemp(temp_file);
+    if (fd < 0) {
+        set_error("Failed to create secure temp file for COW copy");
+        return false;
+    }
+    close(fd);  // Close fd, we'll use the filename with adaptive_network_save
 
     // Save shared network to temp file
     if (!adaptive_network_save(shared_network, temp_file, SERIALIZE_FORMAT_BINARY)) {
+        unlink(temp_file);  // Clean up on failure
         set_error("Failed to save network for COW copy");
         return false;
     }
@@ -2428,7 +2476,7 @@ bool ensure_writable_network(brain_t brain)
     // Load into new network
     brain->network = adaptive_network_load(temp_file);
 
-    // Clean up temp file
+    // Clean up temp file immediately after use
     unlink(temp_file);
 
     if (!brain->network) {
@@ -2751,10 +2799,15 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
  *
  * THREAD SAFETY: Uses atomic operations for refcount updates
  *
- * @param source Decision to copy
+ * @param source Decision to copy (will be modified to set up CoW sharing if not already shared)
  * @return New decision copy (shallow CoW), or NULL on allocation failure
+ *
+ * @note This function mutates the source decision's CoW metadata (_cow_refcount, _cow_is_shallow)
+ *       when setting up sharing for the first time. This is intentional for CoW semantics -
+ *       the refcount is shared metadata, not decision data. Callers must NOT pass truly
+ *       const objects (e.g., objects in read-only memory or declared with const storage).
  */
-brain_decision_t* copy_decision(const brain_decision_t* source)
+brain_decision_t* copy_decision(brain_decision_t* source)
 {
     if (!source)
         return NULL;
@@ -2771,28 +2824,40 @@ brain_decision_t* copy_decision(const brain_decision_t* source)
     // The copy shares the same output_vector and active_neuron_ids as source
 
     // Setup reference counting for the shared data
-    if (!source->_cow_refcount) {
+    // Use atomic compare-and-swap to handle concurrent initialization
+    uint32_t* existing_refcount = __atomic_load_n(&source->_cow_refcount, __ATOMIC_ACQUIRE);
+    if (!existing_refcount) {
         // Source owns its data - create a new refcount for sharing
-        // Cast away const since we're modifying refcount metadata, not decision data
-        brain_decision_t* mutable_source = (brain_decision_t*)source;
-
-        mutable_source->_cow_refcount = nimcp_malloc(sizeof(uint32_t));
-        if (!mutable_source->_cow_refcount) {
+        uint32_t* new_refcount = nimcp_malloc(sizeof(uint32_t));
+        if (!new_refcount) {
             nimcp_free(copy);
             return NULL;
         }
         // Initial refcount = 2 (source + this copy)
-        *mutable_source->_cow_refcount = 2;
-        mutable_source->_cow_is_shallow = true;  // Source is now sharing
+        *new_refcount = 2;
 
-        copy->_cow_refcount = mutable_source->_cow_refcount;
-        copy->_cow_is_shallow = true;
+        // Atomically set refcount if still NULL (another thread may have beaten us)
+        uint32_t* expected = NULL;
+        if (__atomic_compare_exchange_n(&source->_cow_refcount, &expected, new_refcount,
+                                         false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE)) {
+            // We won the race - our refcount is now installed
+            __atomic_store_n(&source->_cow_is_shallow, true, __ATOMIC_RELEASE);
+            copy->_cow_refcount = new_refcount;
+            copy->_cow_is_shallow = true;
+        } else {
+            // Another thread installed a refcount first - use theirs
+            nimcp_free(new_refcount);
+            // expected now contains the other thread's refcount pointer
+            __atomic_add_fetch(expected, 1, __ATOMIC_SEQ_CST);
+            copy->_cow_refcount = expected;
+            copy->_cow_is_shallow = true;
+        }
     } else {
         // Source already has a refcount - just increment it
         // Use atomic increment for thread safety
-        __atomic_add_fetch(source->_cow_refcount, 1, __ATOMIC_SEQ_CST);
+        __atomic_add_fetch(existing_refcount, 1, __ATOMIC_SEQ_CST);
 
-        copy->_cow_refcount = source->_cow_refcount;
+        copy->_cow_refcount = existing_refcount;
         copy->_cow_is_shallow = true;
     }
 
@@ -2956,12 +3021,14 @@ static void populate_interpretability(brain_t brain, const float* features, uint
  */
 static void update_inference_stats(brain_t brain, brain_decision_t* decision)
 {
-    // Process pending bio-async messages
-    if (g_brain_bio_ctx) {
-        bio_router_process_inbox(g_brain_bio_ctx, 5);
+    // Process pending bio-async messages (use atomic load for thread safety)
+    bio_module_context_t ctx = __atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE);
+    if (ctx) {
+        bio_router_process_inbox(ctx, 5);
     }
 
-    brain->stats.total_inferences++;
+    // Use atomic increment for thread-safe stats update
+    __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
     brain->stats.avg_inference_time_us =
         (brain->stats.avg_inference_time_us * (brain->stats.total_inferences - 1) +
          decision->inference_time_us) /
@@ -3112,7 +3179,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
 
         if (cached_copy) {
-            brain->stats.total_inferences++;
+            // Use atomic increment for thread-safe stats update
+            __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
             return cached_copy;
         }
         // Fall through if copy failed
@@ -4136,7 +4204,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                            (const void*)decision, nimcp_time_get_ms());
 
         // Periodic health check (every N decisions)
-        brain->stats.total_inferences++;  // Ensure this counter exists
+        // Use atomic increment for thread-safe stats update
+        __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
         uint32_t check_interval = 100;  // Check every 100 decisions by default
 
         if (brain->stats.total_inferences % check_interval == 0) {

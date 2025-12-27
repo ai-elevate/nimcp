@@ -373,12 +373,13 @@ NIMCP_EXPORT void* memory_pool_acquire(memory_pool_t pool) {
  * ALGORITHM:
  * 1. Validate block pointer
  * 2. Get block header
- * 3. Validate block magic and allocated flag
+ * 3. Validate block magic (can be done lock-free as magic is immutable)
  * 4. Lock mutex
- * 5. Push block to free-list head
- * 6. Mark as free
- * 7. Update statistics
- * 8. Unlock mutex
+ * 5. Validate block is allocated (MUST be inside lock to prevent race)
+ * 6. Push block to free-list head
+ * 7. Mark as free
+ * 8. Update statistics
+ * 9. Unlock mutex
  *
  * COMPLEXITY: O(1)
  * THREAD SAFETY: Thread-safe (mutex protected)
@@ -388,23 +389,29 @@ NIMCP_EXPORT void memory_pool_release(memory_pool_t pool, void* block) {
 
     struct memory_pool_struct* p = (struct memory_pool_struct*)pool;
 
-    // Validate pool magic
+    // Validate pool magic (immutable after creation, safe lock-free)
     if (p->magic != MEMORY_POOL_MAGIC) return;
 
     // Get block header
     block_header_t* header = get_block_header(block);
 
-    // Validate block belongs to this pool
+    // Validate block belongs to this pool (uses immutable bounds, safe lock-free)
     if (!memory_pool_owns(pool, block)) return;
 
-    // Validate block magic
+    // Validate block magic (immutable after creation, safe lock-free)
     if (header->magic != BLOCK_MAGIC) return;
 
-    // Validate block is allocated (prevent double-free)
-    if (header->allocated == 0) return;
-
-    // Lock for thread safety
+    // Lock for thread safety BEFORE checking allocated flag
+    // This prevents double-free race where two threads could both see
+    // allocated==1 and both try to free the same block
     nimcp_platform_mutex_lock(&p->mutex);
+
+    // Validate block is allocated (prevent double-free)
+    // CRITICAL: This check MUST be inside the lock to prevent race condition
+    if (header->allocated == 0) {
+        nimcp_platform_mutex_unlock(&p->mutex);
+        return;
+    }
 
     // Push block to free-list head (O(1))
     header->next = p->free_list;

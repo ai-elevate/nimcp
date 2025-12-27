@@ -579,27 +579,33 @@ static uint32_t calculate_crc32_bytes(uint32_t crc, const uint8_t* data, size_t 
 /**
  * @brief Calculates CRC32 for message header
  *
- * WHY: Extracted header CRC calculation. Handles checksum field clearing.
+ * WHY: Extracted header CRC calculation. Uses local copy to avoid modifying
+ *      the original const header (const-correct implementation).
  *
  * COMPLEXITY: O(1) - Fixed header size
  *
  * @param crc Initial CRC value
- * @param header Header to process
- * @param saved_checksum Temporary storage for original checksum
+ * @param header Header to process (const - not modified)
+ * @param saved_checksum Output: original checksum value (for verification)
  * @return Updated CRC value
  */
-static uint32_t calculate_header_crc(uint32_t crc, msg_header_t* header, uint32_t* saved_checksum)
+static uint32_t calculate_header_crc(uint32_t crc, const msg_header_t* header, uint32_t* saved_checksum)
 {
     // Guard clause: Validate inputs
     if (!header || !saved_checksum)
         return crc;
 
-    // Save and clear checksum field
+    // Save original checksum for later restoration/verification
     *saved_checksum = header->checksum;
-    header->checksum = 0;
 
-    // Calculate CRC over header
-    const uint8_t* data = (const uint8_t*) header;
+    // Create a local mutable copy of the header for CRC calculation
+    // WHY: Avoids casting away const, maintains const-correctness
+    msg_header_t header_copy;
+    memcpy(&header_copy, header, sizeof(msg_header_t));
+    header_copy.checksum = 0;  // Zero checksum field in copy only
+
+    // Calculate CRC over the copy
+    const uint8_t* data = (const uint8_t*)&header_copy;
     crc = calculate_crc32_bytes(crc, data, sizeof(msg_header_t));
 
     return crc;
@@ -608,17 +614,19 @@ static uint32_t calculate_header_crc(uint32_t crc, msg_header_t* header, uint32_
 /**
  * @brief Restores original checksum field value
  *
- * WHY: Extracted cleanup logic. Ensures const-correctness is maintained.
+ * WHY: No longer needed since we use a local copy in calculate_header_crc.
+ *      Kept as no-op for API compatibility in case any external code calls it.
  *
  * COMPLEXITY: O(1)
+ *
+ * @deprecated No longer modifies header since calculate_header_crc uses local copy
  */
-static void restore_checksum_field(msg_header_t* header, uint32_t saved_checksum)
+static void restore_checksum_field(const msg_header_t* header, uint32_t saved_checksum)
 {
-    // Guard clause: Validate header
-    if (!header)
-        return;
-
-    header->checksum = saved_checksum;
+    // No-op: header is now const and calculate_header_crc uses a local copy
+    // This function is kept for API compatibility but does nothing
+    (void)header;
+    (void)saved_checksum;
 }
 
 /**
@@ -630,17 +638,16 @@ static void restore_checksum_field(msg_header_t* header, uint32_t saved_checksum
  *
  * ALGORITHM:
  * 1. Initialize CRC to 0xFFFFFFFF (O(1))
- * 2. Save and clear header checksum field (O(1))
- * 3. Calculate CRC over header (O(1) - fixed size)
+ * 2. Create local copy of header with zeroed checksum (O(1))
+ * 3. Calculate CRC over header copy (O(1) - fixed size)
  * 4. Calculate CRC over payload (O(n))
- * 5. Restore original checksum field (O(1))
- * 6. Return inverted CRC (O(1))
+ * 5. Return inverted CRC (O(1))
  *
  * COMPLEXITY: O(n) where n = payload_len (optimal, single pass)
  *
- * INVARIANT: Header checksum field is restored to original value
+ * CONST-CORRECTNESS: Header is not modified - uses local copy for calculation.
  *
- * @param header Message header (checksum field temporarily modified)
+ * @param header Message header (not modified - const-correct)
  * @param payload Payload data (NULL if none)
  * @param payload_len Size of payload in bytes
  * @return Calculated CRC32 checksum
@@ -655,16 +662,16 @@ uint32_t protocol_calculate_checksum(const msg_header_t* header, const void* pay
     uint32_t crc = 0xFFFFFFFF;
     uint32_t saved_checksum;
 
-    // Calculate CRC over header
-    crc = calculate_header_crc(crc, (msg_header_t*) header, &saved_checksum);
+    // Calculate CRC over header (uses local copy internally, no const cast needed)
+    crc = calculate_header_crc(crc, header, &saved_checksum);
 
     // Calculate CRC over payload if present
     if (payload && payload_len > 0) {
         crc = calculate_crc32_bytes(crc, (const uint8_t*) payload, payload_len);
     }
 
-    // Restore header checksum field
-    restore_checksum_field((msg_header_t*) header, saved_checksum);
+    // No restoration needed - calculate_header_crc uses local copy
+    restore_checksum_field(header, saved_checksum);
 
     return ~crc;
 }

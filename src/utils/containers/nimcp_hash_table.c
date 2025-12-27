@@ -422,6 +422,17 @@ hash_table_t* hash_table_create(const hash_table_config_t* config)
     // Set configuration with defaults
     if (config) {
         table->config = *config;
+
+        // CRITICAL: thread_safe flag is NOT implemented
+        // Reject creation if caller expects thread safety we cannot provide
+        if (config->thread_safe) {
+            LOG_ERROR("nimcp_hash_table",
+                      "thread_safe=true requested but NOT IMPLEMENTED. "
+                      "Hash table operations are NOT thread-safe. "
+                      "Caller must provide external synchronization.");
+            nimcp_free(table);
+            return NULL;
+        }
     } else {
         // Default configuration
         memset(&table->config, 0, sizeof(hash_table_config_t));

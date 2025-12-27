@@ -139,7 +139,7 @@ static bool invoke_subscriber_callback(
 static event_queue_t* event_queue_create(uint32_t max_size);
 static void event_queue_destroy(event_queue_t* queue);
 static bool event_queue_enqueue(event_queue_t* queue, const brain_event_t* event);
-static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event);
+static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event, volatile bool* shutdown_flag);
 static bool event_queue_is_empty(event_queue_t* queue);
 static bool event_queue_is_full(event_queue_t* queue);
 
@@ -343,16 +343,36 @@ static bool event_queue_enqueue(event_queue_t* queue, const brain_event_t* event
 }
 
 /**
- * @brief Dequeue event
+ * @brief Dequeue event with shutdown check
+ *
+ * WHAT: Dequeue an event from the queue, checking for shutdown during wait
+ * WHY:  Prevents worker thread from blocking forever when shutdown is requested
+ * HOW:  Check shutdown flag inside the condition wait loop
+ *
+ * @param queue Event queue
+ * @param event Output event
+ * @param shutdown_flag Pointer to shutdown flag (checked in wait loop)
+ * @return true if event was dequeued, false if shutdown or error
  */
-static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event) {
+static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event, volatile bool* shutdown_flag) {
     if (!queue || !event) return false;
 
     nimcp_mutex_lock(&queue->mutex);
 
-    // Wait if empty
+    // Wait if empty, checking shutdown flag to prevent blocking forever
     while (queue->count == 0) {
+        // Check shutdown flag before waiting - prevents indefinite blocking
+        if (shutdown_flag && *shutdown_flag) {
+            nimcp_mutex_unlock(&queue->mutex);
+            return false;  // Shutdown requested, exit immediately
+        }
         nimcp_cond_wait(&queue->not_empty, &queue->mutex);
+    }
+
+    // Final shutdown check after waking up
+    if (shutdown_flag && *shutdown_flag) {
+        nimcp_mutex_unlock(&queue->mutex);
+        return false;
     }
 
     // Get head
@@ -486,6 +506,12 @@ void event_bus_destroy(event_bus_t bus) {
 
 /**
  * @brief Worker thread for async event delivery
+ *
+ * WHAT: Background thread that dequeues events and delivers to subscribers
+ * WHY:  Async delivery mode requires a dedicated worker thread
+ * HOW:  Loop until shutdown, checking shutdown flag in dequeue wait loop
+ *
+ * THREAD SAFETY: Uses shutdown flag check in dequeue to prevent blocking forever
  */
 static void* event_bus_worker_thread(void* arg) {
     event_bus_internal_t* bus = (event_bus_internal_t*)arg;
@@ -493,9 +519,13 @@ static void* event_bus_worker_thread(void* arg) {
     while (!bus->shutdown) {
         brain_event_t event;
 
-        // Dequeue event (blocks if empty)
-        if (event_queue_dequeue(bus->queue, &event)) {
-            deliver_event_to_subscribers((event_bus_t)bus, &event);
+        // Dequeue event (blocks if empty, but checks shutdown flag in wait loop)
+        // Pass shutdown flag so dequeue can exit if shutdown is requested during wait
+        if (event_queue_dequeue(bus->queue, &event, &bus->shutdown)) {
+            // Only deliver if not shutting down
+            if (!bus->shutdown) {
+                deliver_event_to_subscribers((event_bus_t)bus, &event);
+            }
         }
     }
 
@@ -538,6 +568,12 @@ bool event_bus_start(event_bus_t bus) {
 
 /**
  * @brief Stop event bus
+ *
+ * WHAT: Stop the event bus and its worker thread
+ * WHY:  Clean shutdown to prevent resource leaks
+ * HOW:  Set shutdown flag and signal condition variable to wake worker thread
+ *
+ * THREAD SAFETY: Uses condition signal to immediately wake blocked worker thread
  */
 bool event_bus_stop(event_bus_t bus, bool drain_queue) {
     if (!bus) return false;
@@ -551,10 +587,13 @@ bool event_bus_stop(event_bus_t bus, bool drain_queue) {
     // Signal shutdown
     internal->shutdown = true;
 
-    // Wake up worker thread by enqueuing dummy event
+    // Wake up worker thread by signaling the condition variable
+    // This is more reliable than a dummy event because the worker thread
+    // checks the shutdown flag in the dequeue wait loop
     if (internal->queue) {
-        brain_event_t dummy = event_create(EVENT_NONE, EVENT_PRIORITY_NORMAL, "shutdown");
-        event_queue_enqueue(internal->queue, &dummy);
+        nimcp_mutex_lock(&internal->queue->mutex);
+        nimcp_cond_signal(&internal->queue->not_empty);
+        nimcp_mutex_unlock(&internal->queue->mutex);
     }
 
     // Wait for thread to exit
@@ -745,9 +784,8 @@ static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* e
                 delivered++;
             } else {
                 sub->errors++;
-                nimcp_mutex_lock(&internal->stats_mutex);
-                internal->total_callback_errors++;
-                nimcp_mutex_unlock(&internal->stats_mutex);
+                // Use atomic to avoid nested mutex deadlock (subscriber_mutex is held)
+                __atomic_fetch_add(&internal->total_callback_errors, 1, __ATOMIC_RELAXED);
             }
         }
         sub = sub->next;
@@ -764,9 +802,8 @@ static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* e
                     delivered++;
                 } else {
                     sub->errors++;
-                    nimcp_mutex_lock(&internal->stats_mutex);
-                    internal->total_callback_errors++;
-                    nimcp_mutex_unlock(&internal->stats_mutex);
+                    // Use atomic to avoid nested mutex deadlock (subscriber_mutex is held)
+                    __atomic_fetch_add(&internal->total_callback_errors, 1, __ATOMIC_RELAXED);
                 }
             }
             sub = sub->next;
@@ -890,7 +927,8 @@ uint32_t event_bus_flush(event_bus_t bus) {
 
     while (!event_queue_is_empty(internal->queue)) {
         brain_event_t event;
-        if (event_queue_dequeue(internal->queue, &event)) {
+        // Pass NULL for shutdown flag - flush is synchronous and doesn't need shutdown check
+        if (event_queue_dequeue(internal->queue, &event, NULL)) {
             deliver_event_to_subscribers(bus, &event);
             processed++;
         }

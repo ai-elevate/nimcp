@@ -63,7 +63,8 @@ static char* unquote(char* str) {
 void nimcp_config_init_defaults(nimcp_brain_config_t* config) {
     memset(config, 0, sizeof(nimcp_brain_config_t));
 
-    strcpy(config->name, "default_brain");
+    strncpy(config->name, "default_brain", sizeof(config->name) - 1);
+    config->name[sizeof(config->name) - 1] = '\0';
     config->size = 1;  // small
     config->task = 0;  // classification
 
@@ -87,7 +88,8 @@ void nimcp_config_init_defaults(nimcp_brain_config_t* config) {
     config->golden_rule_threshold = 0.0F;
     config->empathy_weight = 0.5F;
 
-    strcpy(config->model_path, "/tmp/brain.model");
+    strncpy(config->model_path, "/tmp/brain.model", sizeof(config->model_path) - 1);
+    config->model_path[sizeof(config->model_path) - 1] = '\0';
     config->checkpoint_interval = 10;
 }
 
@@ -111,19 +113,24 @@ bool nimcp_config_load_yaml(const char* filepath, nimcp_brain_config_t* config) 
 
         // Check for section headers
         if (strstr(trimmed, "brain:")) {
-            strcpy(section, "brain");
+            strncpy(section, "brain", sizeof(section) - 1);
+            section[sizeof(section) - 1] = '\0';
             continue;
         } else if (strstr(trimmed, "architecture:")) {
-            strcpy(section, "architecture");
+            strncpy(section, "architecture", sizeof(section) - 1);
+            section[sizeof(section) - 1] = '\0';
             continue;
         } else if (strstr(trimmed, "training:")) {
-            strcpy(section, "training");
+            strncpy(section, "training", sizeof(section) - 1);
+            section[sizeof(section) - 1] = '\0';
             continue;
         } else if (strstr(trimmed, "plasticity:")) {
-            strcpy(section, "plasticity");
+            strncpy(section, "plasticity", sizeof(section) - 1);
+            section[sizeof(section) - 1] = '\0';
             continue;
         } else if (strstr(trimmed, "ethics:")) {
-            strcpy(section, "ethics");
+            strncpy(section, "ethics", sizeof(section) - 1);
+            section[sizeof(section) - 1] = '\0';
             continue;
         }
 

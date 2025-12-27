@@ -137,7 +137,12 @@ void eligibility_trace_update(
     // STEP 1: Compute time elapsed since last update
     // WHAT: Δt = current_time - last_update
     // WHY: Determine how much decay to apply
-    // HOW: Unsigned subtraction (time always increases)
+    // HOW: Unsigned subtraction with wraparound guard
+    // GUARD: Handle time counter overflow or uninitialized data
+    if (current_time < trace->last_update) {
+        trace->last_update = current_time;  // Reset on wraparound
+        // Continue with delta_t = 0 (no decay, just add spike)
+    }
     uint64_t delta_t = current_time - trace->last_update;
 
     // STEP 2: Apply exponential decay
@@ -205,6 +210,11 @@ void eligibility_trace_decay(
     // WHAT: Compute and apply exponential decay
     // WHY: Update trace to current time
     // HOW: Same as eligibility_trace_update but without spike contribution
+    // GUARD: Handle time counter overflow or uninitialized data
+    if (current_time < trace->last_update) {
+        trace->last_update = current_time;  // Reset on wraparound
+        return;  // No decay on wraparound
+    }
     uint64_t delta_t = current_time - trace->last_update;
 
     if (delta_t > 0) {

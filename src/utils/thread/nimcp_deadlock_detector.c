@@ -193,20 +193,33 @@ bool deadlock_detector_init(const deadlock_detector_config_t* config) {
 }
 
 void deadlock_detector_shutdown(void) {
-    if (!g_initialized) return;
+    // Acquire lock BEFORE checking g_initialized to prevent race condition
+    // where another thread could be initializing while we check
+    lock_detector();
 
+    if (!g_initialized) {
+        unlock_detector();
+        return;
+    }
+
+    // Capture stats while holding lock
+    uint64_t deadlocks = g_stats.deadlocks_detected;
+    uint64_t cycles = g_stats.cycles_detected;
+
+    // Mark as uninitialized while still holding lock
+    g_initialized = false;
+
+    unlock_detector();
+
+    // Print stats after releasing lock (these are I/O operations that shouldn't hold lock)
     printf("\n=== Deadlock Detector Shutdown ===\n");
     deadlock_detector_print_stats();
 
-    if (g_stats.deadlocks_detected > 0 || g_stats.cycles_detected > 0) {
+    if (deadlocks > 0 || cycles > 0) {
         fprintf(stderr, "\n*** WARNING: %lu deadlocks and %lu cycles detected during execution ***\n",
-                (unsigned long)g_stats.deadlocks_detected,
-                (unsigned long)g_stats.cycles_detected);
+                (unsigned long)deadlocks,
+                (unsigned long)cycles);
     }
-
-    lock_detector();
-    g_initialized = false;
-    unlock_detector();
 }
 
 bool tracked_mutex_init(tracked_mutex_t* mutex, const char* name, uint32_t timeout_ms) {

@@ -40,6 +40,13 @@
  * WHAT: Wrapper structure for Windows thread start
  * WHY:  Windows thread function signature differs from POSIX
  * HOW:  Store POSIX-style function pointer and arg, translate return value
+ *
+ * LIMITATION: If the thread is terminated externally (via TerminateThread or
+ * similar), this wrapper structure will leak. This is a known limitation.
+ * Callers should ensure threads exit normally via their function return or
+ * use nimcp_platform_thread_join() to wait for completion. External termination
+ * of threads is strongly discouraged as it can leave the program in an
+ * inconsistent state.
  */
 typedef struct {
     nimcp_thread_func_t func;
@@ -51,6 +58,15 @@ typedef struct {
  * WHAT: Windows thread start routine wrapper
  * WHY:  Windows expects DWORD WINAPI func(LPVOID), POSIX expects void* func(void*)
  * HOW:  Translate between signatures, store return value
+ *
+ * LIMITATION: The wrapper is freed only when the thread function completes
+ * normally. If the thread is terminated externally (TerminateThread), the
+ * wrapper will leak. This is acceptable because:
+ * 1. External thread termination is inherently unsafe and discouraged
+ * 2. Using thread-local storage to fix this would add significant complexity
+ * 3. The leak size is small (sizeof(win_thread_wrapper_t) = ~24 bytes)
+ *
+ * RECOMMENDATION: Always let threads complete naturally or join them properly.
  */
 static DWORD WINAPI win_thread_start(LPVOID arg)
 {

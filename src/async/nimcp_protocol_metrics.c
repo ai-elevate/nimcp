@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -57,6 +58,7 @@ struct protocol_metrics_struct {
     uint64_t last_cleanup_ms;
     metrics_summary_t cached_summary;
     bool summary_valid;
+    nimcp_platform_mutex_t mutex;  /**< Thread safety for all public operations */
 };
 
 //=============================================================================
@@ -186,6 +188,13 @@ protocol_metrics_t protocol_metrics_create(const dashboard_config_t* config) {
         metrics->config = protocol_metrics_default_config();
     }
 
+    /* Initialize mutex for thread safety */
+    if (nimcp_platform_mutex_init(&metrics->mutex, false) != 0) {
+        LOG_ERROR("Failed to initialize metrics mutex");
+        nimcp_free(metrics);
+        return NULL;
+    }
+
     metrics->creation_time_ms = nimcp_time_get_ms();
     metrics->last_cleanup_ms = metrics->creation_time_ms;
     metrics->metric_count = 0;
@@ -204,6 +213,8 @@ void protocol_metrics_destroy(protocol_metrics_t metrics) {
 
     LOG_INFO("Destroying metrics dashboard");
 
+    nimcp_platform_mutex_lock(&metrics->mutex);
+
     // Free all entries
     for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
         metric_entry_t* entry = metrics->hash_table[i];
@@ -216,6 +227,9 @@ void protocol_metrics_destroy(protocol_metrics_t metrics) {
             entry = next;
         }
     }
+
+    nimcp_platform_mutex_unlock(&metrics->mutex);
+    nimcp_platform_mutex_destroy(&metrics->mutex);
 
     nimcp_free(metrics);
     LOG_DEBUG("Metrics dashboard destroyed");
@@ -241,16 +255,20 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
     char key[256];
     make_metric_key(key, sizeof(key), name, labels, label_count);
 
+    nimcp_platform_mutex_lock(&metrics->mutex);
+
     metric_entry_t* entry = find_metric(metrics, key);
     if (!entry) {
         if (metrics->metric_count >= metrics->config.max_metrics) {
             LOG_ERROR("Maximum metrics reached (%u)", metrics->config.max_metrics);
+            nimcp_platform_mutex_unlock(&metrics->mutex);
             return false;
         }
 
         entry = create_metric_entry(key, type, labels, label_count);
         if (!entry) {
             LOG_ERROR("Failed to create metric entry");
+            nimcp_platform_mutex_unlock(&metrics->mutex);
             return false;
         }
 
@@ -265,6 +283,8 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
     entry->metric.timestamp_ms = nimcp_time_get_ms();
     entry->metric.sample_count++;
 
+    nimcp_platform_mutex_unlock(&metrics->mutex);
+
     LOG_DEBUG("Recorded metric: %s = %.3f", key, value);
 
     return true;
@@ -278,8 +298,11 @@ bool protocol_metrics_increment(protocol_metrics_t metrics, const char* name,
     char key[256];
     make_metric_key(key, sizeof(key), name, labels, label_count);
 
+    nimcp_platform_mutex_lock(&metrics->mutex);
+
     metric_entry_t* entry = find_metric(metrics, key);
     if (!entry) {
+        nimcp_platform_mutex_unlock(&metrics->mutex);
         return protocol_metrics_record(metrics, key, METRIC_TYPE_COUNTER,
                                       delta, labels, label_count);
     }
@@ -287,6 +310,8 @@ bool protocol_metrics_increment(protocol_metrics_t metrics, const char* name,
     entry->metric.value += delta;
     entry->metric.timestamp_ms = nimcp_time_get_ms();
     entry->metric.sample_count++;
+
+    nimcp_platform_mutex_unlock(&metrics->mutex);
 
     LOG_DEBUG("Incremented counter: %s += %.3f (total=%.3f)",
              key, delta, entry->metric.value);
@@ -309,10 +334,15 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
     char key[256];
     make_metric_key(key, sizeof(key), name, labels, label_count);
 
+    nimcp_platform_mutex_lock(&metrics->mutex);
+
     metric_entry_t* entry = find_metric(metrics, key);
     if (!entry) {
         entry = create_metric_entry(key, METRIC_TYPE_HISTOGRAM, labels, label_count);
-        if (!entry) return false;
+        if (!entry) {
+            nimcp_platform_mutex_unlock(&metrics->mutex);
+            return false;
+        }
 
         uint32_t hash = hash_string(key);
         entry->next = metrics->hash_table[hash];
@@ -334,6 +364,8 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
     entry->metric.timestamp_ms = nimcp_time_get_ms();
     entry->metric.sample_count++;
 
+    nimcp_platform_mutex_unlock(&metrics->mutex);
+
     return true;
 }
 
@@ -345,10 +377,17 @@ bool protocol_metrics_get(protocol_metrics_t metrics, const char* name,
                          metric_t* out_metric) {
     if (!metrics || !name || !out_metric) return false;
 
+    nimcp_platform_mutex_lock(&metrics->mutex);
+
     metric_entry_t* entry = find_metric(metrics, name);
-    if (!entry) return false;
+    if (!entry) {
+        nimcp_platform_mutex_unlock(&metrics->mutex);
+        return false;
+    }
 
     *out_metric = entry->metric;
+
+    nimcp_platform_mutex_unlock(&metrics->mutex);
     return true;
 }
 
@@ -356,8 +395,11 @@ bool protocol_metrics_get_summary(protocol_metrics_t metrics,
                                  metrics_summary_t* out_summary) {
     if (!metrics || !out_summary) return false;
 
+    nimcp_platform_mutex_lock(&metrics->mutex);
+
     if (metrics->summary_valid) {
         *out_summary = metrics->cached_summary;
+        nimcp_platform_mutex_unlock(&metrics->mutex);
         return true;
     }
 
@@ -406,6 +448,8 @@ bool protocol_metrics_get_summary(protocol_metrics_t metrics,
     metrics->cached_summary = *out_summary;
     metrics->summary_valid = true;
 
+    nimcp_platform_mutex_unlock(&metrics->mutex);
+
     return true;
 }
 
@@ -415,6 +459,8 @@ bool protocol_metrics_query(protocol_metrics_t metrics, const char* pattern,
     if (!metrics || !out_metrics || !out_count) return false;
 
     *out_count = 0;
+
+    nimcp_platform_mutex_lock(&metrics->mutex);
 
     for (uint32_t i = 0; i < METRIC_HASH_SIZE && *out_count < max_metrics; i++) {
         metric_entry_t* entry = metrics->hash_table[i];
@@ -427,6 +473,8 @@ bool protocol_metrics_query(protocol_metrics_t metrics, const char* pattern,
             entry = entry->next;
         }
     }
+
+    nimcp_platform_mutex_unlock(&metrics->mutex);
 
     return true;
 }
@@ -503,6 +551,8 @@ bool protocol_metrics_export(protocol_metrics_t metrics, export_format_t format,
                             char* out_buffer, size_t buffer_size, size_t* out_bytes) {
     if (!metrics || !out_buffer || !out_bytes) return false;
 
+    nimcp_platform_mutex_lock(&metrics->mutex);
+
     size_t bytes = 0;
 
     switch (format) {
@@ -518,6 +568,8 @@ bool protocol_metrics_export(protocol_metrics_t metrics, export_format_t format,
                            "name,type,value,timestamp,samples\n");
             break;
     }
+
+    nimcp_platform_mutex_unlock(&metrics->mutex);
 
     *out_bytes = bytes;
     return bytes < buffer_size;
@@ -541,8 +593,14 @@ bool protocol_metrics_export_file(protocol_metrics_t metrics,
         return false;
     }
 
-    fwrite(buffer, 1, bytes, f);
+    size_t written = fwrite(buffer, 1, bytes, f);
     fclose(f);
+
+    if (written != bytes) {
+        LOG_ERROR("Failed to write all bytes to file: %s (wrote %zu of %zu)",
+                  filename, written, bytes);
+        return false;
+    }
 
     LOG_INFO("Exported metrics to %s (%zu bytes)", filename, bytes);
     return true;
@@ -554,6 +612,8 @@ bool protocol_metrics_export_file(protocol_metrics_t metrics,
 
 bool protocol_metrics_reset(protocol_metrics_t metrics) {
     if (!metrics) return false;
+
+    nimcp_platform_mutex_lock(&metrics->mutex);
 
     for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
         metric_entry_t* entry = metrics->hash_table[i];
@@ -571,12 +631,16 @@ bool protocol_metrics_reset(protocol_metrics_t metrics) {
     metrics->metric_count = 0;
     metrics->summary_valid = false;
 
+    nimcp_platform_mutex_unlock(&metrics->mutex);
+
     LOG_INFO("All metrics reset");
     return true;
 }
 
 uint32_t protocol_metrics_cleanup(protocol_metrics_t metrics) {
     if (!metrics) return 0;
+
+    nimcp_platform_mutex_lock(&metrics->mutex);
 
     uint64_t now = nimcp_time_get_ms();
     uint64_t cutoff = now - metrics->config.retention_ms;
@@ -609,6 +673,9 @@ uint32_t protocol_metrics_cleanup(protocol_metrics_t metrics) {
     }
 
     metrics->last_cleanup_ms = now;
+
+    nimcp_platform_mutex_unlock(&metrics->mutex);
+
     return removed;
 }
 

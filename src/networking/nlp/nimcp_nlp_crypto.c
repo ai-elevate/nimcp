@@ -107,7 +107,8 @@
 //=============================================================================
 
 static bio_module_context_t g_crypto_bio_ctx = NULL;
-static uint32_t g_crypto_operation_id = 0;
+// Use atomic for thread-safe operation ID generation (avoid data races)
+static _Atomic uint32_t g_crypto_operation_id = 0;
 
 /**
  * @brief Initialize crypto module bio-async registration

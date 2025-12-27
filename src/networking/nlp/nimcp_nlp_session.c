@@ -74,7 +74,21 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
-#include <arpa/inet.h>
+#include <stdint.h>
+#include <limits.h>
+
+#if defined(NIMCP_PLATFORM_LINUX)
+    #include <sys/random.h>
+    #include <arpa/inet.h>
+#elif defined(NIMCP_PLATFORM_MACOS)
+    #include <arpa/inet.h>
+#elif defined(NIMCP_PLATFORM_WINDOWS)
+    #include <winsock2.h>
+    #include <bcrypt.h>
+    #pragma comment(lib, "bcrypt.lib")
+#else
+    #include <arpa/inet.h>
+#endif
 
 // Note: nlp_node_struct is defined in nimcp_nlp_internal.h
 
@@ -101,14 +115,15 @@ static inline bool nlp_validate_node(nlp_node_t node) {
     return node != NULL && node->magic == NLP_NODE_MAGIC;
 }
 
-// Static bio-async context for session module
+// Static bio-async context for session module (protected by nimcp_platform_once)
 static bio_module_context_t g_session_bio_ctx = NULL;
+static nimcp_once_t g_session_bio_once = NIMCP_ONCE_INIT;
 
 /**
- * @brief Initialize session module bio-async registration
+ * @brief Internal callback for once-only bio-async registration
+ * WHY: Called exactly once via nimcp_platform_once to prevent race conditions
  */
-static void nlp_session_ensure_bio_registered(void) {
-    if (g_session_bio_ctx) return;
+static void nlp_session_bio_register_once(void) {
     if (!bio_router_is_initialized()) return;
 
     bio_module_info_t info = {
@@ -123,6 +138,14 @@ static void nlp_session_ensure_bio_registered(void) {
         NIMCP_LOGGING_DEBUG(NLP_SESSION_MODULE,
             "Registered with bio-router for session events");
     }
+}
+
+/**
+ * @brief Initialize session module bio-async registration (thread-safe)
+ * WHY: Uses nimcp_platform_once to prevent TOCTOU race on g_session_bio_ctx
+ */
+static void nlp_session_ensure_bio_registered(void) {
+    nimcp_platform_once(&g_session_bio_once, nlp_session_bio_register_once);
 }
 
 /**
@@ -244,29 +267,64 @@ static void nlp_broadcast_peer_health(const nlp_peer_t* peer, bool healthy) {
 /**
  * WHAT: Generate cryptographically random nonce
  * WHY:  Unique nonce per message for AES-GCM replay protection
- * HOW:  Use /dev/urandom on POSIX, CryptGenRandom on Windows
+ * HOW:  Use getrandom() on Linux (preferred), /dev/urandom as fallback on POSIX
+ *       CRITICAL: Never use insecure rand() fallback for cryptographic purposes
+ *
+ * @return 0 on success, -1 on failure (caller must handle error)
  */
-static void nlp_generate_nonce(uint8_t* nonce, size_t len) {
-    if (!nonce || len == 0) return;
+static int nlp_generate_nonce(uint8_t* nonce, size_t len) {
+    if (!nonce || len == 0) return -1;
 
-#if defined(NIMCP_PLATFORM_LINUX) || defined(NIMCP_PLATFORM_MACOS)
+#if defined(NIMCP_PLATFORM_LINUX)
+    // Preferred: Use getrandom() system call (available since Linux 3.17)
+    ssize_t bytes_obtained = getrandom(nonce, len, 0);
+    if (bytes_obtained == (ssize_t)len) {
+        return 0;  // Success
+    }
+    // getrandom failed - try /dev/urandom as fallback
     FILE* f = fopen("/dev/urandom", "rb");
     if (f) {
-        fread(nonce, 1, len, f);
+        size_t bytes_read = fread(nonce, 1, len, f);
         fclose(f);
-    } else {
-        // Fallback: use time-based randomness (not cryptographically secure)
-        srand((unsigned int)nimcp_time_get_us());
-        for (size_t i = 0; i < len; i++) {
-            nonce[i] = rand() & 0xFF;
+        if (bytes_read == len) {
+            return 0;  // Success
         }
     }
-#elif defined(NIMCP_PLATFORM_WINDOWS)
-    // Windows: Use CryptGenRandom or BCrypt (simplified fallback here)
-    srand((unsigned int)nimcp_time_get_us());
-    for (size_t i = 0; i < len; i++) {
-        nonce[i] = rand() & 0xFF;
+    // CRITICAL: No insecure fallback - fail if we can't get crypto-quality random
+    NIMCP_LOG_ERROR("nlp_generate_nonce: Failed to get cryptographic randomness");
+    memset(nonce, 0, len);  // Zero out partial data
+    return -1;
+
+#elif defined(NIMCP_PLATFORM_MACOS)
+    // macOS: Use /dev/urandom (arc4random would also work)
+    FILE* f = fopen("/dev/urandom", "rb");
+    if (f) {
+        size_t bytes_read = fread(nonce, 1, len, f);
+        fclose(f);
+        if (bytes_read == len) {
+            return 0;  // Success
+        }
     }
+    // CRITICAL: No insecure fallback
+    NIMCP_LOG_ERROR("nlp_generate_nonce: Failed to get cryptographic randomness");
+    memset(nonce, 0, len);
+    return -1;
+
+#elif defined(NIMCP_PLATFORM_WINDOWS)
+    // Windows: Use BCryptGenRandom (preferred)
+    NTSTATUS status = BCryptGenRandom(NULL, nonce, (ULONG)len, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+    if (BCRYPT_SUCCESS(status)) {
+        return 0;  // Success
+    }
+    // CRITICAL: No insecure fallback
+    NIMCP_LOG_ERROR("nlp_generate_nonce: BCryptGenRandom failed");
+    memset(nonce, 0, len);
+    return -1;
+#else
+    // Unsupported platform - fail rather than use insecure randomness
+    NIMCP_LOG_ERROR("nlp_generate_nonce: No secure random source available on this platform");
+    memset(nonce, 0, len);
+    return -1;
 #endif
 }
 
@@ -314,9 +372,17 @@ int nlp_session_init(nlp_peer_t* peer) {
     peer->session_state = NLP_SESSION_DISCONNECTED;
     memset(peer->session_key, 0, NLP_KEY_SIZE);
 
-    // Initialize sequence numbers with random start (security)
-    srand((unsigned int)nimcp_time_get_us());
-    peer->tx_sequence = (uint16_t)(rand() & 0xFFFF);
+    // Initialize sequence numbers with cryptographically secure random start
+    // WHY: Predictable sequence numbers enable TCP-style sequence prediction attacks
+    uint8_t seq_bytes[2];
+    if (nlp_generate_nonce(seq_bytes, sizeof(seq_bytes)) == 0) {
+        peer->tx_sequence = ((uint16_t)seq_bytes[0] << 8) | seq_bytes[1];
+    } else {
+        // Fallback: Use timestamp-based value if CSPRNG fails
+        // Not ideal but better than fully predictable zero
+        NIMCP_LOG_WARN("nlp_session_init: CSPRNG failed, using timestamp for sequence init");
+        peer->tx_sequence = (uint16_t)(nimcp_time_get_us() & 0xFFFF);
+    }
     peer->rx_sequence = 0;
 
     // Initialize timing
@@ -469,9 +535,23 @@ int nlp_session_handle_handshake_resp(nlp_node_t node, nlp_peer_t* peer,
         return -NIMCP_INVALID_MSG;
     }
 
-    // Calculate RTT
+    // Calculate RTT with overflow protection
+    // WHY: If now_ms < last_sent_ms (clock skew/wrap) or delta > UINT32_MAX,
+    //      casting directly can produce incorrect values
     uint64_t now_ms = nimcp_time_get_ms();
-    peer->rtt_ms = (uint32_t)(now_ms - peer->last_sent_ms);
+    uint64_t rtt_delta = now_ms - peer->last_sent_ms;
+
+    // Clamp to uint32_t max to prevent overflow/truncation issues
+    if (rtt_delta > UINT32_MAX) {
+        peer->rtt_ms = UINT32_MAX;
+        NIMCP_LOG_WARN("nlp_session_handle_handshake_resp: RTT overflow clamped");
+    } else if (now_ms < peer->last_sent_ms) {
+        // Clock went backwards - use 0 as safe default
+        peer->rtt_ms = 0;
+        NIMCP_LOG_WARN("nlp_session_handle_handshake_resp: Clock skew detected in RTT");
+    } else {
+        peer->rtt_ms = (uint32_t)rtt_delta;
+    }
     peer->last_seen_ms = now_ms;
     peer->rx_sequence = ntohs(header->sequence);
 
@@ -916,9 +996,19 @@ int nlp_peer_remove(nlp_node_t node, uint32_t peer_id) {
  * WHY:  Lookup peer for message routing
  * HOW:  Linear search through peer table
  *
+ * THREAD SAFETY WARNING: The returned pointer may be invalidated by concurrent
+ * calls to nlp_peer_remove(). Callers must either:
+ * 1. Hold node->peer_mutex across the find + use operations, OR
+ * 2. Use nlp_peer_find_copy() to get a snapshot (preferred for cross-thread use), OR
+ * 3. Ensure single-threaded access to the peer table
+ *
+ * For thread-safe access, prefer nlp_peer_find_copy() which copies peer data
+ * to a caller-provided buffer while holding the lock.
+ *
  * @param node NLP node
  * @param peer_id Peer brain ID
  * @return Peer pointer or NULL if not found
+ * @warning NOT THREAD-SAFE - see documentation above
  */
 nlp_peer_t* nlp_peer_find(nlp_node_t node, uint32_t peer_id) {
     if (!nlp_validate_node(node)) {
@@ -940,14 +1030,49 @@ nlp_peer_t* nlp_peer_find(nlp_node_t node, uint32_t peer_id) {
 }
 
 /**
+ * WHAT: Find peer by ID and copy to caller buffer (thread-safe)
+ * WHY:  Provide thread-safe peer lookup without pointer invalidation risk
+ * HOW:  Copy peer data while holding lock, so returned data is a snapshot
+ *
+ * @param node NLP node
+ * @param peer_id Peer brain ID
+ * @param peer_out Caller-provided buffer to receive peer data copy
+ * @return true if found and copied, false if not found
+ */
+bool nlp_peer_find_copy(nlp_node_t node, uint32_t peer_id, nlp_peer_t* peer_out) {
+    if (!nlp_validate_node(node) || !peer_out) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&node->peer_mutex);
+
+    for (uint32_t i = 0; i < node->peer_count; i++) {
+        if (node->peers[i].peer_id == peer_id) {
+            // Copy peer data to caller buffer while holding lock
+            memcpy(peer_out, &node->peers[i], sizeof(nlp_peer_t));
+            nimcp_mutex_unlock(&node->peer_mutex);
+            return true;
+        }
+    }
+
+    nimcp_mutex_unlock(&node->peer_mutex);
+    return false;
+}
+
+/**
  * WHAT: Find peer by address
  * WHY:  Lookup peer from incoming connection
  * HOW:  Linear search by address:port
+ *
+ * THREAD SAFETY WARNING: The returned pointer may be invalidated by concurrent
+ * calls to nlp_peer_remove(). See nlp_peer_find() documentation for details.
+ * For thread-safe access, prefer nlp_peer_find_by_address_copy().
  *
  * @param node NLP node
  * @param address Peer address
  * @param port Peer port
  * @return Peer pointer or NULL if not found
+ * @warning NOT THREAD-SAFE - see documentation above
  */
 nlp_peer_t* nlp_peer_find_by_address(nlp_node_t node, const char* address, uint16_t port) {
     if (!nlp_validate_node(node) || !address) {
@@ -967,6 +1092,39 @@ nlp_peer_t* nlp_peer_find_by_address(nlp_node_t node, const char* address, uint1
 
     nimcp_mutex_unlock(&node->peer_mutex);
     return NULL;
+}
+
+/**
+ * WHAT: Find peer by address and copy to caller buffer (thread-safe)
+ * WHY:  Provide thread-safe peer lookup without pointer invalidation risk
+ * HOW:  Copy peer data while holding lock
+ *
+ * @param node NLP node
+ * @param address Peer address
+ * @param port Peer port
+ * @param peer_out Caller-provided buffer to receive peer data copy
+ * @return true if found and copied, false if not found
+ */
+bool nlp_peer_find_by_address_copy(nlp_node_t node, const char* address, uint16_t port,
+                                    nlp_peer_t* peer_out) {
+    if (!nlp_validate_node(node) || !address || !peer_out) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&node->peer_mutex);
+
+    for (uint32_t i = 0; i < node->peer_count; i++) {
+        if (strcmp(node->peers[i].address, address) == 0 &&
+            node->peers[i].port == port) {
+            // Copy peer data to caller buffer while holding lock
+            memcpy(peer_out, &node->peers[i], sizeof(nlp_peer_t));
+            nimcp_mutex_unlock(&node->peer_mutex);
+            return true;
+        }
+    }
+
+    nimcp_mutex_unlock(&node->peer_mutex);
+    return false;
 }
 
 /**

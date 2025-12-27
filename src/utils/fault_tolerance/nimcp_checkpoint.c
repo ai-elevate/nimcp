@@ -42,6 +42,8 @@
 #include <dirent.h>
 #include <unistd.h>
 
+#include "utils/platform/nimcp_platform_once.h"
+
 // Optional zlib compression support
 #ifdef HAVE_ZLIB
 #include <zlib.h>
@@ -58,7 +60,7 @@
 
 // CRC32 table for checksum calculation
 static uint32_t crc32_table[256];
-static bool crc32_table_initialized = false;
+static nimcp_platform_once_t crc32_once = NIMCP_PLATFORM_ONCE_INIT;
 
 // Thread-local error message buffer
 static __thread char error_buffer[MAX_ERROR_MSG] = {0};
@@ -90,17 +92,15 @@ static void set_error(const char* format, ...) {
 //=============================================================================
 
 /**
- * @brief Initialize CRC32 lookup table
+ * @brief Internal function to populate CRC32 table
  *
  * WHAT: Populate CRC32 table for fast checksum calculation
  * WHY:  Table-based CRC is 10x faster than bit-by-bit
  * HOW:  Standard CRC32 polynomial (0xEDB88320)
+ *
+ * NOTE: This function is called exactly once via nimcp_platform_once
  */
-static void crc32_init_table(void) {
-    if (crc32_table_initialized) {
-        return;
-    }
-
+static void crc32_do_init(void) {
     uint32_t polynomial = 0xEDB88320;
     for (uint32_t i = 0; i < 256; i++) {
         uint32_t crc = i;
@@ -109,7 +109,17 @@ static void crc32_init_table(void) {
         }
         crc32_table[i] = crc;
     }
-    crc32_table_initialized = true;
+}
+
+/**
+ * @brief Initialize CRC32 lookup table (thread-safe)
+ *
+ * WHAT: Ensure CRC32 table is initialized exactly once
+ * WHY:  Avoid TOCTOU race condition with global flag
+ * HOW:  Use nimcp_platform_once for thread-safe one-time initialization
+ */
+static void crc32_init_table(void) {
+    nimcp_platform_once(&crc32_once, crc32_do_init);
 }
 
 /**

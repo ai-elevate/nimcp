@@ -33,6 +33,18 @@ static hetero_spatial_index_t* create_spatial_index(
     if (!index) return NULL;
 
     index->grid_size = config->spatial_grid_size;
+
+    /* CRITICAL: Overflow check for grid_size^3
+     * WHY:  grid_size * grid_size * grid_size can overflow uint32_t
+     * FIX:  Limit grid_size to prevent overflow (1000^3 = 1B > UINT32_MAX/2)
+     */
+    if (index->grid_size > 1000) {
+        NIMCP_LOGGING_ERROR("Spatial grid size %u exceeds maximum (1000)",
+                            index->grid_size);
+        nimcp_free(index);
+        return NULL;
+    }
+
     index->cell_width = (world_max[0] - world_min[0]) / index->grid_size;
 
     /* Copy world bounds */
@@ -40,7 +52,7 @@ static hetero_spatial_index_t* create_spatial_index(
     memcpy(index->world_max, world_max, 3 * sizeof(float));
 
     /* Allocate grid - 3D array of synapse lists */
-    size_t total_cells = index->grid_size * index->grid_size * index->grid_size;
+    size_t total_cells = (size_t)index->grid_size * index->grid_size * index->grid_size;
     index->grid = nimcp_malloc(total_cells * sizeof(hetero_synapse_t**));
     index->cell_counts = nimcp_calloc(total_cells, sizeof(uint32_t));
     index->cell_capacities = nimcp_calloc(total_cells, sizeof(uint32_t));
@@ -317,16 +329,35 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
     return 0;
 }
 
+/**
+ * WHAT: Get synapse by ID
+ * WHY:  Locate synapse in array for direct manipulation
+ * HOW:  Linear search with mutex protection
+ *
+ * WARNING: This function returns a pointer to internal data.
+ * The caller must hold appropriate locks or use the returned
+ * pointer within a short critical section. For thread-safe access,
+ * consider using hetero_find_neighbors which provides copies.
+ */
 hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_id) {
     if (!system) return NULL;
 
+    /* Lock during search to prevent concurrent modification */
+    nimcp_platform_mutex_lock(system->mutex);
+
+    hetero_synapse_t* result = NULL;
     for (size_t i = 0; i < system->num_synapses; i++) {
         if (system->synapses[i].synapse_id == synapse_id) {
-            return &system->synapses[i];
+            result = &system->synapses[i];
+            break;
         }
     }
 
-    return NULL;
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    /* NOTE: Returned pointer is stable but caller must coordinate
+     * access if modifying. The synapse has its own lock for weight updates. */
+    return result;
 }
 
 /* ============================================================================
@@ -464,15 +495,20 @@ int hetero_apply_depression(
         neighbor->num_neighbor_depressions++;
         neighbor->total_hetero_ltd += -depression;
         nimcp_platform_mutex_unlock(&neighbor->lock);
-
-        system->total_depressions++;
     }
 
-    /* Update statistics */
+    /* CRITICAL: Use atomic operations for thread-safe statistics update
+     * WHY:  Statistics can be updated concurrently from multiple threads
+     * HOW:  Use __atomic_fetch_add for counters, mutex for floats
+     */
+    __atomic_fetch_add(&system->total_depressions, num_neighbors, __ATOMIC_RELAXED);
     if (num_neighbors > 0) {
+        /* Mutex needed for float EMA calculation (not atomically updateable) */
+        nimcp_platform_mutex_lock(system->mutex);
         float alpha = 0.1f;  /* Exponential moving average */
         system->avg_neighbors_per_competition =
-            alpha * num_neighbors + (1.0f - alpha) * system->avg_neighbors_per_competition;
+            alpha * (float)num_neighbors + (1.0f - alpha) * system->avg_neighbors_per_competition;
+        nimcp_platform_mutex_unlock(system->mutex);
     }
 
     return 0;
@@ -562,7 +598,10 @@ int hetero_winner_take_all(
     result->winner_strength = winner->weight;
     result->avg_competitor_strength = num_competitors > 0 ? total_strength / num_competitors : 0.0f;
 
-    system->total_competitions++;
+    /* CRITICAL: Use atomic increment for thread-safe statistics update
+     * WHY:  total_competitions can be updated concurrently from multiple threads
+     */
+    __atomic_fetch_add(&system->total_competitions, 1, __ATOMIC_RELAXED);
 
     /* Callback */
     if (system->config.on_competition_event) {
@@ -691,9 +730,22 @@ int hetero_get_statistics(
 {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
 
-    if (total_competitions) *total_competitions = system->total_competitions;
-    if (total_depressions) *total_depressions = system->total_depressions;
-    if (avg_neighbors) *avg_neighbors = system->avg_neighbors_per_competition;
+    /* CRITICAL: Use atomic loads for thread-safe statistics access
+     * WHY:  Statistics are updated outside lock in hot paths
+     * HOW:  Use __atomic_load for consistent reads
+     */
+    if (total_competitions) {
+        __atomic_load(&system->total_competitions, total_competitions, __ATOMIC_RELAXED);
+    }
+    if (total_depressions) {
+        __atomic_load(&system->total_depressions, total_depressions, __ATOMIC_RELAXED);
+    }
+    if (avg_neighbors) {
+        /* Float requires different atomic handling - use mutex for complex reads */
+        nimcp_platform_mutex_lock(((hetero_system_t*)system)->mutex);
+        *avg_neighbors = system->avg_neighbors_per_competition;
+        nimcp_platform_mutex_unlock(((hetero_system_t*)system)->mutex);
+    }
 
     return 0;
 }

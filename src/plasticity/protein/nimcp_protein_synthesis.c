@@ -460,8 +460,16 @@ int protein_synthesis_consolidate_synapse(
             .timestamp_ms = system->current_time_ms
         };
 
+        /* Copy callback data before releasing mutex */
+        consolidation_callback_t callback = system->config.consolidation_callback;
+        void* callback_user_data = system->config.callback_user_data;
+
         nimcp_platform_mutex_unlock(system->mutex);
-        invoke_consolidation_callback(system, &event);
+
+        /* Invoke callback after releasing mutex to avoid deadlock */
+        if (callback) {
+            callback(&event, callback_user_data);
+        }
 
         NIMCP_LOGGING_DEBUG("Consolidation failed: no tag (synapse %u)",
                             synapse_id);
@@ -483,8 +491,16 @@ int protein_synthesis_consolidate_synapse(
             .timestamp_ms = system->current_time_ms
         };
 
+        /* Copy callback data before releasing mutex */
+        consolidation_callback_t callback = system->config.consolidation_callback;
+        void* callback_user_data = system->config.callback_user_data;
+
         nimcp_platform_mutex_unlock(system->mutex);
-        invoke_consolidation_callback(system, &event);
+
+        /* Invoke callback after releasing mutex to avoid deadlock */
+        if (callback) {
+            callback(&event, callback_user_data);
+        }
 
         NIMCP_LOGGING_DEBUG("Consolidation failed: insufficient PRPs "
                             "(synapse %u, need %.2f, have %.2f)",
@@ -522,8 +538,16 @@ int protein_synthesis_consolidate_synapse(
         .timestamp_ms = system->current_time_ms
     };
 
+    /* Copy callback data before releasing mutex */
+    consolidation_callback_t callback = system->config.consolidation_callback;
+    void* callback_user_data = system->config.callback_user_data;
+
     nimcp_platform_mutex_unlock(system->mutex);
-    invoke_consolidation_callback(system, &event);
+
+    /* Invoke callback after releasing mutex to avoid deadlock */
+    if (callback) {
+        callback(&event, callback_user_data);
+    }
 
     NIMCP_LOGGING_INFO("Consolidated synapse %u with %.2f PRPs (%s)",
                        synapse_id, prps_to_capture,
@@ -627,6 +651,11 @@ int protein_synthesis_update(
 
     system->prp_state.total_prps_decayed += (uint64_t)decay_amount;
 
+    /* Deferred callbacks for expired tags */
+    #define MAX_DEFERRED_EXPIRATION_CALLBACKS 32
+    consolidation_event_t deferred_events[MAX_DEFERRED_EXPIRATION_CALLBACKS];
+    uint32_t num_deferred = 0;
+
     /* Update tags - decay and expire */
     for (uint32_t i = 0; i < system->num_tags; ) {
         synaptic_tag_t* tag = &system->tags[i];
@@ -649,17 +678,16 @@ int protein_synthesis_update(
         /* Check expiration */
         if (time_since_set >= system->config.tag_duration_ms ||
             tag->tag_strength < 0.01f) {
-            /* Tag expired */
-            consolidation_event_t event = {
-                .synapse_id = tag->synapse_id,
-                .final_state = TAG_STATE_UNTAGGED,
-                .prps_used = 0.0f,
-                .success = false,
-                .severity = PROTEIN_CONSOL_FAILED_NO_TAG,
-                .timestamp_ms = system->current_time_ms
-            };
-
-            invoke_consolidation_callback(system, &event);
+            /* Tag expired - defer callback */
+            if (num_deferred < MAX_DEFERRED_EXPIRATION_CALLBACKS) {
+                deferred_events[num_deferred].synapse_id = tag->synapse_id;
+                deferred_events[num_deferred].final_state = TAG_STATE_UNTAGGED;
+                deferred_events[num_deferred].prps_used = 0.0f;
+                deferred_events[num_deferred].success = false;
+                deferred_events[num_deferred].severity = PROTEIN_CONSOL_FAILED_NO_TAG;
+                deferred_events[num_deferred].timestamp_ms = system->current_time_ms;
+                num_deferred++;
+            }
 
             system->stats.total_tags_expired++;
             system->stats.total_consolidation_failures++;
@@ -672,7 +700,19 @@ int protein_synthesis_update(
         }
     }
 
+    /* Copy callback data before releasing mutex */
+    consolidation_callback_t callback = system->config.consolidation_callback;
+    void* callback_user_data = system->config.callback_user_data;
+
     nimcp_platform_mutex_unlock(system->mutex);
+
+    /* Invoke deferred callbacks after releasing mutex to avoid deadlock */
+    if (callback) {
+        for (uint32_t i = 0; i < num_deferred; i++) {
+            callback(&deferred_events[i], callback_user_data);
+        }
+    }
+
     return 0;
 }
 

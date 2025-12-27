@@ -57,6 +57,8 @@ static brain_inflammation_level_t get_inflammation_level(
  * WHAT: Query specific cytokine level
  * WHY:  Cytokine milieu determines M1/M2 polarization
  * HOW:  Sum concentrations by type from active cytokines
+ *
+ * Thread safety: Acquires immune system mutex during iteration
  */
 static float get_cytokine_concentration(
     const brain_immune_system_t* immune,
@@ -64,12 +66,18 @@ static float get_cytokine_concentration(
 ) {
     if (!immune || !immune->cytokines) return 0.0f;
 
+    /* Acquire immune system mutex to safely iterate cytokines */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)immune->mutex);
+
     float total = 0.0f;
     for (size_t i = 0; i < immune->cytokine_count; i++) {
         if (immune->cytokines[i].type == type) {
             total += immune->cytokines[i].concentration;
         }
     }
+
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)immune->mutex);
+
     return total;
 }
 

@@ -15,28 +15,28 @@
 
 #include <unistd.h>
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/platform/nimcp_platform_once.h"
 
 // Global BBB security system
 static bbb_system_t g_bbb_system = NULL;
 
-
+// Thread-safe initialization control
+static nimcp_platform_once_t g_security_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
 //=============================================================================
 // Security Initialization
 //=============================================================================
 
 /**
- * @brief Initialize security subsystem for event_bus
+ * @brief Internal initialization routine (called exactly once)
  *
  * WHAT: Create and configure BBB system for input validation
  * WHY: Protect against malicious external input
  * HOW: Initialize with conservative security settings
+ *
+ * THREAD-SAFETY: Called via nimcp_platform_once(), guaranteed single execution
  */
-static void event_bus_security_init(void) {
-    if (g_bbb_system) {
-        return;  // Already initialized
-    }
-
+static void event_bus_security_init_internal(void) {
     bbb_config_t config = bbb_default_config();
     config.strict_mode = false;  // Don't block, just log
     config.default_action = BBB_ACTION_LOG;
@@ -50,6 +50,17 @@ static void event_bus_security_init(void) {
     } else {
         LOG_INFO("event_bus: Security subsystem initialized");
     }
+}
+
+/**
+ * @brief Initialize security subsystem for event_bus (thread-safe)
+ *
+ * WHAT: Ensure BBB system is initialized exactly once
+ * WHY: Prevent race conditions on first access from multiple threads
+ * HOW: Use nimcp_platform_once() for thread-safe one-time initialization
+ */
+static void event_bus_security_init(void) {
+    nimcp_platform_once(&g_security_init_once, event_bus_security_init_internal);
 }
 
 /**

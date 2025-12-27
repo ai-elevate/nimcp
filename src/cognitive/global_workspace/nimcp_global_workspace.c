@@ -33,6 +33,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -62,6 +63,9 @@
 struct global_workspace_struct {
     // Configuration (immutable after creation)
     global_workspace_config_t config;
+
+    // Thread safety mutex for public API operations
+    nimcp_platform_mutex_t mutex;           /**< Protects all mutable state */
 
     // Current broadcast state
     workspace_broadcast_t current_broadcast;
@@ -490,6 +494,9 @@ global_workspace_t* global_workspace_create_custom(
     // Copy configuration
     workspace->config = actual_config;
 
+    // Initialize thread safety mutex
+    nimcp_platform_mutex_init(&workspace->mutex, false);
+
     // Allocate broadcast content buffer
     workspace->broadcast_content =
         (float*)nimcp_calloc(actual_config.capacity_dim, sizeof(float));
@@ -622,6 +629,9 @@ void global_workspace_destroy(global_workspace_t* workspace) {
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
+    // Lock before destroying to ensure no concurrent operations
+    nimcp_platform_mutex_lock(&ws->mutex);
+
     // Unregister from bio-async router
     if (ws->bio_async_enabled && ws->bio_ctx) {
         bio_router_unregister_module(ws->bio_ctx);
@@ -652,6 +662,18 @@ void global_workspace_destroy(global_workspace_t* workspace) {
         memory_pool_destroy(ws->history_content_pool);
     }
 
+    // Free competitor content buffers that we own
+    for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        if (ws->competitors[i].is_active && ws->competitors[i].content) {
+            nimcp_free(ws->competitors[i].content);
+            ws->competitors[i].content = NULL;
+        }
+    }
+
+    // Unlock and destroy mutex
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    nimcp_platform_mutex_destroy(&ws->mutex);
+
     // Free workspace structure
     nimcp_free(ws);
 }
@@ -676,20 +698,169 @@ bool global_workspace_compete(
         return false;
     }
 
-    // Process pending bio-async messages before competition
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
+
+    // Thread safety - lock for entire operation
+    nimcp_platform_mutex_lock(&ws->mutex);
+
+    // Process pending bio-async messages before competition
     if (ws->bio_async_enabled && ws->bio_ctx) {
         bio_router_process_inbox(ws->bio_ctx, 10);  // Process up to 10 messages
     }
 
-    // Submit to competition pool
-    if (!global_workspace_submit(workspace, module, content, content_dim, strength)) {
+    // Submit to competition pool (internal call, already locked)
+    // Note: We call the internal parts directly to avoid recursive locking
+    // Validate content dimension
+    if (content_dim != ws->config.capacity_dim) {
+        fprintf(stderr, "Content dimension mismatch in global_workspace_compete: "
+                "expected %u, got %u\n", ws->config.capacity_dim, content_dim);
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
+    }
+
+    // Validate strength range
+    if (strength < 0.0F || strength > 1.0F) {
+        fprintf(stderr, "Invalid strength in global_workspace_compete: %.2f "
+                "(must be 0.0-1.0)\n", strength);
+        nimcp_platform_mutex_unlock(&ws->mutex);
+        return false;
+    }
+
+    // Update statistics
+    if (ws->config.enable_statistics) {
+        ws->stats.total_competitions++;
+        if (module < MODULE_CUSTOM_START) {
+            ws->stats.competitions_per_module[module]++;
+        }
+    }
+
+    // Find slot for this module (update existing or find empty)
+    uint32_t slot_idx = GLOBAL_WORKSPACE_MAX_COMPETITORS;
+
+    // Check if module already in pool (update case)
+    for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        if (ws->competitors[i].is_active && ws->competitors[i].module == module) {
+            slot_idx = i;
+            // Free old content buffer
+            if (ws->competitors[i].content) {
+                nimcp_free(ws->competitors[i].content);
+            }
+            break;
+        }
+    }
+
+    // If not found, find empty slot
+    if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
+        for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+            if (!ws->competitors[i].is_active) {
+                slot_idx = i;
+                break;
+            }
+        }
+    }
+
+    // Guard: Check if pool is full
+    if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
+        fprintf(stderr, "Competition pool full in global_workspace_compete "
+                "(%u competitors)\n", GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        nimcp_platform_mutex_unlock(&ws->mutex);
+        return false;
+    }
+
+    // Track if we're adding new competitor vs updating existing
+    bool was_inactive = !ws->competitors[slot_idx].is_active;
+    bool pool_was_empty = (ws->num_active_competitors == 0);
+
+    // Copy content - we own this buffer now
+    float* content_copy = (float*)nimcp_malloc(content_dim * sizeof(float));
+    if (!content_copy) {
+        fprintf(stderr, "Failed to allocate content buffer in global_workspace_compete\n");
+        nimcp_platform_mutex_unlock(&ws->mutex);
+        return false;
+    }
+    memcpy(content_copy, content, content_dim * sizeof(float));
+
+    // Add/update competitor in pool
+    ws->competitors[slot_idx].module = module;
+    ws->competitors[slot_idx].content = content_copy;  // We own this buffer
+    ws->competitors[slot_idx].content_dim = content_dim;
+    ws->competitors[slot_idx].strength = strength;
+    ws->competitors[slot_idx].timestamp_ms = get_time_ms();
+    ws->competitors[slot_idx].is_active = true;
+
+    // Update pool counts
+    if (was_inactive) {
+        ws->num_active_competitors++;
+        if (pool_was_empty) {
+            ws->pool_activation_time_ms = get_time_ms();
+        }
     }
 
     // Immediately resolve competition (backward compatible behavior)
     cognitive_module_t winner = MODULE_NONE;
-    bool broadcast_occurred = global_workspace_resolve(workspace, &winner);
+
+    // Check if pool is empty
+    if (ws->num_active_competitors == 0) {
+        nimcp_platform_mutex_unlock(&ws->mutex);
+        return false;
+    }
+
+    uint64_t current_time = get_time_ms();
+    uint32_t winner_idx;
+    float winner_strength;
+    bool found_winner = false;
+
+    switch (ws->config.strategy) {
+        case COMPETITION_WINNER_TAKE_ALL:
+            found_winner = resolve_winner_take_all(ws, &winner_idx, &winner_strength);
+            break;
+        case COMPETITION_PRIORITY_BASED:
+            found_winner = resolve_priority_based(ws, &winner_idx, &winner_strength);
+            break;
+        case COMPETITION_ROUND_ROBIN:
+            found_winner = resolve_round_robin(ws, &winner_idx, &winner_strength);
+            break;
+        case COMPETITION_WEIGHTED_FUSION:
+            found_winner = resolve_winner_take_all(ws, &winner_idx, &winner_strength);
+            break;
+        default:
+            found_winner = false;
+            break;
+    }
+
+    bool broadcast_occurred = false;
+    if (found_winner) {
+        // Check refractory period
+        bool can_broadcast = true;
+        if (ws->last_broadcast_time_ms > 0) {
+            uint64_t time_since_broadcast = current_time - ws->last_broadcast_time_ms;
+            if (time_since_broadcast < ws->config.refractory_period_ms) {
+                can_broadcast = false;
+            }
+        }
+
+        if (can_broadcast) {
+            broadcast_winner(ws, winner_idx, winner_strength);
+            winner = ws->competitors[winner_idx].module;
+
+            // Clear the entire competition pool after broadcasting
+            for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+                if (ws->competitors[i].is_active) {
+                    if (ws->competitors[i].content) {
+                        nimcp_free(ws->competitors[i].content);
+                        ws->competitors[i].content = NULL;
+                    }
+                    ws->competitors[i].is_active = false;
+                }
+            }
+            ws->num_active_competitors = 0;
+            ws->pool_activation_time_ms = 0;
+
+            broadcast_occurred = true;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&ws->mutex);
 
     // Return true only if THIS module won and was broadcast
     return (broadcast_occurred && winner == module);
@@ -715,10 +886,14 @@ bool global_workspace_submit(
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
+    // Thread safety
+    nimcp_platform_mutex_lock(&ws->mutex);
+
     // Guard: Validate content dimension
     if (content_dim != ws->config.capacity_dim) {
         fprintf(stderr, "Content dimension mismatch in global_workspace_submit: "
                 "expected %u, got %u\n", ws->config.capacity_dim, content_dim);
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -726,6 +901,7 @@ bool global_workspace_submit(
     if (strength < 0.0F || strength > 1.0F) {
         fprintf(stderr, "Invalid strength in global_workspace_submit: %.2f "
                 "(must be 0.0-1.0)\n", strength);
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -744,6 +920,11 @@ bool global_workspace_submit(
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
         if (ws->competitors[i].is_active && ws->competitors[i].module == module) {
             slot_idx = i;
+            // Free old content buffer before replacing
+            if (ws->competitors[i].content) {
+                nimcp_free(ws->competitors[i].content);
+                ws->competitors[i].content = NULL;
+            }
             break;
         }
     }
@@ -762,6 +943,7 @@ bool global_workspace_submit(
     if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
         fprintf(stderr, "Competition pool full in global_workspace_submit "
                 "(%u competitors)\n", GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -769,9 +951,18 @@ bool global_workspace_submit(
     bool was_inactive = !ws->competitors[slot_idx].is_active;
     bool pool_was_empty = (ws->num_active_competitors == 0);
 
+    // Copy content - we own this buffer now (fixes buffer ownership issue)
+    float* content_copy = (float*)nimcp_malloc(content_dim * sizeof(float));
+    if (!content_copy) {
+        fprintf(stderr, "Failed to allocate content buffer in global_workspace_submit\n");
+        nimcp_platform_mutex_unlock(&ws->mutex);
+        return false;
+    }
+    memcpy(content_copy, content, content_dim * sizeof(float));
+
     // Add/update competitor in pool
     ws->competitors[slot_idx].module = module;
-    ws->competitors[slot_idx].content = (float*)content;  // Caller owns content
+    ws->competitors[slot_idx].content = content_copy;  // We own this buffer now
     ws->competitors[slot_idx].content_dim = content_dim;
     ws->competitors[slot_idx].strength = strength;
     ws->competitors[slot_idx].timestamp_ms = get_time_ms();
@@ -787,6 +978,7 @@ bool global_workspace_submit(
         }
     }
 
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return true;
 }
 
@@ -802,6 +994,9 @@ bool global_workspace_resolve(
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
+    // Thread safety
+    nimcp_platform_mutex_lock(&ws->mutex);
+
     // Set default output (no winner)
     if (winning_module != NULL) {
         *winning_module = MODULE_NONE;
@@ -810,6 +1005,7 @@ bool global_workspace_resolve(
     // Check if pool is empty
     if (ws->num_active_competitors == 0) {
         // No competitors to resolve
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -868,6 +1064,11 @@ bool global_workspace_resolve(
         // Clear pool (all below threshold or pruned by decay)
         for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
             if (ws->competitors[i].is_active) {
+                // Free content buffer we own
+                if (ws->competitors[i].content) {
+                    nimcp_free(ws->competitors[i].content);
+                    ws->competitors[i].content = NULL;
+                }
                 ws->competitors[i].is_active = false;
             }
         }
@@ -878,6 +1079,7 @@ bool global_workspace_resolve(
             ws->stats.rejected_submissions++;
         }
 
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -905,16 +1107,23 @@ bool global_workspace_resolve(
         // Clear the entire competition pool after broadcasting
         for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
             if (ws->competitors[i].is_active) {
+                // Free content buffer we own
+                if (ws->competitors[i].content) {
+                    nimcp_free(ws->competitors[i].content);
+                    ws->competitors[i].content = NULL;
+                }
                 ws->competitors[i].is_active = false;
             }
         }
         ws->num_active_competitors = 0;
         ws->pool_activation_time_ms = 0;
 
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return true;
     } else {
         // Winner found but blocked by refractory period
         // Keep competitors in pool for next resolve attempt
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 }
@@ -930,8 +1139,12 @@ bool global_workspace_read_broadcast(
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
+    // Thread safety
+    nimcp_platform_mutex_lock(&ws->mutex);
+
     // Check if broadcast available
     if (!ws->current_broadcast.is_valid) {
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -939,6 +1152,7 @@ bool global_workspace_read_broadcast(
     if (max_dim < ws->current_broadcast.content_dim) {
         fprintf(stderr, "Buffer too small: need %u, have %u\n",
                 ws->current_broadcast.content_dim, max_dim);
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -954,6 +1168,7 @@ bool global_workspace_read_broadcast(
         *source = ws->current_broadcast.source_module;
     }
 
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return true;
 }
 
@@ -965,9 +1180,13 @@ bool global_workspace_subscribe(
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
+    // Thread safety
+    nimcp_platform_mutex_lock(&ws->mutex);
+
     // Check if already subscribed
     for (uint32_t i = 0; i < ws->num_subscribers; i++) {
         if (ws->subscribers[i] == module) {
+            nimcp_platform_mutex_unlock(&ws->mutex);
             return true;  // Already subscribed (idempotent)
         }
     }
@@ -975,6 +1194,7 @@ bool global_workspace_subscribe(
     // Check if room for more
     if (ws->num_subscribers >= GLOBAL_WORKSPACE_MAX_SUBSCRIBERS) {
         fprintf(stderr, "Subscriber list full (%u max)\n", GLOBAL_WORKSPACE_MAX_SUBSCRIBERS);
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return false;
     }
 
@@ -986,6 +1206,7 @@ bool global_workspace_subscribe(
         ws->stats.current_subscribers = ws->num_subscribers;
     }
 
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return true;
 }
 
@@ -996,6 +1217,9 @@ bool global_workspace_unsubscribe(
     if (workspace == NULL) return false;
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
+
+    // Thread safety
+    nimcp_platform_mutex_lock(&ws->mutex);
 
     // Find module in subscriber list
     for (uint32_t i = 0; i < ws->num_subscribers; i++) {
@@ -1011,10 +1235,12 @@ bool global_workspace_unsubscribe(
                 ws->stats.current_subscribers = ws->num_subscribers;
             }
 
+            nimcp_platform_mutex_unlock(&ws->mutex);
             return true;
         }
     }
 
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return false;  // Not subscribed
 }
 

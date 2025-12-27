@@ -24,7 +24,8 @@ static const char* CATEGORY_NAMES[] = {
     "perception",
     "async",
     "glial",
-    "core"
+    "core",
+    "jepa"
 };
 
 static const char* STATE_NAMES[] = {
@@ -156,7 +157,10 @@ int fep_orchestrator_default_config(fep_orchestrator_config_t* config) {
     
     config->categories[FEP_BRIDGE_CATEGORY_CORE].enabled = true;
     config->categories[FEP_BRIDGE_CATEGORY_CORE].update_interval_ms = FEP_UPDATE_INTERVAL_CORE;
-    
+
+    config->categories[FEP_BRIDGE_CATEGORY_JEPA].enabled = true;
+    config->categories[FEP_BRIDGE_CATEGORY_JEPA].update_interval_ms = FEP_UPDATE_INTERVAL_JEPA;
+
     return 0;
 }
 

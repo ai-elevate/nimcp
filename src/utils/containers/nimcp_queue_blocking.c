@@ -185,11 +185,22 @@ nimcp_result_t nimcp_queue_blocking_enqueue(
                 nimcp_cond_wait(&impl->not_full, &impl->mutex);
             }
         } else {
-            nimcp_result_t result = nimcp_cond_timedwait(&impl->not_full, &impl->mutex, timeout_ms);
-            if (result != NIMCP_SUCCESS) {
-                queue->status.blocking_timeouts++;
-                nimcp_mutex_unlock(&impl->mutex);
-                return NIMCP_TIMEOUT;
+            // Timed wait with spurious wakeup protection
+            // Loop until queue has space or timeout occurs
+            while (is_full(queue, impl)) {
+                queue->status.blocking_waits++;
+                nimcp_result_t result = nimcp_cond_timedwait(&impl->not_full, &impl->mutex, timeout_ms);
+                if (result != NIMCP_SUCCESS) {
+                    // Re-check condition after timeout - may have been signaled just before timeout
+                    if (is_full(queue, impl)) {
+                        queue->status.blocking_timeouts++;
+                        nimcp_mutex_unlock(&impl->mutex);
+                        return NIMCP_TIMEOUT;
+                    }
+                    // Queue has space now, exit loop and proceed
+                    break;
+                }
+                // On success, loop will re-check condition to handle spurious wakeup
             }
         }
     }
@@ -249,11 +260,22 @@ nimcp_result_t nimcp_queue_blocking_dequeue(
                 nimcp_cond_wait(&impl->not_empty, &impl->mutex);
             }
         } else {
-            nimcp_result_t result = nimcp_cond_timedwait(&impl->not_empty, &impl->mutex, timeout_ms);
-            if (result != NIMCP_SUCCESS) {
-                queue->status.blocking_timeouts++;
-                nimcp_mutex_unlock(&impl->mutex);
-                return NIMCP_TIMEOUT;
+            // Timed wait with spurious wakeup protection
+            // Loop until queue has items or timeout occurs
+            while (is_empty(impl)) {
+                queue->status.blocking_waits++;
+                nimcp_result_t result = nimcp_cond_timedwait(&impl->not_empty, &impl->mutex, timeout_ms);
+                if (result != NIMCP_SUCCESS) {
+                    // Re-check condition after timeout - may have been signaled just before timeout
+                    if (is_empty(impl)) {
+                        queue->status.blocking_timeouts++;
+                        nimcp_mutex_unlock(&impl->mutex);
+                        return NIMCP_TIMEOUT;
+                    }
+                    // Queue has items now, exit loop and proceed
+                    break;
+                }
+                // On success, loop will re-check condition to handle spurious wakeup
             }
         }
     }

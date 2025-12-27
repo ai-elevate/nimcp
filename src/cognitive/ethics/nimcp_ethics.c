@@ -497,6 +497,30 @@ static float calculate_final_score(float golden_rule_score, float policy_score)
 }
 
 /**
+ * @brief Expands the violations array when capacity is reached
+ *
+ * @param engine The ethics engine
+ * @return true if expansion succeeded or wasn't needed, false on allocation failure
+ */
+static bool expand_violations_array(ethics_engine_t engine)
+{
+    if (!engine)
+        return false;
+
+    uint32_t new_capacity = engine->violations_capacity > 0 ? engine->violations_capacity * 2 : 1000;
+
+    violation_record_t* new_array =
+        (violation_record_t*)nimcp_realloc(engine->violations, new_capacity * sizeof(violation_record_t));
+
+    if (!new_array)
+        return false;
+
+    engine->violations = new_array;
+    engine->violations_capacity = new_capacity;
+    return true;
+}
+
+/**
  * @brief Records violation in history log
  */
 static void record_violation(ethics_engine_t engine, const action_context_t* action,
@@ -506,8 +530,11 @@ static void record_violation(ethics_engine_t engine, const action_context_t* act
     if (!engine || !action)
         return;
 
-    if (engine->num_violations >= engine->violations_capacity)
-        return;
+    // Expand array if at capacity
+    if (engine->num_violations >= engine->violations_capacity) {
+        if (!expand_violations_array(engine))
+            return;  // Allocation failed, cannot record violation
+    }
 
     violation_record_t violation = {.violation_type = violation_type,
                                     .severity = severity,

@@ -642,14 +642,23 @@ float calcium_omega_function(
      * Reference: Shouval et al. (2002) PNAS 99:10831-10836
      */
 
+    /* CRITICAL: Check for division by zero
+     * WHY:  If threshold_ltp == threshold_ltd, denominator is zero
+     * FIX:  Return 0 if range is too small to compute meaningful omega
+     */
+    float range = threshold_ltp - threshold_ltd;
+    if (fabsf(range) < 1e-9f) {
+        return 0.0f;
+    }
+
     /* Normalize to [0, 1] range */
-    float normalized = (ca_concentration - threshold_ltd) / (threshold_ltp - threshold_ltd);
+    float normalized = (ca_concentration - threshold_ltd) / range;
 
     /* Clamp to prevent extreme values */
     normalized = clamp_f(normalized, -2.0f, 3.0f);
 
     /* Apply power function */
-    float omega = omega_max * powf(fabs(normalized), power);
+    float omega = omega_max * powf(fabsf(normalized), power);
 
     /* Preserve sign for LTD (negative when Ca < midpoint) */
     float midpoint = (threshold_ltd + threshold_ltp) / 2.0f;

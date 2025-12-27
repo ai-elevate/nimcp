@@ -199,7 +199,13 @@ float astro_immune_get_glutamate_clearance(const astro_immune_bridge_t* bridge)
 int astro_immune_get_stats(const astro_immune_bridge_t* bridge, astro_immune_stats_t* stats)
 {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Lock mutex for consistent read of stats structure.
+     * Cast away const since mutex lock doesn't modify logical state. */
+    nimcp_mutex_lock(((astro_immune_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
+    nimcp_mutex_unlock(((astro_immune_bridge_t*)bridge)->base.mutex);
+
     return 0;
 }
 

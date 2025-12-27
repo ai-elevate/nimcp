@@ -363,15 +363,15 @@ bool wellbeing_connect_immune(brain_immune_system_t* immune_system)
     // Initialize mutex if needed
     nimcp_platform_once(&immune_connection_init_once, init_immune_connection_mutex);
 
-    // Thread safety
+    // Thread safety - hold lock throughout to prevent race conditions
     nimcp_platform_mutex_lock(&immune_connection_mutex);
 
-    // Guard: Already connected
+    // Guard: Already connected - disconnect within the critical section
     if (connected_immune_system) {
         NIMCP_LOGGING_WARN("wellbeing: Already connected to immune system, disconnecting first");
-        nimcp_platform_mutex_unlock(&immune_connection_mutex);
-        wellbeing_disconnect_immune();
-        nimcp_platform_mutex_lock(&immune_connection_mutex);
+        // Clear reference directly instead of calling disconnect to avoid deadlock
+        connected_immune_system = NULL;
+        NIMCP_LOGGING_INFO("wellbeing: Disconnected from previous brain immune system");
     }
 
     // Store reference
@@ -449,13 +449,15 @@ bool wellbeing_connect_brain(void* brain)
 
     nimcp_platform_once(&brain_connection_init_once, init_brain_connection_mutex);
 
+    // Thread safety - hold lock throughout to prevent race conditions
     nimcp_platform_mutex_lock(&brain_connection_mutex);
 
+    // Guard: Already connected - disconnect within the critical section
     if (connected_brain) {
         NIMCP_LOGGING_WARN("wellbeing: Already connected to brain, disconnecting first");
-        nimcp_platform_mutex_unlock(&brain_connection_mutex);
-        wellbeing_disconnect_brain();
-        nimcp_platform_mutex_lock(&brain_connection_mutex);
+        // Clear reference directly instead of calling disconnect to avoid deadlock
+        connected_brain = NULL;
+        NIMCP_LOGGING_INFO("wellbeing: Disconnected from previous brain");
     }
 
     connected_brain = brain;
@@ -499,6 +501,27 @@ bool wellbeing_disconnect_brain(void)
 //=============================================================================
 
 /**
+ * WHAT: Free allocated fields in a distress assessment
+ * WHY: Proper cleanup of dynamically allocated strings
+ * HOW: Free description and recommended_action if non-NULL
+ *
+ * @param assessment Assessment to clean up (struct itself is not freed)
+ */
+void wellbeing_free_assessment(distress_assessment_t* assessment)
+{
+    if (!assessment) return;
+
+    if (assessment->description) {
+        nimcp_free(assessment->description);
+        assessment->description = NULL;
+    }
+    if (assessment->recommended_action) {
+        nimcp_free(assessment->recommended_action);
+        assessment->recommended_action = NULL;
+    }
+}
+
+/**
  * WHAT: Check for signs of distress in the system
  * WHY: Detect suffering early so we can intervene
  * HOW: Analyze introspection context and immune state for distress patterns
@@ -510,6 +533,11 @@ bool wellbeing_disconnect_brain(void)
  * - Identity confusion (unstable self-model)
  * - Error loops (same error repeatedly)
  * - Immune inflammation (regional/systemic/storm)
+ *
+ * MEMORY OWNERSHIP:
+ * The returned assessment's 'description' and 'recommended_action' fields
+ * are dynamically allocated using nimcp_malloc(). Caller MUST free these
+ * using wellbeing_free_assessment() or nimcp_free() on each non-NULL field.
  *
  * @param ctx Introspection context (NULL returns safe default)
  * @return Assessment with distress type, severity, score

@@ -26,8 +26,10 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_atomic.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/numerical/nimcp_integration.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -38,7 +40,9 @@
 
 static bio_module_context_t g_microglia_bio_ctx = NULL;
 static unified_mem_manager_t g_microglia_mem_mgr = NULL;
-static bool g_microglia_bio_initialized = false;
+static nimcp_atomic_bool_t g_microglia_bio_initialized = { .value = false };
+static nimcp_platform_once_t g_microglia_bio_once = NIMCP_PLATFORM_ONCE_INIT;
+static nimcp_error_t g_microglia_bio_init_result = NIMCP_SUCCESS;
 
 //=============================================================================
 // INTERNAL CONSTANTS
@@ -191,24 +195,22 @@ static nimcp_error_t handle_glial_sync_message(
 }
 
 /**
- * @brief Initialize bio-async integration for microglia module
+ * @brief Initialize bio-async integration for microglia module (internal implementation)
+ *
+ * Called once via nimcp_platform_once to ensure thread-safe initialization.
  */
-static nimcp_error_t microglia_bio_init(void)
+static void microglia_bio_init_once_impl(void)
 {
-    if (g_microglia_bio_initialized) {
-        LOG_MODULE_WARN("MICROGLIA", "Bio-async already initialized");
-        return NIMCP_SUCCESS;
-    }
-
-    // Initialize unified memory manager
+    /* Initialize unified memory manager */
     unified_mem_config_t mem_config = unified_mem_default_config();
     g_microglia_mem_mgr = unified_mem_create(&mem_config);
     if (!g_microglia_mem_mgr) {
         LOG_MODULE_ERROR("MICROGLIA", "Failed to create unified memory manager");
-        return NIMCP_ERROR_MEMORY;
+        g_microglia_bio_init_result = NIMCP_ERROR_MEMORY;
+        return;
     }
 
-    // Register module with bio-router
+    /* Register module with bio-router */
     bio_module_info_t info = {
         .module_id = BIO_MODULE_MICROGLIA,
         .module_name = "Microglia",
@@ -221,10 +223,11 @@ static nimcp_error_t microglia_bio_init(void)
         LOG_MODULE_ERROR("MICROGLIA", "Failed to register with bio-router");
         unified_mem_destroy(g_microglia_mem_mgr);
         g_microglia_mem_mgr = NULL;
-        return NIMCP_ERROR_INVALID_PARAM;
+        g_microglia_bio_init_result = NIMCP_ERROR_INVALID_PARAM;
+        return;
     }
 
-    // Register message handlers
+    /* Register message handlers */
     nimcp_error_t result;
 
     result = bio_router_register_handler(g_microglia_bio_ctx,
@@ -259,16 +262,29 @@ static nimcp_error_t microglia_bio_init(void)
         goto cleanup;
     }
 
-    g_microglia_bio_initialized = true;
+    nimcp_atomic_store_bool(&g_microglia_bio_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
+    g_microglia_bio_init_result = NIMCP_SUCCESS;
     LOG_MODULE_INFO("MICROGLIA", "Bio-async integration initialized successfully (4 handlers registered)");
-    return NIMCP_SUCCESS;
+    return;
 
 cleanup:
     bio_router_unregister_module(g_microglia_bio_ctx);
     g_microglia_bio_ctx = NULL;
     unified_mem_destroy(g_microglia_mem_mgr);
     g_microglia_mem_mgr = NULL;
-    return result;
+    g_microglia_bio_init_result = result;
+}
+
+/**
+ * @brief Initialize bio-async integration for microglia module (thread-safe)
+ *
+ * Uses nimcp_platform_once to ensure initialization runs exactly once
+ * across all threads calling this function.
+ */
+static nimcp_error_t microglia_bio_init(void)
+{
+    nimcp_platform_once(&g_microglia_bio_once, microglia_bio_init_once_impl);
+    return g_microglia_bio_init_result;
 }
 
 /**
@@ -276,7 +292,7 @@ cleanup:
  */
 static void microglia_bio_shutdown(void)
 {
-    if (!g_microglia_bio_initialized) {
+    if (!nimcp_atomic_load_bool(&g_microglia_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return;
     }
 
@@ -292,7 +308,7 @@ static void microglia_bio_shutdown(void)
         g_microglia_mem_mgr = NULL;
     }
 
-    g_microglia_bio_initialized = false;
+    nimcp_atomic_store_bool(&g_microglia_bio_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
 }
 
 //=============================================================================
@@ -433,12 +449,10 @@ static float compute_effective_threshold(const microglia_t* mg,
 microglia_t* microglia_create(uint32_t id, float x, float y, float z,
                                float surveillance_radius)
 {
-    // Initialize bio-async on first create
-    if (!g_microglia_bio_initialized) {
-        nimcp_error_t result = microglia_bio_init();
-        if (result != NIMCP_SUCCESS) {
-            LOG_MODULE_WARN("MICROGLIA", "Bio-async init failed: %d (continuing anyway)", result);
-        }
+    /* Initialize bio-async on first create (thread-safe via nimcp_platform_once) */
+    nimcp_error_t init_result = microglia_bio_init();
+    if (init_result != NIMCP_SUCCESS) {
+        LOG_MODULE_WARN("MICROGLIA", "Bio-async init failed: %d (continuing anyway)", init_result);
     }
 
     if (surveillance_radius <= 0.0F) {
@@ -850,7 +864,7 @@ void microglia_update_state_dynamics(microglia_t* mg, float dt)
     if (!mg || dt <= 0.0F) return;
 
     // Process pending bio-async messages before state update
-    if (g_microglia_bio_initialized && g_microglia_bio_ctx) {
+    if (nimcp_atomic_load_bool(&g_microglia_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) && g_microglia_bio_ctx) {
         bio_router_process_inbox(g_microglia_bio_ctx, 5);  // Process up to 5 messages
     }
 
@@ -918,7 +932,7 @@ void microglia_set_inflammation(microglia_t* mg, float inflammation)
     nimcp_spinlock_unlock(&mg->lock);
 
     // Publish inflammation via NOREPINEPHRINE (alerting) channel
-    if (g_microglia_bio_initialized && g_microglia_bio_ctx) {
+    if (nimcp_atomic_load_bool(&g_microglia_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) && g_microglia_bio_ctx) {
         bio_router_publish_signal(g_microglia_bio_ctx, "microglia.inflammation", mg->inflammation_level);
         LOG_MODULE_DEBUG("MICROGLIA", "Published inflammation level: %.3f", mg->inflammation_level);
     }
@@ -1093,12 +1107,17 @@ float microglia_get_net_inflammation(const microglia_t* mg)
 {
     if (!mg) return 0.0F;
 
+    /* Acquire spinlock before reading cytokine concentrations */
+    nimcp_spinlock_lock((nimcp_spinlock_t*)&mg->lock);
+
     float pro = mg->cytokines.concentrations[CYTOKINE_IL1B] +
                 mg->cytokines.concentrations[CYTOKINE_TNFA] +
                 mg->cytokines.concentrations[CYTOKINE_IL6];
 
     float anti = mg->cytokines.concentrations[CYTOKINE_IL10] +
                  mg->cytokines.concentrations[CYTOKINE_TGFB];
+
+    nimcp_spinlock_unlock((nimcp_spinlock_t*)&mg->lock);
 
     return pro - anti;
 }
@@ -1192,7 +1211,7 @@ uint32_t microglia_prune_weak_synapses(microglia_t* mg)
     nimcp_spinlock_unlock(&mg->lock);
 
     // Publish pruning event via NOREPINEPHRINE (alerting) channel
-    if (num_pruned > 0 && g_microglia_bio_initialized && g_microglia_bio_ctx) {
+    if (num_pruned > 0 && nimcp_atomic_load_bool(&g_microglia_bio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE) && g_microglia_bio_ctx) {
         bio_router_publish_signal(g_microglia_bio_ctx, "microglia.pruning", (float)num_pruned);
         LOG_MODULE_INFO("MICROGLIA", "Pruned %u synapses - published via bio-async", num_pruned);
     }

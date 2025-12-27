@@ -46,7 +46,75 @@
 #else
 #include <fcntl.h>
 #include <unistd.h>
+#if defined(__linux__)
+#include <sys/random.h>
 #endif
+#endif
+
+//=============================================================================
+// Secure Random Helper
+//=============================================================================
+
+/**
+ * @brief Generate cryptographically secure random bytes
+ *
+ * WHAT: Fill buffer with secure random bytes
+ * WHY:  rand() is not cryptographically secure - predictable output could
+ *       compromise security timing tests and memory wipe patterns
+ * HOW:  Use getrandom() (Linux) or /dev/urandom (fallback)
+ *
+ * @param buf Buffer to fill with random bytes
+ * @param len Number of bytes to generate
+ * @return true on success, false on failure
+ */
+static bool s_secure_random_bytes(uint8_t* buf, size_t len)
+{
+    if (!buf || len == 0) {
+        return false;
+    }
+
+#ifdef _WIN32
+    // Windows: Use BCryptGenRandom
+    if (BCryptGenRandom(NULL, buf, (ULONG)len, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0) {
+        return true;
+    }
+    return false;
+
+#elif defined(__linux__)
+    // Linux: Try getrandom() first
+    ssize_t result = getrandom(buf, len, 0);
+    if (result == (ssize_t)len) {
+        return true;
+    }
+
+    // Fallback to /dev/urandom
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd >= 0) {
+        ssize_t bytes_read = read(fd, buf, len);
+        close(fd);
+        if (bytes_read == (ssize_t)len) {
+            return true;
+        }
+    }
+
+    LOG_ERROR("Failed to generate secure random bytes");
+    return false;
+
+#else
+    // Other POSIX: Use /dev/urandom
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd >= 0) {
+        ssize_t bytes_read = read(fd, buf, len);
+        close(fd);
+        if (bytes_read == (ssize_t)len) {
+            return true;
+        }
+    }
+
+    LOG_ERROR("Failed to generate secure random bytes");
+    return false;
+#endif
+}
 
 //=============================================================================
 // Internal Context Structure
@@ -528,9 +596,13 @@ bool nimcp_ct_verify_timing(const char* operation_name, size_t num_trials,
         return false;
     }
 
-    // Fill random buffer
-    for (size_t i = 0; i < test_size; i++) {
-        buf_random[i] = (uint8_t)(rand() & 0xFF);
+    // Fill random buffer with cryptographically secure random bytes
+    if (!s_secure_random_bytes(buf_random, test_size)) {
+        // Fallback: use a fixed pattern if secure random fails (test will still work)
+        LOG_WARN("Secure random unavailable, using fixed pattern for timing test");
+        for (size_t i = 0; i < test_size; i++) {
+            buf_random[i] = (uint8_t)(i ^ 0xA5);
+        }
     }
 
     // Measure timing for zeros
@@ -653,9 +725,24 @@ nimcp_result_t nimcp_secure_wipe(void* ptr, size_t len)
         p[i] = 0xFF;
     }
 
-    // Pass 3: Write random data
-    for (size_t i = 0; i < len; i++) {
-        p[i] = (uint8_t)(rand() & 0xFF);
+    // Pass 3: Write cryptographically secure random data
+    // Allocate temporary buffer for secure random bytes
+    uint8_t* random_buf = (uint8_t*)nimcp_calloc(len, 1);
+    if (random_buf && s_secure_random_bytes(random_buf, len)) {
+        for (size_t i = 0; i < len; i++) {
+            p[i] = random_buf[i];
+        }
+        nimcp_free(random_buf);
+    } else {
+        // Fallback: XOR pattern if secure random unavailable
+        // This is less ideal but still provides some entropy through the pattern
+        LOG_WARN("Secure random unavailable for wipe, using XOR pattern");
+        if (random_buf) {
+            nimcp_free(random_buf);
+        }
+        for (size_t i = 0; i < len; i++) {
+            p[i] = (uint8_t)((i * 0x5A) ^ 0xC3 ^ ((i >> 8) & 0xFF));
+        }
     }
 
     // Pass 4: Final zero

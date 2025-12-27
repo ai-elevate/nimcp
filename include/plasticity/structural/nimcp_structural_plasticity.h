@@ -594,7 +594,7 @@ int structural_plasticity_update(
  * @return 0 on success
  */
 int structural_plasticity_get_synapse_state(
-    const structural_plasticity_system_t* system,
+    structural_plasticity_system_t* system,
     uint32_t synapse_id,
     synapse_structural_state_t* state
 );
@@ -602,13 +602,13 @@ int structural_plasticity_get_synapse_state(
 /**
  * @brief Get spine morphology
  *
- * @param system Structural plasticity system
+ * @param system Structural plasticity system (non-const due to mutex)
  * @param synapse_id Synapse to query
  * @param morphology Output morphology structure
  * @return 0 on success
  */
 int structural_plasticity_get_morphology(
-    const structural_plasticity_system_t* system,
+    structural_plasticity_system_t* system,
     uint32_t synapse_id,
     spine_morphology_t* morphology
 );
@@ -616,23 +616,23 @@ int structural_plasticity_get_morphology(
 /**
  * @brief Get spine count by state
  *
- * @param system Structural plasticity system
+ * @param system Structural plasticity system (non-const due to mutex)
  * @param state State to count
  * @return Count of spines in state
  */
 uint32_t structural_plasticity_get_spine_count(
-    const structural_plasticity_system_t* system,
+    structural_plasticity_system_t* system,
     synapse_state_t state
 );
 
 /**
  * @brief Get total spine count
  *
- * @param system Structural plasticity system
+ * @param system Structural plasticity system (non-const due to mutex)
  * @return Total active spines
  */
 uint32_t structural_plasticity_get_total_spines(
-    const structural_plasticity_system_t* system
+    structural_plasticity_system_t* system
 );
 
 /* ============================================================================
@@ -689,7 +689,7 @@ int structural_plasticity_tag_complement(
  * @return true if tagged
  */
 bool structural_plasticity_is_complement_tagged(
-    const structural_plasticity_system_t* system,
+    structural_plasticity_system_t* system,
     uint32_t synapse_id
 );
 
@@ -707,7 +707,7 @@ bool structural_plasticity_is_complement_tagged(
  * @return 0 on success
  */
 int structural_plasticity_get_complement_tagged(
-    const structural_plasticity_system_t* system,
+    structural_plasticity_system_t* system,
     uint32_t* synapse_ids,
     uint32_t max_count,
     uint32_t* count

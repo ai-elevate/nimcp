@@ -170,6 +170,7 @@ extern "C" {
 #define FEP_UPDATE_INTERVAL_CORE             100    /**< Medium: Core bridges */
 #define FEP_UPDATE_INTERVAL_GLIAL            100    /**< Medium: Glial bridges */
 #define FEP_UPDATE_INTERVAL_PLASTICITY       1000   /**< Slow: Plasticity bridges */
+#define FEP_UPDATE_INTERVAL_JEPA             25     /**< Medium-fast: JEPA bridges */
 
 /* ============================================================================
  * Forward Declarations
@@ -198,6 +199,7 @@ typedef enum {
     FEP_BRIDGE_CATEGORY_ASYNC,             /**< Async communication (bio-async, timescales, etc.) */
     FEP_BRIDGE_CATEGORY_GLIAL,             /**< Glial support (astrocytes, microglia, etc.) */
     FEP_BRIDGE_CATEGORY_CORE,              /**< Core structures (cortical columns, etc.) */
+    FEP_BRIDGE_CATEGORY_JEPA,              /**< JEPA prediction (visual, speech, multimodal) */
     FEP_BRIDGE_CATEGORY_COUNT              /**< Total category count */
 } fep_bridge_category_t;
 

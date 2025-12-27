@@ -127,7 +127,7 @@ extern void set_error(const char* format, ...);
 extern task_strategy_t* strategy_create(brain_task_t task);
 
 // Decision handling (defined in nimcp_brain.c)
-extern brain_decision_t* copy_decision(const brain_decision_t* source);
+extern brain_decision_t* copy_decision(brain_decision_t* source);
 extern void brain_free_decision(brain_decision_t* decision);
 
 // Brain loading (defined in nimcp_brain.c)

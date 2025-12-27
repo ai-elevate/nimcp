@@ -73,6 +73,8 @@ middleware_context_t* middleware_context_create(brain_t brain,
 void middleware_context_destroy(middleware_context_t* context) {
     if (!context) return;
 
+    // active_neurons is allocated on-demand by middleware_context_set_active_neurons()
+    // (not in middleware_context_create), but may be NULL - freeing NULL is safe
     nimcp_free(context->active_neurons);
     nimcp_free(context->cached_features);
     nimcp_free(context->detected_patterns);
