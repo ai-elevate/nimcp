@@ -1674,14 +1674,20 @@ static tcb_action_t tpb_on_weights_updated(const tcb_event_t* event)
 
 /**
  * @brief Epoch complete callback handler
+ *
+ * Applies homeostatic scaling - drifts neuromodulators toward baseline (0.5)
  */
 static tcb_action_t tpb_on_epoch_complete(const tcb_event_t* event)
 {
+    fprintf(stderr, "[TPB DEBUG] tpb_on_epoch_complete CALLED! event=%p\n", (void*)event);
+
     if (!event || !event->user_data) {
+        fprintf(stderr, "[TPB DEBUG] tpb_on_epoch_complete returning early\n");
         return TCB_ACTION_CONTINUE;
     }
 
     tpb_context_t* ctx = (tpb_context_t*)event->user_data;
+    fprintf(stderr, "[TPB DEBUG] tpb_on_epoch_complete ctx=%p\n", (void*)ctx);
 
     /* Update stats */
     nimcp_mutex_lock(&ctx->callback_mutex);
@@ -1691,11 +1697,35 @@ static tcb_action_t tpb_on_epoch_complete(const tcb_event_t* event)
     LOG_DEBUG("[%s] Epoch %lu complete, loss=%.4f",
               TPB_LOG_MODULE, (unsigned long)event->metrics.epoch, event->metrics.loss);
 
+    /* Homeostatic scaling: drift neuromodulators toward baseline (0.5) */
+    fprintf(stderr, "[TPB DEBUG] epoch callback: ctx=%p, neuromod_system=%p\n",
+            (void*)ctx, ctx ? (void*)ctx->neuromod_system : NULL);
+    if (ctx->neuromod_system) {
+        float da, ach, ht5, ne;
+        tpb_get_neuromod_levels(ctx, &da, &ach, &ht5, &ne);
+        fprintf(stderr, "[TPB DEBUG] before drift: DA=%.2f, ACh=%.2f, 5-HT=%.2f, NE=%.2f\n",
+                da, ach, ht5, ne);
+
+        const float baseline = 0.5F;
+        const float drift_rate = 0.2F;  /* 20% drift per epoch */
+
+        da = da + (baseline - da) * drift_rate;
+        ach = ach + (baseline - ach) * drift_rate;
+        ht5 = ht5 + (baseline - ht5) * drift_rate;
+        ne = ne + (baseline - ne) * drift_rate;
+
+        tpb_set_neuromod_levels(ctx, da, ach, ht5, ne);
+        LOG_DEBUG("[%s] Homeostatic drift: DA=%.2f, ACh=%.2f, 5-HT=%.2f, NE=%.2f",
+                  TPB_LOG_MODULE, da, ach, ht5, ne);
+    }
+
     return TCB_ACTION_CONTINUE;
 }
 
 /**
  * @brief Divergence callback handler
+ *
+ * Applies calming response - elevate 5-HT (calming) and reduce NE (arousal)
  */
 static tcb_action_t tpb_on_divergence(const tcb_event_t* event)
 {
@@ -1709,6 +1739,24 @@ static tcb_action_t tpb_on_divergence(const tcb_event_t* event)
     nimcp_mutex_lock(&ctx->callback_mutex);
     ctx->callback_stats[3]++;  /* divergence_fired */
     nimcp_mutex_unlock(&ctx->callback_mutex);
+
+    /* Apply calming response: elevate 5-HT, reduce NE */
+    if (ctx->neuromod_system) {
+        float da, ach, ht5, ne;
+        tpb_get_neuromod_levels(ctx, &da, &ach, &ht5, &ne);
+
+        /* Calming response: 5-HT goes up, NE goes down */
+        ht5 = (ht5 + 1.0F) * 0.5F;  /* Move toward 1.0 */
+        if (ht5 < 0.6F) ht5 = 0.6F; /* Ensure above 0.5 */
+        if (ht5 > 1.0F) ht5 = 1.0F;
+
+        ne = ne * 0.4F;  /* Reduce arousal significantly */
+        if (ne > 0.4F) ne = 0.4F;  /* Ensure below 0.5 */
+
+        tpb_set_neuromod_levels(ctx, -1.0F, -1.0F, ht5, ne);
+        LOG_DEBUG("[%s] Calming response: 5-HT=%.2f, NE=%.2f",
+                  TPB_LOG_MODULE, ht5, ne);
+    }
 
     /* Check for NaN/Inf loss */
     if (isnan(event->metrics.loss) || isinf(event->metrics.loss)) {

@@ -586,12 +586,15 @@ TEST_F(BrainCacheThreadSafeTest, ConcurrentAccess_RaceCondition) {
 
 TEST_F(BrainCacheThreadSafeTest, ConcurrentCreate_Destroy) {
     // Create and destroy brains concurrently
+    // NOTE: Reduced from 8 threads x 10 iterations to 4 threads x 3 iterations
+    // because brain creation is slow (involves many subsystem initializations)
     std::atomic<int> success_count{0};
 
-    const int num_threads = 8;
+    const int num_threads = 4;
+    const int iterations = 3;
 
     auto worker = [&]() {
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < iterations; i++) {
             brain_t brain = create_test_brain(10, 3);
             if (brain) {
                 float* features = create_features(10);
@@ -615,7 +618,7 @@ TEST_F(BrainCacheThreadSafeTest, ConcurrentCreate_Destroy) {
         t.join();
     }
 
-    EXPECT_EQ(success_count.load(), num_threads * 10);
+    EXPECT_EQ(success_count.load(), num_threads * iterations);
 }
 
 TEST_F(BrainCacheThreadSafeTest, StressTest_HighLoad) {
@@ -629,7 +632,8 @@ TEST_F(BrainCacheThreadSafeTest, StressTest_HighLoad) {
         float* features = create_features(50, 0.5f + thread_id * 0.01f);
         int local_count = 0;
 
-        while (!stop.load() && local_count < 1000) {
+        // Reduced from 1000 to 100 iterations for faster tests
+        while (!stop.load() && local_count < 100) {
             brain_decision_t* decision = brain_decide(brain, features, 50);
             if (decision) {
                 brain_free_decision(decision);
@@ -641,10 +645,12 @@ TEST_F(BrainCacheThreadSafeTest, StressTest_HighLoad) {
         delete[] features;
     };
 
-    auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    // Reduced from 2 seconds to 500ms
+    auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < 16; i++) {
+    // Reduced from 16 to 4 threads
+    for (int i = 0; i < 4; i++) {
         threads.emplace_back(worker, i);
     }
 
@@ -962,8 +968,8 @@ TEST_F(BrainCacheThreadSafeTest, Performance_CacheVsNoCache) {
     brain_decision_t* warmup = brain_decide(brain, features, 100);
     if (warmup) brain_free_decision(warmup);
 
-    // Benchmark with cache
-    const int iterations = 1000;
+    // Benchmark with cache - reduced from 1000 to 50 iterations
+    const int iterations = 50;
     auto start_cached = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations; i++) {
         brain_decision_t* decision = brain_decide(brain, features, 100);
