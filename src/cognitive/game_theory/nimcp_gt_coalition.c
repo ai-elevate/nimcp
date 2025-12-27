@@ -1147,7 +1147,13 @@ bool nimcp_coalition_player_would_deviate(
 
     float new_payoff;
     if (target_coal_idx < 0) {
-        // Deviation to singleton
+        // Deviation to singleton - check if already a singleton
+        if (current_coal == player_bit) {
+            // Player is already alone, no deviation possible
+            nimcp_platform_mutex_unlock(&game->mutex);
+            return false;
+        }
+        // Compute payoff as singleton (value / 1 = value)
         new_payoff = get_coalition_value_cached(game, player_bit);
     } else if ((uint32_t)target_coal_idx < structure->num_coalitions) {
         // Deviation to existing coalition
