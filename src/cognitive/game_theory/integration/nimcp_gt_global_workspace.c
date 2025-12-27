@@ -17,7 +17,8 @@
 #include "cognitive/game_theory/integration/nimcp_gt_global_workspace.h"
 #include "cognitive/game_theory/nimcp_auction.h"
 #include "utils/memory/nimcp_memory.h"
-#include "core/nimcp_error.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -27,36 +28,22 @@
 
 #define MAX_GW_MODULES 64
 #define DEFAULT_HISTORY_DEPTH 100
+#define MAX_PENDING_BIDS 32
 
 //=============================================================================
 // Internal Structures
 //=============================================================================
 
 /**
- * @brief Per-module state tracking
- */
-typedef struct {
-    cognitive_module_t module;
-    float current_budget;
-    float total_spent;
-    uint64_t bids_submitted;
-    uint64_t wins;
-    float total_winning_bids;
-    float total_payments;
-    uint64_t last_win_time_ms;
-    bool active;
-} module_state_internal_t;
-
-/**
  * @brief Pending bid for current round
  */
 typedef struct {
     cognitive_module_t module;
+    float bid;
     float* content;
     uint32_t content_dim;
-    float bid;
     bool valid;
-} pending_bid_t;
+} gt_gw_pending_bid_t;
 
 /**
  * @brief Opaque context structure
@@ -67,17 +54,19 @@ struct gt_gw_auction_ctx_struct {
     nimcp_auction_t auction;
 
     // Module states
-    module_state_internal_t modules[MAX_GW_MODULES];
+    gt_gw_module_state_t module_states[MAX_GW_MODULES];
     uint32_t num_modules;
 
     // Current round bids
-    pending_bid_t pending_bids[MAX_GW_MODULES];
+    gt_gw_pending_bid_t pending_bids[MAX_PENDING_BIDS];
     uint32_t num_pending_bids;
 
     // Statistics
-    uint64_t total_rounds;
-    uint64_t total_allocations;
-    float total_revenue;
+    uint64_t rounds_completed;
+    uint64_t successful_broadcasts;
+    uint64_t reserve_failures;
+    float total_payments;
+    float total_welfare;
 
     // Timing
     uint64_t last_replenish_time_ms;
@@ -86,47 +75,61 @@ struct gt_gw_auction_ctx_struct {
 };
 
 //=============================================================================
-// Helper Functions
+// Static Helpers
 //=============================================================================
 
-static uint64_t get_time_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-static int find_module_index(gt_gw_auction_ctx_t ctx, cognitive_module_t module) {
+static int find_module_state(
+    const gt_gw_auction_ctx_t ctx,
+    cognitive_module_t module
+) {
     for (uint32_t i = 0; i < ctx->num_modules; i++) {
-        if (ctx->modules[i].module == module) {
+        if (ctx->module_states[i].module == module) {
             return (int)i;
         }
     }
     return -1;
 }
 
-static nimcp_error_t ensure_module_registered(gt_gw_auction_ctx_t ctx, cognitive_module_t module) {
-    int idx = find_module_index(ctx, module);
-    if (idx >= 0) {
-        return NIMCP_SUCCESS;
-    }
-
+static int add_module_state(
+    gt_gw_auction_ctx_t ctx,
+    cognitive_module_t module
+) {
     if (ctx->num_modules >= MAX_GW_MODULES) {
-        return NIMCP_GT_ERROR_CAPACITY;
+        return -1;
     }
 
-    module_state_internal_t* state = &ctx->modules[ctx->num_modules];
+    uint32_t idx = ctx->num_modules++;
+    gt_gw_module_state_t* state = &ctx->module_states[idx];
+
     state->module = module;
     state->current_budget = ctx->config.initial_budget;
     state->total_spent = 0.0f;
     state->bids_submitted = 0;
     state->wins = 0;
-    state->total_winning_bids = 0.0f;
-    state->total_payments = 0.0f;
+    state->avg_winning_bid = 0.0f;
+    state->avg_payment = 0.0f;
     state->last_win_time_ms = 0;
-    state->active = true;
 
-    ctx->num_modules++;
-    return NIMCP_SUCCESS;
+    return (int)idx;
+}
+
+static void update_winner_state(
+    gt_gw_auction_ctx_t ctx,
+    int module_idx,
+    float winning_bid,
+    float payment
+) {
+    gt_gw_module_state_t* state = &ctx->module_states[module_idx];
+
+    state->wins++;
+    state->total_spent += payment;
+    state->current_budget -= payment;
+    state->last_win_time_ms = nimcp_time_get_ms();
+
+    // Update running averages
+    float alpha = 1.0f / (float)state->wins;
+    state->avg_winning_bid = (1.0f - alpha) * state->avg_winning_bid + alpha * winning_bid;
+    state->avg_payment = (1.0f - alpha) * state->avg_payment + alpha * payment;
 }
 
 //=============================================================================
@@ -139,9 +142,9 @@ gt_gw_config_t gt_gw_default_config(void) {
         .reserve_price = 0.1f,
         .initial_budget = 100.0f,
         .budget_replenish_rate = 1.0f,
-        .budget_replenish_interval_ms = 1000,
+        .budget_replenish_interval_ms = 1000.0f,
         .enable_budget_constraints = true,
-        .track_bid_history = false,
+        .track_bid_history = true,
         .history_depth = DEFAULT_HISTORY_DEPTH
     };
     return config;
@@ -167,7 +170,9 @@ gt_gw_auction_ctx_t gt_gw_create(
     nimcp_auction_config_t auction_config = nimcp_auction_default_config();
     auction_config.type = NIMCP_AUCTION_SECOND_PRICE;
     auction_config.reserve_price = ctx->config.reserve_price;
-    auction_config.max_bidders = MAX_GW_MODULES;
+    auction_config.max_bidders = MAX_PENDING_BIDS;
+    auction_config.allow_tie_random = true;
+    auction_config.reveal_bids = false;
 
     ctx->auction = nimcp_auction_create(&auction_config);
     if (!ctx->auction) {
@@ -175,12 +180,15 @@ gt_gw_auction_ctx_t gt_gw_create(
         return NULL;
     }
 
+    // Initialize state
     ctx->num_modules = 0;
     ctx->num_pending_bids = 0;
-    ctx->total_rounds = 0;
-    ctx->total_allocations = 0;
-    ctx->total_revenue = 0.0f;
-    ctx->last_replenish_time_ms = get_time_ms();
+    ctx->rounds_completed = 0;
+    ctx->successful_broadcasts = 0;
+    ctx->reserve_failures = 0;
+    ctx->total_payments = 0.0f;
+    ctx->total_welfare = 0.0f;
+    ctx->last_replenish_time_ms = nimcp_time_get_ms();
     ctx->active = true;
 
     return ctx;
@@ -224,58 +232,60 @@ nimcp_error_t gt_gw_bid(
         return NIMCP_GT_ERROR_GAME_OVER;
     }
 
-    // Ensure module is registered
-    nimcp_error_t err = ensure_module_registered(ctx, module);
-    if (err != NIMCP_SUCCESS) {
-        return err;
+    if (bid < 0.0f) {
+        return NIMCP_GT_ERROR_INVALID_BID;
     }
 
-    int module_idx = find_module_index(ctx, module);
+    // Find or add module state
+    int module_idx = find_module_state(ctx, module);
     if (module_idx < 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        module_idx = add_module_state(ctx, module);
+        if (module_idx < 0) {
+            return NIMCP_GT_ERROR_CAPACITY;
+        }
     }
 
-    module_state_internal_t* state = &ctx->modules[module_idx];
+    gt_gw_module_state_t* state = &ctx->module_states[module_idx];
 
     // Check budget constraint
     if (ctx->config.enable_budget_constraints && bid > state->current_budget) {
         return NIMCP_GT_ERROR_BUDGET;
     }
 
-    // Check if module already has a pending bid this round
-    for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
-        if (ctx->pending_bids[i].module == module) {
-            // Update existing bid
-            nimcp_free(ctx->pending_bids[i].content);
-            ctx->pending_bids[i].content = nimcp_malloc(content_dim * sizeof(float));
-            if (!ctx->pending_bids[i].content) {
-                return NIMCP_ERROR_MEMORY;
-            }
-            memcpy(ctx->pending_bids[i].content, content, content_dim * sizeof(float));
-            ctx->pending_bids[i].content_dim = content_dim;
-            ctx->pending_bids[i].bid = bid;
-            return NIMCP_SUCCESS;
-        }
-    }
-
-    // Add new pending bid
-    if (ctx->num_pending_bids >= MAX_GW_MODULES) {
+    // Check pending bid capacity
+    if (ctx->num_pending_bids >= MAX_PENDING_BIDS) {
         return NIMCP_GT_ERROR_CAPACITY;
     }
 
-    pending_bid_t* pb = &ctx->pending_bids[ctx->num_pending_bids];
-    pb->module = module;
-    pb->content = nimcp_malloc(content_dim * sizeof(float));
-    if (!pb->content) {
-        return NIMCP_ERROR_MEMORY;
+    // Store pending bid
+    gt_gw_pending_bid_t* pending = &ctx->pending_bids[ctx->num_pending_bids];
+    pending->module = module;
+    pending->bid = bid;
+    pending->content_dim = content_dim;
+
+    // Copy content
+    pending->content = nimcp_malloc(content_dim * sizeof(float));
+    if (!pending->content) {
+        return NIMCP_ERROR_NO_MEMORY;
     }
-    memcpy(pb->content, content, content_dim * sizeof(float));
-    pb->content_dim = content_dim;
-    pb->bid = bid;
-    pb->valid = true;
+    memcpy(pending->content, content, content_dim * sizeof(float));
+    pending->valid = true;
 
     ctx->num_pending_bids++;
+
+    // Update module stats
     state->bids_submitted++;
+
+    // Submit to underlying auction
+    nimcp_error_t err = nimcp_auction_bid(ctx->auction, (nimcp_player_id_t)module, bid, 0);
+    if (err != NIMCP_SUCCESS) {
+        // Rollback
+        nimcp_free(pending->content);
+        pending->content = NULL;
+        pending->valid = false;
+        ctx->num_pending_bids--;
+        return err;
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -288,6 +298,10 @@ nimcp_error_t gt_gw_resolve(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    if (!ctx->active) {
+        return NIMCP_GT_ERROR_GAME_OVER;
+    }
+
     memset(result, 0, sizeof(gt_gw_round_result_t));
 
     if (ctx->num_pending_bids == 0) {
@@ -295,34 +309,10 @@ nimcp_error_t gt_gw_resolve(
         return NIMCP_SUCCESS;
     }
 
-    // Reset auction for this round
-    nimcp_auction_reset(ctx->auction);
-
-    // Submit all pending bids to auction
-    for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
-        pending_bid_t* pb = &ctx->pending_bids[i];
-        if (pb->valid) {
-            nimcp_bid_t bid = {
-                .bidder_id = (nimcp_player_id_t)pb->module,
-                .bid_amount = pb->bid,
-                .timestamp_ms = get_time_ms()
-            };
-            nimcp_auction_bid(ctx->auction, &bid);
-        }
-    }
-
-    // Resolve auction
+    // Resolve the auction
     nimcp_auction_result_t auction_result;
     nimcp_error_t err = nimcp_auction_resolve(ctx->auction, &auction_result);
     if (err != NIMCP_SUCCESS) {
-        // Clear pending bids
-        for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
-            if (ctx->pending_bids[i].content) {
-                nimcp_free(ctx->pending_bids[i].content);
-                ctx->pending_bids[i].content = NULL;
-            }
-        }
-        ctx->num_pending_bids = 0;
         return err;
     }
 
@@ -330,55 +320,61 @@ nimcp_error_t gt_gw_resolve(
     result->winner = (cognitive_module_t)auction_result.winner_id;
     result->winning_bid = auction_result.winning_bid;
     result->payment = auction_result.payment;
-    result->second_highest_bid = auction_result.second_price;
+    result->second_highest_bid = auction_result.second_highest_bid;
     result->num_bidders = ctx->num_pending_bids;
-    result->reserve_met = auction_result.sold;
+    result->reserve_met = (auction_result.final_state != NIMCP_AUCTION_STATE_NO_WINNER);
 
     // Calculate total bids
-    result->total_bids = 0.0f;
+    float total_bids = 0.0f;
     for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
-        result->total_bids += ctx->pending_bids[i].bid;
+        total_bids += ctx->pending_bids[i].bid;
     }
+    result->total_bids = total_bids;
 
-    // If winner exists, broadcast their content
+    // Update statistics
+    ctx->rounds_completed++;
+
     if (result->reserve_met) {
-        // Find winner's pending bid
+        ctx->successful_broadcasts++;
+        ctx->total_payments += result->payment;
+        ctx->total_welfare += result->winning_bid;  // Winner's valuation
+
+        // Update winner state
+        int winner_idx = find_module_state(ctx, result->winner);
+        if (winner_idx >= 0) {
+            update_winner_state(ctx, winner_idx, result->winning_bid, result->payment);
+        }
+
+        // Broadcast winner's content to global workspace
         for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
-            if (ctx->pending_bids[i].module == result->winner) {
-                // TODO: Call actual GW broadcast when available
-                // global_workspace_broadcast(ctx->workspace,
-                //     ctx->pending_bids[i].content,
-                //     ctx->pending_bids[i].content_dim);
+            if (ctx->pending_bids[i].module == result->winner && ctx->pending_bids[i].valid) {
+                // Would call global_workspace_broadcast() here
                 break;
             }
         }
-
-        // Update winner state
-        int winner_idx = find_module_index(ctx, result->winner);
-        if (winner_idx >= 0) {
-            module_state_internal_t* winner_state = &ctx->modules[winner_idx];
-            winner_state->wins++;
-            winner_state->total_winning_bids += result->winning_bid;
-            winner_state->total_payments += result->payment;
-            if (ctx->config.enable_budget_constraints) {
-                winner_state->current_budget -= result->payment;
-            }
-            winner_state->last_win_time_ms = get_time_ms();
-        }
-
-        ctx->total_allocations++;
-        ctx->total_revenue += result->payment;
+    } else {
+        ctx->reserve_failures++;
     }
 
-    // Clear pending bids
+    // Clear pending bids for next round
     for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
         if (ctx->pending_bids[i].content) {
             nimcp_free(ctx->pending_bids[i].content);
             ctx->pending_bids[i].content = NULL;
         }
+        ctx->pending_bids[i].valid = false;
     }
     ctx->num_pending_bids = 0;
-    ctx->total_rounds++;
+
+    // Create fresh auction for next round
+    nimcp_auction_destroy(ctx->auction);
+    nimcp_auction_config_t auction_config = nimcp_auction_default_config();
+    auction_config.type = NIMCP_AUCTION_SECOND_PRICE;
+    auction_config.reserve_price = ctx->config.reserve_price;
+    auction_config.max_bidders = MAX_PENDING_BIDS;
+    auction_config.allow_tie_random = true;
+
+    ctx->auction = nimcp_auction_create(&auction_config);
 
     return NIMCP_SUCCESS;
 }
@@ -407,7 +403,7 @@ bool gt_gw_compete(
         return false;
     }
 
-    return result.reserve_met && result.winner == module;
+    return (result.reserve_met && result.winner == module);
 }
 
 void gt_gw_replenish_budgets(gt_gw_auction_ctx_t ctx, float amount) {
@@ -418,14 +414,15 @@ void gt_gw_replenish_budgets(gt_gw_auction_ctx_t ctx, float amount) {
     float replenish = (amount > 0.0f) ? amount : ctx->config.budget_replenish_rate;
 
     for (uint32_t i = 0; i < ctx->num_modules; i++) {
-        ctx->modules[i].current_budget += replenish;
+        ctx->module_states[i].current_budget += replenish;
+
         // Cap at initial budget
-        if (ctx->modules[i].current_budget > ctx->config.initial_budget) {
-            ctx->modules[i].current_budget = ctx->config.initial_budget;
+        if (ctx->module_states[i].current_budget > ctx->config.initial_budget) {
+            ctx->module_states[i].current_budget = ctx->config.initial_budget;
         }
     }
 
-    ctx->last_replenish_time_ms = get_time_ms();
+    ctx->last_replenish_time_ms = nimcp_time_get_ms();
 }
 
 void gt_gw_reset_budgets(gt_gw_auction_ctx_t ctx) {
@@ -434,7 +431,7 @@ void gt_gw_reset_budgets(gt_gw_auction_ctx_t ctx) {
     }
 
     for (uint32_t i = 0; i < ctx->num_modules; i++) {
-        ctx->modules[i].current_budget = ctx->config.initial_budget;
+        ctx->module_states[i].current_budget = ctx->config.initial_budget;
     }
 }
 
@@ -451,24 +448,12 @@ nimcp_error_t gt_gw_get_module_state(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int idx = find_module_index((gt_gw_auction_ctx_t)ctx, module);
+    int idx = find_module_state((gt_gw_auction_ctx_t)ctx, module);
     if (idx < 0) {
         return NIMCP_GT_ERROR_PLAYER_NOT_FOUND;
     }
 
-    const module_state_internal_t* internal = &ctx->modules[idx];
-
-    state->module = internal->module;
-    state->current_budget = internal->current_budget;
-    state->total_spent = internal->total_spent;
-    state->bids_submitted = internal->bids_submitted;
-    state->wins = internal->wins;
-    state->avg_winning_bid = (internal->wins > 0) ?
-        internal->total_winning_bids / internal->wins : 0.0f;
-    state->avg_payment = (internal->wins > 0) ?
-        internal->total_payments / internal->wins : 0.0f;
-    state->last_win_time_ms = internal->last_win_time_ms;
-
+    *state = ctx->module_states[idx];
     return NIMCP_SUCCESS;
 }
 
@@ -494,31 +479,29 @@ nimcp_error_t gt_gw_get_stats(
 
     memset(stats, 0, sizeof(nimcp_game_stats_t));
 
-    stats->games_played = ctx->total_rounds;
+    stats->games_played = ctx->rounds_completed;
+    stats->auctions_completed = ctx->successful_broadcasts;
 
-    // Calculate wins per module
-    float total_wins = 0.0f;
-    float total_payments = 0.0f;
-    for (uint32_t i = 0; i < ctx->num_modules; i++) {
-        total_wins += ctx->modules[i].wins;
-        total_payments += ctx->modules[i].total_payments;
-    }
+    // Compute average efficiency (payments vs welfare)
+    if (ctx->successful_broadcasts > 0) {
+        stats->avg_efficiency = ctx->total_payments / ctx->total_welfare;
 
-    // Compute fairness (Jain's index on win distribution)
-    if (ctx->num_modules > 0 && total_wins > 0.0f) {
-        float sum = 0.0f;
-        float sum_sq = 0.0f;
+        // Compute fairness (Jain's index across module wins)
+        float sum_wins = 0.0f;
+        float sum_sq_wins = 0.0f;
         for (uint32_t i = 0; i < ctx->num_modules; i++) {
-            float share = (float)ctx->modules[i].wins / total_wins;
-            sum += share;
-            sum_sq += share * share;
+            float wins = (float)ctx->module_states[i].wins;
+            sum_wins += wins;
+            sum_sq_wins += wins * wins;
         }
-        stats->avg_fairness = (sum * sum) / (ctx->num_modules * sum_sq);
-    }
+        if (sum_wins > 0.0f && ctx->num_modules > 0) {
+            stats->avg_fairness_index = (sum_wins * sum_wins) /
+                ((float)ctx->num_modules * sum_sq_wins);
+        }
 
-    // Average payoff = average payment saved (bid - payment)
-    stats->avg_payoff = (ctx->total_allocations > 0) ?
-        ctx->total_revenue / ctx->total_allocations : 0.0f;
+        // Average social welfare
+        stats->avg_social_welfare = ctx->total_welfare / (float)ctx->successful_broadcasts;
+    }
 
     return NIMCP_SUCCESS;
 }

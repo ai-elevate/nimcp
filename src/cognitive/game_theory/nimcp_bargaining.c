@@ -8,7 +8,7 @@
 
 #include "cognitive/game_theory/nimcp_bargaining.h"
 #include "utils/memory/nimcp_memory.h"
-#include "utils/thread/nimcp_mutex.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <math.h>
@@ -38,7 +38,7 @@ struct nimcp_bargaining_struct {
     uint64_t start_time_ms;
 
     // Thread safety
-    nimcp_mutex_t mutex;
+    nimcp_platform_mutex_t mutex;
 };
 
 //=============================================================================
@@ -110,7 +110,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
         return NULL;
     }
 
-    if (nimcp_mutex_init(&bargaining->mutex) != NIMCP_SUCCESS) {
+    if (nimcp_platform_mutex_init(&bargaining->mutex, false) != 0) {
         nimcp_free(bargaining->offer_history);
         nimcp_free(bargaining->feasible_set);
         nimcp_free(bargaining);
@@ -120,7 +120,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
     memset(&bargaining->outcome, 0, sizeof(nimcp_bargaining_outcome_t));
     bargaining->current_round = 0;
     bargaining->num_offers = 0;
-    bargaining->start_time_ms = nimcp_time_now_ms();
+    bargaining->start_time_ms = nimcp_time_get_ms();
 
     return bargaining;
 }
@@ -128,7 +128,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
 void nimcp_bargaining_destroy(nimcp_bargaining_t bargaining) {
     if (!bargaining) return;
 
-    nimcp_mutex_destroy(&bargaining->mutex);
+    nimcp_platform_mutex_destroy(&bargaining->mutex);
     nimcp_free(bargaining->offer_history);
     nimcp_free(bargaining->feasible_set);
     nimcp_free(bargaining);
@@ -147,7 +147,7 @@ nimcp_error_t nimcp_bargaining_set_feasible_set(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
 
     // Resize if needed
     if (num_points > bargaining->max_feasible) {
@@ -156,7 +156,7 @@ nimcp_error_t nimcp_bargaining_set_feasible_set(
             num_points * sizeof(nimcp_feasible_point_t)
         );
         if (!new_set) {
-            nimcp_mutex_unlock(&bargaining->mutex);
+            nimcp_platform_mutex_unlock(&bargaining->mutex);
             return NIMCP_GT_ERROR_NO_MEMORY;
         }
         bargaining->feasible_set = new_set;
@@ -166,7 +166,7 @@ nimcp_error_t nimcp_bargaining_set_feasible_set(
     memcpy(bargaining->feasible_set, points, num_points * sizeof(nimcp_feasible_point_t));
     bargaining->num_feasible = num_points;
 
-    nimcp_mutex_unlock(&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -201,10 +201,10 @@ nimcp_error_t nimcp_bargaining_compute_nash_solution(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->num_feasible == 0) {
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
@@ -249,7 +249,7 @@ nimcp_error_t nimcp_bargaining_compute_nash_solution(
             outcome->utilities[i] = bargaining->config.disagreement_payoffs[i];
         }
         bargaining->state = NIMCP_BARGAINING_STATE_DISAGREEMENT;
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_DISAGREEMENT;
     }
 
@@ -267,7 +267,7 @@ nimcp_error_t nimcp_bargaining_compute_nash_solution(
     bargaining->outcome = *outcome;
     bargaining->state = NIMCP_BARGAINING_STATE_AGREED;
 
-    nimcp_mutex_unlock(&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -283,10 +283,10 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->num_feasible == 0) {
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
@@ -351,7 +351,7 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
     if (best_idx < 0) {
         outcome->state = NIMCP_BARGAINING_STATE_DISAGREEMENT;
         bargaining->state = NIMCP_BARGAINING_STATE_DISAGREEMENT;
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_DISAGREEMENT;
     }
 
@@ -369,7 +369,7 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
     bargaining->outcome = *outcome;
     bargaining->state = NIMCP_BARGAINING_STATE_AGREED;
 
-    nimcp_mutex_unlock(&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -385,10 +385,10 @@ nimcp_error_t nimcp_bargaining_compute_egalitarian(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->num_feasible == 0) {
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
@@ -429,7 +429,7 @@ nimcp_error_t nimcp_bargaining_compute_egalitarian(
     if (best_idx < 0) {
         outcome->state = NIMCP_BARGAINING_STATE_DISAGREEMENT;
         bargaining->state = NIMCP_BARGAINING_STATE_DISAGREEMENT;
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_DISAGREEMENT;
     }
 
@@ -447,7 +447,7 @@ nimcp_error_t nimcp_bargaining_compute_egalitarian(
     bargaining->outcome = *outcome;
     bargaining->state = NIMCP_BARGAINING_STATE_AGREED;
 
-    nimcp_mutex_unlock(&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -464,18 +464,18 @@ nimcp_error_t nimcp_bargaining_make_offer(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->state == NIMCP_BARGAINING_STATE_AGREED ||
         bargaining->state == NIMCP_BARGAINING_STATE_DISAGREEMENT ||
         bargaining->state == NIMCP_BARGAINING_STATE_TIMEOUT) {
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
     if (bargaining->current_round >= bargaining->config.max_rounds) {
         bargaining->state = NIMCP_BARGAINING_STATE_TIMEOUT;
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_TIMEOUT;
     }
 
@@ -485,7 +485,7 @@ nimcp_error_t nimcp_bargaining_make_offer(
     nimcp_offer_t* offer = &bargaining->current_offer;
     offer->proposer = proposer;
     offer->round = bargaining->current_round;
-    offer->timestamp_ms = nimcp_time_now_ms();
+    offer->timestamp_ms = nimcp_time_get_ms();
     offer->is_final = (bargaining->current_round == bargaining->config.max_rounds - 1);
 
     for (uint32_t i = 0; i < bargaining->config.num_players; i++) {
@@ -497,7 +497,7 @@ nimcp_error_t nimcp_bargaining_make_offer(
         bargaining->offer_history[bargaining->num_offers++] = *offer;
     }
 
-    nimcp_mutex_unlock(&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -510,10 +510,10 @@ nimcp_error_t nimcp_bargaining_respond(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->state != NIMCP_BARGAINING_STATE_NEGOTIATING) {
-        nimcp_mutex_unlock(&bargaining->mutex);
+        nimcp_platform_mutex_unlock(&bargaining->mutex);
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
@@ -557,7 +557,7 @@ nimcp_error_t nimcp_bargaining_respond(
         }
     }
 
-    nimcp_mutex_unlock(&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -566,7 +566,7 @@ nimcp_error_t nimcp_bargaining_advance_round(nimcp_bargaining_t bargaining) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
 
     bargaining->current_round++;
 
@@ -576,13 +576,13 @@ nimcp_error_t nimcp_bargaining_advance_round(nimcp_bargaining_t bargaining) {
 
     // Check timeout
     if (bargaining->config.timeout_ms > 0) {
-        uint64_t elapsed = nimcp_time_now_ms() - bargaining->start_time_ms;
+        uint64_t elapsed = nimcp_time_get_ms() - bargaining->start_time_ms;
         if (elapsed >= bargaining->config.timeout_ms) {
             bargaining->state = NIMCP_BARGAINING_STATE_TIMEOUT;
         }
     }
 
-    nimcp_mutex_unlock(&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -603,9 +603,9 @@ nimcp_error_t nimcp_bargaining_get_outcome(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
     *outcome = bargaining->outcome;
-    nimcp_mutex_unlock((nimcp_mutex_t*)&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -628,9 +628,9 @@ nimcp_error_t nimcp_bargaining_get_current_offer(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)&bargaining->mutex);
+    nimcp_platform_mutex_lock(&bargaining->mutex);
     *offer = bargaining->current_offer;
-    nimcp_mutex_unlock((nimcp_mutex_t*)&bargaining->mutex);
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
 
     return NIMCP_SUCCESS;
 }

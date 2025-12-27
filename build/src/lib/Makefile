@@ -2489,6 +2489,30 @@ __/cognitive/immune/nimcp_brain_immune_plasticity.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_brain_immune_plasticity.c.s
 .PHONY : __/cognitive/immune/nimcp_brain_immune_plasticity.c.s
 
+__/cognitive/immune/nimcp_code_immune.o: __/cognitive/immune/nimcp_code_immune.c.o
+.PHONY : __/cognitive/immune/nimcp_code_immune.o
+
+# target to build an object file
+__/cognitive/immune/nimcp_code_immune.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_code_immune.c.o
+.PHONY : __/cognitive/immune/nimcp_code_immune.c.o
+
+__/cognitive/immune/nimcp_code_immune.i: __/cognitive/immune/nimcp_code_immune.c.i
+.PHONY : __/cognitive/immune/nimcp_code_immune.i
+
+# target to preprocess a source file
+__/cognitive/immune/nimcp_code_immune.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_code_immune.c.i
+.PHONY : __/cognitive/immune/nimcp_code_immune.c.i
+
+__/cognitive/immune/nimcp_code_immune.s: __/cognitive/immune/nimcp_code_immune.c.s
+.PHONY : __/cognitive/immune/nimcp_code_immune.s
+
+# target to generate assembly for a file
+__/cognitive/immune/nimcp_code_immune.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_code_immune.c.s
+.PHONY : __/cognitive/immune/nimcp_code_immune.c.s
+
 __/cognitive/immune/nimcp_complement_system.o: __/cognitive/immune/nimcp_complement_system.c.o
 .PHONY : __/cognitive/immune/nimcp_complement_system.o
 
@@ -18161,6 +18185,30 @@ __/utils/containers/nimcp_vector.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_vector.c.s
 .PHONY : __/utils/containers/nimcp_vector.c.s
 
+__/utils/dispatch/nimcp_fn_dispatch.o: __/utils/dispatch/nimcp_fn_dispatch.c.o
+.PHONY : __/utils/dispatch/nimcp_fn_dispatch.o
+
+# target to build an object file
+__/utils/dispatch/nimcp_fn_dispatch.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/dispatch/nimcp_fn_dispatch.c.o
+.PHONY : __/utils/dispatch/nimcp_fn_dispatch.c.o
+
+__/utils/dispatch/nimcp_fn_dispatch.i: __/utils/dispatch/nimcp_fn_dispatch.c.i
+.PHONY : __/utils/dispatch/nimcp_fn_dispatch.i
+
+# target to preprocess a source file
+__/utils/dispatch/nimcp_fn_dispatch.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/dispatch/nimcp_fn_dispatch.c.i
+.PHONY : __/utils/dispatch/nimcp_fn_dispatch.c.i
+
+__/utils/dispatch/nimcp_fn_dispatch.s: __/utils/dispatch/nimcp_fn_dispatch.c.s
+.PHONY : __/utils/dispatch/nimcp_fn_dispatch.s
+
+# target to generate assembly for a file
+__/utils/dispatch/nimcp_fn_dispatch.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/dispatch/nimcp_fn_dispatch.c.s
+.PHONY : __/utils/dispatch/nimcp_fn_dispatch.c.s
+
 __/utils/encoding/nimcp_positional_encoding.o: __/utils/encoding/nimcp_positional_encoding.c.o
 .PHONY : __/utils/encoding/nimcp_positional_encoding.o
 
@@ -20287,6 +20335,9 @@ help:
 	@echo "... __/cognitive/immune/nimcp_brain_immune_plasticity.o"
 	@echo "... __/cognitive/immune/nimcp_brain_immune_plasticity.i"
 	@echo "... __/cognitive/immune/nimcp_brain_immune_plasticity.s"
+	@echo "... __/cognitive/immune/nimcp_code_immune.o"
+	@echo "... __/cognitive/immune/nimcp_code_immune.i"
+	@echo "... __/cognitive/immune/nimcp_code_immune.s"
 	@echo "... __/cognitive/immune/nimcp_complement_system.o"
 	@echo "... __/cognitive/immune/nimcp_complement_system.i"
 	@echo "... __/cognitive/immune/nimcp_complement_system.s"
@@ -22246,6 +22297,9 @@ help:
 	@echo "... __/utils/containers/nimcp_vector.o"
 	@echo "... __/utils/containers/nimcp_vector.i"
 	@echo "... __/utils/containers/nimcp_vector.s"
+	@echo "... __/utils/dispatch/nimcp_fn_dispatch.o"
+	@echo "... __/utils/dispatch/nimcp_fn_dispatch.i"
+	@echo "... __/utils/dispatch/nimcp_fn_dispatch.s"
 	@echo "... __/utils/encoding/nimcp_positional_encoding.o"
 	@echo "... __/utils/encoding/nimcp_positional_encoding.i"
 	@echo "... __/utils/encoding/nimcp_positional_encoding.s"

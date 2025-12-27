@@ -284,6 +284,7 @@ set(NIMCP_CORE_SOURCES
 
     # Brain Immune System (Coordination Layer for FT/Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune.c  # B/T cells, antibodies, cytokines coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_code_immune.c  # Code crash defense and hot-patching
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_plasticity.c  # Immune-plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_perception_immune.c  # Perception-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_memory_immune_integration.c  # Memory-immune integration
@@ -730,6 +731,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_atomic.c        # Atomic operations wrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_barrier.c       # Thread barrier primitive
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_mutex_pool.c    # Shared mutex pool for memory optimization
+
+    # Utils - Function Dispatch (Hot-swappable function pointers with versioning)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/dispatch/nimcp_fn_dispatch.c  # Function dispatch table with quarantine
 
     # Utils - Math (Phase 0.5: Complex Number Support for Neural Phase Coding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c  # Complex phasor operations, FFT, PAC detection (SIMD optimized)

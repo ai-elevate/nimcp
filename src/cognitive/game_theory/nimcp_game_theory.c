@@ -8,7 +8,7 @@
 
 #include "cognitive/game_theory/nimcp_game_theory.h"
 #include "utils/memory/nimcp_memory.h"
-#include "utils/thread/nimcp_mutex.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 
@@ -20,7 +20,7 @@ struct nimcp_gt_system_struct {
     nimcp_gt_config_t config;
     nimcp_game_stats_t stats;
     bool initialized;
-    nimcp_mutex_t mutex;
+    nimcp_platform_mutex_t mutex;
 };
 
 //=============================================================================
@@ -78,7 +78,7 @@ nimcp_gt_system_t nimcp_gt_create(const nimcp_gt_config_t* config) {
         system->config = nimcp_gt_default_config();
     }
 
-    if (nimcp_mutex_init(&system->mutex) != NIMCP_SUCCESS) {
+    if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
         nimcp_free(system);
         return NULL;
     }
@@ -92,7 +92,7 @@ nimcp_gt_system_t nimcp_gt_create(const nimcp_gt_config_t* config) {
 void nimcp_gt_destroy(nimcp_gt_system_t system) {
     if (!system) return;
 
-    nimcp_mutex_destroy(&system->mutex);
+    nimcp_platform_mutex_destroy(&system->mutex);
     nimcp_free(system);
 }
 
@@ -106,9 +106,9 @@ nimcp_error_t nimcp_gt_get_stats(const nimcp_gt_system_t system,
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)&system->mutex);
+    nimcp_platform_mutex_lock(&system->mutex);
     *stats = system->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)&system->mutex);
+    nimcp_platform_mutex_unlock(&system->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -116,9 +116,9 @@ nimcp_error_t nimcp_gt_get_stats(const nimcp_gt_system_t system,
 void nimcp_gt_reset_stats(nimcp_gt_system_t system) {
     if (!system) return;
 
-    nimcp_mutex_lock(&system->mutex);
+    nimcp_platform_mutex_lock(&system->mutex);
     memset(&system->stats, 0, sizeof(nimcp_game_stats_t));
-    nimcp_mutex_unlock(&system->mutex);
+    nimcp_platform_mutex_unlock(&system->mutex);
 }
 
 //=============================================================================
@@ -132,11 +132,11 @@ const char* nimcp_game_type_name(nimcp_game_type_t type) {
     return s_game_type_names[type];
 }
 
-const char* nimcp_solution_concept_name(nimcp_solution_concept_t concept) {
-    if (concept > NIMCP_SOLUTION_NUCLEOLUS) {
+const char* nimcp_solution_concept_name(nimcp_solution_concept_t solution_concept) {
+    if (solution_concept > NIMCP_SOLUTION_NUCLEOLUS) {
         return "Unknown";
     }
-    return s_solution_concept_names[concept];
+    return s_solution_concept_names[solution_concept];
 }
 
 //=============================================================================

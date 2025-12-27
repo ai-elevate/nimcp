@@ -9,12 +9,6 @@
  * WHY:  Game outcomes should affect learning and motivation
  * HOW:  Win -> DA, Loss -> 5-HT, Unfair -> NE
  *
- * BIOLOGICAL INSPIRATION:
- * - Dopamine encodes reward prediction error
- * - Serotonin modulates patience and impulse control
- * - Norepinephrine signals threat and arousal
- * - Acetylcholine drives attention and encoding
- *
  * @author NIMCP Development Team
  * @date 2024-12-27
  * @version 1.0.0
@@ -22,7 +16,7 @@
 
 #include "cognitive/game_theory/integration/nimcp_gt_neuromod.h"
 #include "utils/memory/nimcp_memory.h"
-#include "core/nimcp_error.h"
+#include "utils/error/nimcp_error_codes.h"
 #include <string.h>
 #include <math.h>
 
@@ -30,18 +24,8 @@
 // Constants
 //=============================================================================
 
-// Neuromodulator indices
-#define NM_DOPAMINE 0
-#define NM_SEROTONIN 1
-#define NM_NOREPINEPHRINE 2
-#define NM_ACETYLCHOLINE 3
-#define NUM_NEUROMODULATORS 4
-
-// Default scaling factors
-#define DEFAULT_DA_GAIN 1.0f
-#define DEFAULT_5HT_GAIN 0.5f
-#define DEFAULT_NE_GAIN 0.8f
-#define DEFAULT_ACH_GAIN 0.6f
+#define MAX_NEUROMOD_RELEASE 1.0f
+#define MIN_NEUROMOD_RELEASE 0.0f
 
 //=============================================================================
 // Internal Structures
@@ -55,30 +39,57 @@ struct gt_neuromod_bridge_struct {
     gt_neuromod_config_t config;
 
     // Cumulative release tracking
-    gt_neuromod_release_t cumulative;
+    float total_dopamine;
+    float total_serotonin;
+    float total_norepinephrine;
+    float total_acetylcholine;
+
+    // Event counts
+    uint64_t wins_processed;
+    uint64_t losses_processed;
+    uint64_t unfair_events;
+    uint64_t strategic_events;
+
+    // Running statistics
+    float avg_valence;
     uint64_t outcomes_processed;
 
     bool active;
 };
 
 //=============================================================================
-// Helper Functions
+// Static Helpers
 //=============================================================================
 
-/**
- * @brief Clamp value to [0, 1] range
- */
-static float clamp01(float x) {
-    if (x < 0.0f) return 0.0f;
-    if (x > 1.0f) return 1.0f;
-    return x;
+static float clamp_release(float value) {
+    if (value < MIN_NEUROMOD_RELEASE) return MIN_NEUROMOD_RELEASE;
+    if (value > MAX_NEUROMOD_RELEASE) return MAX_NEUROMOD_RELEASE;
+    return value;
 }
 
-/**
- * @brief Compute sigmoid for smooth response curve
- */
-static float sigmoid(float x, float steepness) {
-    return 1.0f / (1.0f + expf(-steepness * x));
+static float compute_payoff_for_player(
+    const nimcp_game_outcome_t* outcome,
+    nimcp_player_id_t player
+) {
+    // Find player in outcome
+    for (uint32_t i = 0; i < outcome->num_winners; i++) {
+        if (outcome->winners[i] == player) {
+            return outcome->allocations[i];
+        }
+    }
+    return 0.0f;  // Not a winner
+}
+
+static bool is_winner(
+    const nimcp_game_outcome_t* outcome,
+    nimcp_player_id_t player
+) {
+    for (uint32_t i = 0; i < outcome->num_winners; i++) {
+        if (outcome->winners[i] == player) {
+            return true;
+        }
+    }
+    return false;
 }
 
 //=============================================================================
@@ -88,28 +99,28 @@ static float sigmoid(float x, float steepness) {
 gt_neuromod_config_t gt_neuromod_default_config(void) {
     gt_neuromod_config_t config = {
         // Dopamine (reward/motivation)
-        .payoff_dopamine_gain = DEFAULT_DA_GAIN,
-        .win_dopamine_bonus = 0.3f,
-        .cooperation_dopamine_bonus = 0.2f,
+        .payoff_dopamine_gain = 0.1f,
+        .win_dopamine_bonus = 0.5f,
+        .cooperation_dopamine_bonus = 0.3f,
 
         // Serotonin (patience/inhibition)
-        .loss_serotonin_gain = DEFAULT_5HT_GAIN,
+        .loss_serotonin_gain = 0.2f,
         .unfair_serotonin_boost = 0.4f,
-        .timeout_serotonin_gain = 0.3f,
+        .timeout_serotonin_gain = 0.1f,
 
         // Norepinephrine (arousal/threat)
-        .competition_ne_baseline = 0.2f,
-        .fairness_violation_ne_gain = DEFAULT_NE_GAIN,
-        .uncertainty_ne_gain = 0.5f,
+        .competition_ne_baseline = 0.3f,
+        .fairness_violation_ne_gain = 0.5f,
+        .uncertainty_ne_gain = 0.2f,
 
         // Acetylcholine (attention/salience)
-        .strategic_ach_gain = DEFAULT_ACH_GAIN,
+        .strategic_ach_gain = 0.3f,
         .novel_opponent_ach_boost = 0.4f,
 
         // Thresholds
         .payoff_threshold = 0.0f,
-        .fairness_threshold = 0.3f,
-        .uncertainty_threshold = 0.6f
+        .fairness_threshold = 0.5f,
+        .uncertainty_threshold = 0.7f
     };
     return config;
 }
@@ -118,7 +129,6 @@ gt_neuromod_bridge_t gt_neuromod_bridge_create(
     neuromodulator_system_t neuromod,
     const gt_neuromod_config_t* config
 ) {
-    // neuromod can be NULL for standalone testing
     gt_neuromod_bridge_t bridge = nimcp_calloc(1, sizeof(struct gt_neuromod_bridge_struct));
     if (!bridge) {
         return NULL;
@@ -127,18 +137,29 @@ gt_neuromod_bridge_t gt_neuromod_bridge_create(
     bridge->neuromod = neuromod;
     bridge->config = config ? *config : gt_neuromod_default_config();
 
-    memset(&bridge->cumulative, 0, sizeof(gt_neuromod_release_t));
+    // Initialize counters
+    bridge->total_dopamine = 0.0f;
+    bridge->total_serotonin = 0.0f;
+    bridge->total_norepinephrine = 0.0f;
+    bridge->total_acetylcholine = 0.0f;
+
+    bridge->wins_processed = 0;
+    bridge->losses_processed = 0;
+    bridge->unfair_events = 0;
+    bridge->strategic_events = 0;
+
+    bridge->avg_valence = 0.0f;
     bridge->outcomes_processed = 0;
+
     bridge->active = true;
 
     return bridge;
 }
 
 void gt_neuromod_bridge_destroy(gt_neuromod_bridge_t bridge) {
-    if (!bridge) {
-        return;
+    if (bridge) {
+        nimcp_free(bridge);
     }
-    nimcp_free(bridge);
 }
 
 //=============================================================================
@@ -155,93 +176,68 @@ nimcp_error_t gt_neuromod_process_outcome(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    if (!bridge->active) {
+        return NIMCP_GT_ERROR_GAME_OVER;
+    }
+
     memset(release, 0, sizeof(gt_neuromod_release_t));
 
-    // Find player's payoff
-    float payoff = 0.0f;
-    bool player_found = false;
-    for (uint32_t i = 0; i < outcome->num_players; i++) {
-        if (outcome->player_ids[i] == player) {
-            payoff = outcome->payoffs[i];
-            player_found = true;
-            break;
-        }
+    // Determine player's payoff and status
+    float payoff = compute_payoff_for_player(outcome, player);
+    bool won = is_winner(outcome, player);
+    bool fair = outcome->is_fair;
+
+    // Dopamine: reward for winning and positive payoff
+    if (won) {
+        release->dopamine_released += bridge->config.win_dopamine_bonus;
+        bridge->wins_processed++;
     }
-
-    if (!player_found) {
-        return NIMCP_GT_ERROR_PLAYER_NOT_FOUND;
+    if (payoff > bridge->config.payoff_threshold) {
+        release->dopamine_released += payoff * bridge->config.payoff_dopamine_gain;
     }
+    release->dopamine_released = clamp_release(release->dopamine_released);
 
-    const gt_neuromod_config_t* cfg = &bridge->config;
-
-    // Compute dopamine release (positive outcomes)
-    if (payoff > cfg->payoff_threshold) {
-        release->dopamine_released = (payoff - cfg->payoff_threshold) * cfg->payoff_dopamine_gain;
-
-        // Bonus for winning
-        if (outcome->winner_id == player) {
-            release->dopamine_released += cfg->win_dopamine_bonus;
-        }
-
-        // Bonus for cooperation
-        if (outcome->cooperated) {
-            release->dopamine_released += cfg->cooperation_dopamine_bonus;
-        }
+    // Serotonin: patience/coping for losses
+    if (!won) {
+        release->serotonin_released += bridge->config.loss_serotonin_gain;
+        bridge->losses_processed++;
     }
-
-    // Compute serotonin release (negative outcomes, patience)
-    if (payoff < cfg->payoff_threshold) {
-        float loss = cfg->payoff_threshold - payoff;
-        release->serotonin_released = loss * cfg->loss_serotonin_gain;
+    if (!fair) {
+        release->serotonin_released += bridge->config.unfair_serotonin_boost;
     }
+    release->serotonin_released = clamp_release(release->serotonin_released);
 
-    // Check fairness and compute NE for unfairness
-    float fairness = nimcp_compute_fairness_index(
-        outcome->payoffs,
-        outcome->num_players
-    );
-
-    if (fairness < cfg->fairness_threshold) {
-        float unfairness = 1.0f - fairness;
-        release->serotonin_released += unfairness * cfg->unfair_serotonin_boost;
-        release->norepinephrine_released = unfairness * cfg->fairness_violation_ne_gain;
+    // Norepinephrine: arousal for unfair outcomes
+    if (!fair) {
+        float unfairness = 1.0f - bridge->config.fairness_threshold;
+        release->norepinephrine_released += unfairness * bridge->config.fairness_violation_ne_gain;
+        bridge->unfair_events++;
     }
+    // Baseline competition arousal
+    release->norepinephrine_released += bridge->config.competition_ne_baseline;
+    release->norepinephrine_released = clamp_release(release->norepinephrine_released);
 
-    // Baseline NE for competitive games
-    if (outcome->num_players > 1) {
-        release->norepinephrine_released += cfg->competition_ne_baseline;
+    // Acetylcholine: strategic attention
+    if (outcome->num_winners > 1) {
+        release->acetylcholine_released += bridge->config.strategic_ach_gain;
+        bridge->strategic_events++;
     }
+    release->acetylcholine_released = clamp_release(release->acetylcholine_released);
 
     // Compute net valence
-    float positive = release->dopamine_released;
-    float negative = release->serotonin_released + release->norepinephrine_released;
-    float total = positive + negative;
-    if (total > 0.0f) {
-        release->net_valence = (positive - negative) / total;
-    } else {
-        release->net_valence = 0.0f;
-    }
+    release->net_valence = (release->dopamine_released - release->serotonin_released) * 2.0f;
+    if (release->net_valence > 1.0f) release->net_valence = 1.0f;
+    if (release->net_valence < -1.0f) release->net_valence = -1.0f;
 
-    // Clamp all values to reasonable range
-    release->dopamine_released = clamp01(release->dopamine_released);
-    release->serotonin_released = clamp01(release->serotonin_released);
-    release->norepinephrine_released = clamp01(release->norepinephrine_released);
-    release->acetylcholine_released = clamp01(release->acetylcholine_released);
+    // Update cumulative stats
+    bridge->total_dopamine += release->dopamine_released;
+    bridge->total_serotonin += release->serotonin_released;
+    bridge->total_norepinephrine += release->norepinephrine_released;
+    bridge->total_acetylcholine += release->acetylcholine_released;
 
-    // Update cumulative
-    bridge->cumulative.dopamine_released += release->dopamine_released;
-    bridge->cumulative.serotonin_released += release->serotonin_released;
-    bridge->cumulative.norepinephrine_released += release->norepinephrine_released;
-    bridge->cumulative.acetylcholine_released += release->acetylcholine_released;
     bridge->outcomes_processed++;
-
-    // TODO: Actually release to neuromodulator system when available
-    // if (bridge->neuromod) {
-    //     neuromodulator_release(bridge->neuromod, NM_DOPAMINE, release->dopamine_released);
-    //     neuromodulator_release(bridge->neuromod, NM_SEROTONIN, release->serotonin_released);
-    //     neuromodulator_release(bridge->neuromod, NM_NOREPINEPHRINE, release->norepinephrine_released);
-    //     neuromodulator_release(bridge->neuromod, NM_ACETYLCHOLINE, release->acetylcholine_released);
-    // }
+    float alpha = 1.0f / (float)bridge->outcomes_processed;
+    bridge->avg_valence = (1.0f - alpha) * bridge->avg_valence + alpha * release->net_valence;
 
     return NIMCP_SUCCESS;
 }
@@ -251,22 +247,21 @@ float gt_neuromod_auction_win(
     float winning_bid,
     float payment
 ) {
-    if (!bridge) {
+    if (!bridge || !bridge->active) {
         return 0.0f;
     }
 
-    // Consumer surplus = bid - payment
+    // Consumer surplus: valuation (bid) minus payment
     float surplus = winning_bid - payment;
-    if (surplus < 0.0f) {
-        surplus = 0.0f;
-    }
+    if (surplus < 0.0f) surplus = 0.0f;
 
     // DA release proportional to surplus
-    float da = surplus * bridge->config.payoff_dopamine_gain + bridge->config.win_dopamine_bonus;
-    da = clamp01(da);
+    float da = bridge->config.win_dopamine_bonus +
+               surplus * bridge->config.payoff_dopamine_gain;
+    da = clamp_release(da);
 
-    bridge->cumulative.dopamine_released += da;
-    bridge->outcomes_processed++;
+    bridge->total_dopamine += da;
+    bridge->wins_processed++;
 
     return da;
 }
@@ -276,22 +271,24 @@ float gt_neuromod_bargaining_success(
     float agreement_value,
     float fairness_index
 ) {
-    if (!bridge) {
+    if (!bridge || !bridge->active) {
         return 0.0f;
     }
 
-    // DA based on value and fairness
-    float da = agreement_value * bridge->config.payoff_dopamine_gain;
+    // DA for reaching agreement
+    float da = bridge->config.cooperation_dopamine_bonus;
 
-    // Bonus for fair agreements
-    if (fairness_index > 0.8f) {
-        da += bridge->config.cooperation_dopamine_bonus;
+    // Bonus for valuable agreement
+    da += agreement_value * bridge->config.payoff_dopamine_gain;
+
+    // Extra bonus for fair outcomes
+    if (fairness_index > bridge->config.fairness_threshold) {
+        da += (fairness_index - bridge->config.fairness_threshold) * 0.2f;
     }
 
-    da = clamp01(da);
-
-    bridge->cumulative.dopamine_released += da;
-    bridge->outcomes_processed++;
+    da = clamp_release(da);
+    bridge->total_dopamine += da;
+    bridge->wins_processed++;
 
     return da;
 }
@@ -301,19 +298,18 @@ float gt_neuromod_bargaining_failure(
     uint32_t rounds_taken,
     uint32_t max_rounds
 ) {
-    if (!bridge || max_rounds == 0) {
+    if (!bridge || !bridge->active || max_rounds == 0) {
         return 0.0f;
     }
 
-    // 5-HT release for patience (more rounds = more 5-HT)
-    float patience_factor = (float)rounds_taken / max_rounds;
-    float serotonin = patience_factor * bridge->config.timeout_serotonin_gain +
-                      bridge->config.loss_serotonin_gain;
+    // 5-HT release for patience/timeout
+    float patience_factor = (float)rounds_taken / (float)max_rounds;
+    float serotonin = bridge->config.timeout_serotonin_gain +
+                      patience_factor * bridge->config.loss_serotonin_gain;
 
-    serotonin = clamp01(serotonin);
-
-    bridge->cumulative.serotonin_released += serotonin;
-    bridge->outcomes_processed++;
+    serotonin = clamp_release(serotonin);
+    bridge->total_serotonin += serotonin;
+    bridge->losses_processed++;
 
     return serotonin;
 }
@@ -322,15 +318,16 @@ float gt_neuromod_signal_unfairness(
     gt_neuromod_bridge_t bridge,
     float unfairness_magnitude
 ) {
-    if (!bridge) {
+    if (!bridge || !bridge->active) {
         return 0.0f;
     }
 
+    // NE for threat response to unfairness
     float ne = unfairness_magnitude * bridge->config.fairness_violation_ne_gain;
-    ne = clamp01(ne);
+    ne = clamp_release(ne);
 
-    bridge->cumulative.norepinephrine_released += ne;
-    bridge->outcomes_processed++;
+    bridge->total_norepinephrine += ne;
+    bridge->unfair_events++;
 
     return ne;
 }
@@ -340,90 +337,23 @@ float gt_neuromod_strategic_attention(
     uint32_t num_options,
     float uncertainty
 ) {
-    if (!bridge) {
+    if (!bridge || !bridge->active) {
         return 0.0f;
     }
 
-    // ACh for strategic complexity
-    float option_factor = logf(1.0f + (float)num_options) / logf(10.0f);  // Log scale
+    // ACh for attention/salience
+    float option_factor = logf((float)num_options + 1.0f) / logf(10.0f);  // Log scale
     float ach = option_factor * bridge->config.strategic_ach_gain;
 
     // Extra ACh for uncertainty
     if (uncertainty > bridge->config.uncertainty_threshold) {
         ach += (uncertainty - bridge->config.uncertainty_threshold) *
-               bridge->config.uncertainty_ne_gain;
+               bridge->config.novel_opponent_ach_boost;
     }
 
-    ach = clamp01(ach);
-
-    bridge->cumulative.acetylcholine_released += ach;
-    bridge->outcomes_processed++;
+    ach = clamp_release(ach);
+    bridge->total_acetylcholine += ach;
+    bridge->strategic_events++;
 
     return ach;
-}
-
-float gt_neuromod_shapley_reward(
-    gt_neuromod_bridge_t bridge,
-    float credit,
-    float total_value
-) {
-    if (!bridge || total_value <= 0.0f) {
-        return 0.0f;
-    }
-
-    // DA proportional to credit share
-    float credit_share = credit / total_value;
-    float da = credit_share * bridge->config.payoff_dopamine_gain;
-
-    // Bonus for significant contribution
-    if (credit_share > 0.5f) {
-        da += bridge->config.win_dopamine_bonus * (credit_share - 0.5f) * 2.0f;
-    }
-
-    da = clamp01(da);
-
-    bridge->cumulative.dopamine_released += da;
-    bridge->outcomes_processed++;
-
-    return da;
-}
-
-//=============================================================================
-// Query Functions
-//=============================================================================
-
-neuromodulator_system_t gt_neuromod_get_system(const gt_neuromod_bridge_t bridge) {
-    return bridge ? bridge->neuromod : NULL;
-}
-
-nimcp_error_t gt_neuromod_get_cumulative_release(
-    const gt_neuromod_bridge_t bridge,
-    gt_neuromod_release_t* cumulative
-) {
-    if (!bridge || !cumulative) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    *cumulative = bridge->cumulative;
-
-    // Compute average valence
-    float positive = cumulative->dopamine_released;
-    float negative = cumulative->serotonin_released + cumulative->norepinephrine_released;
-    float total = positive + negative;
-    if (total > 0.0f) {
-        cumulative->net_valence = (positive - negative) / total;
-    } else {
-        cumulative->net_valence = 0.0f;
-    }
-
-    return NIMCP_SUCCESS;
-}
-
-void gt_neuromod_reset_stats(gt_neuromod_bridge_t bridge) {
-    if (!bridge) {
-        return;
-    }
-
-    memset(&bridge->cumulative, 0, sizeof(gt_neuromod_release_t));
-    bridge->outcomes_processed = 0;
 }

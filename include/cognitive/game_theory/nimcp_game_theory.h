@@ -56,6 +56,11 @@ extern "C" {
 #define NIMCP_GT_ERROR_TIMEOUT              (NIMCP_GT_ERROR_BASE + 32)
 #define NIMCP_GT_ERROR_MECHANISM_VIOLATION  (NIMCP_GT_ERROR_BASE + 40)
 #define NIMCP_GT_ERROR_NOT_STRATEGYPROOF    (NIMCP_GT_ERROR_BASE + 41)
+#define NIMCP_GT_ERROR_CAPACITY             (NIMCP_GT_ERROR_BASE + 50)
+#define NIMCP_GT_ERROR_GAME_OVER            (NIMCP_GT_ERROR_BASE + 51)
+#define NIMCP_GT_ERROR_BID_TOO_LOW          (NIMCP_GT_ERROR_BASE + 52)
+#define NIMCP_GT_ERROR_BUDGET               (NIMCP_GT_ERROR_BASE + 53)
+#define NIMCP_GT_ERROR_PLAYER_NOT_FOUND     (NIMCP_GT_ERROR_BASE + 54)
 
 //=============================================================================
 // Bio-Async Module IDs (Range: 0x1500-0x150F)
@@ -275,7 +280,7 @@ const char* nimcp_game_type_name(nimcp_game_type_t type);
 /**
  * @brief Get solution concept name
  */
-const char* nimcp_solution_concept_name(nimcp_solution_concept_t concept);
+const char* nimcp_solution_concept_name(nimcp_solution_concept_t solution_concept);
 
 /**
  * @brief Compute Jain's fairness index

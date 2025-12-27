@@ -8,7 +8,7 @@
 
 #include "cognitive/game_theory/nimcp_credit_assignment.h"
 #include "utils/memory/nimcp_memory.h"
-#include "utils/thread/nimcp_mutex.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -33,7 +33,7 @@ struct nimcp_credit_system_struct {
     unsigned int rand_seed;
 
     // Thread safety
-    nimcp_mutex_t mutex;
+    nimcp_platform_mutex_t mutex;
 };
 
 //=============================================================================
@@ -136,7 +136,7 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
         }
     }
 
-    if (nimcp_mutex_init(&system->mutex) != NIMCP_SUCCESS) {
+    if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
         nimcp_free(system->factorial);
         nimcp_free(system->coalition_cache);
         nimcp_free(system->cache_valid);
@@ -152,7 +152,7 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
 void nimcp_credit_destroy(nimcp_credit_system_t system) {
     if (!system) return;
 
-    nimcp_mutex_destroy(&system->mutex);
+    nimcp_platform_mutex_destroy(&system->mutex);
     nimcp_free(system->factorial);
     nimcp_free(system->coalition_cache);
     nimcp_free(system->cache_valid);
@@ -204,7 +204,7 @@ nimcp_error_t nimcp_credit_compute_shapley(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&system->mutex);
+    nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
     uint32_t num_coalitions = 1u << n;
@@ -257,7 +257,7 @@ nimcp_error_t nimcp_credit_compute_shapley(
     // Check if in core
     result->is_in_core = nimcp_credit_is_in_core(system, result->credits, value_fn, user_data);
 
-    nimcp_mutex_unlock(&system->mutex);
+    nimcp_platform_mutex_unlock(&system->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -276,7 +276,7 @@ nimcp_error_t nimcp_credit_compute_shapley_single(
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
 
-    nimcp_mutex_lock(&system->mutex);
+    nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
     uint32_t num_coalitions = 1u << n;
@@ -301,7 +301,7 @@ nimcp_error_t nimcp_credit_compute_shapley_single(
 
     *credit = shapley_i;
 
-    nimcp_mutex_unlock(&system->mutex);
+    nimcp_platform_mutex_unlock(&system->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -320,7 +320,7 @@ nimcp_error_t nimcp_credit_approximate_shapley(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&system->mutex);
+    nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
     uint32_t samples = (num_samples > 0) ? num_samples : system->config.monte_carlo_samples;
@@ -330,7 +330,7 @@ nimcp_error_t nimcp_credit_approximate_shapley(
     // Allocate permutation array
     uint32_t* permutation = nimcp_malloc(n * sizeof(uint32_t));
     if (!permutation) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
         return NIMCP_GT_ERROR_NO_MEMORY;
     }
 
@@ -390,7 +390,7 @@ nimcp_error_t nimcp_credit_approximate_shapley(
     result->is_in_core = nimcp_credit_is_in_core(system, result->credits, value_fn, user_data);
 
     nimcp_free(permutation);
-    nimcp_mutex_unlock(&system->mutex);
+    nimcp_platform_mutex_unlock(&system->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -408,7 +408,7 @@ nimcp_error_t nimcp_credit_compute_banzhaf(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&system->mutex);
+    nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
     uint32_t num_coalitions = 1u << n;
@@ -418,7 +418,7 @@ nimcp_error_t nimcp_credit_compute_banzhaf(
     // Count swing votes for each player
     uint32_t* swing_counts = nimcp_calloc(n, sizeof(uint32_t));
     if (!swing_counts) {
-        nimcp_mutex_unlock(&system->mutex);
+        nimcp_platform_mutex_unlock(&system->mutex);
         return NIMCP_GT_ERROR_NO_MEMORY;
     }
 
@@ -480,7 +480,7 @@ nimcp_error_t nimcp_credit_compute_banzhaf(
     result->is_in_core = nimcp_credit_is_in_core(system, result->credits, value_fn, user_data);
 
     nimcp_free(swing_counts);
-    nimcp_mutex_unlock(&system->mutex);
+    nimcp_platform_mutex_unlock(&system->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -498,7 +498,7 @@ nimcp_error_t nimcp_credit_compute_equal_split(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&system->mutex);
+    nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
     uint32_t grand = (1u << n) - 1;
@@ -516,7 +516,7 @@ nimcp_error_t nimcp_credit_compute_equal_split(
     result->efficiency_error = 0.0f;
     result->is_in_core = nimcp_credit_is_in_core(system, result->credits, value_fn, user_data);
 
-    nimcp_mutex_unlock(&system->mutex);
+    nimcp_platform_mutex_unlock(&system->mutex);
     return NIMCP_SUCCESS;
 }
 

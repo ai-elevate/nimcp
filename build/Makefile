@@ -900,6 +900,45 @@ unit_cognitive_explanations_test_explanations_regression/fast:
 .PHONY : unit_cognitive_explanations_test_explanations_regression/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_auction
+
+# Build rule for target.
+unit_cognitive_game_theory_test_auction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_auction
+.PHONY : unit_cognitive_game_theory_test_auction
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_auction/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_auction.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_auction.dir/build
+.PHONY : unit_cognitive_game_theory_test_auction/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_bargaining
+
+# Build rule for target.
+unit_cognitive_game_theory_test_bargaining: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_bargaining
+.PHONY : unit_cognitive_game_theory_test_bargaining
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_bargaining/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_bargaining.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_bargaining.dir/build
+.PHONY : unit_cognitive_game_theory_test_bargaining/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_credit_assignment
+
+# Build rule for target.
+unit_cognitive_game_theory_test_credit_assignment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_credit_assignment
+.PHONY : unit_cognitive_game_theory_test_credit_assignment
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_credit_assignment/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_credit_assignment.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_credit_assignment.dir/build
+.PHONY : unit_cognitive_game_theory_test_credit_assignment/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_global_workspace_test_global_workspace
 
 # Build rule for target.
@@ -9777,6 +9816,45 @@ unit_cognitive_test_jepa_context: cmake_check_build_system
 unit_cognitive_test_jepa_context/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_context.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_context.dir/build
 .PHONY : unit_cognitive_test_jepa_context/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_game_theory_auction
+
+# Build rule for target.
+unit_cognitive_test_game_theory_auction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_game_theory_auction
+.PHONY : unit_cognitive_test_game_theory_auction
+
+# fast build rule for target.
+unit_cognitive_test_game_theory_auction/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_auction.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_auction.dir/build
+.PHONY : unit_cognitive_test_game_theory_auction/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_game_theory_bargaining
+
+# Build rule for target.
+unit_cognitive_test_game_theory_bargaining: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_game_theory_bargaining
+.PHONY : unit_cognitive_test_game_theory_bargaining
+
+# fast build rule for target.
+unit_cognitive_test_game_theory_bargaining/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_bargaining.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_bargaining.dir/build
+.PHONY : unit_cognitive_test_game_theory_bargaining/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_game_theory_credit
+
+# Build rule for target.
+unit_cognitive_test_game_theory_credit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_game_theory_credit
+.PHONY : unit_cognitive_test_game_theory_credit
+
+# fast build rule for target.
+unit_cognitive_test_game_theory_credit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_credit.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_credit.dir/build
+.PHONY : unit_cognitive_test_game_theory_credit/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -18867,6 +18945,9 @@ help:
 	@echo "... unit_cognitive_explanations_test_explanations_real"
 	@echo "... unit_cognitive_explanations_test_explanations_regression"
 	@echo "... unit_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... unit_cognitive_game_theory_test_auction"
+	@echo "... unit_cognitive_game_theory_test_bargaining"
+	@echo "... unit_cognitive_game_theory_test_credit_assignment"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_fep_bridge"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_immune_integration"
@@ -18945,6 +19026,9 @@ help:
 	@echo "... unit_cognitive_test_curiosity_fep_bridge"
 	@echo "... unit_cognitive_test_curiosity_immune"
 	@echo "... unit_cognitive_test_fep_bridges"
+	@echo "... unit_cognitive_test_game_theory_auction"
+	@echo "... unit_cognitive_test_game_theory_bargaining"
+	@echo "... unit_cognitive_test_game_theory_credit"
 	@echo "... unit_cognitive_test_global_workspace_immune"
 	@echo "... unit_cognitive_test_jepa_context"
 	@echo "... unit_cognitive_test_jepa_predictor"

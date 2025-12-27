@@ -8,7 +8,7 @@
 
 #include "cognitive/game_theory/nimcp_auction.h"
 #include "utils/memory/nimcp_memory.h"
-#include "utils/thread/nimcp_mutex.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <stdlib.h>
@@ -34,7 +34,7 @@ struct nimcp_auction_struct {
     nimcp_auction_result_t last_result;
 
     // Thread safety
-    nimcp_mutex_t mutex;
+    nimcp_platform_mutex_t mutex;
 };
 
 //=============================================================================
@@ -104,7 +104,7 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
         return NULL;
     }
 
-    if (nimcp_mutex_init(&auction->mutex) != NIMCP_SUCCESS) {
+    if (nimcp_platform_mutex_init(&auction->mutex, false) != 0) {
         nimcp_free(auction->bids);
         nimcp_free(auction);
         return NULL;
@@ -124,7 +124,7 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
 void nimcp_auction_destroy(nimcp_auction_t auction) {
     if (!auction) return;
 
-    nimcp_mutex_destroy(&auction->mutex);
+    nimcp_platform_mutex_destroy(&auction->mutex);
     nimcp_free(auction->bids);
     nimcp_free(auction);
 }
@@ -143,29 +143,29 @@ nimcp_error_t nimcp_auction_bid(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
 
     // Check state
     if (auction->state == NIMCP_AUCTION_STATE_COMPLETED ||
         auction->state == NIMCP_AUCTION_STATE_CANCELLED) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_AUCTION_CLOSED;
     }
 
     // Check capacity
     if (auction->num_bids >= auction->max_bids) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_NO_MEMORY;
     }
 
     // Validate bid
     if (bid_amount < 0.0f) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_INVALID_BID;
     }
 
     if (item_id >= auction->config.num_items) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
 
@@ -180,7 +180,7 @@ nimcp_error_t nimcp_auction_bid(
     bid->bid_amount = bid_amount;
     bid->item_id = item_id;
     bid->valuation = bid_amount;  // Default: valuation = bid
-    bid->timestamp_ms = nimcp_time_now_ms();
+    bid->timestamp_ms = nimcp_time_get_ms();
     bid->is_valid = true;
 
     auction->num_bids++;
@@ -192,7 +192,7 @@ nimcp_error_t nimcp_auction_bid(
         }
     }
 
-    nimcp_mutex_unlock(&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -213,11 +213,11 @@ nimcp_error_t nimcp_auction_bid_vcg(
     }
 
     // Update valuation for last bid
-    nimcp_mutex_lock(&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
     if (auction->num_bids > 0) {
         auction->bids[auction->num_bids - 1].valuation = private_valuation;
     }
-    nimcp_mutex_unlock(&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -234,11 +234,11 @@ nimcp_error_t nimcp_auction_resolve(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
 
     if (auction->state != NIMCP_AUCTION_STATE_BIDDING &&
         auction->state != NIMCP_AUCTION_STATE_CREATED) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
@@ -248,13 +248,13 @@ nimcp_error_t nimcp_auction_resolve(
     memset(result, 0, sizeof(nimcp_auction_result_t));
     result->winner_id = NIMCP_GT_INVALID_PLAYER;
     result->num_bids = auction->num_bids;
-    result->resolution_time_ms = nimcp_time_now_ms();
+    result->resolution_time_ms = nimcp_time_get_ms();
 
     // No bids case
     if (auction->num_bids == 0) {
         auction->state = NIMCP_AUCTION_STATE_NO_WINNER;
         result->final_state = NIMCP_AUCTION_STATE_NO_WINNER;
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_SUCCESS;
     }
 
@@ -281,7 +281,7 @@ nimcp_error_t nimcp_auction_resolve(
     if (!winner_bid) {
         auction->state = NIMCP_AUCTION_STATE_NO_WINNER;
         result->final_state = NIMCP_AUCTION_STATE_NO_WINNER;
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_SUCCESS;
     }
 
@@ -334,7 +334,7 @@ nimcp_error_t nimcp_auction_resolve(
     result->final_state = NIMCP_AUCTION_STATE_COMPLETED;
     auction->last_result = *result;
 
-    nimcp_mutex_unlock(&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -346,10 +346,10 @@ nimcp_error_t nimcp_auction_resolve_vcg(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
 
     if (auction->config.type != NIMCP_AUCTION_VCG) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
 
@@ -396,7 +396,7 @@ nimcp_error_t nimcp_auction_resolve_vcg(
     result->is_efficient = true;  // VCG is always efficient
 
     auction->state = NIMCP_AUCTION_STATE_COMPLETED;
-    nimcp_mutex_unlock(&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -406,9 +406,9 @@ nimcp_error_t nimcp_auction_cancel(nimcp_auction_t auction) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
     auction->state = NIMCP_AUCTION_STATE_CANCELLED;
-    nimcp_mutex_unlock(&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -425,15 +425,15 @@ nimcp_error_t nimcp_auction_ascending_round(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
 
     if (auction->config.type != NIMCP_AUCTION_ASCENDING) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
 
     *current_price = auction->current_price;
-    nimcp_mutex_unlock(&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -447,10 +447,10 @@ nimcp_error_t nimcp_auction_descending_tick(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
 
     if (auction->config.type != NIMCP_AUCTION_DESCENDING) {
-        nimcp_mutex_unlock(&auction->mutex);
+        nimcp_platform_mutex_unlock(&auction->mutex);
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
 
@@ -473,7 +473,7 @@ nimcp_error_t nimcp_auction_descending_tick(
     }
 
     *current_price = auction->current_price;
-    nimcp_mutex_unlock(&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -537,13 +537,13 @@ nimcp_error_t nimcp_auction_get_bids(
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)&auction->mutex);
+    nimcp_platform_mutex_lock(&auction->mutex);
 
     uint32_t copy_count = auction->num_bids < max_bids ? auction->num_bids : max_bids;
     memcpy(bids, auction->bids, copy_count * sizeof(nimcp_bid_t));
     *num_bids = copy_count;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)&auction->mutex);
+    nimcp_platform_mutex_unlock(&auction->mutex);
 
     return NIMCP_SUCCESS;
 }

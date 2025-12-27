@@ -613,3 +613,101 @@ gtest_discover_tests(unit_cognitive_test_jepa_context
         LABELS "unit;cognitive;jepa;context"
         TIMEOUT 180
 )
+
+# ============================================================================
+# Game Theory Tests
+# ============================================================================
+# WHAT: Unit tests for Game Theory module
+# WHY:  Validate auction mechanisms, bargaining solutions, credit assignment
+# HOW:  Test auctions (second-price, VCG), Nash bargaining, Shapley values
+# ============================================================================
+
+# Game Theory - Auction Tests
+add_executable(unit_cognitive_test_game_theory_auction
+    game_theory/test_auction.cpp
+)
+
+target_link_libraries(unit_cognitive_test_game_theory_auction
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_game_theory_auction
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_game_theory_auction PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_game_theory_auction
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;auction"
+        TIMEOUT 120
+)
+
+# Game Theory - Bargaining Tests
+add_executable(unit_cognitive_test_game_theory_bargaining
+    game_theory/test_bargaining.cpp
+)
+
+target_link_libraries(unit_cognitive_test_game_theory_bargaining
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_game_theory_bargaining
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_game_theory_bargaining PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_game_theory_bargaining
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;bargaining"
+        TIMEOUT 120
+)
+
+# Game Theory - Credit Assignment Tests
+add_executable(unit_cognitive_test_game_theory_credit
+    game_theory/test_credit_assignment.cpp
+)
+
+target_link_libraries(unit_cognitive_test_game_theory_credit
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_game_theory_credit
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_game_theory_credit PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_game_theory_credit
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;credit"
+        TIMEOUT 120
+)

@@ -110,6 +110,9 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_explanations_test_explanations_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_explanations_test_explanations_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_explanations_test_explanations_regression.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_game_theory_test_auction.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_game_theory_test_bargaining.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_game_theory_test_credit_assignment.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace_fep_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace_immune_integration.dir
@@ -1122,6 +1125,9 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_predictor.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_jepa_weights.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_context.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_auction.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_bargaining.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_credit.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/rebuild_cache.dir
