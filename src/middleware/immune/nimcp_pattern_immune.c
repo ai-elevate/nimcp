@@ -39,7 +39,7 @@ static inline float clamp_f(float value, float min, float max) {
  *
  * WHAT: Query highest inflammation level
  * WHY:  Max inflammation determines pattern degradation
- * HOW:  Iterate inflammation sites, return max
+ * HOW:  Iterate inflammation sites, return max (skip resolving sites)
  */
 static brain_inflammation_level_t get_max_inflammation_level(
     const brain_immune_system_t* immune
@@ -48,8 +48,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
 
-    /* Query immune system for inflammation sites */
+    /* Query immune system for active inflammation sites */
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Skip sites that are resolving (resolution_progress > 0) */
+        if (immune->inflammation_sites[i].resolution_progress > 0.0f) {
+            continue;
+        }
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -63,20 +67,27 @@ static brain_inflammation_level_t get_max_inflammation_level(
  *
  * WHAT: Calculate how long inflammation has persisted
  * WHY:  Chronic inflammation has cumulative effects
- * HOW:  Find oldest active inflammation site
+ * HOW:  Find oldest active inflammation site (skip resolving sites)
  */
 static float get_inflammation_duration_sec(const brain_immune_system_t* immune) {
     if (!immune || immune->inflammation_count == 0) return 0.0f;
 
     uint64_t current_time = immune->start_time;  /* Would use actual current time */
     uint64_t oldest_start = current_time;
+    bool found_active = false;
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Skip sites that are resolving */
+        if (immune->inflammation_sites[i].resolution_progress > 0.0f) {
+            continue;
+        }
         if (immune->inflammation_sites[i].start_time < oldest_start) {
             oldest_start = immune->inflammation_sites[i].start_time;
+            found_active = true;
         }
     }
 
+    if (!found_active) return 0.0f;
     return (float)(current_time - oldest_start) / 1000.0f;  /* Convert ms to sec */
 }
 
@@ -380,7 +391,7 @@ int pattern_immune_detect_pathological_oscillation(
     bool detected_anomaly = false;
     pattern_anomaly_type_t anomaly_type = PATTERN_ANOMALY_NONE;
 
-    /* Check for seizure-like high gamma */
+    /* Check for seizure-like high gamma (highest priority) */
     if (oscillation_result->bands[OSC_BAND_GAMMA].peak_frequency > PATHOLOGICAL_GAMMA_MIN_HZ) {
         bridge->pathological_oscillation.has_seizure_oscillation = true;
         bridge->pathological_oscillation.seizure_gamma_power =
@@ -388,18 +399,17 @@ int pattern_immune_detect_pathological_oscillation(
         detected_anomaly = true;
         anomaly_type = PATTERN_ANOMALY_SEIZURE_OSCILLATION;
     }
-
     /* Check for delta intrusion during waking */
-    if (oscillation_result->bands[OSC_BAND_DELTA].relative_power > PATHOLOGICAL_DELTA_WAKING_POWER) {
+    else if (oscillation_result->bands[OSC_BAND_DELTA].relative_power > PATHOLOGICAL_DELTA_WAKING_POWER) {
         bridge->pathological_oscillation.has_delta_intrusion = true;
         bridge->pathological_oscillation.delta_power_waking =
             oscillation_result->bands[OSC_BAND_DELTA].relative_power;
         detected_anomaly = true;
         anomaly_type = PATTERN_ANOMALY_DELTA_INTRUSION;
     }
-
-    /* Check for theta-gamma uncoupling */
-    if (!oscillation_result->has_theta_gamma_coupling) {
+    /* Check for theta-gamma uncoupling - only if coupling was expected but missing */
+    else if (oscillation_result->bands[OSC_BAND_THETA].power > 0.1f &&
+             !oscillation_result->has_theta_gamma_coupling) {
         bridge->pathological_oscillation.has_theta_gamma_uncoupling = true;
         detected_anomaly = true;
         anomaly_type = PATTERN_ANOMALY_THETA_GAMMA_UNCOUPLING;

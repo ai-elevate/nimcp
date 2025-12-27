@@ -21,6 +21,7 @@
 
 #include "information/nimcp_shannon.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -34,20 +35,17 @@ static bool g_shannon_initialized = false;
 static bio_module_context_t g_bio_ctx = NULL;
 static bool g_bio_async_enabled = false;
 static void* g_security_context = NULL;
+static nimcp_platform_once_t g_shannon_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
 //=============================================================================
 // Initialization and Cleanup
 //=============================================================================
 
 /**
- * @brief Initialize Shannon module
+ * @brief Initialize Shannon module (thread-safe via pthread_once)
  */
-static void shannon_init_once(void)
+static void shannon_init_internal(void)
 {
-    if (g_shannon_initialized) {
-        return;
-    }
-
     LOG_INFO("Initializing Shannon information module");
 
     // Register with bio-async router
@@ -74,6 +72,18 @@ static void shannon_init_once(void)
 
     g_shannon_initialized = true;
     LOG_INFO("Shannon information module initialized successfully");
+}
+
+/**
+ * @brief Thread-safe Shannon module initialization wrapper
+ *
+ * WHAT: Ensures Shannon module is initialized exactly once
+ * WHY:  Fix TOCTOU race condition on g_shannon_initialized check
+ * HOW:  Uses pthread_once via nimcp_platform_once for thread-safe init
+ */
+static void shannon_init_once(void)
+{
+    nimcp_platform_once(&g_shannon_init_once, shannon_init_internal);
 }
 
 //=============================================================================

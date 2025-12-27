@@ -150,8 +150,8 @@ extern "C" {
 #define CYTOKINE_IFN_GAMMA_FLUENCY_IMPACT -0.2f  /**< IFN-γ → mild fluency reduction */
 
 /* Inflammation speech impairment mapping */
-#define INFLAMMATION_WORD_RETRIEVAL_THRESHOLD  0.5f   /**< Inflammation level for word-finding difficulty */
-#define INFLAMMATION_PHONEME_ERROR_THRESHOLD   0.6f   /**< Inflammation level for phoneme errors */
+#define INFLAMMATION_WORD_RETRIEVAL_THRESHOLD  0.35f  /**< Inflammation level for word-finding difficulty */
+#define INFLAMMATION_PHONEME_ERROR_THRESHOLD   0.35f  /**< Inflammation level for phoneme errors */
 #define INFLAMMATION_MAX_SPEECH_IMPAIRMENT     0.8f   /**< Maximum speech impairment from inflammation */
 
 /* Speech effort immune trigger thresholds */

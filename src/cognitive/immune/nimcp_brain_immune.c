@@ -2506,21 +2506,19 @@ brain_inflammation_level_t brain_immune_get_inflammation_level(
     /* Lock for thread safety */
     nimcp_platform_mutex_lock(system->mutex);
 
-    /* Compute inflammation level directly from inflammation_count */
-    brain_inflammation_level_t level;
-    if (system->inflammation_count == 0) {
-        level = INFLAMMATION_NONE;
-    } else if (system->inflammation_count == 1) {
-        level = INFLAMMATION_LOCAL;
-    } else if (system->inflammation_count <= 3) {
-        level = INFLAMMATION_REGIONAL;
-    } else if (system->inflammation_count <= 6) {
-        level = INFLAMMATION_SYSTEMIC;
-    } else {
-        level = INFLAMMATION_STORM;
+    /* Find max inflammation level across all active sites */
+    brain_inflammation_level_t max_level = INFLAMMATION_NONE;
+    for (size_t i = 0; i < system->inflammation_count; i++) {
+        /* Skip sites that are resolving */
+        if (system->inflammation_sites[i].resolution_progress > 0.0f) {
+            continue;
+        }
+        if (system->inflammation_sites[i].level > max_level) {
+            max_level = system->inflammation_sites[i].level;
+        }
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
 
-    return level;
+    return max_level;
 }

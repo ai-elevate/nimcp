@@ -261,8 +261,8 @@ int normalization_immune_detect_zscore_outlier(
 
     float threshold = ctx->modulation.zscore_outlier_threshold;
 
-    /* Check if outlier */
-    if (fabsf(zscore) <= threshold) {
+    /* Check if outlier (use < so that exact threshold value is an outlier) */
+    if (fabsf(zscore) < threshold) {
         return -1;  /* Not an outlier */
     }
 
@@ -551,9 +551,8 @@ int normalization_immune_update_modulation(normalization_immune_context_t* ctx) 
         return -1;
     }
 
-    /* Query inflammation level */
-    ctx->modulation.inflammation = brain_immune_get_phase(ctx->immune_system) == IMMUNE_PHASE_EFFECTOR ?
-        INFLAMMATION_REGIONAL : INFLAMMATION_NONE;
+    /* Query actual inflammation level from immune system */
+    ctx->modulation.inflammation = brain_immune_get_inflammation_level(ctx->immune_system);
 
     /* Simplified cytokine levels (in real implementation, query from immune system) */
     /* For now, derive from inflammation level */
@@ -779,8 +778,9 @@ int normalization_immune_restore_baselines(
         return 0;  /* No restoration without IL-10 */
     }
 
-    /* Restoration rate: 0.1 per second at full IL-10 */
-    float restoration_rate = il10_level * 0.1f * (delta_ms / 1000.0f);
+    /* Restoration rate: 2.0 per second at full IL-10 (fast anti-inflammatory response) */
+    float restoration_rate = il10_level * 2.0f * (delta_ms / 1000.0f);
+    if (restoration_rate > 0.25f) restoration_rate = 0.25f;  /* Cap per-step rate */
 
     /* Restore z-score mean shift */
     ctx->modulation.zscore_mean_shift *= (1.0f - restoration_rate);

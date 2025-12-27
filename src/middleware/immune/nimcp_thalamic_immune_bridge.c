@@ -57,33 +57,23 @@ static float get_inflammation_intensity(brain_inflammation_level_t level) {
  *
  * WHAT: Query highest inflammation level across all sites
  * WHY:  Max inflammation determines routing modulation
- * HOW:  Query brain immune system state
+ * HOW:  Query brain immune system API for actual max level
  */
 static brain_inflammation_level_t get_max_inflammation_level(
     const brain_immune_system_t* immune
 ) {
     if (!immune) return INFLAMMATION_NONE;
 
-    /* Query immune system for inflammation state */
-    brain_immune_stats_t stats;
-    if (brain_immune_get_stats((brain_immune_system_t*)immune, &stats) != 0) {
-        return INFLAMMATION_NONE;
-    }
-
-    /* Infer level from inflammation sites count (simplified) */
-    if (stats.inflammation_sites == 0) return INFLAMMATION_NONE;
-    if (stats.inflammation_sites < 5) return INFLAMMATION_LOCAL;
-    if (stats.inflammation_sites < 15) return INFLAMMATION_REGIONAL;
-    if (stats.inflammation_sites < 30) return INFLAMMATION_SYSTEMIC;
-    return INFLAMMATION_STORM;
+    /* Use the brain immune API to get actual max inflammation level */
+    return brain_immune_get_inflammation_level((brain_immune_system_t*)immune);
 }
 
 /**
- * @brief Compute cytokine level (simplified)
+ * @brief Compute cytokine level
  *
- * WHAT: Estimate cytokine concentration from immune state
+ * WHAT: Query actual cytokine concentration from immune system
  * WHY:  Need cytokine levels for routing modulation
- * HOW:  Derive from inflammation level (proportional)
+ * HOW:  Use brain immune API for actual cytokine levels
  */
 static float compute_cytokine_level(
     const brain_immune_system_t* immune,
@@ -91,22 +81,34 @@ static float compute_cytokine_level(
 ) {
     if (!immune) return 0.0f;
 
-    brain_inflammation_level_t inflam = get_max_inflammation_level(immune);
-    float base_level = get_inflammation_intensity(inflam);
+    /* Query actual cytokine level from immune system */
+    float level = brain_immune_get_cytokine_level((brain_immune_system_t*)immune, type);
 
-    /* Scale by cytokine type */
-    switch (type) {
-        case BRAIN_CYTOKINE_IL6:
-            return base_level * 0.8f;  /* IL-6 tracks inflammation closely */
-        case BRAIN_CYTOKINE_IL1:
-            return base_level * 0.7f;  /* IL-1β slightly lower */
-        case BRAIN_CYTOKINE_TNF:
-            return base_level * 0.9f;  /* TNF-α highest in inflammation */
-        case BRAIN_CYTOKINE_IL10:
-            return (1.0f - base_level) * 0.5f;  /* Anti-inflammatory inverse */
-        default:
-            return 0.0f;
+    /* If no direct cytokines, fall back to inflammation-based estimate */
+    if (level < 0.01f) {
+        brain_inflammation_level_t inflam = get_max_inflammation_level(immune);
+        float base_level = get_inflammation_intensity(inflam);
+
+        /* Scale by cytokine type */
+        switch (type) {
+            case BRAIN_CYTOKINE_IL6:
+                level = base_level * 0.8f;  /* IL-6 tracks inflammation closely */
+                break;
+            case BRAIN_CYTOKINE_IL1:
+                level = base_level * 0.7f;  /* IL-1β slightly lower */
+                break;
+            case BRAIN_CYTOKINE_TNF:
+                level = base_level * 0.9f;  /* TNF-α highest in inflammation */
+                break;
+            case BRAIN_CYTOKINE_IL10:
+                level = (1.0f - base_level) * 0.5f;  /* Anti-inflammatory inverse */
+                break;
+            default:
+                level = 0.0f;
+        }
     }
+
+    return level;
 }
 
 /* ============================================================================

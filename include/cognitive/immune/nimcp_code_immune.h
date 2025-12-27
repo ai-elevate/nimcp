@@ -527,13 +527,28 @@ int code_immune_connect_signal_handler(code_immune_system_t* system);
 int code_immune_disconnect_signal_handler(code_immune_system_t* system);
 
 /**
+ * @brief Process pending crashes from async-signal-safe queue
+ *
+ * WHAT: Drain and process crashes queued by signal handler
+ * WHY:  Signal handlers cannot safely call most functions (malloc, mutex, etc.)
+ * HOW:  Read from volatile queue, call normal crash processing in safe context
+ *
+ * Call this periodically from the main thread or update loop to ensure
+ * crashes queued by signal handlers are processed.
+ *
+ * @param system Code immune system
+ */
+void code_immune_process_pending_crashes(code_immune_system_t* system);
+
+/**
  * @brief Present crash as antigen
  *
  * WHAT: Process crash signal as immune antigen
  * WHY:  Unified crash handling through immune system
  * HOW:  Create antigen from signal context
  *
- * Note: This is called from signal handler context - must be signal-safe
+ * Note: Do NOT call this directly from signal handler - use the async-safe
+ * callback which queues crashes for later processing.
  *
  * @param system Code immune system
  * @param signal Signal number (SIGSEGV, etc)

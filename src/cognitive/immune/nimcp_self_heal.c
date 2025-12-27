@@ -1886,12 +1886,15 @@ int heal_pattern_match(
 
     /* Array access pattern: check for potential underflow vs overflow */
     if (strchr(code, '[') != NULL && strchr(code, ']') != NULL) {
-        if (strstr(code, "int ") != NULL || strstr(code, "idx") != NULL) {
+        /* Buffer underflow: negative index (e.g., arr[-1] or arr[i - n]) */
+        if (strstr(code, "[-") != NULL ||
+            (strchr(code, '[') != NULL && strstr(code, " - ") != NULL)) {
             result->matched_type = FIX_PATTERN_BUFFER_UNDERFLOW;
             result->match_score = 0.65f;
             result->valid = true;
             return 0;
         }
+        /* General bounds check for array access */
         result->matched_type = FIX_PATTERN_BOUNDS_CHECK;
         result->match_score = 0.7f;
         result->valid = true;

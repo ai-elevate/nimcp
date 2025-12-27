@@ -214,6 +214,10 @@ population_immune_bridge_t* population_immune_bridge_create(
     bridge->health_metrics.overall_health = 1.0f;
     bridge->health_metrics.fully_recovered = true;
 
+    /* Initialize cytokine and inflammation effects to baseline (1.0 = no effect) */
+    bridge->cytokine_effects.tuning_width_broadening = 1.0f;
+    bridge->inflammation_state.tuning_broadening = 1.0f;
+
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {

@@ -195,8 +195,8 @@ static nimcp_result_t apply_degradation_level(
 degradation_state_t* portia_degradation_init(
     const degradation_internal_config_t* config
 ) {
-    // Security validation
-    if (config && !config) {
+    // Security validation - check for NULL config pointer
+    if (!config) {
         LOG_ERROR("Invalid config pointer");
         bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_INIT_FAILED", "Invalid config pointer");
         return NULL;

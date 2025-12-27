@@ -55,15 +55,15 @@ static float compute_sickness_behavior(const brain_immune_system_t* immune) {
         return 0.0f;
     }
 
-    /* Sickness behavior correlates with inflammation sites and system health */
+    /* Sickness behavior requires active inflammation sites */
     float sickness = 0.0f;
     if (stats.inflammation_sites > 0) {
         sickness = (float)stats.inflammation_sites / 10.0f; /* Normalize */
-    }
 
-    /* Factor in reduced system health */
-    if (stats.system_health < 0.7f) {
-        sickness += (1.0f - stats.system_health) * 0.5f;
+        /* Only factor in reduced system health if inflammation is present */
+        if (stats.system_health < 0.7f && stats.system_health > 0.0f) {
+            sickness += (1.0f - stats.system_health) * 0.5f;
+        }
     }
 
     return clamp_f(sickness, 0.0f, 1.0f);
@@ -218,6 +218,11 @@ visual_immune_bridge_t* visual_immune_bridge_create(
         nimcp_free(bridge);
         return NULL;
     }
+
+    /* Initialize cytokine effect factors to baseline (1.0 = no impairment) */
+    bridge->cytokine_effects.total_processing_factor = 1.0f;
+    bridge->cytokine_effects.total_accuracy_factor = 1.0f;
+    bridge->cytokine_effects.total_attention_factor = 1.0f;
 
     LOG_MODULE_INFO("visual_immune_bridge", "Bridge created successfully");
     return bridge;

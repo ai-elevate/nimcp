@@ -69,7 +69,7 @@ extern "C" {
 
 #define NORMALIZATION_IMMUNE_MAX_OUTLIERS          64
 #define NORMALIZATION_IMMUNE_BASELINE_FEVER_SHIFT  1.5f   /**< Fever: 1.5x baseline */
-#define NORMALIZATION_IMMUNE_STORM_CLAMP_FACTOR    3.0f   /**< Clamp at 3σ during storm */
+#define NORMALIZATION_IMMUNE_STORM_CLAMP_FACTOR    2.0f   /**< Clamp at 2σ during storm (tighter than normal 3σ) */
 #define NORMALIZATION_IMMUNE_ZSCORE_THRESHOLD      3.0f   /**< >3σ = outlier */
 #define NORMALIZATION_IMMUNE_MIN_LEARNING_RATE     0.001f
 #define NORMALIZATION_IMMUNE_MAX_LEARNING_RATE     0.5f

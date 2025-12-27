@@ -85,6 +85,11 @@ TEST_F(ThalamicImmuneTest, CytokineModulationOfPriority) {
     brain_immune_t_help_b(immune, helper_id, b_cell_id);
     brain_immune_produce_antibody(immune, b_cell_id, ANTIBODY_IGG, &antibody_id);
 
+    // Create actual inflammation site to trigger cytokine release
+    uint32_t site_id;
+    brain_immune_initiate_inflammation(immune, 0, antigen_id, &site_id);
+    brain_immune_escalate_inflammation(immune, site_id);  // Escalate to REGIONAL
+
     // Apply cytokine effects to routing
     int result = thalamic_immune_apply_cytokine_effects(bridge);
     EXPECT_EQ(result, 0);
@@ -104,12 +109,15 @@ TEST_F(ThalamicImmuneTest, CytokineModulationOfPriority) {
  * BIOLOGICAL: Systemic inflammation → reduced sensory gating, threat focus
  */
 TEST_F(ThalamicImmuneTest, InflammationHypervigilance) {
-    // Create regional inflammation by multiple antigens
-    for (int i = 0; i < 10; i++) {
-        uint32_t antigen_id;
-        uint8_t epitope[] = {(uint8_t)(0x10 + i), 0x20, 0x30};
-        brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL, epitope, 3, 6, 0, &antigen_id);
-    }
+    // Create regional inflammation
+    uint32_t antigen_id;
+    uint8_t epitope[] = {0x10, 0x20, 0x30};
+    brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL, epitope, 3, 7, 0, &antigen_id);
+
+    // Initiate and escalate inflammation
+    uint32_t site_id;
+    brain_immune_initiate_inflammation(immune, 0, antigen_id, &site_id);
+    brain_immune_escalate_inflammation(immune, site_id);  // REGIONAL
 
     // Apply inflammation effects
     int result = thalamic_immune_apply_inflammation_effects(bridge);
@@ -135,6 +143,12 @@ TEST_F(ThalamicImmuneTest, ThreatSignalEscalation) {
     uint32_t antigen_id;
     uint8_t epitope[] = {0xAA, 0xBB, 0xCC};
     brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL, epitope, 3, 9, 0, &antigen_id);
+
+    // Initiate and escalate inflammation for proper threat response
+    uint32_t site_id;
+    brain_immune_initiate_inflammation(immune, 0, antigen_id, &site_id);
+    brain_immune_escalate_inflammation(immune, site_id);  // REGIONAL
+    brain_immune_escalate_inflammation(immune, site_id);  // SYSTEMIC
 
     // Apply inflammation
     thalamic_immune_apply_inflammation_effects(bridge);

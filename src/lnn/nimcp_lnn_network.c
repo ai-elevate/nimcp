@@ -178,25 +178,30 @@ void lnn_network_destroy(lnn_network_t* network) {
     if (network->layers) {
         for (uint32_t i = 0; i < network->n_layers; i++) {
             lnn_layer_destroy(network->layers[i]);
+            network->layers[i] = NULL;  // Prevent use-after-free
         }
         nimcp_free(network->layers);
+        network->layers = NULL;  // Prevent use-after-free
     }
 
     // Clear and free state history
     lnn_network_clear_history(network);
     if (network->state_history) {
         nimcp_free(network->state_history);
+        network->state_history = NULL;  // Prevent use-after-free
     }
 
     // Destroy config
     if (network->config) {
         lnn_config_destroy(network->config);
         nimcp_free(network->config);
+        network->config = NULL;  // Prevent use-after-free
     }
 
     // Destroy mutex
     if (network->mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)network->mutex);
+        network->mutex = NULL;  // Prevent use-after-free
     }
 
     // Free network structure

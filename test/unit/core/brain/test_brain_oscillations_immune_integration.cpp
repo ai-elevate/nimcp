@@ -181,8 +181,8 @@ TEST_F(BrainOscillationImmuneTest, ComputeEffectsCytokineClamp) {
     // Negative should be clamped to 0
     EXPECT_FLOAT_EQ(effects_neg.delta_amplification, 1.0f);
 
-    // Over 1.0 should be clamped to 1.0
-    EXPECT_NEAR(effects_over.delta_amplification, 1.3f, 0.01f);
+    // Over 1.0 should be clamped to 1.0 (delta_amp = 1.0 + 0.32*1.0 = 1.32)
+    EXPECT_NEAR(effects_over.delta_amplification, 1.32f, 0.01f);
 }
 
 //=============================================================================

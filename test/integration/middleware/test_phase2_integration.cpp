@@ -108,7 +108,14 @@ TEST_F(Phase2IntegrationTest, PopulationRateCodingBasicIntegration) {
 
     // Population coding should integrate rate information
     // This tests the encoding pipeline
-    EXPECT_TRUE(true);  // Placeholder - implement when APIs are ready
+    // Verify rate array has valid values as basic sanity check
+    float total_rate = 0.0f;
+    for (int i = 0; i < 10; i++) {
+        EXPECT_GE(rates[i], 0.0f) << "Rate at index " << i << " should be non-negative";
+        total_rate += rates[i];
+    }
+    EXPECT_GT(total_rate, 0.0f) << "Total firing rate should be positive";
+    // TODO: Add population_coder_encode(population_coder, rates, 10) when API ready
 }
 
 TEST_F(Phase2IntegrationTest, PopulationRateCodingMultiplePopulations) {
@@ -235,7 +242,10 @@ TEST_F(Phase2IntegrationTest, FeatureExtractorRateCodingBasic) {
 
     // Feature extractor should use rate coding internally
     // for FEATURE_FIRING_RATE extraction
-    EXPECT_TRUE(true);  // Placeholder
+    // Verify basic creation succeeded as integration sanity check
+    EXPECT_NE(feature_extractor, nullptr) << "Feature extractor should be created";
+    EXPECT_NE(rate_coder, nullptr) << "Rate coder should be created";
+    // TODO: Add feature_extractor_extract_rate(feature_extractor, rate_coder) when API ready
 }
 
 TEST_F(Phase2IntegrationTest, FeatureExtractorRateCodingMultipleWindows) {
@@ -277,7 +287,9 @@ TEST_F(Phase2IntegrationTest, FeatureExtractorTemporalCodingBasic) {
     ASSERT_NE(temporal_coder, nullptr);
 
     // Feature extractor should detect temporal patterns
-    EXPECT_TRUE(true);  // Placeholder
+    EXPECT_NE(feature_extractor, nullptr) << "Feature extractor should be created";
+    EXPECT_NE(temporal_coder, nullptr) << "Temporal coder should be created";
+    // TODO: Add temporal pattern detection API calls when ready
 }
 
 TEST_F(Phase2IntegrationTest, FeatureExtractorTemporalBurstDetection) {
@@ -332,7 +344,10 @@ TEST_F(Phase2IntegrationTest, FeatureExtractorPopulationCodingBasic) {
     ASSERT_NE(feature_extractor, nullptr);
     ASSERT_NE(population_coder, nullptr);
 
-    EXPECT_TRUE(true);  // Placeholder
+    // Verify components created successfully
+    EXPECT_NE(feature_extractor, nullptr) << "Feature extractor should be created";
+    EXPECT_NE(population_coder, nullptr) << "Population coder should be created";
+    // TODO: Add population pattern extraction API calls when ready
 }
 
 TEST_F(Phase2IntegrationTest, FeatureExtractorPopulationSpatialPatterns) {
@@ -392,7 +407,11 @@ TEST_F(Phase2IntegrationTest, PipelineSpikeToPopulationToFeatures) {
     // Step 2: Rate code → Population code
     // Step 3: Population code → Features
 
-    EXPECT_TRUE(true);  // Placeholder for full pipeline
+    // Verify pipeline components exist
+    EXPECT_NE(rate_coder, nullptr) << "Rate coder (step 1) should be created";
+    EXPECT_NE(population_coder, nullptr) << "Population coder (step 2) should be created";
+    EXPECT_NE(feature_extractor, nullptr) << "Feature extractor (step 3) should be created";
+    // TODO: Add full pipeline execution when APIs ready
 }
 
 TEST_F(Phase2IntegrationTest, PipelineMultipleEncodingsToFeatures) {
@@ -417,8 +436,8 @@ TEST_F(Phase2IntegrationTest, PipelineRealBrainNetworkFeatureExtraction) {
     // WHY: Validate integration with core brain systems
 
     // This test requires actual brain/network integration
-    // Placeholder for when brain integration is complete
-    EXPECT_TRUE(true);
+    // Skip until brain integration is complete
+    GTEST_SKIP() << "Brain integration not yet complete - skipping neural network feature extraction test";
 }
 
 //=============================================================================
@@ -495,8 +514,10 @@ TEST_F(Phase2IntegrationTest, PerformanceMemoryUsageValidation) {
         rate_coder_destroy(temp_coder);
     }
 
-    // Should not leak memory
-    EXPECT_TRUE(true);
+    // Should not leak memory - verify components still work after many iterations
+    rate_coder_t final_coder = rate_coder_create(nullptr);
+    EXPECT_NE(final_coder, nullptr) << "Should be able to create rate coder after stress test";
+    rate_coder_destroy(final_coder);
 }
 
 TEST_F(Phase2IntegrationTest, PerformanceThroughputHighFrequency) {

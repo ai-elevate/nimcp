@@ -51,6 +51,25 @@ static void decay_antibodies(code_immune_system_t* system, uint64_t delta_ms);
 static code_immune_system_t* g_code_immune_instance = NULL;
 
 /* ============================================================================
+ * Async-Signal-Safe Crash Queue
+ * ============================================================================
+ * Signal handlers can only call async-signal-safe functions. We use volatile
+ * sig_atomic_t to safely communicate with the main thread without locks.
+ */
+#include <signal.h>
+
+#define SIGNAL_SAFE_QUEUE_SIZE 8
+
+typedef struct {
+    volatile sig_atomic_t signal;
+    volatile sig_atomic_t valid;
+} signal_safe_crash_entry_t;
+
+static signal_safe_crash_entry_t g_pending_crashes[SIGNAL_SAFE_QUEUE_SIZE];
+static volatile sig_atomic_t g_pending_crash_head = 0;
+static volatile sig_atomic_t g_pending_crash_count = 0;
+
+/* ============================================================================
  * String Conversion
  * ============================================================================ */
 
@@ -439,15 +458,63 @@ int code_immune_stop(code_immune_system_t* system) {
  * ============================================================================ */
 
 /**
- * @brief Signal handler callback for code immune
+ * @brief Process pending crashes queued from signal handler
  *
- * Called from signal handler context - must be signal-safe.
+ * WHAT: Drain the async-signal-safe crash queue and process each crash
+ * WHY:  Signal handlers cannot safely call most functions; defer to main thread
+ * HOW:  Read from volatile queue and call normal crash processing
+ *
+ * Call this periodically from the main thread or update loop.
+ */
+void code_immune_process_pending_crashes(code_immune_system_t* system) {
+    if (!system) return;
+
+    while (g_pending_crash_count > 0) {
+        sig_atomic_t idx = g_pending_crash_head;
+        if (!g_pending_crashes[idx].valid) break;
+
+        int sig = (int)g_pending_crashes[idx].signal;
+        g_pending_crashes[idx].valid = 0;
+
+        /* Update head with wraparound */
+        g_pending_crash_head = (g_pending_crash_head + 1) % SIGNAL_SAFE_QUEUE_SIZE;
+        g_pending_crash_count--;
+
+        /* Now safe to call full crash processing */
+        code_immune_present_crash(system, sig, NULL, NULL);
+    }
+}
+
+/**
+ * @brief Signal handler callback for code immune (ASYNC-SIGNAL-SAFE)
+ *
+ * WHAT: Queue crash for deferred processing
+ * WHY:  Signal handlers can only use async-signal-safe functions
+ * HOW:  Write to volatile queue without locks, process later in main thread
+ *
+ * Called from signal handler context - uses ONLY async-signal-safe operations:
+ * - Reading/writing volatile sig_atomic_t variables
+ * - No malloc, no mutex, no logging, no snprintf
  */
 static void code_immune_signal_callback(int sig) {
+    /* Cannot use locks in signal handler - check volatile pointer */
     if (!g_code_immune_instance) return;
 
-    /* Queue crash for processing - minimal work in signal context */
-    code_immune_present_crash(g_code_immune_instance, sig, NULL, NULL);
+    /* Check if queue has space (async-safe: volatile read) */
+    if (g_pending_crash_count >= SIGNAL_SAFE_QUEUE_SIZE) {
+        /* Queue full - drop this crash (better than undefined behavior) */
+        return;
+    }
+
+    /* Find next slot (async-safe: volatile arithmetic) */
+    sig_atomic_t idx = (g_pending_crash_head + g_pending_crash_count) % SIGNAL_SAFE_QUEUE_SIZE;
+
+    /* Store crash info (async-safe: volatile writes) */
+    g_pending_crashes[idx].signal = (sig_atomic_t)sig;
+    g_pending_crashes[idx].valid = 1;
+    g_pending_crash_count++;
+
+    /* Note: actual crash processing deferred to code_immune_process_pending_crashes() */
 }
 
 /**

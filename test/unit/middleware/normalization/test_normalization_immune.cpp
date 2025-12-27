@@ -144,11 +144,11 @@ TEST_F(NormalizationImmuneTest, DetectZScoreOutlier) {
     /* Prime normalizer: mean=0, stddev=1 */
     PrimeZScoreNormalizer(channel, 0.0f, 1.0f, 100);
 
-    /* Feed outlier value (5 sigma) */
+    /* Feed outlier value (5 sigma) - normalizer clips to 3.0 */
     float outlier_value = 5.0f;
     float zscore_val = zscore_normalizer_transform(zscore, channel, outlier_value);
 
-    EXPECT_GT(fabs(zscore_val), 3.0f);  /* Should be outlier */
+    EXPECT_GE(fabs(zscore_val), 3.0f);  /* At or beyond threshold (clipped to 3.0) */
 
     /* Detect outlier */
     uint32_t outlier_id;
