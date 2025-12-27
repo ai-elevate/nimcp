@@ -96,6 +96,10 @@
 #include "cognitive/immune/nimcp_heal_patterns.h"
 #include "lnn/nimcp_lnn.h"
 
+/* Forward declaration for signal handler types */
+struct signal_crash_context;
+typedef struct signal_crash_context signal_crash_context_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -391,6 +395,24 @@ fix_pattern_type_t self_heal_analyze_crash(
 int self_heal_extract_features(
     self_heal_engine_t* engine,
     const brain_antigen_t* antigen,
+    crash_features_t* features
+);
+
+/**
+ * @brief Extract extended features from crash context
+ *
+ * WHAT: Convert crash context (signal, backtrace) to numerical features
+ * WHY:  More detailed crash signature for better fix prediction
+ * HOW:  Encode signal type, addresses, backtrace patterns
+ *
+ * @param engine Self-healing engine
+ * @param crash_ctx Crash context from signal handler
+ * @param features Output feature vector
+ * @return 0 on success, negative on error
+ */
+int self_heal_extract_features_from_context(
+    self_heal_engine_t* engine,
+    const signal_crash_context_t* crash_ctx,
     crash_features_t* features
 );
 

@@ -15,7 +15,9 @@
 #define LOG_MODULE "portia_degradation"
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
+#include <stdatomic.h>
+#include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_thread.h"
 
 /**
  * Internal context for degradation management
@@ -26,6 +28,15 @@ typedef struct {
 } degradation_context_t;
 
 static degradation_context_t g_degradation_ctx = {0};
+static nimcp_mutex_t* g_degradation_mutex = NULL;
+static nimcp_platform_once_t g_degradation_once = NIMCP_PLATFORM_ONCE_INIT;
+
+/**
+ * @brief Initialize the degradation context mutex (called once)
+ */
+static void init_degradation_mutex(void) {
+    g_degradation_mutex = nimcp_mutex_create(NULL);
+}
 
 /**
  * Default feature definitions
@@ -191,6 +202,9 @@ degradation_state_t* portia_degradation_init(
         return NULL;
     }
 
+    // Thread-safe initialization of global mutex
+    nimcp_platform_once(&g_degradation_once, init_degradation_mutex);
+
     LOG_INFO("Initializing portia degradation system");
 
     // Allocate state
@@ -237,7 +251,8 @@ degradation_state_t* portia_degradation_init(
     qsort(state->features, state->feature_count,
           sizeof(degradation_feature_t), compare_features_by_level);
 
-    // Store context
+    // Store context (protected by global mutex)
+    nimcp_mutex_lock(g_degradation_mutex);
     if (config) {
         memcpy(&g_degradation_ctx.config, config,
                sizeof(degradation_internal_config_t));
@@ -255,6 +270,7 @@ degradation_state_t* portia_degradation_init(
     }
 
     g_degradation_ctx.initialized = true;
+    nimcp_mutex_unlock(g_degradation_mutex);
 
     LOG_INFO("Degradation system initialized with %u features", state->feature_count);
     bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_INIT_SUCCESS",
@@ -285,7 +301,12 @@ void portia_degradation_cleanup(degradation_state_t* state) {
 
     nimcp_free(state);
 
-    g_degradation_ctx.initialized = false;
+    // Protected write to global context
+    if (g_degradation_mutex) {
+        nimcp_mutex_lock(g_degradation_mutex);
+        g_degradation_ctx.initialized = false;
+        nimcp_mutex_unlock(g_degradation_mutex);
+    }
 
     LOG_INFO("Degradation system cleanup complete");
 }

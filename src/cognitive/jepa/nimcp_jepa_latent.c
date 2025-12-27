@@ -21,7 +21,7 @@
 #define LOG_MODULE "[JEPA_LATENT]"
 
 /* ============================================================================
- * Global Statistics (thread-local for thread safety)
+ * Global Statistics (accessed via atomics for thread safety)
  * ============================================================================ */
 
 static jepa_latent_stats_t g_latent_stats = {0};

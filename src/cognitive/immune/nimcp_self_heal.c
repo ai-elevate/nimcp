@@ -1817,6 +1817,7 @@ int heal_pattern_match(
     pattern_match_result_t* result)
 {
     if (library == NULL || code == NULL || result == NULL) return -1;
+    (void)code_len; /* May be used for future bounds checking */
 
     memset(result, 0, sizeof(pattern_match_result_t));
 
@@ -1830,12 +1831,84 @@ int heal_pattern_match(
         return 0;
     }
 
-    /* Array access pattern: array[idx] */
+    /* Format string vulnerability: printf(var) without format specifier */
+    if ((strstr(code, "printf(") != NULL || strstr(code, "sprintf(") != NULL ||
+         strstr(code, "fprintf(") != NULL) &&
+        strstr(code, "\"%") == NULL) {
+        result->matched_type = FIX_PATTERN_FORMAT_STRING;
+        result->match_score = 0.85f;
+        result->valid = true;
+        return 0;
+    }
+
+    /* Resource leak: open/fopen/malloc without matching close/free */
+    if ((strstr(code, "fopen(") != NULL || strstr(code, "open(") != NULL ||
+         strstr(code, "socket(") != NULL) &&
+        strstr(code, "fclose") == NULL && strstr(code, "close(") == NULL) {
+        result->matched_type = FIX_PATTERN_RESOURCE_LEAK;
+        result->match_score = 0.7f;
+        result->valid = true;
+        return 0;
+    }
+
+    /* Recursive function call (potential stack overflow) */
+    if (strstr(code, "recursive") != NULL || strstr(code, "self_call") != NULL) {
+        result->matched_type = FIX_PATTERN_STACK_OVERFLOW;
+        result->match_score = 0.6f;
+        result->valid = true;
+        return 0;
+    }
+
+    /* Mutex lock patterns (race condition or deadlock) */
+    if (strstr(code, "mutex_lock") != NULL || strstr(code, "pthread_mutex") != NULL) {
+        const char* first_lock = strstr(code, "lock(");
+        if (first_lock != NULL && strstr(first_lock + 1, "lock(") != NULL) {
+            result->matched_type = FIX_PATTERN_LOCK_ORDER;
+            result->match_score = 0.65f;
+            result->valid = true;
+            return 0;
+        }
+        result->matched_type = FIX_PATTERN_RACE_GUARD;
+        result->match_score = 0.5f;
+        result->valid = true;
+        return 0;
+    }
+
+    /* Integer overflow: arithmetic operations with size/count/len */
+    if ((strstr(code, " + ") != NULL || strstr(code, "+=") != NULL) &&
+        (strstr(code, "size") != NULL || strstr(code, "count") != NULL ||
+         strstr(code, "len") != NULL)) {
+        result->matched_type = FIX_PATTERN_OVERFLOW_CHECK;
+        result->match_score = 0.7f;
+        result->valid = true;
+        return 0;
+    }
+
+    /* Array access pattern: check for potential underflow vs overflow */
     if (strchr(code, '[') != NULL && strchr(code, ']') != NULL) {
+        if (strstr(code, "int ") != NULL || strstr(code, "idx") != NULL) {
+            result->matched_type = FIX_PATTERN_BUFFER_UNDERFLOW;
+            result->match_score = 0.65f;
+            result->valid = true;
+            return 0;
+        }
         result->matched_type = FIX_PATTERN_BOUNDS_CHECK;
         result->match_score = 0.7f;
         result->valid = true;
         return 0;
+    }
+
+    /* Uninitialized variable pattern */
+    const char* decl = strstr(code, "int ");
+    if (decl != NULL) {
+        const char* semicolon = strchr(decl, ';');
+        const char* equals = strchr(decl, '=');
+        if (semicolon != NULL && (equals == NULL || equals > semicolon)) {
+            result->matched_type = FIX_PATTERN_INIT_CHECK;
+            result->match_score = 0.6f;
+            result->valid = true;
+            return 0;
+        }
     }
 
     /* Division pattern: / */
@@ -1846,8 +1919,18 @@ int heal_pattern_match(
         return 0;
     }
 
-    /* Free pattern */
+    /* Free pattern (use-after-free or double-free) */
     if (strstr(code, "free(") != NULL || strstr(code, "nimcp_free(") != NULL) {
+        const char* free_call = strstr(code, "free(");
+        if (free_call != NULL) {
+            const char* after_free = free_call + 5;
+            if (strstr(after_free, "->") != NULL || strchr(after_free, '[') != NULL) {
+                result->matched_type = FIX_PATTERN_UAF_CHECK;
+                result->match_score = 0.8f;
+                result->valid = true;
+                return 0;
+            }
+        }
         result->matched_type = FIX_PATTERN_DOUBLE_FREE;
         result->match_score = 0.7f;
         result->valid = true;

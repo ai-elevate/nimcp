@@ -42,21 +42,21 @@ const char* reasoning_factory_get_last_error(void)
 }
 
 //=============================================================================
-// Bio-Async Integration (Singleton)
+// Bio-Async Integration (Singleton with thread-safe initialization)
 //=============================================================================
 
-static bio_module_context_t g_factory_bio_ctx = NULL;
-static bool g_factory_bio_async_enabled = false;
+#include "utils/platform/nimcp_platform_once.h"
+#include <stdatomic.h>
+
+static _Atomic(bio_module_context_t) g_factory_bio_ctx = NULL;
+static atomic_bool g_factory_bio_async_enabled = false;
+static nimcp_platform_once_t g_factory_bio_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
- * @brief Initialize bio-async for reasoning factory
+ * @brief One-time initialization of bio-async for reasoning factory
  */
-static void factory_init_bio_async(void)
+static void factory_init_bio_async_once(void)
 {
-    if (g_factory_bio_async_enabled) {
-        return;  // Already initialized
-    }
-
     if (bio_router_is_initialized()) {
         bio_module_info_t bio_info = {
             .module_id = BIO_MODULE_KNOWLEDGE_FACTORY,
@@ -64,14 +64,23 @@ static void factory_init_bio_async(void)
             .inbox_capacity = 64,
             .user_data = NULL
         };
-        g_factory_bio_ctx = bio_router_register_module(&bio_info);
-        if (g_factory_bio_ctx) {
-            g_factory_bio_async_enabled = true;
+        bio_module_context_t ctx = bio_router_register_module(&bio_info);
+        if (ctx) {
+            atomic_store(&g_factory_bio_ctx, ctx);
+            atomic_store(&g_factory_bio_async_enabled, true);
             NIMCP_LOGGING_INFO("Bio-async enabled for reasoning factory");
         } else {
             NIMCP_LOGGING_WARN("Bio-async registration failed for reasoning factory");
         }
     }
+}
+
+/**
+ * @brief Initialize bio-async for reasoning factory (thread-safe)
+ */
+static void factory_init_bio_async(void)
+{
+    nimcp_platform_once(&g_factory_bio_once, factory_init_bio_async_once);
 }
 
 static logic_config_t get_config_for_size(reasoning_size_t size)
@@ -118,8 +127,11 @@ symbolic_logic_t* create_default_symbolic_logic(reasoning_size_t size)
     factory_init_bio_async();
 
     // Process pending bio-async messages
-    if (g_factory_bio_async_enabled && g_factory_bio_ctx) {
-        bio_router_process_inbox(g_factory_bio_ctx, 5);
+    if (atomic_load(&g_factory_bio_async_enabled)) {
+        bio_module_context_t ctx = atomic_load(&g_factory_bio_ctx);
+        if (ctx) {
+            bio_router_process_inbox(ctx, 5);
+        }
     }
 
     logic_config_t config = get_config_for_size(size);

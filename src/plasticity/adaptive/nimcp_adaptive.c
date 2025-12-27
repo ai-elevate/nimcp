@@ -82,18 +82,28 @@
 #define ADAPTIVE_POOL_BLOCK_SIZE 4096   // 4KB - fits 1024 floats
 #define ADAPTIVE_POOL_NUM_BLOCKS 256    // 256 concurrent buffers
 
-static memory_pool_t g_adaptive_pool = NULL;
+#include "utils/platform/nimcp_platform_once.h"
+#include <stdatomic.h>
+
+static _Atomic(memory_pool_t) g_adaptive_pool = NULL;
+static nimcp_platform_once_t g_adaptive_pool_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
- * @brief Get or create the adaptive network memory pool
+ * @brief One-time initialization of adaptive memory pool
+ */
+static void init_adaptive_pool(void) {
+    memory_pool_config_t config = memory_pool_default_config(
+        ADAPTIVE_POOL_BLOCK_SIZE, ADAPTIVE_POOL_NUM_BLOCKS);
+    memory_pool_t pool = memory_pool_create(&config);
+    atomic_store(&g_adaptive_pool, pool);
+}
+
+/**
+ * @brief Get or create the adaptive network memory pool (thread-safe)
  */
 static memory_pool_t get_adaptive_pool(void) {
-    if (g_adaptive_pool == NULL) {
-        memory_pool_config_t config = memory_pool_default_config(
-            ADAPTIVE_POOL_BLOCK_SIZE, ADAPTIVE_POOL_NUM_BLOCKS);
-        g_adaptive_pool = memory_pool_create(&config);
-    }
-    return g_adaptive_pool;
+    nimcp_platform_once(&g_adaptive_pool_once, init_adaptive_pool);
+    return atomic_load(&g_adaptive_pool);
 }
 
 /**
