@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <setjmp.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -504,6 +505,202 @@ bool signal_handler_has_code_immune(void);
  * @param total_crashes Output for total crash count
  */
 void signal_handler_get_immune_stats(uint64_t* immune_recoveries, uint64_t* total_crashes);
+
+//=============================================================================
+// Thread-Local Recovery API
+//=============================================================================
+
+/**
+ * @brief Recovery point result codes
+ *
+ * Returned by signal_handler_set_recovery_point_ex() after recovery jump.
+ */
+typedef enum {
+    RECOVERY_INITIAL = 0,           /**< Initial sigsetjmp call - no crash yet */
+    RECOVERY_CRASH_HANDLED = 1,     /**< Crash occurred, code immune handled it */
+    RECOVERY_CRASH_UNHANDLED = 2,   /**< Crash occurred, no fix available */
+    RECOVERY_RETRY_REQUESTED = 3,   /**< Fix applied, retry operation */
+    RECOVERY_ABORT_REQUESTED = 4    /**< Abort current operation */
+} signal_recovery_result_t;
+
+/**
+ * @brief Recovery context for thread-local recovery
+ *
+ * Contains recovery state for the current thread including
+ * sigjmp_buf and recovery metadata.
+ */
+typedef struct signal_recovery_ctx {
+    sigjmp_buf jmp_buf;             /**< Jump buffer for recovery */
+    volatile sig_atomic_t valid;    /**< Is recovery point valid? */
+    volatile sig_atomic_t result;   /**< Recovery result code */
+    volatile int crash_signal;      /**< Signal that caused crash */
+    volatile int retry_count;       /**< Number of retries attempted */
+    int max_retries;                /**< Maximum retries allowed */
+    void* user_data;                /**< User-provided context */
+    const char* label;              /**< Optional label for debugging */
+} signal_recovery_ctx_t;
+
+/**
+ * @brief Initialize thread-local recovery context
+ *
+ * WHAT: Initialize recovery context for current thread
+ * WHY:  Each thread needs its own recovery state
+ * HOW:  Allocate/init thread-local storage
+ *
+ * @return 0 on success, -1 on error
+ */
+int signal_handler_init_thread_recovery(void);
+
+/**
+ * @brief Cleanup thread-local recovery context
+ *
+ * WHAT: Free recovery context for current thread
+ * WHY:  Clean up before thread exit
+ * HOW:  Free thread-local storage
+ */
+void signal_handler_cleanup_thread_recovery(void);
+
+/**
+ * @brief Get thread-local recovery context
+ *
+ * WHAT: Access recovery context for current thread
+ * WHY:  Query/modify recovery state
+ * HOW:  Return pointer to thread-local context
+ *
+ * @return Recovery context or NULL if not initialized
+ */
+signal_recovery_ctx_t* signal_handler_get_recovery_ctx(void);
+
+/**
+ * @brief Set recovery point with extended options (thread-local)
+ *
+ * WHAT: Save execution context for crash recovery on current thread
+ * WHY:  Allow per-thread recovery from crashes
+ * HOW:  Use sigsetjmp with thread-local context
+ *
+ * USAGE:
+ *   signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+ *   int result = signal_handler_set_recovery_point_ex(ctx, 3, "parse_input");
+ *   if (result == RECOVERY_CRASH_HANDLED) {
+ *       // Crash occurred, code immune applied fix - can retry
+ *       if (ctx->retry_count < ctx->max_retries) {
+ *           goto retry_operation;
+ *       }
+ *   } else if (result == RECOVERY_CRASH_UNHANDLED) {
+ *       // Crash occurred, no fix - handle gracefully
+ *       return ERROR_CODE;
+ *   }
+ *   // result == RECOVERY_INITIAL: Execute potentially crash-prone code
+ *   signal_handler_clear_recovery_point_ex(ctx);
+ *
+ * @param ctx Recovery context (NULL for global context)
+ * @param max_retries Maximum retry attempts (0 = no retry)
+ * @param label Debug label for this recovery point
+ * @return RECOVERY_INITIAL on first call, recovery result after jump
+ */
+int signal_handler_set_recovery_point_ex(
+    signal_recovery_ctx_t* ctx,
+    int max_retries,
+    const char* label
+);
+
+/**
+ * @brief Clear thread-local recovery point
+ *
+ * WHAT: Disable recovery for current thread
+ * WHY:  Prevent unexpected jumps after safe code completes
+ * HOW:  Clear validity flag in thread context
+ *
+ * @param ctx Recovery context (NULL for global context)
+ */
+void signal_handler_clear_recovery_point_ex(signal_recovery_ctx_t* ctx);
+
+/**
+ * @brief Trigger recovery jump from signal handler
+ *
+ * WHAT: Jump to recovery point after crash handling
+ * WHY:  Resume execution after code immune processes crash
+ * HOW:  Use siglongjmp to thread's recovery point
+ *
+ * NOTE: Called from signal handler context - must be signal-safe.
+ *       This function does not return if jump succeeds.
+ *
+ * @param result Recovery result code to pass to recovery point
+ * @return -1 if no valid recovery point (should not normally return)
+ */
+int signal_handler_trigger_recovery(signal_recovery_result_t result);
+
+/**
+ * @brief Check if current thread has valid recovery point
+ *
+ * @return true if recovery is possible for current thread
+ */
+bool signal_handler_can_recover(void);
+
+/**
+ * @brief Get crash signal from last recovery
+ *
+ * @return Signal number or 0 if no crash
+ */
+int signal_handler_get_crash_signal(void);
+
+//=============================================================================
+// Recovery Macros
+//=============================================================================
+
+/**
+ * @brief Macro for wrapping crash-prone code with recovery
+ *
+ * USAGE:
+ *   SIGNAL_TRY_RECOVER(3, "memory_op") {
+ *       // Potentially dangerous code here
+ *       ptr->field = value;
+ *   } SIGNAL_ON_CRASH {
+ *       // Recovery handling - crash occurred
+ *       LOG_WARN("Recovered from crash in memory_op");
+ *       return ERROR_RECOVERED;
+ *   } SIGNAL_TRY_END;
+ *
+ * NOTE: Uses compound statement scope. Variables declared inside
+ *       SIGNAL_TRY_RECOVER block are not visible in SIGNAL_ON_CRASH.
+ */
+#define SIGNAL_TRY_RECOVER(max_retries, label) \
+    do { \
+        signal_recovery_ctx_t* _sig_ctx = signal_handler_get_recovery_ctx(); \
+        int _sig_result = signal_handler_set_recovery_point_ex(_sig_ctx, max_retries, label); \
+        if (_sig_result == RECOVERY_INITIAL) {
+
+#define SIGNAL_ON_CRASH \
+            signal_handler_clear_recovery_point_ex(_sig_ctx); \
+        } else {
+
+#define SIGNAL_TRY_END \
+            signal_handler_clear_recovery_point_ex(_sig_ctx); \
+        } \
+    } while (0)
+
+/**
+ * @brief Simple try-recover macro for single statement
+ *
+ * USAGE:
+ *   int result = SIGNAL_TRY_EXPR(dangerous_function(ptr), -1);
+ *
+ * @param expr Expression to evaluate
+ * @param fallback Value to return on crash
+ */
+#define SIGNAL_TRY_EXPR(expr, fallback) \
+    ({ \
+        signal_recovery_ctx_t* _sig_ctx = signal_handler_get_recovery_ctx(); \
+        typeof(expr) _sig_val; \
+        int _sig_result = signal_handler_set_recovery_point_ex(_sig_ctx, 0, #expr); \
+        if (_sig_result == RECOVERY_INITIAL) { \
+            _sig_val = (expr); \
+            signal_handler_clear_recovery_point_ex(_sig_ctx); \
+        } else { \
+            _sig_val = (fallback); \
+        } \
+        _sig_val; \
+    })
 
 #ifdef __cplusplus
 }

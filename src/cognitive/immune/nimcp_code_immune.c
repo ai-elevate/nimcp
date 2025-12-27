@@ -22,6 +22,9 @@
 #include <stdio.h>
 #include <dlfcn.h>
 #include <execinfo.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
 
 /* Mutex convenience macros - matches brain_immune.c pattern */
 #define nimcp_mutex_create() nimcp_platform_mutex_create()
@@ -384,10 +387,25 @@ void code_immune_destroy(code_immune_system_t* system) {
 int code_immune_start(code_immune_system_t* system) {
     if (!system) return -1;
 
+    /* Check auto-load settings before starting */
+    bool should_auto_load = false;
+    char load_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+    load_path[0] = '\0';
+
     nimcp_mutex_lock(system->mutex);
+    should_auto_load = system->auto_load_enabled;
+    if (should_auto_load && system->auto_load_path[0] != '\0') {
+        strncpy(load_path, system->auto_load_path, sizeof(load_path) - 1);
+    }
     system->running = true;
     system->start_time = get_timestamp_ms();
     nimcp_mutex_unlock(system->mutex);
+
+    /* Auto-load persisted memory (outside lock to avoid deadlock) */
+    if (should_auto_load) {
+        const char* path = load_path[0] != '\0' ? load_path : NULL;
+        code_immune_load_memory(system, path, NULL);
+    }
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME, "Code immune system started");
@@ -982,26 +1000,40 @@ int code_immune_validate_antibody(
         return -1;
     }
 
+    bool validated = false;
+
     /* Validation would run tests here */
     /* For now, IGG antibodies are considered validated */
     if (antibody->ab_class == CODE_ANTIBODY_IGG) {
         antibody->validated = true;
+        validated = true;
         system->stats.patches_validated++;
-        nimcp_mutex_unlock(system->mutex);
-        return 0;
     }
 
     /* IGE (emergency) bypasses validation */
     if (antibody->ab_class == CODE_ANTIBODY_IGE) {
         antibody->validated = true;
-        nimcp_mutex_unlock(system->mutex);
-        return 0;
+        validated = true;
+    }
+
+    /* Check if auto-save enabled */
+    bool should_auto_save = validated && system->auto_save_enabled;
+    char save_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+    save_path[0] = '\0';
+    if (should_auto_save && system->auto_save_path[0] != '\0') {
+        strncpy(save_path, system->auto_save_path, sizeof(save_path) - 1);
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Auto-save after validation (outside lock to avoid deadlock) */
+    if (should_auto_save) {
+        const char* path = save_path[0] != '\0' ? save_path : NULL;
+        code_immune_save_memory(system, path, NULL);
     }
 
     /* IGM needs actual validation - mark as pending */
-    antibody->validated = false;
-    nimcp_mutex_unlock(system->mutex);
-    return -1;
+    return validated ? 0 : -1;
 }
 
 /**
@@ -1489,4 +1521,907 @@ float code_immune_compute_affinity(
     if (affinity > 1.0f) affinity = 1.0f;
 
     return affinity;
+}
+
+/* ============================================================================
+ * Persistence API - Internal Helpers
+ * ============================================================================ */
+
+/**
+ * @brief Compute CRC32 checksum
+ *
+ * WHAT: Calculate simple checksum for data validation
+ * WHY:  Detect file corruption
+ * HOW:  Simple XOR-based checksum (fast, good enough for detection)
+ */
+static uint32_t compute_persist_checksum(const uint8_t* data, size_t len) {
+    if (!data || len == 0) return 0;
+
+    uint32_t checksum = 0xFFFFFFFF;
+    for (size_t i = 0; i < len; i++) {
+        checksum ^= data[i];
+        checksum = (checksum << 1) | (checksum >> 31);
+    }
+    return checksum;
+}
+
+/**
+ * @brief Write header to file
+ */
+static int write_persist_header(FILE* file, const code_immune_persist_header_t* header) {
+    if (!file || !header) return -1;
+    if (fwrite(header, sizeof(*header), 1, file) != 1) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write header");
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Read header from file
+ */
+static int read_persist_header(FILE* file, code_immune_persist_header_t* header) {
+    if (!file || !header) return -1;
+    if (fread(header, sizeof(*header), 1, file) != 1) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read header");
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Write counts to file
+ */
+static int write_persist_counts(FILE* file, const code_immune_persist_counts_t* counts) {
+    if (!file || !counts) return -1;
+    if (fwrite(counts, sizeof(*counts), 1, file) != 1) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write counts");
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Read counts from file
+ */
+static int read_persist_counts(FILE* file, code_immune_persist_counts_t* counts) {
+    if (!file || !counts) return -1;
+    if (fread(counts, sizeof(*counts), 1, file) != 1) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read counts");
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Validate header contents
+ */
+static int validate_persist_header(const code_immune_persist_header_t* header) {
+    if (!header) return -1;
+
+    /* Check magic */
+    if (memcmp(header->magic, CODE_IMMUNE_PERSIST_MAGIC,
+               CODE_IMMUNE_PERSIST_MAGIC_LEN) != 0) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Invalid magic header");
+        return -1;
+    }
+
+    /* Check version compatibility */
+    if (!code_immune_is_version_compatible(header->version)) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
+            "Incompatible version: %u (current: %u)",
+            header->version, CODE_IMMUNE_PERSIST_VERSION);
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Validate counts against capacity limits
+ */
+static int validate_persist_counts(const code_immune_persist_counts_t* counts) {
+    if (!counts) return -1;
+
+    if (counts->b_cell_count > CODE_IMMUNE_MAX_B_CELLS) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
+            "B cell count %u exceeds max %u",
+            counts->b_cell_count, CODE_IMMUNE_MAX_B_CELLS);
+        return -1;
+    }
+    if (counts->antibody_count > CODE_IMMUNE_MAX_ANTIBODIES) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
+            "Antibody count %u exceeds max %u",
+            counts->antibody_count, CODE_IMMUNE_MAX_ANTIBODIES);
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Find B cell with matching receptor
+ */
+static code_b_cell_t* find_b_cell_by_receptor(
+    code_immune_system_t* system,
+    const char* receptor
+) {
+    if (!system || !receptor) return NULL;
+
+    for (size_t i = 0; i < system->b_cell_count; i++) {
+        if (strcmp(system->b_cells[i].receptor, receptor) == 0) {
+            return &system->b_cells[i];
+        }
+    }
+    return NULL;
+}
+
+/* ============================================================================
+ * Persistence API - Configuration
+ * ============================================================================ */
+
+/**
+ * @brief Get default persistence configuration
+ */
+int code_immune_persist_default_config(code_immune_persist_config_t* config) {
+    if (!config) return -1;
+
+    memset(config, 0, sizeof(*config));
+
+    /* Compression/Encryption - disabled by default for speed */
+    config->enable_compression = false;
+    config->enable_encryption = false;
+    config->encryption_key_set = false;
+
+    /* Save all components */
+    config->save_b_cells = true;
+    config->save_antibodies = true;
+    config->save_pattern_stats = true;
+
+    /* Memory-only mode disabled */
+    config->memory_cells_only = false;
+
+    /* Validation enabled */
+    config->verify_on_load = true;
+    config->strict_version_check = false;
+
+    /* Backup enabled */
+    config->create_backup = true;
+    strncpy(config->backup_suffix, ".bak", sizeof(config->backup_suffix) - 1);
+
+    /* Pruning enabled */
+    config->auto_prune = true;
+    config->min_confidence = CODE_IMMUNE_PERSIST_MIN_CONFIDENCE;
+    config->min_successful_fixes = 0;
+
+    /* Auto-save on validation enabled */
+    config->auto_save_on_validation = true;
+
+    /* Default path empty (will use get_default_memory_path) */
+    config->memory_file_path[0] = '\0';
+
+    return 0;
+}
+
+/* ============================================================================
+ * Persistence API - Path Management
+ * ============================================================================ */
+
+/**
+ * @brief Get default memory file path
+ */
+int code_immune_get_default_memory_path(char* path_out, bool create_dir) {
+    if (!path_out) return -1;
+
+    /* Get home directory */
+    const char* home = getenv("HOME");
+    if (!home) {
+        home = "/tmp";  /* Fallback */
+    }
+
+    /* Build path: ~/.nimcp/code_immune_memory.bin */
+    int len = snprintf(path_out, CODE_IMMUNE_PERSIST_MAX_PATH,
+                       "%s/.nimcp/%s", home, CODE_IMMUNE_PERSIST_DEFAULT_FILE);
+    if (len < 0 || len >= CODE_IMMUNE_PERSIST_MAX_PATH) {
+        return -1;
+    }
+
+    /* Create directory if requested */
+    if (create_dir) {
+        char dir_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+        snprintf(dir_path, sizeof(dir_path), "%s/.nimcp", home);
+
+        /* Use mkdir with mode 0755 - ignore error if exists */
+        mkdir(dir_path, 0755);
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Resolve filepath (use default if NULL)
+ */
+static int resolve_persist_path(
+    const char* filepath,
+    const code_immune_persist_config_t* config,
+    char* resolved_path
+) {
+    if (!resolved_path) return -1;
+
+    if (filepath && filepath[0] != '\0') {
+        strncpy(resolved_path, filepath, CODE_IMMUNE_PERSIST_MAX_PATH - 1);
+        resolved_path[CODE_IMMUNE_PERSIST_MAX_PATH - 1] = '\0';
+        return 0;
+    }
+
+    if (config && config->memory_file_path[0] != '\0') {
+        strncpy(resolved_path, config->memory_file_path,
+                CODE_IMMUNE_PERSIST_MAX_PATH - 1);
+        resolved_path[CODE_IMMUNE_PERSIST_MAX_PATH - 1] = '\0';
+        return 0;
+    }
+
+    return code_immune_get_default_memory_path(resolved_path, true);
+}
+
+/* ============================================================================
+ * Persistence API - Validation
+ * ============================================================================ */
+
+/**
+ * @brief Check version compatibility
+ */
+bool code_immune_is_version_compatible(uint32_t file_version) {
+    /* For now, require exact match */
+    return (file_version == CODE_IMMUNE_PERSIST_VERSION);
+}
+
+/**
+ * @brief Validate persistence file
+ */
+int code_immune_validate_memory_file(const char* filepath, bool verify_checksum) {
+    if (!filepath) return -1;
+
+    FILE* file = fopen(filepath, "rb");
+    if (!file) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "File not found: %s", filepath);
+        return -1;
+    }
+
+    code_immune_persist_header_t header;
+    if (read_persist_header(file, &header) != 0) {
+        fclose(file);
+        return -1;
+    }
+
+    if (validate_persist_header(&header) != 0) {
+        fclose(file);
+        return -1;
+    }
+
+    code_immune_persist_counts_t counts;
+    if (read_persist_counts(file, &counts) != 0) {
+        fclose(file);
+        return -1;
+    }
+
+    if (validate_persist_counts(&counts) != 0) {
+        fclose(file);
+        return -1;
+    }
+
+    /* TODO: Verify checksum if enabled */
+    (void)verify_checksum;
+
+    fclose(file);
+    return 0;
+}
+
+/**
+ * @brief Get file information without loading
+ */
+int code_immune_get_memory_file_info(
+    const char* filepath,
+    code_immune_persist_header_t* header,
+    code_immune_persist_counts_t* counts
+) {
+    if (!filepath) return -1;
+
+    FILE* file = fopen(filepath, "rb");
+    if (!file) return -1;
+
+    int result = -1;
+
+    if (header) {
+        if (read_persist_header(file, header) != 0) goto cleanup;
+    } else {
+        code_immune_persist_header_t tmp_header;
+        if (read_persist_header(file, &tmp_header) != 0) goto cleanup;
+    }
+
+    if (counts) {
+        if (read_persist_counts(file, counts) != 0) goto cleanup;
+    }
+
+    result = 0;
+
+cleanup:
+    fclose(file);
+    return result;
+}
+
+/* ============================================================================
+ * Persistence API - Backup
+ * ============================================================================ */
+
+/**
+ * @brief Create backup of persistence file
+ */
+int code_immune_create_backup(const char* filepath, const char* backup_suffix) {
+    if (!filepath) return -1;
+
+    /* Check if source file exists */
+    FILE* src = fopen(filepath, "rb");
+    if (!src) return 0; /* No file to back up, not an error */
+
+    /* Create backup path */
+    char backup_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+    const char* suffix = backup_suffix ? backup_suffix : ".bak";
+    snprintf(backup_path, sizeof(backup_path), "%s%s", filepath, suffix);
+
+    /* Open backup file */
+    FILE* dst = fopen(backup_path, "wb");
+    if (!dst) {
+        fclose(src);
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
+                        "Failed to create backup file: %s", backup_path);
+        return -1;
+    }
+
+    /* Copy data */
+    char buffer[8192];
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+        if (fwrite(buffer, 1, bytes, dst) != bytes) {
+            fclose(src);
+            fclose(dst);
+            remove(backup_path);
+            LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write backup");
+            return -1;
+        }
+    }
+
+    fclose(src);
+    fclose(dst);
+
+    LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME, "Created backup: %s", backup_path);
+    return 0;
+}
+
+/* ============================================================================
+ * Persistence API - Save
+ * ============================================================================ */
+
+/**
+ * @brief Save code immune memory to file
+ */
+int code_immune_save_memory(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config
+) {
+    if (!system) return -1;
+
+    /* Use default config if not provided */
+    code_immune_persist_config_t default_cfg;
+    if (!config) {
+        code_immune_persist_default_config(&default_cfg);
+        config = &default_cfg;
+    }
+
+    /* Resolve filepath */
+    char resolved_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+    if (resolve_persist_path(filepath, config, resolved_path) != 0) {
+        return -1;
+    }
+
+    /* Create backup if requested */
+    if (config->create_backup) {
+        code_immune_create_backup(resolved_path, config->backup_suffix);
+    }
+
+    /* Create temporary file for atomic write */
+    char temp_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+    snprintf(temp_path, sizeof(temp_path), "%s.tmp", resolved_path);
+
+    FILE* file = fopen(temp_path, "wb");
+    if (!file) {
+        LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
+                        "Failed to open file for writing: %s", temp_path);
+        return -1;
+    }
+
+    int result = -1;
+    nimcp_mutex_lock(system->mutex);
+
+    /* Count items to save */
+    uint32_t b_cell_save_count = 0;
+    uint32_t antibody_save_count = 0;
+
+    if (config->save_b_cells) {
+        for (size_t i = 0; i < system->b_cell_count; i++) {
+            code_b_cell_t* b_cell = &system->b_cells[i];
+
+            /* Skip if memory-only mode and not memory cell */
+            if (config->memory_cells_only &&
+                b_cell->state != CODE_B_CELL_MEMORY) {
+                continue;
+            }
+
+            /* Skip low confidence if auto-prune */
+            if (config->auto_prune &&
+                b_cell->affinity < config->min_confidence) {
+                continue;
+            }
+
+            b_cell_save_count++;
+        }
+    }
+
+    if (config->save_antibodies) {
+        for (size_t i = 0; i < system->antibody_count; i++) {
+            code_antibody_t* ab = &system->antibodies[i];
+
+            /* Skip unvalidated antibodies */
+            if (!ab->validated) continue;
+
+            /* Skip low effectiveness if auto-prune */
+            if (config->auto_prune &&
+                ab->effectiveness < config->min_confidence) {
+                continue;
+            }
+
+            antibody_save_count++;
+        }
+    }
+
+    /* Prepare header */
+    code_immune_persist_header_t header;
+    memset(&header, 0, sizeof(header));
+    memcpy(header.magic, CODE_IMMUNE_PERSIST_MAGIC, CODE_IMMUNE_PERSIST_MAGIC_LEN);
+    header.version = CODE_IMMUNE_PERSIST_VERSION;
+    header.timestamp = get_timestamp_ms();
+    header.flags = 0;
+
+    if (config->enable_compression) {
+        header.flags |= CODE_IMMUNE_FORMAT_FLAG_COMPRESSED;
+    }
+    if (config->enable_encryption) {
+        header.flags |= CODE_IMMUNE_FORMAT_FLAG_ENCRYPTED;
+    }
+    if (config->memory_cells_only) {
+        header.flags |= CODE_IMMUNE_FORMAT_FLAG_MEMORY_ONLY;
+    }
+
+    /* Prepare counts */
+    code_immune_persist_counts_t counts;
+    memset(&counts, 0, sizeof(counts));
+    counts.b_cell_count = b_cell_save_count;
+    counts.antibody_count = antibody_save_count;
+    counts.pattern_stat_count = 0;  /* TODO: Implement pattern stats */
+
+    /* Write header (checksum filled later) */
+    if (write_persist_header(file, &header) != 0) goto cleanup;
+
+    /* Write counts */
+    if (write_persist_counts(file, &counts) != 0) goto cleanup;
+
+    /* Write B cells */
+    if (config->save_b_cells) {
+        for (size_t i = 0; i < system->b_cell_count; i++) {
+            code_b_cell_t* b_cell = &system->b_cells[i];
+
+            /* Apply same filters as counting */
+            if (config->memory_cells_only &&
+                b_cell->state != CODE_B_CELL_MEMORY) {
+                continue;
+            }
+            if (config->auto_prune &&
+                b_cell->affinity < config->min_confidence) {
+                continue;
+            }
+
+            if (fwrite(b_cell, sizeof(code_b_cell_t), 1, file) != 1) {
+                LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write B cell");
+                goto cleanup;
+            }
+        }
+    }
+
+    /* Write antibodies */
+    if (config->save_antibodies) {
+        for (size_t i = 0; i < system->antibody_count; i++) {
+            code_antibody_t* ab = &system->antibodies[i];
+
+            /* Apply same filters as counting */
+            if (!ab->validated) continue;
+            if (config->auto_prune &&
+                ab->effectiveness < config->min_confidence) {
+                continue;
+            }
+
+            if (fwrite(ab, sizeof(code_antibody_t), 1, file) != 1) {
+                LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write antibody");
+                goto cleanup;
+            }
+        }
+    }
+
+    /* Update header with file size */
+    long file_size = ftell(file);
+    header.file_size = (uint64_t)file_size;
+    header.checksum = 0; /* TODO: Implement proper checksum */
+
+    /* Rewrite header with updated values */
+    fseek(file, 0, SEEK_SET);
+    if (write_persist_header(file, &header) != 0) goto cleanup;
+
+    result = 0;
+    LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+        "Saved code immune memory: %u B cells, %u antibodies to %s",
+        counts.b_cell_count, counts.antibody_count, resolved_path);
+
+cleanup:
+    nimcp_mutex_unlock(system->mutex);
+    fclose(file);
+
+    if (result == 0) {
+        /* Atomic rename */
+        if (rename(temp_path, resolved_path) != 0) {
+            LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
+                            "Failed to rename temp file to %s", resolved_path);
+            remove(temp_path);
+            return -1;
+        }
+    } else {
+        remove(temp_path);
+    }
+
+    return result;
+}
+
+/**
+ * @brief Save with detailed result information
+ */
+int code_immune_save_memory_ex(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config,
+    code_immune_persist_result_t* result
+) {
+    if (!result) return -1;
+
+    memset(result, 0, sizeof(*result));
+    uint64_t start_time = get_timestamp_ms();
+
+    int ret = code_immune_save_memory(system, filepath, config);
+
+    result->success = (ret == 0);
+    result->save_time_ms = get_timestamp_ms() - start_time;
+
+    if (ret != 0) {
+        snprintf(result->error_message, sizeof(result->error_message),
+                 "Save failed");
+    }
+
+    return ret;
+}
+
+/* ============================================================================
+ * Persistence API - Load
+ * ============================================================================ */
+
+/**
+ * @brief Load code immune memory from file
+ */
+int code_immune_load_memory(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config
+) {
+    if (!system) return -1;
+
+    /* Use default config if not provided */
+    code_immune_persist_config_t default_cfg;
+    if (!config) {
+        code_immune_persist_default_config(&default_cfg);
+        config = &default_cfg;
+    }
+
+    /* Resolve filepath */
+    char resolved_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+    if (resolve_persist_path(filepath, config, resolved_path) != 0) {
+        return -1;
+    }
+
+    FILE* file = fopen(resolved_path, "rb");
+    if (!file) {
+        /* File doesn't exist - not an error, just nothing to load */
+        LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+                       "No memory file found at %s", resolved_path);
+        return 0;
+    }
+
+    int result = -1;
+    nimcp_mutex_lock(system->mutex);
+
+    /* Read and validate header */
+    code_immune_persist_header_t header;
+    if (read_persist_header(file, &header) != 0) goto cleanup;
+    if (validate_persist_header(&header) != 0) goto cleanup;
+
+    /* Read and validate counts */
+    code_immune_persist_counts_t counts;
+    if (read_persist_counts(file, &counts) != 0) goto cleanup;
+    if (validate_persist_counts(&counts) != 0) goto cleanup;
+
+    /* Load B cells (merge with existing) */
+    uint32_t b_cells_loaded = 0;
+    for (uint32_t i = 0; i < counts.b_cell_count; i++) {
+        code_b_cell_t loaded_cell;
+        if (fread(&loaded_cell, sizeof(code_b_cell_t), 1, file) != 1) {
+            LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read B cell");
+            goto cleanup;
+        }
+
+        /* Check if B cell with same receptor already exists */
+        code_b_cell_t* existing = find_b_cell_by_receptor(system, loaded_cell.receptor);
+        if (existing) {
+            /* Update if loaded has higher affinity */
+            if (loaded_cell.affinity > existing->affinity) {
+                existing->affinity = loaded_cell.affinity;
+                existing->successful_fixes += loaded_cell.successful_fixes;
+                existing->failed_fixes += loaded_cell.failed_fixes;
+                if (loaded_cell.fix_template[0] && !existing->fix_template[0]) {
+                    memcpy(existing->fix_template, loaded_cell.fix_template,
+                           sizeof(existing->fix_template));
+                }
+            }
+        } else {
+            /* Add new B cell if capacity allows */
+            if (system->b_cell_count < system->b_cell_capacity) {
+                loaded_cell.id = system->next_b_cell_id++;
+                system->b_cells[system->b_cell_count] = loaded_cell;
+                system->b_cell_count++;
+                b_cells_loaded++;
+
+                if (loaded_cell.state == CODE_B_CELL_MEMORY) {
+                    system->stats.memory_b_cells++;
+                }
+            }
+        }
+    }
+
+    /* Load antibodies (merge with existing) */
+    uint32_t antibodies_loaded = 0;
+    for (uint32_t i = 0; i < counts.antibody_count; i++) {
+        code_antibody_t loaded_ab;
+        if (fread(&loaded_ab, sizeof(code_antibody_t), 1, file) != 1) {
+            LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read antibody");
+            goto cleanup;
+        }
+
+        /* Add antibody if capacity allows */
+        if (system->antibody_count < system->antibody_capacity) {
+            /* Clear runtime state */
+            loaded_ab.patch_handle = NULL;
+            loaded_ab.old_function = NULL;
+            loaded_ab.new_function = NULL;
+            loaded_ab.injected = false;
+
+            loaded_ab.id = system->next_antibody_id++;
+            system->antibodies[system->antibody_count] = loaded_ab;
+            system->antibody_count++;
+            antibodies_loaded++;
+
+            system->stats.active_antibodies++;
+        }
+    }
+
+    result = 0;
+    LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+        "Loaded code immune memory: %u B cells, %u antibodies from %s",
+        b_cells_loaded, antibodies_loaded, resolved_path);
+
+cleanup:
+    nimcp_mutex_unlock(system->mutex);
+    fclose(file);
+    return result;
+}
+
+/**
+ * @brief Load with detailed result information
+ */
+int code_immune_load_memory_ex(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config,
+    code_immune_persist_result_t* result
+) {
+    if (!result) return -1;
+
+    memset(result, 0, sizeof(*result));
+    uint64_t start_time = get_timestamp_ms();
+
+    /* Get file info first */
+    char resolved_path[CODE_IMMUNE_PERSIST_MAX_PATH];
+    if (resolve_persist_path(filepath, config, resolved_path) == 0) {
+        code_immune_persist_header_t header;
+        if (code_immune_get_memory_file_info(resolved_path, &header, NULL) == 0) {
+            result->version_loaded = header.version;
+        }
+    }
+
+    int ret = code_immune_load_memory(system, filepath, config);
+
+    result->success = (ret == 0);
+    result->load_time_ms = get_timestamp_ms() - start_time;
+
+    if (ret != 0) {
+        snprintf(result->error_message, sizeof(result->error_message),
+                 "Load failed");
+    }
+
+    return ret;
+}
+
+/* ============================================================================
+ * Persistence API - Consolidation
+ * ============================================================================ */
+
+/**
+ * @brief Consolidate immune memory
+ */
+int code_immune_consolidate_memory(
+    code_immune_system_t* system,
+    const code_immune_persist_config_t* config,
+    uint32_t* items_pruned
+) {
+    if (!system) return -1;
+
+    /* Use default config if not provided */
+    code_immune_persist_config_t default_cfg;
+    if (!config) {
+        code_immune_persist_default_config(&default_cfg);
+        config = &default_cfg;
+    }
+
+    uint32_t pruned = 0;
+
+    nimcp_mutex_lock(system->mutex);
+
+    /* Prune low-confidence B cells */
+    size_t write_idx = 0;
+    for (size_t read_idx = 0; read_idx < system->b_cell_count; read_idx++) {
+        code_b_cell_t* b_cell = &system->b_cells[read_idx];
+
+        /* Keep if above threshold or is memory cell with successful fixes */
+        bool keep = (b_cell->affinity >= config->min_confidence) ||
+                    (b_cell->state == CODE_B_CELL_MEMORY &&
+                     b_cell->successful_fixes >= config->min_successful_fixes);
+
+        if (keep) {
+            if (write_idx != read_idx) {
+                system->b_cells[write_idx] = system->b_cells[read_idx];
+            }
+            write_idx++;
+        } else {
+            pruned++;
+            if (b_cell->state == CODE_B_CELL_MEMORY) {
+                system->stats.memory_b_cells--;
+            }
+        }
+    }
+    system->b_cell_count = write_idx;
+
+    /* Prune low-effectiveness antibodies */
+    write_idx = 0;
+    for (size_t read_idx = 0; read_idx < system->antibody_count; read_idx++) {
+        code_antibody_t* ab = &system->antibodies[read_idx];
+
+        /* Keep if validated and above threshold */
+        bool keep = ab->validated && (ab->effectiveness >= config->min_confidence);
+
+        if (keep) {
+            if (write_idx != read_idx) {
+                system->antibodies[write_idx] = system->antibodies[read_idx];
+            }
+            write_idx++;
+        } else {
+            /* Unload patch if loaded */
+            if (ab->patch_handle) {
+                dlclose(ab->patch_handle);
+            }
+            pruned++;
+            system->stats.active_antibodies--;
+        }
+    }
+    system->antibody_count = write_idx;
+
+    /* TODO: Merge similar B cells (affinity > 0.95) */
+
+    nimcp_mutex_unlock(system->mutex);
+
+    if (items_pruned) {
+        *items_pruned = pruned;
+    }
+
+    LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+        "Consolidated memory: pruned %u items", pruned);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Persistence API - Auto-Save/Auto-Load
+ * ============================================================================ */
+
+/**
+ * @brief Enable auto-save on fix validation
+ */
+int code_immune_enable_auto_save(
+    code_immune_system_t* system,
+    bool enable,
+    const char* filepath
+) {
+    if (!system) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+
+    system->auto_save_enabled = enable;
+
+    if (filepath && filepath[0] != '\0') {
+        strncpy(system->auto_save_path, filepath,
+                sizeof(system->auto_save_path) - 1);
+        system->auto_save_path[sizeof(system->auto_save_path) - 1] = '\0';
+    } else {
+        system->auto_save_path[0] = '\0';  /* Use default path */
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+        "Auto-save %s", enable ? "enabled" : "disabled");
+
+    return 0;
+}
+
+/**
+ * @brief Enable auto-load on startup
+ */
+int code_immune_enable_auto_load(
+    code_immune_system_t* system,
+    bool enable,
+    const char* filepath
+) {
+    if (!system) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+
+    system->auto_load_enabled = enable;
+
+    if (filepath && filepath[0] != '\0') {
+        strncpy(system->auto_load_path, filepath,
+                sizeof(system->auto_load_path) - 1);
+        system->auto_load_path[sizeof(system->auto_load_path) - 1] = '\0';
+    } else {
+        system->auto_load_path[0] = '\0';  /* Use default path */
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+        "Auto-load %s", enable ? "enabled" : "disabled");
+
+    return 0;
 }

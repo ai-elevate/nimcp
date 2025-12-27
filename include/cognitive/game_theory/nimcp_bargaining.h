@@ -284,6 +284,34 @@ nimcp_error_t nimcp_bargaining_get_current_offer(
 const char* nimcp_bargaining_type_name(nimcp_bargaining_type_t type);
 
 /**
+ * @brief Update bargaining powers
+ *
+ * @param bargaining Bargaining handle
+ * @param powers New bargaining powers (must sum to 1.0)
+ * @param num_players Number of players
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t nimcp_bargaining_set_powers(
+    nimcp_bargaining_t bargaining,
+    const float* powers,
+    uint32_t num_players
+);
+
+/**
+ * @brief Update disagreement payoffs
+ *
+ * @param bargaining Bargaining handle
+ * @param disagreement New disagreement payoffs
+ * @param num_players Number of players
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t nimcp_bargaining_set_disagreement(
+    nimcp_bargaining_t bargaining,
+    const float* disagreement,
+    uint32_t num_players
+);
+
+/**
  * @brief Compute Nash product for given allocation
  *
  * @param allocation Utility allocation

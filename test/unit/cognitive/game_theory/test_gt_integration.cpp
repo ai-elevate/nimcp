@@ -87,16 +87,16 @@ TEST_F(GtGlobalWorkspaceTest, CreateDestroyLifecycle) {
 
 TEST_F(GtGlobalWorkspaceTest, BidNullContext) {
     float content[] = {1.0f, 2.0f, 3.0f};
-    nimcp_error_t err = gt_gw_bid(nullptr, 1, content, 3, 10.0f);
+    nimcp_error_t err = gt_gw_bid(nullptr, static_cast<cognitive_module_t>(1), content, 3, 10.0f);
     EXPECT_NE(err, NIMCP_SUCCESS);
 }
 
 TEST_F(GtGlobalWorkspaceTest, BidNullContent) {
     ctx = gt_gw_create(workspace, &config);
     if (ctx != nullptr) {
-        nimcp_error_t err = gt_gw_bid(ctx, 1, nullptr, 0, 10.0f);
+        nimcp_error_t err = gt_gw_bid(ctx, static_cast<cognitive_module_t>(1), nullptr, 0, 10.0f);
         // NULL content with size 0 may be allowed, size > 0 should fail
-        err = gt_gw_bid(ctx, 1, nullptr, 3, 10.0f);
+        err = gt_gw_bid(ctx, static_cast<cognitive_module_t>(1), nullptr, 3, 10.0f);
         EXPECT_NE(err, NIMCP_SUCCESS);
     }
 }
@@ -105,7 +105,7 @@ TEST_F(GtGlobalWorkspaceTest, BidNegativeAmount) {
     ctx = gt_gw_create(workspace, &config);
     if (ctx != nullptr) {
         float content[] = {1.0f, 2.0f};
-        nimcp_error_t err = gt_gw_bid(ctx, 1, content, 2, -5.0f);
+        nimcp_error_t err = gt_gw_bid(ctx, static_cast<cognitive_module_t>(1), content, 2, -5.0f);
         EXPECT_NE(err, NIMCP_SUCCESS);
     }
 }
@@ -131,8 +131,8 @@ TEST_F(GtGlobalWorkspaceTest, BidAndResolveBasicFlow) {
         float content2[] = {0.8f, 0.9f, 0.1f};
 
         // Submit two bids
-        nimcp_error_t err1 = gt_gw_bid(ctx, 1, content1, 3, 10.0f);
-        nimcp_error_t err2 = gt_gw_bid(ctx, 2, content2, 3, 15.0f);
+        nimcp_error_t err1 = gt_gw_bid(ctx, static_cast<cognitive_module_t>(1), content1, 3, 10.0f);
+        nimcp_error_t err2 = gt_gw_bid(ctx, static_cast<cognitive_module_t>(2), content2, 3, 15.0f);
 
         if (err1 == NIMCP_SUCCESS && err2 == NIMCP_SUCCESS) {
             gt_gw_round_result_t result;
@@ -140,7 +140,7 @@ TEST_F(GtGlobalWorkspaceTest, BidAndResolveBasicFlow) {
 
             if (err == NIMCP_SUCCESS) {
                 // Higher bidder should win
-                EXPECT_EQ(result.winner, 2);
+                EXPECT_EQ(result.winner, static_cast<cognitive_module_t>(2));
                 EXPECT_FLOAT_EQ(result.winning_bid, 15.0f);
                 // In second-price auction, payment should be second-highest bid
                 EXPECT_FLOAT_EQ(result.payment, 10.0f);
@@ -941,4 +941,13 @@ TEST_F(GtIntegrationTest, SolutionConceptNames) {
     EXPECT_STREQ(nimcp_solution_concept_name(NIMCP_SOLUTION_SHAPLEY), "Shapley Value");
     EXPECT_STREQ(nimcp_solution_concept_name(NIMCP_SOLUTION_PARETO_OPTIMAL), "Pareto Optimal");
     EXPECT_STREQ(nimcp_solution_concept_name(NIMCP_SOLUTION_CORE), "Core");
+}
+
+//=============================================================================
+// Main
+//=============================================================================
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

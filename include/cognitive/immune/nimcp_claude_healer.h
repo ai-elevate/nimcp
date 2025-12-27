@@ -330,6 +330,44 @@ int claude_healer_format_prompt(
  */
 void claude_healer_free_response(claude_heal_response_t* response);
 
+/**
+ * @brief Send raw prompt to Claude API
+ *
+ * WHAT: Send custom prompt and receive raw response
+ * WHY:  Allow advanced/custom prompting for special cases
+ * HOW:  Make API call with custom prompt, return raw text
+ *
+ * Note: This bypasses the standard prompt formatting and fix extraction.
+ * Use claude_healer_request_fix for standard crash healing workflow.
+ *
+ * @param healer Claude healer instance
+ * @param prompt Custom prompt string
+ * @param response_out Output buffer for response text
+ * @param response_size Size of output buffer
+ * @param response_len Output: actual response length
+ * @return Status code (CLAUDE_HEAL_SUCCESS on success)
+ */
+claude_heal_status_t claude_healer_send_request(
+    claude_healer_t* healer,
+    const char* prompt,
+    char* response_out,
+    size_t response_size,
+    size_t* response_len
+);
+
+/**
+ * @brief Validate C code syntax
+ *
+ * WHAT: Basic syntax validation for generated C code
+ * WHY:  Ensure generated fixes are syntactically plausible
+ * HOW:  Check balanced braces, parentheses, and strings
+ *
+ * @param code C code to validate
+ * @param code_len Length of code string
+ * @return true if code passes basic validation
+ */
+bool claude_healer_validate_code(const char* code, size_t code_len);
+
 /* ============================================================================
  * Rate Limiting API
  * ============================================================================ */

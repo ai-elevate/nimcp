@@ -34,7 +34,7 @@
 
 #define CLAUDE_API_URL "https://api.anthropic.com/v1/messages"
 #define CLAUDE_API_VERSION "2023-06-01"
-#define CLAUDE_DEFAULT_MODEL "claude-3-opus-20240229"
+#define CLAUDE_DEFAULT_MODEL "claude-sonnet-4-20250514"
 
 #define MAX_PROMPT_SIZE (32 * 1024)   /* 32KB max prompt */
 #define MAX_RESPONSE_SIZE (64 * 1024) /* 64KB max response */
@@ -43,6 +43,13 @@
 #define JSON_CONTENT_START "\"content\":["
 #define JSON_TEXT_START "\"text\":\""
 #define JSON_STOP_REASON "\"stop_reason\":"
+#define JSON_USAGE_START "\"usage\":"
+#define JSON_INPUT_TOKENS "\"input_tokens\":"
+#define JSON_OUTPUT_TOKENS "\"output_tokens\":"
+
+/* Fix validation constants */
+#define MIN_FIX_LENGTH 10  /* Minimum reasonable fix length */
+#define MAX_SYNTAX_ERRORS 5
 
 /* ============================================================================
  * Internal Structures
@@ -205,6 +212,148 @@ static size_t extract_json_string(
 
     value_out[out_pos] = '\0';
     return out_pos;
+}
+
+/**
+ * @brief Extract integer value from JSON
+ *
+ * WHAT: Extract integer value after a JSON key
+ * WHY:  Parse token counts from usage response
+ * HOW:  Find key, parse following integer
+ */
+static int64_t extract_json_int(
+    const char* json,
+    size_t json_len,
+    const char* key)
+{
+    if (json == NULL || key == NULL) return -1;
+
+    const char* pos = find_string(json, json_len, key);
+    if (pos == NULL) return -1;
+
+    pos += strlen(key);
+
+    /* Skip whitespace */
+    while (pos < json + json_len && (*pos == ' ' || *pos == '\t')) {
+        pos++;
+    }
+
+    /* Parse integer */
+    int64_t value = 0;
+    while (pos < json + json_len && *pos >= '0' && *pos <= '9') {
+        value = value * 10 + (*pos - '0');
+        pos++;
+    }
+
+    return value;
+}
+
+/**
+ * @brief Validate generated fix code
+ *
+ * WHAT: Basic validation that fix code is plausible C
+ * WHY:  Catch obviously malformed or incomplete responses
+ * HOW:  Check for balanced braces, required patterns
+ *
+ * @param code The generated fix code
+ * @param code_len Length of code
+ * @return true if code passes basic validation
+ */
+static bool validate_fix_code(const char* code, size_t code_len)
+{
+    if (code == NULL || code_len < MIN_FIX_LENGTH) return false;
+
+    /* Check for balanced braces */
+    int brace_count = 0;
+    int paren_count = 0;
+    int bracket_count = 0;
+    bool in_string = false;
+    bool in_char = false;
+    bool escaped = false;
+
+    for (size_t i = 0; i < code_len; i++) {
+        char c = code[i];
+
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+
+        if (c == '\\') {
+            escaped = true;
+            continue;
+        }
+
+        if (!in_string && !in_char) {
+            if (c == '"') in_string = true;
+            else if (c == '\'') in_char = true;
+            else if (c == '{') brace_count++;
+            else if (c == '}') brace_count--;
+            else if (c == '(') paren_count++;
+            else if (c == ')') paren_count--;
+            else if (c == '[') bracket_count++;
+            else if (c == ']') bracket_count--;
+        } else if (in_string && c == '"') {
+            in_string = false;
+        } else if (in_char && c == '\'') {
+            in_char = false;
+        }
+
+        /* Early exit on obvious imbalance */
+        if (brace_count < 0 || paren_count < 0 || bracket_count < 0) {
+            return false;
+        }
+    }
+
+    /* Check final balance */
+    if (brace_count != 0 || paren_count != 0 || bracket_count != 0) {
+        return false;
+    }
+
+    /* Check for unclosed strings */
+    if (in_string || in_char) {
+        return false;
+    }
+
+    /* Check for at least one semicolon (C statement) */
+    if (find_string(code, code_len, ";") == NULL) {
+        /* Might be a macro or comment-only fix - allow with lower confidence */
+        return true;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Extract error message from API response
+ *
+ * WHAT: Parse error details from failed API response
+ * WHY:  Provide meaningful error messages to caller
+ * HOW:  Look for error object in JSON response
+ */
+static size_t extract_api_error(
+    const char* json,
+    size_t json_len,
+    char* error_out,
+    size_t error_size)
+{
+    if (json == NULL || error_out == NULL) return 0;
+
+    /* Look for error type */
+    size_t len = extract_json_string(json, json_len, "type", error_out, error_size);
+    if (len > 0) {
+        /* Append error message if present */
+        char msg[256];
+        size_t msg_len = extract_json_string(json, json_len, "message", msg, sizeof(msg));
+        if (msg_len > 0 && len + msg_len + 3 < error_size) {
+            error_out[len++] = ':';
+            error_out[len++] = ' ';
+            memcpy(error_out + len, msg, msg_len);
+            len += msg_len;
+            error_out[len] = '\0';
+        }
+    }
+    return len;
 }
 
 /**
@@ -394,8 +543,37 @@ static claude_heal_status_t make_api_request(
         return CLAUDE_HEAL_ERROR_RATE_LIMITED;
     }
     if (http_code != 200) {
-        LOG_MODULE_ERROR(LOG_TAG, "API error: HTTP %ld", http_code);
+        /* Try to extract error details from response */
+        char error_msg[256];
+        if (response->data != NULL && response->size > 0) {
+            size_t err_len = extract_api_error(
+                response->data, response->size, error_msg, sizeof(error_msg)
+            );
+            if (err_len > 0) {
+                LOG_MODULE_ERROR(LOG_TAG, "API error: HTTP %ld - %s", http_code, error_msg);
+            } else {
+                LOG_MODULE_ERROR(LOG_TAG, "API error: HTTP %ld", http_code);
+            }
+        } else {
+            LOG_MODULE_ERROR(LOG_TAG, "API error: HTTP %ld", http_code);
+        }
         return CLAUDE_HEAL_ERROR_API;
+    }
+
+    /* Extract token usage from response */
+    if (response->data != NULL && response->size > 0) {
+        int64_t input_tokens = extract_json_int(
+            response->data, response->size, JSON_INPUT_TOKENS
+        );
+        int64_t output_tokens = extract_json_int(
+            response->data, response->size, JSON_OUTPUT_TOKENS
+        );
+
+        if (input_tokens > 0 || output_tokens > 0) {
+            healer->stats.total_tokens_used +=
+                (uint64_t)(input_tokens > 0 ? input_tokens : 0) +
+                (uint64_t)(output_tokens > 0 ? output_tokens : 0);
+        }
     }
 
     return CLAUDE_HEAL_SUCCESS;
@@ -804,6 +982,16 @@ claude_heal_status_t claude_healer_request_fix(
 
     nimcp_free(text_content);
 
+    /* Validate generated fix code */
+    if (!validate_fix_code(response->fixed_code, response->fixed_code_len)) {
+        response->success = false;
+        response->error_message = nimcp_strdup(
+            "Generated fix failed validation (syntax check)"
+        );
+        LOG_MODULE_WARN(LOG_TAG, "Fix validation failed - unbalanced or malformed code");
+        return CLAUDE_HEAL_ERROR_NO_FIX;
+    }
+
     /* Check confidence threshold */
     if (response->confidence < healer->config.min_confidence) {
         response->success = false;
@@ -839,6 +1027,129 @@ void claude_healer_free_response(claude_heal_response_t* response)
     nimcp_free(response->error_message);
 
     memset(response, 0, sizeof(*response));
+}
+
+/**
+ * @brief Send raw prompt to Claude API
+ *
+ * WHAT: Send custom prompt and receive raw response text
+ * WHY:  Allow custom prompting for special/advanced use cases
+ * HOW:  Make API call, extract text content from response
+ */
+claude_heal_status_t claude_healer_send_request(
+    claude_healer_t* healer,
+    const char* prompt,
+    char* response_out,
+    size_t response_size,
+    size_t* response_len)
+{
+    /* Guard clauses */
+    if (healer == NULL || prompt == NULL || response_out == NULL ||
+        response_size == 0 || response_len == NULL) {
+        return CLAUDE_HEAL_ERROR_INVALID_INPUT;
+    }
+
+    *response_len = 0;
+
+#ifndef HAVE_LIBCURL
+    return CLAUDE_HEAL_ERROR_DISABLED;
+#else
+
+    if (!healer->api_available) {
+        return CLAUDE_HEAL_ERROR_DISABLED;
+    }
+
+    if (strlen(healer->config.api_key) == 0) {
+        return CLAUDE_HEAL_ERROR_INVALID_INPUT;
+    }
+
+    /* Check rate limit */
+    nimcp_mutex_lock(healer->mutex);
+    if (!claude_healer_check_rate_limit(healer)) {
+        nimcp_mutex_unlock(healer->mutex);
+        healer->stats.requests_rate_limited++;
+        return CLAUDE_HEAL_ERROR_RATE_LIMITED;
+    }
+    claude_healer_record_request(healer);
+    nimcp_mutex_unlock(healer->mutex);
+
+    /* Initialize response buffer */
+    response_buffer_t api_response = {0};
+    api_response.capacity = 4096;
+    api_response.data = nimcp_malloc(api_response.capacity);
+    if (api_response.data == NULL) {
+        return CLAUDE_HEAL_ERROR_MEMORY;
+    }
+    api_response.data[0] = '\0';
+
+    /* Make API request with retries */
+    claude_heal_status_t status = CLAUDE_HEAL_ERROR_NETWORK;
+    uint32_t retry = 0;
+    uint32_t backoff_ms = CLAUDE_HEALER_BACKOFF_BASE_MS;
+
+    while (retry <= healer->config.max_retries) {
+        healer->stats.requests_made++;
+
+        status = make_api_request(healer, prompt, &api_response);
+
+        if (status == CLAUDE_HEAL_SUCCESS) {
+            healer->stats.requests_succeeded++;
+            break;
+        }
+
+        if (status == CLAUDE_HEAL_ERROR_RATE_LIMITED ||
+            status == CLAUDE_HEAL_ERROR_NETWORK) {
+            if (retry < healer->config.max_retries) {
+                struct timespec ts = {
+                    .tv_sec = backoff_ms / 1000,
+                    .tv_nsec = (backoff_ms % 1000) * 1000000
+                };
+                nanosleep(&ts, NULL);
+                backoff_ms *= 2;
+                if (backoff_ms > CLAUDE_HEALER_BACKOFF_MAX_MS) {
+                    backoff_ms = CLAUDE_HEALER_BACKOFF_MAX_MS;
+                }
+            }
+            retry++;
+        } else {
+            healer->stats.requests_failed++;
+            break;
+        }
+    }
+
+    if (status != CLAUDE_HEAL_SUCCESS) {
+        nimcp_free(api_response.data);
+        return status;
+    }
+
+    /* Extract text content from response */
+    size_t text_len = extract_json_string(
+        api_response.data, api_response.size,
+        "text", response_out, response_size
+    );
+
+    nimcp_free(api_response.data);
+
+    if (text_len == 0) {
+        return CLAUDE_HEAL_ERROR_PARSE;
+    }
+
+    *response_len = text_len;
+    return CLAUDE_HEAL_SUCCESS;
+
+#endif /* HAVE_LIBCURL */
+}
+
+/**
+ * @brief Validate C code syntax (public wrapper)
+ *
+ * WHAT: Public API for C code validation
+ * WHY:  Allow callers to validate code before applying
+ * HOW:  Wrapper around internal validate_fix_code
+ */
+bool claude_healer_validate_code(const char* code, size_t code_len)
+{
+    return validate_fix_code(code, code_len);
 }
 
 /**

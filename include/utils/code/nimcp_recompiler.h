@@ -128,6 +128,27 @@ extern "C" {
 /** Magic value for recompiler validation */
 #define NIMCP_RECOMPILER_MAGIC 0x52434D50  /* 'RCMP' */
 
+/** Maximum sandbox output buffer size */
+#define NIMCP_SANDBOX_MAX_OUTPUT 8192
+
+/** Maximum test cases per validation */
+#define NIMCP_SANDBOX_MAX_TEST_CASES 32
+
+/** Default sandbox timeout (ms) */
+#define NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS 5000
+
+/** Default CPU time limit (seconds) */
+#define NIMCP_SANDBOX_DEFAULT_CPU_LIMIT_SEC 10
+
+/** Default memory limit (bytes) - 256MB */
+#define NIMCP_SANDBOX_DEFAULT_MEMORY_LIMIT (256 * 1024 * 1024)
+
+/** Default file descriptor limit */
+#define NIMCP_SANDBOX_DEFAULT_FD_LIMIT 32
+
+/** Default process limit (prevent fork bombs) */
+#define NIMCP_SANDBOX_DEFAULT_PROC_LIMIT 4
+
 /* ============================================================================
  * TYPE DEFINITIONS
  * ============================================================================ */
@@ -221,6 +242,180 @@ typedef int (*sandbox_test_fn_t)(const char* so_path, void* user_data);
  * @brief Recompiler opaque handle
  */
 typedef struct nimcp_recompiler* recompiler_t;
+
+/* ============================================================================
+ * ENHANCED SANDBOX TYPES
+ * ============================================================================ */
+
+/**
+ * @brief Sandbox test outcome
+ *
+ * WHAT: Result classification for sandbox test execution
+ * WHY: Distinguish between pass, fail, crash, timeout
+ */
+typedef enum {
+    SANDBOX_RESULT_PASS = 0,        /**< Test passed successfully */
+    SANDBOX_RESULT_FAIL,            /**< Test failed (returned non-zero) */
+    SANDBOX_RESULT_CRASH,           /**< Test crashed (signal) */
+    SANDBOX_RESULT_TIMEOUT,         /**< Test timed out */
+    SANDBOX_RESULT_RESOURCE_LIMIT,  /**< Hit resource limit */
+    SANDBOX_RESULT_COMPILE_ERROR,   /**< Compilation failed */
+    SANDBOX_RESULT_LOAD_ERROR,      /**< dlopen failed */
+    SANDBOX_RESULT_SETUP_ERROR      /**< Sandbox setup failed */
+} sandbox_result_t;
+
+/**
+ * @brief Test case type for validation
+ *
+ * WHAT: Classification of generated test cases
+ * WHY: Ensure diverse test coverage
+ */
+typedef enum {
+    TEST_CASE_NORMAL = 0,           /**< Normal input values */
+    TEST_CASE_BOUNDARY,             /**< Boundary value testing */
+    TEST_CASE_NULL_PTR,             /**< NULL pointer testing */
+    TEST_CASE_ZERO,                 /**< Zero/empty input */
+    TEST_CASE_MAX_VALUE,            /**< Maximum value testing */
+    TEST_CASE_NEGATIVE,             /**< Negative value testing */
+    TEST_CASE_OVERFLOW,             /**< Potential overflow values */
+    TEST_CASE_REGRESSION,           /**< Regression from original crash */
+    TEST_CASE_CUSTOM                /**< User-defined test case */
+} test_case_type_t;
+
+/**
+ * @brief Sandbox resource limits configuration
+ *
+ * WHAT: Resource constraints for sandboxed execution
+ * WHY: Prevent runaway processes, fork bombs, resource exhaustion
+ * HOW: Applied via setrlimit() in child process
+ */
+typedef struct {
+    uint32_t cpu_time_sec;          /**< CPU time limit (seconds) */
+    size_t memory_bytes;            /**< Address space limit (bytes) */
+    uint32_t file_descriptors;      /**< Max open file descriptors */
+    uint32_t processes;             /**< Max child processes (fork bomb protection) */
+    size_t file_size_bytes;         /**< Max file size that can be created */
+    size_t stack_size_bytes;        /**< Stack size limit */
+    bool restrict_network;          /**< Disable network access (seccomp) */
+    bool restrict_filesystem;       /**< Restrict filesystem access */
+    bool use_seccomp;               /**< Enable seccomp filtering */
+} sandbox_limits_t;
+
+/**
+ * @brief Enhanced sandbox test result
+ *
+ * WHAT: Detailed result from sandbox test execution
+ * WHY: Provide comprehensive feedback for fix validation
+ */
+typedef struct {
+    sandbox_result_t result;        /**< Test outcome classification */
+    int exit_code;                  /**< Process exit code (if exited) */
+    int signal_number;              /**< Signal number (if crashed) */
+    char signal_name[32];           /**< Signal name (e.g., "SIGSEGV") */
+
+    char stdout_output[NIMCP_SANDBOX_MAX_OUTPUT];  /**< Captured stdout */
+    char stderr_output[NIMCP_SANDBOX_MAX_OUTPUT];  /**< Captured stderr */
+    size_t stdout_len;              /**< Length of stdout */
+    size_t stderr_len;              /**< Length of stderr */
+    bool output_truncated;          /**< Output was truncated */
+
+    uint64_t execution_time_us;     /**< Execution time in microseconds */
+    uint64_t cpu_time_us;           /**< CPU time consumed */
+    size_t peak_memory_bytes;       /**< Peak memory usage */
+
+    bool resource_limit_hit;        /**< Hit a resource limit */
+    char limit_hit_name[32];        /**< Name of limit that was hit */
+} sandbox_test_result_t;
+
+/**
+ * @brief Single test case for validation
+ *
+ * WHAT: Definition of a single test case
+ * WHY: Enable systematic testing of fixes
+ */
+typedef struct {
+    test_case_type_t type;          /**< Type of test case */
+    char description[256];          /**< Human-readable description */
+
+    void* input_data;               /**< Input data for test */
+    size_t input_size;              /**< Size of input data */
+
+    void* expected_output;          /**< Expected output (NULL if any accepted) */
+    size_t expected_size;           /**< Size of expected output */
+
+    bool expect_success;            /**< Test should pass/fail */
+    int expected_exit_code;         /**< Expected exit code (if specific) */
+
+    uint32_t priority;              /**< Execution priority (lower = higher) */
+} test_case_t;
+
+/**
+ * @brief Test case collection for validation
+ *
+ * WHAT: Collection of test cases to run
+ * WHY: Validate fix with multiple scenarios
+ */
+typedef struct {
+    test_case_t cases[NIMCP_SANDBOX_MAX_TEST_CASES];  /**< Test cases */
+    uint32_t count;                 /**< Number of test cases */
+    uint32_t passed;                /**< Tests passed */
+    uint32_t failed;                /**< Tests failed */
+    uint32_t crashed;               /**< Tests crashed */
+    uint32_t timed_out;             /**< Tests timed out */
+} test_case_collection_t;
+
+/**
+ * @brief Crash context for test generation
+ *
+ * WHAT: Context from original crash for generating tests
+ * WHY: Generate targeted test cases based on crash
+ */
+typedef struct {
+    int crash_signal;               /**< Signal that caused crash */
+    void* crash_address;            /**< Address that caused crash */
+    char function_name[256];        /**< Function where crash occurred */
+    char source_file[NIMCP_RECOMPILER_MAX_PATH];  /**< Source file */
+    uint32_t line_number;           /**< Line number of crash */
+
+    char* faulty_code;              /**< Original faulty code snippet */
+    size_t faulty_code_len;         /**< Length of faulty code */
+
+    void** parameter_values;        /**< Parameter values at crash */
+    uint32_t parameter_count;       /**< Number of parameters */
+
+    uint32_t crash_frequency;       /**< How often this crash occurs */
+} crash_context_t;
+
+/**
+ * @brief Fix validation result
+ *
+ * WHAT: Complete result of fix validation pipeline
+ * WHY: Determine if fix is safe to deploy
+ */
+typedef struct {
+    bool validation_passed;         /**< Overall validation passed */
+    float validation_score;         /**< Score 0.0-1.0 */
+
+    /* Compilation status */
+    bool compile_success;           /**< Fix compiled successfully */
+    recompile_result_t compile_result;  /**< Compilation details */
+
+    /* Test results */
+    test_case_collection_t test_results;  /**< Individual test results */
+    uint32_t regression_tests_passed;     /**< Regression tests passed */
+    uint32_t regression_tests_total;      /**< Total regression tests */
+
+    /* Original crash reproduction */
+    bool original_crash_fixed;      /**< Original crash no longer occurs */
+    sandbox_test_result_t crash_test;  /**< Result of crash reproduction test */
+
+    /* Performance impact */
+    float performance_ratio;        /**< Ratio vs original (1.0 = same) */
+
+    /* Recommendations */
+    bool safe_to_deploy;            /**< Recommended for deployment */
+    char notes[1024];               /**< Validation notes/warnings */
+} fix_validation_result_t;
 
 /* ============================================================================
  * LIFECYCLE FUNCTIONS
@@ -475,6 +670,292 @@ NIMCP_EXPORT int recompiler_sandbox_test(
     sandbox_test_fn_t test_fn,
     void* user_data,
     uint32_t timeout_ms
+);
+
+/* ============================================================================
+ * ENHANCED SANDBOX FUNCTIONS
+ * ============================================================================ */
+
+/**
+ * @brief Get default sandbox resource limits
+ *
+ * WHAT: Get sensible default limits for sandbox execution
+ * WHY: Prevent resource exhaustion while allowing normal operation
+ * HOW: Return struct with pre-configured limits
+ *
+ * @return Default sandbox limits configuration
+ */
+NIMCP_EXPORT sandbox_limits_t sandbox_default_limits(void);
+
+/**
+ * @brief Run enhanced sandbox test with detailed results
+ *
+ * WHAT: Execute test in isolated sandbox with full result capture
+ * WHY: Get detailed feedback on test execution
+ * HOW: Fork, apply limits, capture output, collect metrics
+ *
+ * @param so_path Path to shared object to test
+ * @param test_fn Test function to execute
+ * @param user_data User context for test function
+ * @param limits Resource limits to apply (NULL for defaults)
+ * @param timeout_ms Wall-clock timeout (0 = default)
+ * @param result Output: detailed test result
+ * @return 0 on successful execution (check result->result for test outcome)
+ *
+ * THREAD-SAFE: Yes
+ *
+ * EXAMPLE:
+ * ```c
+ * sandbox_test_result_t result = {0};
+ * sandbox_limits_t limits = sandbox_default_limits();
+ * limits.memory_bytes = 64 * 1024 * 1024;  // 64MB limit
+ *
+ * int ret = sandbox_test_enhanced(
+ *     "patch.so", my_test, NULL, &limits, 5000, &result
+ * );
+ *
+ * if (result.result == SANDBOX_RESULT_PASS) {
+ *     printf("Test passed in %lu us\n", result.execution_time_us);
+ * } else if (result.result == SANDBOX_RESULT_CRASH) {
+ *     printf("Crashed with %s\n", result.signal_name);
+ * }
+ * ```
+ */
+NIMCP_EXPORT int sandbox_test_enhanced(
+    const char* so_path,
+    sandbox_test_fn_t test_fn,
+    void* user_data,
+    const sandbox_limits_t* limits,
+    uint32_t timeout_ms,
+    sandbox_test_result_t* result
+);
+
+/**
+ * @brief Get signal name from signal number
+ *
+ * WHAT: Convert signal number to human-readable name
+ * WHY: Better diagnostic messages
+ * HOW: Static lookup table
+ *
+ * @param signum Signal number
+ * @return Signal name (static string, do not free)
+ */
+NIMCP_EXPORT const char* sandbox_signal_name(int signum);
+
+/**
+ * @brief Get sandbox result name
+ *
+ * WHAT: Convert result enum to string
+ * WHY: Human-readable output
+ *
+ * @param result Sandbox result enum
+ * @return Result name (static string, do not free)
+ */
+NIMCP_EXPORT const char* sandbox_result_name(sandbox_result_t result);
+
+/* ============================================================================
+ * TEST CASE GENERATION FUNCTIONS
+ * ============================================================================ */
+
+/**
+ * @brief Generate test cases from crash context
+ *
+ * WHAT: Create test cases based on crash information
+ * WHY: Targeted testing of likely failure modes
+ * HOW: Analyze crash type, generate boundary/null/overflow tests
+ *
+ * @param crash_ctx Crash context information
+ * @param collection Output: generated test cases
+ * @return Number of test cases generated, or -1 on error
+ *
+ * THREAD-SAFE: Yes
+ *
+ * EXAMPLE:
+ * ```c
+ * crash_context_t ctx = {0};
+ * ctx.crash_signal = SIGSEGV;
+ * ctx.function_name = "process_buffer";
+ *
+ * test_case_collection_t cases = {0};
+ * int count = recompiler_generate_test_cases(&ctx, &cases);
+ * printf("Generated %d test cases\n", count);
+ * ```
+ */
+NIMCP_EXPORT int recompiler_generate_test_cases(
+    const crash_context_t* crash_ctx,
+    test_case_collection_t* collection
+);
+
+/**
+ * @brief Add custom test case to collection
+ *
+ * WHAT: Add user-defined test case
+ * WHY: Allow domain-specific test cases
+ * HOW: Append to collection if space available
+ *
+ * @param collection Test case collection
+ * @param test_case Test case to add
+ * @return 0 on success, -1 if collection full
+ */
+NIMCP_EXPORT int recompiler_add_test_case(
+    test_case_collection_t* collection,
+    const test_case_t* test_case
+);
+
+/**
+ * @brief Clear test case collection
+ *
+ * WHAT: Reset test case collection
+ * WHY: Prepare for new test run
+ * HOW: Zero out counts, free input data
+ *
+ * @param collection Collection to clear
+ */
+NIMCP_EXPORT void recompiler_clear_test_cases(test_case_collection_t* collection);
+
+/**
+ * @brief Get test case type name
+ *
+ * WHAT: Convert test case type to string
+ * WHY: Human-readable output
+ *
+ * @param type Test case type
+ * @return Type name (static string)
+ */
+NIMCP_EXPORT const char* test_case_type_name(test_case_type_t type);
+
+/* ============================================================================
+ * FIX VALIDATION PIPELINE
+ * ============================================================================ */
+
+/**
+ * @brief Validate fix in sandbox
+ *
+ * WHAT: Complete fix validation pipeline
+ * WHY: Verify fix is safe to deploy
+ * HOW: Compile, run tests, check regression, score fix
+ *
+ * @param recompiler Recompiler handle
+ * @param source_code Fixed source code
+ * @param fn_name Function being patched
+ * @param crash_ctx Original crash context
+ * @param extra_tests Additional tests to run (optional)
+ * @param result Output: validation result
+ * @return 0 on success, -1 on error
+ *
+ * THREAD-SAFE: Yes
+ *
+ * EXAMPLE:
+ * ```c
+ * fix_validation_result_t result = {0};
+ * int ret = recompiler_validate_fix(
+ *     recompiler,
+ *     fixed_code,
+ *     "process_buffer",
+ *     &crash_context,
+ *     NULL,  // No extra tests
+ *     &result
+ * );
+ *
+ * if (result.validation_passed && result.safe_to_deploy) {
+ *     printf("Fix validated with score %.2f\n", result.validation_score);
+ * }
+ * ```
+ */
+NIMCP_EXPORT int recompiler_validate_fix(
+    recompiler_t recompiler,
+    const char* source_code,
+    const char* fn_name,
+    const crash_context_t* crash_ctx,
+    const test_case_collection_t* extra_tests,
+    fix_validation_result_t* result
+);
+
+/**
+ * @brief Run test collection in sandbox
+ *
+ * WHAT: Execute all tests in collection
+ * WHY: Batch test execution with aggregated results
+ * HOW: Run each test in sandbox, update collection stats
+ *
+ * @param so_path Path to shared object
+ * @param test_fn Test function to execute per case
+ * @param collection Test case collection (updated with results)
+ * @param limits Resource limits (NULL for defaults)
+ * @param timeout_per_test_ms Timeout per test (0 = default)
+ * @return Number of tests passed, or -1 on error
+ */
+NIMCP_EXPORT int recompiler_run_test_collection(
+    const char* so_path,
+    sandbox_test_fn_t test_fn,
+    test_case_collection_t* collection,
+    const sandbox_limits_t* limits,
+    uint32_t timeout_per_test_ms
+);
+
+/**
+ * @brief Check if fix addresses original crash
+ *
+ * WHAT: Verify that the original crash no longer occurs
+ * WHY: Primary validation criterion
+ * HOW: Reproduce crash conditions, check for crash
+ *
+ * @param so_path Path to compiled fix
+ * @param crash_ctx Original crash context
+ * @param result Output: test result
+ * @return true if crash is fixed, false if still crashes
+ */
+NIMCP_EXPORT bool recompiler_verify_crash_fixed(
+    const char* so_path,
+    const crash_context_t* crash_ctx,
+    sandbox_test_result_t* result
+);
+
+/**
+ * @brief Calculate validation score
+ *
+ * WHAT: Compute overall validation score
+ * WHY: Quantify fix quality
+ * HOW: Weight test results, compile warnings, performance
+ *
+ * @param validation Validation result to score
+ * @return Score from 0.0 (poor) to 1.0 (excellent)
+ */
+NIMCP_EXPORT float recompiler_calculate_validation_score(
+    const fix_validation_result_t* validation
+);
+
+/* ============================================================================
+ * SANDBOX ISOLATION (SECCOMP)
+ * ============================================================================ */
+
+/**
+ * @brief Check if seccomp is available
+ *
+ * WHAT: Check if kernel supports seccomp
+ * WHY: Seccomp provides stronger isolation
+ * HOW: Test prctl(PR_GET_SECCOMP)
+ *
+ * @return true if seccomp is available
+ */
+NIMCP_EXPORT bool sandbox_seccomp_available(void);
+
+/**
+ * @brief Apply seccomp filter for sandbox
+ *
+ * WHAT: Install seccomp filter to restrict syscalls
+ * WHY: Prevent malicious code from escaping sandbox
+ * HOW: Use seccomp-bpf to whitelist safe syscalls
+ *
+ * @param allow_network Allow network syscalls
+ * @param allow_filesystem Allow filesystem beyond temp dir
+ * @return 0 on success, -1 on error
+ *
+ * @note Call this AFTER fork() but BEFORE executing untrusted code
+ */
+NIMCP_EXPORT int sandbox_apply_seccomp(
+    bool allow_network,
+    bool allow_filesystem
 );
 
 /* ============================================================================

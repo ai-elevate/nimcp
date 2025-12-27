@@ -992,12 +992,10 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
 #else
     (void)src_device;
     (void)dst_device;
-    (void)src_data;
-    (void)dst_data;
-    (void)size;
 #endif
 
-    // Mock: No-op
+    // Mock: Perform actual memory copy between simulated GPU buffers
+    memcpy(dst_data, src_data, size);
     return true;
 }
 

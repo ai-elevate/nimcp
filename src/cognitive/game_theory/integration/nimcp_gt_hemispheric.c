@@ -373,8 +373,9 @@ nimcp_error_t gt_hemi_set_bargaining_power(
     ctx->config.left_bargaining_power = left_power;
     ctx->config.right_bargaining_power = 1.0f - left_power;
 
-    // Note: Would need to recreate bargaining context to apply new powers
-    return NIMCP_SUCCESS;
+    // Update the internal bargaining context with new powers
+    float powers[NUM_HEMISPHERES] = {left_power, 1.0f - left_power};
+    return nimcp_bargaining_set_powers(ctx->bargaining, powers, NUM_HEMISPHERES);
 }
 
 nimcp_error_t gt_hemi_set_disagreement(
@@ -389,8 +390,9 @@ nimcp_error_t gt_hemi_set_disagreement(
     ctx->config.disagreement_left = left_disagree;
     ctx->config.disagreement_right = right_disagree;
 
-    // Note: Would need to recreate bargaining context to apply new disagreement
-    return NIMCP_SUCCESS;
+    // Update the internal bargaining context with new disagreement payoffs
+    float disagreement[NUM_HEMISPHERES] = {left_disagree, right_disagree};
+    return nimcp_bargaining_set_disagreement(ctx->bargaining, disagreement, NUM_HEMISPHERES);
 }
 
 //=============================================================================

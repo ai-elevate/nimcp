@@ -63,8 +63,18 @@ protected:
 
 TEST_F(PathTraversalIntegrationTest, BioAsyncRegistration) {
     /* Validator should be registered with bio-async */
-    /* This is implicitly tested during SetUp */
-    SUCCEED();
+    /* Verify the validator was created successfully in SetUp */
+    ASSERT_NE(validator, nullptr) << "Validator should be created";
+    ASSERT_NE(bio_async, nullptr) << "Bio-async instance should exist";
+
+    /* Verify validator can perform basic operation after registration */
+    nimcp_path_validation_result_t result;
+    nimcp_path_error_t err = nimcp_path_validate(
+        validator, "test.txt", NIMCP_PATH_CONTEXT_AUTO, &result);
+
+    /* Validator should respond (either success or threat detected, but not error) */
+    EXPECT_TRUE(err == NIMCP_PATH_SUCCESS || err == NIMCP_PATH_ERROR_THREAT_DETECTED)
+        << "Validator should be functional after bio-async registration";
 }
 
 TEST_F(PathTraversalIntegrationTest, MultipleValidatorsCoexist) {

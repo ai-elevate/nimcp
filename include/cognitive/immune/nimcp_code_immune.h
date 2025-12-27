@@ -98,6 +98,7 @@ extern "C" {
 #define CODE_IMMUNE_EPITOPE_SIZE       64    /**< Crash signature hash size */
 #define CODE_IMMUNE_BACKTRACE_DEPTH    32    /**< Max backtrace frames */
 #define CODE_IMMUNE_MODULE_NAME        "code_immune"
+#define CODE_IMMUNE_PERSIST_MAX_PATH   512   /**< Max filepath length (moved here for struct) */
 
 /* ============================================================================
  * Forward Declarations
@@ -410,6 +411,12 @@ struct code_immune_system {
     bool running;
     bool signal_handler_connected;
     uint64_t start_time;
+
+    /* Persistence state */
+    bool auto_save_enabled;                   /**< Auto-save on validation */
+    bool auto_load_enabled;                   /**< Auto-load on startup */
+    char auto_save_path[CODE_IMMUNE_PERSIST_MAX_PATH]; /**< Auto-save filepath */
+    char auto_load_path[CODE_IMMUNE_PERSIST_MAX_PATH]; /**< Auto-load filepath */
 };
 
 /* ============================================================================
@@ -956,6 +963,395 @@ int code_immune_compute_epitope(
 float code_immune_compute_affinity(
     const char* pattern1,
     const char* pattern2
+);
+
+/* ============================================================================
+ * Persistence API
+ * ============================================================================ */
+
+/* Persistence constants (CODE_IMMUNE_PERSIST_MAX_PATH defined above for struct) */
+#define CODE_IMMUNE_PERSIST_MAGIC        "NIMCPCIM"  /**< File magic header */
+#define CODE_IMMUNE_PERSIST_MAGIC_LEN    8           /**< Magic header length */
+#define CODE_IMMUNE_PERSIST_VERSION      1           /**< Current format version */
+#define CODE_IMMUNE_PERSIST_DEFAULT_DIR  "~/.nimcp"  /**< Default directory */
+#define CODE_IMMUNE_PERSIST_DEFAULT_FILE "code_immune_memory.bin" /**< Default file */
+
+/* Persistence format flags */
+#define CODE_IMMUNE_FORMAT_FLAG_COMPRESSED   0x00000001  /**< Data is compressed */
+#define CODE_IMMUNE_FORMAT_FLAG_ENCRYPTED    0x00000002  /**< Data is encrypted */
+#define CODE_IMMUNE_FORMAT_FLAG_MEMORY_ONLY  0x00000004  /**< Memory cells only */
+
+/* Minimum confidence for persistence (prune below this) */
+#define CODE_IMMUNE_PERSIST_MIN_CONFIDENCE  0.3f
+
+/**
+ * @brief Persistence file header for code immune memory
+ *
+ * WHAT: Metadata header for code immune persistence files
+ * WHY:  Version checking, validation, format detection
+ * HOW:  Written at start of every persistence file
+ */
+typedef struct {
+    char magic[CODE_IMMUNE_PERSIST_MAGIC_LEN];  /**< Magic identifier */
+    uint32_t version;                            /**< Format version */
+    uint32_t flags;                              /**< Format flags */
+    uint64_t timestamp;                          /**< Save timestamp (ms) */
+    uint32_t checksum;                           /**< CRC32 checksum of data */
+    uint32_t reserved1;                          /**< Reserved for future use */
+    uint64_t file_size;                          /**< Total file size */
+    uint64_t reserved2[3];                       /**< Reserved for future use */
+} code_immune_persist_header_t;
+
+/**
+ * @brief Persistence section counts for code immune
+ *
+ * WHAT: Counts of each code immune component for array allocation
+ * WHY:  Pre-allocation before loading data arrays
+ * HOW:  Read after header, before data sections
+ */
+typedef struct {
+    uint32_t b_cell_count;           /**< Number of B cells */
+    uint32_t antibody_count;         /**< Number of antibodies */
+    uint32_t pattern_stat_count;     /**< Number of pattern statistics */
+    uint32_t reserved[5];            /**< Reserved for future use */
+} code_immune_persist_counts_t;
+
+/**
+ * @brief Pattern match statistics for persistence
+ *
+ * WHAT: Aggregated pattern match statistics
+ * WHY:  Track which patterns are most valuable
+ * HOW:  Stored per unique crash signature
+ */
+typedef struct {
+    char epitope[CODE_IMMUNE_EPITOPE_SIZE];  /**< Crash pattern signature */
+    code_crash_type_t crash_type;            /**< Primary crash type */
+    uint32_t match_count;                    /**< Times this pattern matched */
+    uint32_t successful_fixes;               /**< Successful fixes applied */
+    uint32_t failed_fixes;                   /**< Failed fixes */
+    float avg_affinity;                      /**< Average affinity score */
+    uint64_t first_seen;                     /**< First occurrence timestamp */
+    uint64_t last_seen;                      /**< Last occurrence timestamp */
+} code_immune_pattern_stat_t;
+
+/**
+ * @brief Persistence configuration for code immune
+ *
+ * WHAT: Configuration for code immune memory persistence
+ * WHY:  Customize save/load behavior
+ * HOW:  Pass to save/load functions to control behavior
+ */
+typedef struct {
+    /* Compression/Encryption */
+    bool enable_compression;         /**< Use zlib compression if available */
+    bool enable_encryption;          /**< Use AES-256 encryption if available */
+    uint8_t encryption_key[32];      /**< Encryption key (256-bit) */
+    bool encryption_key_set;         /**< Whether encryption key is valid */
+
+    /* Selective save options */
+    bool save_b_cells;               /**< Save B cells */
+    bool save_antibodies;            /**< Save antibodies */
+    bool save_pattern_stats;         /**< Save pattern statistics */
+
+    /* Memory-only mode */
+    bool memory_cells_only;          /**< Save only memory B cells */
+
+    /* Validation */
+    bool verify_on_load;             /**< Verify checksum on load */
+    bool strict_version_check;       /**< Require exact version match */
+
+    /* Backup */
+    bool create_backup;              /**< Create .bak before overwriting */
+    char backup_suffix[16];          /**< Backup file suffix (default ".bak") */
+
+    /* Pruning */
+    bool auto_prune;                 /**< Auto-prune low-confidence patterns */
+    float min_confidence;            /**< Minimum confidence to keep */
+    uint32_t min_successful_fixes;   /**< Minimum fixes to be kept */
+
+    /* Auto-save */
+    bool auto_save_on_validation;    /**< Auto-save after successful validation */
+
+    /* File paths */
+    char memory_file_path[CODE_IMMUNE_PERSIST_MAX_PATH];  /**< Custom memory file path */
+} code_immune_persist_config_t;
+
+/**
+ * @brief Persistence operation result
+ *
+ * WHAT: Detailed result of save/load operation
+ * WHY:  Provide diagnostics and statistics to caller
+ * HOW:  Filled by save/load functions
+ */
+typedef struct {
+    bool success;                    /**< Operation succeeded */
+    uint32_t version_loaded;         /**< Version of loaded file */
+    uint64_t bytes_written;          /**< Bytes written to disk */
+    uint64_t bytes_read;             /**< Bytes read from disk */
+    uint64_t save_time_ms;           /**< Time taken for save (ms) */
+    uint64_t load_time_ms;           /**< Time taken for load (ms) */
+    uint32_t b_cells_saved;          /**< B cells saved/loaded */
+    uint32_t antibodies_saved;       /**< Antibodies saved/loaded */
+    uint32_t patterns_saved;         /**< Pattern stats saved/loaded */
+    uint32_t items_pruned;           /**< Items pruned during consolidation */
+    char error_message[256];         /**< Error description if failed */
+} code_immune_persist_result_t;
+
+/**
+ * @brief Get default persistence configuration
+ *
+ * WHAT: Provide sensible default configuration for code immune persistence
+ * WHY:  Easy initialization with good defaults
+ * HOW:  Return struct with balanced parameters
+ *
+ * DEFAULTS:
+ * - Compression: disabled (for speed)
+ * - Encryption: disabled (no key)
+ * - Save all components: enabled
+ * - Memory cells only: false
+ * - Auto-prune: enabled with 0.3 min confidence
+ * - Auto-save on validation: enabled
+ * - Default path: ~/.nimcp/code_immune_memory.bin
+ *
+ * @param config Output configuration (non-NULL)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_persist_default_config(code_immune_persist_config_t* config);
+
+/**
+ * @brief Save code immune memory to file
+ *
+ * WHAT: Serialize code immune state (B cells, antibodies, patterns) to disk
+ * WHY:  Enable cross-session crash pattern learning
+ * HOW:  Write header -> counts -> data sections with optional compression
+ *
+ * THREAD SAFETY: Acquires system mutex during save
+ * ATOMICITY: Writes to temp file, then renames (atomic on POSIX)
+ *
+ * SAVED DATA:
+ * - Memory B cells (learned crash patterns with fix templates)
+ * - Validated antibodies (proven fixes with effectiveness scores)
+ * - Pattern match statistics (aggregated crash pattern data)
+ *
+ * @param system Code immune system (non-NULL)
+ * @param filepath Path to save to (NULL for default path)
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_save_memory(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config
+);
+
+/**
+ * @brief Load code immune memory from file
+ *
+ * WHAT: Restore code immune state from disk
+ * WHY:  Restore learned crash patterns from previous sessions
+ * HOW:  Read header -> validate -> read counts -> load data
+ *
+ * THREAD SAFETY: Acquires system mutex during load
+ * VALIDATION:
+ * - Header magic and version checked
+ * - Counts checked against capacity limits
+ * - Checksum verified (if enabled)
+ *
+ * BEHAVIOR:
+ * - Does NOT clear existing state (merges with current)
+ * - Updates affinity for existing patterns if higher
+ * - Preserves system configuration
+ *
+ * @param system Code immune system (non-NULL)
+ * @param filepath Path to load from (NULL for default path)
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_load_memory(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config
+);
+
+/**
+ * @brief Save with detailed result information
+ *
+ * WHAT: Save code immune memory with detailed diagnostics
+ * WHY:  Get statistics and error details
+ * HOW:  Same as code_immune_save_memory but fills result struct
+ *
+ * @param system Code immune system (non-NULL)
+ * @param filepath Path to save to (NULL for default)
+ * @param config Configuration (NULL for defaults)
+ * @param result Output result structure (non-NULL)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_save_memory_ex(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config,
+    code_immune_persist_result_t* result
+);
+
+/**
+ * @brief Load with detailed result information
+ *
+ * WHAT: Load code immune memory with detailed diagnostics
+ * WHY:  Get statistics and error details
+ * HOW:  Same as code_immune_load_memory but fills result struct
+ *
+ * @param system Code immune system (non-NULL)
+ * @param filepath Path to load from (NULL for default)
+ * @param config Configuration (NULL for defaults)
+ * @param result Output result structure (non-NULL)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_load_memory_ex(
+    code_immune_system_t* system,
+    const char* filepath,
+    const code_immune_persist_config_t* config,
+    code_immune_persist_result_t* result
+);
+
+/**
+ * @brief Consolidate immune memory
+ *
+ * WHAT: Compact and optimize stored immune memory
+ * WHY:  Prune low-confidence patterns, merge similar B cells
+ * HOW:  Remove stale entries, update statistics, compact storage
+ *
+ * CONSOLIDATION ACTIONS:
+ * - Prune B cells with affinity < min_confidence
+ * - Prune antibodies with effectiveness < min_confidence
+ * - Merge B cells with similar receptors (affinity > 0.95)
+ * - Update pattern statistics
+ * - Remove orphaned entries
+ *
+ * @param system Code immune system (non-NULL)
+ * @param config Configuration (NULL for defaults)
+ * @param items_pruned Output: number of items removed (can be NULL)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_consolidate_memory(
+    code_immune_system_t* system,
+    const code_immune_persist_config_t* config,
+    uint32_t* items_pruned
+);
+
+/**
+ * @brief Get default memory file path
+ *
+ * WHAT: Resolve default persistence file path
+ * WHY:  Provide consistent default location
+ * HOW:  Expand ~ and create directory if needed
+ *
+ * DEFAULT: ~/.nimcp/code_immune_memory.bin
+ *
+ * @param path_out Output buffer for path (must be CODE_IMMUNE_PERSIST_MAX_PATH)
+ * @param create_dir Create directory if it doesn't exist
+ * @return 0 on success, -1 on error
+ */
+int code_immune_get_default_memory_path(
+    char* path_out,
+    bool create_dir
+);
+
+/**
+ * @brief Validate persistence file
+ *
+ * WHAT: Check if file is valid code immune persistence file
+ * WHY:  Verify file before loading, detect corruption
+ * HOW:  Read header, validate magic/version/checksum
+ *
+ * @param filepath Path to validate (non-NULL)
+ * @param verify_checksum Whether to verify checksum
+ * @return 0 if valid, -1 if invalid
+ */
+int code_immune_validate_memory_file(
+    const char* filepath,
+    bool verify_checksum
+);
+
+/**
+ * @brief Check version compatibility
+ *
+ * WHAT: Check if file version is compatible with current version
+ * WHY:  Determine if file can be loaded
+ * HOW:  Compare version numbers
+ *
+ * @param file_version Version from file header
+ * @return true if compatible, false otherwise
+ */
+bool code_immune_is_version_compatible(uint32_t file_version);
+
+/**
+ * @brief Create backup of persistence file
+ *
+ * WHAT: Copy persistence file to backup location
+ * WHY:  Prevent data loss on save failure
+ * HOW:  Copy file to {filepath}.bak before save
+ *
+ * @param filepath Original file path (non-NULL)
+ * @param backup_suffix Backup suffix (NULL for ".bak")
+ * @return 0 on success, -1 on error
+ */
+int code_immune_create_backup(
+    const char* filepath,
+    const char* backup_suffix
+);
+
+/**
+ * @brief Get file information without loading
+ *
+ * WHAT: Read file header and counts without loading data
+ * WHY:  Preview file contents, check size before loading
+ * HOW:  Read header and counts section only
+ *
+ * @param filepath Path to file (non-NULL)
+ * @param header Output header (can be NULL)
+ * @param counts Output counts (can be NULL)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_get_memory_file_info(
+    const char* filepath,
+    code_immune_persist_header_t* header,
+    code_immune_persist_counts_t* counts
+);
+
+/**
+ * @brief Enable auto-save on fix validation
+ *
+ * WHAT: Configure automatic saving after successful fix validation
+ * WHY:  Persist newly learned fixes immediately
+ * HOW:  Set internal flag and callback
+ *
+ * @param system Code immune system (non-NULL)
+ * @param enable Enable or disable auto-save
+ * @param filepath Path for auto-saves (NULL for default)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_enable_auto_save(
+    code_immune_system_t* system,
+    bool enable,
+    const char* filepath
+);
+
+/**
+ * @brief Enable auto-load on startup
+ *
+ * WHAT: Load persisted memory on system start
+ * WHY:  Restore learned patterns automatically
+ * HOW:  Called internally by code_immune_start if enabled
+ *
+ * @param system Code immune system (non-NULL)
+ * @param enable Enable or disable auto-load
+ * @param filepath Path for auto-load (NULL for default)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_enable_auto_load(
+    code_immune_system_t* system,
+    bool enable,
+    const char* filepath
 );
 
 #ifdef __cplusplus

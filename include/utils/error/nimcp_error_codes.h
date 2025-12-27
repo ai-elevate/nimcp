@@ -54,9 +54,9 @@ typedef int32_t nimcp_error_t;
 
 //=============================================================================
 // Generic Errors (1000-1999)
-// Note: Some error codes may conflict with legacy nimcp_common.h definitions.
-// These use positive values (1000+) while legacy uses negative values.
-// Guard macros prevent redefinition when legacy headers are included first.
+// Note: This is the canonical error code system. All error codes use positive
+// values (1000+) following the convention: NIMCP_SUCCESS = 0, errors >= 1000.
+// Guard macros prevent redefinition when other headers are included first.
 //=============================================================================
 
 #define NIMCP_ERROR_UNKNOWN             1000 /**< Unknown error */

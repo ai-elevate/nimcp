@@ -78,11 +78,11 @@ typedef int32_t nimcp_error_t;
 #endif
 
 #ifndef NIMCP_ERROR_INVALID_ARG
-#define NIMCP_ERROR_INVALID_ARG -1
+#define NIMCP_ERROR_INVALID_ARG 1002
 #endif
 
 #ifndef NIMCP_ERROR_OUT_OF_MEMORY
-#define NIMCP_ERROR_OUT_OF_MEMORY -2
+#define NIMCP_ERROR_OUT_OF_MEMORY 2000
 #endif
 
 #define NIMCP_PORTIA_ERROR_BASE 20000

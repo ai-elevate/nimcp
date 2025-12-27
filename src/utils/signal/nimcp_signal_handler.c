@@ -136,6 +136,43 @@ static volatile sig_atomic_t g_pending_crash = 0;
 static crash_context_t g_pending_crash_context;
 
 //=============================================================================
+// Thread-Local Recovery State
+//=============================================================================
+
+/**
+ * @brief Thread-local key for per-thread recovery context
+ *
+ * WHAT: pthread_key_t for thread-local storage
+ * WHY:  Each thread needs its own recovery point
+ * HOW:  Created once, stores signal_recovery_ctx_t per thread
+ */
+#include <pthread.h>
+
+static pthread_key_t g_recovery_ctx_key;
+static pthread_once_t g_recovery_ctx_key_once = PTHREAD_ONCE_INIT;
+static volatile sig_atomic_t g_recovery_ctx_key_initialized = 0;
+
+/**
+ * @brief Destructor for thread-local recovery context
+ */
+static void recovery_ctx_destructor(void* ctx)
+{
+    if (ctx) {
+        nimcp_free(ctx);
+    }
+}
+
+/**
+ * @brief Initialize thread-local key (called once)
+ */
+static void init_recovery_ctx_key(void)
+{
+    if (pthread_key_create(&g_recovery_ctx_key, recovery_ctx_destructor) == 0) {
+        g_recovery_ctx_key_initialized = 1;
+    }
+}
+
+//=============================================================================
 // Signal-Safe Utility Functions
 //=============================================================================
 
@@ -534,6 +571,44 @@ static bool present_crash_to_code_immune(const crash_context_t* ctx)
 //=============================================================================
 
 /**
+ * WHAT: Try thread-local recovery jump
+ * WHY:  Attempt to recover using per-thread recovery context
+ * HOW:  Check thread-local context first, then global
+ *
+ * @param sig Signal number that caused crash
+ * @param handled Whether code immune handled the crash
+ * @return 0 if recovery jump was triggered (does not return), -1 otherwise
+ */
+static int try_recovery_jump(int sig, bool handled)
+{
+    signal_recovery_result_t result = handled ?
+        RECOVERY_CRASH_HANDLED : RECOVERY_CRASH_UNHANDLED;
+
+    /* Try thread-local recovery first (signal-safe pthread_getspecific) */
+    if (g_recovery_ctx_key_initialized) {
+        signal_recovery_ctx_t* ctx = pthread_getspecific(g_recovery_ctx_key);
+        if (ctx != NULL && ctx->valid) {
+            safe_write("!!! Attempting thread-local recovery via siglongjmp\n");
+            ctx->result = result;
+            ctx->crash_signal = sig;
+            ctx->valid = 0;
+            siglongjmp(ctx->jmp_buf, result);
+            /* NOTREACHED */
+        }
+    }
+
+    /* Fall back to global recovery point */
+    if (g_recovery_jump_valid) {
+        safe_write("!!! Attempting global recovery via siglongjmp\n");
+        g_recovery_jump_valid = 0;
+        siglongjmp(g_recovery_jump_buf, sig);
+        /* NOTREACHED */
+    }
+
+    return -1;
+}
+
+/**
  * WHAT: Enhanced fatal signal handler with full context capture
  * WHY:  Capture complete crash info for immune system integration
  * HOW:  Use SA_SIGINFO to get siginfo_t and ucontext_t
@@ -546,6 +621,7 @@ static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context
 {
     ucontext_t* uc = (ucontext_t*)context;
     crash_context_t ctx;
+    bool immune_handled = false;
 
     g_last_signal = sig;
     g_fatal_crashes++;
@@ -580,19 +656,22 @@ static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context
         if (g_code_immune && present_crash_to_code_immune(&ctx)) {
             safe_write("!!! Code immune system handling crash...\n");
             g_recoveries++;
-
-            /* If recovery jump is valid, jump to recovery point */
-            if (g_recovery_jump_valid) {
-                safe_write("!!! Attempting recovery via siglongjmp\n");
-                g_recovery_jump_valid = 0;
-                siglongjmp(g_recovery_jump_buf, sig);
-                /* Should not reach here */
-            }
-
-            /* Otherwise return (crash may recur) */
-            return;
+            immune_handled = true;
         }
 #endif /* NIMCP_ENABLE_CODE_IMMUNE */
+
+        /* Attempt recovery jump (thread-local or global) */
+        /* This will not return if a valid recovery point exists */
+        if (try_recovery_jump(sig, immune_handled) == 0) {
+            /* Should not reach here - siglongjmp does not return */
+        }
+
+        /* If immune handled but no recovery point, try to continue */
+        if (immune_handled) {
+            safe_write("!!! Code immune handled crash but no recovery point\n");
+            safe_write("!!! Attempting to continue (may cause re-crash)\n");
+            return;
+        }
     }
 
     /* Log stack trace if enabled */
@@ -621,7 +700,7 @@ static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context
 /**
  * WHAT: Enhanced SIGFPE handler with context capture
  * WHY:  Allow FPE recovery with full diagnostic info
- * HOW:  Capture context, try to continue if configured
+ * HOW:  Capture context, try recovery or continue if configured
  *
  * @param sig Signal number
  * @param info Signal info structure
@@ -631,6 +710,7 @@ static void handle_sigfpe_extended(int sig, siginfo_t* info, void* context)
 {
     ucontext_t* uc = (ucontext_t*)context;
     crash_context_t ctx;
+    bool immune_handled = false;
 
     g_last_signal = sig;
     g_sigfpe_count++;
@@ -639,16 +719,30 @@ static void handle_sigfpe_extended(int sig, siginfo_t* info, void* context)
 
     /* Capture context for diagnostics */
     if (capture_crash_context(sig, info, uc, &ctx)) {
+        /* Store for deferred processing */
+        memcpy((void*)&g_pending_crash_context, &ctx, sizeof(ctx));
+        g_pending_crash = 1;
+
         log_crash_context(&ctx);
 
 #ifdef NIMCP_ENABLE_CODE_IMMUNE
         /* Try code immune system */
         if (g_code_immune && present_crash_to_code_immune(&ctx)) {
             g_recoveries++;
+            immune_handled = true;
             safe_write("*** Code immune handled FPE\n");
-            return;
         }
 #endif
+
+        /* Attempt recovery jump if available */
+        if (try_recovery_jump(sig, immune_handled) == 0) {
+            /* NOTREACHED - siglongjmp does not return */
+        }
+
+        /* If immune handled, return */
+        if (immune_handled) {
+            return;
+        }
     }
 
     if (g_config.sigfpe_mode == SIGNAL_MODE_LOG_CONTINUE) {
@@ -1424,4 +1518,240 @@ void signal_handler_get_immune_stats(uint64_t* immune_recoveries, uint64_t* tota
     if (total_crashes) {
         *total_crashes = g_fatal_crashes;
     }
+}
+
+//=============================================================================
+// Thread-Local Recovery API Implementation
+//=============================================================================
+
+/**
+ * WHAT: Initialize thread-local recovery context
+ * WHY:  Each thread needs its own recovery state
+ * HOW:  Allocate/init thread-local storage
+ */
+int signal_handler_init_thread_recovery(void)
+{
+    /* Initialize pthread key (once across all threads) */
+    pthread_once(&g_recovery_ctx_key_once, init_recovery_ctx_key);
+
+    if (!g_recovery_ctx_key_initialized) {
+        return -1;
+    }
+
+    /* Check if already initialized for this thread */
+    signal_recovery_ctx_t* ctx = pthread_getspecific(g_recovery_ctx_key);
+    if (ctx != NULL) {
+        return 0;  /* Already initialized */
+    }
+
+    /* Allocate new context for this thread */
+    ctx = nimcp_calloc(1, sizeof(signal_recovery_ctx_t));
+    if (ctx == NULL) {
+        return -1;
+    }
+
+    /* Initialize context fields */
+    ctx->valid = 0;
+    ctx->result = RECOVERY_INITIAL;
+    ctx->crash_signal = 0;
+    ctx->retry_count = 0;
+    ctx->max_retries = 0;
+    ctx->user_data = NULL;
+    ctx->label = NULL;
+
+    /* Store in thread-local storage */
+    if (pthread_setspecific(g_recovery_ctx_key, ctx) != 0) {
+        nimcp_free(ctx);
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Cleanup thread-local recovery context
+ * WHY:  Clean up before thread exit
+ * HOW:  Free thread-local storage
+ */
+void signal_handler_cleanup_thread_recovery(void)
+{
+    if (!g_recovery_ctx_key_initialized) {
+        return;
+    }
+
+    signal_recovery_ctx_t* ctx = pthread_getspecific(g_recovery_ctx_key);
+    if (ctx != NULL) {
+        nimcp_free(ctx);
+        pthread_setspecific(g_recovery_ctx_key, NULL);
+    }
+}
+
+/**
+ * WHAT: Get thread-local recovery context
+ * WHY:  Access recovery state for current thread
+ * HOW:  Return pointer to thread-local context
+ */
+signal_recovery_ctx_t* signal_handler_get_recovery_ctx(void)
+{
+    /* Ensure key is initialized */
+    pthread_once(&g_recovery_ctx_key_once, init_recovery_ctx_key);
+
+    if (!g_recovery_ctx_key_initialized) {
+        return NULL;
+    }
+
+    signal_recovery_ctx_t* ctx = pthread_getspecific(g_recovery_ctx_key);
+
+    /* Auto-initialize if not yet done for this thread */
+    if (ctx == NULL) {
+        if (signal_handler_init_thread_recovery() == 0) {
+            ctx = pthread_getspecific(g_recovery_ctx_key);
+        }
+    }
+
+    return ctx;
+}
+
+/**
+ * WHAT: Set recovery point with extended options
+ * WHY:  Save execution context for crash recovery
+ * HOW:  Use sigsetjmp with thread-local context
+ *
+ * NOTE: This function uses sigsetjmp internally. The caller should
+ *       check the return value to determine if this is the initial
+ *       call or a recovery jump.
+ */
+int signal_handler_set_recovery_point_ex(
+    signal_recovery_ctx_t* ctx,
+    int max_retries,
+    const char* label)
+{
+    /* Use global context if thread context not provided */
+    if (ctx == NULL) {
+        ctx = signal_handler_get_recovery_ctx();
+        if (ctx == NULL) {
+            /* Fallback to legacy global recovery point */
+            return signal_handler_set_recovery_point();
+        }
+    }
+
+    /* Store configuration */
+    ctx->max_retries = max_retries;
+    ctx->label = label;
+
+    /* Save execution context with signal mask */
+    int result = sigsetjmp(ctx->jmp_buf, 1);
+
+    if (result == 0) {
+        /* Initial call - mark recovery point as valid */
+        ctx->valid = 1;
+        ctx->result = RECOVERY_INITIAL;
+        return RECOVERY_INITIAL;
+    } else {
+        /* Returned from siglongjmp - crash was handled */
+        ctx->retry_count++;
+
+        /* Return the recovery result that was passed to siglongjmp */
+        return ctx->result;
+    }
+}
+
+/**
+ * WHAT: Clear thread-local recovery point
+ * WHY:  Disable recovery jump after safe code completes
+ * HOW:  Clear validity flag in thread context
+ */
+void signal_handler_clear_recovery_point_ex(signal_recovery_ctx_t* ctx)
+{
+    if (ctx == NULL) {
+        ctx = signal_handler_get_recovery_ctx();
+        if (ctx == NULL) {
+            /* Fallback to legacy global recovery point */
+            signal_handler_clear_recovery_point();
+            return;
+        }
+    }
+
+    ctx->valid = 0;
+    ctx->result = RECOVERY_INITIAL;
+    ctx->crash_signal = 0;
+}
+
+/**
+ * WHAT: Trigger recovery jump from signal handler
+ * WHY:  Resume execution after crash handling
+ * HOW:  Use siglongjmp to thread's recovery point
+ *
+ * NOTE: Called from signal handler context. Does not return if
+ *       a valid recovery point exists.
+ */
+int signal_handler_trigger_recovery(signal_recovery_result_t result)
+{
+    signal_recovery_ctx_t* ctx = NULL;
+
+    /* Try to get thread-local context (signal-safe) */
+    if (g_recovery_ctx_key_initialized) {
+        ctx = pthread_getspecific(g_recovery_ctx_key);
+    }
+
+    if (ctx != NULL && ctx->valid) {
+        /* Store result and signal for post-recovery access */
+        ctx->result = result;
+        ctx->crash_signal = g_last_signal;
+
+        /* Clear validity before jump to prevent re-entry */
+        ctx->valid = 0;
+
+        /* Jump to recovery point - does not return */
+        siglongjmp(ctx->jmp_buf, result);
+        /* NOTREACHED */
+    }
+
+    /* Fall back to global recovery point for backward compatibility */
+    if (g_recovery_jump_valid) {
+        g_recovery_jump_valid = 0;
+        siglongjmp(g_recovery_jump_buf, g_last_signal);
+        /* NOTREACHED */
+    }
+
+    /* No valid recovery point */
+    return -1;
+}
+
+/**
+ * WHAT: Check if current thread has valid recovery point
+ * WHY:  Query recovery availability before crash
+ * HOW:  Check thread-local and global recovery state
+ */
+bool signal_handler_can_recover(void)
+{
+    /* Check thread-local recovery */
+    if (g_recovery_ctx_key_initialized) {
+        signal_recovery_ctx_t* ctx = pthread_getspecific(g_recovery_ctx_key);
+        if (ctx != NULL && ctx->valid) {
+            return true;
+        }
+    }
+
+    /* Check global recovery */
+    return (g_recovery_jump_valid != 0);
+}
+
+/**
+ * WHAT: Get crash signal from last recovery
+ * WHY:  Access crash details after recovery jump
+ * HOW:  Return signal from thread context or global state
+ */
+int signal_handler_get_crash_signal(void)
+{
+    /* Try thread-local first */
+    if (g_recovery_ctx_key_initialized) {
+        signal_recovery_ctx_t* ctx = pthread_getspecific(g_recovery_ctx_key);
+        if (ctx != NULL && ctx->crash_signal != 0) {
+            return ctx->crash_signal;
+        }
+    }
+
+    /* Fall back to global last signal */
+    return (int)g_last_signal;
 }

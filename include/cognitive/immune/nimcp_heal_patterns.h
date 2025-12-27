@@ -79,6 +79,10 @@ typedef enum {
     FIX_PATTERN_INIT_CHECK,        /**< Uninitialized variable check */
     FIX_PATTERN_LOCK_ORDER,        /**< Deadlock prevention (lock ordering) */
     FIX_PATTERN_RACE_GUARD,        /**< Race condition guard */
+    FIX_PATTERN_RESOURCE_LEAK,     /**< Resource leak - unclosed handles/memory */
+    FIX_PATTERN_FORMAT_STRING,     /**< Format string vulnerability fix */
+    FIX_PATTERN_BUFFER_UNDERFLOW,  /**< Buffer underflow - negative index fix */
+    FIX_PATTERN_STACK_OVERFLOW,    /**< Stack overflow - recursion depth limit */
     FIX_PATTERN_LNN_GENERATED,     /**< Neural network generated fix */
     FIX_PATTERN_CUSTOM,            /**< User-defined custom pattern */
     FIX_PATTERN_UNKNOWN,           /**< Unknown/unclassified pattern */
@@ -268,6 +272,128 @@ typedef struct {
 #define HEAL_PATTERN_OVERFLOW_BEFORE "${a} + ${b}"
 #define HEAL_PATTERN_OVERFLOW_AFTER  \
     "if (${a} > ${type_max} - ${b}) { return NIMCP_ERROR_OVERFLOW; }\n${a} + ${b}"
+
+/**
+ * @brief Resource leak fix template
+ *
+ * BEFORE: handle = open_resource(...);
+ * AFTER:  handle = open_resource(...);
+ *         if (handle != NULL) { ... use resource ... close_resource(handle); handle = NULL; }
+ */
+#define HEAL_PATTERN_RESOURCE_LEAK_BEFORE "${handle} = ${open_func}(${args})"
+#define HEAL_PATTERN_RESOURCE_LEAK_AFTER  \
+    "${handle} = ${open_func}(${args});\n" \
+    "if (${handle} != ${invalid_value}) {\n" \
+    "    /* resource acquired - ensure cleanup on all paths */\n" \
+    "}\n" \
+    "/* cleanup: ${close_func}(${handle}); ${handle} = ${invalid_value}; */"
+
+/**
+ * @brief Format string vulnerability fix template
+ *
+ * BEFORE: printf(user_input);
+ * AFTER:  printf("%s", user_input);
+ */
+#define HEAL_PATTERN_FORMAT_STRING_BEFORE "${printf_func}(${user_str})"
+#define HEAL_PATTERN_FORMAT_STRING_AFTER  "${printf_func}(\"%s\", ${user_str})"
+
+/**
+ * @brief Buffer underflow (negative index) fix template
+ *
+ * BEFORE: array[idx]
+ * AFTER:  if (idx < 0) { return NIMCP_ERROR_OUT_OF_RANGE; }
+ *         array[idx]
+ */
+#define HEAL_PATTERN_UNDERFLOW_BEFORE "${array}[${idx}]"
+#define HEAL_PATTERN_UNDERFLOW_AFTER  \
+    "if (${idx} < 0) { return NIMCP_ERROR_OUT_OF_RANGE; }\n${array}[${idx}]"
+
+/**
+ * @brief Uninitialized variable fix template
+ *
+ * BEFORE: type var; ... use(var);
+ * AFTER:  type var = default_value; ... use(var);
+ */
+#define HEAL_PATTERN_UNINIT_BEFORE "${type} ${var};"
+#define HEAL_PATTERN_UNINIT_AFTER  "${type} ${var} = ${default_value};"
+
+/**
+ * @brief Stack overflow (deep recursion) fix template
+ *
+ * BEFORE: void func() { ... func(); }
+ * AFTER:  void func() { static int depth = 0;
+ *                       if (++depth > MAX_DEPTH) { depth--; return; }
+ *                       ... func();
+ *                       depth--; }
+ */
+#define HEAL_PATTERN_STACK_OVERFLOW_BEFORE "void ${func}(${params})"
+#define HEAL_PATTERN_STACK_OVERFLOW_AFTER  \
+    "void ${func}(${params}) {\n" \
+    "    static __thread int _recursion_depth = 0;\n" \
+    "    if (++_recursion_depth > ${max_depth}) {\n" \
+    "        _recursion_depth--;\n" \
+    "        return ${default_return};\n" \
+    "    }"
+
+/**
+ * @brief Race condition guard template
+ *
+ * BEFORE: shared_var = value;
+ * AFTER:  mutex_lock(&mutex); shared_var = value; mutex_unlock(&mutex);
+ */
+#define HEAL_PATTERN_RACE_BEFORE "${shared_var} = ${value}"
+#define HEAL_PATTERN_RACE_AFTER  \
+    "nimcp_mutex_lock(${mutex});\n${shared_var} = ${value};\nnimcp_mutex_unlock(${mutex});"
+
+/**
+ * @brief Deadlock prevention (trylock with timeout) template
+ *
+ * BEFORE: mutex_lock(&mutex1); mutex_lock(&mutex2);
+ * AFTER:  if (mutex_trylock_timed(&mutex1, timeout) == 0) {
+ *             if (mutex_trylock_timed(&mutex2, timeout) != 0) {
+ *                 mutex_unlock(&mutex1); return TIMEOUT;
+ *             }
+ *         }
+ */
+#define HEAL_PATTERN_DEADLOCK_BEFORE "nimcp_mutex_lock(${mutex1})"
+#define HEAL_PATTERN_DEADLOCK_AFTER  \
+    "if (nimcp_mutex_trylock_timed(${mutex1}, ${timeout}) != 0) {\n" \
+    "    return NIMCP_ERROR_TIMEOUT;\n" \
+    "}"
+
+/* ============================================================================
+ * Detection Heuristics
+ * ============================================================================ */
+
+/**
+ * @brief Pattern detection heuristic
+ *
+ * WHAT: Defines code patterns to match for each fix type
+ * WHY:  Enable pattern detection without full parsing
+ */
+typedef struct {
+    const char* keywords[8];       /**< Keywords indicating this pattern */
+    size_t keyword_count;          /**< Number of keywords */
+    const char* code_patterns[4];  /**< Code pattern strings to match */
+    size_t pattern_count;          /**< Number of code patterns */
+    float base_confidence;         /**< Base confidence when matched */
+} pattern_heuristic_t;
+
+/**
+ * @brief Pattern statistics for tracking effectiveness
+ *
+ * WHAT: Aggregate statistics across all patterns
+ * WHY:  Monitor self-healing effectiveness over time
+ */
+typedef struct {
+    uint64_t total_matches;              /**< Total pattern matches */
+    uint64_t total_applications;         /**< Total fix applications */
+    uint64_t successful_fixes;           /**< Verified successful fixes */
+    uint64_t failed_fixes;               /**< Fixes that didn't work */
+    uint64_t pattern_counts[FIX_PATTERN_COUNT]; /**< Per-pattern match count */
+    float pattern_success_rates[FIX_PATTERN_COUNT]; /**< Per-pattern success rate */
+    uint64_t last_update_time;           /**< Last statistics update */
+} pattern_statistics_t;
 
 /* ============================================================================
  * Pattern Library API
@@ -491,6 +617,86 @@ fix_pattern_type_t heal_pattern_type_from_string(const char* name);
 int heal_pattern_init_builtin(
     fix_pattern_t* pattern,
     fix_pattern_type_t type
+);
+
+/* ============================================================================
+ * Pattern Statistics API
+ * ============================================================================ */
+
+/**
+ * @brief Get aggregate pattern statistics
+ *
+ * WHAT: Retrieve overall pattern matching statistics
+ * WHY:  Monitor self-healing effectiveness
+ * HOW:  Aggregate data from all patterns in library
+ *
+ * @param library Pattern library
+ * @param stats Output statistics structure
+ * @return 0 on success, -1 on error
+ */
+int heal_pattern_get_statistics(
+    pattern_library_t* library,
+    pattern_statistics_t* stats
+);
+
+/**
+ * @brief Reset pattern statistics
+ *
+ * WHAT: Clear all accumulated pattern statistics
+ * WHY:  Allow fresh measurement period
+ * HOW:  Zero all counters in library
+ *
+ * @param library Pattern library
+ * @return 0 on success, -1 on error
+ */
+int heal_pattern_reset_statistics(pattern_library_t* library);
+
+/**
+ * @brief Get detection heuristic for pattern type
+ *
+ * WHAT: Retrieve heuristics for detecting specific pattern type
+ * WHY:  Enable pattern detection in code analysis
+ * HOW:  Return predefined heuristics for given type
+ *
+ * @param type Pattern type
+ * @return Heuristic structure or NULL if not available
+ */
+const pattern_heuristic_t* heal_pattern_get_heuristic(fix_pattern_type_t type);
+
+/**
+ * @brief Calculate confidence score for pattern match
+ *
+ * WHAT: Compute confidence score for a code-pattern match
+ * WHY:  Weight pattern matches by quality
+ * HOW:  Combine heuristic score, historical success rate, context
+ *
+ * @param library Pattern library
+ * @param type Matched pattern type
+ * @param match_score Raw match score from detection
+ * @return Adjusted confidence score (0.0-1.0)
+ */
+float heal_pattern_calculate_confidence(
+    pattern_library_t* library,
+    fix_pattern_type_t type,
+    float match_score
+);
+
+/**
+ * @brief Detect pattern type from code snippet
+ *
+ * WHAT: Analyze code to determine likely bug pattern
+ * WHY:  Enable automatic pattern selection
+ * HOW:  Apply heuristics, return best matching pattern type
+ *
+ * @param code Source code to analyze
+ * @param code_len Length of code
+ * @param confidence_out Output: confidence score
+ * @return Detected pattern type, FIX_PATTERN_UNKNOWN if none
+ */
+fix_pattern_type_t heal_pattern_detect_type(
+    const char* code,
+    size_t code_len,
+    float* confidence_out
 );
 
 #ifdef __cplusplus

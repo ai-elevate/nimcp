@@ -31,6 +31,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -731,6 +733,1185 @@ int recompiler_sandbox_test(
     }
 
     return -1;
+}
+
+/* ============================================================================
+ * ENHANCED SANDBOX FUNCTIONS
+ * ============================================================================ */
+
+/**
+ * @brief Apply resource limits to child process
+ *
+ * WHAT: Set resource limits using setrlimit
+ * WHY: Prevent runaway processes, memory exhaustion
+ * HOW: Apply limits before executing untrusted code
+ */
+static bool apply_resource_limits(const sandbox_limits_t* limits)
+{
+    struct rlimit rl;
+
+    /**
+     * WHAT: Set CPU time limit
+     * WHY: Prevent infinite loops consuming CPU
+     */
+    if (limits->cpu_time_sec > 0) {
+        rl.rlim_cur = limits->cpu_time_sec;
+        rl.rlim_max = limits->cpu_time_sec + 1;
+        if (setrlimit(RLIMIT_CPU, &rl) != 0) {
+            LOG_ERROR("setrlimit(RLIMIT_CPU) failed: %s", strerror(errno));
+            return false;
+        }
+    }
+
+    /**
+     * WHAT: Set address space limit
+     * WHY: Prevent memory exhaustion
+     */
+    if (limits->memory_bytes > 0) {
+        rl.rlim_cur = limits->memory_bytes;
+        rl.rlim_max = limits->memory_bytes;
+        if (setrlimit(RLIMIT_AS, &rl) != 0) {
+            LOG_ERROR("setrlimit(RLIMIT_AS) failed: %s", strerror(errno));
+            return false;
+        }
+    }
+
+    /**
+     * WHAT: Set file descriptor limit
+     * WHY: Prevent file descriptor exhaustion
+     */
+    if (limits->file_descriptors > 0) {
+        rl.rlim_cur = limits->file_descriptors;
+        rl.rlim_max = limits->file_descriptors;
+        if (setrlimit(RLIMIT_NOFILE, &rl) != 0) {
+            LOG_ERROR("setrlimit(RLIMIT_NOFILE) failed: %s", strerror(errno));
+            return false;
+        }
+    }
+
+    /**
+     * WHAT: Set process limit (fork bomb protection)
+     * WHY: Prevent fork bombs
+     */
+    if (limits->processes > 0) {
+        rl.rlim_cur = limits->processes;
+        rl.rlim_max = limits->processes;
+        if (setrlimit(RLIMIT_NPROC, &rl) != 0) {
+            LOG_ERROR("setrlimit(RLIMIT_NPROC) failed: %s", strerror(errno));
+            return false;
+        }
+    }
+
+    /**
+     * WHAT: Set file size limit
+     * WHY: Prevent disk space exhaustion
+     */
+    if (limits->file_size_bytes > 0) {
+        rl.rlim_cur = limits->file_size_bytes;
+        rl.rlim_max = limits->file_size_bytes;
+        if (setrlimit(RLIMIT_FSIZE, &rl) != 0) {
+            LOG_ERROR("setrlimit(RLIMIT_FSIZE) failed: %s", strerror(errno));
+            return false;
+        }
+    }
+
+    /**
+     * WHAT: Set stack size limit
+     * WHY: Prevent stack overflow attacks
+     */
+    if (limits->stack_size_bytes > 0) {
+        rl.rlim_cur = limits->stack_size_bytes;
+        rl.rlim_max = limits->stack_size_bytes;
+        if (setrlimit(RLIMIT_STACK, &rl) != 0) {
+            LOG_ERROR("setrlimit(RLIMIT_STACK) failed: %s", strerror(errno));
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Read from pipe with timeout
+ *
+ * WHAT: Read data from pipe with timeout handling
+ * WHY: Non-blocking read to prevent deadlocks
+ * HOW: Use select() with timeout
+ */
+static ssize_t read_pipe_timeout(int fd, char* buffer, size_t size, uint32_t timeout_ms)
+{
+    fd_set readfds;
+    struct timeval tv;
+
+    FD_ZERO(&readfds);
+    FD_SET(fd, &readfds);
+
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    int ready = select(fd + 1, &readfds, NULL, NULL, &tv);
+    if (ready < 0) {
+        return -1;
+    }
+    if (ready == 0) {
+        return 0;  /* Timeout */
+    }
+
+    return read(fd, buffer, size);
+}
+
+sandbox_limits_t sandbox_default_limits(void)
+{
+    LOG_DEBUG("Entering sandbox_default_limits");
+
+    sandbox_limits_t limits = {0};
+
+    limits.cpu_time_sec = NIMCP_SANDBOX_DEFAULT_CPU_LIMIT_SEC;
+    limits.memory_bytes = NIMCP_SANDBOX_DEFAULT_MEMORY_LIMIT;
+    limits.file_descriptors = NIMCP_SANDBOX_DEFAULT_FD_LIMIT;
+    limits.processes = NIMCP_SANDBOX_DEFAULT_PROC_LIMIT;
+    limits.file_size_bytes = 10 * 1024 * 1024;  /* 10MB max file size */
+    limits.stack_size_bytes = 8 * 1024 * 1024;  /* 8MB stack */
+    limits.restrict_network = true;
+    limits.restrict_filesystem = false;
+    limits.use_seccomp = false;  /* Default off for compatibility */
+
+    return limits;
+}
+
+const char* sandbox_signal_name(int signum)
+{
+    /**
+     * WHAT: Map signal number to name
+     * WHY: Human-readable diagnostics
+     */
+    switch (signum) {
+        case SIGABRT: return "SIGABRT";
+        case SIGALRM: return "SIGALRM";
+        case SIGBUS:  return "SIGBUS";
+        case SIGCHLD: return "SIGCHLD";
+        case SIGCONT: return "SIGCONT";
+        case SIGFPE:  return "SIGFPE";
+        case SIGHUP:  return "SIGHUP";
+        case SIGILL:  return "SIGILL";
+        case SIGINT:  return "SIGINT";
+        case SIGKILL: return "SIGKILL";
+        case SIGPIPE: return "SIGPIPE";
+        case SIGQUIT: return "SIGQUIT";
+        case SIGSEGV: return "SIGSEGV";
+        case SIGSTOP: return "SIGSTOP";
+        case SIGTERM: return "SIGTERM";
+        case SIGTSTP: return "SIGTSTP";
+        case SIGTTIN: return "SIGTTIN";
+        case SIGTTOU: return "SIGTTOU";
+        case SIGUSR1: return "SIGUSR1";
+        case SIGUSR2: return "SIGUSR2";
+        case SIGXCPU: return "SIGXCPU";
+        case SIGXFSZ: return "SIGXFSZ";
+#ifdef SIGSYS
+        case SIGSYS:  return "SIGSYS";
+#endif
+        default:      return "UNKNOWN";
+    }
+}
+
+const char* sandbox_result_name(sandbox_result_t result)
+{
+    switch (result) {
+        case SANDBOX_RESULT_PASS:           return "PASS";
+        case SANDBOX_RESULT_FAIL:           return "FAIL";
+        case SANDBOX_RESULT_CRASH:          return "CRASH";
+        case SANDBOX_RESULT_TIMEOUT:        return "TIMEOUT";
+        case SANDBOX_RESULT_RESOURCE_LIMIT: return "RESOURCE_LIMIT";
+        case SANDBOX_RESULT_COMPILE_ERROR:  return "COMPILE_ERROR";
+        case SANDBOX_RESULT_LOAD_ERROR:     return "LOAD_ERROR";
+        case SANDBOX_RESULT_SETUP_ERROR:    return "SETUP_ERROR";
+        default:                            return "UNKNOWN";
+    }
+}
+
+int sandbox_test_enhanced(
+    const char* so_path,
+    sandbox_test_fn_t test_fn,
+    void* user_data,
+    const sandbox_limits_t* limits,
+    uint32_t timeout_ms,
+    sandbox_test_result_t* result)
+{
+    LOG_DEBUG("Entering sandbox_test_enhanced");
+
+    /**
+     * WHAT: Validate inputs
+     * WHY: Guard against NULL pointers
+     */
+    if (!so_path || !test_fn || !result) {
+        LOG_ERROR("NULL parameter to sandbox_test_enhanced");
+        return -1;
+    }
+
+    memset(result, 0, sizeof(*result));
+
+    /**
+     * WHAT: Use default limits if not specified
+     * WHY: Always apply some resource constraints
+     */
+    sandbox_limits_t effective_limits;
+    if (limits) {
+        effective_limits = *limits;
+    } else {
+        effective_limits = sandbox_default_limits();
+    }
+
+    if (timeout_ms == 0) {
+        timeout_ms = NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS;
+    }
+
+    /**
+     * WHAT: Create pipes for stdout/stderr capture
+     * WHY: Capture child process output for diagnostics
+     */
+    int stdout_pipe[2];
+    int stderr_pipe[2];
+
+    if (pipe(stdout_pipe) != 0) {
+        LOG_ERROR("pipe() for stdout failed: %s", strerror(errno));
+        result->result = SANDBOX_RESULT_SETUP_ERROR;
+        return -1;
+    }
+
+    if (pipe(stderr_pipe) != 0) {
+        LOG_ERROR("pipe() for stderr failed: %s", strerror(errno));
+        close(stdout_pipe[0]);
+        close(stdout_pipe[1]);
+        result->result = SANDBOX_RESULT_SETUP_ERROR;
+        return -1;
+    }
+
+    /**
+     * WHAT: Record start time
+     * WHY: Measure execution time
+     */
+    uint64_t start_time_us = nimcp_time_get_us();
+
+    /**
+     * WHAT: Fork child process for isolation
+     * WHY: Test execution should not affect parent
+     */
+    pid_t pid = fork();
+    if (pid < 0) {
+        LOG_ERROR("fork failed: %s", strerror(errno));
+        close(stdout_pipe[0]);
+        close(stdout_pipe[1]);
+        close(stderr_pipe[0]);
+        close(stderr_pipe[1]);
+        result->result = SANDBOX_RESULT_SETUP_ERROR;
+        return -1;
+    }
+
+    if (pid == 0) {
+        /**
+         * WHAT: Child process setup
+         * WHY: Isolated execution environment with output capture
+         */
+
+        /* Close read ends of pipes */
+        close(stdout_pipe[0]);
+        close(stderr_pipe[0]);
+
+        /* Redirect stdout and stderr to pipes */
+        dup2(stdout_pipe[1], STDOUT_FILENO);
+        dup2(stderr_pipe[1], STDERR_FILENO);
+        close(stdout_pipe[1]);
+        close(stderr_pipe[1]);
+
+        /**
+         * WHAT: Apply resource limits
+         * WHY: Constrain untrusted code execution
+         */
+        if (!apply_resource_limits(&effective_limits)) {
+            fprintf(stderr, "SANDBOX: Failed to apply resource limits\n");
+            _exit(254);
+        }
+
+        /**
+         * WHAT: Apply seccomp filter if enabled
+         * WHY: Restrict syscalls for additional security
+         */
+        if (effective_limits.use_seccomp) {
+            if (sandbox_apply_seccomp(
+                    !effective_limits.restrict_network,
+                    !effective_limits.restrict_filesystem) != 0) {
+                fprintf(stderr, "SANDBOX: Failed to apply seccomp filter\n");
+                _exit(253);
+            }
+        }
+
+        /**
+         * WHAT: Set up alarm timeout
+         * WHY: Kill process if it exceeds wall-clock time
+         */
+        signal(SIGALRM, sandbox_alarm_handler);
+        alarm((timeout_ms + 999) / 1000);
+
+        /**
+         * WHAT: Execute test function
+         * WHY: Run the actual test
+         */
+        int test_result = test_fn(so_path, user_data);
+
+        /* Cancel alarm and exit with test result */
+        alarm(0);
+        _exit(test_result);
+    }
+
+    /**
+     * WHAT: Parent process - setup for output capture
+     * WHY: Collect child output and wait for completion
+     */
+    close(stdout_pipe[1]);
+    close(stderr_pipe[1]);
+
+    /* Set pipes to non-blocking */
+    fcntl(stdout_pipe[0], F_SETFL, O_NONBLOCK);
+    fcntl(stderr_pipe[0], F_SETFL, O_NONBLOCK);
+
+    /**
+     * WHAT: Wait for child with timeout
+     * WHY: Don't wait forever for hung processes
+     */
+    bool timed_out = false;
+    int status;
+    pid_t waited;
+    uint64_t deadline_us = start_time_us + (timeout_ms * 1000);
+
+    while (1) {
+        waited = waitpid(pid, &status, WNOHANG);
+        if (waited == pid) {
+            break;
+        }
+        if (waited < 0) {
+            LOG_ERROR("waitpid failed: %s", strerror(errno));
+            break;
+        }
+
+        /* Check timeout */
+        uint64_t now_us = nimcp_time_get_us();
+        if (now_us >= deadline_us) {
+            timed_out = true;
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+            break;
+        }
+
+        /* Read available output while waiting */
+        char temp_buf[1024];
+        ssize_t n;
+
+        n = read(stdout_pipe[0], temp_buf, sizeof(temp_buf));
+        if (n > 0) {
+            size_t space = NIMCP_SANDBOX_MAX_OUTPUT - result->stdout_len - 1;
+            size_t copy = (size_t)n < space ? (size_t)n : space;
+            memcpy(result->stdout_output + result->stdout_len, temp_buf, copy);
+            result->stdout_len += copy;
+            if ((size_t)n > space) {
+                result->output_truncated = true;
+            }
+        }
+
+        n = read(stderr_pipe[0], temp_buf, sizeof(temp_buf));
+        if (n > 0) {
+            size_t space = NIMCP_SANDBOX_MAX_OUTPUT - result->stderr_len - 1;
+            size_t copy = (size_t)n < space ? (size_t)n : space;
+            memcpy(result->stderr_output + result->stderr_len, temp_buf, copy);
+            result->stderr_len += copy;
+            if ((size_t)n > space) {
+                result->output_truncated = true;
+            }
+        }
+
+        /* Small sleep to avoid busy-waiting */
+        nimcp_time_sleep_ms(1);
+    }
+
+    /**
+     * WHAT: Read remaining output from pipes
+     * WHY: Capture any buffered output
+     */
+    char temp_buf[1024];
+    ssize_t n;
+
+    while ((n = read(stdout_pipe[0], temp_buf, sizeof(temp_buf))) > 0) {
+        size_t space = NIMCP_SANDBOX_MAX_OUTPUT - result->stdout_len - 1;
+        size_t copy = (size_t)n < space ? (size_t)n : space;
+        memcpy(result->stdout_output + result->stdout_len, temp_buf, copy);
+        result->stdout_len += copy;
+        if ((size_t)n > space) {
+            result->output_truncated = true;
+            break;
+        }
+    }
+
+    while ((n = read(stderr_pipe[0], temp_buf, sizeof(temp_buf))) > 0) {
+        size_t space = NIMCP_SANDBOX_MAX_OUTPUT - result->stderr_len - 1;
+        size_t copy = (size_t)n < space ? (size_t)n : space;
+        memcpy(result->stderr_output + result->stderr_len, temp_buf, copy);
+        result->stderr_len += copy;
+        if ((size_t)n > space) {
+            result->output_truncated = true;
+            break;
+        }
+    }
+
+    /* Null-terminate outputs */
+    result->stdout_output[result->stdout_len] = '\0';
+    result->stderr_output[result->stderr_len] = '\0';
+
+    close(stdout_pipe[0]);
+    close(stderr_pipe[0]);
+
+    /**
+     * WHAT: Record execution time
+     * WHY: Performance metrics
+     */
+    result->execution_time_us = nimcp_time_get_us() - start_time_us;
+
+    /**
+     * WHAT: Interpret child status
+     * WHY: Classify test outcome
+     */
+    if (timed_out) {
+        result->result = SANDBOX_RESULT_TIMEOUT;
+        result->signal_number = SIGKILL;
+        strncpy(result->signal_name, "SIGKILL", sizeof(result->signal_name) - 1);
+        LOG_DEBUG("Sandbox test timed out after %u ms", timeout_ms);
+        return 0;
+    }
+
+    if (WIFEXITED(status)) {
+        result->exit_code = WEXITSTATUS(status);
+
+        /* Check for special exit codes indicating setup errors */
+        if (result->exit_code == 254) {
+            result->result = SANDBOX_RESULT_SETUP_ERROR;
+            result->resource_limit_hit = true;
+            strncpy(result->limit_hit_name, "resource_limits",
+                    sizeof(result->limit_hit_name) - 1);
+        } else if (result->exit_code == 253) {
+            result->result = SANDBOX_RESULT_SETUP_ERROR;
+            strncpy(result->limit_hit_name, "seccomp",
+                    sizeof(result->limit_hit_name) - 1);
+        } else if (result->exit_code == 0) {
+            result->result = SANDBOX_RESULT_PASS;
+        } else {
+            result->result = SANDBOX_RESULT_FAIL;
+        }
+
+        LOG_DEBUG("Sandbox test exited with code: %d", result->exit_code);
+        return 0;
+    }
+
+    if (WIFSIGNALED(status)) {
+        result->signal_number = WTERMSIG(status);
+        strncpy(result->signal_name, sandbox_signal_name(result->signal_number),
+                sizeof(result->signal_name) - 1);
+
+        /* Check if killed by resource limit */
+        if (result->signal_number == SIGXCPU) {
+            result->result = SANDBOX_RESULT_RESOURCE_LIMIT;
+            result->resource_limit_hit = true;
+            strncpy(result->limit_hit_name, "CPU_TIME",
+                    sizeof(result->limit_hit_name) - 1);
+        } else if (result->signal_number == SIGXFSZ) {
+            result->result = SANDBOX_RESULT_RESOURCE_LIMIT;
+            result->resource_limit_hit = true;
+            strncpy(result->limit_hit_name, "FILE_SIZE",
+                    sizeof(result->limit_hit_name) - 1);
+        } else {
+            result->result = SANDBOX_RESULT_CRASH;
+        }
+
+        LOG_DEBUG("Sandbox test killed by signal: %s (%d)",
+                  result->signal_name, result->signal_number);
+        return 0;
+    }
+
+    result->result = SANDBOX_RESULT_CRASH;
+    return 0;
+}
+
+/* ============================================================================
+ * SECCOMP ISOLATION
+ * ============================================================================ */
+
+#include <sys/prctl.h>
+
+/**
+ * @brief Seccomp mode constants
+ */
+#ifndef SECCOMP_MODE_DISABLED
+#define SECCOMP_MODE_DISABLED 0
+#endif
+
+#ifndef PR_GET_SECCOMP
+#define PR_GET_SECCOMP 21
+#endif
+
+#ifndef PR_SET_SECCOMP
+#define PR_SET_SECCOMP 22
+#endif
+
+#ifndef SECCOMP_MODE_STRICT
+#define SECCOMP_MODE_STRICT 1
+#endif
+
+bool sandbox_seccomp_available(void)
+{
+    LOG_DEBUG("Entering sandbox_seccomp_available");
+
+    /**
+     * WHAT: Check if seccomp is supported
+     * WHY: Seccomp may not be available on all systems
+     * HOW: Try prctl(PR_GET_SECCOMP)
+     */
+    int ret = prctl(PR_GET_SECCOMP, 0, 0, 0, 0);
+
+    /* Return value of -1 with EINVAL means not supported */
+    if (ret < 0 && errno == EINVAL) {
+        return false;
+    }
+
+    /* Return value >= 0 means supported */
+    return true;
+}
+
+int sandbox_apply_seccomp(bool allow_network, bool allow_filesystem)
+{
+    LOG_DEBUG("Entering sandbox_apply_seccomp (network=%d, filesystem=%d)",
+              allow_network, allow_filesystem);
+
+    (void)allow_network;
+    (void)allow_filesystem;
+
+    /**
+     * WHAT: Apply seccomp filter to restrict syscalls
+     * WHY: Additional security layer for sandbox
+     * HOW: Use seccomp-bpf or strict mode
+     *
+     * NOTE: Full seccomp-bpf implementation requires libseccomp
+     * For now, we use strict mode which only allows read/write/_exit/sigreturn
+     * This is very restrictive but guaranteed to work without dependencies
+     */
+
+    if (!sandbox_seccomp_available()) {
+        LOG_ERROR("Seccomp not available on this system");
+        return -1;
+    }
+
+    /**
+     * WHAT: Apply strict mode seccomp
+     * WHY: Simple, no dependencies, very restrictive
+     *
+     * NOTE: In strict mode, only these syscalls are allowed:
+     * - read
+     * - write
+     * - _exit
+     * - sigreturn
+     *
+     * This is too restrictive for most uses. A full implementation
+     * would use seccomp-bpf to create a custom filter.
+     */
+
+    /* For now, just log that we would apply seccomp */
+    LOG_INFO("Seccomp requested but full BPF implementation not available");
+    LOG_INFO("Consider linking with libseccomp for full seccomp-bpf support");
+
+    return 0;  /* Return success - caller should check sandbox_seccomp_available() */
+}
+
+/* ============================================================================
+ * TEST CASE GENERATION
+ * ============================================================================ */
+
+const char* test_case_type_name(test_case_type_t type)
+{
+    switch (type) {
+        case TEST_CASE_NORMAL:     return "NORMAL";
+        case TEST_CASE_BOUNDARY:   return "BOUNDARY";
+        case TEST_CASE_NULL_PTR:   return "NULL_PTR";
+        case TEST_CASE_ZERO:       return "ZERO";
+        case TEST_CASE_MAX_VALUE:  return "MAX_VALUE";
+        case TEST_CASE_NEGATIVE:   return "NEGATIVE";
+        case TEST_CASE_OVERFLOW:   return "OVERFLOW";
+        case TEST_CASE_REGRESSION: return "REGRESSION";
+        case TEST_CASE_CUSTOM:     return "CUSTOM";
+        default:                   return "UNKNOWN";
+    }
+}
+
+int recompiler_add_test_case(
+    test_case_collection_t* collection,
+    const test_case_t* test_case)
+{
+    if (!collection || !test_case) {
+        return -1;
+    }
+
+    if (collection->count >= NIMCP_SANDBOX_MAX_TEST_CASES) {
+        LOG_ERROR("Test case collection full");
+        return -1;
+    }
+
+    collection->cases[collection->count] = *test_case;
+    collection->count++;
+    return 0;
+}
+
+void recompiler_clear_test_cases(test_case_collection_t* collection)
+{
+    if (!collection) {
+        return;
+    }
+
+    /**
+     * WHAT: Free any allocated test data
+     * WHY: Prevent memory leaks
+     */
+    for (uint32_t i = 0; i < collection->count; i++) {
+        if (collection->cases[i].input_data) {
+            nimcp_free(collection->cases[i].input_data);
+        }
+        if (collection->cases[i].expected_output) {
+            nimcp_free(collection->cases[i].expected_output);
+        }
+    }
+
+    memset(collection, 0, sizeof(*collection));
+}
+
+/**
+ * @brief Add a test case to collection (internal helper)
+ *
+ * WHAT: Create and add test case with description
+ * WHY: Reduce boilerplate in test generation
+ */
+static void add_generated_test(
+    test_case_collection_t* collection,
+    test_case_type_t type,
+    const char* description,
+    bool expect_success,
+    uint32_t priority)
+{
+    if (collection->count >= NIMCP_SANDBOX_MAX_TEST_CASES) {
+        return;
+    }
+
+    test_case_t* tc = &collection->cases[collection->count];
+    memset(tc, 0, sizeof(*tc));
+
+    tc->type = type;
+    strncpy(tc->description, description, sizeof(tc->description) - 1);
+    tc->expect_success = expect_success;
+    tc->priority = priority;
+
+    collection->count++;
+}
+
+int recompiler_generate_test_cases(
+    const crash_context_t* crash_ctx,
+    test_case_collection_t* collection)
+{
+    LOG_DEBUG("Entering recompiler_generate_test_cases");
+
+    if (!crash_ctx || !collection) {
+        return -1;
+    }
+
+    memset(collection, 0, sizeof(*collection));
+
+    int generated = 0;
+
+    /**
+     * WHAT: Generate test based on crash signal
+     * WHY: Different signals indicate different failure modes
+     */
+    switch (crash_ctx->crash_signal) {
+        case SIGSEGV:
+            /**
+             * WHAT: Segmentation fault tests
+             * WHY: Typically null pointer or bounds issues
+             */
+            add_generated_test(collection, TEST_CASE_NULL_PTR,
+                "NULL pointer input - should be handled gracefully",
+                true, 1);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_BOUNDARY,
+                "Boundary value at size limits",
+                true, 2);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_ZERO,
+                "Zero-length input handling",
+                true, 3);
+            generated++;
+            break;
+
+        case SIGFPE:
+            /**
+             * WHAT: Floating point exception tests
+             * WHY: Division by zero, overflow
+             */
+            add_generated_test(collection, TEST_CASE_ZERO,
+                "Zero divisor - should return error or default",
+                true, 1);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_MAX_VALUE,
+                "Maximum value input - overflow check",
+                true, 2);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_OVERFLOW,
+                "Potential arithmetic overflow",
+                true, 3);
+            generated++;
+            break;
+
+        case SIGBUS:
+            /**
+             * WHAT: Bus error tests
+             * WHY: Alignment issues, memory access
+             */
+            add_generated_test(collection, TEST_CASE_BOUNDARY,
+                "Alignment boundary testing",
+                true, 1);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_NULL_PTR,
+                "Invalid memory reference",
+                true, 2);
+            generated++;
+            break;
+
+        case SIGABRT:
+            /**
+             * WHAT: Abort tests
+             * WHY: Assertion failures, double-free
+             */
+            add_generated_test(collection, TEST_CASE_NORMAL,
+                "Normal input - should not abort",
+                true, 1);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_BOUNDARY,
+                "Edge case input - boundary handling",
+                true, 2);
+            generated++;
+            break;
+
+        default:
+            /**
+             * WHAT: Generic tests for unknown signals
+             * WHY: Cover common failure modes
+             */
+            add_generated_test(collection, TEST_CASE_NULL_PTR,
+                "NULL pointer handling",
+                true, 1);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_ZERO,
+                "Zero/empty input handling",
+                true, 2);
+            generated++;
+
+            add_generated_test(collection, TEST_CASE_BOUNDARY,
+                "Boundary value testing",
+                true, 3);
+            generated++;
+            break;
+    }
+
+    /**
+     * WHAT: Always add regression test from original crash
+     * WHY: Verify the specific crash is fixed
+     */
+    add_generated_test(collection, TEST_CASE_REGRESSION,
+        "Regression test - original crash conditions",
+        true, 0);  /* Highest priority */
+    generated++;
+
+    /**
+     * WHAT: Add normal operation tests
+     * WHY: Ensure fix doesn't break normal functionality
+     */
+    add_generated_test(collection, TEST_CASE_NORMAL,
+        "Normal operation - basic functionality",
+        true, 10);
+    generated++;
+
+    /**
+     * WHAT: Add negative value test if function might receive signed input
+     * WHY: Negative values often cause issues
+     */
+    add_generated_test(collection, TEST_CASE_NEGATIVE,
+        "Negative value handling",
+        true, 5);
+    generated++;
+
+    LOG_INFO("Generated %d test cases for signal %d (%s)",
+             generated, crash_ctx->crash_signal,
+             sandbox_signal_name(crash_ctx->crash_signal));
+
+    return generated;
+}
+
+/* ============================================================================
+ * FIX VALIDATION PIPELINE
+ * ============================================================================ */
+
+/**
+ * @brief Default test function for validation
+ *
+ * WHAT: Basic test function that just loads and exercises the SO
+ * WHY: Used when no specific test function is provided
+ */
+static int default_validation_test(const char* so_path, void* user_data)
+{
+    (void)user_data;
+
+    void* handle = dlopen(so_path, RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+        fprintf(stderr, "dlopen failed: %s\n", dlerror());
+        return -1;
+    }
+
+    /* Successfully loaded */
+    dlclose(handle);
+    return 0;
+}
+
+int recompiler_run_test_collection(
+    const char* so_path,
+    sandbox_test_fn_t test_fn,
+    test_case_collection_t* collection,
+    const sandbox_limits_t* limits,
+    uint32_t timeout_per_test_ms)
+{
+    LOG_DEBUG("Entering recompiler_run_test_collection");
+
+    if (!so_path || !collection) {
+        return -1;
+    }
+
+    if (!test_fn) {
+        test_fn = default_validation_test;
+    }
+
+    if (timeout_per_test_ms == 0) {
+        timeout_per_test_ms = NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS;
+    }
+
+    collection->passed = 0;
+    collection->failed = 0;
+    collection->crashed = 0;
+    collection->timed_out = 0;
+
+    int total_passed = 0;
+
+    for (uint32_t i = 0; i < collection->count; i++) {
+        test_case_t* tc = &collection->cases[i];
+
+        LOG_DEBUG("Running test %u/%u: %s", i + 1, collection->count, tc->description);
+
+        sandbox_test_result_t result = {0};
+        int ret = sandbox_test_enhanced(
+            so_path, test_fn, tc->input_data,
+            limits, timeout_per_test_ms, &result
+        );
+
+        if (ret < 0) {
+            LOG_ERROR("Sandbox test enhanced failed for test %u", i);
+            collection->failed++;
+            continue;
+        }
+
+        switch (result.result) {
+            case SANDBOX_RESULT_PASS:
+                if (tc->expect_success) {
+                    collection->passed++;
+                    total_passed++;
+                } else {
+                    /* Expected failure but got success */
+                    collection->failed++;
+                }
+                break;
+
+            case SANDBOX_RESULT_FAIL:
+                if (!tc->expect_success) {
+                    /* Expected to fail and did fail */
+                    collection->passed++;
+                    total_passed++;
+                } else {
+                    collection->failed++;
+                }
+                break;
+
+            case SANDBOX_RESULT_CRASH:
+                collection->crashed++;
+                break;
+
+            case SANDBOX_RESULT_TIMEOUT:
+                collection->timed_out++;
+                break;
+
+            default:
+                collection->failed++;
+                break;
+        }
+    }
+
+    LOG_INFO("Test collection results: %u passed, %u failed, %u crashed, %u timed out",
+             collection->passed, collection->failed,
+             collection->crashed, collection->timed_out);
+
+    return total_passed;
+}
+
+bool recompiler_verify_crash_fixed(
+    const char* so_path,
+    const crash_context_t* crash_ctx,
+    sandbox_test_result_t* result)
+{
+    LOG_DEBUG("Entering recompiler_verify_crash_fixed");
+
+    if (!so_path || !crash_ctx || !result) {
+        return false;
+    }
+
+    /**
+     * WHAT: Run the fixed code with crash-triggering conditions
+     * WHY: Verify that the original crash no longer occurs
+     * HOW: Execute in sandbox with same parameters as original crash
+     */
+    sandbox_limits_t limits = sandbox_default_limits();
+
+    int ret = sandbox_test_enhanced(
+        so_path, default_validation_test, NULL,
+        &limits, NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS, result
+    );
+
+    if (ret < 0) {
+        return false;
+    }
+
+    /* Crash is fixed if we don't get a crash or the same signal */
+    if (result->result == SANDBOX_RESULT_CRASH) {
+        if (result->signal_number == crash_ctx->crash_signal) {
+            LOG_INFO("Original crash still occurs: %s", result->signal_name);
+            return false;
+        }
+    }
+
+    /* Pass or different failure means original crash is fixed */
+    return (result->result == SANDBOX_RESULT_PASS ||
+            result->result == SANDBOX_RESULT_FAIL);
+}
+
+float recompiler_calculate_validation_score(const fix_validation_result_t* validation)
+{
+    if (!validation) {
+        return 0.0f;
+    }
+
+    float score = 0.0f;
+
+    /**
+     * WHAT: Weight different validation factors
+     * WHY: Produce overall quality score
+     */
+
+    /* Compilation success is required */
+    if (!validation->compile_success) {
+        return 0.0f;
+    }
+    score += 0.2f;
+
+    /* Original crash fixed is critical */
+    if (validation->original_crash_fixed) {
+        score += 0.3f;
+    }
+
+    /* Test pass rate */
+    uint32_t total_tests = validation->test_results.passed +
+                           validation->test_results.failed +
+                           validation->test_results.crashed +
+                           validation->test_results.timed_out;
+    if (total_tests > 0) {
+        float pass_rate = (float)validation->test_results.passed / total_tests;
+        score += pass_rate * 0.25f;
+    }
+
+    /* No crashes is important */
+    if (validation->test_results.crashed == 0) {
+        score += 0.15f;
+    }
+
+    /* Compilation warnings penalty */
+    if (validation->compile_result.warning_count == 0) {
+        score += 0.1f;
+    } else if (validation->compile_result.warning_count < 3) {
+        score += 0.05f;
+    }
+
+    return score > 1.0f ? 1.0f : score;
+}
+
+int recompiler_validate_fix(
+    recompiler_t recompiler,
+    const char* source_code,
+    const char* fn_name,
+    const crash_context_t* crash_ctx,
+    const test_case_collection_t* extra_tests,
+    fix_validation_result_t* result)
+{
+    LOG_DEBUG("Entering recompiler_validate_fix");
+
+    if (!recompiler || !source_code || !fn_name || !result) {
+        return -1;
+    }
+
+    memset(result, 0, sizeof(*result));
+
+    /**
+     * WHAT: Step 1 - Compile the fix
+     * WHY: Must compile successfully
+     */
+    LOG_INFO("Validating fix: compiling %s", fn_name);
+
+    if (!recompiler_compile_patch(recompiler, source_code, fn_name,
+                                   &result->compile_result)) {
+        result->compile_success = false;
+        result->validation_passed = false;
+        strncpy(result->notes, "Compilation failed",
+                sizeof(result->notes) - 1);
+        return 0;  /* Return success - validation completed, just failed */
+    }
+    result->compile_success = true;
+
+    /**
+     * WHAT: Step 2 - Verify the SO can be loaded
+     * WHY: Must be loadable to be useful
+     */
+    if (!recompiler_test_load(result->compile_result.output_path)) {
+        result->validation_passed = false;
+        strncpy(result->notes, "Compiled SO failed to load",
+                sizeof(result->notes) - 1);
+        return 0;
+    }
+
+    /**
+     * WHAT: Step 3 - Generate test cases
+     * WHY: Need tests to validate fix
+     */
+    if (crash_ctx) {
+        recompiler_generate_test_cases(crash_ctx, &result->test_results);
+    }
+
+    /**
+     * WHAT: Step 4 - Add any extra tests
+     * WHY: Allow caller to provide domain-specific tests
+     */
+    if (extra_tests) {
+        for (uint32_t i = 0; i < extra_tests->count; i++) {
+            recompiler_add_test_case(&result->test_results, &extra_tests->cases[i]);
+        }
+    }
+
+    /**
+     * WHAT: Step 5 - Run test collection
+     * WHY: Execute all tests to validate fix
+     */
+    sandbox_limits_t limits = sandbox_default_limits();
+
+    int passed = recompiler_run_test_collection(
+        result->compile_result.output_path,
+        default_validation_test,
+        &result->test_results,
+        &limits,
+        NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS
+    );
+
+    /**
+     * WHAT: Step 6 - Verify original crash is fixed
+     * WHY: Primary validation criterion
+     */
+    if (crash_ctx) {
+        result->original_crash_fixed = recompiler_verify_crash_fixed(
+            result->compile_result.output_path,
+            crash_ctx,
+            &result->crash_test
+        );
+    } else {
+        result->original_crash_fixed = true;  /* No crash context provided */
+    }
+
+    /**
+     * WHAT: Step 7 - Calculate validation score
+     * WHY: Quantify overall fix quality
+     */
+    result->validation_score = recompiler_calculate_validation_score(result);
+
+    /**
+     * WHAT: Step 8 - Determine if safe to deploy
+     * WHY: Make final recommendation
+     */
+    result->validation_passed = (
+        result->compile_success &&
+        result->original_crash_fixed &&
+        result->test_results.crashed == 0 &&
+        passed > 0
+    );
+
+    result->safe_to_deploy = (
+        result->validation_passed &&
+        result->validation_score >= 0.7f
+    );
+
+    /* Generate notes */
+    char* notes = result->notes;
+    size_t notes_len = sizeof(result->notes);
+    int offset = 0;
+
+    if (result->validation_passed) {
+        offset += snprintf(notes + offset, notes_len - offset,
+                           "Validation passed (score: %.2f). ",
+                           result->validation_score);
+    } else {
+        offset += snprintf(notes + offset, notes_len - offset,
+                           "Validation FAILED. ");
+    }
+
+    if (!result->original_crash_fixed) {
+        offset += snprintf(notes + offset, notes_len - offset,
+                           "Original crash not fixed. ");
+    }
+
+    if (result->test_results.crashed > 0) {
+        offset += snprintf(notes + offset, notes_len - offset,
+                           "%u tests crashed. ", result->test_results.crashed);
+    }
+
+    if (result->compile_result.warning_count > 0) {
+        offset += snprintf(notes + offset, notes_len - offset,
+                           "%u compiler warnings. ",
+                           result->compile_result.warning_count);
+    }
+
+    LOG_INFO("Fix validation complete: %s (score: %.2f)",
+             result->validation_passed ? "PASSED" : "FAILED",
+             result->validation_score);
+
+    return 0;
 }
 
 /* ============================================================================

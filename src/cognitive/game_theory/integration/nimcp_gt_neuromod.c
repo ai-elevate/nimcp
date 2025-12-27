@@ -357,3 +357,44 @@ float gt_neuromod_strategic_attention(
 
     return ach;
 }
+
+//=============================================================================
+// Statistics Functions
+//=============================================================================
+
+nimcp_error_t gt_neuromod_get_cumulative_release(
+    const gt_neuromod_bridge_t bridge,
+    gt_neuromod_release_t* cumulative
+) {
+    if (!bridge || !cumulative) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    memset(cumulative, 0, sizeof(gt_neuromod_release_t));
+
+    cumulative->dopamine_released = bridge->total_dopamine;
+    cumulative->serotonin_released = bridge->total_serotonin;
+    cumulative->norepinephrine_released = bridge->total_norepinephrine;
+    cumulative->acetylcholine_released = bridge->total_acetylcholine;
+    cumulative->net_valence = bridge->avg_valence;
+
+    return NIMCP_SUCCESS;
+}
+
+void gt_neuromod_reset_stats(gt_neuromod_bridge_t bridge) {
+    if (!bridge) {
+        return;
+    }
+
+    bridge->total_dopamine = 0.0f;
+    bridge->total_serotonin = 0.0f;
+    bridge->total_norepinephrine = 0.0f;
+    bridge->total_acetylcholine = 0.0f;
+    bridge->avg_valence = 0.0f;
+
+    bridge->wins_processed = 0;
+    bridge->losses_processed = 0;
+    bridge->unfair_events = 0;
+    bridge->strategic_events = 0;
+    bridge->outcomes_processed = 0;
+}

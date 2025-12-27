@@ -69,20 +69,20 @@ extern "C" {
 #define NIMCP_TENSOR_ALIGNMENT 64
 
 //=============================================================================
-// Error Codes
+// Error Codes (3100-3199 range within Brain/Network Errors)
 //=============================================================================
 
 #define NIMCP_TENSOR_SUCCESS              0
-#define NIMCP_TENSOR_ERROR_NULL_PARAM     -1
-#define NIMCP_TENSOR_ERROR_INVALID_SHAPE  -2
-#define NIMCP_TENSOR_ERROR_INVALID_DIM    -3
-#define NIMCP_TENSOR_ERROR_ALLOC_FAILED   -4
-#define NIMCP_TENSOR_ERROR_SHAPE_MISMATCH -5
-#define NIMCP_TENSOR_ERROR_BROADCAST_FAIL -6
-#define NIMCP_TENSOR_ERROR_INVALID_DTYPE  -7
-#define NIMCP_TENSOR_ERROR_NOT_CONTIGUOUS -8
-#define NIMCP_TENSOR_ERROR_EINSUM_INVALID -9
-#define NIMCP_TENSOR_ERROR_GRAD_DISABLED  -10
+#define NIMCP_TENSOR_ERROR_NULL_PARAM     3100
+#define NIMCP_TENSOR_ERROR_INVALID_SHAPE  3101
+#define NIMCP_TENSOR_ERROR_INVALID_DIM    3102
+#define NIMCP_TENSOR_ERROR_ALLOC_FAILED   3103
+#define NIMCP_TENSOR_ERROR_SHAPE_MISMATCH 3104
+#define NIMCP_TENSOR_ERROR_BROADCAST_FAIL 3105
+#define NIMCP_TENSOR_ERROR_INVALID_DTYPE  3106
+#define NIMCP_TENSOR_ERROR_NOT_CONTIGUOUS 3107
+#define NIMCP_TENSOR_ERROR_EINSUM_INVALID 3108
+#define NIMCP_TENSOR_ERROR_GRAD_DISABLED  3109
 
 //=============================================================================
 // Data Types

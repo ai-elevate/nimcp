@@ -100,6 +100,10 @@ typedef enum {
 /**
  * @brief Return codes for all NIMCP functions
  *
+ * NIMCP uses a unified positive integer error code system:
+ *   - NIMCP_OK/NIMCP_SUCCESS = 0
+ *   - Error codes are positive integers (1000+)
+ *
  * Note: These undefines prevent conflicts with internal error code macros
  * when this header is included after internal headers.
  */
@@ -112,12 +116,12 @@ typedef enum {
 #undef NIMCP_ERROR_IO
 
 typedef enum {
-    NIMCP_OK = 0,              /**< Success */
-    NIMCP_ERROR = -1,          /**< Generic error */
-    NIMCP_ERROR_NULL_ARG = -2, /**< NULL argument provided */
-    NIMCP_ERROR_INVALID = -3,  /**< Invalid argument value */
-    NIMCP_ERROR_MEMORY = -4,   /**< Memory allocation failed */
-    NIMCP_ERROR_IO = -5        /**< I/O operation failed */
+    NIMCP_OK = 0,                 /**< Success */
+    NIMCP_ERROR = 1000,           /**< Generic error */
+    NIMCP_ERROR_NULL_ARG = 1003,  /**< NULL argument provided */
+    NIMCP_ERROR_INVALID = 1004,   /**< Invalid argument value */
+    NIMCP_ERROR_MEMORY = 2000,    /**< Memory allocation failed */
+    NIMCP_ERROR_IO = 4000         /**< I/O operation failed */
 } nimcp_status_t;
 
 /* Alias for compatibility */

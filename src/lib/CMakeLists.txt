@@ -324,6 +324,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_bridge_coordinator.c  # Immune Bridge Coordinator - central registry for all immune bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_self_heal.c  # Self-Healing Engine - pattern + LNN based crash recovery
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_claude_healer.c  # Claude API Fallback Healer - external AI-assisted code repair
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_metrics.c  # Immune Metrics - Prometheus/JSON export for self-healing observability
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_cognitive_meta_controller.c  # Cognitive Meta-Controller - unified arbitrator for cognitive subsystems
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # DISABLED: depends on brain_region_predictive  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration
@@ -362,12 +363,21 @@ set(NIMCP_CORE_SOURCES
     # Game Theory - Economic mechanisms for cognitive resource allocation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory.c  # Core game theory types and utilities
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_auction.c  # Auction mechanisms (second-price, VCG, ascending, descending)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_auction_ext.c  # Extended auctions (combinatorial, double, multi-unit)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_bargaining.c  # Nash bargaining, Kalai-Smorodinsky, Rubinstein
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_credit_assignment.c  # Shapley value, Banzhaf index, core membership
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_equilibrium.c  # N-player Nash equilibrium (pure, mixed, Lemke-Howson)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_fairness.c  # Enhanced fairness metrics (Jain, Gini, Theil, envy-freeness, MMS)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_coalition.c  # Coalition formation dynamics, hedonic games, stability
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_repeated.c  # Repeated games, folk theorem, trigger strategies
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_mechanism.c  # Mechanism design, incomplete information, signaling games
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_global_workspace.c  # Auction-based GW competition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_hemispheric.c  # Hemispheric Nash bargaining
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_neuromod.c  # Payoff-to-neuromodulator mapping
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_working_memory.c  # Auction-based WM eviction
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_tom.c  # Theory of Mind - opponent modeling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_spatial.c  # Population/spatial games, replicator dynamics, network effects
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_learning.c  # Q-learning, CFR, fictitious play, opponent modeling
 
     # Free Energy Principle - Karl Friston's predictive processing framework
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy.c  # Core FEP implementation (variational free energy, active inference)

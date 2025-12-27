@@ -71,17 +71,17 @@ extern "C" {
 #define NIMCP_ALIBI_DEFAULT_HEADS 8
 
 //=============================================================================
-// Error Codes
+// Error Codes (3200-3299 range within Brain/Network Errors)
 //=============================================================================
 
 #define NIMCP_POS_SUCCESS              0
-#define NIMCP_POS_ERROR_NULL_PARAM     -1
-#define NIMCP_POS_ERROR_INVALID_DIM    -2
-#define NIMCP_POS_ERROR_INVALID_POS    -3
-#define NIMCP_POS_ERROR_ALLOC_FAILED   -4
-#define NIMCP_POS_ERROR_INVALID_TYPE   -5
-#define NIMCP_POS_ERROR_NOT_INIT       -6
-#define NIMCP_POS_ERROR_CACHE_MISS     -7
+#define NIMCP_POS_ERROR_NULL_PARAM     3200
+#define NIMCP_POS_ERROR_INVALID_DIM    3201
+#define NIMCP_POS_ERROR_INVALID_POS    3202
+#define NIMCP_POS_ERROR_ALLOC_FAILED   3203
+#define NIMCP_POS_ERROR_INVALID_TYPE   3204
+#define NIMCP_POS_ERROR_NOT_INIT       3205
+#define NIMCP_POS_ERROR_CACHE_MISS     3206
 
 //=============================================================================
 // Encoding Types

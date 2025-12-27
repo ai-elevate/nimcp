@@ -511,6 +511,38 @@ int self_heal_train_on_failure(
 int self_heal_train_batch(self_heal_engine_t* engine);
 
 /**
+ * @brief Perform single-step online learning update
+ *
+ * WHAT: Update LNN weights immediately after fix attempt
+ * WHY:  Faster adaptation to new crash patterns
+ * HOW:  Single forward/backward pass with current sample
+ *
+ * @param engine Self-healing engine
+ * @param features Crash feature vector
+ * @param correct_type Ground truth fix type
+ * @param success_score How well the fix worked (0-1)
+ * @return 0 on success, negative on error
+ */
+int self_heal_train_online(
+    self_heal_engine_t* engine,
+    const crash_features_t* features,
+    fix_pattern_type_t correct_type,
+    float success_score
+);
+
+/**
+ * @brief Apply temporal decay to training samples
+ *
+ * WHAT: Decay old sample weights to prioritize recent data
+ * WHY:  Online learning should favor recent patterns
+ * HOW:  Apply exponential decay based on sample age
+ *
+ * @param engine Self-healing engine
+ * @return 0 on success, negative on error
+ */
+int self_heal_decay_samples(self_heal_engine_t* engine);
+
+/**
  * @brief Save LNN model to file
  *
  * WHAT: Persist trained LNN to disk

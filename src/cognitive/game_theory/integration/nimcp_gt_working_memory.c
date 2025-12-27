@@ -479,6 +479,36 @@ bool gt_wm_is_active(const gt_wm_auction_ctx_t ctx) {
     return ctx ? ctx->active : false;
 }
 
+float gt_wm_get_highest_bid(const gt_wm_auction_ctx_t ctx) {
+    if (!ctx || ctx->occupied_slots == 0) {
+        return 0.0f;
+    }
+
+    float highest = -FLT_MAX;
+    for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        if (ctx->slots[i].occupied && ctx->slots[i].current_bid > highest) {
+            highest = ctx->slots[i].current_bid;
+        }
+    }
+
+    return highest > -FLT_MAX ? highest : 0.0f;
+}
+
+float gt_wm_get_lowest_bid(const gt_wm_auction_ctx_t ctx) {
+    if (!ctx || ctx->occupied_slots == 0) {
+        return 0.0f;
+    }
+
+    float lowest = FLT_MAX;
+    for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        if (ctx->slots[i].occupied && ctx->slots[i].current_bid < lowest) {
+            lowest = ctx->slots[i].current_bid;
+        }
+    }
+
+    return lowest < FLT_MAX ? lowest : 0.0f;
+}
+
 nimcp_error_t gt_wm_get_stats(
     const gt_wm_auction_ctx_t ctx,
     nimcp_game_stats_t* stats

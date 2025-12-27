@@ -641,3 +641,59 @@ const char* nimcp_bargaining_type_name(nimcp_bargaining_type_t type) {
     }
     return s_bargaining_type_names[type];
 }
+
+nimcp_error_t nimcp_bargaining_set_powers(
+    nimcp_bargaining_t bargaining,
+    const float* powers,
+    uint32_t num_players
+) {
+    if (!bargaining || !powers) {
+        return NIMCP_GT_ERROR_NULL_POINTER;
+    }
+
+    if (num_players > NIMCP_GT_MAX_PLAYERS || num_players != bargaining->config.num_players) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Verify powers sum to approximately 1.0
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < num_players; i++) {
+        if (powers[i] < 0.0f || powers[i] > 1.0f) {
+            return NIMCP_ERROR_INVALID_PARAM;
+        }
+        sum += powers[i];
+    }
+    if (fabsf(sum - 1.0f) > 0.01f) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&bargaining->mutex);
+    for (uint32_t i = 0; i < num_players; i++) {
+        bargaining->config.bargaining_powers[i] = powers[i];
+    }
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t nimcp_bargaining_set_disagreement(
+    nimcp_bargaining_t bargaining,
+    const float* disagreement,
+    uint32_t num_players
+) {
+    if (!bargaining || !disagreement) {
+        return NIMCP_GT_ERROR_NULL_POINTER;
+    }
+
+    if (num_players > NIMCP_GT_MAX_PLAYERS || num_players != bargaining->config.num_players) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&bargaining->mutex);
+    for (uint32_t i = 0; i < num_players; i++) {
+        bargaining->config.disagreement_payoffs[i] = disagreement[i];
+    }
+    nimcp_platform_mutex_unlock(&bargaining->mutex);
+
+    return NIMCP_SUCCESS;
+}

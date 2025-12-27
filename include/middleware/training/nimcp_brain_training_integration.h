@@ -59,11 +59,11 @@ extern "C" {
 #define NIMCP_TRAINING_MAX_GRADMGR_CONTEXTS    16
 #define NIMCP_TRAINING_MAX_PARAM_GROUPS        64
 
-/* Training-specific error codes */
-#define NIMCP_TRAINING_ERROR_GRAD_NAN    -200  /**< NaN detected in gradients */
-#define NIMCP_TRAINING_ERROR_GRAD_INF    -201  /**< Infinity detected in gradients */
-#define NIMCP_TRAINING_ERROR_DIVERGED    -202  /**< Training has diverged */
-#define NIMCP_TRAINING_ERROR_EARLY_STOP  -203  /**< Early stopping triggered */
+/* Training-specific error codes (8100-8199 range within cognitive errors) */
+#define NIMCP_TRAINING_ERROR_GRAD_NAN    8100  /**< NaN detected in gradients */
+#define NIMCP_TRAINING_ERROR_GRAD_INF    8101  /**< Infinity detected in gradients */
+#define NIMCP_TRAINING_ERROR_DIVERGED    8102  /**< Training has diverged */
+#define NIMCP_TRAINING_ERROR_EARLY_STOP  8103  /**< Early stopping triggered */
 
 /**
  * @brief Training event types for event bus

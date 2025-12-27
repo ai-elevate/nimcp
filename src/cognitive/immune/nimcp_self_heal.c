@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/signal/nimcp_signal_handler.h"
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
@@ -24,6 +25,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <signal.h>
+#include <stdint.h>
 
 /* ============================================================================
  * Internal Constants
@@ -36,6 +39,21 @@
 #define CRASH_TYPE_SIGFPE     0.2f
 #define CRASH_TYPE_SIGBUS     0.3f
 #define CRASH_TYPE_SIGABRT    0.4f
+
+/* Online learning parameters */
+#define ONLINE_DECAY_RATE     0.995f    /**< Weight decay per update */
+#define ONLINE_MIN_WEIGHT     0.01f     /**< Minimum sample weight */
+#define ONLINE_PRIORITY_BOOST 1.5f      /**< Boost for recent successful fixes */
+#define ONLINE_RECENCY_WINDOW 86400000000ULL  /**< 24 hours in microseconds */
+
+/* Feature extraction layout */
+#define FEATURE_SIGNAL_OFFSET      0    /**< Signal type features start */
+#define FEATURE_SOURCE_OFFSET      4    /**< Source type features start */
+#define FEATURE_THREAT_OFFSET      8    /**< Threat type features start */
+#define FEATURE_CONTEXT_OFFSET     12   /**< Context features start */
+#define FEATURE_BACKTRACE_OFFSET   20   /**< Backtrace hash features start */
+#define FEATURE_PATTERN_OFFSET     28   /**< Pattern encoding features start */
+#define FEATURE_RESERVED_OFFSET    48   /**< Reserved features start */
 
 /* ============================================================================
  * Internal Helper Functions
@@ -63,6 +81,100 @@ static float hash_string_to_float(const char* str, size_t len)
         hash = ((hash << 5) + hash) + (uint8_t)str[i];
     }
     return (float)(hash % 10000) / 10000.0f;
+}
+
+/**
+ * @brief Hash backtrace to multiple features
+ *
+ * WHAT: Convert backtrace addresses to normalized feature values
+ * WHY:  Capture stack trace patterns for similar crash detection
+ * HOW:  Hash groups of addresses to create distributed representation
+ */
+static void hash_backtrace_to_features(
+    const void* const* backtrace,
+    int depth,
+    float* features,
+    size_t n_features)
+{
+    if (backtrace == NULL || features == NULL || n_features == 0) return;
+    if (depth <= 0) {
+        for (size_t i = 0; i < n_features; i++) features[i] = 0.0f;
+        return;
+    }
+
+    /* Hash groups of addresses */
+    for (size_t i = 0; i < n_features; i++) {
+        uint32_t hash = 5381;
+        int group_size = (depth + (int)n_features - 1) / (int)n_features;
+        int start = (int)i * group_size;
+        int end = start + group_size;
+        if (end > depth) end = depth;
+
+        for (int j = start; j < end; j++) {
+            uintptr_t addr = (uintptr_t)backtrace[j];
+            hash = ((hash << 5) + hash) + (uint8_t)(addr & 0xFF);
+            hash = ((hash << 5) + hash) + (uint8_t)((addr >> 8) & 0xFF);
+            hash = ((hash << 5) + hash) + (uint8_t)((addr >> 16) & 0xFF);
+            hash = ((hash << 5) + hash) + (uint8_t)((addr >> 24) & 0xFF);
+        }
+        features[i] = (float)(hash % 10000) / 10000.0f;
+    }
+}
+
+/**
+ * @brief Calculate sample weight based on recency and success
+ *
+ * WHAT: Compute training weight for online learning
+ * WHY:  Prioritize recent successful fixes over old failures
+ * HOW:  Exponential decay with recency boost
+ */
+static float calculate_sample_weight(
+    uint64_t sample_time,
+    uint64_t current_time,
+    float success_score)
+{
+    uint64_t age = current_time - sample_time;
+    float recency = 1.0f;
+
+    /* Apply exponential decay based on age */
+    if (age > 0) {
+        float decay_steps = (float)age / (float)ONLINE_RECENCY_WINDOW;
+        recency = powf(ONLINE_DECAY_RATE, decay_steps);
+        if (recency < ONLINE_MIN_WEIGHT) recency = ONLINE_MIN_WEIGHT;
+    }
+
+    /* Boost successful fixes */
+    if (success_score > 0.5f) {
+        recency *= ONLINE_PRIORITY_BOOST;
+    }
+
+    return recency;
+}
+
+/**
+ * @brief Apply weight decay to all training samples
+ *
+ * WHAT: Reduce weights of old samples
+ * WHY:  Favor recent patterns in learning
+ * HOW:  Multiply all weights by decay factor
+ */
+static void decay_sample_weights_unlocked(self_heal_engine_t* engine)
+{
+    if (engine == NULL || engine->training_samples == NULL) return;
+
+    uint64_t now = get_time_us();
+    size_t n_samples = engine->n_training_samples;
+    if (n_samples > engine->training_sample_capacity) {
+        n_samples = engine->training_sample_capacity;
+    }
+
+    for (size_t i = 0; i < n_samples; i++) {
+        training_sample_t* sample = &engine->training_samples[i];
+        float weight = calculate_sample_weight(
+            sample->timestamp, now, sample->success_score);
+        /* Blend with original score */
+        sample->success_score *= weight;
+    }
 }
 
 /**
@@ -359,6 +471,78 @@ static int generate_pattern_fix(
                 snprintf(fix_prefix, sizeof(fix_prefix),
                     "if (%s != NULL) {\n    nimcp_free(%s);\n    %s = NULL;\n}\n",
                     match.var_ptr, match.var_ptr, match.var_ptr);
+            }
+            break;
+
+        case FIX_PATTERN_OVERFLOW_CHECK:
+            if (match.var_ptr[0] != '\0' && match.var_idx[0] != '\0') {
+                snprintf(fix_prefix, sizeof(fix_prefix),
+                    "if (%s > UINT32_MAX - %s) {\n"
+                    "    return NIMCP_ERROR_OVERFLOW;\n}\n",
+                    match.var_ptr, match.var_idx);
+            }
+            break;
+
+        case FIX_PATTERN_INIT_CHECK:
+            if (match.var_ptr[0] != '\0' && match.var_type[0] != '\0') {
+                snprintf(fix_prefix, sizeof(fix_prefix),
+                    "%s %s = {0};\n",
+                    match.var_type, match.var_ptr);
+            }
+            break;
+
+        case FIX_PATTERN_RACE_GUARD:
+            if (match.var_ptr[0] != '\0') {
+                snprintf(fix_prefix, sizeof(fix_prefix),
+                    "nimcp_mutex_lock(mutex);\n");
+            }
+            break;
+
+        case FIX_PATTERN_RESOURCE_LEAK:
+            if (match.var_ptr[0] != '\0') {
+                snprintf(fix_prefix, sizeof(fix_prefix),
+                    "if (%s != NULL) {\n"
+                    "    nimcp_free(%s);\n"
+                    "    %s = NULL;\n"
+                    "}\n",
+                    match.var_ptr, match.var_ptr, match.var_ptr);
+            }
+            break;
+
+        case FIX_PATTERN_FORMAT_STRING:
+            if (match.var_ptr[0] != '\0') {
+                snprintf(fix_prefix, sizeof(fix_prefix),
+                    "/* Fix: use printf(\"%%s\", %s); */\n",
+                    match.var_ptr);
+            }
+            break;
+
+        case FIX_PATTERN_BUFFER_UNDERFLOW:
+            if (match.var_idx[0] != '\0') {
+                snprintf(fix_prefix, sizeof(fix_prefix),
+                    "if ((int)(%s) < 0) {\n"
+                    "    return NIMCP_ERROR_OUT_OF_RANGE;\n"
+                    "}\n",
+                    match.var_idx);
+            }
+            break;
+
+        case FIX_PATTERN_STACK_OVERFLOW:
+            snprintf(fix_prefix, sizeof(fix_prefix),
+                "static __thread int _recursion_depth = 0;\n"
+                "if (++_recursion_depth > 1000) {\n"
+                "    _recursion_depth--;\n"
+                "    return -1;\n"
+                "}\n");
+            break;
+
+        case FIX_PATTERN_LOCK_ORDER:
+            if (match.var_ptr[0] != '\0') {
+                snprintf(fix_prefix, sizeof(fix_prefix),
+                    "if (nimcp_mutex_trylock(%s) != 0) {\n"
+                    "    return NIMCP_ERROR_TIMEOUT;\n"
+                    "}\n",
+                    match.var_ptr);
             }
             break;
 
@@ -748,6 +932,135 @@ int self_heal_extract_features(
     return 0;
 }
 
+/**
+ * @brief Extract extended features from crash context
+ *
+ * WHAT: Convert crash context (signal, backtrace) to numerical features
+ * WHY:  More detailed crash signature for better fix prediction
+ * HOW:  Encode signal type, addresses, backtrace patterns
+ */
+int self_heal_extract_features_from_context(
+    self_heal_engine_t* engine,
+    const signal_crash_context_t* crash_ctx,
+    crash_features_t* features)
+{
+    if (engine == NULL || crash_ctx == NULL || features == NULL) {
+        return -1;
+    }
+
+    memset(features, 0, sizeof(crash_features_t));
+    size_t idx = 0;
+
+    /* Feature 0-3: Signal type encoding */
+    features->features[idx++] = (crash_ctx->signal == SIGSEGV) ? CRASH_TYPE_SIGSEGV : 0.0f;
+    features->features[idx++] = (crash_ctx->signal == SIGFPE) ? CRASH_TYPE_SIGFPE : 0.0f;
+    features->features[idx++] = (crash_ctx->signal == SIGBUS) ? CRASH_TYPE_SIGBUS : 0.0f;
+    features->features[idx++] = (crash_ctx->signal == SIGABRT) ? CRASH_TYPE_SIGABRT : 0.0f;
+
+    /* Feature 4-7: Fault address characteristics */
+    uintptr_t fault_addr = (uintptr_t)crash_ctx->fault_address;
+    features->features[idx++] = (fault_addr == 0) ? 1.0f : 0.0f;  /* NULL pointer */
+    features->features[idx++] = ((fault_addr & 0x7) != 0) ? 1.0f : 0.0f;  /* Unaligned */
+    features->features[idx++] = (fault_addr < 0x10000) ? 1.0f : 0.0f;  /* Low address */
+    features->features[idx++] = (float)((fault_addr >> 12) & 0xFFFF) / 65535.0f;  /* Page hash */
+
+    /* Feature 8-11: Instruction pointer characteristics */
+    uintptr_t ip = (uintptr_t)crash_ctx->instruction_pointer;
+    features->features[idx++] = (float)((ip >> 4) & 0xFFFF) / 65535.0f;
+    features->features[idx++] = (float)((ip >> 20) & 0xFFFF) / 65535.0f;
+    features->features[idx++] = (float)(ip & 0xF) / 16.0f;  /* Instruction alignment */
+    features->features[idx++] = (ip == 0) ? 1.0f : 0.0f;  /* Invalid IP */
+
+    /* Feature 12-15: Stack pointer characteristics */
+    uintptr_t sp = (uintptr_t)crash_ctx->stack_pointer;
+    features->features[idx++] = ((sp & 0xF) != 0) ? 1.0f : 0.0f;  /* Stack unaligned */
+    features->features[idx++] = (float)((sp >> 8) & 0xFF) / 255.0f;
+    features->features[idx++] = (sp == 0) ? 1.0f : 0.0f;  /* Stack corruption */
+    features->features[idx++] = (float)crash_ctx->backtrace_depth / 32.0f;  /* Depth normalized */
+
+    /* Feature 16-19: Base pointer / frame analysis */
+    uintptr_t bp = (uintptr_t)crash_ctx->base_pointer;
+    features->features[idx++] = (bp == 0) ? 1.0f : 0.0f;
+    features->features[idx++] = (bp > sp) ? 1.0f : 0.0f;  /* Normal stack direction */
+    features->features[idx++] = (float)((bp >> 12) & 0xFFFF) / 65535.0f;
+    features->features[idx++] = (bp == sp) ? 1.0f : 0.0f;  /* No local vars */
+
+    /* Feature 20-27: Backtrace hash (8 features) */
+    hash_backtrace_to_features(
+        (const void* const*)crash_ctx->backtrace,
+        crash_ctx->backtrace_depth,
+        &features->features[idx],
+        8
+    );
+    idx += 8;
+
+    /* Feature 28-35: Memory region hash */
+    float region_hash = hash_string_to_float(
+        crash_ctx->memory_region, strlen(crash_ctx->memory_region));
+    features->features[idx++] = region_hash;
+    features->features[idx++] = fmodf(region_hash * 2.71828f, 1.0f);
+    features->features[idx++] = fmodf(region_hash * 3.14159f, 1.0f);
+    features->features[idx++] = fmodf(region_hash * 1.41421f, 1.0f);
+
+    /* Memory region indicators */
+    features->features[idx++] = (strstr(crash_ctx->memory_region, "[heap]") != NULL) ? 1.0f : 0.0f;
+    features->features[idx++] = (strstr(crash_ctx->memory_region, "[stack]") != NULL) ? 1.0f : 0.0f;
+    features->features[idx++] = (strstr(crash_ctx->memory_region, "r-x") != NULL) ? 1.0f : 0.0f;  /* Executable */
+    features->features[idx++] = (strstr(crash_ctx->memory_region, "rw-") != NULL) ? 1.0f : 0.0f;  /* Writable */
+
+    /* Feature 36-47: Pattern indicators */
+    /* Detect common crash patterns from context */
+    bool null_deref = (fault_addr == 0 || fault_addr < 0x1000);
+    bool stack_overflow = (strstr(crash_ctx->memory_region, "[stack]") != NULL) &&
+                          (crash_ctx->signal == SIGSEGV);
+    bool heap_corruption = (strstr(crash_ctx->memory_region, "[heap]") != NULL) &&
+                           (crash_ctx->signal == SIGABRT);
+    bool alignment_fault = (crash_ctx->signal == SIGBUS) &&
+                           ((fault_addr & 0x7) != 0);
+    bool div_zero = (crash_ctx->signal == SIGFPE);
+
+    features->features[idx++] = null_deref ? 1.0f : 0.0f;
+    features->features[idx++] = stack_overflow ? 1.0f : 0.0f;
+    features->features[idx++] = heap_corruption ? 1.0f : 0.0f;
+    features->features[idx++] = alignment_fault ? 1.0f : 0.0f;
+    features->features[idx++] = div_zero ? 1.0f : 0.0f;
+
+    /* Reserved pattern features */
+    while (idx < 48) {
+        features->features[idx++] = 0.0f;
+    }
+
+    /* Fill remaining with derived features */
+    while (idx < SELF_HEAL_FEATURE_DIM) {
+        features->features[idx++] = 0.0f;
+    }
+
+    features->n_features = SELF_HEAL_FEATURE_DIM;
+
+    /* Suggest fix type based on crash pattern */
+    if (null_deref) {
+        features->suggested_type = FIX_PATTERN_NULL_CHECK;
+        features->type_confidence = 0.9f;
+    } else if (div_zero) {
+        features->suggested_type = FIX_PATTERN_ZERO_CHECK;
+        features->type_confidence = 0.95f;
+    } else if (alignment_fault) {
+        features->suggested_type = FIX_PATTERN_ALIGN_FIX;
+        features->type_confidence = 0.85f;
+    } else if (stack_overflow) {
+        features->suggested_type = FIX_PATTERN_BOUNDS_CHECK;
+        features->type_confidence = 0.7f;
+    } else if (heap_corruption) {
+        features->suggested_type = FIX_PATTERN_UAF_CHECK;
+        features->type_confidence = 0.6f;
+    } else {
+        features->suggested_type = FIX_PATTERN_UNKNOWN;
+        features->type_confidence = 0.0f;
+    }
+
+    return 0;
+}
+
 int self_heal_generate_fix(
     self_heal_engine_t* engine,
     const brain_antigen_t* antigen,
@@ -910,12 +1223,15 @@ int self_heal_generate_candidates(
     }
 
     /* Sort by score (simple bubble sort for small array) */
-    for (size_t i = 0; i < n_candidates - 1; i++) {
-        for (size_t j = 0; j < n_candidates - i - 1; j++) {
-            if (candidates[j].score < candidates[j + 1].score) {
-                fix_candidate_t tmp = candidates[j];
-                candidates[j] = candidates[j + 1];
-                candidates[j + 1] = tmp;
+    /* Guard: Need at least 2 candidates to sort */
+    if (n_candidates > 1) {
+        for (size_t i = 0; i < n_candidates - 1; i++) {
+            for (size_t j = 0; j < n_candidates - i - 1; j++) {
+                if (candidates[j].score < candidates[j + 1].score) {
+                    fix_candidate_t tmp = candidates[j];
+                    candidates[j] = candidates[j + 1];
+                    candidates[j + 1] = tmp;
+                }
             }
         }
     }
@@ -999,6 +1315,98 @@ int self_heal_train_on_failure(
     return ret;
 }
 
+/**
+ * @brief Perform single-step online learning update
+ *
+ * WHAT: Update LNN weights immediately after fix attempt
+ * WHY:  Faster adaptation to new crash patterns
+ * HOW:  Single forward/backward pass with current sample
+ */
+int self_heal_train_online(
+    self_heal_engine_t* engine,
+    const crash_features_t* features,
+    fix_pattern_type_t correct_type,
+    float success_score)
+{
+    if (engine == NULL || features == NULL) return -1;
+    if (!engine->config.enable_learning || !engine->lnn_initialized) return 0;
+    if (engine->lnn_training == NULL) return -1;
+
+    /* Create input tensor from features */
+    uint32_t input_dims[1] = {SELF_HEAL_FEATURE_DIM};
+    nimcp_tensor_t* input = nimcp_tensor_create(input_dims, 1, NIMCP_DTYPE_F32);
+    if (input == NULL) return -1;
+
+    /* Create target tensor (one-hot) */
+    uint32_t target_dims[1] = {FIX_PATTERN_COUNT};
+    nimcp_tensor_t* target = nimcp_tensor_create(target_dims, 1, NIMCP_DTYPE_F32);
+    if (target == NULL) {
+        nimcp_tensor_destroy(input);
+        return -1;
+    }
+
+    /* Fill input */
+    float* input_data = (float*)nimcp_tensor_data(input);
+    if (input_data == NULL) {
+        nimcp_tensor_destroy(input);
+        nimcp_tensor_destroy(target);
+        return -1;
+    }
+    memcpy(input_data, features->features, SELF_HEAL_FEATURE_DIM * sizeof(float));
+
+    /* Fill target (weighted one-hot) */
+    float* target_data = (float*)nimcp_tensor_data(target);
+    if (target_data == NULL) {
+        nimcp_tensor_destroy(input);
+        nimcp_tensor_destroy(target);
+        return -1;
+    }
+
+    for (int i = 0; i < FIX_PATTERN_COUNT; i++) {
+        target_data[i] = (i == (int)correct_type) ? success_score : 0.0f;
+    }
+
+    /* Run single training step */
+    float loss = 0.0f;
+    int ret = lnn_training_step(engine->lnn_training, input, target, &loss);
+
+    nimcp_tensor_destroy(input);
+    nimcp_tensor_destroy(target);
+
+    if (ret == 0) {
+        nimcp_mutex_lock(engine->mutex);
+        engine->stats.training_updates++;
+        nimcp_mutex_unlock(engine->mutex);
+
+        LOG_MODULE_DEBUG(LOG_TAG, "Online update: type=%d score=%.2f loss=%.4f",
+                         correct_type, success_score, loss);
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Apply temporal decay to training samples
+ *
+ * WHAT: Decay old sample weights to prioritize recent data
+ * WHY:  Online learning should favor recent patterns
+ * HOW:  Apply exponential decay based on sample age
+ */
+int self_heal_decay_samples(self_heal_engine_t* engine)
+{
+    if (engine == NULL) return -1;
+    if (!engine->config.enable_learning) return 0;
+
+    nimcp_mutex_lock(engine->mutex);
+    decay_sample_weights_unlocked(engine);
+    nimcp_mutex_unlock(engine->mutex);
+
+    LOG_MODULE_DEBUG(LOG_TAG, "Applied temporal decay to %zu samples",
+                     engine->n_training_samples);
+
+    return 0;
+}
+
 int self_heal_train_batch(self_heal_engine_t* engine)
 {
     if (engine == NULL) return -1;
@@ -1006,6 +1414,9 @@ int self_heal_train_batch(self_heal_engine_t* engine)
     if (engine->lnn_training == NULL) return -1;
 
     nimcp_mutex_lock(engine->mutex);
+
+    /* Apply temporal decay before batch training */
+    decay_sample_weights_unlocked(engine);
 
     size_t batch_size = engine->n_training_samples;
     if (batch_size > SELF_HEAL_TRAINING_BATCH_SIZE) {
@@ -1583,20 +1994,24 @@ const fix_pattern_t* heal_pattern_get_best(
 const char* heal_pattern_type_to_string(fix_pattern_type_t type)
 {
     switch (type) {
-        case FIX_PATTERN_NULL_CHECK:     return "null_check";
-        case FIX_PATTERN_BOUNDS_CHECK:   return "bounds_check";
-        case FIX_PATTERN_ZERO_CHECK:     return "zero_check";
-        case FIX_PATTERN_UAF_CHECK:      return "uaf_check";
-        case FIX_PATTERN_ALIGN_FIX:      return "align_fix";
-        case FIX_PATTERN_DOUBLE_FREE:    return "double_free";
-        case FIX_PATTERN_OVERFLOW_CHECK: return "overflow_check";
-        case FIX_PATTERN_INIT_CHECK:     return "init_check";
-        case FIX_PATTERN_LOCK_ORDER:     return "lock_order";
-        case FIX_PATTERN_RACE_GUARD:     return "race_guard";
-        case FIX_PATTERN_LNN_GENERATED:  return "lnn_generated";
-        case FIX_PATTERN_CUSTOM:         return "custom";
-        case FIX_PATTERN_UNKNOWN:        return "unknown";
-        default:                         return "invalid";
+        case FIX_PATTERN_NULL_CHECK:      return "null_check";
+        case FIX_PATTERN_BOUNDS_CHECK:    return "bounds_check";
+        case FIX_PATTERN_ZERO_CHECK:      return "zero_check";
+        case FIX_PATTERN_UAF_CHECK:       return "uaf_check";
+        case FIX_PATTERN_ALIGN_FIX:       return "align_fix";
+        case FIX_PATTERN_DOUBLE_FREE:     return "double_free";
+        case FIX_PATTERN_OVERFLOW_CHECK:  return "overflow_check";
+        case FIX_PATTERN_INIT_CHECK:      return "init_check";
+        case FIX_PATTERN_LOCK_ORDER:      return "lock_order";
+        case FIX_PATTERN_RACE_GUARD:      return "race_guard";
+        case FIX_PATTERN_RESOURCE_LEAK:   return "resource_leak";
+        case FIX_PATTERN_FORMAT_STRING:   return "format_string";
+        case FIX_PATTERN_BUFFER_UNDERFLOW:return "buffer_underflow";
+        case FIX_PATTERN_STACK_OVERFLOW:  return "stack_overflow";
+        case FIX_PATTERN_LNN_GENERATED:   return "lnn_generated";
+        case FIX_PATTERN_CUSTOM:          return "custom";
+        case FIX_PATTERN_UNKNOWN:         return "unknown";
+        default:                          return "invalid";
     }
 }
 
@@ -1614,6 +2029,10 @@ fix_pattern_type_t heal_pattern_type_from_string(const char* name)
     if (strcmp(name, "init_check") == 0) return FIX_PATTERN_INIT_CHECK;
     if (strcmp(name, "lock_order") == 0) return FIX_PATTERN_LOCK_ORDER;
     if (strcmp(name, "race_guard") == 0) return FIX_PATTERN_RACE_GUARD;
+    if (strcmp(name, "resource_leak") == 0) return FIX_PATTERN_RESOURCE_LEAK;
+    if (strcmp(name, "format_string") == 0) return FIX_PATTERN_FORMAT_STRING;
+    if (strcmp(name, "buffer_underflow") == 0) return FIX_PATTERN_BUFFER_UNDERFLOW;
+    if (strcmp(name, "stack_overflow") == 0) return FIX_PATTERN_STACK_OVERFLOW;
     if (strcmp(name, "lnn_generated") == 0) return FIX_PATTERN_LNN_GENERATED;
     if (strcmp(name, "custom") == 0) return FIX_PATTERN_CUSTOM;
 
@@ -1740,8 +2159,64 @@ int heal_pattern_init_builtin(fix_pattern_t* pattern, fix_pattern_type_t type)
             strncpy(pattern->description,
                     "Add synchronization for shared data access",
                     HEAL_PATTERN_MAX_DESCRIPTION_SIZE - 1);
-            pattern->confidence = 0.5f;
-            pattern->enabled = false; /* Complex pattern */
+            strncpy(pattern->template_before, HEAL_PATTERN_RACE_BEFORE,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            strncpy(pattern->template_after, HEAL_PATTERN_RACE_AFTER,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            pattern->confidence = 0.6f;
+            pattern->enabled = true;
+            break;
+
+        case FIX_PATTERN_RESOURCE_LEAK:
+            strncpy(pattern->name, "Resource Leak Fix", HEAL_PATTERN_MAX_NAME_SIZE - 1);
+            strncpy(pattern->description,
+                    "Add cleanup code for unclosed handles/memory",
+                    HEAL_PATTERN_MAX_DESCRIPTION_SIZE - 1);
+            strncpy(pattern->template_before, HEAL_PATTERN_RESOURCE_LEAK_BEFORE,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            strncpy(pattern->template_after, HEAL_PATTERN_RESOURCE_LEAK_AFTER,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            pattern->confidence = 0.7f;
+            pattern->enabled = true;
+            break;
+
+        case FIX_PATTERN_FORMAT_STRING:
+            strncpy(pattern->name, "Format String Fix", HEAL_PATTERN_MAX_NAME_SIZE - 1);
+            strncpy(pattern->description,
+                    "Fix format string vulnerability with explicit format",
+                    HEAL_PATTERN_MAX_DESCRIPTION_SIZE - 1);
+            strncpy(pattern->template_before, HEAL_PATTERN_FORMAT_STRING_BEFORE,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            strncpy(pattern->template_after, HEAL_PATTERN_FORMAT_STRING_AFTER,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            pattern->confidence = 0.85f;
+            pattern->enabled = true;
+            break;
+
+        case FIX_PATTERN_BUFFER_UNDERFLOW:
+            strncpy(pattern->name, "Buffer Underflow Check", HEAL_PATTERN_MAX_NAME_SIZE - 1);
+            strncpy(pattern->description,
+                    "Add lower bound check for negative array index",
+                    HEAL_PATTERN_MAX_DESCRIPTION_SIZE - 1);
+            strncpy(pattern->template_before, HEAL_PATTERN_UNDERFLOW_BEFORE,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            strncpy(pattern->template_after, HEAL_PATTERN_UNDERFLOW_AFTER,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            pattern->confidence = 0.8f;
+            pattern->enabled = true;
+            break;
+
+        case FIX_PATTERN_STACK_OVERFLOW:
+            strncpy(pattern->name, "Stack Overflow Guard", HEAL_PATTERN_MAX_NAME_SIZE - 1);
+            strncpy(pattern->description,
+                    "Add recursion depth limit to prevent stack overflow",
+                    HEAL_PATTERN_MAX_DESCRIPTION_SIZE - 1);
+            strncpy(pattern->template_before, HEAL_PATTERN_STACK_OVERFLOW_BEFORE,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            strncpy(pattern->template_after, HEAL_PATTERN_STACK_OVERFLOW_AFTER,
+                    HEAL_PATTERN_MAX_TEMPLATE_SIZE - 1);
+            pattern->confidence = 0.65f;
+            pattern->enabled = true;
             break;
 
         case FIX_PATTERN_LNN_GENERATED:

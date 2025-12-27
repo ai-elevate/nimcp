@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 //=============================================================================
 // Test Fixtures
@@ -496,6 +497,241 @@ TEST_F(SignalHandlerTest, AutoRecoveryToggleMultipleTimes) {
         bool enabled = signal_handler_is_auto_recovery_enabled();
         ASSERT_EQ((i % 2 == 0), enabled);
     }
+}
+
+//=============================================================================
+// Thread-Local Recovery Tests
+//=============================================================================
+
+class SignalRecoveryTest : public ::testing::Test {
+protected:
+    virtual void SetUp() {
+        signal_handler_config_t config = signal_handler_default_config();
+        config.enable_checkpoint_save = false;
+        ASSERT_TRUE(signal_handler_install(&config));
+        signal_handler_reset_stats();
+
+        // Initialize thread-local recovery for main test thread
+        ASSERT_EQ(0, signal_handler_init_thread_recovery());
+    }
+
+    virtual void TearDown() {
+        signal_handler_cleanup_thread_recovery();
+        signal_handler_uninstall();
+        signal_handler_reset_stats();
+    }
+};
+
+TEST_F(SignalRecoveryTest, ThreadRecoveryInitCleanup) {
+    // Already initialized in SetUp, verify cleanup works
+    signal_handler_cleanup_thread_recovery();
+
+    // Re-initialize should work
+    ASSERT_EQ(0, signal_handler_init_thread_recovery());
+
+    // Double init should succeed (no-op)
+    ASSERT_EQ(0, signal_handler_init_thread_recovery());
+}
+
+TEST_F(SignalRecoveryTest, GetRecoveryContext) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+
+    ASSERT_NOT_NULL(ctx);
+    ASSERT_EQ(0, ctx->valid);
+    ASSERT_EQ(RECOVERY_INITIAL, ctx->result);
+    ASSERT_EQ(0, ctx->crash_signal);
+    ASSERT_EQ(0, ctx->retry_count);
+}
+
+TEST_F(SignalRecoveryTest, SetRecoveryPointBasic) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+    ASSERT_NOT_NULL(ctx);
+
+    // Set recovery point - should return RECOVERY_INITIAL on first call
+    int result = signal_handler_set_recovery_point_ex(ctx, 3, "test_recovery");
+
+    ASSERT_EQ(RECOVERY_INITIAL, result);
+    ASSERT_EQ(1, ctx->valid);
+    ASSERT_EQ(3, ctx->max_retries);
+    ASSERT_STREQ("test_recovery", ctx->label);
+
+    // Clear recovery point
+    signal_handler_clear_recovery_point_ex(ctx);
+
+    ASSERT_EQ(0, ctx->valid);
+    ASSERT_EQ(RECOVERY_INITIAL, ctx->result);
+}
+
+TEST_F(SignalRecoveryTest, CanRecoverCheck) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+    ASSERT_NOT_NULL(ctx);
+
+    // Initially cannot recover (no recovery point set)
+    signal_handler_clear_recovery_point_ex(ctx);
+    ASSERT_FALSE(signal_handler_can_recover());
+
+    // Set recovery point
+    int result = signal_handler_set_recovery_point_ex(ctx, 0, "test");
+    ASSERT_EQ(RECOVERY_INITIAL, result);
+
+    // Now can recover
+    ASSERT_TRUE(signal_handler_can_recover());
+
+    // Clear and verify
+    signal_handler_clear_recovery_point_ex(ctx);
+    ASSERT_FALSE(signal_handler_can_recover());
+}
+
+TEST_F(SignalRecoveryTest, GetCrashSignalInitial) {
+    // No crash yet, should return 0 or last signal
+    int sig = signal_handler_get_crash_signal();
+    ASSERT_GE(sig, 0);
+}
+
+TEST_F(SignalRecoveryTest, RecoveryPointWithNullContext) {
+    // Using NULL context should auto-get thread context
+    int result = signal_handler_set_recovery_point_ex(NULL, 2, "null_ctx_test");
+
+    ASSERT_EQ(RECOVERY_INITIAL, result);
+    ASSERT_TRUE(signal_handler_can_recover());
+
+    signal_handler_clear_recovery_point_ex(NULL);
+    ASSERT_FALSE(signal_handler_can_recover());
+}
+
+TEST_F(SignalRecoveryTest, MultipleRecoveryPointsOverwrite) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+    ASSERT_NOT_NULL(ctx);
+
+    // Set first recovery point
+    int result1 = signal_handler_set_recovery_point_ex(ctx, 1, "first");
+    ASSERT_EQ(RECOVERY_INITIAL, result1);
+    ASSERT_STREQ("first", ctx->label);
+
+    // Clear and set second
+    signal_handler_clear_recovery_point_ex(ctx);
+    int result2 = signal_handler_set_recovery_point_ex(ctx, 5, "second");
+    ASSERT_EQ(RECOVERY_INITIAL, result2);
+    ASSERT_STREQ("second", ctx->label);
+    ASSERT_EQ(5, ctx->max_retries);
+
+    signal_handler_clear_recovery_point_ex(ctx);
+}
+
+TEST_F(SignalRecoveryTest, TriggerRecoveryNoValidPoint) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+    ASSERT_NOT_NULL(ctx);
+
+    // Ensure no valid recovery point
+    signal_handler_clear_recovery_point_ex(ctx);
+    signal_handler_clear_recovery_point();  // Clear global too
+
+    // Trigger should fail (return -1) since no valid point
+    int result = signal_handler_trigger_recovery(RECOVERY_CRASH_HANDLED);
+    ASSERT_EQ(-1, result);
+}
+
+//=============================================================================
+// Recovery Macro Tests (simulate without actual crashes)
+//=============================================================================
+
+TEST_F(SignalRecoveryTest, TryRecoverMacroStructure) {
+    // Test that the macro compiles and executes without crash
+    int executed = 0;
+    int recovered = 0;
+
+    // Note: This won't actually trigger recovery since no signal occurs
+    SIGNAL_TRY_RECOVER(3, "macro_test") {
+        executed = 1;
+        // Safe code - no crash here
+    } SIGNAL_ON_CRASH {
+        recovered = 1;
+    } SIGNAL_TRY_END;
+
+    // Should have executed the try block
+    ASSERT_EQ(1, executed);
+    // Should NOT have recovered (no crash)
+    ASSERT_EQ(0, recovered);
+}
+
+TEST_F(SignalRecoveryTest, RecoveryContextRetryCount) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+    ASSERT_NOT_NULL(ctx);
+
+    // Initial retry count should be 0
+    ASSERT_EQ(0, ctx->retry_count);
+
+    // Set recovery point multiple times (simulating retry pattern)
+    for (int i = 0; i < 3; i++) {
+        int result = signal_handler_set_recovery_point_ex(ctx, 5, "retry_test");
+        ASSERT_EQ(RECOVERY_INITIAL, result);
+        signal_handler_clear_recovery_point_ex(ctx);
+    }
+
+    // Retry count is only incremented on actual recovery jump
+    // Since we cleared without jumping, retry_count stays at 0
+    ASSERT_EQ(0, ctx->retry_count);
+}
+
+TEST_F(SignalRecoveryTest, RecoveryContextUserData) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+    ASSERT_NOT_NULL(ctx);
+
+    // Initially user_data should be NULL
+    ASSERT_EQ(nullptr, ctx->user_data);
+
+    // Set user data
+    int user_value = 42;
+    ctx->user_data = &user_value;
+
+    ASSERT_EQ(&user_value, ctx->user_data);
+    ASSERT_EQ(42, *(int*)ctx->user_data);
+
+    // Clear user data
+    ctx->user_data = nullptr;
+}
+
+TEST_F(SignalRecoveryTest, CleanupWithActiveRecoveryPoint) {
+    signal_recovery_ctx_t* ctx = signal_handler_get_recovery_ctx();
+    ASSERT_NOT_NULL(ctx);
+
+    // Set recovery point
+    int result = signal_handler_set_recovery_point_ex(ctx, 2, "cleanup_test");
+    ASSERT_EQ(RECOVERY_INITIAL, result);
+    ASSERT_TRUE(signal_handler_can_recover());
+
+    // Cleanup should safely clear the context
+    signal_handler_cleanup_thread_recovery();
+
+    // After cleanup, cannot recover anymore (context is freed)
+    ASSERT_FALSE(signal_handler_can_recover());
+
+    // Re-initialize for TearDown
+    ASSERT_EQ(0, signal_handler_init_thread_recovery());
+}
+
+//=============================================================================
+// Integration with Signal Stats
+//=============================================================================
+
+TEST_F(SignalRecoveryTest, ImmuneStatsWithRecovery) {
+    uint64_t immune_recoveries = 0;
+    uint64_t total_crashes = 0;
+
+    signal_handler_get_immune_stats(&immune_recoveries, &total_crashes);
+
+    // Initially zero
+    ASSERT_EQ(0, immune_recoveries);
+    ASSERT_EQ(0, total_crashes);
+}
+
+TEST_F(SignalRecoveryTest, HasCodeImmuneCheck) {
+    // Check code immune availability
+    bool has_immune = signal_handler_has_code_immune();
+
+    // Depends on compile-time flags - just ensure no crash
+    (void)has_immune;
+    ASSERT_TRUE(true);
 }
 
 #endif // TEST_SIGNAL_HANDLER_CPP
