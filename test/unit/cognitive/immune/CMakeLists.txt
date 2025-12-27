@@ -442,3 +442,25 @@ target_include_directories(unit_cognitive_immune_code_immune
 add_test(NAME unit_cognitive_immune_code_immune
          COMMAND unit_cognitive_immune_code_immune)
 set_tests_properties(unit_cognitive_immune_code_immune PROPERTIES LABELS "unit")
+
+# Enhanced Self-Healing Bridge Unit Tests
+add_executable(unit_cognitive_immune_heal_bridge
+    test_heal_bridge.cpp
+)
+target_link_libraries(unit_cognitive_immune_heal_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_heal_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+)
+add_test(NAME unit_cognitive_immune_heal_bridge
+         COMMAND unit_cognitive_immune_heal_bridge)
+set_tests_properties(unit_cognitive_immune_heal_bridge PROPERTIES LABELS "unit")

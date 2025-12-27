@@ -323,6 +323,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_immune.c  # Global workspace-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_bridge_coordinator.c  # Immune Bridge Coordinator - central registry for all immune bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_self_heal.c  # Self-Healing Engine - pattern + LNN based crash recovery
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_heal_bridge.c  # Enhanced Self-Healing Bridge - unified pipeline with sandbox/evolution/chains
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_claude_healer.c  # Claude API Fallback Healer - external AI-assisted code repair
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_metrics.c  # Immune Metrics - Prometheus/JSON export for self-healing observability
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_cognitive_meta_controller.c  # Cognitive Meta-Controller - unified arbitrator for cognitive subsystems

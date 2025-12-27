@@ -179,3 +179,27 @@ target_include_directories(integration_cognitive_immune_code_immune
 add_test(NAME integration_cognitive_immune_code_immune
          COMMAND integration_cognitive_immune_code_immune)
 set_tests_properties(integration_cognitive_immune_code_immune PROPERTIES LABELS "integration")
+
+# Heal Bridge Integration Tests (self-heal, code-immune, pattern evolution)
+add_executable(integration_cognitive_immune_heal_bridge
+    test_heal_bridge_integration.cpp
+)
+target_link_libraries(integration_cognitive_immune_heal_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_cognitive_immune_heal_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/lnn
+)
+add_test(NAME integration_cognitive_immune_heal_bridge
+         COMMAND integration_cognitive_immune_heal_bridge)
+set_tests_properties(integration_cognitive_immune_heal_bridge PROPERTIES LABELS "integration")
