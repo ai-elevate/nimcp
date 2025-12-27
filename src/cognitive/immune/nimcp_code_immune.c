@@ -633,11 +633,25 @@ int code_immune_present_crash_detailed(
     system->antigen_count++;
     system->stats.crashes_detected++;
 
+    /* Update per-type statistics */
+    switch (signal) {
+        case SIGSEGV: system->stats.sigsegv_count++; break;
+        case SIGBUS:  system->stats.sigbus_count++; break;
+        case SIGILL:  system->stats.sigill_count++; break;
+        case SIGFPE:  system->stats.sigfpe_count++; break;
+        case SIGABRT: system->stats.sigabrt_count++; break;
+    }
+
     if (antigen_id) {
         *antigen_id = antigen->id;
     }
 
     nimcp_mutex_unlock(system->mutex);
+
+    /* Call crash callback if set */
+    if (system->on_crash) {
+        system->on_crash(system, antigen, system->callback_user_data);
+    }
 
     /* Sync to brain immune if configured */
     if (system->config.sync_with_brain_immune && system->parent_immune) {

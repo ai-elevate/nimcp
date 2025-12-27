@@ -16,6 +16,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/thread/nimcp_thread.h"
 
 
 
@@ -65,6 +66,11 @@ struct attention_gate {
     // Statistics
     uint64_t total_shifts;
     uint32_t current_winner;
+
+    /* Thread safety: mutex protects entries, spotlight, shift history, and statistics.
+     * Added to fix thread-safety issue - concurrent calls to attention_gate
+     * functions could corrupt internal state. */
+    nimcp_mutex_t* mutex;
 };
 
 // ============================================================================
@@ -181,6 +187,14 @@ attention_gate_t* attention_gate_create(const attention_gate_config_t* config) {
 
     gate->config = *config;
 
+    /* Thread safety: Create mutex to protect gate state.
+     * This fixes thread-safety issue where concurrent calls could corrupt state. */
+    gate->mutex = nimcp_mutex_create(NULL);
+    if (!gate->mutex) {
+        attention_gate_destroy(gate);
+        return NULL;
+    }
+
     // Allocate entries
     gate->capacity = config->max_targets;
     gate->entries = (attention_entry_t*)nimcp_calloc(gate->capacity,
@@ -244,6 +258,13 @@ void attention_gate_destroy(attention_gate_t* gate) {
 
     // Destroy memory pool (Phase 1.5)
     memory_pool_destroy(gate->sort_buffer_pool);
+
+    /* Thread safety: Clean up mutex */
+    if (gate->mutex) {
+        nimcp_mutex_destroy(gate->mutex);
+        nimcp_free(gate->mutex);
+    }
+
     nimcp_free(gate);
 }
 
@@ -255,16 +276,23 @@ bool attention_gate_set_weight(attention_gate_t* gate,
         return false;
     }
 
+    /* Thread safety: Lock mutex to protect entries and shift history */
+    nimcp_mutex_lock(gate->mutex);
+
     attention_entry_t* entry = find_entry(gate, source_id, target_id);
 
     if (!entry) {
         if (!add_entry(gate, source_id, target_id)) {
+            nimcp_mutex_unlock(gate->mutex);
             return false;
         }
         entry = find_entry(gate, source_id, target_id);
     }
 
-    if (!entry) return false;
+    if (!entry) {
+        nimcp_mutex_unlock(gate->mutex);
+        return false;
+    }
 
     float old_weight = entry->target.combined_weight;
     entry->target.topdown_weight = weight;
@@ -282,6 +310,7 @@ bool attention_gate_set_weight(attention_gate_t* gate,
         }
     }
 
+    nimcp_mutex_unlock(gate->mutex);
     return true;
 }
 
@@ -291,14 +320,19 @@ bool attention_gate_get_weight(const attention_gate_t* gate,
                                 float* weight) {
     if (!gate || !weight) return false;
 
+    /* Thread safety: Lock mutex to protect entries access */
+    nimcp_mutex_lock(gate->mutex);
+
     const attention_entry_t* entry = find_entry(gate, source_id, target_id);
 
     if (!entry) {
         *weight = 0.0F;
+        nimcp_mutex_unlock(gate->mutex);
         return true;  // Return true with 0.0 weight - this is a valid state
     }
 
     *weight = entry->target.combined_weight;
+    nimcp_mutex_unlock(gate->mutex);
     return true;
 }
 
@@ -308,6 +342,9 @@ bool attention_gate_update_salience(attention_gate_t* gate,
     if (!gate || salience < 0.0F || salience > 1.0F) {
         return false;
     }
+
+    /* Thread safety: Lock mutex to protect entries access */
+    nimcp_mutex_lock(gate->mutex);
 
     // Update all entries with this target
     bool updated = false;
@@ -323,6 +360,7 @@ bool attention_gate_update_salience(attention_gate_t* gate,
     // If no entry exists, create one with source_id = 0 (default)
     if (!updated) {
         if (!add_entry(gate, 0, target_id)) {
+            nimcp_mutex_unlock(gate->mutex);
             return false;
         }
 
@@ -335,11 +373,20 @@ bool attention_gate_update_salience(attention_gate_t* gate,
         }
     }
 
+    nimcp_mutex_unlock(gate->mutex);
     return updated;
 }
 
 bool attention_gate_apply_wta(attention_gate_t* gate, uint32_t* winner_id) {
-    if (!gate || gate->num_entries == 0) {
+    if (!gate) {
+        return false;
+    }
+
+    /* Thread safety: Lock mutex to protect entries and shift history */
+    nimcp_mutex_lock(gate->mutex);
+
+    if (gate->num_entries == 0) {
+        nimcp_mutex_unlock(gate->mutex);
         return false;
     }
 
@@ -377,6 +424,7 @@ bool attention_gate_apply_wta(attention_gate_t* gate, uint32_t* winner_id) {
         record_shift(gate, old_winner, gate->current_winner, 1.0F);
     }
 
+    nimcp_mutex_unlock(gate->mutex);
     return true;
 }
 
@@ -385,9 +433,15 @@ bool attention_gate_update_spotlight(attention_gate_t* gate,
                                       uint32_t* num_in_spotlight) {
     if (!gate) return false;
 
+    /* Thread safety: Lock mutex to protect entries and spotlight state */
+    nimcp_mutex_lock(gate->mutex);
+
     // Sort entries by combined weight - Phase 1.5 O(1) pool allocation
     weighted_target_t* targets = (weighted_target_t*)memory_pool_acquire(gate->sort_buffer_pool);
-    if (!targets) return false;
+    if (!targets) {
+        nimcp_mutex_unlock(gate->mutex);
+        return false;
+    }
 
     for (uint32_t i = 0; i < gate->num_entries; i++) {
         targets[i].target_id = gate->entries[i].target_id;
@@ -441,6 +495,7 @@ bool attention_gate_update_spotlight(attention_gate_t* gate,
     // Release back to pool (Phase 1.5)
     memory_pool_release(gate->sort_buffer_pool, targets);
 
+    nimcp_mutex_unlock(gate->mutex);
     return true;
 }
 
@@ -452,17 +507,24 @@ bool attention_gate_get_shifts(const attention_gate_t* gate,
         return false;
     }
 
+    /* Thread safety: Lock mutex to protect shift history access */
+    nimcp_mutex_lock(gate->mutex);
+
     uint32_t count = (gate->num_shifts < max_shifts) ?
                     gate->num_shifts : max_shifts;
 
     memcpy(shifts, gate->shift_history, count * sizeof(attention_shift_t));
     *num_shifts = count;
 
+    nimcp_mutex_unlock(gate->mutex);
     return true;
 }
 
 void attention_gate_reset(attention_gate_t* gate) {
     if (!gate) return;
+
+    /* Thread safety: Lock mutex to protect entries and state */
+    nimcp_mutex_lock(gate->mutex);
 
     for (uint32_t i = 0; i < gate->num_entries; i++) {
         gate->entries[i].target.topdown_weight = 0.0F;
@@ -474,6 +536,8 @@ void attention_gate_reset(attention_gate_t* gate) {
     gate->num_in_spotlight = 0;
     gate->num_shifts = 0;
     gate->current_winner = 0;
+
+    nimcp_mutex_unlock(gate->mutex);
 }
 
 bool attention_gate_get_stats(const attention_gate_t* gate,

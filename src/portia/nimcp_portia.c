@@ -26,6 +26,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <pthread.h>
+#include <stdatomic.h>
 
 #define LOG_MODULE "portia"
 

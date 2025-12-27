@@ -147,3 +147,35 @@ target_include_directories(integration_cognitive_immune_modules
 add_test(NAME integration_cognitive_immune_modules
          COMMAND integration_cognitive_immune_modules)
 set_tests_properties(integration_cognitive_immune_modules PROPERTIES LABELS "integration")
+
+# ============================================================================
+# Code Immune (Self-Healing) System Integration Tests
+# ============================================================================
+
+# Code Immune Integration Tests (signal handler, self-heal, DWARF symbols)
+add_executable(integration_cognitive_immune_code_immune
+    test_code_immune_integration.cpp
+)
+target_link_libraries(integration_cognitive_immune_code_immune
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_cognitive_immune_code_immune
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/utils/signal
+        ${CMAKE_SOURCE_DIR}/include/utils/code
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/signal
+        ${CMAKE_SOURCE_DIR}/src/utils/code
+        ${CMAKE_SOURCE_DIR}/src/lnn
+)
+add_test(NAME integration_cognitive_immune_code_immune
+         COMMAND integration_cognitive_immune_code_immune)
+set_tests_properties(integration_cognitive_immune_code_immune PROPERTIES LABELS "integration")

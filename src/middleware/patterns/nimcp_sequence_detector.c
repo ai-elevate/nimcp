@@ -973,6 +973,9 @@ bool sequence_detector_match_with_pe(sequence_detector_t* detector,
         return false;
     }
 
+    /* Thread safety: Lock mutex to protect buffer, templates, and statistics */
+    nimcp_mutex_lock(detector->mutex);
+
     *num_detected = 0;
 
     // Match against all templates with PE enhancement
@@ -1028,6 +1031,7 @@ bool sequence_detector_match_with_pe(sequence_detector_t* detector,
         }
     }
 
+    nimcp_mutex_unlock(detector->mutex);
     return true;
 }
 

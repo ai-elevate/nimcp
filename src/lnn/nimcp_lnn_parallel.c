@@ -69,13 +69,17 @@ static nimcp_mutex_t* lnn_mutex_create(void) {
 #define LNN_PARALLEL_RING_BUFFER_SIZE      16  /* Pipeline ring buffer */
 
 /*=============================================================================
- * Global State
+ * Global State (Thread-Safe)
  *===========================================================================*/
 
+/* Mutex protecting global state modifications */
+static pthread_mutex_t g_parallel_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Global state with atomic flag for thread-safe quick checks */
 static nimcp_thread_pool_t* g_thread_pool = NULL;
-static uint32_t g_num_threads = 0;
+static atomic_uint g_num_threads = 0;
 static nimcp_mutex_t* g_parallel_mutex = NULL;
-static bool g_parallel_initialized = false;
+static atomic_bool g_parallel_initialized = false;
 
 /*=============================================================================
  * Structures
@@ -276,8 +280,18 @@ static uint32_t compute_chunk_size(uint32_t batch_size, uint32_t n_threads) {
  *===========================================================================*/
 
 int lnn_parallel_init(uint32_t n_threads) {
-    /* Guard: Already initialized */
-    if (g_parallel_initialized) {
+    /* Quick check: Already initialized (atomic read for fast path) */
+    if (atomic_load(&g_parallel_initialized)) {
+        NIMCP_LOGGING_WARN("LNN parallel already initialized");
+        return LNN_SUCCESS;
+    }
+
+    /* Lock to prevent concurrent initialization */
+    pthread_mutex_lock(&g_parallel_state_mutex);
+
+    /* Double-check under lock (another thread may have initialized) */
+    if (atomic_load(&g_parallel_initialized)) {
+        pthread_mutex_unlock(&g_parallel_state_mutex);
         NIMCP_LOGGING_WARN("LNN parallel already initialized");
         return LNN_SUCCESS;
     }
@@ -291,6 +305,7 @@ int lnn_parallel_init(uint32_t n_threads) {
     /* Create mutex */
     g_parallel_mutex = lnn_mutex_create();
     if (!g_parallel_mutex) {
+        pthread_mutex_unlock(&g_parallel_state_mutex);
         NIMCP_LOGGING_ERROR("Failed to create parallel mutex");
         return LNN_ERROR_OUT_OF_MEMORY;
     }
@@ -301,11 +316,17 @@ int lnn_parallel_init(uint32_t n_threads) {
         NIMCP_LOGGING_ERROR("Failed to create thread pool with %u threads", n_threads);
         nimcp_mutex_destroy(g_parallel_mutex);
         g_parallel_mutex = NULL;
+        pthread_mutex_unlock(&g_parallel_state_mutex);
         return LNN_ERROR_THREAD_FAILURE;
     }
 
-    g_num_threads = n_threads;
-    g_parallel_initialized = true;
+    /* Store thread count atomically */
+    atomic_store(&g_num_threads, n_threads);
+
+    /* Set initialized flag atomically (must be last) */
+    atomic_store(&g_parallel_initialized, true);
+
+    pthread_mutex_unlock(&g_parallel_state_mutex);
 
     NIMCP_LOGGING_INFO("LNN parallel initialized with %u threads", n_threads);
 
@@ -317,10 +338,22 @@ int lnn_parallel_init(uint32_t n_threads) {
 }
 
 void lnn_parallel_shutdown(void) {
-    /* Guard: Not initialized */
-    if (!g_parallel_initialized) {
+    /* Quick check: Not initialized (atomic read for fast path) */
+    if (!atomic_load(&g_parallel_initialized)) {
         return;
     }
+
+    /* Lock to prevent concurrent shutdown/init */
+    pthread_mutex_lock(&g_parallel_state_mutex);
+
+    /* Double-check under lock */
+    if (!atomic_load(&g_parallel_initialized)) {
+        pthread_mutex_unlock(&g_parallel_state_mutex);
+        return;
+    }
+
+    /* Clear initialized flag first atomically to prevent new operations */
+    atomic_store(&g_parallel_initialized, false);
 
     /* Destroy thread pool */
     if (g_thread_pool) {
@@ -334,14 +367,16 @@ void lnn_parallel_shutdown(void) {
         g_parallel_mutex = NULL;
     }
 
-    g_num_threads = 0;
-    g_parallel_initialized = false;
+    /* Clear thread count atomically */
+    atomic_store(&g_num_threads, 0);
+
+    pthread_mutex_unlock(&g_parallel_state_mutex);
 
     NIMCP_LOGGING_INFO("LNN parallel shutdown complete");
 }
 
 uint32_t lnn_parallel_get_num_threads(void) {
-    return g_num_threads;
+    return atomic_load(&g_num_threads);
 }
 
 int lnn_parallel_config_default(lnn_parallel_config_t* config) {
