@@ -89,7 +89,7 @@ static lnn_bio_async_ctx_t* create_bio_ctx(void) {
     }
 
     memset(ctx, 0, sizeof(lnn_bio_async_ctx_t));
-    ctx->mutex = nimcp_mutex_create();
+    ctx->mutex = nimcp_mutex_create(NULL);
     if (!ctx->mutex) {
         nimcp_free(ctx);
         return NULL;

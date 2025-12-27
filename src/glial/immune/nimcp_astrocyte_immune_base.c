@@ -15,6 +15,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_router.h"
 #include <string.h>
 
@@ -32,20 +33,20 @@ void astro_immune_destroy(astrocyte_immune_base_t* bridge) {
 }
 
 int astro_immune_update(astrocyte_immune_base_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
-    if (!bridge->ops || !bridge->ops->update) return -1;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->ops || !bridge->ops->update) return NIMCP_ERROR_NOT_IMPLEMENTED;
     return bridge->ops->update(bridge, delta_ms);
 }
 
 int astro_immune_apply_cytokines(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->ops || !bridge->ops->apply_cytokine_effects) return -1;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->ops || !bridge->ops->apply_cytokine_effects) return NIMCP_ERROR_NOT_IMPLEMENTED;
     return bridge->ops->apply_cytokine_effects(bridge);
 }
 
 int astro_immune_apply_inflammation(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->ops || !bridge->ops->apply_inflammation_effects) return -1;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->ops || !bridge->ops->apply_inflammation_effects) return NIMCP_ERROR_NOT_IMPLEMENTED;
     return bridge->ops->apply_inflammation_effects(bridge);
 }
 
@@ -91,7 +92,7 @@ int astro_immune_get_cytokine_state(
     const astrocyte_immune_base_t* bridge,
     astro_cytokine_state_t* out_state
 ) {
-    if (!bridge || !out_state) return -1;
+    if (!bridge || !out_state) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_platform_mutex_lock(bridge->infra.mutex);
     memcpy(out_state, &bridge->cytokine_state, sizeof(astro_cytokine_state_t));
@@ -104,7 +105,7 @@ int astro_immune_get_inflammation_state(
     const astrocyte_immune_base_t* bridge,
     astro_inflammation_state_t* out_state
 ) {
-    if (!bridge || !out_state) return -1;
+    if (!bridge || !out_state) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_platform_mutex_lock(bridge->infra.mutex);
     memcpy(out_state, &bridge->inflammation, sizeof(astro_inflammation_state_t));
@@ -117,7 +118,7 @@ int astro_immune_get_stats(
     const astrocyte_immune_base_t* bridge,
     astro_immune_stats_t* out_stats
 ) {
-    if (!bridge || !out_stats) return -1;
+    if (!bridge || !out_stats) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_platform_mutex_lock(bridge->infra.mutex);
     memcpy(out_stats, &bridge->stats, sizeof(astro_immune_stats_t));
@@ -133,8 +134,8 @@ int astro_immune_get_stats(
 #define ASTRO_IMMUNE_MODULE_NAME "astro_immune_bridge"
 
 int astro_immune_connect_bio_async(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return -1;
-    if (bridge->infra.bio_async_enabled) return 0;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (bridge->infra.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_ASTROCYTE,
@@ -155,8 +156,8 @@ int astro_immune_connect_bio_async(astrocyte_immune_base_t* bridge) {
 }
 
 int astro_immune_disconnect_bio_async(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->infra.bio_async_enabled) return 0;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->infra.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->infra.bio_ctx) {
         bio_router_unregister_module(bridge->infra.bio_ctx);
@@ -185,7 +186,7 @@ int astro_immune_base_init(
 ) {
     if (!base || !ops) {
         NIMCP_LOGGING_ERROR("astro_immune_base_init: NULL base or ops");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     memset(base, 0, sizeof(astrocyte_immune_base_t));
@@ -201,7 +202,7 @@ int astro_immune_base_init(
     base->infra.mutex = nimcp_platform_mutex_create();
     if (!base->infra.mutex) {
         NIMCP_LOGGING_ERROR("astro_immune_base_init: mutex creation failed");
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     /* Initialize timing */

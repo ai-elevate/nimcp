@@ -896,7 +896,7 @@ int training_logic_signal_instability(
     }
 
     if (instability_type >= LOGIC_INSTABILITY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1347,7 +1347,7 @@ int training_logic_set_condition(
     }
 
     if (condition >= TRAINING_COND_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1406,7 +1406,7 @@ int training_logic_set_condition(
             break;
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
-            return NIMCP_ERROR_INVALID_PARAMETER;
+            return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1440,7 +1440,7 @@ int training_logic_set_numeric_condition(
     } else {
         NIMCP_LOGGING_ERROR("Unknown numeric condition: %s", name);
         nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1483,7 +1483,7 @@ int training_logic_add_custom_gate(
     } else {
         NIMCP_LOGGING_ERROR("Unsupported gate expression: %s", expression);
         nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Create gate */

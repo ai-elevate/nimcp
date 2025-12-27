@@ -266,7 +266,7 @@ int protein_synthesis_set_tag(
 ) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
     if (stimulation_strength < 0.0f || stimulation_strength > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -318,7 +318,7 @@ int protein_synthesis_remove_tag(
     int idx = find_tag_index(system, synapse_id);
     if (idx < 0) {
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     remove_tag_at_index(system, (uint32_t)idx);
@@ -354,7 +354,7 @@ int protein_synthesis_get_tag(
     int idx = find_tag_index(system, synapse_id);
     if (idx < 0) {
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     *tag = system->tags[idx];
@@ -398,7 +398,7 @@ int protein_synthesis_induce_synthesis(
 ) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
     if (boost_factor < 1.0f || boost_factor > 3.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -418,7 +418,7 @@ int protein_synthesis_add_prps(
     float prp_amount
 ) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
-    if (prp_amount < 0.0f) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (prp_amount < 0.0f) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_platform_mutex_lock(system->mutex);
 

@@ -250,7 +250,7 @@ int arousal_state_update(arousal_state_t* state, float delta_ms) {
     // Guard: Invalid delta
     if (delta_ms < 0.0f) {
         NIMCP_LOGGING_ERROR("Invalid negative delta_ms: %f", delta_ms);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(state->mutex);
@@ -357,7 +357,7 @@ int arousal_state_set_target(arousal_state_t* state, float target_level) {
     // Guard: Range check
     if (target_level < 0.0f || target_level > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid target_level: %f (must be 0.0-1.0)", target_level);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(state->mutex);
@@ -383,7 +383,7 @@ int arousal_state_apply_stimulus(arousal_state_t* state, float stimulus_magnitud
     if (stimulus_magnitude < -1.0f || stimulus_magnitude > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid stimulus_magnitude: %f (must be -1.0 to 1.0)",
             stimulus_magnitude);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(state->mutex);

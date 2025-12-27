@@ -322,7 +322,7 @@ int circadian_reset_phase(circadian_rhythm_t* rhythm, circadian_phase_t phase)
     }
 
     if (phase >= CIRCADIAN_PHASE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(rhythm->mutex);
@@ -377,7 +377,7 @@ int circadian_apply_zeitgeber(circadian_rhythm_t* rhythm,
     }
 
     if (zeitgeber >= CIRCADIAN_ZEITGEBER_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Clamp strength */
@@ -424,7 +424,7 @@ int circadian_set_time_scale(circadian_rhythm_t* rhythm, float scale)
     }
 
     if (scale <= 0.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(rhythm->mutex);

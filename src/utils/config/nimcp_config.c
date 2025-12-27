@@ -12,8 +12,11 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/json/nimcp_json.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdint.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -58,6 +61,46 @@ static char* unquote(char* str) {
         return str + 1;
     }
     return str;
+}
+
+// Helper to safely parse integer with error checking
+// Returns the parsed value on success, or default_val on failure
+static long parse_long_safe(const char* str, long default_val) {
+    if (!str || *str == '\0') return default_val;
+
+    char* endptr = NULL;
+    errno = 0;
+    long val = strtol(str, &endptr, 10);
+
+    // Check for conversion errors
+    if (errno == ERANGE || endptr == str || *endptr != '\0') {
+        return default_val;
+    }
+    return val;
+}
+
+// Helper to safely parse uint32 with error checking
+static uint32_t parse_uint32_safe(const char* str, uint32_t default_val) {
+    long val = parse_long_safe(str, (long)default_val);
+    if (val < 0 || val > UINT32_MAX) {
+        return default_val;
+    }
+    return (uint32_t)val;
+}
+
+// Helper to safely parse float with error checking
+static float parse_float_safe(const char* str, float default_val) {
+    if (!str || *str == '\0') return default_val;
+
+    char* endptr = NULL;
+    errno = 0;
+    double val = strtod(str, &endptr);
+
+    // Check for conversion errors
+    if (errno == ERANGE || endptr == str || *endptr != '\0') {
+        return default_val;
+    }
+    return (float)val;
 }
 
 void nimcp_config_init_defaults(nimcp_brain_config_t* config) {
@@ -154,47 +197,47 @@ bool nimcp_config_load_yaml(const char* filepath, nimcp_brain_config_t* config) 
             } else if (strcmp(key, "model_path") == 0) {
                 strncpy(config->model_path, value, sizeof(config->model_path) - 1);
             } else if (strcmp(key, "checkpoint_interval") == 0) {
-                config->checkpoint_interval = (uint32_t)atoi(value);
+                config->checkpoint_interval = parse_uint32_safe(value, config->checkpoint_interval);
             }
         } else if (strcmp(section, "architecture") == 0) {
             if (strcmp(key, "num_inputs") == 0) {
-                config->num_inputs = (uint32_t)atoi(value);
+                config->num_inputs = parse_uint32_safe(value, config->num_inputs);
             } else if (strcmp(key, "num_outputs") == 0) {
-                config->num_outputs = (uint32_t)atoi(value);
+                config->num_outputs = parse_uint32_safe(value, config->num_outputs);
             } else if (strcmp(key, "num_hidden") == 0) {
-                config->num_hidden = (uint32_t)atoi(value);
+                config->num_hidden = parse_uint32_safe(value, config->num_hidden);
             } else if (strcmp(key, "learning_rate") == 0) {
-                config->learning_rate = (float)atof(value);
+                config->learning_rate = parse_float_safe(value, config->learning_rate);
             }
         } else if (strcmp(section, "training") == 0) {
             if (strcmp(key, "max_epochs") == 0) {
-                config->max_epochs = (uint32_t)atoi(value);
+                config->max_epochs = parse_uint32_safe(value, config->max_epochs);
             } else if (strcmp(key, "batch_size") == 0) {
-                config->batch_size = (uint32_t)atoi(value);
+                config->batch_size = parse_uint32_safe(value, config->batch_size);
             } else if (strcmp(key, "validation_split") == 0) {
-                config->validation_split = (float)atof(value);
+                config->validation_split = parse_float_safe(value, config->validation_split);
             } else if (strcmp(key, "early_stopping") == 0) {
                 config->early_stopping = (strcmp(value, "true") == 0);
             } else if (strcmp(key, "patience") == 0) {
-                config->patience = (uint32_t)atoi(value);
+                config->patience = parse_uint32_safe(value, config->patience);
             }
         } else if (strcmp(section, "plasticity") == 0) {
             if (strcmp(key, "enable_bcm") == 0) {
                 config->enable_bcm = (strcmp(value, "true") == 0);
             } else if (strcmp(key, "bcm_tau") == 0) {
-                config->bcm_tau = (float)atof(value);
+                config->bcm_tau = parse_float_safe(value, config->bcm_tau);
             } else if (strcmp(key, "enable_stdp") == 0) {
                 config->enable_stdp = (strcmp(value, "true") == 0);
             } else if (strcmp(key, "stdp_window") == 0) {
-                config->stdp_window = (float)atof(value);
+                config->stdp_window = parse_float_safe(value, config->stdp_window);
             }
         } else if (strcmp(section, "ethics") == 0) {
             if (strcmp(key, "enabled") == 0) {
                 config->ethics_enabled = (strcmp(value, "true") == 0);
             } else if (strcmp(key, "golden_rule_threshold") == 0) {
-                config->golden_rule_threshold = (float)atof(value);
+                config->golden_rule_threshold = parse_float_safe(value, config->golden_rule_threshold);
             } else if (strcmp(key, "empathy_weight") == 0) {
-                config->empathy_weight = (float)atof(value);
+                config->empathy_weight = parse_float_safe(value, config->empathy_weight);
             }
         }
     }

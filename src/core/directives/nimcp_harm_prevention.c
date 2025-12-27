@@ -270,7 +270,7 @@ int harm_prevention_evaluate_action(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!action_desc || !result) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Initialize result */
@@ -363,7 +363,7 @@ int harm_prevention_evaluate_inaction(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!context_desc || !required_action || !result) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Check if inaction detection enabled */
@@ -411,7 +411,7 @@ int harm_prevention_block_action(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!reason) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Create synthetic result */
@@ -483,7 +483,7 @@ int harm_prevention_update_thresholds(
     }
     if (warn_threshold > block_threshold) {
         NIMCP_LOGGING_ERROR("Warn threshold must be <= block threshold");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     system->config.block_threshold = block_threshold;

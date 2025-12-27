@@ -30,8 +30,7 @@ typedef struct eligibility_trace_t eligibility_trace_t;
 #include "core/synapse_types/nimcp_synapse_types.h"
 
 // Phase 11: BCM plasticity types
-// NOTE: Must come AFTER neuron_t forward declaration
-#include "plasticity/bcm/nimcp_bcm.h"
+// NOTE: Already included above (line 10)
 
 // Function pointer types for synapse computation (NIMCP 2.7)
 // DESIGN: Define types here so synapse_t can use them without including synapse_compute.h
@@ -66,7 +65,7 @@ typedef void (*synapse_learn_fn)(
  * - Activity-dependent plasticity
  * - Adaptive thresholding
  *
- * @author Your Name
+ * @author NIMCP Development Team
  * @date 2025-02-04
  */
 

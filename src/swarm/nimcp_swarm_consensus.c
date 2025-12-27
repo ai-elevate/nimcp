@@ -559,7 +559,7 @@ nimcp_error_t swarm_consensus_receive_vote(
             nimcp_mutex_lock(&g_vote_tracking_mutex);
             if (vote->voter_drone < MAX_TRACKED_DRONE_ID) {
                 g_vote_counts_by_drone[vote->voter_drone]++;
-                if (g_vote_counts_by_drone[vote->voter_drone] > 100) {
+                if (g_vote_counts_by_drone[vote->voter_drone] > BYZANTINE_EXCESSIVE_VOTE_THRESHOLD) {
                     bbb_audit_log(BBB_AUDIT_CRITICAL, "swarm_consensus", "byzantine_detect",
                                  "Drone %u has excessive vote rejections (%u) - quarantining",
                                  vote->voter_drone, g_vote_counts_by_drone[vote->voter_drone]);
@@ -1028,12 +1028,14 @@ static bool is_byzantine_fault(
     }
 
     /* Check if confidence is suspiciously extreme */
-    if (new_vote->confidence > 0.99F || new_vote->confidence < 0.01F) {
+    if (new_vote->confidence > BYZANTINE_EXTREME_CONFIDENCE_HIGH ||
+        new_vote->confidence < BYZANTINE_EXTREME_CONFIDENCE_LOW) {
         /* Count other extreme confidences */
         uint32_t extreme_count = 0;
         for (uint32_t i = 0; i < vote->vote_count; i++) {
             float conf = vote->votes[i].confidence;
-            if (conf > 0.99F || conf < 0.01F) {
+            if (conf > BYZANTINE_EXTREME_CONFIDENCE_HIGH ||
+                conf < BYZANTINE_EXTREME_CONFIDENCE_LOW) {
                 extreme_count++;
             }
         }
@@ -1046,11 +1048,12 @@ static bool is_byzantine_fault(
     }
 
     /* Check for pattern anomalies - all agree with high confidence is suspicious */
-    if (new_vote->choice == VOTE_CHOICE_AGREE && new_vote->confidence > 0.95F) {
+    if (new_vote->choice == VOTE_CHOICE_AGREE &&
+        new_vote->confidence > BYZANTINE_HIGH_CONFIDENCE_THRESHOLD) {
         uint32_t high_conf_agree = 0;
         for (uint32_t i = 0; i < vote->vote_count; i++) {
             if (vote->votes[i].choice == VOTE_CHOICE_AGREE &&
-                vote->votes[i].confidence > 0.95F) {
+                vote->votes[i].confidence > BYZANTINE_HIGH_CONFIDENCE_THRESHOLD) {
                 high_conf_agree++;
             }
         }

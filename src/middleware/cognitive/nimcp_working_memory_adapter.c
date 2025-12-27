@@ -18,6 +18,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/thread/nimcp_thread.h"
 
 
 struct working_memory_adapter_struct {
@@ -25,6 +26,11 @@ struct working_memory_adapter_struct {
     brain_feature_normalizer_t* normalizer;
     brain_spike_feature_extractor_t spike_extractor;
     working_memory_adapter_config_t config;
+
+    /* Thread safety: mutex protects buffer, normalizer, and spike_extractor access.
+     * Added to fix HIGH PRIORITY thread-safety issue - concurrent calls to
+     * working_memory_adapter_update() could corrupt internal state. */
+    nimcp_mutex_t* mutex;
 };
 
 working_memory_adapter_config_t working_memory_adapter_default_config(void) {
@@ -48,6 +54,15 @@ working_memory_adapter_t working_memory_adapter_create(
     if (!adapter) return NULL;
 
     adapter->config = *config;
+
+    /* Thread safety: Create mutex to protect adapter state.
+     * This fixes HIGH PRIORITY thread-safety issue where concurrent calls
+     * to working_memory_adapter_update() could corrupt internal state. */
+    adapter->mutex = nimcp_mutex_create(NULL);
+    if (!adapter->mutex) {
+        working_memory_adapter_destroy(adapter);
+        return NULL;
+    }
 
     adapter->buffer = brain_create_temporal_buffer(
         config->num_channels, config->buffer_size
@@ -86,9 +101,25 @@ void working_memory_adapter_destroy(working_memory_adapter_t adapter) {
     brain_destroy_temporal_buffer(adapter->buffer);
     brain_destroy_feature_normalizer(adapter->normalizer);
     brain_destroy_spike_feature_extractor(adapter->spike_extractor);
+
+    /* Thread safety: Clean up mutex */
+    if (adapter->mutex) {
+        nimcp_mutex_destroy(adapter->mutex);
+        nimcp_free(adapter->mutex);
+    }
+
     nimcp_free(adapter);
 }
 
+/**
+ * WHAT: Update adapter with new neural activity
+ * WHY:  Process new timestep of neural data
+ * HOW:  Buffer activity, extract and normalize features
+ *
+ * THREAD SAFETY: This function is now protected by a mutex to prevent
+ * concurrent access from corrupting internal buffer and normalizer state.
+ * This fixes a HIGH PRIORITY thread-safety issue identified in code review.
+ */
 uint32_t working_memory_adapter_update(
     working_memory_adapter_t adapter,
     const float* activity,
@@ -99,18 +130,27 @@ uint32_t working_memory_adapter_update(
     if (!adapter || !activity || !features_out) return 0;
     if (num_channels != adapter->config.num_channels) return 0;
 
+    /* Thread safety: Lock mutex to protect buffer and normalizer access.
+     * This prevents concurrent calls from corrupting internal state. */
+    nimcp_mutex_lock(adapter->mutex);
+
     // Buffer activity
     if (!brain_buffer_activity(adapter->buffer, activity, num_channels, timestamp)) {
+        nimcp_mutex_unlock(adapter->mutex);
         return 0;
     }
 
     // If no normalizer (max_features == 0), return 0 features
     if (!adapter->normalizer || adapter->config.max_features == 0) {
+        nimcp_mutex_unlock(adapter->mutex);
         return 0;
     }
 
     // Extract and normalize features
-    return brain_extract_and_normalize(
+    uint32_t result = brain_extract_and_normalize(
         adapter->buffer, adapter->normalizer, features_out, adapter->config.max_features
     );
+
+    nimcp_mutex_unlock(adapter->mutex);
+    return result;
 }

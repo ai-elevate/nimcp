@@ -363,7 +363,7 @@ int fep_orchestrator_register_bridge(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (category >= FEP_BRIDGE_CATEGORY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -423,7 +423,7 @@ int fep_orchestrator_unregister_bridge(
     
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
     
     fep_bridge_entry_t* entry = &orchestrator->bridges[found_idx];
@@ -462,7 +462,7 @@ int fep_orchestrator_set_bridge_enabled(
     fep_bridge_entry_t* entry = find_bridge_by_id(orchestrator, bridge_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
     
     if (entry->enabled != enabled) {
@@ -590,7 +590,7 @@ int fep_orchestrator_update_category(
     uint64_t current_time_ms
 ) {
     if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -629,7 +629,7 @@ int fep_orchestrator_update_bridge(
     fep_bridge_entry_t* entry = find_bridge_by_id(orchestrator, bridge_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
     
     uint64_t current_time_ms = nimcp_platform_time_monotonic_ms();
@@ -698,7 +698,7 @@ int fep_orchestrator_set_update_interval(
     uint64_t interval_ms
 ) {
     if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     orchestrator->config.categories[category].update_interval_ms = interval_ms;
@@ -713,7 +713,7 @@ int fep_orchestrator_set_category_enabled(
     bool enabled
 ) {
     if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     orchestrator->config.categories[category].enabled = enabled;
@@ -728,7 +728,7 @@ int fep_orchestrator_get_category_config(
     fep_category_config_t* config
 ) {
     if (!orchestrator || !config) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
     
     *config = orchestrator->config.categories[category];
     return 0;

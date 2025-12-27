@@ -348,6 +348,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
+    # Game Theory - Economic mechanisms for cognitive resource allocation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory.c  # Core game theory types and utilities
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_auction.c  # Auction mechanisms (second-price, VCG, ascending, descending)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_bargaining.c  # Nash bargaining, Kalai-Smorodinsky, Rubinstein
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_credit_assignment.c  # Shapley value, Banzhaf index, core membership
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_global_workspace.c  # Auction-based GW competition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_hemispheric.c  # Hemispheric Nash bargaining
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_neuromod.c  # Payoff-to-neuromodulator mapping
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_working_memory.c  # Auction-based WM eviction
+
     # Free Energy Principle - Karl Friston's predictive processing framework
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy.c  # Core FEP implementation (variational free energy, active inference)
 

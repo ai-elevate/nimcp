@@ -586,7 +586,7 @@ nimcp_error_t vesicle_pink_noise_set_targets(vesicle_pink_noise_bridge_t* bridge
 
     // Validate targets
     if (targets & ~VESICLE_NOISE_ALL) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOCK(bridge);
@@ -693,7 +693,7 @@ nimcp_error_t vesicle_pink_noise_set_strength(vesicle_pink_noise_bridge_t* bridg
     }
 
     if (strength < 0.0f || strength > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOCK(bridge);
@@ -713,7 +713,7 @@ nimcp_error_t vesicle_pink_noise_set_strength(vesicle_pink_noise_bridge_t* bridg
             break;
         default:
             UNLOCK(bridge);
-            return NIMCP_ERROR_INVALID_PARAMETER;
+            return NIMCP_ERROR_INVALID_PARAM;
     }
 
     UNLOCK(bridge);
@@ -748,7 +748,7 @@ nimcp_error_t vesicle_pink_noise_get_strength(const vesicle_pink_noise_bridge_t*
             *strength = bridge->config.refill_modulation_strength;
             break;
         default:
-            return NIMCP_ERROR_INVALID_PARAMETER;
+            return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return NIMCP_SUCCESS;

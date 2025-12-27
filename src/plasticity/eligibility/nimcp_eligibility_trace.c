@@ -172,18 +172,19 @@ void eligibility_trace_update(
         spike_contribution = 0.0f;  /* Skip corrupted contribution */
     }
 
-    /* Clamp spike contribution to reasonable range [0, 1] */
-    if (spike_contribution < 0.0f) spike_contribution = 0.0f;
+    /* Clamp spike contribution to reasonable range [-1, 1]
+     * Negative contributions represent LTD (post-before-pre STDP) */
+    if (spike_contribution < -1.0f) spike_contribution = -1.0f;
     if (spike_contribution > 1.0f) spike_contribution = 1.0f;
 
     trace->trace += spike_contribution;
 
-    // STEP 4: Clamp trace to [0, 1]
-    // WHAT: Prevent trace from exceeding 1.0 or going negative
-    // WHY: Traces represent eligibility probability
+    // STEP 4: Clamp trace to [-1, 1]
+    // WHAT: Prevent trace from exceeding bounds
+    // WHY: Traces represent eligibility for LTP (+) or LTD (-)
     // HOW: Explicit bounds checking for both limits
-    if (trace->trace < 0.0F) {
-        trace->trace = 0.0F;
+    if (trace->trace < -1.0F) {
+        trace->trace = -1.0F;
     }
     if (trace->trace > 1.0F) {
         trace->trace = 1.0F;
@@ -267,15 +268,15 @@ void eligibility_trace_decay(
     }
 
     // OPTIMIZATION: If trace becomes negligible, zero it out
-    // WHAT: Set very small traces to zero
+    // WHAT: Set very small traces (absolute value) to zero
     // WHY: Avoid denormal floating-point performance issues
-    // HOW: Threshold at 0.0001 (0.01%)
-    if (trace->trace < 0.0001F) {
+    // HOW: Threshold at 0.0001 (0.01%) of magnitude
+    if (fabsf(trace->trace) < 0.0001F) {
         trace->trace = 0.0F;
     }
 
-    /* Final bounds enforcement */
-    if (trace->trace < 0.0F) trace->trace = 0.0F;
+    /* Final bounds enforcement - allow negative for LTD */
+    if (trace->trace < -1.0F) trace->trace = -1.0F;
     if (trace->trace > 1.0F) trace->trace = 1.0F;
 }
 
@@ -356,13 +357,11 @@ float eligibility_apply_reward(
     }
     synapse->weight += delta_w;
 
-    // STEP 4: Clamp weight to physiological range [0, 1]
-    // WHAT: Bound weight updates to prevent unbounded growth
-    // WHY: Synaptic weights must stay in valid range
-    // HOW: Use fminf/fmaxf for branchless clamping
-    // P1 fix: Also validate final weight for NaN
-    float new_weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
-    synapse->weight = isnan(new_weight) ? 0.5f : new_weight;
+    // NOTE: Weight clamping is handled by the caller (synapse_learn_three_factor)
+    // which uses [-10, 10] bounds. We only validate for NaN/Inf here.
+    if (isnan(synapse->weight) || isinf(synapse->weight)) {
+        synapse->weight = 0.5f;  /* Reset on numerical error */
+    }
 
     return delta_w;
 }
@@ -560,12 +559,11 @@ float eligibility_consolidate_on_burst(
         }
         synapse->weight += delta_w;
 
-        // Clamp weight to physiological range [0, 1]
-        // WHAT: Bound weight updates to prevent unbounded growth
-        // WHY: Synaptic weights must stay in valid range
-        // HOW: Use fminf/fmaxf for branchless clamping
-        float new_weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
-        synapse->weight = isnan(new_weight) ? 0.5f : new_weight;
+        // NOTE: Weight clamping is handled by the caller (synapse_learn_three_factor)
+        // which uses [-10, 10] bounds. We only validate for NaN/Inf here.
+        if (isnan(synapse->weight) || isinf(synapse->weight)) {
+            synapse->weight = 0.5f;  /* Reset on numerical error */
+        }
 
         return delta_w;
     }

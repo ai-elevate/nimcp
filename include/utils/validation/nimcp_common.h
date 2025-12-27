@@ -556,6 +556,31 @@ typedef struct {
 #define NIMCP_INBOX_CAPACITY_DEFAULT    NIMCP_INBOX_CAPACITY_MEDIUM
 
 /* ============================================================================
+ * Middleware Buffer Capacities
+ * ============================================================================ */
+
+#define NIMCP_BUFFER_CAPACITY_DEFAULT   1024 /* Default buffer/queue capacity */
+#define NIMCP_HISTORY_WINDOW_SIZE       100  /* Default history tracking window */
+#define NIMCP_EVENT_BATCH_SIZE          32   /* Events to process per batch */
+#define NIMCP_LOSS_HISTORY_SIZE         32   /* Training loss history buffer */
+#define NIMCP_FE_HISTORY_SIZE           100  /* Free energy history for cortical training */
+
+/* Feature extractor limits */
+#define NIMCP_FEATURE_BUFFER_CAPACITY   1024 /* Rate signal buffer size */
+#define NIMCP_ATTENTION_SHIFTS_HISTORY  100  /* Attention shift tracking window */
+#define NIMCP_TRACKED_WEIGHTS_CAPACITY  64   /* Training weight tracking capacity */
+
+/* Signal pool parameters */
+#define NIMCP_SIGNAL_POOL_BLOCK_SIZE    128  /* Fits up to 32 floats per signal */
+#define NIMCP_SIGNAL_POOL_NUM_BLOCKS    1024 /* Signals in flight */
+
+/* Sequence detector parameters */
+#define NIMCP_PE_EMBEDDING_DIM          64   /* Positional encoding embedding dimension */
+
+/* Latency histogram size */
+#define NIMCP_LATENCY_HISTOGRAM_SIZE    32   /* Flow tracker latency bins */
+
+/* ============================================================================
  * Time Conversion Constants
  * ============================================================================ */
 

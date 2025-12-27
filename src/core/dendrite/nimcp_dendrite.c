@@ -33,11 +33,10 @@
 #include <math.h>
 #include <string.h>
 
-// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+// === BIO-ASYNC + UNIFIED MEMORY INTEGRATION ===
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "dendrite"

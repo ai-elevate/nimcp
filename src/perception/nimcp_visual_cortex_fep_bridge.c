@@ -265,7 +265,7 @@ int visual_cortex_fep_compute_prediction_error(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
-    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -311,7 +311,7 @@ int visual_cortex_fep_report_observations(
     if (!bridge || !visual_features) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
     if (!bridge->config.enable_visual_pe_updates) return NIMCP_SUCCESS;
-    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -335,7 +335,7 @@ int visual_cortex_fep_report_novelty(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
     if (novelty_score < 0.0f || novelty_score > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);

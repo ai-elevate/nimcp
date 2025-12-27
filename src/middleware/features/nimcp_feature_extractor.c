@@ -6,6 +6,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/validation/nimcp_common.h"
 
 /* Quantum bridge integration */
 #define NIMCP_FEATURE_QUANTUM_BRIDGE_IMPLEMENTATION
@@ -122,7 +123,7 @@ feature_extractor_t feature_extractor_create(const feature_extractor_config_t* c
     }
 
     extractor->config = config ? *config : feature_extractor_default_config();
-    extractor->buffer_capacity = 1024;
+    extractor->buffer_capacity = NIMCP_FEATURE_BUFFER_CAPACITY;
 
     extractor->rate_buffer = nimcp_calloc(extractor->buffer_capacity, sizeof(float));
     extractor->isi_buffer = nimcp_calloc(extractor->buffer_capacity * 10, sizeof(float));

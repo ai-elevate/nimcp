@@ -420,13 +420,13 @@ int jepa_predictor_predict(jepa_predictor_t* predictor,
     if (context->latent_dim != predictor->config.input_dim) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Input dim mismatch: %u vs %u",
                            context->latent_dim, predictor->config.input_dim);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (prediction->latent_dim != predictor->config.output_dim) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Output dim mismatch: %u vs %u",
                            prediction->latent_dim, predictor->config.output_dim);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Forward pass through MLP */
@@ -479,11 +479,11 @@ int jepa_predictor_compute_error(jepa_predictor_t* predictor,
     }
 
     if (prediction->latent_dim != target->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!error->error || error->dim != prediction->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Compute raw error */
@@ -808,7 +808,7 @@ int jepa_predictor_to_fep_error(jepa_predictor_t* predictor,
 
     /* Ensure FEP error has same dimensionality */
     if (fep_error->dim != internal_error->dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Copy error values */
@@ -875,7 +875,7 @@ int jepa_predictor_get_weights(const jepa_predictor_t* predictor,
 
     const jepa_mlp_t* mlp = &predictor->network.mlp;
     if (layer_idx >= mlp->num_layers) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
@@ -901,12 +901,12 @@ int jepa_predictor_set_weights(jepa_predictor_t* predictor,
 
     jepa_mlp_t* mlp = &predictor->network.mlp;
     if (layer_idx >= mlp->num_layers) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
     if (layer->in_dim != in_dim || layer->out_dim != out_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     memcpy(layer->weights, weights, in_dim * out_dim * sizeof(float));

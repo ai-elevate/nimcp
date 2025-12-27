@@ -401,13 +401,13 @@ int visual_jepa_bridge_encode(
     if (feature_dim != bridge->encoder->input_dim) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Feature dim mismatch: %u vs %u",
                           feature_dim, bridge->encoder->input_dim);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (latent->latent_dim != bridge->encoder->output_dim) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Latent dim mismatch: %u vs %u",
                           latent->latent_dim, bridge->encoder->output_dim);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Select encoder (target for inference in training mode) */
@@ -444,7 +444,7 @@ int visual_jepa_bridge_encode_patches(
 
     /* Validate dimensions */
     if (width == 0 || height == 0 || channels == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const visual_jepa_patch_config_t* pc = &bridge->config.patch;

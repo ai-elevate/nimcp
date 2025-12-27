@@ -254,7 +254,7 @@ int audio_cortex_fep_compute_prediction_error(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
-    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -300,7 +300,7 @@ int audio_cortex_fep_report_observations(
     if (!bridge || !audio_features) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
     if (!bridge->config.enable_auditory_pe_updates) return NIMCP_SUCCESS;
-    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
 

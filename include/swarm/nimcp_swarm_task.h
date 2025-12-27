@@ -642,7 +642,13 @@ int swarm_task_retry(
 //=============================================================================
 
 /**
- * @brief Get task by ID
+ * @brief Get task by ID (UNSAFE - see warning)
+ *
+ * CRITICAL THREAD SAFETY WARNING - POINTER-AFTER-UNLOCK ISSUE:
+ * The returned pointer may be invalidated by concurrent task removal.
+ * For thread-safe access, use swarm_task_get_copy() instead.
+ *
+ * DEPRECATED: Use swarm_task_get_copy() for multi-threaded code.
  *
  * @param manager Task manager
  * @param task_id Task ID
@@ -651,6 +657,26 @@ int swarm_task_retry(
 const swarm_task_t* swarm_task_get(
     const swarm_task_manager_t* manager,
     uint64_t task_id
+);
+
+/**
+ * @brief Get thread-safe copy of task by ID
+ *
+ * WHAT: Get copy of task data, safe for multi-threaded access
+ * WHY:  swarm_task_get() returns pointer that can be invalidated
+ * HOW:  Copy task data while holding mutex
+ *
+ * This is the RECOMMENDED API for multi-threaded access.
+ *
+ * @param manager Task manager
+ * @param task_id Task ID
+ * @param out_task Output: copy of task data (caller-allocated)
+ * @return 0 on success, -1 if not found, -2 if NULL parameters
+ */
+int swarm_task_get_copy(
+    const swarm_task_manager_t* manager,
+    uint64_t task_id,
+    swarm_task_t* out_task
 );
 
 /**

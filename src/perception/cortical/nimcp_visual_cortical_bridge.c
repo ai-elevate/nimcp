@@ -512,7 +512,7 @@ int visual_cortical_process(
     }
 
     if (width == 0 || height == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -694,7 +694,7 @@ int visual_cortical_process_patch(
     }
 
     if (patch_width == 0 || patch_height == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -705,7 +705,7 @@ int visual_cortical_process_patch(
     uint32_t hcol_idx = compute_hypercolumn_index(bridge, retino_x, retino_y);
     if (hcol_idx >= bridge->num_hypercolumns) {
         if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     orientation_hypercolumn_t* hcol = bridge->hypercolumns[hcol_idx];
@@ -764,7 +764,7 @@ int visual_cortical_get_orientation_map(
     }
 
     if (width == 0 || height == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);

@@ -974,27 +974,63 @@ bool failure_predictor_get_prediction_by_type(
     return false;
 }
 
+/**
+ * CRITICAL THREAD SAFETY WARNING - POINTER-AFTER-UNLOCK ISSUE:
+ * ============================================================
+ * This function returned a pointer to internal prediction data AFTER releasing
+ * the lock. This is a HIGH PRIORITY thread-safety issue.
+ *
+ * FIX APPLIED: Now copies prediction data before returning. Caller must provide
+ * output buffer and the prediction is copied while holding the lock.
+ *
+ * The old signature returning failure_prediction_t* is preserved for API
+ * compatibility but now returns NULL (deprecated). Use the new
+ * failure_predictor_get_highest_probability_prediction_copy() instead.
+ */
 failure_prediction_t* failure_predictor_get_highest_probability_prediction(
     failure_predictor_t* predictor
 )
 {
-    if (!predictor) {
-        return NULL;
+    /* DEPRECATED: This function is unsafe and now always returns NULL.
+     * Use failure_predictor_get_highest_probability_prediction_copy() instead. */
+    (void)predictor;
+    return NULL;
+}
+
+/**
+ * WHAT: Get thread-safe copy of highest probability prediction
+ * WHY:  Original function returned pointer that could be invalidated
+ * HOW:  Copy prediction data while holding lock, return via out parameter
+ *
+ * This is the RECOMMENDED API for accessing the highest probability prediction.
+ *
+ * @param predictor Predictor instance
+ * @param out_prediction Output: copy of prediction data (caller-allocated)
+ * @return true if prediction found and copied, false if no predictions or error
+ */
+bool failure_predictor_get_highest_probability_prediction_copy(
+    failure_predictor_t* predictor,
+    failure_prediction_t* out_prediction
+)
+{
+    if (!predictor || !out_prediction) {
+        return false;
     }
 
     lock_read(predictor);
 
     if (predictor->prediction_count == 0) {
         unlock(predictor);
-        return NULL;
+        return false;
     }
 
-    // Already sorted, so first is highest
-    failure_prediction_t* result = &predictor->predictions[0];
+    /* Copy prediction data while holding lock - thread-safe.
+     * Predictions are already sorted by probability, so first is highest. */
+    *out_prediction = predictor->predictions[0];
 
     unlock(predictor);
 
-    return result;
+    return true;
 }
 
 void failure_predictor_clear_predictions(failure_predictor_t* predictor) {

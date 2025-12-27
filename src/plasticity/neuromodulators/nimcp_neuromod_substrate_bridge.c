@@ -643,7 +643,7 @@ int neuromod_substrate_record_synthesis(
         return NIMCP_SUCCESS;
     }
     if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Get current ATP */
@@ -678,7 +678,7 @@ int neuromod_substrate_record_release(
         return NIMCP_SUCCESS;
     }
     if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Get current ATP */
@@ -713,7 +713,7 @@ int neuromod_substrate_record_reuptake(
         return NIMCP_SUCCESS;
     }
     if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Get current ATP */
@@ -806,7 +806,7 @@ int neuromod_substrate_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const substrate_neuromod_effects_t* src = get_effects_for_type(

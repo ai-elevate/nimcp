@@ -492,9 +492,9 @@ static nimcp_error_t neuromod_handle_release_message(
         LOG_ERROR("Invalid neuromodulator release message size: %zu < %zu",
                   msg_size, sizeof(bio_msg_neuromodulator_release_t));
         if (response_promise) {
-            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_INVALID_PARAMETER);
+            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_INVALID_PARAM);
         }
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     neuromodulator_system_t system = g_neuromod_bio_state.current_system;
@@ -564,9 +564,9 @@ static nimcp_error_t neuromod_handle_learning_rate_message(
     if (!msg || msg_size < sizeof(bio_msg_learning_rate_update_t)) {
         LOG_ERROR("Invalid learning rate update message size");
         if (response_promise) {
-            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_INVALID_PARAMETER);
+            nimcp_bio_promise_fail(response_promise, NIMCP_ERROR_INVALID_PARAM);
         }
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     neuromodulator_system_t system = g_neuromod_bio_state.current_system;
@@ -626,7 +626,7 @@ static nimcp_error_t neuromod_handle_learning_rate_message(
  */
 static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
     if (!system) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Check if bio-router is initialized

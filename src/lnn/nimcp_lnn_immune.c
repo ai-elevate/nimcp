@@ -441,7 +441,7 @@ int lnn_immune_report_instability(
     }
     if (type <= LNN_INSTABILITY_NONE || type >= LNN_INSTABILITY_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid instability type: %d", type);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Thread-safe update */

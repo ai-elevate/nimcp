@@ -389,18 +389,39 @@ bool failure_predictor_get_prediction_by_type(
 );
 
 /**
- * @brief Get highest probability prediction
+ * @brief Get highest probability prediction (DEPRECATED - UNSAFE)
  *
- * WHAT: Most likely predicted failure
- * WHY:  Quick access to top risk
+ * CRITICAL THREAD SAFETY WARNING - POINTER-AFTER-UNLOCK ISSUE:
+ * This function returned a pointer to internal data after releasing the lock.
+ * It is DEPRECATED and now always returns NULL.
+ *
+ * Use failure_predictor_get_highest_probability_prediction_copy() instead.
  *
  * @param predictor Predictor instance (non-NULL)
- * @return Pointer to highest probability prediction or NULL if none
+ * @return Always returns NULL (deprecated)
  *
- * @note Returned pointer is internal - do not free
+ * @deprecated Use failure_predictor_get_highest_probability_prediction_copy()
  */
 failure_prediction_t* failure_predictor_get_highest_probability_prediction(
     failure_predictor_t* predictor
+);
+
+/**
+ * @brief Get thread-safe copy of highest probability prediction
+ *
+ * WHAT: Get copy of highest probability prediction, safe for multi-threaded access
+ * WHY:  Original function returned pointer that could be invalidated
+ * HOW:  Copy prediction data while holding lock
+ *
+ * This is the RECOMMENDED API for accessing the highest probability prediction.
+ *
+ * @param predictor Predictor instance (non-NULL)
+ * @param out_prediction Output: copy of prediction data (caller-allocated)
+ * @return true if prediction found and copied, false if no predictions or error
+ */
+bool failure_predictor_get_highest_probability_prediction_copy(
+    failure_predictor_t* predictor,
+    failure_prediction_t* out_prediction
 );
 
 /**

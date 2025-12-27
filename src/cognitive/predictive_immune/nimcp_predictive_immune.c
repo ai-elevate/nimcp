@@ -662,7 +662,7 @@ static nimcp_result_t compute_precision_modulation(
     uint32_t region_idx)
 {
     if (!sys) return NIMCP_ERROR_NULL_POINTER;
-    if (region_idx >= sys->region_capacity) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (region_idx >= sys->region_capacity) return NIMCP_ERROR_INVALID_PARAM;
 
     immune_modulated_precision_t* prec = &sys->region_precisions[region_idx];
 
@@ -709,7 +709,7 @@ static nimcp_result_t check_error_threshold(
     float error)
 {
     if (!sys) return NIMCP_ERROR_NULL_POINTER;
-    if (region_idx >= sys->num_error_triggers) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (region_idx >= sys->num_error_triggers) return NIMCP_ERROR_INVALID_PARAM;
 
     prediction_error_trigger_t* trigger = &sys->error_triggers[region_idx];
     trigger->current_error = error;

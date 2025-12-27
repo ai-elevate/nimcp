@@ -459,7 +459,7 @@ int thalamus_relay(
     if (!thal || !input || !output) return NIMCP_ERROR_NULL_POINTER;
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
 
     /* Process input */
     int result = thal_nucleus_process_input(nucleus, input, input_size);
@@ -534,7 +534,7 @@ int thalamus_get_output(
     if (!thal || !output) return NIMCP_ERROR_NULL_POINTER;
 
     const thal_nucleus_t* nucleus = thalamus_get_nucleus_const(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
 
     uint32_t copy_size = (size < nucleus->num_output_channels) ? size : nucleus->num_output_channels;
     memcpy(output, nucleus->output_buffer, sizeof(float) * copy_size);
@@ -554,7 +554,7 @@ int thalamus_set_attention(
     if (!thal) return NIMCP_ERROR_NULL_POINTER;
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
 
     attention = clamp_f(attention, 0.0f, 1.0f);
     nucleus->attention_level = attention;
@@ -576,8 +576,8 @@ int thalamus_set_channel_attention(
     if (!thal) return NIMCP_ERROR_NULL_POINTER;
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
-    if (channel >= nucleus->num_input_channels) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    if (channel >= nucleus->num_input_channels) return NIMCP_ERROR_INVALID_PARAM;
 
     nucleus->channel_attention[channel] = clamp_f(attention, 0.0f, 1.0f);
     return 0;
@@ -629,7 +629,7 @@ int thalamus_apply_trn_inhibition(
     if (!thal) return NIMCP_ERROR_NULL_POINTER;
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
 
     inhibition = clamp_f(inhibition, 0.0f, 1.0f);
     nucleus->trn_inhibition = inhibition;
@@ -653,8 +653,8 @@ int thalamus_apply_channel_inhibition(
     if (!thal) return NIMCP_ERROR_NULL_POINTER;
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
-    if (channel >= nucleus->num_input_channels) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    if (channel >= nucleus->num_input_channels) return NIMCP_ERROR_INVALID_PARAM;
 
     nucleus->channel_inhibition[channel] = clamp_f(inhibition, 0.0f, 1.0f);
     return 0;
@@ -672,7 +672,7 @@ int thalamus_set_mode(
     if (!thal) return NIMCP_ERROR_NULL_POINTER;
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
 
     nucleus->dominant_mode = mode;
 
@@ -703,7 +703,7 @@ int thalamus_trigger_burst(thalamus_t* thal, thal_nucleus_type_t nucleus_type) {
     if (!thal) return NIMCP_ERROR_NULL_POINTER;
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
 
     /* Activate T-type Ca2+ channels for burst */
     for (uint32_t i = 0; i < nucleus->num_cells; i++) {

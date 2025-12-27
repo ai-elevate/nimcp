@@ -280,7 +280,7 @@ nimcp_error_t swarm_protocol_encode(
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_protocol", "encode_error", "Invalid message type %d", type);
         LOG_ERROR("swarm_protocol_encode: Invalid message type %d", type);
         g_protocol_stats.invalid_type_errors++;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (payload_len > SWARM_PAYLOAD_FLOATS) {
@@ -289,7 +289,7 @@ nimcp_error_t swarm_protocol_encode(
         LOG_ERROR("swarm_protocol_encode: Payload length %u exceeds max %d",
                         payload_len, SWARM_PAYLOAD_FLOATS);
         g_protocol_stats.invalid_length_errors++;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (payload_len > 0 && !bbb_check_pointer(payload, "swarm_protocol_encode")) {
@@ -353,7 +353,7 @@ nimcp_error_t swarm_protocol_decode(
         bbb_audit_log(BBB_AUDIT_CRITICAL, "swarm_protocol", "security_threat",
                      "Malicious network data detected from drone %u", msg->sender_id);
         g_protocol_stats.crc_failures++;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Validate CRC first
@@ -362,21 +362,21 @@ nimcp_error_t swarm_protocol_decode(
                      "CRC validation failed for message from drone %u", msg->sender_id);
         LOG_ERROR("swarm_protocol_decode: CRC validation failed");
         g_protocol_stats.crc_failures++;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Validate message type
     if (msg->message_type >= SWARM_MSG_TYPE_COUNT) {
         LOG_ERROR("swarm_protocol_decode: Invalid message type %u", msg->message_type);
         g_protocol_stats.invalid_type_errors++;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Validate sequence length
     if (msg->sequence_length > SWARM_MAX_PHONEMES) {
         LOG_ERROR("swarm_protocol_decode: Invalid sequence length %u", msg->sequence_length);
         g_protocol_stats.invalid_length_errors++;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Extract message type
@@ -451,7 +451,7 @@ nimcp_error_t swarm_protocol_get_phonemes_for_type(
 
     if (type >= SWARM_MSG_TYPE_COUNT) {
         LOG_ERROR("swarm_protocol_get_phonemes_for_type: Invalid type %d", type);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Get mapping
@@ -477,7 +477,7 @@ nimcp_error_t swarm_protocol_recognize_type(
 
     if (length == 0 || length > SWARM_MAX_PHONEMES) {
         LOG_ERROR("swarm_protocol_recognize_type: Invalid length %u", length);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Search for matching phoneme sequence

@@ -43,14 +43,14 @@ static int validate_config(const meta_controller_config_t* config) {
     if (config->max_wm_slots == 0 || config->max_wm_slots > 20) {
         NIMCP_LOGGING_ERROR("Invalid max_wm_slots: %u (must be 1-20)",
                             config->max_wm_slots);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->base_learning_rate < META_CONTROLLER_LR_MIN ||
         config->base_learning_rate > META_CONTROLLER_LR_MAX) {
         NIMCP_LOGGING_ERROR("Invalid base_learning_rate: %f",
                             config->base_learning_rate);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return NIMCP_SUCCESS;
@@ -1032,7 +1032,7 @@ int meta_controller_get_module_performance(
     module_performance_t* performance) {
 
     if (!controller || !performance) return NIMCP_ERROR_NULL_POINTER;
-    if (module >= META_CONTROLLER_MAX_MODULES) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (module >= META_CONTROLLER_MAX_MODULES) return NIMCP_ERROR_INVALID_PARAM;
 
     *performance = controller->modules[module];
 
@@ -1068,7 +1068,7 @@ int meta_controller_set_module_weight(
     float weight) {
 
     if (!controller) return NIMCP_ERROR_NULL_POINTER;
-    if (module >= META_CONTROLLER_MAX_MODULES) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (module >= META_CONTROLLER_MAX_MODULES) return NIMCP_ERROR_INVALID_PARAM;
 
     weight = clamp_float(weight, 0.0f, 1.0f);
     controller->config.module_weights[module] = weight;

@@ -12,6 +12,7 @@
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/error/nimcp_error_codes.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -24,18 +25,20 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <pthread.h>
 
 #define LOG_MODULE "brain_regions"
 
 // ============================================================================
-// Bio-Async Module Context
+// Bio-Async Module Context (Thread-Safe Initialization)
 // ============================================================================
 
 static bio_module_context_t bio_ctx = NULL;
 static bool bio_async_enabled = false;
+static pthread_once_t bio_init_once = PTHREAD_ONCE_INIT;
+static pthread_mutex_t bio_cleanup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-__attribute__((constructor))
-static void brain_regions_bio_init(void) {
+static void brain_regions_bio_init_impl(void) {
     if (!bio_router_is_initialized()) {
         return;
     }
@@ -54,14 +57,21 @@ static void brain_regions_bio_init(void) {
     }
 }
 
+__attribute__((constructor))
+static void brain_regions_bio_init(void) {
+    pthread_once(&bio_init_once, brain_regions_bio_init_impl);
+}
+
 __attribute__((destructor))
 static void brain_regions_bio_cleanup(void) {
+    pthread_mutex_lock(&bio_cleanup_mutex);
     if (bio_async_enabled && bio_ctx) {
         bio_router_unregister_module(bio_ctx);
         bio_ctx = NULL;
         bio_async_enabled = false;
         LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for brain_regions module");
     }
+    pthread_mutex_unlock(&bio_cleanup_mutex);
 }
 
 // ============================================================================
@@ -250,7 +260,7 @@ nimcp_result_t brain_module_add_region(brain_module_t* brain, brain_region_t* re
     }
 
     if (brain->num_regions >= brain->max_regions) {
-        return NIMCP_ERROR; // Full
+        return NIMCP_ERROR_OUT_OF_RANGE; // Full
     }
 
     nimcp_mutex_lock(&brain->lock);
@@ -429,7 +439,7 @@ nimcp_result_t brain_region_organize_columns(brain_region_t* region,
 
     region->minicolumns = (brain_minicolumn_t**)nimcp_calloc(num_columns, sizeof(brain_minicolumn_t*));
     if (!region->minicolumns) {
-        return NIMCP_ERROR;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     region->num_minicolumns = num_columns;
@@ -516,13 +526,13 @@ nimcp_result_t brain_module_connect_regions(brain_module_t* brain,
     brain_region_t* target = brain_module_get_region(brain, target_region_id);
 
     if (!source || !target) {
-        return NIMCP_ERROR; // Region not found
+        return NIMCP_ERROR_NOT_FOUND; // Region not found
     }
 
     // Create connection record
     brain_connection_t* conn = (brain_connection_t*)nimcp_calloc(1, sizeof(brain_connection_t));
     if (!conn) {
-        return NIMCP_ERROR;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     conn->source_region_id = source_region_id;
@@ -557,7 +567,7 @@ nimcp_result_t brain_module_connect_layers(brain_module_t* brain,
 
     brain_connection_t* conn = (brain_connection_t*)nimcp_calloc(1, sizeof(brain_connection_t));
     if (!conn) {
-        return NIMCP_ERROR;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     conn->source_region_id = source_region_id;
@@ -592,7 +602,7 @@ nimcp_result_t brain_region_process_input(brain_region_t* region,
     // Distribute input to Layer 4 neurons (thalamic input layer)
     uint32_t layer4_size = region->layer_sizes[LAYER_4];
     if (layer4_size == 0) {
-        return NIMCP_ERROR; // No input layer
+        return NIMCP_ERROR_INVALID_STATE; // No input layer
     }
 
     // Calculate starting index for Layer 4

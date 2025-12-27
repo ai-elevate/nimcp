@@ -410,7 +410,7 @@ int protective_cutoff_report_threat(
 
     if (type >= THREAT_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid threat type: %d", type);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Clamp severity to [0.0, 1.0]
@@ -496,7 +496,7 @@ int protective_cutoff_force_level(
 
     if (level > PROTECTION_EMERGENCY_SHUTDOWN) {
         NIMCP_LOGGING_ERROR("Invalid protection level: %d", level);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&cutoff->mutex);
@@ -577,7 +577,7 @@ int protective_cutoff_register_callback(
 
     if (!callback) {
         NIMCP_LOGGING_ERROR("NULL callback function");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&cutoff->mutex);

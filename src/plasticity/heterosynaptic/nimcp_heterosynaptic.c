@@ -327,7 +327,7 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
 
     if (found_idx == (size_t)-1) {
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Destroy and free heap-allocated mutex */
@@ -353,6 +353,9 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
  * WHAT: Get synapse by ID
  * WHY:  Locate synapse in array for direct manipulation
  * HOW:  Linear search with mutex protection
+ *
+ * @deprecated This function is DEPRECATED for multi-threaded code.
+ *             Use hetero_get_synapse_copy() instead for thread-safe access.
  *
  * CRITICAL THREAD SAFETY WARNING - POINTER INVALIDATION RISK:
  * ============================================================
@@ -515,10 +518,10 @@ int hetero_apply_depression(
     float ltp_amount,
     uint64_t current_time_ms)
 {
-    if (!system || ltp_amount <= 0.0f) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!system || ltp_amount <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
 
     hetero_synapse_t* potentiated = hetero_get_synapse(system, potentiated_id);
-    if (!potentiated) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!potentiated) return NIMCP_ERROR_INVALID_PARAM;
 
     /* Update potentiation tracking */
     potentiated->last_potentiation = ltp_amount;

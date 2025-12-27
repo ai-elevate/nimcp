@@ -85,6 +85,7 @@ float synapse_compute_ampa(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;  // Unused - AMPA current depends only on post_neuron voltage
     if (!syn || !post_neuron) return 0.0F;
 
     ampa_state_t* state = &syn->type_state.ampa;
@@ -159,6 +160,7 @@ float synapse_compute_nmda(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;  // Unused - NMDA current depends only on post_neuron voltage
     if (!syn || !post_neuron) return 0.0F;
 
     nmda_state_t* state = &syn->type_state.nmda;
@@ -233,6 +235,7 @@ float synapse_compute_gaba_a(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;  // Unused - GABA-A current depends only on post_neuron voltage
     if (!syn || !post_neuron) return 0.0F;
 
     gaba_a_state_t* state = &syn->type_state.gaba_a;
@@ -292,6 +295,7 @@ float synapse_compute_gaba_b(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;  // Unused - GABA-B current depends only on post_neuron voltage
     if (!syn || !post_neuron) return 0.0F;
 
     gaba_b_state_t* state = &syn->type_state.gaba_b;
@@ -363,6 +367,8 @@ float synapse_compute_dopamine(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;   // Unused - modulation computed from internal D1/D2 state
+    (void)post_neuron;  // Unused - dopamine modulates weight, not voltage-dependent
     if (!syn) return 0.0F;
 
     dopamine_state_t* state = &syn->type_state.dopamine;
@@ -428,6 +434,8 @@ float synapse_compute_serotonin(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;   // Unused - modulation computed from internal 5-HT state
+    (void)post_neuron;  // Unused - serotonin modulates weight, not voltage-dependent
     if (!syn) return 0.0F;
 
     serotonin_state_t* state = &syn->type_state.serotonin;
@@ -495,6 +503,8 @@ float synapse_compute_acetylcholine(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;   // Unused - modulation computed from internal ACh state
+    (void)post_neuron;  // Unused - acetylcholine modulates weight, not voltage-dependent
     if (!syn) return 0.0F;
 
     acetylcholine_state_t* state = &syn->type_state.acetylcholine;
@@ -561,6 +571,8 @@ float synapse_compute_electrical(
     float pre_spike,
     float dt
 ) {
+    (void)pre_spike;  // Unused - electrical synapses transmit voltage, not spikes
+    (void)dt;         // Unused - instantaneous coupling (no dynamics)
     if (!syn || !pre_neuron || !post_neuron) return 0.0F;
 
     electrical_state_t* state = &syn->type_state.electrical;
@@ -592,6 +604,9 @@ float synapse_compute_generic(
     float pre_spike,
     float dt
 ) {
+    (void)pre_neuron;   // Unused - generic synapse is a simple weighted sum
+    (void)post_neuron;  // Unused - no voltage dependence
+    (void)dt;           // Unused - no dynamics
     if (!syn) return 0.0F;
 
     return syn->weight * pre_spike;

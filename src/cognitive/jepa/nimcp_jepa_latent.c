@@ -227,7 +227,7 @@ int jepa_latent_set_embedding(jepa_latent_t* latent, const float* values, uint32
     if (dim != latent->latent_dim) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Dimension mismatch in set_embedding: %u vs %u",
                            dim, latent->latent_dim);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     memcpy(latent->embedding, values, dim * sizeof(float));
@@ -525,7 +525,7 @@ int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
     }
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Clamp alpha to [0, 1] */
@@ -562,7 +562,7 @@ int jepa_latent_slerp(const jepa_latent_t* a, const jepa_latent_t* b,
     }
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Clamp alpha */
@@ -613,7 +613,7 @@ int jepa_latent_add(const jepa_latent_t* a, const jepa_latent_t* b,
     }
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     for (uint32_t i = 0; i < a->latent_dim; i++) {
@@ -631,7 +631,7 @@ int jepa_latent_subtract(const jepa_latent_t* a, const jepa_latent_t* b,
     }
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     for (uint32_t i = 0; i < a->latent_dim; i++) {
@@ -673,7 +673,7 @@ int jepa_latent_project(const jepa_latent_t* src,
     }
 
     if (result->latent_dim < target_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Matrix-vector multiplication: result = projection @ src + bias */
@@ -707,7 +707,7 @@ int jepa_latent_mean_pool(const jepa_latent_t** latents, uint32_t num_latents,
     uint32_t dim = result->latent_dim;
     for (uint32_t n = 0; n < num_latents; n++) {
         if (!latents[n] || latents[n]->latent_dim != dim) {
-            return NIMCP_ERROR_INVALID_PARAMETER;
+            return NIMCP_ERROR_INVALID_PARAM;
         }
     }
 
@@ -739,14 +739,14 @@ int jepa_latent_max_pool(const jepa_latent_t** latents, uint32_t num_latents,
 
     /* Initialize with first latent */
     if (!latents[0] || latents[0]->latent_dim != dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
     memcpy(result->embedding, latents[0]->embedding, dim * sizeof(float));
 
     /* Take element-wise max */
     for (uint32_t n = 1; n < num_latents; n++) {
         if (!latents[n] || latents[n]->latent_dim != dim) {
-            return NIMCP_ERROR_INVALID_PARAMETER;
+            return NIMCP_ERROR_INVALID_PARAM;
         }
         for (uint32_t i = 0; i < dim; i++) {
             if (latents[n]->embedding[i] > result->embedding[i]) {

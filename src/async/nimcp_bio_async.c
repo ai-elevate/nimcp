@@ -1217,7 +1217,7 @@ nimcp_error_t nimcp_bio_promise_fail(
 
     if (error == NIMCP_SUCCESS) {
         LOG_ERROR("nimcp_bio_promise_fail: cannot fail with NIMCP_SUCCESS");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Store error BEFORE state transition CAS to ensure another thread

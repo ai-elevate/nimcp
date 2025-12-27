@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/error/nimcp_error_codes.h"
 #include <string.h>
 #include <math.h>
 
@@ -67,9 +68,9 @@ static void plasticity_destroy(astrocyte_immune_base_t* base) {
 
 static int plasticity_apply_cytokine_effects(astrocyte_immune_base_t* base) {
     astro_plasticity_bridge_t* bridge = (astro_plasticity_bridge_t*)base;
-    if (!bridge) return -1;
-    if (!bridge->config.enable_cytokine_modulation) return 0;
-    if (!base->immune_system) return -1;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->config.enable_cytokine_modulation) return NIMCP_SUCCESS;
+    if (!base->immune_system) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_platform_mutex_lock(base->infra.mutex);
 
@@ -110,8 +111,8 @@ static int plasticity_apply_cytokine_effects(astrocyte_immune_base_t* base) {
 
 static int plasticity_apply_inflammation_effects(astrocyte_immune_base_t* base) {
     astro_plasticity_bridge_t* bridge = (astro_plasticity_bridge_t*)base;
-    if (!bridge) return -1;
-    if (!bridge->config.enable_inflammation_effects) return 0;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->config.enable_inflammation_effects) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(base->infra.mutex);
 
@@ -154,8 +155,8 @@ static float plasticity_compute_glutamate_clearance(const astrocyte_immune_base_
 
 static int plasticity_release_reactive_cytokines(astrocyte_immune_base_t* base) {
     astro_plasticity_bridge_t* bridge = (astro_plasticity_bridge_t*)base;
-    if (!bridge || !base->immune_system) return -1;
-    if (!base->enable_reactive_cytokines) return 0;
+    if (!bridge || !base->immune_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!base->enable_reactive_cytokines) return NIMCP_SUCCESS;
 
     float reactivity = base->cytokine_state.total_reactivity;
     if (reactivity < 0.4f) return 0; /* Not reactive enough */
@@ -179,7 +180,7 @@ static astrocyte_phenotype_t plasticity_get_phenotype(const astrocyte_immune_bas
 
 static int plasticity_update(astrocyte_immune_base_t* base, uint64_t delta_ms) {
     astro_plasticity_bridge_t* bridge = (astro_plasticity_bridge_t*)base;
-    if (!bridge) return -1;
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     (void)delta_ms;
 
     /* Apply immune -> astrocyte */
@@ -272,7 +273,7 @@ static const astrocyte_immune_ops_t plasticity_ops = {
  * ============================================================================ */
 
 int astro_plasticity_default_config(astro_plasticity_config_t* config) {
-    if (!config) return -1;
+    if (!config) return NIMCP_ERROR_NULL_POINTER;
 
     config->enable_cytokine_modulation = true;
     config->enable_inflammation_effects = true;
@@ -358,7 +359,7 @@ int astro_plasticity_get_dysfunction(
     const astro_plasticity_bridge_t* bridge,
     plasticity_dysfunction_state_t* out_state
 ) {
-    if (!bridge || !out_state) return -1;
+    if (!bridge || !out_state) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_platform_mutex_lock(bridge->base.infra.mutex);
     memcpy(out_state, &bridge->dysfunction, sizeof(plasticity_dysfunction_state_t));
@@ -376,8 +377,8 @@ int astro_plasticity_transition_state(
     astro_plasticity_bridge_t* bridge,
     uint32_t astrocyte_id
 ) {
-    if (!bridge || !bridge->astrocyte_system) return -1;
-    if (!bridge->config.enable_reactive_state_control) return 0;
+    if (!bridge || !bridge->astrocyte_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->config.enable_reactive_state_control) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.infra.mutex);
 
@@ -406,10 +407,10 @@ int astro_plasticity_alert_dysfunction(
     astro_plasticity_bridge_t* bridge,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !antigen_id || !bridge->base.immune_system) return -1;
+    if (!bridge || !antigen_id || !bridge->base.immune_system) return NIMCP_ERROR_NULL_POINTER;
 
     if (bridge->dysfunction.dysfunction_severity < 0.5f) {
-        return -1; /* Not significant */
+        return NIMCP_ERROR_INVALID_STATE; /* Not significant */
     }
 
     /* Create epitope from dysfunction signature */

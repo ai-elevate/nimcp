@@ -31,6 +31,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <pthread.h>
 
 #define LOG_MODULE "cortical_column"
 
@@ -41,14 +42,15 @@
 #define COLUMN_LOG_DEBUG(...) LOG_DEBUG(LOG_MODULE, __VA_ARGS__)
 
 //=============================================================================
-// Bio-Async Module Context
+// Bio-Async Module Context (Thread-Safe Initialization)
 //=============================================================================
 
 static bio_module_context_t bio_ctx = NULL;
 static bool bio_async_enabled = false;
+static pthread_once_t bio_init_once = PTHREAD_ONCE_INIT;
+static pthread_mutex_t bio_cleanup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-__attribute__((constructor))
-static void cortical_column_bio_init(void) {
+static void cortical_column_bio_init_impl(void) {
     if (!bio_router_is_initialized()) {
         return;
     }
@@ -67,14 +69,21 @@ static void cortical_column_bio_init(void) {
     }
 }
 
+__attribute__((constructor))
+static void cortical_column_bio_init(void) {
+    pthread_once(&bio_init_once, cortical_column_bio_init_impl);
+}
+
 __attribute__((destructor))
 static void cortical_column_bio_cleanup(void) {
+    pthread_mutex_lock(&bio_cleanup_mutex);
     if (bio_async_enabled && bio_ctx) {
         bio_router_unregister_module(bio_ctx);
         bio_ctx = NULL;
         bio_async_enabled = false;
         LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for cortical_column module");
     }
+    pthread_mutex_unlock(&bio_cleanup_mutex);
 }
 
 // Constants

@@ -6,6 +6,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/validation/nimcp_common.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -115,8 +116,8 @@ static void* delivery_thread_fn(void* arg) {
 
     while (bus->running) {
         // Process batch of events
-        event_t events[32];
-        uint32_t count = event_queue_dequeue_batch(bus->queue, events, 32);
+        event_t events[NIMCP_EVENT_BATCH_SIZE];
+        uint32_t count = event_queue_dequeue_batch(bus->queue, events, NIMCP_EVENT_BATCH_SIZE);
 
         for (uint32_t i = 0; i < count; i++) {
             subscriber_dispatch_event(bus->subscribers, &events[i]);
@@ -142,7 +143,7 @@ static void* delivery_thread_fn(void* arg) {
 
 event_bus_config_t event_bus_default_config(void) {
     event_bus_config_t config = {0};
-    config.queue_capacity = 1024;
+    config.queue_capacity = NIMCP_BUFFER_CAPACITY_DEFAULT;
     config.overflow_policy = OVERFLOW_POLICY_DROP_OLDEST;
     config.async_delivery = false; // Manual by default
     config.delivery_thread_sleep_us = 1000; // 1ms
@@ -192,7 +193,7 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
         bio_module_info_t bio_info = {
             .module_id = BIO_MODULE_EVENT_BUS,
             .module_name = "event_bus",
-            .inbox_capacity = 64,
+            .inbox_capacity = NIMCP_INBOX_CAPACITY_MEDIUM,
             .user_data = bus
         };
         bus->bio_ctx = bio_router_register_module(&bio_info);

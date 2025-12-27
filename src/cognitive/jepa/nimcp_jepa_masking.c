@@ -515,7 +515,7 @@ int jepa_mask_generate_2d(jepa_mask_generator_t* generator,
     }
 
     if (mask->width != width || mask->height != height || mask->temporal != 1) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Reset PRNG if fixed seed */
@@ -570,7 +570,7 @@ int jepa_mask_generate_3d(jepa_mask_generator_t* generator,
     }
 
     if (mask->width != width || mask->height != height || mask->temporal != temporal) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Reset PRNG if fixed seed */
@@ -611,7 +611,7 @@ int jepa_mask_generate_attention(jepa_mask_generator_t* generator,
     }
 
     if (mask->width != width || mask->height != height) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return generate_attention_mask(generator, attention, mask);
@@ -723,7 +723,7 @@ int jepa_mask_curriculum_step(jepa_mask_generator_t* generator) {
     }
 
     if (generator->config.strategy != JEPA_MASK_CURRICULUM) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const jepa_curriculum_params_t* params = &generator->config.params.curriculum;

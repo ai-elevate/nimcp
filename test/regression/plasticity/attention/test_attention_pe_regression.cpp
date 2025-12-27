@@ -494,14 +494,19 @@ TEST_F(AttentionPERegressionTest, TypeSwitching_NoStateCorruption) {
     EXPECT_EQ(nimcp_pos_encode_position(encoder, 0, output.data()), NIMCP_POS_SUCCESS);
     nimcp_pos_encoder_destroy(encoder);
 
-    // RoPE
+    // RoPE - uses rope_apply API (applies rotation to Q/K pairs)
     nimcp_pos_config_t rope_config = {};
     rope_config.type = NIMCP_POS_ROTARY;
     rope_config.config.rope = nimcp_pos_rope_default_config();
 
     encoder = nimcp_pos_encoder_create(&rope_config);
     ASSERT_NE(encoder, nullptr);
-    EXPECT_EQ(nimcp_pos_encode_position(encoder, 0, output.data()), NIMCP_POS_SUCCESS);
+    std::vector<float> query(EMBEDDING_DIM, 1.0f);
+    std::vector<float> key(EMBEDDING_DIM, 1.0f);
+    std::vector<float> query_out(EMBEDDING_DIM);
+    std::vector<float> key_out(EMBEDDING_DIM);
+    EXPECT_EQ(nimcp_pos_rope_apply(encoder, query.data(), key.data(), 0,
+                                   query_out.data(), key_out.data()), NIMCP_POS_SUCCESS);
     nimcp_pos_encoder_destroy(encoder);
 
     // ALiBi

@@ -106,17 +106,10 @@ glial_substrate_bridge_t* glial_substrate_bridge_create(
     bridge->microglia_network = micro_network;
     bridge->myelin_network = myelin_network;
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    /* Create mutex using platform API (allocates + initializes internally) */
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: mutex allocation failed");
-        nimcp_free(bridge);
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: mutex init failed");
-        nimcp_free(bridge->base.mutex);
+        NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

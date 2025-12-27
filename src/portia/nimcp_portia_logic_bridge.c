@@ -618,7 +618,7 @@ int portia_logic_add_custom_gate(
     } else {
         NIMCP_LOGGING_ERROR("Unsupported gate expression: %s", expression);
         nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Create gate */
@@ -787,7 +787,7 @@ int portia_logic_set_condition(
     } else {
         NIMCP_LOGGING_ERROR("Unknown condition: %s", condition_name);
         nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Recalculate resource score */

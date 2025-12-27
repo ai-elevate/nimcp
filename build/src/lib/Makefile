@@ -2033,6 +2033,198 @@ __/cognitive/free_energy/nimcp_free_energy.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/free_energy/nimcp_free_energy.c.s
 .PHONY : __/cognitive/free_energy/nimcp_free_energy.c.s
 
+__/cognitive/game_theory/integration/nimcp_gt_global_workspace.o: __/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_global_workspace.o
+
+# target to build an object file
+__/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.o
+
+__/cognitive/game_theory/integration/nimcp_gt_global_workspace.i: __/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_global_workspace.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.i
+
+__/cognitive/game_theory/integration/nimcp_gt_global_workspace.s: __/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_global_workspace.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_global_workspace.c.s
+
+__/cognitive/game_theory/integration/nimcp_gt_hemispheric.o: __/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_hemispheric.o
+
+# target to build an object file
+__/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.o
+
+__/cognitive/game_theory/integration/nimcp_gt_hemispheric.i: __/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_hemispheric.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.i
+
+__/cognitive/game_theory/integration/nimcp_gt_hemispheric.s: __/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_hemispheric.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_hemispheric.c.s
+
+__/cognitive/game_theory/integration/nimcp_gt_neuromod.o: __/cognitive/game_theory/integration/nimcp_gt_neuromod.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_neuromod.o
+
+# target to build an object file
+__/cognitive/game_theory/integration/nimcp_gt_neuromod.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_neuromod.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_neuromod.c.o
+
+__/cognitive/game_theory/integration/nimcp_gt_neuromod.i: __/cognitive/game_theory/integration/nimcp_gt_neuromod.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_neuromod.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/integration/nimcp_gt_neuromod.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_neuromod.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_neuromod.c.i
+
+__/cognitive/game_theory/integration/nimcp_gt_neuromod.s: __/cognitive/game_theory/integration/nimcp_gt_neuromod.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_neuromod.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/integration/nimcp_gt_neuromod.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_neuromod.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_neuromod.c.s
+
+__/cognitive/game_theory/integration/nimcp_gt_working_memory.o: __/cognitive/game_theory/integration/nimcp_gt_working_memory.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_working_memory.o
+
+# target to build an object file
+__/cognitive/game_theory/integration/nimcp_gt_working_memory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_working_memory.c.o
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_working_memory.c.o
+
+__/cognitive/game_theory/integration/nimcp_gt_working_memory.i: __/cognitive/game_theory/integration/nimcp_gt_working_memory.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_working_memory.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/integration/nimcp_gt_working_memory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_working_memory.c.i
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_working_memory.c.i
+
+__/cognitive/game_theory/integration/nimcp_gt_working_memory.s: __/cognitive/game_theory/integration/nimcp_gt_working_memory.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_working_memory.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/integration/nimcp_gt_working_memory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/integration/nimcp_gt_working_memory.c.s
+.PHONY : __/cognitive/game_theory/integration/nimcp_gt_working_memory.c.s
+
+__/cognitive/game_theory/nimcp_auction.o: __/cognitive/game_theory/nimcp_auction.c.o
+.PHONY : __/cognitive/game_theory/nimcp_auction.o
+
+# target to build an object file
+__/cognitive/game_theory/nimcp_auction.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_auction.c.o
+.PHONY : __/cognitive/game_theory/nimcp_auction.c.o
+
+__/cognitive/game_theory/nimcp_auction.i: __/cognitive/game_theory/nimcp_auction.c.i
+.PHONY : __/cognitive/game_theory/nimcp_auction.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/nimcp_auction.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_auction.c.i
+.PHONY : __/cognitive/game_theory/nimcp_auction.c.i
+
+__/cognitive/game_theory/nimcp_auction.s: __/cognitive/game_theory/nimcp_auction.c.s
+.PHONY : __/cognitive/game_theory/nimcp_auction.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/nimcp_auction.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_auction.c.s
+.PHONY : __/cognitive/game_theory/nimcp_auction.c.s
+
+__/cognitive/game_theory/nimcp_bargaining.o: __/cognitive/game_theory/nimcp_bargaining.c.o
+.PHONY : __/cognitive/game_theory/nimcp_bargaining.o
+
+# target to build an object file
+__/cognitive/game_theory/nimcp_bargaining.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_bargaining.c.o
+.PHONY : __/cognitive/game_theory/nimcp_bargaining.c.o
+
+__/cognitive/game_theory/nimcp_bargaining.i: __/cognitive/game_theory/nimcp_bargaining.c.i
+.PHONY : __/cognitive/game_theory/nimcp_bargaining.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/nimcp_bargaining.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_bargaining.c.i
+.PHONY : __/cognitive/game_theory/nimcp_bargaining.c.i
+
+__/cognitive/game_theory/nimcp_bargaining.s: __/cognitive/game_theory/nimcp_bargaining.c.s
+.PHONY : __/cognitive/game_theory/nimcp_bargaining.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/nimcp_bargaining.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_bargaining.c.s
+.PHONY : __/cognitive/game_theory/nimcp_bargaining.c.s
+
+__/cognitive/game_theory/nimcp_credit_assignment.o: __/cognitive/game_theory/nimcp_credit_assignment.c.o
+.PHONY : __/cognitive/game_theory/nimcp_credit_assignment.o
+
+# target to build an object file
+__/cognitive/game_theory/nimcp_credit_assignment.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_credit_assignment.c.o
+.PHONY : __/cognitive/game_theory/nimcp_credit_assignment.c.o
+
+__/cognitive/game_theory/nimcp_credit_assignment.i: __/cognitive/game_theory/nimcp_credit_assignment.c.i
+.PHONY : __/cognitive/game_theory/nimcp_credit_assignment.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/nimcp_credit_assignment.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_credit_assignment.c.i
+.PHONY : __/cognitive/game_theory/nimcp_credit_assignment.c.i
+
+__/cognitive/game_theory/nimcp_credit_assignment.s: __/cognitive/game_theory/nimcp_credit_assignment.c.s
+.PHONY : __/cognitive/game_theory/nimcp_credit_assignment.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/nimcp_credit_assignment.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_credit_assignment.c.s
+.PHONY : __/cognitive/game_theory/nimcp_credit_assignment.c.s
+
+__/cognitive/game_theory/nimcp_game_theory.o: __/cognitive/game_theory/nimcp_game_theory.c.o
+.PHONY : __/cognitive/game_theory/nimcp_game_theory.o
+
+# target to build an object file
+__/cognitive/game_theory/nimcp_game_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_game_theory.c.o
+.PHONY : __/cognitive/game_theory/nimcp_game_theory.c.o
+
+__/cognitive/game_theory/nimcp_game_theory.i: __/cognitive/game_theory/nimcp_game_theory.c.i
+.PHONY : __/cognitive/game_theory/nimcp_game_theory.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/nimcp_game_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_game_theory.c.i
+.PHONY : __/cognitive/game_theory/nimcp_game_theory.c.i
+
+__/cognitive/game_theory/nimcp_game_theory.s: __/cognitive/game_theory/nimcp_game_theory.c.s
+.PHONY : __/cognitive/game_theory/nimcp_game_theory.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/nimcp_game_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_game_theory.c.s
+.PHONY : __/cognitive/game_theory/nimcp_game_theory.c.s
+
 __/cognitive/global_workspace/nimcp_global_workspace.o: __/cognitive/global_workspace/nimcp_global_workspace.c.o
 .PHONY : __/cognitive/global_workspace/nimcp_global_workspace.o
 
@@ -20038,6 +20230,30 @@ help:
 	@echo "... __/cognitive/free_energy/nimcp_free_energy.o"
 	@echo "... __/cognitive/free_energy/nimcp_free_energy.i"
 	@echo "... __/cognitive/free_energy/nimcp_free_energy.s"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_global_workspace.o"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_global_workspace.i"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_global_workspace.s"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_hemispheric.o"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_hemispheric.i"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_hemispheric.s"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_neuromod.o"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_neuromod.i"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_neuromod.s"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_working_memory.o"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_working_memory.i"
+	@echo "... __/cognitive/game_theory/integration/nimcp_gt_working_memory.s"
+	@echo "... __/cognitive/game_theory/nimcp_auction.o"
+	@echo "... __/cognitive/game_theory/nimcp_auction.i"
+	@echo "... __/cognitive/game_theory/nimcp_auction.s"
+	@echo "... __/cognitive/game_theory/nimcp_bargaining.o"
+	@echo "... __/cognitive/game_theory/nimcp_bargaining.i"
+	@echo "... __/cognitive/game_theory/nimcp_bargaining.s"
+	@echo "... __/cognitive/game_theory/nimcp_credit_assignment.o"
+	@echo "... __/cognitive/game_theory/nimcp_credit_assignment.i"
+	@echo "... __/cognitive/game_theory/nimcp_credit_assignment.s"
+	@echo "... __/cognitive/game_theory/nimcp_game_theory.o"
+	@echo "... __/cognitive/game_theory/nimcp_game_theory.i"
+	@echo "... __/cognitive/game_theory/nimcp_game_theory.s"
 	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.o"
 	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.i"
 	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.s"

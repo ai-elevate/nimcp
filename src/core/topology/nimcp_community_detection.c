@@ -19,18 +19,20 @@
 #include <math.h>
 #include <time.h>
 #include <stdarg.h>
+#include <pthread.h>
 
 #define LOG_MODULE "community_detection"
 
 //=============================================================================
-// Bio-Async Module Context
+// Bio-Async Module Context (Thread-Safe Initialization)
 //=============================================================================
 
 static bio_module_context_t bio_ctx = NULL;
 static bool bio_async_enabled = false;
+static pthread_once_t bio_init_once = PTHREAD_ONCE_INIT;
+static pthread_mutex_t bio_cleanup_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-__attribute__((constructor))
-static void community_detection_bio_init(void) {
+static void community_detection_bio_init_impl(void) {
     if (!bio_router_is_initialized()) {
         return;
     }
@@ -49,14 +51,21 @@ static void community_detection_bio_init(void) {
     }
 }
 
+__attribute__((constructor))
+static void community_detection_bio_init(void) {
+    pthread_once(&bio_init_once, community_detection_bio_init_impl);
+}
+
 __attribute__((destructor))
 static void community_detection_bio_cleanup(void) {
+    pthread_mutex_lock(&bio_cleanup_mutex);
     if (bio_async_enabled && bio_ctx) {
         bio_router_unregister_module(bio_ctx);
         bio_ctx = NULL;
         bio_async_enabled = false;
         LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for community_detection module");
     }
+    pthread_mutex_unlock(&bio_cleanup_mutex);
 }
 
 //=============================================================================
@@ -889,23 +898,24 @@ topology_validation_t community_validate_topology(
 {
     topology_validation_t result = {0};
     result.is_valid = false;
-    strcpy(result.error_message, "Validation not yet performed");
+    strncpy(result.error_message, "Validation not yet performed", sizeof(result.error_message) - 1);
+    result.error_message[sizeof(result.error_message) - 1] = '\0';
 
     if (!network) {
-        strcpy(result.error_message, "NULL network");
+        strncpy(result.error_message, "NULL network", sizeof(result.error_message) - 1);
         return result;
     }
 
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
-        strcpy(result.error_message, "Network has no neurons");
+        strncpy(result.error_message, "Network has no neurons", sizeof(result.error_message) - 1);
         return result;
     }
 
     // Detect communities
     community_structure_t* communities = community_detect(network, NULL);
     if (!communities) {
-        strcpy(result.error_message, "Community detection failed");
+        strncpy(result.error_message, "Community detection failed", sizeof(result.error_message) - 1);
         return result;
     }
 
@@ -945,7 +955,8 @@ topology_validation_t community_validate_topology(
         snprintf(error, 256, "Too few hub neurons: %u", result.num_hubs);
         valid = false;
     } else {
-        strcpy(error, "Topology validation passed");
+        strncpy(error, "Topology validation passed", 255);
+        error[255] = '\0';
     }
 
     result.is_valid = valid;

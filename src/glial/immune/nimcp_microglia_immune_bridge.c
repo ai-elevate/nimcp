@@ -198,9 +198,10 @@ void microglia_immune_bridge_destroy(microglia_immune_bridge_t* bridge) {
         microglia_immune_disconnect_bio_async(bridge);
     }
 
-    /* Destroy mutex */
+    /* Destroy mutex (created with nimcp_platform_mutex_create) */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge structure */
@@ -259,13 +260,13 @@ int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
     bridge->cytokine_effects.total_activation = clamp01(m1_total);
 
     /* Determine polarization state */
-    if (m1_total >= M1_POLARIZATION_THRESHOLD && m1_total > m2_total * 1.5f) {
+    if (m1_total >= M1_POLARIZATION_THRESHOLD && m1_total > m2_total * M1_M2_DOMINANCE_RATIO) {
         bridge->cytokine_effects.polarization = MICROGLIA_POLARIZATION_M1;
         bridge->m1_polarization_events++;
-    } else if (m2_total >= M2_POLARIZATION_THRESHOLD && m2_total > m1_total * 1.2f) {
+    } else if (m2_total >= M2_POLARIZATION_THRESHOLD && m2_total > m1_total * M2_M1_DOMINANCE_RATIO) {
         bridge->cytokine_effects.polarization = MICROGLIA_POLARIZATION_M2;
         bridge->m2_polarization_events++;
-    } else if (m1_total > 0.1f && m2_total > 0.1f) {
+    } else if (m1_total > MIN_POLARIZATION_SIGNAL && m2_total > MIN_POLARIZATION_SIGNAL) {
         bridge->cytokine_effects.polarization = MICROGLIA_POLARIZATION_MIXED;
     } else {
         bridge->cytokine_effects.polarization = MICROGLIA_POLARIZATION_NONE;

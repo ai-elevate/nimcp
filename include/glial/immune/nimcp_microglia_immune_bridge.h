@@ -198,6 +198,11 @@ extern "C" {
 #define M2_POLARIZATION_THRESHOLD           0.4f    /**< IL-10 → M2 */
 #define PROCESS_RETRACTION_ACTIVATION       0.5f    /**< Activation → retract */
 
+/* M1/M2 polarization dominance ratios */
+#define M1_M2_DOMINANCE_RATIO               1.5f    /**< M1 > M2 * this → M1 dominant */
+#define M2_M1_DOMINANCE_RATIO               1.2f    /**< M2 > M1 * this → M2 dominant */
+#define MIN_POLARIZATION_SIGNAL             0.1f    /**< Minimum signal for mixed state */
+
 /* ============================================================================
  * Enumerations
  * ============================================================================ */

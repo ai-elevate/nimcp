@@ -744,7 +744,7 @@ int portia_swarm_logic_decide_resource_allocation(
 
     if (requested_amount < 0.0f || requested_amount > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid requested_amount: %.2f", requested_amount);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     uint64_t start_time = get_timestamp_us();
@@ -887,7 +887,7 @@ int portia_swarm_logic_add_unified_gate(
     } else {
         nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Unsupported expression: %s", expression);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Create gate in neural logic network

@@ -3237,7 +3237,7 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
 
     cnn_layer_t* layer = cnn_get_layer(trainer, layer_idx);
     if (!layer) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!layer->weight_grad) {

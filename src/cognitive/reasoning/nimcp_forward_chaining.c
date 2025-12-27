@@ -108,19 +108,6 @@ bool brain_forward_chain(
     // Get logic engine
     symbolic_logic_t* engine = brain_get_symbolic_logic(brain);
 
-    // Create executive task if enabled
-    uint32_t task_id = 0;
-    // if (brain->executive && brain->config.enable_executive) { // Executive not available
-    //     task_descriptor_t task = {
-    //         .type = TASK_TYPE_REASONING,
-    //         .priority = PRIORITY_NORMAL,
-    //         .status = TASK_STATUS_PENDING,
-    //         .steps_total = max_iterations
-    //     };
-    //     strncpy(task.name, "Forward Chaining", sizeof(task.name) - 1);
-    //     task_id = executive_add_task(brain->executive, &task);
-    // }
-
     // Perform forward chaining
     uint64_t start_time = nimcp_time_monotonic_ms();
     logic_clause_t** new_facts = NULL;
@@ -138,9 +125,6 @@ bool brain_forward_chain(
     if (!success) {
         set_error("Forward chaining execution failed");
         NIMCP_LOGGING_ERROR("brain_forward_chain: symbolic_logic_forward_chain failed");
-        // if (task_id > 0 && brain->executive) {
-        //     executive_mark_task_failed(brain->executive, task_id); // Executive task tracking not available
-        // }
         return false;
     }
 
@@ -154,20 +138,6 @@ bool brain_forward_chain(
         NIMCP_LOGGING_DEBUG("Stored %d new inferences in working memory", wm_count);
     }
 
-    // Publish events for each derived fact
-    // if (brain->event_bus) { // Event bus always exists now
-    //     for (int i = 0; i < num_new_facts; i++) {
-    //         event_data_t event = {
-    //             .event_type = EVENT_NOVEL_FACT_DERIVED,
-    //             .timestamp = 0,
-    //             .priority = EVENT_PRIORITY_NORMAL,
-    //             .data_size = sizeof(void*),
-    //             .data = (void*)new_facts[i]
-    //         };
-    //         event_bus_publish(brain->event_bus, &event); // Event API changed
-    //     }
-    // }
-
     // Populate result
     result->new_facts = new_facts;
     result->num_new_facts = num_new_facts;
@@ -175,11 +145,6 @@ bool brain_forward_chain(
     result->confidence = (num_new_facts > 0) ? 0.8F : 0.0F;
     result->inference_time_ms = end_time - start_time;
     result->converged = (num_new_facts == 0); // Converged if no new facts
-
-    // Complete executive task if enabled
-    // if (task_id > 0 && brain->executive) {
-    //     executive_mark_task_XXX(XXX); // Executive task tracking not available
-    // }
 
     NIMCP_LOGGING_INFO("Forward chaining completed: %d new facts derived in %llu ms",
                        num_new_facts, (unsigned long long)(end_time - start_time));
@@ -236,18 +201,6 @@ bool brain_forward_chain_step(
     }
 
     *num_new_facts = num_derived;
-
-    // Publish step event
-    // if (brain->event_bus) { // Event bus always exists now
-    //     event_data_t event = {
-    //         .event_type = EVENT_FORWARD_CHAIN_STEP,
-    //         .timestamp = 0,
-    //         .priority = EVENT_PRIORITY_LOW,
-    //         .data_size = sizeof(uint32_t),
-    //         .data = (void*)(uintptr_t)num_derived
-    //     };
-    //     event_bus_publish(brain->event_bus, &event); // Event API changed
-    // }
 
     NIMCP_LOGGING_DEBUG("Forward chain step: %d facts derived", num_derived);
     return true;

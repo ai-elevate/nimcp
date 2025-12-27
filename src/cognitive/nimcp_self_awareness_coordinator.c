@@ -14,6 +14,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_router.h"
 
 #include <string.h>
@@ -65,7 +66,7 @@ static int add_conflict(
 ) {
     if (coord->conflict_count >= SAC_MAX_CONFLICTS) {
         NIMCP_LOGGING_WARN("Conflict limit reached, cannot add new conflict");
-        return -1;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     coherence_conflict_t* conflict = &coord->conflicts[coord->conflict_count];
@@ -177,7 +178,7 @@ static void update_phi_monitoring(self_awareness_coordinator_t* coord) {
 
 int sac_default_config(sac_config_t* config) {
     if (!config) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     config->enable_introspection_feedback = true;
@@ -319,7 +320,7 @@ void sac_destroy(self_awareness_coordinator_t* coord) {
 
 int sac_update(self_awareness_coordinator_t* coord) {
     if (!coord) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(coord->mutex);
@@ -384,7 +385,7 @@ int sac_update(self_awareness_coordinator_t* coord) {
 
 int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
     if (!coord || !score) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     float total_coherence = 1.0f;
@@ -475,7 +476,7 @@ int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
 
 int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
     if (!coord || !coord->introspection || !coord->self_model) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_INTROSPECTION_TO_SELF_MODEL];
@@ -499,18 +500,18 @@ int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
         /* Update latency tracking */
         float latency = (float)(get_current_time_ms() - start_time);
         loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
-        return 0;
+        return NIMCP_SUCCESS;
     } else {
         loop->error_count++;
         loop->status = FEEDBACK_STATUS_ERROR;
         coord->stats.feedback_errors++;
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 }
 
 int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
     if (!coord || !coord->autobio || !coord->self_model) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_AUTOBIO_TO_SELF_MODEL];
@@ -533,18 +534,18 @@ int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
 
         float latency = (float)(get_current_time_ms() - start_time);
         loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
-        return 0;
+        return NIMCP_SUCCESS;
     } else {
         loop->error_count++;
         loop->status = FEEDBACK_STATUS_ERROR;
         coord->stats.feedback_errors++;
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 }
 
 int sac_ground_tom_in_self(self_awareness_coordinator_t* coord) {
     if (!coord || !coord->tom || !coord->self_model) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_SELF_MODEL_TO_TOM];
@@ -574,8 +575,11 @@ int sac_set_feedback_loop_enabled(
     feedback_loop_type_t loop_type,
     bool enabled
 ) {
-    if (!coord || loop_type >= FEEDBACK_LOOP_COUNT) {
-        return -1;
+    if (!coord) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (loop_type >= FEEDBACK_LOOP_COUNT) {
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(coord->mutex);
@@ -592,8 +596,11 @@ int sac_get_feedback_loop_state(
     feedback_loop_type_t loop_type,
     feedback_loop_state_t* state
 ) {
-    if (!coord || !state || loop_type >= FEEDBACK_LOOP_COUNT) {
-        return -1;
+    if (!coord || !state) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (loop_type >= FEEDBACK_LOOP_COUNT) {
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     *state = coord->loops[loop_type];
@@ -618,7 +625,7 @@ int sac_get_conflicts(
     uint32_t* count
 ) {
     if (!coord || !conflicts || !count) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     uint32_t to_copy = (coord->conflict_count < max_conflicts) ?
@@ -636,7 +643,7 @@ int sac_resolve_conflict(
     const char* resolution
 ) {
     if (!coord) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(coord->mutex);
@@ -663,7 +670,7 @@ int sac_resolve_conflict(
     }
 
     nimcp_mutex_unlock(coord->mutex);
-    return -1;  /* Conflict not found */
+    return NIMCP_ERROR_NOT_FOUND;  /* Conflict not found */
 }
 
 int sac_auto_resolve_minor_conflicts(
@@ -671,7 +678,7 @@ int sac_auto_resolve_minor_conflicts(
     uint32_t* resolved_count
 ) {
     if (!coord || !resolved_count) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(coord->mutex);
@@ -726,7 +733,7 @@ int sac_set_phi_callbacks(
     void* user_data
 ) {
     if (!coord) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(coord->mutex);
@@ -743,8 +750,11 @@ int sac_set_phi_thresholds(
     float alert_threshold,
     float recovery_threshold
 ) {
-    if (!coord || alert_threshold < 0.0f || recovery_threshold < 0.0f) {
-        return -1;
+    if (!coord) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (alert_threshold < 0.0f || recovery_threshold < 0.0f) {
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(coord->mutex);
@@ -761,11 +771,11 @@ int sac_set_phi_thresholds(
 
 int sac_connect_bio_async(self_awareness_coordinator_t* coord) {
     if (!coord) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (coord->bio_async_enabled) {
-        return 0;  /* Already connected */
+        return NIMCP_SUCCESS;  /* Already connected */
     }
 
     bio_module_info_t info = {
@@ -779,20 +789,20 @@ int sac_connect_bio_async(self_awareness_coordinator_t* coord) {
     if (coord->bio_ctx) {
         coord->bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
-        return 0;
+        return NIMCP_SUCCESS;
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
-    return -1;
+    return NIMCP_ERROR_NOT_FOUND;
 }
 
 int sac_disconnect_bio_async(self_awareness_coordinator_t* coord) {
     if (!coord) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!coord->bio_async_enabled) {
-        return 0;
+        return NIMCP_SUCCESS;
     }
 
     if (coord->bio_ctx) {
@@ -828,16 +838,16 @@ int sac_get_stats(
     sac_stats_t* stats
 ) {
     if (!coord || !stats) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     *stats = coord->stats;
-    return 0;
+    return NIMCP_SUCCESS;
 }
 
 int sac_reset_stats(self_awareness_coordinator_t* coord) {
     if (!coord) {
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(coord->mutex);

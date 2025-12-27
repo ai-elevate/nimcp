@@ -180,7 +180,7 @@ int amygdala_training_connect_amygdala(
     amygdala_t* amygdala
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!amygdala) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!amygdala) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -208,7 +208,7 @@ int amygdala_training_connect_training(
     void* training
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!training) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!training) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -236,7 +236,7 @@ int amygdala_training_connect_optimizer(
     nimcp_optimizer_context_t* optimizer
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!optimizer) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!optimizer) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
 

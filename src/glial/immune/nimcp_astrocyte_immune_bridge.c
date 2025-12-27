@@ -29,12 +29,12 @@
  * HOW:  Query immune stats, map to inflammation level enum
  */
 static brain_inflammation_level_t get_inflammation_level(
-    const brain_immune_system_t* immune
+    brain_immune_system_t* immune
 ) {
     if (!immune) return INFLAMMATION_NONE;
 
     brain_immune_stats_t stats;
-    if (brain_immune_get_stats((brain_immune_system_t*)immune, &stats) != 0) {
+    if (brain_immune_get_stats(immune, &stats) != 0) {
         return INFLAMMATION_NONE;
     }
 
@@ -170,9 +170,10 @@ void astro_network_bridge_destroy(astro_network_bridge_t* bridge) {
         astro_network_disconnect_bio_async(bridge);
     }
 
-    /* Destroy mutex */
+    /* Destroy mutex (created with nimcp_platform_mutex_create) */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -297,7 +298,7 @@ int astro_network_apply_inflammation_effects(astro_network_bridge_t* bridge) {
     if (level >= INFLAMMATION_REGIONAL) {
         bridge->chronic_inflammation_accumulator += 1.0f;
         bridge->inflammation_state.is_chronic =
-            bridge->chronic_inflammation_accumulator >= 30.0f; /* 30 updates */
+            bridge->chronic_inflammation_accumulator >= CHRONIC_INFLAMMATION_UPDATE_THRESHOLD;
     } else {
         bridge->chronic_inflammation_accumulator *= NIMCP_EMA_WEIGHT_SLOW; /* Decay */
         if (bridge->chronic_inflammation_accumulator < 1.0f) {
@@ -360,7 +361,7 @@ int astro_network_release_cytokines_from_reactive(astro_network_bridge_t* bridge
         bridge->immune_system,
         BRAIN_CYTOKINE_IL1,
         0, /* source_cell not tracked for astrocytes */
-        release_strength * 0.4f,
+        release_strength * CYTOKINE_IL1B_RELEASE_RATIO,
         0, /* broadcast */
         &cytokine_id
     );
@@ -370,7 +371,7 @@ int astro_network_release_cytokines_from_reactive(astro_network_bridge_t* bridge
         bridge->immune_system,
         BRAIN_CYTOKINE_IL6,
         0,
-        release_strength * 0.3f,
+        release_strength * CYTOKINE_IL6_RELEASE_RATIO,
         0,
         &cytokine_id
     );
@@ -381,7 +382,7 @@ int astro_network_release_cytokines_from_reactive(astro_network_bridge_t* bridge
             bridge->immune_system,
             BRAIN_CYTOKINE_TNF,
             0,
-            release_strength * 0.5f,
+            release_strength * CYTOKINE_TNFA_RELEASE_RATIO,
             0,
             &cytokine_id
         );

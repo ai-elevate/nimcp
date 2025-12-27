@@ -302,7 +302,7 @@ int immune_bridge_coordinator_register_bridge(
     }
 
     if (category >= IMMUNE_BRIDGE_CATEGORY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -378,7 +378,7 @@ int immune_bridge_coordinator_unregister_bridge(
 
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(coordinator->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     immune_bridge_entry_t* entry = &coordinator->bridges[found_idx];
@@ -424,7 +424,7 @@ int immune_bridge_coordinator_set_bridge_enabled(
     immune_bridge_entry_t* entry = find_bridge(coordinator, bridge_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(coordinator->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Update state */
@@ -596,7 +596,7 @@ int immune_bridge_coordinator_update_category(
     }
 
     if (category >= IMMUNE_BRIDGE_CATEGORY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -644,7 +644,7 @@ int immune_bridge_coordinator_update_bridge(
     immune_bridge_entry_t* entry = find_bridge(coordinator, bridge_id);
     if (!entry || !entry->update_fn) {
         nimcp_platform_mutex_unlock(coordinator->mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Call update */
@@ -820,7 +820,7 @@ int immune_bridge_coordinator_send_category_message(
     }
 
     if (category >= IMMUNE_BRIDGE_CATEGORY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!coordinator->bio_async_connected) {

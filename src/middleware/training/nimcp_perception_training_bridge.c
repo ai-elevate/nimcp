@@ -1019,7 +1019,7 @@ int perception_training_signal_event(
     }
 
     if (event < 0 || event >= PERCEPTION_TRAINING_FEEDBACK_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);

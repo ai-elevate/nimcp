@@ -346,13 +346,13 @@ int self_preservation_report_threat(
     /* Guard clause: validate severity */
     if (severity < 0.0f || severity > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid severity: %.2f (must be 0.0-1.0)", severity);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard clause: validate threat type */
     if (threat_type < 0 || threat_type >= THREAT_TO_SELF_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid threat type: %d", threat_type);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Lock for thread safety */

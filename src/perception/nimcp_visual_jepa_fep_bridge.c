@@ -372,7 +372,7 @@ int visual_jepa_fep_report_prediction_error(
     }
 
     if (prediction->latent_dim != target->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Compute prediction error - only store up to buffer capacity */

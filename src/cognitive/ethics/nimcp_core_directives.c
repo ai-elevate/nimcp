@@ -257,7 +257,7 @@ int core_directives_evaluate(
     }
 
     if (action_dim == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&directives->mutex);
@@ -288,7 +288,7 @@ int core_directives_record_action(
     }
 
     if (action_dim == 0 || !directives->action_history) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&directives->mutex);

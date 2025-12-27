@@ -215,13 +215,13 @@ int amygdala_validate_config(const amyg_config_t* config) {
     if (!config) return NIMCP_ERROR_NULL_POINTER;
 
     if (config->conditioning_rate < 0.0f || config->conditioning_rate > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     if (config->extinction_rate < 0.0f || config->extinction_rate > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     if (config->fear_threshold < 0.0f || config->fear_threshold > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     if (config->anxiety_threshold < 0.0f || config->anxiety_threshold > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
 
     return 0;
 }
@@ -484,7 +484,7 @@ int amygdala_process_stimulus(amygdala_t* amyg,
 
 int amygdala_step(amygdala_t* amyg, float dt_ms) {
     if (!amyg) return NIMCP_ERROR_NULL_POINTER;
-    if (dt_ms <= 0.0f) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (dt_ms <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -853,7 +853,7 @@ int amygdala_get_nucleus_activation(const amygdala_t* amyg,
                                     amyg_nucleus_type_t nucleus,
                                     float* activation) {
     if (!amyg || !activation) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(((amygdala_t*)amyg)->mutex);
     *activation = amyg->nuclei[nucleus].activation;
@@ -866,7 +866,7 @@ int amygdala_set_nucleus_activation(amygdala_t* amyg,
                                     amyg_nucleus_type_t nucleus,
                                     float activation) {
     if (!amyg) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->nuclei[nucleus].activation = clamp01(activation);
@@ -879,7 +879,7 @@ int amygdala_set_nucleus_plasticity(amygdala_t* amyg,
                                     amyg_nucleus_type_t nucleus,
                                     bool enabled) {
     if (!amyg) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->nuclei[nucleus].plasticity_enabled = enabled;

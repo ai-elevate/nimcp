@@ -212,7 +212,7 @@ int amygdala_autobio_tag_memory(
     autobiographical_memory_entry_t memory;
     if (!autobio_retrieve(bridge->autobio_memory, memory_id, &memory)) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Compute total salience boost */
@@ -295,7 +295,7 @@ int amygdala_autobio_on_recall(
     autobiographical_memory_entry_t memory;
     if (!autobio_retrieve(bridge->autobio_memory, memory_id, &memory)) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Update reactivation state */
@@ -416,7 +416,7 @@ int amygdala_autobio_regulate_from_positive(
 
     /* Verify memory is positive */
     if (positive_memory->valence <= VALENCE_NEUTRAL) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Call on_recall with the positive memory ID */

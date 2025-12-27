@@ -41,19 +41,19 @@ int amygdala_attention_validate_config(const amygdala_attention_config_t* config
     }
 
     if (config->threat_sensitivity < 0.5f || config->threat_sensitivity > 2.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->attention_sensitivity < 0.5f || config->attention_sensitivity > 2.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->hypervigilance_threshold < 0.5f || config->hypervigilance_threshold > 0.9f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->attention_focus_threshold < 0.3f || config->attention_focus_threshold > 0.7f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return 0;

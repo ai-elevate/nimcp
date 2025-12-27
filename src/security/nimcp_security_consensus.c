@@ -869,7 +869,7 @@ nimcp_error_t nimcp_consensus_get_nodes(
 
 nimcp_error_t nimcp_consensus_process(nimcp_security_consensus_t c) {
     if (!c || c->magic != NIMCP_CONSENSUS_MAGIC) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Process messages via bio-async inbox processing */

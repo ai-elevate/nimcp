@@ -192,6 +192,14 @@ extern "C" {
 #define REACTIVE_METABOLIC_IMPAIRMENT       -0.25f  /**< Reactivity → ATP support ↓ */
 #define INFLAMMATION_METABOLIC_FACTOR       0.15f   /**< Per inflammation level */
 
+/* Reactive astrocyte cytokine release ratios */
+#define CYTOKINE_IL1B_RELEASE_RATIO         0.4f    /**< IL-1β release strength ratio */
+#define CYTOKINE_IL6_RELEASE_RATIO          0.3f    /**< IL-6 release strength ratio */
+#define CYTOKINE_TNFA_RELEASE_RATIO         0.5f    /**< TNF-α release strength (severe) */
+
+/* Chronic inflammation detection threshold */
+#define CHRONIC_INFLAMMATION_UPDATE_THRESHOLD 30.0f /**< Updates before chronic state */
+
 /* ============================================================================
  * Structures
  * ============================================================================ */

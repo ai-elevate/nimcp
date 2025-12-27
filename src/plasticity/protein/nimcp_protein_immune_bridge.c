@@ -335,7 +335,7 @@ int protein_immune_restore_synthesis(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (recovery_factor < 0.0f || recovery_factor > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

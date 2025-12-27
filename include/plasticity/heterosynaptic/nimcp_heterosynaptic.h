@@ -400,16 +400,22 @@ int hetero_add_synapse(
 int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id);
 
 /**
- * WHAT: Get synapse by ID (UNSAFE - see warning)
+ * WHAT: Get synapse by ID (DEPRECATED - UNSAFE - see warning)
  * WHY:  Query or modify synapse state
  * HOW:  Linear search (use sparingly, prefer batch operations)
  *
- * WARNING: Returns pointer that may be invalidated by concurrent add/remove.
+ * @deprecated This function is DEPRECATED for multi-threaded code.
+ *             Use hetero_get_synapse_copy() instead for thread-safe access.
+ *
+ * CRITICAL WARNING: Returns pointer that may be invalidated by concurrent
+ * add/remove operations. The pointer can become dangling if another thread
+ * calls hetero_add_synapse() (triggering realloc) or hetero_remove_synapse().
+ *
  * For thread-safe access, use hetero_get_synapse_copy() instead.
  *
  * @param system Heterosynaptic system
  * @param synapse_id Synapse identifier
- * @return Synapse pointer or NULL if not found
+ * @return Synapse pointer or NULL if not found (POINTER MAY BE INVALIDATED)
  */
 hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_id);
 

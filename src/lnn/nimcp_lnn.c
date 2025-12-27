@@ -175,7 +175,7 @@ int lnn_forward_sequence(lnn_network_t* network,
     // Guard: invalid sequence length
     if (seq_len == 0) {
         NIMCP_LOGGING_ERROR("Invalid sequence length: 0");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Delegate to network module
@@ -213,7 +213,7 @@ int lnn_forward_batch(lnn_network_t* network,
     if (batch_size == 0 || seq_len == 0) {
         NIMCP_LOGGING_ERROR("Invalid batch_size (%u) or seq_len (%u)",
                            batch_size, seq_len);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Delegate to network module

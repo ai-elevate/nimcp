@@ -9,6 +9,7 @@
 #include "core/brain_regions/nimcp_contextual_language.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -211,7 +212,7 @@ contextual_language_t contextual_language_create(
     const contextual_language_config_t* config
 ) {
     // Allocate structure
-    contextual_language_t cl = (contextual_language_t)malloc(sizeof(contextual_language_struct));
+    contextual_language_t cl = (contextual_language_t)nimcp_malloc(sizeof(contextual_language_struct));
     if (!cl) {
         set_error("Failed to allocate contextual language structure");
         return NULL;
@@ -231,19 +232,19 @@ contextual_language_t contextual_language_create(
     // Initialize mutex
     if (pthread_mutex_init(&cl->lock, NULL) != 0) {
         set_error("Failed to initialize mutex");
-        free(cl);
+        nimcp_free(cl);
         return NULL;
     }
 
     // Allocate history buffer
     cl->history_size = cl->config.max_context_history;
-    cl->history = (context_history_entry_t*)calloc(
+    cl->history = (context_history_entry_t*)nimcp_calloc(
         cl->history_size, sizeof(context_history_entry_t)
     );
     if (!cl->history) {
         set_error("Failed to allocate context history buffer");
         pthread_mutex_destroy(&cl->lock);
-        free(cl);
+        nimcp_free(cl);
         return NULL;
     }
 
@@ -299,7 +300,7 @@ void contextual_language_destroy(contextual_language_t cl) {
 
     // Free history
     if (cl->history) {
-        free(cl->history);
+        nimcp_free(cl->history);
         cl->history = NULL;
     }
 
@@ -307,7 +308,7 @@ void contextual_language_destroy(contextual_language_t cl) {
     pthread_mutex_destroy(&cl->lock);
 
     // Free structure
-    free(cl);
+    nimcp_free(cl);
 }
 
 int contextual_detect_context(

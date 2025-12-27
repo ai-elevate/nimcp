@@ -713,7 +713,7 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
     // Validate error is a failure code (must not be SUCCESS)
     if (error == NIMCP_SUCCESS) {
         LOG_ERROR("Promise fail failed: error code cannot be SUCCESS");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Bio-async backend: delegate to bio-promise

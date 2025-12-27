@@ -479,8 +479,8 @@
 // Global Error Tracking
 //=============================================================================
 
-// Thread-local error information (global for now, could be made thread-local later)
-static nimcp_error_info_t g_last_error = {
+// Thread-local error information to avoid race conditions
+static _Thread_local nimcp_error_info_t g_last_error = {
     .code = NIMCP_SUCCESS,
     .message = {0}
 };

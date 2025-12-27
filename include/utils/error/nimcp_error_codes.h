@@ -64,6 +64,9 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_NOT_IMPLEMENTED     1001 /**< Feature not implemented */
 #endif
 #define NIMCP_ERROR_INVALID_PARAMETER   1002 /**< Invalid function parameter */
+#ifndef NIMCP_ERROR_INVALID_PARAM
+#define NIMCP_ERROR_INVALID_PARAM       NIMCP_ERROR_INVALID_PARAMETER /**< Alias for shorter name */
+#endif
 #ifndef NIMCP_ERROR_NULL_POINTER
 #define NIMCP_ERROR_NULL_POINTER        1003 /**< Unexpected NULL pointer */
 #endif

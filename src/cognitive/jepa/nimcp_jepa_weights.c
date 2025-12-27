@@ -254,7 +254,7 @@ int jepa_weights_validate(const char* path, uint32_t expected_latent_dim) {
     if (expected_latent_dim > 0 && header.latent_dim != expected_latent_dim) {
         NIMCP_LOGGING_WARN(LOG_MODULE " Latent dim mismatch: expected %u, got %u",
                           expected_latent_dim, header.latent_dim);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return NIMCP_SUCCESS;
@@ -421,7 +421,7 @@ int jepa_weights_load_tensor(jepa_weights_t* weights,
         NIMCP_LOGGING_WARN(LOG_MODULE " Size mismatch for %s: expected %lu, got %lu",
                           layer_name, (unsigned long)expected_size,
                           (unsigned long)tensor->num_elements);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     memcpy(output, tensor->data, expected_size * sizeof(float));

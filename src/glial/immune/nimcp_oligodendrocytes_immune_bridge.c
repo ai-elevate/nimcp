@@ -15,6 +15,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
 #include <string.h>
@@ -103,14 +104,9 @@ oligo_immune_bridge_t* oligo_immune_create(
     bridge->immune_system = immune_system;
     bridge->myelination_rate_modifier = 1.0f;
 
-    /* Allocate mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    /* Create mutex using platform API (allocates + initializes internally) */
+    bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        nimcp_free(bridge);
-        return NULL;
-    }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -132,8 +128,9 @@ void oligo_immune_destroy(oligo_immune_bridge_t* bridge)
         oligo_immune_disconnect_bio_async(bridge);
     }
 
+    /* Destroy mutex (created with nimcp_platform_mutex_create) */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge->base.mutex);
     }
 

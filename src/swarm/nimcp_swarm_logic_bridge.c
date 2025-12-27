@@ -1062,7 +1062,7 @@ nimcp_error_t swarm_logic_validate_consensus_votes(swarm_logic_bridge_t* bridge,
                                                      swarm_logic_result_t* result) {
     if (!bridge || !votes || vote_count == 0 || !result) {
         NIMCP_LOGGING_ERROR("Invalid parameters for consensus vote validation");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1124,7 +1124,7 @@ nimcp_error_t swarm_logic_detect_byzantine_pattern(swarm_logic_bridge_t* bridge,
                                                      uint32_t* byzantine_count) {
     if (!bridge || !votes || vote_count == 0 || !byzantine_agents || !byzantine_count) {
         NIMCP_LOGGING_ERROR("Invalid parameters for Byzantine detection");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1178,7 +1178,7 @@ nimcp_error_t swarm_logic_validate_quorum_signals(swarm_logic_bridge_t* bridge,
                                                     swarm_logic_result_t* result) {
     if (!bridge || !signals || signal_count == 0 || !result) {
         NIMCP_LOGGING_ERROR("Invalid parameters for quorum signal validation");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1230,7 +1230,7 @@ nimcp_error_t swarm_logic_check_signal_exclusion(swarm_logic_bridge_t* bridge,
                                                    nimcp_signal_type_t signal_b,
                                                    bool* mutually_exclusive) {
     if (!bridge || !mutually_exclusive) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Define mutually exclusive signal pairs
@@ -1262,7 +1262,7 @@ nimcp_error_t swarm_logic_validate_tier_transition(swarm_logic_bridge_t* bridge,
                                                      bool* valid) {
     if (!bridge || !state || !valid) {
         NIMCP_LOGGING_ERROR("Invalid parameters for tier transition validation");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1319,7 +1319,7 @@ nimcp_error_t swarm_logic_validate_tier_transition(swarm_logic_bridge_t* bridge,
 
 nimcp_error_t swarm_logic_connect_brain(swarm_logic_bridge_t* bridge, void* brain) {
     if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1332,7 +1332,7 @@ nimcp_error_t swarm_logic_connect_brain(swarm_logic_bridge_t* bridge, void* brai
 
 nimcp_error_t swarm_logic_connect_immune(swarm_logic_bridge_t* bridge, void* immune_system) {
     if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1345,7 +1345,7 @@ nimcp_error_t swarm_logic_connect_immune(swarm_logic_bridge_t* bridge, void* imm
 
 nimcp_error_t swarm_logic_connect_umm(swarm_logic_bridge_t* bridge, void* umm) {
     if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1362,7 +1362,7 @@ nimcp_error_t swarm_logic_evaluate_with_modulation(swarm_logic_bridge_t* bridge,
                                                      float acetylcholine_level,
                                                      swarm_logic_result_t* result) {
     if (!bridge || !result) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1371,7 +1371,7 @@ nimcp_error_t swarm_logic_evaluate_with_modulation(swarm_logic_bridge_t* bridge,
     swarm_logic_rule_t* rule = find_rule(bridge, rule_id);
     if (!rule) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Modulate threshold

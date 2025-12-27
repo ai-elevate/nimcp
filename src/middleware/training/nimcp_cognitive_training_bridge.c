@@ -1052,7 +1052,7 @@ int cognitive_training_signal_divergence(
     }
 
     if (divergence_type >= COGNITIVE_DIVERGENCE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1360,7 +1360,7 @@ int cognitive_training_signal_event(
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (event < 0 || event >= COGNITIVE_TRAINING_FEEDBACK_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);

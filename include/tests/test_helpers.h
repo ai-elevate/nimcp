@@ -1,5 +1,5 @@
-#ifndef TEST_HELPERS_H
-#define TEST_HELPERS_H
+#ifndef NIMCP_TEST_HELPERS_H
+#define NIMCP_TEST_HELPERS_H
 
 #ifdef __cplusplus
     // C++ includes
@@ -295,4 +295,4 @@ class TestNode {
 #define ASSERT_VALID_TEST_PAYLOAD(buffer, size) \
     ASSERT_TRUE(verify_test_payload((const uint8_t*) buffer, size))
 
-#endif  // TEST_HELPERS_H
+#endif  // NIMCP_TEST_HELPERS_H

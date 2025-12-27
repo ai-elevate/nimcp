@@ -91,6 +91,22 @@ extern "C" {
 /** @brief Default agreement threshold (2/3 majority) */
 #define SWARM_DEFAULT_THRESHOLD 0.666667f
 
+/* ============================================================================
+ * Byzantine Fault Detection Thresholds
+ * ============================================================================ */
+
+/** @brief Upper bound for extreme confidence (votes >= this are suspicious) */
+#define BYZANTINE_EXTREME_CONFIDENCE_HIGH   0.99f
+
+/** @brief Lower bound for extreme confidence (votes <= this are suspicious) */
+#define BYZANTINE_EXTREME_CONFIDENCE_LOW    0.01f
+
+/** @brief High confidence threshold for pattern detection (suspicious if too many) */
+#define BYZANTINE_HIGH_CONFIDENCE_THRESHOLD 0.95f
+
+/** @brief Number of vote rejections before drone is quarantined */
+#define BYZANTINE_EXCESSIVE_VOTE_THRESHOLD  100
+
 //=============================================================================
 // Vote Topics and Choices
 //=============================================================================

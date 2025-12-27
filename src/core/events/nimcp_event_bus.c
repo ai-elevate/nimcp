@@ -438,8 +438,10 @@ event_bus_t event_bus_create(const char* name, event_delivery_mode_t delivery_mo
     // Set name
     if (name) {
         strncpy(bus->name, name, EVENT_BUS_THREAD_NAME_SIZE - 1);
+        bus->name[EVENT_BUS_THREAD_NAME_SIZE - 1] = '\0';
     } else {
-        strcpy(bus->name, "event_bus");
+        strncpy(bus->name, "event_bus", EVENT_BUS_THREAD_NAME_SIZE - 1);
+        bus->name[EVENT_BUS_THREAD_NAME_SIZE - 1] = '\0';
     }
 
     bus->delivery_mode = delivery_mode;

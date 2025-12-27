@@ -898,6 +898,27 @@ int swarm_task_retry(
 // Task Query API Implementation
 //=============================================================================
 
+/**
+ * CRITICAL THREAD SAFETY WARNING - POINTER-AFTER-UNLOCK ISSUE:
+ * ============================================================
+ * This function returns a pointer to internal task data AFTER releasing the
+ * mutex, creating a race condition window where:
+ *   1. Another thread may modify the task (status, progress, etc.)
+ *   2. Another thread may remove the task, invalidating the pointer
+ *   3. Memory corruption if caller accesses stale pointer
+ *
+ * DEPRECATED: Use swarm_task_get_copy() for thread-safe access.
+ *
+ * SAFE USAGE PATTERNS (caller MUST ensure one of these):
+ *   - Single-threaded access to the task manager
+ *   - Caller holds external synchronization preventing task removal
+ *   - Copy needed data immediately after call, don't store pointer
+ *
+ * FOR THREAD-SAFE QUERIES: Use swarm_task_get_copy() instead, which
+ * returns a copy of the task data that is safe to use across threads.
+ *
+ * RISK LEVEL: HIGH - Use with extreme caution in multi-threaded code.
+ */
 const swarm_task_t* swarm_task_get(
     const swarm_task_manager_t* manager,
     uint64_t task_id)
@@ -912,7 +933,49 @@ const swarm_task_t* swarm_task_get(
 
     nimcp_mutex_unlock((nimcp_mutex_t*)manager->mutex);
 
+    /* WARNING: returned pointer may be invalidated by concurrent operations.
+     * Caller must use immediately or hold external synchronization. */
     return node ? &node->task : NULL;
+}
+
+/**
+ * WHAT: Get thread-safe copy of task data by ID
+ * WHY:  swarm_task_get() returns pointer that can be invalidated by concurrent ops
+ * HOW:  Copy task data while holding mutex, return copy via out parameter
+ *
+ * This is the RECOMMENDED API for multi-threaded access.
+ *
+ * Note: The task_data pointer in the copied struct still points to internal
+ * memory. If you need the task_data, copy it separately before releasing
+ * any external locks, or use single-threaded access patterns.
+ *
+ * @param manager Task manager
+ * @param task_id Task identifier
+ * @param out_task Output: copy of task data (caller-allocated)
+ * @return 0 on success, -1 if not found, -2 if NULL parameters
+ */
+int swarm_task_get_copy(
+    const swarm_task_manager_t* manager,
+    uint64_t task_id,
+    swarm_task_t* out_task)
+{
+    if (!manager || !out_task) {
+        return -2;
+    }
+
+    nimcp_mutex_lock((nimcp_mutex_t*)manager->mutex);
+
+    task_node_t* node = find_task_node(manager, task_id);
+    int result = -1;
+
+    if (node) {
+        /* Copy task data while holding mutex - thread-safe */
+        *out_task = node->task;
+        result = 0;
+    }
+
+    nimcp_mutex_unlock((nimcp_mutex_t*)manager->mutex);
+    return result;
 }
 
 swarm_task_status_t swarm_task_get_status(

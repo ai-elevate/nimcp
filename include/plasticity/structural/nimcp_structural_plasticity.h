@@ -186,6 +186,33 @@ extern "C" {
 #define STRUCTURAL_ACTIN_GROWTH_RATE        0.1f   /**< Volume/sec during formation */
 #define STRUCTURAL_ACTIN_SHRINK_RATE        0.05f  /**< Volume/sec during pruning */
 
+/* Spine stability parameters */
+#define STRUCTURAL_STABILITY_NASCENT        0.2f   /**< Low stability for nascent spines */
+#define STRUCTURAL_STABILITY_STABLE         0.8f   /**< High stability for mature spines */
+#define STRUCTURAL_STABILITY_POTENTIATED    0.95f  /**< Maximum stability */
+
+/* Spine motility (inverse of stability) */
+#define STRUCTURAL_MOTILITY_NASCENT         0.8f   /**< High motility for nascent */
+#define STRUCTURAL_MOTILITY_STABLE          0.2f   /**< Low motility for stable */
+#define STRUCTURAL_MOTILITY_POTENTIATED     0.05f  /**< Minimal motility */
+
+/* Actin dynamics by state */
+#define STRUCTURAL_ACTIN_STABLE             0.02f  /**< Slow dynamics for stable spines */
+#define STRUCTURAL_ACTIN_POTENTIATED        0.01f  /**< Minimal dynamics for potentiated */
+
+/* CaMKII concentrations by state */
+#define STRUCTURAL_CAMKII_NASCENT           0.1f   /**< Low CaMKII in nascent */
+#define STRUCTURAL_CAMKII_STABLE            0.6f   /**< Moderate CaMKII in stable */
+#define STRUCTURAL_CAMKII_POTENTIATED       0.9f   /**< High CaMKII in potentiated */
+
+/* Receptor counts */
+#define STRUCTURAL_AMPAR_NASCENT            5.0f   /**< Few AMPARs in nascent */
+#define STRUCTURAL_AMPAR_STABLE             30.0f  /**< Moderate AMPARs in stable */
+#define STRUCTURAL_AMPAR_POTENTIATED        80.0f  /**< Many AMPARs in potentiated */
+#define STRUCTURAL_NMDAR_NASCENT            3.0f   /**< Few NMDARs in nascent */
+#define STRUCTURAL_NMDAR_STABLE             15.0f  /**< Moderate NMDARs in stable */
+#define STRUCTURAL_NMDAR_POTENTIATED        30.0f  /**< Many NMDARs in potentiated */
+
 /* ============================================================================
  * Enumerations
  * ============================================================================ */

@@ -502,18 +502,25 @@ bool checkpoint_load(brain_t* brain, const char* path) {
     }
     fclose(fp);
 
-    // TODO: Deserialize brain from data buffer
-    // 1. Extract config
-    // 2. Create brain with config
+    // NOTE: Brain deserialization is not yet implemented.
+    // The checkpoint file format and validation work correctly,
+    // but reconstructing a brain_t from the serialized data
+    // requires implementing the following steps:
+    // 1. Extract config from data buffer
+    // 2. Create brain with config using brain_create()
     // 3. Restore network weights
     // 4. Restore subsystems (if present)
     // 5. Restore stats
+    //
+    // For now, checkpoint_save() and checkpoint_validate() are functional,
+    // allowing checkpoints to be created and validated.
 
-    // Placeholder: Return error for now
-    set_error("Checkpoint loading not yet fully implemented");
     nimcp_free(data);
+    set_error("checkpoint_load: Brain deserialization not implemented. "
+              "Checkpoint file is valid but cannot be restored to a brain_t. "
+              "Use checkpoint_validate() to verify checkpoint integrity.");
 
-    NIMCP_LOGGING_WARN("Checkpoint loading is a placeholder - returning NULL");
+    NIMCP_LOGGING_WARN("checkpoint_load: Deserialization not implemented - returning false");
     return false;
 }
 

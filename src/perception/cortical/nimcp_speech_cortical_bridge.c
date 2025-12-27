@@ -520,7 +520,7 @@ int speech_cortical_process(
     }
 
     if (num_samples == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -686,7 +686,7 @@ int speech_cortical_process_segment(
     }
 
     if (num_samples == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -697,7 +697,7 @@ int speech_cortical_process_segment(
     uint32_t hcol_idx = compute_hypercolumn_index(bridge, tono_x, tono_y);
     if (hcol_idx >= bridge->num_hypercolumns) {
         if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     feature_hypercolumn_t* hcol = bridge->hypercolumns[hcol_idx];
@@ -779,7 +779,7 @@ int speech_cortical_get_phoneme_map(
     }
 
     if (num_samples == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);

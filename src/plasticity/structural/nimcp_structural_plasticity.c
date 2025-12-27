@@ -108,11 +108,11 @@ static void init_nascent_morphology(spine_morphology_t* morph) {
     morph->psd_size = STRUCTURAL_PSD_NASCENT_MIN +
         (STRUCTURAL_PSD_NASCENT_MAX - STRUCTURAL_PSD_NASCENT_MIN) * 0.5f;
     morph->actin_dynamics = STRUCTURAL_ACTIN_GROWTH_RATE;
-    morph->spine_stability = 0.2f;  /* Low stability */
-    morph->spine_motility = 0.8f;   /* High motility */
-    morph->camkii_concentration = 0.1f;
-    morph->ampar_count = 5.0f;      /* Few receptors */
-    morph->nmdar_count = 3.0f;
+    morph->spine_stability = STRUCTURAL_STABILITY_NASCENT;
+    morph->spine_motility = STRUCTURAL_MOTILITY_NASCENT;
+    morph->camkii_concentration = STRUCTURAL_CAMKII_NASCENT;
+    morph->ampar_count = STRUCTURAL_AMPAR_NASCENT;
+    morph->nmdar_count = STRUCTURAL_NMDAR_NASCENT;
 }
 
 /**
@@ -127,12 +127,12 @@ static void update_to_stable_morphology(spine_morphology_t* morph) {
         (STRUCTURAL_VOLUME_STABLE_MAX - STRUCTURAL_VOLUME_STABLE_MIN) * 0.7f;
     morph->psd_size = STRUCTURAL_PSD_STABLE_MIN +
         (STRUCTURAL_PSD_STABLE_MAX - STRUCTURAL_PSD_STABLE_MIN) * 0.7f;
-    morph->actin_dynamics = 0.02f;  /* Slower dynamics */
-    morph->spine_stability = 0.8f;
-    morph->spine_motility = 0.2f;
-    morph->camkii_concentration = 0.6f;
-    morph->ampar_count = 30.0f;
-    morph->nmdar_count = 15.0f;
+    morph->actin_dynamics = STRUCTURAL_ACTIN_STABLE;
+    morph->spine_stability = STRUCTURAL_STABILITY_STABLE;
+    morph->spine_motility = STRUCTURAL_MOTILITY_STABLE;
+    morph->camkii_concentration = STRUCTURAL_CAMKII_STABLE;
+    morph->ampar_count = STRUCTURAL_AMPAR_STABLE;
+    morph->nmdar_count = STRUCTURAL_NMDAR_STABLE;
 }
 
 /**
@@ -147,12 +147,12 @@ static void update_to_potentiated_morphology(spine_morphology_t* morph) {
         (STRUCTURAL_VOLUME_POTENTIATED_MAX - STRUCTURAL_VOLUME_POTENTIATED_MIN) * 0.8f;
     morph->psd_size = STRUCTURAL_PSD_POTENTIATED_MIN +
         (STRUCTURAL_PSD_POTENTIATED_MAX - STRUCTURAL_PSD_POTENTIATED_MIN) * 0.8f;
-    morph->actin_dynamics = 0.01f;
-    morph->spine_stability = 0.95f;
-    morph->spine_motility = 0.05f;
-    morph->camkii_concentration = 0.9f;
-    morph->ampar_count = 80.0f;
-    morph->nmdar_count = 30.0f;
+    morph->actin_dynamics = STRUCTURAL_ACTIN_POTENTIATED;
+    morph->spine_stability = STRUCTURAL_STABILITY_POTENTIATED;
+    morph->spine_motility = STRUCTURAL_MOTILITY_POTENTIATED;
+    morph->camkii_concentration = STRUCTURAL_CAMKII_POTENTIATED;
+    morph->ampar_count = STRUCTURAL_AMPAR_POTENTIATED;
+    morph->nmdar_count = STRUCTURAL_NMDAR_POTENTIATED;
 }
 
 /**

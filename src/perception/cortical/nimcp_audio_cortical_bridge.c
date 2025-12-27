@@ -446,7 +446,7 @@ int audio_cortical_process(
     }
 
     if (num_samples == 0 || sample_rate == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -549,7 +549,7 @@ int audio_cortical_process_spectrogram(
     }
 
     if (num_freq_bins == 0 || num_time_frames == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -685,7 +685,7 @@ int audio_cortical_process_frequency_band(
     }
 
     if (num_samples == 0 || center_frequency <= 0.0f) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -696,7 +696,7 @@ int audio_cortical_process_frequency_band(
     uint32_t hcol_idx = compute_hypercolumn_index(bridge, center_frequency);
     if (hcol_idx >= bridge->num_hypercolumns) {
         if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     feature_hypercolumn_t* hcol = bridge->hypercolumns[hcol_idx];
@@ -761,7 +761,7 @@ int audio_cortical_get_frequency_map(
     }
 
     if (num_samples == 0 || sample_rate == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
@@ -840,7 +840,7 @@ int audio_cortical_set_hypercolumn_gain(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
     uint32_t idx = compute_hypercolumn_index(bridge, frequency_hz);
-    if (idx >= bridge->num_hypercolumns) return NIMCP_ERROR_INVALID_PARAMETER;
+    if (idx >= bridge->num_hypercolumns) return NIMCP_ERROR_INVALID_PARAM;
 
     if (bridge->hypercolumn_gains) {
         bridge->hypercolumn_gains[idx] = gain;
