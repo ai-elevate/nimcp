@@ -487,11 +487,10 @@ bool signal_handler_shutdown_requested(void)
 
 bool signal_handler_reload_requested(void)
 {
-    bool requested = (g_reload_requested != 0);
-    if (requested) {
-        g_reload_requested = 0;  // Clear flag
-    }
-    return requested;
+    /* Use atomic compare-exchange to avoid race condition in read-modify-write */
+    int expected = 1;
+    return __atomic_compare_exchange_n(&g_reload_requested, &expected, 0,
+                                        false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
 }
 
 void signal_handler_set_crash_callback(void (*callback)(int sig))

@@ -669,14 +669,28 @@ nimcp_error_t nimcp_promise_complete(nimcp_promise_t promise, const void* result
     // Update statistics
     nimcp_atomic_fetch_add_u64(&g_stats_completions, 1, NIMCP_MEMORY_ORDER_RELAXED);
 
-    // Wake all waiters and invoke callbacks
+    // Wake all waiters and extract callback list for invocation outside mutex
+    // WHY: Invoking callbacks while holding mutex can cause deadlocks if
+    //      callbacks try to acquire other locks or re-enter the future API
     nimcp_platform_mutex_lock(&shared->mutex);
     nimcp_platform_cond_broadcast(&shared->cond);
 
-    // Invoke callbacks while holding mutex
-    shared_state_invoke_callbacks(shared);
+    // Extract callback list while holding mutex
+    callback_node_t* callbacks_to_invoke = shared->callbacks;
+    shared->callbacks = NULL;  // Clear list so it won't be invoked again
 
     nimcp_platform_mutex_unlock(&shared->mutex);
+
+    // Invoke callbacks AFTER releasing mutex to prevent deadlocks
+    callback_node_t* cb = callbacks_to_invoke;
+    while (cb) {
+        if (cb->callback) {
+            cb->callback(shared->result, NIMCP_SUCCESS, cb->user_data);
+        }
+        callback_node_t* next = cb->next;
+        future_free(cb);
+        cb = next;
+    }
 
     // Record security interaction
     if (g_future_security_ctx && g_future_security_module_id != 0) {
@@ -740,14 +754,28 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
     // Update statistics
     nimcp_atomic_fetch_add_u64(&g_stats_failures, 1, NIMCP_MEMORY_ORDER_RELAXED);
 
-    // Wake all waiters and invoke callbacks
+    // Wake all waiters and extract callback list for invocation outside mutex
+    // WHY: Invoking callbacks while holding mutex can cause deadlocks if
+    //      callbacks try to acquire other locks or re-enter the future API
     nimcp_platform_mutex_lock(&shared->mutex);
     nimcp_platform_cond_broadcast(&shared->cond);
 
-    // Invoke callbacks while holding mutex
-    shared_state_invoke_callbacks(shared);
+    // Extract callback list while holding mutex
+    callback_node_t* callbacks_to_invoke = shared->callbacks;
+    shared->callbacks = NULL;  // Clear list so it won't be invoked again
 
     nimcp_platform_mutex_unlock(&shared->mutex);
+
+    // Invoke callbacks AFTER releasing mutex to prevent deadlocks
+    callback_node_t* cb = callbacks_to_invoke;
+    while (cb) {
+        if (cb->callback) {
+            cb->callback(NULL, error, cb->user_data);
+        }
+        callback_node_t* next = cb->next;
+        future_free(cb);
+        cb = next;
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -1161,14 +1189,30 @@ bool nimcp_future_cancel(nimcp_future_t future)
     // Update statistics
     nimcp_atomic_fetch_add_u64(&g_stats_cancellations, 1, NIMCP_MEMORY_ORDER_RELAXED);
 
-    // Wake all waiters and invoke callbacks
+    // Wake all waiters and extract callback list for invocation outside mutex
+    // WHY: Invoking callbacks while holding mutex can cause deadlocks if
+    //      callbacks try to acquire other locks or re-enter the future API
     nimcp_platform_mutex_lock(&shared->mutex);
     nimcp_platform_cond_broadcast(&shared->cond);
 
-    // Invoke callbacks while holding mutex
-    shared_state_invoke_callbacks(shared);
+    // Extract callback list while holding mutex
+    callback_node_t* callbacks_to_invoke = shared->callbacks;
+    shared->callbacks = NULL;  // Clear list so it won't be invoked again
 
     nimcp_platform_mutex_unlock(&shared->mutex);
+
+    // Invoke callbacks AFTER releasing mutex to prevent deadlocks
+    callback_node_t* cb = callbacks_to_invoke;
+    while (cb) {
+        if (cb->callback) {
+            // For cancelled futures, pass NULL result and SUCCESS error
+            // (cancellation is not a failure, it's a valid termination)
+            cb->callback(NULL, NIMCP_SUCCESS, cb->user_data);
+        }
+        callback_node_t* next = cb->next;
+        future_free(cb);
+        cb = next;
+    }
 
     return true;
 }

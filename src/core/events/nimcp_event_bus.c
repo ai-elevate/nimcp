@@ -691,8 +691,7 @@ event_subscription_handle_t event_bus_subscribe_priority(
     sub->events_received = 0;
     sub->errors = 0;
 
-    // Add to hash bucket
-    uint32_t bucket = hash_event_type(type);
+    // Add to hash bucket (reuse bucket from above)
     sub->next = internal->subscribers[bucket];
     internal->subscribers[bucket] = sub;
     internal->subscriber_count++;
@@ -796,7 +795,21 @@ static bool invoke_subscriber_callback(
 }
 
 /**
+ * @brief Snapshot of subscriber data for lock-free callback invocation
+ */
+typedef struct {
+    brain_event_callback_t callback;
+    void* context;
+    event_priority_t min_priority;
+    subscriber_t* sub_ptr;  // For updating error counts atomically
+} subscriber_snapshot_t;
+
+/**
  * @brief Deliver event to all matching subscribers
+ *
+ * THREAD SAFETY: Copies subscriber list while holding lock, then releases lock
+ * before invoking callbacks. This prevents deadlocks if callbacks try to
+ * subscribe/unsubscribe during delivery.
  */
 static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* event) {
     if (!bus || !event) return false;
@@ -805,21 +818,24 @@ static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* e
     uint64_t start_time = event_get_timestamp_us();
     uint32_t delivered = 0;
 
+    // Max subscribers to snapshot (stack allocation)
+    #define MAX_SNAPSHOT_SUBSCRIBERS 64
+    subscriber_snapshot_t snapshots[MAX_SNAPSHOT_SUBSCRIBERS];
+    uint32_t snapshot_count = 0;
+
     nimcp_mutex_lock(&internal->subscriber_mutex);
 
-    // Deliver to subscribers of this specific type
+    // Collect matching subscribers into snapshot while holding lock
     uint32_t bucket = hash_event_type(event->type);
     subscriber_t* sub = internal->subscribers[bucket];
 
-    while (sub) {
+    while (sub && snapshot_count < MAX_SNAPSHOT_SUBSCRIBERS) {
         if (sub->active && (sub->type == event->type || sub->type == EVENT_ALL)) {
-            if (invoke_subscriber_callback(bus, sub, event)) {
-                delivered++;
-            } else {
-                sub->errors++;
-                // Use atomic to avoid nested mutex deadlock (subscriber_mutex is held)
-                __atomic_fetch_add(&internal->total_callback_errors, 1, __ATOMIC_RELAXED);
-            }
+            snapshots[snapshot_count].callback = sub->callback;
+            snapshots[snapshot_count].context = sub->context;
+            snapshots[snapshot_count].min_priority = sub->min_priority;
+            snapshots[snapshot_count].sub_ptr = sub;
+            snapshot_count++;
         }
         sub = sub->next;
     }
@@ -829,21 +845,36 @@ static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* e
         uint32_t all_bucket = hash_event_type(EVENT_ALL);
         sub = internal->subscribers[all_bucket];
 
-        while (sub) {
+        while (sub && snapshot_count < MAX_SNAPSHOT_SUBSCRIBERS) {
             if (sub->active && sub->type == EVENT_ALL) {
-                if (invoke_subscriber_callback(bus, sub, event)) {
-                    delivered++;
-                } else {
-                    sub->errors++;
-                    // Use atomic to avoid nested mutex deadlock (subscriber_mutex is held)
-                    __atomic_fetch_add(&internal->total_callback_errors, 1, __ATOMIC_RELAXED);
-                }
+                snapshots[snapshot_count].callback = sub->callback;
+                snapshots[snapshot_count].context = sub->context;
+                snapshots[snapshot_count].min_priority = sub->min_priority;
+                snapshots[snapshot_count].sub_ptr = sub;
+                snapshot_count++;
             }
             sub = sub->next;
         }
     }
 
     nimcp_mutex_unlock(&internal->subscriber_mutex);
+
+    // Invoke callbacks outside lock to prevent deadlock
+    for (uint32_t i = 0; i < snapshot_count; i++) {
+        // Check priority filter
+        if (event->priority < snapshots[i].min_priority) {
+            continue;  // Skip but not an error
+        }
+
+        // Invoke callback
+        snapshots[i].callback(event, snapshots[i].context);
+        delivered++;
+
+        // Update subscriber stats atomically (sub_ptr still valid if not freed)
+        __atomic_fetch_add(&snapshots[i].sub_ptr->events_received, 1, __ATOMIC_RELAXED);
+    }
+
+    #undef MAX_SNAPSHOT_SUBSCRIBERS
 
     // Update statistics
     uint64_t latency = event_get_timestamp_us() - start_time;

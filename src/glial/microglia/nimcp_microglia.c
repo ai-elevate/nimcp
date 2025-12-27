@@ -1345,16 +1345,17 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
     nimcp_mutex_lock(&network->lock);
 
     // Compute dt from last step (default to 1ms if first step)
-    static uint64_t last_step_time = 0;
+    // THREAD-SAFETY FIX: Use per-network last_step_time instead of static variable
+    // to avoid shared state across network instances and enable thread-safe operation.
     float dt_s;
-    if (last_step_time == 0) {
+    if (network->last_step_time == 0) {
         dt_s = 0.001F;
     } else {
-        dt_s = (float)(current_time - last_step_time) / 1000000.0F;
+        dt_s = (float)(current_time - network->last_step_time) / 1000000.0F;
         if (dt_s > 0.1F) dt_s = 0.1F;  // Cap at 100ms
         if (dt_s < 0.0001F) dt_s = 0.0001F;  // Min 0.1ms
     }
-    last_step_time = current_time;
+    network->last_step_time = current_time;
 
     // Process each microglia
     for (uint32_t i = 0; i < network->num_microglia; i++) {

@@ -298,13 +298,22 @@ bool dendrite_create_segments(
 
     dendrite->num_segments = num_segments;
 
-    // Build parent-child relationships
+    // Build parent-child relationships with bounds checking
     for (uint32_t i = 0; i < num_segments; i++) {
         dendritic_segment_t* segment = &dendrite->segments[i];
         if (segment->parent_segment != UINT32_MAX) {
+            // Bounds check: parent_segment must be valid index
+            if (segment->parent_segment >= num_segments) {
+                LOG_ERROR(LOG_MODULE, "dendrite_create_segments: Invalid parent_segment %u for segment %u",
+                          segment->parent_segment, i);
+                continue;  // Skip invalid parent reference
+            }
             dendritic_segment_t* parent = &dendrite->segments[segment->parent_segment];
             if (parent->num_children < NIMCP_DENDRITE_MAX_CHILDREN) {
                 parent->child_segments[parent->num_children++] = i;
+            } else {
+                LOG_WARN(LOG_MODULE, "dendrite_create_segments: Parent segment %u has max children",
+                         segment->parent_segment);
             }
         }
     }
@@ -429,9 +438,10 @@ uint32_t dendrite_add_spine(
 
     dendritic_segment_t* segment = &dendrite->segments[segment_id];
 
-    // Guard: Segment has too many spines
-    if (segment->num_spines >= 64) {
-        LOG_ERROR(LOG_MODULE, "dendrite_add_spine: Segment %u has max spines", segment_id);
+    // Guard: Segment has too many spines (use tier-optimized limit)
+    if (segment->num_spines >= NIMCP_MAX_SPINE_IDS) {
+        LOG_ERROR(LOG_MODULE, "dendrite_add_spine: Segment %u has max spines (%u)",
+                  segment_id, NIMCP_MAX_SPINE_IDS);
         return UINT32_MAX;
     }
 
@@ -738,23 +748,32 @@ void dendrite_step(dendrite_t* dendrite, float dt_ms, uint64_t timestamp) {
         update_segment_calcium(&dendrite->segments[i], dt_ms);
     }
 
-    // Update mean voltage
-    float voltage_sum = 0.0F;
-    for (uint32_t i = 0; i < dendrite->num_segments; i++) {
-        voltage_sum += dendrite->segments[i].voltage;
-    }
-    dendrite->mean_voltage = voltage_sum / (float)dendrite->num_segments;
+    // BUGFIX: Guard against division by zero when num_segments is 0
+    if (dendrite->num_segments > 0) {
+        // Update mean voltage
+        float voltage_sum = 0.0F;
+        for (uint32_t i = 0; i < dendrite->num_segments; i++) {
+            voltage_sum += dendrite->segments[i].voltage;
+        }
+        dendrite->mean_voltage = voltage_sum / (float)dendrite->num_segments;
 
-    // Update calcium level (mean across segments)
-    float calcium_sum = 0.0F;
-    for (uint32_t i = 0; i < dendrite->num_segments; i++) {
-        calcium_sum += dendrite->segments[i].calcium;
-    }
-    dendrite->calcium_level = calcium_sum / (float)dendrite->num_segments;
+        // Update calcium level (mean across segments)
+        float calcium_sum = 0.0F;
+        for (uint32_t i = 0; i < dendrite->num_segments; i++) {
+            calcium_sum += dendrite->segments[i].calcium;
+        }
+        dendrite->calcium_level = calcium_sum / (float)dendrite->num_segments;
 
-    // Update activity stats
-    dendrite->activity.mean_voltage = dendrite->mean_voltage;
-    dendrite->activity.mean_calcium = dendrite->calcium_level;
+        // Update activity stats
+        dendrite->activity.mean_voltage = dendrite->mean_voltage;
+        dendrite->activity.mean_calcium = dendrite->calcium_level;
+    } else {
+        // No segments - set to resting values
+        dendrite->mean_voltage = 0.0F;
+        dendrite->calcium_level = 0.0F;
+        dendrite->activity.mean_voltage = 0.0F;
+        dendrite->activity.mean_calcium = 0.0F;
+    }
 
     nimcp_mutex_unlock(&dendrite->lock);
 }
@@ -2000,27 +2019,42 @@ bool dendrite_cow_prepare_write(dendrite_t* dendrite) {
 
     // Need to make a deep copy of shared data
     // Copy segments
+    dendritic_segment_t* new_segments = NULL;
     if (dendrite->segments && dendrite->num_segments > 0) {
-        dendritic_segment_t* new_segments = (dendritic_segment_t*)nimcp_malloc(
+        new_segments = (dendritic_segment_t*)nimcp_malloc(
             dendrite->num_segments * sizeof(dendritic_segment_t)
         );
         if (new_segments) {
             memcpy(new_segments, dendrite->segments,
                    dendrite->num_segments * sizeof(dendritic_segment_t));
-            dendrite->segments = new_segments;
         }
     }
 
     // Copy spines
+    dendritic_spine_t* new_spines = NULL;
     if (dendrite->spines && dendrite->num_spines > 0 && !dendrite->use_spine_pool) {
-        dendritic_spine_t* new_spines = (dendritic_spine_t*)nimcp_malloc(
+        new_spines = (dendritic_spine_t*)nimcp_malloc(
             dendrite->num_spines * sizeof(dendritic_spine_t)
         );
+        if (!new_spines && new_segments) {
+            // BUGFIX: Free new_segments if new_spines allocation fails
+            nimcp_free(new_segments);
+            nimcp_mutex_unlock(&dendrite->lock);
+            LOG_ERROR(LOG_MODULE, "dendrite_cow_prepare_write: Failed to allocate spines copy");
+            return false;
+        }
         if (new_spines) {
             memcpy(new_spines, dendrite->spines,
                    dendrite->num_spines * sizeof(dendritic_spine_t));
-            dendrite->spines = new_spines;
         }
+    }
+
+    // Apply the copies after both allocations succeed
+    if (new_segments) {
+        dendrite->segments = new_segments;
+    }
+    if (new_spines) {
+        dendrite->spines = new_spines;
     }
 
     dendrite->cow_modified = true;

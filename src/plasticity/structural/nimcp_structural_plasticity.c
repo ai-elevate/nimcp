@@ -585,6 +585,17 @@ int structural_plasticity_record_ltp(
         return -1;
     }
 
+    /* PARAMETER VALIDATION: Validate LTP magnitude
+     * WHAT: Ensure ltp_magnitude is finite and non-negative
+     * WHY:  Invalid values cause accumulator corruption
+     * HOW:  Check for NaN/Inf and clamp to reasonable range
+     */
+    if (isnan(ltp_magnitude) || isinf(ltp_magnitude)) {
+        return 0;  /* Skip invalid LTP event */
+    }
+    if (ltp_magnitude < 0.0f) ltp_magnitude = 0.0f;
+    if (ltp_magnitude > 100.0f) ltp_magnitude = 100.0f;  /* Cap at reasonable max */
+
     nimcp_platform_mutex_lock(system->mutex);
 
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
@@ -593,7 +604,14 @@ int structural_plasticity_record_ltp(
         return -1;
     }
 
+    /* Accumulate with overflow protection */
     spine->ltp_accumulator += ltp_magnitude;
+    if (spine->ltp_accumulator > 10000.0f) {
+        spine->ltp_accumulator = 10000.0f;  /* Cap accumulator */
+    }
+    if (isnan(spine->ltp_accumulator)) {
+        spine->ltp_accumulator = 0.0f;  /* Reset on NaN */
+    }
 
     /* Check potentiation threshold */
     bool should_notify = false;
@@ -633,6 +651,17 @@ int structural_plasticity_record_ltd(
         return -1;
     }
 
+    /* PARAMETER VALIDATION: Validate LTD magnitude
+     * WHAT: Ensure ltd_magnitude is finite and non-negative
+     * WHY:  Invalid values cause accumulator corruption
+     * HOW:  Check for NaN/Inf and clamp to reasonable range
+     */
+    if (isnan(ltd_magnitude) || isinf(ltd_magnitude)) {
+        return 0;  /* Skip invalid LTD event */
+    }
+    if (ltd_magnitude < 0.0f) ltd_magnitude = 0.0f;
+    if (ltd_magnitude > 100.0f) ltd_magnitude = 100.0f;  /* Cap at reasonable max */
+
     nimcp_platform_mutex_lock(system->mutex);
 
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
@@ -641,12 +670,25 @@ int structural_plasticity_record_ltd(
         return -1;
     }
 
+    /* Accumulate with overflow protection */
     spine->ltd_accumulator += ltd_magnitude;
+    if (spine->ltd_accumulator > 10000.0f) {
+        spine->ltd_accumulator = 10000.0f;  /* Cap accumulator */
+    }
+    if (isnan(spine->ltd_accumulator)) {
+        spine->ltd_accumulator = 0.0f;  /* Reset on NaN */
+    }
 
     /* LTD increases pruning urgency */
-    spine->pruning_urgency += ltd_magnitude * 0.1f;
+    float urgency_increase = ltd_magnitude * 0.1f;
+    if (!isnan(urgency_increase) && urgency_increase > 0.0f) {
+        spine->pruning_urgency += urgency_increase;
+    }
     if (spine->pruning_urgency > 1.0f) {
         spine->pruning_urgency = 1.0f;
+    }
+    if (spine->pruning_urgency < 0.0f) {
+        spine->pruning_urgency = 0.0f;
     }
 
     nimcp_platform_mutex_unlock(system->mutex);

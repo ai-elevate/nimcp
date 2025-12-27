@@ -167,10 +167,10 @@ void jepa_latent_destroy(jepa_latent_t* latent) {
         return;
     }
 
-    /* Decrement reference count */
-    if (latent->ref_count > 1) {
-        latent->ref_count--;
-        return;
+    /* Thread-safe decrement and check - atomic fetch-and-subtract returns old value */
+    uint32_t old_count = __atomic_fetch_sub(&latent->ref_count, 1, __ATOMIC_ACQ_REL);
+    if (old_count > 1) {
+        return;  /* Other references still exist */
     }
 
     /* Free arrays */

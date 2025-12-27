@@ -838,7 +838,14 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     /* THREAD SAFETY FIX: Copy immune pointer while holding mutex, use after unlock
      * This prevents nested locking (BBB mutex -> immune mutex) which could deadlock.
      * We safely copy the pointer while holding our mutex, then release our mutex
-     * before calling immune functions that acquire their own mutex. */
+     * before calling immune functions that acquire their own mutex.
+     *
+     * IMPORTANT: Caller must ensure the immune system remains valid during this call.
+     * The immune system pointer could theoretically be invalidated by another thread
+     * after we release the BBB mutex. In practice, the immune system lifetime is
+     * managed by the brain's lifecycle and is not destroyed while the BBB is active.
+     * If immune system destruction during BBB operation becomes possible, add a
+     * reference count to brain_immune_system_t to prevent use-after-free. */
     brain_immune_system_t* immune = system->immune_system;
     bool has_immune = (immune != NULL);
 

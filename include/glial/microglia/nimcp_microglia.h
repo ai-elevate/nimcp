@@ -382,6 +382,11 @@ typedef struct {
     nimcp_mutex_t lock;                  /**< Network-level lock */
 
     //-------------------------------------------------------------------------
+    // Timing State
+    //-------------------------------------------------------------------------
+    uint64_t last_step_time;             /**< Last step timestamp for dt calculation */
+
+    //-------------------------------------------------------------------------
     // Memory Pool (Phase 1.5+)
     //-------------------------------------------------------------------------
     microglia_synapse_pool_t* synapse_pool;  /**< Shared pool for synapse data */

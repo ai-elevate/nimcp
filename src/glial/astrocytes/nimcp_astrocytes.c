@@ -547,7 +547,8 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro,
     }
 
     // Propagate calcium to coupled neighbors via gap junctions
-    nimcp_spinlock_lock(&astro->lock);
+    // DEADLOCK FIX: Use consistent lock ordering by astrocyte ID (lower ID first)
+    // to prevent deadlock when two astrocytes propagate to each other simultaneously.
 
     for (uint32_t i = 0; i < astro->num_coupled_astrocytes; i++) {
         uint32_t neighbor_id = astro->coupled_astrocyte_ids[i];
@@ -563,19 +564,26 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro,
         }
 
         if (neighbor) {
-            // Calcium diffusion through gap junction
+            // Acquire locks in consistent order (lower ID first) to prevent deadlock
+            astrocyte_t* first = (astro->id < neighbor->id) ? astro : neighbor;
+            astrocyte_t* second = (astro->id < neighbor->id) ? neighbor : astro;
+
+            nimcp_spinlock_lock(&first->lock);
+            nimcp_spinlock_lock(&second->lock);
+
+            // Re-validate calcium concentration after acquiring locks
+            // (may have changed if another thread updated it)
             float ca_diff = astro->calcium_concentration - neighbor->calcium_concentration;
             float flux = coupling_strength * ca_diff * network->coupling_decay_rate * dt;
 
-            // Update neighbor calcium (with their lock)
-            nimcp_spinlock_lock(&neighbor->lock);
+            // Update neighbor calcium
             neighbor->calcium_concentration += flux;
             neighbor->calcium_concentration = fmaxf(0.0F, fminf(50.0F, neighbor->calcium_concentration));
-            nimcp_spinlock_unlock(&neighbor->lock);
+
+            nimcp_spinlock_unlock(&second->lock);
+            nimcp_spinlock_unlock(&first->lock);
         }
     }
-
-    nimcp_spinlock_unlock(&astro->lock);
 }
 
 //=============================================================================

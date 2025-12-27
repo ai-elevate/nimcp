@@ -586,29 +586,36 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
         return;
     }
 
-    /* Update stats before freeing */
+    /* Capture gradient pointer before releasing lock to avoid deadlock */
+    nimcp_tensor_t* grad_to_destroy = t->grad;
+    t->grad = NULL;
+
+    /* Capture data pointer for cleanup after lock release */
+    void* data_to_free = (t->owns_data && t->data) ? t->data : NULL;
+    t->data = NULL;
+
+    /* Invalidate magic BEFORE unlocking to prevent re-entry */
+    t->magic = 0;
+
+    /* Release lock before any recursive operations */
+    nimcp_mutex_unlock(&t->lock);
+    nimcp_mutex_destroy(&t->lock);
+
+    /* Update stats after lock release (uses its own lock) */
     nimcp_mutex_lock(&g_stats_lock);
     g_stats.tensors_destroyed++;
     g_stats.memory_current -= t->shape.nbytes + sizeof(nimcp_tensor_t);
     nimcp_mutex_unlock(&g_stats_lock);
 
-    /* Free gradient if exists (recursive destroy) */
-    if (t->grad) {
-        nimcp_tensor_destroy(t->grad);
-        t->grad = NULL;  /* Prevent double-free on re-entry */
+    /* Free gradient if exists (recursive destroy - now safe, lock released) */
+    if (grad_to_destroy) {
+        nimcp_tensor_destroy(grad_to_destroy);
     }
 
     /* Free data if owned */
-    if (t->owns_data && t->data) {
-        nimcp_free(t->data);
-        t->data = NULL;  /* Prevent double-free */
+    if (data_to_free) {
+        nimcp_free(data_to_free);
     }
-
-    /* Invalidate magic BEFORE unlocking to prevent re-entry */
-    t->magic = 0;
-
-    nimcp_mutex_unlock(&t->lock);
-    nimcp_mutex_destroy(&t->lock);
 
     nimcp_free(t);
 }

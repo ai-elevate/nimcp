@@ -65,8 +65,34 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
     synapse->learning_rate = config->learning_rate;
     synapse->a_plus = config->a_plus;
     synapse->a_minus = config->a_minus;
-    synapse->tau_plus = config->tau_plus;
-    synapse->tau_minus = config->tau_minus;
+
+    /* TIMING WINDOW VALIDATION: Ensure tau values are positive and finite
+     * WHAT: Validate timing constants to prevent division issues
+     * WHY:  tau values are used as divisors in exponential decay (dt/tau)
+     * HOW:  Clamp to reasonable biological range [1ms, 1000ms]
+     * NUMERICAL STABILITY: Zero or negative tau causes division by zero/NaN
+     */
+    float tau_plus = config->tau_plus;
+    float tau_minus = config->tau_minus;
+
+    /* Validate tau_plus */
+    if (isnan(tau_plus) || isinf(tau_plus) || tau_plus <= 0.0F) {
+        LOG_WARN("Invalid tau_plus (%.4f), using default 20ms", (double)config->tau_plus);
+        tau_plus = 0.020F;  /* Default 20ms */
+    }
+    if (tau_plus < 0.001F) tau_plus = 0.001F;  /* Min 1ms */
+    if (tau_plus > 1.0F) tau_plus = 1.0F;      /* Max 1000ms */
+
+    /* Validate tau_minus */
+    if (isnan(tau_minus) || isinf(tau_minus) || tau_minus <= 0.0F) {
+        LOG_WARN("Invalid tau_minus (%.4f), using default 20ms", (double)config->tau_minus);
+        tau_minus = 0.020F;  /* Default 20ms */
+    }
+    if (tau_minus < 0.001F) tau_minus = 0.001F;  /* Min 1ms */
+    if (tau_minus > 1.0F) tau_minus = 1.0F;      /* Max 1000ms */
+
+    synapse->tau_plus = tau_plus;
+    synapse->tau_minus = tau_minus;
 
     synapse->enable_da_modulation = config->enable_da_modulation;
     synapse->da_modulation_gain = config->da_modulation_gain;
@@ -91,9 +117,47 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
  * ============================================================================ */
 
 void stdp_update_traces(stdp_synapse_t* synapse, float dt) {
-    /* Exponential decay of traces */
-    synapse->pre_trace *= expf(-dt / synapse->tau_plus);
-    synapse->post_trace *= expf(-dt / synapse->tau_minus);
+    /* Guard clause: NULL synapse */
+    if (!synapse) return;
+
+    /* Validate dt parameter
+     * WHAT: Ensure time step is positive and finite
+     * WHY:  Negative or invalid dt causes incorrect decay
+     * HOW:  Skip update if dt is invalid
+     */
+    if (isnan(dt) || isinf(dt) || dt < 0.0F) {
+        return;
+    }
+
+    /* Validate tau values before division
+     * NUMERICAL STABILITY: Zero or near-zero tau causes division overflow
+     */
+    float tau_plus = synapse->tau_plus;
+    float tau_minus = synapse->tau_minus;
+
+    if (tau_plus <= 0.0F || isnan(tau_plus)) tau_plus = 0.020F;
+    if (tau_minus <= 0.0F || isnan(tau_minus)) tau_minus = 0.020F;
+
+    /* Exponential decay of traces with validated parameters */
+    float decay_factor_plus = expf(-dt / tau_plus);
+    float decay_factor_minus = expf(-dt / tau_minus);
+
+    /* Validate decay factors (should be in (0, 1]) */
+    if (isnan(decay_factor_plus) || decay_factor_plus <= 0.0F) {
+        decay_factor_plus = 0.0F;  /* Full decay on invalid */
+    }
+    if (isnan(decay_factor_minus) || decay_factor_minus <= 0.0F) {
+        decay_factor_minus = 0.0F;  /* Full decay on invalid */
+    }
+
+    synapse->pre_trace *= decay_factor_plus;
+    synapse->post_trace *= decay_factor_minus;
+
+    /* Clamp traces to valid range [0, 10] to prevent unbounded growth
+     * NUMERICAL STABILITY: Ensures traces remain bounded
+     */
+    if (synapse->pre_trace < 0.0F) synapse->pre_trace = 0.0F;
+    if (synapse->post_trace < 0.0F) synapse->post_trace = 0.0F;
 }
 
 /* ============================================================================
@@ -327,6 +391,9 @@ void stdp_set_sleep_state(stdp_synapse_t* synapse, sleep_state_t state) {
 }
 
 void stdp_synapse_reset(stdp_synapse_t* synapse) {
+    /* Defensive null check */
+    if (!synapse) return;
+
     synapse->pre_trace = 0.0F;
     synapse->post_trace = 0.0F;
     synapse->num_potentiation_events = 0;
@@ -336,6 +403,12 @@ void stdp_synapse_reset(stdp_synapse_t* synapse) {
 }
 
 void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {
+    /* Defensive null check */
+    if (!synapse) {
+        printf("STDP Synapse Statistics: NULL synapse\n");
+        return;
+    }
+
     printf("STDP Synapse Statistics:\n");
     printf("  Weight: %.4f / %.4f\n", synapse->weight, synapse->w_max);
     printf("  Potentiation events: %lu (total LTP: %.6f)\n",

@@ -108,9 +108,13 @@ static uint64_t generate_canary(void)
         "Shadow stack: No secure entropy source for canary generation"
     );
 
-    // Return a non-zero value to avoid null canary, but caller should check
-    // for errors in a production system. This is defense-in-depth.
-    return 0xDEADBEEFCAFEBABEULL;
+    // SECURITY WARNING: Falling back to predictable canary value.
+    // XOR with stack address and timestamp to add some variability,
+    // but this is NOT cryptographically secure - an attacker who can
+    // read memory or predict timing may be able to guess this value.
+    LOG_WARN("Using predictable canary fallback - security degraded");
+    canary = 0xDEADBEEFCAFEBABEULL ^ (uint64_t)(uintptr_t)&canary ^ (uint64_t)time(NULL);
+    return canary;
 #else
     // Non-Linux platforms: use /dev/urandom if available
     int fd = open("/dev/urandom", O_RDONLY);
@@ -122,9 +126,13 @@ static uint64_t generate_canary(void)
         }
     }
 
-    // SECURITY: No weak fallback on non-Linux platforms either
-    LOG_ERROR("Failed to generate secure canary - no entropy source available");
-    return 0xDEADBEEFCAFEBABEULL;
+    // SECURITY WARNING: Falling back to predictable canary value.
+    // XOR with stack address and timestamp to add some variability,
+    // but this is NOT cryptographically secure - an attacker who can
+    // read memory or predict timing may be able to guess this value.
+    LOG_WARN("Using predictable canary fallback - security degraded");
+    canary = 0xDEADBEEFCAFEBABEULL ^ (uint64_t)(uintptr_t)&canary ^ (uint64_t)time(NULL);
+    return canary;
 #endif
 }
 
@@ -483,8 +491,18 @@ nimcp_ss_result_t nimcp_shadow_stack_peek(
     if (!ss->initialized)
         return NIMCP_SS_NOT_INITIALIZED;
 
+    // SECURITY: Validate entries pointer and bounds
+    if (!ss->entries || ss->size == 0 || ss->size > NIMCP_SHADOW_STACK_MAX_SIZE) {
+        return NIMCP_SS_CORRUPTED;
+    }
+
     if (ss->top == 0) {
         return NIMCP_SS_UNDERFLOW;
+    }
+
+    // SECURITY: Validate top is within bounds
+    if (ss->top > ss->size) {
+        return NIMCP_SS_CORRUPTED;
     }
 
     *expected_return = ss->entries[ss->top - 1].return_address;

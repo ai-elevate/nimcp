@@ -161,9 +161,12 @@ static neural_network_t get_base_network(adaptive_network_t network) {
     if (!network) {
         return NULL;
     }
-    // Access base_network field from adaptive_network_struct
-    // NOTE: We can't directly access struct members since it's opaque
-    // We rely on the fact that base_network is the first field
+    // ASSUMPTION: This relies on adaptive_network_struct having base_network as its
+    // first field. This is a fragile pattern - any reordering of the struct will break
+    // serialization. If adaptive_network.h exposes an accessor function in the future,
+    // that should be used instead. This pattern is used because the struct is opaque
+    // and no public accessor exists.
+    // See: include/core/brain/nimcp_adaptive_network.h for struct definition.
     return *((neural_network_t*)network);
 }
 
@@ -882,7 +885,8 @@ bool distributed_cow_fetch_segment(
     // BUGFIX: Heap allocation instead of 64KB stack buffer to prevent stack overflow
     uint8_t* response_buffer = (uint8_t*)nimcp_malloc(65536);
     if (!response_buffer) {
-        return NIMCP_ERROR_MEMORY;  // Fixed: use correct error constant
+        nimcp_platform_mutex_unlock(&state->fetch_mutex);
+        return false;  // Return bool false, not error code (function returns bool)
     }
     size_t response_length = 0;
 

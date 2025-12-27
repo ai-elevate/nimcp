@@ -52,17 +52,25 @@ static uint64_t get_time_us(void) {
 }
 
 static lock_dependency_t* find_thread_deps(pthread_t thread_id) {
+    int first_empty = -1;
     for (uint32_t i = 0; i < MAX_THREADS; i++) {
-        if (g_thread_deps[i].thread_id == thread_id) {
-            return &g_thread_deps[i];
+        /* Use pthread_equal for portable thread comparison */
+        if (g_thread_deps[i].num_holding > 0 || g_thread_deps[i].waiting_on != NULL) {
+            /* Slot is in use, check if it's our thread */
+            if (pthread_equal(g_thread_deps[i].thread_id, thread_id)) {
+                return &g_thread_deps[i];
+            }
+        } else if (first_empty < 0) {
+            /* Track first empty slot for new thread */
+            first_empty = (int)i;
         }
-        if (g_thread_deps[i].thread_id == 0) {
-            // New thread, initialize
-            g_thread_deps[i].thread_id = thread_id;
-            g_thread_deps[i].waiting_on = NULL;
-            g_thread_deps[i].num_holding = 0;
-            return &g_thread_deps[i];
-        }
+    }
+    /* New thread, initialize in first empty slot */
+    if (first_empty >= 0) {
+        g_thread_deps[first_empty].thread_id = thread_id;
+        g_thread_deps[first_empty].waiting_on = NULL;
+        g_thread_deps[first_empty].num_holding = 0;
+        return &g_thread_deps[first_empty];
     }
     return NULL; // Table full
 }
@@ -104,8 +112,8 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
                                      bool visited[], int depth) {
     if (depth > MAX_THREADS) return false; // Prevent infinite recursion
 
-    // Check if we've cycled back to start
-    if (depth > 0 && current_thread == start_thread) {
+    // Check if we've cycled back to start (use pthread_equal for portability)
+    if (depth > 0 && pthread_equal(current_thread, start_thread)) {
         fprintf(stderr, "\n*** DEADLOCK CYCLE DETECTED (depth %d) ***\n", depth);
         g_stats.cycles_detected++;
         return true;
@@ -117,9 +125,10 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
 
     tracked_mutex_t* waiting_on = deps->waiting_on;
 
-    // Mark as visited
+    // Mark as visited (use pthread_equal for portability)
     for (uint32_t i = 0; i < MAX_THREADS; i++) {
-        if (g_thread_deps[i].thread_id == current_thread) {
+        if ((g_thread_deps[i].num_holding > 0 || g_thread_deps[i].waiting_on != NULL) &&
+            pthread_equal(g_thread_deps[i].thread_id, current_thread)) {
             visited[i] = true;
             break;
         }
@@ -129,9 +138,10 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
     if (waiting_on->is_locked && waiting_on->owner != 0) {
         pthread_t owner = waiting_on->owner;
 
-        // Check if already visited (cycle)
+        // Check if already visited (cycle) - use pthread_equal for portability
         for (uint32_t i = 0; i < MAX_THREADS; i++) {
-            if (g_thread_deps[i].thread_id == owner && visited[i]) {
+            if ((g_thread_deps[i].num_holding > 0 || g_thread_deps[i].waiting_on != NULL) &&
+                pthread_equal(g_thread_deps[i].thread_id, owner) && visited[i]) {
                 return true; // Cycle found
             }
         }
@@ -541,7 +551,15 @@ void deadlock_detector_set_enabled(bool enable) {
 }
 
 bool deadlock_detector_is_enabled(void) {
-    return g_initialized && g_config.enable_detector;
+    /* Use atomic load to avoid race condition on g_initialized */
+    bool initialized = __atomic_load_n(&g_initialized, __ATOMIC_ACQUIRE);
+    if (!initialized) {
+        return false;
+    }
+    lock_detector();
+    bool enabled = g_config.enable_detector;
+    unlock_detector();
+    return enabled;
 }
 
 void deadlock_detector_set_default_timeout(uint32_t timeout_ms) {

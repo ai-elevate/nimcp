@@ -268,9 +268,19 @@ int hetero_add_synapse(
         }
         system->synapses = new_synapses;
         system->synapse_capacity = new_capacity;
+
+        /* NOTE: Existing synapses have already-initialized locks that are
+         * preserved by realloc (memcpy semantics). We do NOT re-initialize
+         * them here - only the NEW synapse (added below) gets its lock
+         * initialized. Re-initializing existing locks would corrupt their
+         * internal state and cause undefined behavior.
+         *
+         * IMPORTANT: On platforms where mutex contains self-referential
+         * pointers, realloc may invalidate mutexes. The nimcp_platform_mutex_t
+         * implementation must be realloc-safe or use pointer indirection. */
     }
 
-    /* Initialize synapse */
+    /* Initialize the NEW synapse (at index num_synapses) */
     hetero_synapse_t* syn = &system->synapses[system->num_synapses];
     syn->weight = initial_weight;
     syn->w_max = 1.0f;
@@ -287,6 +297,7 @@ int hetero_add_synapse(
     syn->num_wins = 0;
     syn->num_neighbor_depressions = 0;
     syn->total_hetero_ltd = 0.0f;
+    /* Initialize lock ONLY for the newly added synapse, not existing ones */
     nimcp_platform_mutex_init(&syn->lock, false);
 
     system->num_synapses++;
@@ -334,15 +345,29 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
  * WHY:  Locate synapse in array for direct manipulation
  * HOW:  Linear search with mutex protection
  *
- * WARNING: This function returns a pointer to internal data.
- * The caller must hold appropriate locks or use the returned
- * pointer within a short critical section. For thread-safe access,
- * consider using hetero_find_neighbors which provides copies.
+ * THREAD SAFETY WARNING:
+ * This function returns a pointer to internal data. The returned pointer
+ * is ONLY VALID while the caller ensures no concurrent modifications that
+ * could invalidate it (specifically: hetero_add_synapse with realloc, or
+ * hetero_remove_synapse). The pointer may become invalid if:
+ *   1. Another thread calls hetero_add_synapse() and triggers realloc
+ *   2. Another thread calls hetero_remove_synapse() on any synapse
+ *
+ * SAFE USAGE PATTERNS:
+ *   - Single-threaded access to the hetero_system
+ *   - Caller holds external synchronization preventing add/remove
+ *   - Use individual synapse->lock for weight field modifications only
+ *   - For fully thread-safe queries, copy the synapse data instead
+ *
+ * The individual synapse->lock protects weight modifications but does NOT
+ * protect against the pointer itself becoming invalid due to realloc/remove.
  */
 hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_id) {
     if (!system) return NULL;
 
-    /* Lock during search to prevent concurrent modification */
+    /* Lock during search to prevent concurrent modification during lookup.
+     * NOTE: After unlock, returned pointer stability depends on caller
+     * coordination - see warning above. */
     nimcp_platform_mutex_lock(system->mutex);
 
     hetero_synapse_t* result = NULL;
@@ -355,8 +380,6 @@ hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_i
 
     nimcp_platform_mutex_unlock(system->mutex);
 
-    /* NOTE: Returned pointer is stable but caller must coordinate
-     * access if modifying. The synapse has its own lock for weight updates. */
     return result;
 }
 

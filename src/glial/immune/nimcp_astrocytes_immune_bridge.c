@@ -101,6 +101,9 @@ bool astro_immune_is_bio_async_connected(const astro_immune_bridge_t* bridge)
 int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    /* Validate mutex exists before locking */
+    if (!bridge->base.mutex) return NIMCP_ERROR_NULL_POINTER;
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float il1 = 0, tnf = 0, il6 = 0, il10 = 0;
@@ -130,6 +133,11 @@ int astro_immune_update_cytokine_effects(astro_immune_bridge_t* bridge)
 int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    /* Validate dt_ms is positive and finite */
+    if (dt_ms <= 0.0f || !isfinite(dt_ms)) return NIMCP_ERROR_INVALID_PARAM;
+    /* Validate mutex exists before locking */
+    if (!bridge->base.mutex) return NIMCP_ERROR_NULL_POINTER;
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     astrocyte_reactivity_t old_state = bridge->reactivity_state;
@@ -181,6 +189,10 @@ int astro_immune_update_reactivity(astro_immune_bridge_t* bridge, float dt_ms)
 int astro_immune_update(astro_immune_bridge_t* bridge, float dt_ms)
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge->initialized) return NIMCP_ERROR_INVALID_PARAM;
+    /* Validate dt_ms is positive and finite */
+    if (dt_ms <= 0.0f || !isfinite(dt_ms)) return NIMCP_ERROR_INVALID_PARAM;
+
     astro_immune_update_cytokine_effects(bridge);
     astro_immune_update_reactivity(bridge, dt_ms);
     return 0;

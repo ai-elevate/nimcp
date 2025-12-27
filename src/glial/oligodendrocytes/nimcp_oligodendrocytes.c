@@ -325,9 +325,14 @@ static inline float clampf(float value, float min_val, float max_val) {
 
 /**
  * @brief Find axon index by ID in enhanced array
+ *
+ * Bounds checking: Validates oligo pointer and axons array before access.
  */
 static int32_t find_axon_index(const oligodendrocyte_t* oligo, uint32_t axon_id) {
     if (!oligo || !oligo->axons) return -1;
+    /* Bounds check: num_myelinated_axons should not exceed max_axons */
+    if (oligo->num_myelinated_axons > oligo->max_axons) return -1;
+
     for (uint32_t i = 0; i < oligo->num_myelinated_axons; i++) {
         if (oligo->axons[i].axon_id == axon_id) {
             return (int32_t)i;
@@ -338,9 +343,14 @@ static int32_t find_axon_index(const oligodendrocyte_t* oligo, uint32_t axon_id)
 
 /**
  * @brief Find neuron index by ID in legacy array
+ *
+ * Bounds checking: Validates oligo pointer and legacy arrays before access.
  */
 static int32_t find_legacy_neuron_index(const oligodendrocyte_t* oligo, uint32_t neuron_id) {
     if (!oligo || !oligo->myelinated_neuron_ids) return -1;
+    /* Bounds check: num_myelinated_axons should not exceed max_axons */
+    if (oligo->num_myelinated_axons > oligo->max_axons) return -1;
+
     for (uint32_t i = 0; i < oligo->num_myelinated_axons; i++) {
         if (oligo->myelinated_neuron_ids[i] == neuron_id) {
             return (int32_t)i;
@@ -361,15 +371,24 @@ static int32_t find_legacy_neuron_index(const oligodendrocyte_t* oligo, uint32_t
 static void compute_state_derivatives(const oligodendrocyte_t* oligo,
                                        const float* state,
                                        float* derivatives) {
-    // Extract state components
+    /* Defensive null checks for state arrays */
+    if (!state || !derivatives) {
+        if (derivatives) {
+            derivatives[0] = derivatives[1] = derivatives[2] = derivatives[3] = 0.0F;
+        }
+        return;
+    }
+
+    /* Extract state components */
     float myelin_rate = state[0];
     float activity_int = state[1];
     float energy = state[2];
     float maturation = state[3];
 
-    // Compute total activity from axons
+    /* Compute total activity from axons with bounds validation */
     float total_activity = 0.0F;
-    if (oligo->num_myelinated_axons > 0) {
+    if (oligo->num_myelinated_axons > 0 && oligo->axons &&
+        oligo->num_myelinated_axons <= oligo->max_axons) {
         for (uint32_t i = 0; i < oligo->num_myelinated_axons; i++) {
             total_activity += oligo->axons[i].activity_score;
         }
@@ -1842,20 +1861,26 @@ void oligodendrocyte_network_diffuse_growth_factors(oligodendrocyte_network_t* n
             if (dist_sq < diffusion_radius * diffusion_radius) {
                 float dist_factor = 1.0F - sqrtf(dist_sq) / diffusion_radius;
 
-                // Exchange growth factors
+                // DEADLOCK FIX: Acquire locks in consistent ID order (lower ID first)
+                // to prevent deadlock when called from multiple threads
+                oligodendrocyte_t* first = (oligo1->id < oligo2->id) ? oligo1 : oligo2;
+                oligodendrocyte_t* second = (oligo1->id < oligo2->id) ? oligo2 : oligo1;
+
+                nimcp_spinlock_lock(&first->lock);
+                nimcp_spinlock_lock(&second->lock);
+
+                // Exchange growth factors while holding both locks
                 for (int k = 0; k < NIMCP_GROWTH_FACTOR_COUNT; k++) {
                     float diff = oligo1->growth_factors.concentrations[k] -
                                  oligo2->growth_factors.concentrations[k];
                     float exchange = diff * diffusion_rate * dist_factor;
 
-                    nimcp_spinlock_lock(&oligo1->lock);
                     oligo1->growth_factors.concentrations[k] -= exchange * 0.5F;
-                    nimcp_spinlock_unlock(&oligo1->lock);
-
-                    nimcp_spinlock_lock(&oligo2->lock);
                     oligo2->growth_factors.concentrations[k] += exchange * 0.5F;
-                    nimcp_spinlock_unlock(&oligo2->lock);
                 }
+
+                nimcp_spinlock_unlock(&second->lock);
+                nimcp_spinlock_unlock(&first->lock);
             }
         }
     }

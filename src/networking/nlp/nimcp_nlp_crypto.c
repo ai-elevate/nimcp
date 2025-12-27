@@ -356,10 +356,19 @@ void nlp_crypto_shutdown(nlp_node_t node)
              crypto->nonces_generated, crypto->encryptions_performed,
              crypto->decryptions_performed, crypto->crypto_errors);
 
-    // Zero sensitive data
-    memset(crypto->hkdf_salt, 0, sizeof(crypto->hkdf_salt));
-    crypto->rng_seed = 0;
-    crypto->rng_counter = 0;
+    // SECURITY: Zero sensitive data using volatile to prevent compiler optimization
+    // The compiler may otherwise remove these writes as "dead stores" since
+    // the memory is about to be freed
+    volatile uint8_t* salt = crypto->hkdf_salt;
+    for (size_t i = 0; i < sizeof(crypto->hkdf_salt); i++) {
+        salt[i] = 0;
+    }
+
+    // SECURITY: Also zero other sensitive state via volatile
+    volatile uint32_t* seed_ptr = &crypto->rng_seed;
+    volatile uint64_t* counter_ptr = &crypto->rng_counter;
+    *seed_ptr = 0;
+    *counter_ptr = 0;
 
     // Free crypto state
     nimcp_free(node->crypto);

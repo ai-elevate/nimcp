@@ -167,11 +167,34 @@ static void refill_tokens(float* tokens, uint64_t* last_refill_ms,
 }
 
 /**
+ * @brief Deferred callback info for invoking outside critical section
+ */
+typedef struct {
+    bool should_invoke;
+    char client_id[NIMCP_RATE_LIMIT_MAX_CLIENT_ID];
+    uint32_t violations;
+    nimcp_penalty_action_t action;
+    nimcp_rate_limit_violation_callback_t callback;
+    void* user_data;
+} deferred_callback_info_t;
+
+/**
  * @brief Apply penalty to client
+ *
+ * THREAD SAFETY: This function is called while holding the bucket lock.
+ * To avoid invoking user callbacks while holding locks (which could cause
+ * deadlocks if the callback tries to acquire locks), callback information
+ * is stored in deferred_info for the caller to invoke after releasing locks.
  */
 static void apply_penalty(nimcp_rate_limiter_t limiter,
-                          client_bucket_t* bucket)
+                          client_bucket_t* bucket,
+                          deferred_callback_info_t* deferred_info)
 {
+    // Initialize deferred callback info
+    if (deferred_info) {
+        deferred_info->should_invoke = false;
+    }
+
     if (!limiter->config.penalty.enabled) {
         return;
     }
@@ -251,10 +274,16 @@ static void apply_penalty(nimcp_rate_limiter_t limiter,
     // Update statistics atomically to avoid deadlock (we may be holding bucket lock)
     atomic_fetch_add_explicit(&limiter->atomic_penalties_applied, 1, memory_order_relaxed);
 
-    // Fire callback if registered
-    if (limiter->violation_callback) {
-        limiter->violation_callback(bucket->client_id, bucket->violations,
-                                    action, limiter->violation_callback_data);
+    // Store callback info for deferred invocation (outside critical section)
+    if (deferred_info && limiter->violation_callback) {
+        deferred_info->should_invoke = true;
+        strncpy(deferred_info->client_id, bucket->client_id,
+                sizeof(deferred_info->client_id) - 1);
+        deferred_info->client_id[sizeof(deferred_info->client_id) - 1] = '\0';
+        deferred_info->violations = bucket->violations;
+        deferred_info->action = action;
+        deferred_info->callback = limiter->violation_callback;
+        deferred_info->user_data = limiter->violation_callback_data;
     }
 }
 
@@ -617,7 +646,9 @@ bool nimcp_rate_limiter_allow(
         }
         bucket->consecutive_good = 0;
 
-        apply_penalty(limiter, bucket);
+        // Store callback info for deferred invocation outside critical section
+        deferred_callback_info_t deferred_cb = {0};
+        apply_penalty(limiter, bucket, &deferred_cb);
 
         nimcp_platform_mutex_lock(&limiter->limiter_lock);
         // SECURITY: Overflow protection for global counter
@@ -631,6 +662,17 @@ bool nimcp_rate_limiter_allow(
                 (float)limiter->stats.total_requests * 100.0F;
         }
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+
+        // Release bucket lock before invoking callback
+        nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
+
+        // Invoke callback outside critical section to prevent deadlocks
+        if (deferred_cb.should_invoke) {
+            deferred_cb.callback(deferred_cb.client_id, deferred_cb.violations,
+                                 deferred_cb.action, deferred_cb.user_data);
+        }
+
+        return allowed;
     }
 
     nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);

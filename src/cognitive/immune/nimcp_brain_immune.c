@@ -1684,7 +1684,12 @@ int brain_immune_release_cytokine(
     uint32_t* cytokine_id
 ) {
     if (!system) return -1;
+    if (!system->mutex) return -1;
+    if (!system->cytokines) return -1;
     if (system->cytokine_count >= system->cytokine_capacity) return -1;
+    /* Validate concentration is in expected range [0.0, 1.0] */
+    if (concentration < 0.0f || !isfinite(concentration)) concentration = 0.0f;
+    if (concentration > 1.0f) concentration = 1.0f;
 
     nimcp_mutex_lock(system->mutex);
 
@@ -2455,6 +2460,7 @@ float brain_immune_get_cytokine_level(
     brain_cytokine_type_t type
 ) {
     if (!system) return 0.0f;
+    if (!system->mutex) return 0.0f;
 
     /* Lock for thread safety */
     nimcp_platform_mutex_lock(system->mutex);
@@ -2489,6 +2495,7 @@ brain_inflammation_level_t brain_immune_get_inflammation_level(
     brain_immune_system_t* system
 ) {
     if (!system) return INFLAMMATION_NONE;
+    if (!system->mutex) return INFLAMMATION_NONE;
 
     /* Lock for thread safety */
     nimcp_platform_mutex_lock(system->mutex);

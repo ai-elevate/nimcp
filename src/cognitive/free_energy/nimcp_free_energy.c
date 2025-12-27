@@ -64,6 +64,11 @@ static inline float safe_log(float x) {
 static void softmax(float* values, uint32_t n, float temperature) {
     if (!values || n == 0) return;
 
+    /* Guard: Prevent division by zero - use small epsilon if temperature is too small */
+    if (temperature < 1e-6f) {
+        temperature = 1e-6f;
+    }
+
     /* Find max for numerical stability */
     float max_val = values[0];
     for (uint32_t i = 1; i < n; i++) {
@@ -90,6 +95,11 @@ static void softmax(float* values, uint32_t n, float temperature) {
  */
 static int init_belief(fep_belief_t* belief, uint32_t dim, float initial_precision) {
     if (!belief || dim == 0) return -1;
+
+    /* Guard: Ensure precision is positive to prevent division by zero */
+    if (initial_precision < FEP_MIN_PRECISION) {
+        initial_precision = FEP_MIN_PRECISION;
+    }
 
     belief->dim = dim;
     belief->mean = (float*)nimcp_calloc(dim, sizeof(float));
@@ -450,10 +460,15 @@ int fep_reset(fep_system_t* fep) {
     /* Reset beliefs to priors */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
         fep_hierarchy_level_t* level = &fep->levels[l];
+        /* Guard: Ensure precision is positive to prevent division by zero */
+        float safe_precision = fep->config.initial_precision;
+        if (safe_precision < FEP_MIN_PRECISION) {
+            safe_precision = FEP_MIN_PRECISION;
+        }
         for (uint32_t i = 0; i < level->beliefs.dim; i++) {
             level->beliefs.mean[i] = level->prior_mean[i];
-            level->beliefs.precision[i] = fep->config.initial_precision;
-            level->beliefs.variance[i] = 1.0f / fep->config.initial_precision;
+            level->beliefs.precision[i] = safe_precision;
+            level->beliefs.variance[i] = 1.0f / safe_precision;
         }
 
         /* Reset errors */
@@ -602,9 +617,17 @@ int fep_update_precision(fep_system_t* fep) {
         for (uint32_t i = 0; i < level->errors.dim; i++) {
             /* Precision update: Π' = Π + lr * (ε² - 1/Π) */
             float error_sq = level->errors.error[i] * level->errors.error[i];
-            float current_var = 1.0f / level->errors.precision[i];
+
+            /* Guard: Ensure precision is positive before computing variance */
+            float safe_precision = level->errors.precision[i];
+            if (safe_precision < FEP_MIN_PRECISION) {
+                safe_precision = FEP_MIN_PRECISION;
+            }
+            float current_var = 1.0f / safe_precision;
+            (void)current_var;  /* Silence unused variable warning */
 
             /* Move precision toward inverse error variance */
+            /* Note: 0.01f epsilon prevents division by zero when error_sq is 0 */
             float target_precision = 1.0f / (error_sq + 0.01f);
             float delta = target_precision - level->errors.precision[i];
 

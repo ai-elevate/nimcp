@@ -115,6 +115,11 @@ static inline bool nlp_validate_node(nlp_node_t node) {
     return node != NULL && node->magic == NLP_NODE_MAGIC;
 }
 
+// Forward declarations for state validation functions (defined in Session State Machine section)
+static bool nlp_session_validate_transition(nlp_session_state_t old_state,
+                                            nlp_session_state_t new_state);
+static inline bool nlp_session_state_is_valid(nlp_session_state_t state);
+
 // Static bio-async context for session module (protected by nimcp_platform_once)
 static bio_module_context_t g_session_bio_ctx = NULL;
 static nimcp_once_t g_session_bio_once = NIMCP_ONCE_INIT;
@@ -157,6 +162,23 @@ static void nlp_send_bio_session_event(nlp_node_t node,
                                        const nlp_peer_t* peer,
                                        nlp_session_state_t old_state,
                                        nlp_session_state_t new_state) {
+    // SECURITY: Validate state values are within enum range
+    if (!nlp_session_state_is_valid(old_state) ||
+        !nlp_session_state_is_valid(new_state)) {
+        NIMCP_LOG_ERROR("nlp_send_bio_session_event: Invalid state value old=%d new=%d",
+                       (int)old_state, (int)new_state);
+        return;
+    }
+
+    // SECURITY: Validate state transition is legal
+    if (!nlp_session_validate_transition(old_state, new_state)) {
+        NIMCP_LOG_ERROR("nlp_send_bio_session_event: Invalid transition %d->%d",
+                       (int)old_state, (int)new_state);
+        // Log but continue - let the event go out for monitoring
+        bbb_audit_log(BBB_AUDIT_WARNING, NLP_SESSION_MODULE, "invalid_state_transition",
+                     "old=%u new=%u", (uint32_t)old_state, (uint32_t)new_state);
+    }
+
     uint64_t peer_id = peer ? peer->peer_id : 0;
 
     // Ensure bio-async is registered
@@ -353,6 +375,80 @@ static uint16_t nlp_calculate_crc16(const uint8_t* data, size_t len) {
 //=============================================================================
 // Session State Machine
 //=============================================================================
+
+/**
+ * WHAT: Validate that a session state transition is legal
+ * WHY:  Prevent invalid state transitions that could bypass security checks
+ *       SECURITY: Enforces the state machine shown in the header diagram
+ * HOW:  Check old_state -> new_state is a valid transition
+ *
+ * Valid transitions:
+ *   DISCONNECTED -> HANDSHAKE_SENT (initiator starts handshake)
+ *   DISCONNECTED -> HANDSHAKE_RECEIVED (responder receives handshake)
+ *   HANDSHAKE_SENT -> HANDSHAKE_RECEIVED (received response)
+ *   HANDSHAKE_SENT -> ERROR (timeout/failure)
+ *   HANDSHAKE_SENT -> DISCONNECTED (abort)
+ *   HANDSHAKE_RECEIVED -> ESTABLISHED (final ack)
+ *   HANDSHAKE_RECEIVED -> ERROR (timeout/failure)
+ *   HANDSHAKE_RECEIVED -> DISCONNECTED (abort)
+ *   ESTABLISHED -> ERROR (failure)
+ *   ESTABLISHED -> DISCONNECTED (graceful close)
+ *   ERROR -> DISCONNECTED (cleanup)
+ *
+ * @param old_state Current state
+ * @param new_state Proposed next state
+ * @return true if transition is valid, false otherwise
+ */
+static bool nlp_session_validate_transition(nlp_session_state_t old_state,
+                                            nlp_session_state_t new_state) {
+    // SECURITY: Same state is always valid (no-op transition)
+    if (old_state == new_state) {
+        return true;
+    }
+
+    switch (old_state) {
+        case NLP_SESSION_DISCONNECTED:
+            // Can only go to HANDSHAKE_SENT or HANDSHAKE_RECEIVED
+            return (new_state == NLP_SESSION_HANDSHAKE_SENT ||
+                    new_state == NLP_SESSION_HANDSHAKE_RECEIVED);
+
+        case NLP_SESSION_HANDSHAKE_SENT:
+            // Can go to RECEIVED, ERROR, or DISCONNECTED (abort)
+            return (new_state == NLP_SESSION_HANDSHAKE_RECEIVED ||
+                    new_state == NLP_SESSION_ESTABLISHED ||  // Fast path for responder
+                    new_state == NLP_SESSION_ERROR ||
+                    new_state == NLP_SESSION_DISCONNECTED);
+
+        case NLP_SESSION_HANDSHAKE_RECEIVED:
+            // Can go to ESTABLISHED, ERROR, or DISCONNECTED
+            return (new_state == NLP_SESSION_ESTABLISHED ||
+                    new_state == NLP_SESSION_ERROR ||
+                    new_state == NLP_SESSION_DISCONNECTED);
+
+        case NLP_SESSION_ESTABLISHED:
+            // Can only go to ERROR or DISCONNECTED
+            return (new_state == NLP_SESSION_ERROR ||
+                    new_state == NLP_SESSION_DISCONNECTED);
+
+        case NLP_SESSION_ERROR:
+            // Can only go to DISCONNECTED (cleanup)
+            return (new_state == NLP_SESSION_DISCONNECTED);
+
+        default:
+            // Unknown state - reject
+            NIMCP_LOG_ERROR("nlp_session_validate_transition: Unknown state %d",
+                           (int)old_state);
+            return false;
+    }
+}
+
+/**
+ * WHAT: Validate session state value is within valid enum range
+ * WHY:  SECURITY: Prevent use of invalid/corrupted state values
+ */
+static inline bool nlp_session_state_is_valid(nlp_session_state_t state) {
+    return state >= NLP_SESSION_DISCONNECTED && state <= NLP_SESSION_ERROR;
+}
 
 /**
  * WHAT: Initialize session structures
@@ -672,8 +768,18 @@ int nlp_session_close(nlp_node_t node, nlp_peer_t* peer) {
     peer->session_state = NLP_SESSION_DISCONNECTED;
     peer->healthy = false;
 
-    // Clear session key
-    memset(peer->session_key, 0, NLP_KEY_SIZE);
+    // SECURITY: Clear session key using cryptographically secure erase
+    // WHY: Prevent key material from lingering in memory after session close
+    // HOW: Use explicit_bzero() if available (glibc 2.25+), otherwise use
+    //      volatile pointer loop that compiler cannot optimize away
+#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25))
+    explicit_bzero(peer->session_key, NLP_KEY_SIZE);
+#else
+    // Fallback: volatile pointer loop prevents compiler optimization
+    volatile unsigned char *p = (volatile unsigned char *)peer->session_key;
+    size_t len = NLP_KEY_SIZE;
+    while (len--) *p++ = 0;
+#endif
 
     // Update stats
     if (old_state == NLP_SESSION_ESTABLISHED) {

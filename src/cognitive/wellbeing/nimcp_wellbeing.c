@@ -720,6 +720,14 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
 
     nimcp_platform_mutex_unlock(&brain_connection_mutex);
 
+    /* Clamp distress_score to valid range [0.0, 1.0] */
+    if (assessment.distress_score < 0.0f) {
+        assessment.distress_score = 0.0f;
+    }
+    if (assessment.distress_score > 1.0f) {
+        assessment.distress_score = 1.0f;
+    }
+
     return assessment;
 }
 
@@ -868,13 +876,18 @@ bool wellbeing_graceful_shutdown(brain_t brain, shutdown_config_t config)
         NIMCP_LOGGING_INFO("Step 4/5: Gradually reducing processing over %u steps",
                  config.reduction_steps);
 
+        // Guard: Ensure reduction_steps > 0 to avoid division by zero
+        if (config.reduction_steps == 0) {
+            config.reduction_steps = 1;
+        }
+
         // Gradually reduce activity
         for (uint32_t step = 0; step < config.reduction_steps; step++) {
             // Each step, we're reducing the "intensity" of processing
             // This is symbolic at Tier 4, but would be real at higher tiers
 
             if (step % 10 == 0) {
-                float progress = (float)step / config.reduction_steps * 100.0F;
+                float progress = (float)step / (float)config.reduction_steps * 100.0F;
                 NIMCP_LOGGING_DEBUG("Shutdown progress: %.0f%%", progress);
             }
 

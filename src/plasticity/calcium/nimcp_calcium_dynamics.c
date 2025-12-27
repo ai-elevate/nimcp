@@ -59,59 +59,111 @@ static inline float clamp_f(float value, float min, float max) {
 }
 
 /**
- * WHAT: Invoke threshold crossing callbacks
- * WHY:  Notify listeners of calcium threshold events
- * HOW:  Iterate active callbacks, invoke each
+ * @brief Deferred callback entry for threshold crossings
+ * WHY:  Store callback data to invoke after mutex release to avoid deadlock
  */
-static void invoke_threshold_callbacks(
+typedef struct {
+    calcium_threshold_callback_t callback;
+    void* user_data;
+    calcium_threshold_crossing_t crossing_type;
+    float ca_concentration;
+} deferred_threshold_callback_t;
+
+#define MAX_DEFERRED_THRESHOLD_CALLBACKS (CALCIUM_MAX_THRESHOLD_CALLBACKS * 6)
+
+/**
+ * WHAT: Collect threshold crossing callbacks for deferred invocation
+ * WHY:  Invoking callbacks inside mutex lock can cause deadlock
+ * HOW:  Copy callback data to deferred array, return count
+ * NOTE: Must be called while holding mutex; callbacks invoked after release
+ */
+static int collect_threshold_callbacks(
     calcium_dynamics_t calcium,
     calcium_threshold_crossing_t crossing_type,
-    float ca_concentration
+    float ca_concentration,
+    deferred_threshold_callback_t* deferred,
+    int max_deferred,
+    int current_count
 ) {
-    if (!calcium) return;
+    if (!calcium || !deferred) return current_count;
 
-    for (int i = 0; i < CALCIUM_MAX_THRESHOLD_CALLBACKS; i++) {
+    for (int i = 0; i < CALCIUM_MAX_THRESHOLD_CALLBACKS && current_count < max_deferred; i++) {
         if (calcium->callbacks[i].active && calcium->callbacks[i].callback) {
-            calcium->callbacks[i].callback(
-                crossing_type,
-                ca_concentration,
-                calcium->callbacks[i].user_data
+            deferred[current_count].callback = calcium->callbacks[i].callback;
+            deferred[current_count].user_data = calcium->callbacks[i].user_data;
+            deferred[current_count].crossing_type = crossing_type;
+            deferred[current_count].ca_concentration = ca_concentration;
+            current_count++;
+        }
+    }
+    return current_count;
+}
+
+/**
+ * WHAT: Invoke deferred threshold callbacks after mutex release
+ * WHY:  Avoids deadlock by calling user code outside critical section
+ * HOW:  Iterate collected callbacks and invoke each
+ */
+static void invoke_deferred_callbacks(
+    deferred_threshold_callback_t* deferred,
+    int count
+) {
+    for (int i = 0; i < count; i++) {
+        if (deferred[i].callback) {
+            deferred[i].callback(
+                deferred[i].crossing_type,
+                deferred[i].ca_concentration,
+                deferred[i].user_data
             );
         }
     }
 }
 
 /**
- * WHAT: Detect and handle threshold crossings
- * WHY:  Fire callbacks when calcium crosses thresholds
- * HOW:  Compare previous and current concentrations
+ * WHAT: Collect threshold crossing callbacks for deferred invocation
+ * WHY:  Fire callbacks when calcium crosses thresholds (after mutex release)
+ * HOW:  Compare previous and current concentrations, collect callbacks
+ * NOTE: Must be called while holding mutex; returns count of collected callbacks
  */
-static void check_threshold_crossings(calcium_dynamics_t calcium) {
-    if (!calcium) return;
+static int collect_threshold_crossings(
+    calcium_dynamics_t calcium,
+    deferred_threshold_callback_t* deferred,
+    int max_deferred
+) {
+    if (!calcium || !deferred) return 0;
 
+    int count = 0;
     float prev = calcium->state.ca_concentration_prev;
     float curr = calcium->state.ca_concentration;
 
     /* Check LTD threshold crossings */
     if (prev < calcium->config.threshold_ltd && curr >= calcium->config.threshold_ltd) {
-        invoke_threshold_callbacks(calcium, CALCIUM_CROSS_LTD_THRESHOLD_UP, curr);
+        count = collect_threshold_callbacks(calcium, CALCIUM_CROSS_LTD_THRESHOLD_UP, curr,
+                                            deferred, max_deferred, count);
     } else if (prev >= calcium->config.threshold_ltd && curr < calcium->config.threshold_ltd) {
-        invoke_threshold_callbacks(calcium, CALCIUM_CROSS_LTD_THRESHOLD_DOWN, curr);
+        count = collect_threshold_callbacks(calcium, CALCIUM_CROSS_LTD_THRESHOLD_DOWN, curr,
+                                            deferred, max_deferred, count);
     }
 
     /* Check LTP threshold crossings */
     if (prev < calcium->config.threshold_ltp && curr >= calcium->config.threshold_ltp) {
-        invoke_threshold_callbacks(calcium, CALCIUM_CROSS_LTP_THRESHOLD_UP, curr);
+        count = collect_threshold_callbacks(calcium, CALCIUM_CROSS_LTP_THRESHOLD_UP, curr,
+                                            deferred, max_deferred, count);
     } else if (prev >= calcium->config.threshold_ltp && curr < calcium->config.threshold_ltp) {
-        invoke_threshold_callbacks(calcium, CALCIUM_CROSS_LTP_THRESHOLD_DOWN, curr);
+        count = collect_threshold_callbacks(calcium, CALCIUM_CROSS_LTP_THRESHOLD_DOWN, curr,
+                                            deferred, max_deferred, count);
     }
 
     /* Check saturation threshold crossings */
     if (prev < calcium->config.threshold_saturation && curr >= calcium->config.threshold_saturation) {
-        invoke_threshold_callbacks(calcium, CALCIUM_CROSS_SATURATION_UP, curr);
+        count = collect_threshold_callbacks(calcium, CALCIUM_CROSS_SATURATION_UP, curr,
+                                            deferred, max_deferred, count);
     } else if (prev >= calcium->config.threshold_saturation && curr < calcium->config.threshold_saturation) {
-        invoke_threshold_callbacks(calcium, CALCIUM_CROSS_SATURATION_DOWN, curr);
+        count = collect_threshold_callbacks(calcium, CALCIUM_CROSS_SATURATION_DOWN, curr,
+                                            deferred, max_deferred, count);
     }
+
+    return count;
 }
 
 /**
@@ -322,10 +374,18 @@ int calcium_update(calcium_dynamics_t calcium, float delta_ms) {
         );
     }
 
-    /* Check threshold crossings */
-    check_threshold_crossings(calcium);
+    /* Collect threshold crossing callbacks while holding mutex */
+    deferred_threshold_callback_t deferred[MAX_DEFERRED_THRESHOLD_CALLBACKS];
+    int num_deferred = collect_threshold_crossings(calcium, deferred,
+                                                   MAX_DEFERRED_THRESHOLD_CALLBACKS);
 
     nimcp_platform_mutex_unlock(calcium->mutex);
+
+    /* Invoke callbacks after mutex release to avoid deadlock */
+    if (num_deferred > 0) {
+        invoke_deferred_callbacks(deferred, num_deferred);
+    }
+
     return 0;
 }
 
@@ -371,9 +431,19 @@ int calcium_set_concentration(calcium_dynamics_t calcium, float concentration) {
     );
 
     update_plasticity_regime(calcium);
-    check_threshold_crossings(calcium);
+
+    /* Collect threshold crossing callbacks while holding mutex */
+    deferred_threshold_callback_t deferred[MAX_DEFERRED_THRESHOLD_CALLBACKS];
+    int num_deferred = collect_threshold_crossings(calcium, deferred,
+                                                   MAX_DEFERRED_THRESHOLD_CALLBACKS);
 
     nimcp_platform_mutex_unlock(calcium->mutex);
+
+    /* Invoke callbacks after mutex release to avoid deadlock */
+    if (num_deferred > 0) {
+        invoke_deferred_callbacks(deferred, num_deferred);
+    }
+
     return 0;
 }
 

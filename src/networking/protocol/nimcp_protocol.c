@@ -434,15 +434,42 @@ static bool is_magic_valid(uint32_t magic)
 }
 
 /**
+ * @brief Minimum supported protocol version for backward compatibility
+ * SECURITY: Allows negotiation with older clients while rejecting
+ *           unsupported or maliciously crafted versions
+ */
+#define PROTOCOL_VERSION_MIN 1
+
+/**
+ * @brief Maximum supported protocol version
+ * SECURITY: Prevents future version exploitation attacks
+ */
+#define PROTOCOL_VERSION_MAX 2
+
+/**
  * @brief Validates protocol version
  *
  * WHY: Ensures version compatibility. Prevents protocol mismatch issues.
+ *      SECURITY: Validates version is within supported range to prevent:
+ *      - Future version exploitation (attacker claims version 255)
+ *      - Past version downgrade attacks (force weak crypto)
+ *      - Integer overflow/underflow in version checks
  *
  * COMPLEXITY: O(1)
  */
 static bool is_version_valid(uint8_t version)
 {
-    return version == PROTOCOL_VERSION;
+    // SECURITY: Check version is within valid range
+    // This prevents both future version attacks and downgrade attacks
+    if (version < PROTOCOL_VERSION_MIN) {
+        return false;  // Reject ancient/unsupported versions
+    }
+    if (version > PROTOCOL_VERSION_MAX) {
+        return false;  // Reject unknown future versions
+    }
+
+    // Accept current version or compatible versions in range
+    return true;
 }
 
 /**
