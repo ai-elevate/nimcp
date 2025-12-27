@@ -370,7 +370,9 @@ TEST_F(CreditAssignmentRegressionTest, REG_CRE_030_ShapleyAdditiveGameKnown) {
 
 TEST_F(CreditAssignmentRegressionTest, REG_CRE_031_ShapleyWeightedVotingKnown) {
     // 3-player weighted voting: weights [1,2,3], quota > 3
-    // Only player 2 (weight 3) + one other wins
+    // Winning coalitions: {0,1,2}, {1,2}, {0,2}
+    // Shapley values: Player 0 = 1/6, Player 1 = 1/6, Player 2 = 4/6
+    // Note: Players 0 and 1 are equal because both are equally pivotal
     nimcp_credit_system_t system = create_credit_system(3);
     ASSERT_NE(system, nullptr);
 
@@ -380,9 +382,14 @@ TEST_F(CreditAssignmentRegressionTest, REG_CRE_031_ShapleyWeightedVotingKnown) {
     );
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    // Player with most weight should have most power
+    // Player 2 (highest weight) has highest Shapley value
     EXPECT_GT(result.credits[2], result.credits[1]);
-    EXPECT_GT(result.credits[1], result.credits[0]);
+    // Players 0 and 1 have equal Shapley values in this game
+    EXPECT_NEAR(result.credits[0], result.credits[1], 0.001f);
+    // Verify approximate values
+    EXPECT_NEAR(result.credits[0], 1.0f/6.0f, 0.01f);
+    EXPECT_NEAR(result.credits[1], 1.0f/6.0f, 0.01f);
+    EXPECT_NEAR(result.credits[2], 4.0f/6.0f, 0.01f);
 
     nimcp_credit_destroy(system);
 }
