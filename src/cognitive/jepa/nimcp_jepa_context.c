@@ -361,6 +361,12 @@ int jepa_context_set_task(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Validate: if dim > 0, embedding must not be NULL */
+    if ((goal_dim > 0 && !goal_embedding) ||
+        (task_dim > 0 && !task_embedding)) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
     jepa_task_state_t* task = &encoder->current_context->task;
 
     /* Set goal */
@@ -398,6 +404,11 @@ int jepa_context_set_working_memory(
 {
     if (!encoder || !encoder->current_context) {
         return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Validate: if dimensions are specified, items must not be NULL */
+    if (num_items > 0 && item_dim > 0 && !wm_items) {
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     jepa_wm_context_t* wm = &encoder->current_context->working_memory;
@@ -446,6 +457,12 @@ int jepa_context_set_attention(
 {
     if (!encoder || !encoder->current_context) {
         return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Validate: if dimensions are specified, data must not be NULL */
+    if ((num_locations > 0 && !attention_weights) ||
+        (feature_dim > 0 && !attended_features)) {
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     jepa_attention_context_t* attn = &encoder->current_context->attention;

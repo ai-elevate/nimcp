@@ -375,11 +375,15 @@ int visual_jepa_fep_report_prediction_error(
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    /* Compute prediction error */
+    /* Compute prediction error - only store up to buffer capacity */
     double sum_sq = 0.0;
+    uint32_t store_count = (prediction->latent_dim < bridge->buffer_size) ?
+                           prediction->latent_dim : bridge->buffer_size;
     for (uint32_t i = 0; i < prediction->latent_dim; i++) {
         float diff = prediction->embedding[i] - target->embedding[i];
-        bridge->error_buffer[i] = diff;
+        if (i < store_count) {
+            bridge->error_buffer[i] = diff;
+        }
         sum_sq += diff * diff;
     }
 
