@@ -14,12 +14,12 @@ class BrainFinalCoverageTest : public ::testing::Test {
 protected:
     brain_t brain;
     const char* checkpoint_file = "/tmp/brain_checkpoint.nimcp";
-    
+
     void SetUp() override {
         brain = nullptr;
         remove(checkpoint_file);
     }
-    
+
     void TearDown() override {
         if (brain) {
             brain_destroy(brain);
@@ -27,12 +27,21 @@ protected:
         }
         remove(checkpoint_file);
     }
+
+    // Helper to initialize config with valid defaults
+    // (validation requires learning_rate in [0.0001, 1.0] and sparsity_target in [0.0, 1.0])
+    void init_valid_config(brain_config_t* config) {
+        memset(config, 0, sizeof(*config));
+        config->learning_rate = 0.01f;      // Valid default
+        config->sparsity_target = 0.1f;     // Valid default
+    }
 };
 
 // Test checkpoint loading
 TEST_F(BrainFinalCoverageTest, Checkpoint_AutoLoad) {
     // Create and save a brain
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -58,7 +67,8 @@ TEST_F(BrainFinalCoverageTest, Checkpoint_AutoLoad) {
 
 // Test auto-save
 TEST_F(BrainFinalCoverageTest, Checkpoint_AutoSave) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -84,7 +94,8 @@ TEST_F(BrainFinalCoverageTest, Checkpoint_AutoSave) {
 
 // Test snapshots with various settings
 TEST_F(BrainFinalCoverageTest, Snapshot_WithCompression) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -104,7 +115,8 @@ TEST_F(BrainFinalCoverageTest, Snapshot_WithCompression) {
 }
 
 TEST_F(BrainFinalCoverageTest, Snapshot_WithEncryption) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -126,7 +138,8 @@ TEST_F(BrainFinalCoverageTest, Snapshot_WithEncryption) {
 }
 
 TEST_F(BrainFinalCoverageTest, Snapshot_AutoSnapshots) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -151,37 +164,38 @@ TEST_F(BrainFinalCoverageTest, Snapshot_AutoSnapshots) {
 
 // Test various custom configurations that trigger different paths
 TEST_F(BrainFinalCoverageTest, Config_ZeroValues) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
     config.num_outputs = 3;
     strncpy(config.task_name, "zero_config", sizeof(config.task_name) - 1);
-    
-    // Set some values to 0 to test default handling
-    config.learning_rate = 0.0f;  // Should use default
-    config.sparsity_target = 0.0f;  // Should use default
+
+    // Set glial counts to 0 to test default handling
+    // Note: learning_rate and sparsity_target must be valid per factory validation
     config.num_astrocytes = 0;
     config.num_oligodendrocytes = 0;
     config.num_microglia = 0;
-    
+
     brain = brain_create_custom(&config);
     EXPECT_NE(brain, nullptr);
 }
 
 TEST_F(BrainFinalCoverageTest, Config_ExtremeValues) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
     config.num_outputs = 3;
     strncpy(config.task_name, "extreme_config", sizeof(config.task_name) - 1);
-    
-    config.learning_rate = 1.0f;  // Very high
+
+    config.learning_rate = 1.0f;  // Max valid value
     config.sparsity_target = 0.99f;  // Very high sparsity
     config.working_memory_capacity = 100;  // Way more than 7±2
     config.working_memory_decay_tau_ms = 10000.0f;  // Very slow decay
-    
+
     brain = brain_create_custom(&config);
     EXPECT_NE(brain, nullptr);
 }
@@ -267,18 +281,19 @@ TEST_F(BrainFinalCoverageTest, Model_GetInfo) {
 
 // Test with all feature dimensions set
 TEST_F(BrainFinalCoverageTest, MultiModal_AllDimensionsSet) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_MEDIUM;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 500;  // Large enough for all modalities
     config.num_outputs = 10;
     strncpy(config.task_name, "all_dims", sizeof(config.task_name) - 1);
-    
+
     config.enable_multimodal_integration = true;
     config.enable_visual_cortex = true;
     config.enable_audio_cortex = true;
     config.enable_speech_cortex = true;
-    
+
     config.visual_feature_dim = 200;
     config.audio_feature_dim = 100;
     config.speech_feature_dim = 100;
@@ -320,7 +335,8 @@ TEST_F(BrainFinalCoverageTest, Config_NullCustom) {
 
 // Test decision with interpretability
 TEST_F(BrainFinalCoverageTest, Decision_WithInterpretability) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -353,13 +369,14 @@ TEST_F(BrainFinalCoverageTest, Decision_WithInterpretability) {
 // Test all remaining configuration combinations
 // DISABLED: Causes double-free crash - needs investigation
 TEST_F(BrainFinalCoverageTest, DISABLED_Config_EveryFeatureCombination) {
-    brain_config_t config = {};
+    brain_config_t config;
+    init_valid_config(&config);
     config.size = BRAIN_SIZE_MEDIUM;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 50;
     config.num_outputs = 5;
     strncpy(config.task_name, "every_feature", sizeof(config.task_name) - 1);
-    
+
     // Enable absolutely everything possible
     config.enable_explanations = true;
     config.enable_glial = true;

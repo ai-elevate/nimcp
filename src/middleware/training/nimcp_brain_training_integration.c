@@ -25,6 +25,7 @@
 #include "portia/nimcp_portia.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 #include <float.h>
 #include <time.h>
