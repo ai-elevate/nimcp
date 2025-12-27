@@ -170,8 +170,8 @@ TEST_F(MechanismTest, GetMechanismState) {
     ASSERT_NE(mechanism, nullptr);
 
     nimcp_mechanism_state_t state = nimcp_mechanism_get_state(mechanism);
-    // Initial state may be INIT or READY depending on implementation
-    EXPECT_TRUE(state == NIMCP_MECHANISM_STATE_INIT || state == NIMCP_MECHANISM_STATE_READY);
+    // Initial state may be UNINITIALIZED or READY depending on implementation
+    EXPECT_TRUE(state == NIMCP_MECHANISM_STATE_UNINITIALIZED || state == NIMCP_MECHANISM_STATE_READY);
 }
 
 TEST_F(MechanismTest, GetMechanismType) {
@@ -442,13 +442,16 @@ TEST_F(MechanismTest, ComputeAllEquilibria) {
 
 TEST_F(MechanismTest, SignalingInformationContent) {
     nimcp_signal_equilibrium_result_t result;
+    memset(&result, 0, sizeof(result));  // Zero-initialize all fields
     result.type = NIMCP_SIGNAL_EQUIL_SEPARATING;
     result.equilibrium_found = true;
     result.num_sender_types = 2;
     result.num_signals = 2;
+    result.information_transmitted = 0.5f;  // Set a valid test value
 
     float info = nimcp_signaling_information_content(&result);
     EXPECT_GE(info, 0.0f);
+    EXPECT_FLOAT_EQ(info, 0.5f);  // Should return what we set
 }
 
 //=============================================================================

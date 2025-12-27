@@ -224,7 +224,8 @@ TEST_F(SpatialGameTest, RunSimulation) {
     nimcp_evolutionary_result_t result;
     memset(&result, 0, sizeof(result));
 
-    nimcp_error_t err = nimcp_spatial_run(game, 100, &result);
+    // Use small step count for fast testing (16 nodes don't need 100 steps)
+    nimcp_error_t err = nimcp_spatial_run(game, 10, &result);
     EXPECT_EQ(err, NIMCP_SUCCESS);
     EXPECT_GT(result.steps_taken, 0u);
 }
@@ -377,8 +378,9 @@ TEST_F(SpatialGameTest, InvalidStrategy) {
 }
 
 TEST_F(SpatialGameTest, NullContextHandling) {
-    EXPECT_EQ(nimcp_spatial_step(nullptr), NIMCP_ERROR_NULL_POINTER);
-    EXPECT_EQ(nimcp_spatial_reset(nullptr), NIMCP_ERROR_NULL_POINTER);
+    // Spatial module uses NIMCP_GT_ERROR_NULL_POINTER
+    EXPECT_EQ(nimcp_spatial_step(nullptr), NIMCP_GT_ERROR_NULL_POINTER);
+    EXPECT_EQ(nimcp_spatial_reset(nullptr), NIMCP_GT_ERROR_NULL_POINTER);
     EXPECT_EQ(nimcp_spatial_get_node_strategy(nullptr, 0), -1);
 }
 
