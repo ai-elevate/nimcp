@@ -546,9 +546,13 @@ bool attention_gate_get_stats(const attention_gate_t* gate,
                                uint64_t* total_shifts) {
     if (!gate) return false;
 
+    /* Thread safety: Lock mutex to protect statistics access */
+    nimcp_mutex_lock(gate->mutex);
+
     if (num_targets) *num_targets = gate->num_entries;
     if (num_in_spotlight) *num_in_spotlight = gate->num_in_spotlight;
     if (total_shifts) *total_shifts = gate->total_shifts;
 
+    nimcp_mutex_unlock(gate->mutex);
     return true;
 }
