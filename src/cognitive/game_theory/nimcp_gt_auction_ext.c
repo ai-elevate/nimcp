@@ -317,56 +317,55 @@ static int compare_bids_by_density(const void* a, const void* b) {
 
 /**
  * @brief Recursive optimal solver helper
+ *
+ * Uses branch-and-bound with proper selection tracking.
+ * current_selection tracks bids selected in current path.
+ * best_selection is only updated when a new best value is found.
  */
-static float combo_solve_recursive(
+static void combo_solve_recursive(
     const nimcp_bundle_bid_t* bids,
     uint32_t num_bids,
     uint32_t idx,
     uint64_t allocated,
-    uint64_t* best_selection,
+    uint64_t current_selection,
     float current_value,
+    uint64_t* best_selection,
     float* best_value
 ) {
+    // Base case: processed all bids
     if (idx >= num_bids) {
         if (current_value > *best_value) {
             *best_value = current_value;
-            return current_value;
+            *best_selection = current_selection;
         }
-        return 0.0f;
+        return;
     }
 
     const nimcp_bundle_bid_t* bid = &bids[idx];
 
     // Prune if bid is invalid
     if (!bid->is_valid) {
-        return combo_solve_recursive(bids, num_bids, idx + 1, allocated,
-                                     best_selection, current_value, best_value);
+        combo_solve_recursive(bids, num_bids, idx + 1, allocated,
+                              current_selection, current_value,
+                              best_selection, best_value);
+        return;
     }
 
     // Option 1: Skip this bid
-    float skip_value = combo_solve_recursive(bids, num_bids, idx + 1, allocated,
-                                             best_selection, current_value, best_value);
+    combo_solve_recursive(bids, num_bids, idx + 1, allocated,
+                          current_selection, current_value,
+                          best_selection, best_value);
 
-    // Option 2: Include this bid (if no conflict)
-    float include_value = 0.0f;
+    // Option 2: Include this bid (if no conflict with already allocated items)
     if ((bid->items_mask & allocated) == 0) {
         uint64_t new_allocated = allocated | bid->items_mask;
+        uint64_t new_selection = current_selection | ((uint64_t)1 << idx);
         float new_value = current_value + bid->value;
 
-        // Mark this bid as selected
-        uint64_t old_selection = *best_selection;
-        *best_selection |= ((uint64_t)1 << idx);
-
-        include_value = combo_solve_recursive(bids, num_bids, idx + 1, new_allocated,
-                                              best_selection, new_value, best_value);
-
-        // Restore if this path wasn't optimal
-        if (include_value < skip_value) {
-            *best_selection = old_selection;
-        }
+        combo_solve_recursive(bids, num_bids, idx + 1, new_allocated,
+                              new_selection, new_value,
+                              best_selection, best_value);
     }
-
-    return (include_value > skip_value) ? include_value : skip_value;
 }
 
 nimcp_error_t nimcp_combo_auction_solve_optimal(
@@ -403,8 +402,8 @@ nimcp_error_t nimcp_combo_auction_solve_optimal(
     uint64_t best_selection = 0;
     float best_value = 0.0f;
 
-    combo_solve_recursive(ctx->bids, ctx->num_bids, 0, 0,
-                          &best_selection, 0.0f, &best_value);
+    combo_solve_recursive(ctx->bids, ctx->num_bids, 0, 0, 0, 0.0f,
+                          &best_selection, &best_value);
 
     // Extract winners from selection bitmap
     result->num_winners = 0;

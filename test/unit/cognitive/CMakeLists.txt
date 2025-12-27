@@ -711,3 +711,274 @@ gtest_discover_tests(unit_cognitive_test_game_theory_credit
         LABELS "unit;cognitive;game_theory;credit"
         TIMEOUT 120
 )
+
+# Game Theory - Integration Tests
+add_executable(unit_cognitive_test_game_theory_integration
+    game_theory/test_gt_integration.cpp
+)
+
+target_link_libraries(unit_cognitive_test_game_theory_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_game_theory_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_game_theory_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_game_theory_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;integration"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Advanced Game Theory Module Tests
+# ============================================================================
+# WHAT: Unit tests for advanced game theory modules
+# WHY:  Validate equilibrium computation, learning, coalition formation,
+#       repeated games, fairness metrics, mechanism design, extended auctions,
+#       and spatial/evolutionary games
+# ============================================================================
+
+# Game Theory - Equilibrium Tests
+add_executable(unit_cognitive_test_gt_equilibrium
+    game_theory/test_gt_equilibrium.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_equilibrium
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_equilibrium
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_equilibrium PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_equilibrium
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;equilibrium"
+        TIMEOUT 180
+)
+
+# Game Theory - Learning Tests
+add_executable(unit_cognitive_test_gt_learning
+    game_theory/test_gt_learning.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_learning
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_learning
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_learning PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_learning
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;learning"
+        TIMEOUT 180
+)
+
+# Game Theory - Coalition Tests
+add_executable(unit_cognitive_test_gt_coalition
+    game_theory/test_gt_coalition.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_coalition
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_coalition
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_coalition PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_coalition
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;coalition"
+        TIMEOUT 180
+)
+
+# Game Theory - Repeated Games Tests
+add_executable(unit_cognitive_test_gt_repeated
+    game_theory/test_gt_repeated.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_repeated
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_repeated
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_repeated PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_repeated
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;repeated"
+        TIMEOUT 180
+)
+
+# Game Theory - Fairness Tests
+add_executable(unit_cognitive_test_gt_fairness
+    game_theory/test_gt_fairness.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_fairness
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_fairness
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_fairness PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_fairness
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;fairness"
+        TIMEOUT 180
+)
+
+# Game Theory - Mechanism Design Tests
+add_executable(unit_cognitive_test_gt_mechanism
+    game_theory/test_gt_mechanism.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_mechanism
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_mechanism
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_mechanism PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_mechanism
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;mechanism"
+        TIMEOUT 180
+)
+
+# Game Theory - Extended Auction Tests
+add_executable(unit_cognitive_test_gt_auction_ext
+    game_theory/test_gt_auction_ext.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_auction_ext
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_auction_ext
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_auction_ext PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_auction_ext
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;auction_ext"
+        TIMEOUT 180
+)
+
+# Game Theory - Spatial/Evolutionary Games Tests
+add_executable(unit_cognitive_test_gt_spatial
+    game_theory/test_gt_spatial.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_spatial
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_spatial
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_gt_spatial PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_spatial
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;spatial"
+        TIMEOUT 180
+)

@@ -218,6 +218,92 @@ static float compute_structure_value(
     return total;
 }
 
+/**
+ * @brief Internal unlocked version of is_individually_rational
+ * @note Caller must hold mutex
+ */
+static bool is_individually_rational_unlocked(
+    nimcp_coalition_game_t game,
+    const nimcp_coalition_structure_t* structure
+) {
+    if (!game || !structure || !game->value_fn) {
+        return false;
+    }
+
+    uint32_t n = game->config.num_players;
+
+    for (uint32_t p = 0; p < n; p++) {
+        uint32_t player_bit = 1u << p;
+
+        // Find player's current coalition
+        int32_t coal_idx = find_player_coalition_internal(structure, p);
+        if (coal_idx < 0) {
+            return false;
+        }
+
+        // Compute current payoff
+        float current_payoff = compute_player_payoff(game, structure->coalitions[coal_idx].members, p);
+
+        // Compute singleton value
+        float singleton_value = get_coalition_value_cached(game, player_bit);
+
+        // Individual rationality: current payoff >= singleton value
+        if (current_payoff < singleton_value - game->config.convergence_epsilon) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Internal unlocked version of is_in_core
+ * @note Caller must hold mutex
+ */
+static bool is_in_core_unlocked(
+    nimcp_coalition_game_t game,
+    const nimcp_coalition_structure_t* structure
+) {
+    if (!game || !structure || !game->value_fn) {
+        return false;
+    }
+
+    uint32_t n = game->config.num_players;
+    uint32_t num_coalitions = 1u << n;
+
+    // Compute payoffs in current structure
+    float payoffs[NIMCP_GT_MAX_PLAYERS] = {0};
+    for (uint32_t c = 0; c < structure->num_coalitions; c++) {
+        uint32_t coal = structure->coalitions[c].members;
+        float value = get_coalition_value_cached(game, coal);
+        uint32_t size = popcount32(coal);
+        float per_player = (size > 0) ? value / (float)size : 0.0f;
+
+        for (uint32_t p = 0; p < n; p++) {
+            if (coal & (1u << p)) {
+                payoffs[p] = per_player;
+            }
+        }
+    }
+
+    // Check core condition: for all coalitions S, sum(payoff[i] for i in S) >= v(S)
+    for (uint32_t S = 1; S < num_coalitions; S++) {
+        float payoff_sum = 0.0f;
+        for (uint32_t p = 0; p < n; p++) {
+            if (S & (1u << p)) {
+                payoff_sum += payoffs[p];
+            }
+        }
+
+        float v_S = get_coalition_value_cached(game, S);
+        if (payoff_sum < v_S - game->config.convergence_epsilon) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 //=============================================================================
 // Configuration
 //=============================================================================
@@ -470,10 +556,10 @@ nimcp_error_t nimcp_coalition_form_greedy(
     // Compute final values
     compute_structure_value(game, &result->structure);
 
-    // Check stability
+    // Check stability (use unlocked versions since we already hold mutex)
     result->is_stable[NIMCP_STABILITY_NASH] = !improved;  // Nash stable if no improvements
-    result->is_stable[NIMCP_STABILITY_INDIVIDUAL] = nimcp_coalition_is_individually_rational(game, &result->structure);
-    result->is_stable[NIMCP_STABILITY_CORE] = nimcp_coalition_is_in_core(game, &result->structure);
+    result->is_stable[NIMCP_STABILITY_INDIVIDUAL] = is_individually_rational_unlocked(game, &result->structure);
+    result->is_stable[NIMCP_STABILITY_CORE] = is_in_core_unlocked(game, &result->structure);
 
     result->iterations = iterations;
     result->coalitions_evaluated = game->coalitions_evaluated;
@@ -565,9 +651,9 @@ nimcp_error_t nimcp_coalition_form_optimal(
     nimcp_free(opt_value);
     nimcp_free(opt_first_coal);
 
-    // Check stability
-    result->is_stable[NIMCP_STABILITY_INDIVIDUAL] = nimcp_coalition_is_individually_rational(game, &result->structure);
-    result->is_stable[NIMCP_STABILITY_CORE] = nimcp_coalition_is_in_core(game, &result->structure);
+    // Check stability (use unlocked versions since we already hold mutex)
+    result->is_stable[NIMCP_STABILITY_INDIVIDUAL] = is_individually_rational_unlocked(game, &result->structure);
+    result->is_stable[NIMCP_STABILITY_CORE] = is_in_core_unlocked(game, &result->structure);
     result->is_stable[NIMCP_STABILITY_NASH] = true;  // Optimal is Nash stable by definition
 
     result->iterations = 1;
@@ -680,10 +766,10 @@ nimcp_error_t nimcp_coalition_form_merge_split(
     // Recompute final values
     compute_structure_value(game, &result->structure);
 
-    // Check stability
+    // Check stability (use unlocked versions since we already hold mutex)
     result->is_stable[NIMCP_STABILITY_NASH] = !improved;
-    result->is_stable[NIMCP_STABILITY_INDIVIDUAL] = nimcp_coalition_is_individually_rational(game, &result->structure);
-    result->is_stable[NIMCP_STABILITY_CORE] = nimcp_coalition_is_in_core(game, &result->structure);
+    result->is_stable[NIMCP_STABILITY_INDIVIDUAL] = is_individually_rational_unlocked(game, &result->structure);
+    result->is_stable[NIMCP_STABILITY_CORE] = is_in_core_unlocked(game, &result->structure);
 
     result->iterations = iterations;
     result->coalitions_evaluated = game->coalitions_evaluated;

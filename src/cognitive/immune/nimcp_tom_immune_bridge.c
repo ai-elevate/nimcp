@@ -275,15 +275,17 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
             state->inflammation_duration_sec / (86400.0f * 14),  /* 14 days */
             0.0f, 1.0f
         );
-        state->perspective_score_reduction = clamp_f(duration_factor * 0.6f, 0.0f, 1.0f);
+        state->perspective_score_reduction = clamp_f(duration_factor * 0.8f, 0.0f, 1.0f);
     } else {
-        state->perspective_score_reduction = clamp_f(inflammation_intensity * 0.4f, 0.0f, 1.0f);
+        /* Higher multiplier for stronger inflammation impact on perspective-taking */
+        state->perspective_score_reduction = clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
     }
 
     /* Specific ToM impairments based on inflammation */
-    state->false_belief_impairment = clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
-    state->empathy_capacity_loss = clamp_f(inflammation_intensity * 0.8f, 0.0f, 1.0f);
-    state->social_withdrawal = clamp_f(inflammation_intensity * 0.9f, 0.0f, 1.0f);
+    state->false_belief_impairment = clamp_f(inflammation_intensity * 0.8f, 0.0f, 1.0f);
+    state->empathy_capacity_loss = clamp_f(inflammation_intensity * 0.9f, 0.0f, 1.0f);
+    /* Full social withdrawal at systemic inflammation */
+    state->social_withdrawal = clamp_f(inflammation_intensity * 1.0f, 0.0f, 1.0f);
 
     /* Inference impairments */
     state->emotion_inference_impairment = clamp_f(inflammation_intensity * 0.65f, 0.0f, 1.0f);
