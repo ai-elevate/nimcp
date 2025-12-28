@@ -140,7 +140,8 @@ extern int nimcp_sec_record_interaction(
 static nimcp_sec_integration_t* g_future_security_ctx = NULL;
 static uint32_t g_future_security_module_id = 0;
 static unified_mem_manager_t g_future_memory_mgr = NULL;
-static bool g_future_initialized = false;
+static nimcp_atomic_bool_t g_future_initialized = {0};
+static nimcp_atomic_bool_t g_future_initializing = {0};  // Guard against concurrent init
 
 //=============================================================================
 // Bio-Async Backend Integration
@@ -1923,9 +1924,21 @@ void nimcp_future_reset_stats(void)
 
 nimcp_error_t nimcp_future_init(void* security_ctx, void* memory_mgr)
 {
-    if (g_future_initialized) {
+    // Thread-safe check: already initialized
+    if (nimcp_atomic_load_bool(&g_future_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         LOG_WARNING("Future module already initialized");
         return NIMCP_SUCCESS;  // Idempotent
+    }
+
+    // Thread-safe init guard: only one thread can initialize
+    bool expected = false;
+    if (!nimcp_atomic_compare_exchange_bool(&g_future_initializing, &expected, true,
+                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        // Another thread is initializing, wait for it to complete
+        while (!nimcp_atomic_load_bool(&g_future_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+            // Spin-wait (could use a proper wait mechanism)
+        }
+        return NIMCP_SUCCESS;
     }
 
     LOG_INFO("Initializing async/futures module");
@@ -1952,13 +1965,14 @@ nimcp_error_t nimcp_future_init(void* security_ctx, void* memory_mgr)
 
         if (result != NIMCP_SUCCESS) {
             LOG_ERROR("Failed to register async/futures module with security");
+            nimcp_atomic_store_bool(&g_future_initializing, false, NIMCP_MEMORY_ORDER_RELEASE);
             return (nimcp_error_t)result;
         }
 
         LOG_INFO("Future module registered with security (ID: %u)", g_future_security_module_id);
     }
 
-    g_future_initialized = true;
+    nimcp_atomic_store_bool(&g_future_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_INFO("Async/futures module initialized successfully");
     return NIMCP_SUCCESS;
 }
@@ -2009,7 +2023,7 @@ nimcp_error_t nimcp_future_init_bio(
  */
 nimcp_error_t nimcp_future_set_bio_backend(bool enable)
 {
-    if (!g_future_initialized) {
+    if (!nimcp_atomic_load_bool(&g_future_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -2035,7 +2049,7 @@ bool nimcp_future_is_bio_backend_enabled(void)
 
 void nimcp_future_shutdown(void)
 {
-    if (!g_future_initialized) {
+    if (!nimcp_atomic_load_bool(&g_future_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return;
     }
 
@@ -2067,14 +2081,15 @@ void nimcp_future_shutdown(void)
     g_future_security_ctx = NULL;
     g_future_security_module_id = 0;
     g_future_memory_mgr = NULL;
-    g_future_initialized = false;
+    nimcp_atomic_store_bool(&g_future_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
+    nimcp_atomic_store_bool(&g_future_initializing, false, NIMCP_MEMORY_ORDER_RELEASE);
 
     LOG_INFO("Async/futures module shutdown complete");
 }
 
 bool nimcp_future_is_initialized(void)
 {
-    return g_future_initialized;
+    return nimcp_atomic_load_bool(&g_future_initialized, NIMCP_MEMORY_ORDER_ACQUIRE);
 }
 
 uint32_t nimcp_future_get_security_id(void)

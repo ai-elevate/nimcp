@@ -36,6 +36,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/containers/nimcp_queue.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_atomic.h"
 #include "utils/validation/nimcp_validate.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/logging/nimcp_logging.h"
@@ -55,7 +56,7 @@
  */
 static nimcp_sec_integration_t* g_dataio_security_ctx = NULL;
 static uint32_t g_dataio_security_module_id = 0;
-static bool g_dataio_initialized = false;
+static nimcp_atomic_bool_t g_dataio_initialized = {0};
 
 //=============================================================================
 // Thread-Local Error Handling (same pattern as replication)
@@ -1507,7 +1508,7 @@ uint64_t brain_train_from_stream(brain_t brain, dataset_t stream_dataset, uint32
  */
 nimcp_result_t dataio_init(nimcp_sec_integration_t* security_ctx)
 {
-    if (g_dataio_initialized) {
+    if (nimcp_atomic_load_bool(&g_dataio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return NIMCP_SUCCESS;  // Already initialized
     }
 
@@ -1531,7 +1532,7 @@ nimcp_result_t dataio_init(nimcp_sec_integration_t* security_ctx)
         LOG_INFO("DataIO module registered with security (ID: %u)", g_dataio_security_module_id);
     }
 
-    g_dataio_initialized = true;
+    nimcp_atomic_store_bool(&g_dataio_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     return NIMCP_SUCCESS;
 }
 
@@ -1542,7 +1543,7 @@ nimcp_result_t dataio_init(nimcp_sec_integration_t* security_ctx)
  */
 void dataio_shutdown(void)
 {
-    if (!g_dataio_initialized) {
+    if (!nimcp_atomic_load_bool(&g_dataio_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return;
     }
 
@@ -1554,7 +1555,7 @@ void dataio_shutdown(void)
 
     g_dataio_security_ctx = NULL;
     g_dataio_security_module_id = 0;
-    g_dataio_initialized = false;
+    nimcp_atomic_store_bool(&g_dataio_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
 }
 
 /**

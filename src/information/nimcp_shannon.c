@@ -22,6 +22,7 @@
 #include "information/nimcp_shannon.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -31,7 +32,7 @@
 // Module State
 //=============================================================================
 
-static bool g_shannon_initialized = false;
+static nimcp_atomic_bool_t g_shannon_initialized = {0};
 static bio_module_context_t g_bio_ctx = NULL;
 static bool g_bio_async_enabled = false;
 static void* g_security_context = NULL;
@@ -70,7 +71,7 @@ static void shannon_init_internal(void)
     // Security context (simplified - no function call needed for now)
     g_security_context = NULL;  // TODO: proper security registration
 
-    g_shannon_initialized = true;
+    nimcp_atomic_store_bool(&g_shannon_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_INFO("Shannon information module initialized successfully");
 }
 

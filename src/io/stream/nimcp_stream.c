@@ -37,6 +37,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_atomic.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/logging/nimcp_logging.h"
@@ -56,7 +57,8 @@
  */
 static nimcp_sec_integration_t* g_stream_security_ctx = NULL;
 static uint32_t g_stream_security_module_id = 0;
-static bool g_stream_initialized = false;
+static nimcp_atomic_bool_t g_stream_initialized = {0};
+static nimcp_atomic_bool_t g_stream_initializing = {0};  // Guard against concurrent init
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -1140,7 +1142,7 @@ bool brain_stream_clear(brain_stream_t stream)
  */
 nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx)
 {
-    if (g_stream_initialized) {
+    if (nimcp_atomic_load_bool(&g_stream_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return NIMCP_SUCCESS;  // Already initialized
     }
 
@@ -1164,7 +1166,7 @@ nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx)
         LOG_INFO("Stream module registered with security (ID: %u)", g_stream_security_module_id);
     }
 
-    g_stream_initialized = true;
+    nimcp_atomic_store_bool(&g_stream_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     return NIMCP_SUCCESS;
 }
 
@@ -1175,7 +1177,7 @@ nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx)
  */
 void stream_shutdown(void)
 {
-    if (!g_stream_initialized) {
+    if (!nimcp_atomic_load_bool(&g_stream_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return;
     }
 
@@ -1187,7 +1189,7 @@ void stream_shutdown(void)
 
     g_stream_security_ctx = NULL;
     g_stream_security_module_id = 0;
-    g_stream_initialized = false;
+    nimcp_atomic_store_bool(&g_stream_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
 }
 
 /**

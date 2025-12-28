@@ -308,9 +308,10 @@ nimcp_result_t nimcp_ct_get_stats(nimcp_ct_context_t ctx, nimcp_ct_stats_t* stat
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_ct_stats_t));
 
-    // Sync global atomic counters to stats (thread-safe read)
-    stats->hash_comparisons = atomic_load(&g_atomic_hash_comparisons);
-    stats->total_bytes_compared = atomic_load(&g_atomic_total_bytes_compared);
+    // Add global atomic counters to context stats (thread-safe read)
+    // Context tracks per-context operations; global tracks cross-context operations
+    stats->hash_comparisons += atomic_load(&g_atomic_hash_comparisons);
+    stats->total_bytes_compared += atomic_load(&g_atomic_total_bytes_compared);
 
     return NIMCP_SUCCESS;
 }
