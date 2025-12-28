@@ -13,6 +13,8 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_atomic.h"
 
 #include <string.h>
 #include <stdarg.h>
@@ -26,7 +28,8 @@
 //=============================================================================
 
 static nimcp_mutex_t g_bbb_mutex;
-static bool g_bbb_initialized = false;
+static nimcp_platform_once_t g_bbb_init_once = NIMCP_PLATFORM_ONCE_INIT;
+static nimcp_atomic_bool_t g_bbb_initialized = {0};
 static uint64_t g_validations = 0;
 static uint64_t g_threats_detected = 0;
 
@@ -34,32 +37,36 @@ static uint64_t g_threats_detected = 0;
 // Initialization
 //=============================================================================
 
-bool bbb_helpers_init(void)
+/**
+ * @brief Internal initialization function called via nimcp_platform_once
+ */
+static void bbb_helpers_init_internal(void)
 {
-    if (g_bbb_initialized) {
-        return true;
-    }
-
     // Initialize mutex
     if (nimcp_mutex_init(&g_bbb_mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize BBB helpers mutex");
-        return false;
+        return;
     }
 
-    g_bbb_initialized = true;
+    nimcp_atomic_store_bool(&g_bbb_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_INFO("BBB helpers initialized (standalone mode)");
+}
 
-    return true;
+bool bbb_helpers_init(void)
+{
+    // Thread-safe one-time initialization
+    nimcp_platform_once(&g_bbb_init_once, bbb_helpers_init_internal);
+    return nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE);
 }
 
 void bbb_helpers_shutdown(void)
 {
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return;
     }
 
     nimcp_mutex_lock(&g_bbb_mutex);
-    g_bbb_initialized = false;
+    nimcp_atomic_store_bool(&g_bbb_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
     nimcp_mutex_unlock(&g_bbb_mutex);
     nimcp_mutex_destroy(&g_bbb_mutex);
 
@@ -68,7 +75,7 @@ void bbb_helpers_shutdown(void)
 
 bool bbb_helpers_is_initialized(void)
 {
-    return g_bbb_initialized;
+    return nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE);
 }
 
 //=============================================================================
@@ -82,7 +89,7 @@ bool bbb_register_module(const char* module_name, bbb_module_type_t type)
     }
 
     // Auto-initialize if not already done
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         if (!bbb_helpers_init()) {
             return false;
         }
@@ -108,7 +115,7 @@ bool bbb_unregister_module(const char* module_name)
 
 bool bbb_check_pointer(const void* ptr, const char* function_name)
 {
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         bbb_helpers_init();
     }
 
@@ -126,7 +133,7 @@ bool bbb_check_pointer(const void* ptr, const char* function_name)
 
 bool bbb_check_string(const char* str, size_t max_len, const char* function_name)
 {
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         bbb_helpers_init();
     }
 
@@ -160,7 +167,7 @@ bool bbb_check_string(const char* str, size_t max_len, const char* function_name
 
 bool bbb_validate_range(int64_t value, int64_t min, int64_t max, const char* function_name)
 {
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         bbb_helpers_init();
     }
 
@@ -178,7 +185,7 @@ bool bbb_validate_range(int64_t value, int64_t min, int64_t max, const char* fun
 
 bool bbb_validate_range_u(uint64_t value, uint64_t min, uint64_t max, const char* function_name)
 {
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         bbb_helpers_init();
     }
 
@@ -196,7 +203,7 @@ bool bbb_validate_range_u(uint64_t value, uint64_t min, uint64_t max, const char
 
 bool bbb_validate_network_data(const void* data, size_t length, const char* function_name)
 {
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         bbb_helpers_init();
     }
 
@@ -222,7 +229,7 @@ bool bbb_validate_network_data(const void* data, size_t length, const char* func
 bool bbb_validate_buffer_access(const void* buffer, size_t offset, size_t access_size,
                                 size_t buffer_size, const char* function_name)
 {
-    if (!g_bbb_initialized) {
+    if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         bbb_helpers_init();
     }
 

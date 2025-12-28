@@ -18,6 +18,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_atomic.h"
 
 #include <math.h>
 #include <string.h>
@@ -82,7 +84,8 @@ struct nimcp_autodiff_ctx_s {
 
 static nimcp_tensor_stats_t g_stats = {0};
 static nimcp_mutex_t g_stats_lock = NIMCP_MUTEX_INITIALIZER;
-static bool g_initialized = false;
+static nimcp_platform_once_t g_tensor_init_once = NIMCP_PLATFORM_ONCE_INIT;
+static nimcp_atomic_bool_t g_initialized = {0};
 
 //=============================================================================
 // Helper Functions - Validation
@@ -226,25 +229,30 @@ static void flat_to_indices(
 // Lifecycle Functions
 //=============================================================================
 
+/**
+ * @brief Internal initialization called via nimcp_platform_once
+ */
+static void tensor_init_internal(void)
+{
+    memset(&g_stats, 0, sizeof(g_stats));
+    nimcp_atomic_store_bool(&g_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
+    LOG_INFO(LOG_MODULE, "Tensor subsystem initialized");
+}
+
 int nimcp_tensor_init(void)
 {
-    if (g_initialized) return NIMCP_TENSOR_OK;
-
-    memset(&g_stats, 0, sizeof(g_stats));
-    g_initialized = true;
-
-    LOG_INFO(LOG_MODULE, "Tensor subsystem initialized");
+    nimcp_platform_once(&g_tensor_init_once, tensor_init_internal);
     return NIMCP_TENSOR_OK;
 }
 
 void nimcp_tensor_shutdown(void)
 {
-    if (!g_initialized) return;
+    if (!nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) return;
 
     LOG_INFO(LOG_MODULE, "Tensor subsystem shutdown - stats: created=%lu, destroyed=%lu, mem=%zu bytes",
              g_stats.tensors_created, g_stats.tensors_destroyed, g_stats.memory_current);
 
-    g_initialized = false;
+    nimcp_atomic_store_bool(&g_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
 }
 
 //=============================================================================

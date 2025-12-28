@@ -12,6 +12,8 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +32,7 @@ static deadlock_detector_stats_t g_stats = {0};
 static tracked_mutex_t* g_mutex_table[MAX_TRACKED_MUTEXES];
 static lock_dependency_t g_thread_deps[MAX_THREADS];
 static pthread_mutex_t g_detector_mutex = PTHREAD_MUTEX_INITIALIZER;
-static bool g_initialized = false;
+static volatile bool g_initialized = false;  // volatile + mutex for thread safety
 static uint32_t g_next_order = 0;
 
 //=============================================================================

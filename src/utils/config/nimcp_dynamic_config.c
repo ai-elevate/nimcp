@@ -34,6 +34,8 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_rwlock.h"
+#include "utils/platform/nimcp_platform_once.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,7 +91,7 @@ static nimcp_mutex_t g_callback_lock = NIMCP_MUTEX_INITIALIZER;
 static char g_config_path[MAX_PATH_LENGTH] = {0};
 static config_stats_t g_stats = {0};
 static uint32_t g_next_callback_id = 1;
-static bool g_initialized = false;
+static nimcp_atomic_bool_t g_initialized = {0};
 
 //=============================================================================
 // Forward Declarations
@@ -415,7 +417,7 @@ bool config_init(const char* config_path) {
         return false;
     }
 
-    if (g_initialized) {
+    if (nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         LOG_MODULE_WARN("config", "config_init: Already initialized");
         return false;
     }
@@ -461,7 +463,7 @@ bool config_init(const char* config_path) {
     signal_handler_set_reload_callback(config_reload_callback);
     LOG_MODULE_DEBUG("config", "Registered reload callback with signal handler");
 
-    g_initialized = true;
+    nimcp_atomic_store_bool(&g_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_MODULE_INFO("config", "Config initialized successfully (version %u, %zu entries)",
                    g_stats.config_version, hash_table_size(g_config_table));
 
@@ -469,7 +471,7 @@ bool config_init(const char* config_path) {
 }
 
 void config_shutdown(void) {
-    if (!g_initialized) {
+    if (!nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return;
     }
 
@@ -510,7 +512,7 @@ void config_shutdown(void) {
     // Unregister from signal handler
     signal_handler_set_reload_callback(NULL);
 
-    g_initialized = false;
+    nimcp_atomic_store_bool(&g_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_MODULE_INFO("config", "Config system shutdown complete");
 }
 
