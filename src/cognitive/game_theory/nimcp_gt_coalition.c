@@ -334,6 +334,12 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
         return NULL;
     }
 
+    // Validate player count doesn't exceed bitmask capacity (32-bit coalitions)
+    // This is a hard limit due to uint32_t coalition bitmask representation
+    if (config->num_players > 32) {
+        return NULL;  // Coalition bitmask overflow: uint32_t can only represent 32 players
+    }
+
     nimcp_coalition_game_t game = nimcp_calloc(1, sizeof(struct nimcp_coalition_game_struct));
     if (!game) {
         return NULL;

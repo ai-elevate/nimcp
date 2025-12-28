@@ -35,6 +35,8 @@
 #include "middleware/training/nimcp_lr_scheduler.h"                // LR schedulers
 #include "middleware/training/nimcp_training_callbacks.h"          // Training callbacks
 #include "plasticity/adaptive/nimcp_adaptive.h"                    // Adaptive network
+#include "utils/platform/nimcp_platform_once.h"                    // Thread-safe init
+#include "utils/thread/nimcp_atomic.h"                             // Atomic operations
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -80,7 +82,9 @@ struct nimcp_brain_snapshot_handle {
 //=============================================================================
 
 static char g_last_error[256] = "No error";
-static bool g_initialized = false;
+static nimcp_atomic_bool_t g_initialized = {0};  // Thread-safe initialized flag
+static nimcp_platform_once_t g_init_once = NIMCP_PLATFORM_ONCE_INIT;
+static nimcp_status_t g_init_result = NIMCP_OK;  // Result of init (set by once callback)
 
 //=============================================================================
 // Version Functions
@@ -113,13 +117,11 @@ const char* nimcp_get_error(void) {
 // Initialization
 //=============================================================================
 
-nimcp_status_t nimcp_init(void) {
+/**
+ * @brief Internal initialization function called via nimcp_platform_once
+ */
+static void nimcp_init_internal(void) {
     LOG_INFO("Initializing NIMCP library version %s", NIMCP_VERSION_STRING);
-
-    if (g_initialized) {
-        LOG_DEBUG("NIMCP already initialized, skipping");
-        return NIMCP_OK;
-    }
 
     // Initialize memory tracking (unified memory management)
     LOG_DEBUG("Initializing memory tracking system");
@@ -132,7 +134,8 @@ nimcp_status_t nimcp_init(void) {
         LOG_ERROR("Failed to initialize bio-async system");
         nimcp_memory_cleanup();
         set_error("Failed to initialize bio-async system");
-        return NIMCP_ERROR;
+        g_init_result = NIMCP_ERROR;
+        return;
     }
 
     // Initialize bio-async router (message routing for modules)
@@ -142,23 +145,35 @@ nimcp_status_t nimcp_init(void) {
         nimcp_bio_async_shutdown();
         nimcp_memory_cleanup();
         set_error("Failed to initialize bio-async router");
-        return NIMCP_ERROR;
+        g_init_result = NIMCP_ERROR;
+        return;
     }
 
     // Initialize COW cache system
     LOG_DEBUG("Initializing COW cache system");
     nimcp_cache_init();
 
-    g_initialized = true;
+    nimcp_atomic_store_bool(&g_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     set_error("No error");
     LOG_INFO("NIMCP library initialized successfully");
-    return NIMCP_OK;
+    g_init_result = NIMCP_OK;
+}
+
+nimcp_status_t nimcp_init(void) {
+    // Thread-safe one-time initialization
+    nimcp_platform_once(&g_init_once, nimcp_init_internal);
+
+    if (nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+        return g_init_result;
+    }
+
+    return g_init_result;
 }
 
 void nimcp_shutdown(void) {
     LOG_INFO("Shutting down NIMCP library");
 
-    if (!g_initialized) {
+    if (!nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         LOG_DEBUG("NIMCP not initialized, nothing to shutdown");
         return;
     }
@@ -183,7 +198,7 @@ void nimcp_shutdown(void) {
     LOG_DEBUG("Cleaning up memory tracking");
     nimcp_memory_cleanup();
 
-    g_initialized = false;
+    nimcp_atomic_store_bool(&g_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_INFO("NIMCP library shutdown complete");
 }
 
