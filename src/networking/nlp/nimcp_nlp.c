@@ -420,6 +420,13 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
     }
     node->burst_buffer_size = NLP_STEALTH_PACKET_SIZE * 64;
 
+    // Initialize cryptographic subsystem
+    if (nlp_crypto_init(node) != 0) {
+        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to initialize crypto subsystem");
+        nlp_node_destroy(node);
+        return NULL;
+    }
+
     // Bio-async integration - use existing global context or register new
     if (g_nlp_bio_ctx) {
         node->bio_module_ctx = g_nlp_bio_ctx;
@@ -446,6 +453,9 @@ void nlp_node_destroy(nlp_node_t node) {
     if (node->running) {
         nlp_node_stop(node);
     }
+
+    // Clean up crypto subsystem
+    nlp_crypto_shutdown(node);
 
     // Clean up bio-async context if any
     node->bio_module_ctx = NULL;

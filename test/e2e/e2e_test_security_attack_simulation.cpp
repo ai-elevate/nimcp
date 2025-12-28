@@ -120,7 +120,7 @@ TEST_F(SecurityAttackSimulationE2ETest, FullBrainLifecycleWithSecurity) {
     E2E_PIPELINE_START("Full Brain Lifecycle with BBB Security");
 
     // Stage 1: Create brain with security enabled
-    E2E_STAGE_BEGIN("Create brain with security", 200);
+    E2E_STAGE_BEGIN("Create brain with security", 500);
 
     // Create brain using standard API
     brain_t brain = brain_create("security_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION,
