@@ -403,7 +403,7 @@ nimcp_result_t nimcp_cascade_update_telemetry(
             event.node_id = system->node_id;
             event.prev_state = old_state;
             event.new_state = new_state;
-            event.severity = (new_state == HEALTH_FAILING) ? SEVERITY_MAJOR : SEVERITY_MODERATE;
+            event.severity = (new_state == HEALTH_FAILING) ? FAILURE_SEVERITY_MAJOR : FAILURE_SEVERITY_MODERATE;
             event.timestamp_us = get_time_us();
             snprintf(event.description, sizeof(event.description),
                      "Health degraded to %s", nimcp_cascade_health_state_string(new_state));
@@ -546,7 +546,7 @@ nimcp_result_t nimcp_cascade_predict_failure(
         prediction->failure_predicted = true;
         prediction->confidence = 1.0;
         prediction->time_to_failure_us = 0;
-        prediction->severity = SEVERITY_CATASTROPHIC;
+        prediction->severity = FAILURE_SEVERITY_CATASTROPHIC;
         strncpy(prediction->cause, "System already failed", sizeof(prediction->cause) - 1);
     }
     /* Failing state - imminent failure */
@@ -554,7 +554,7 @@ nimcp_result_t nimcp_cascade_predict_failure(
         prediction->failure_predicted = true;
         prediction->confidence = 0.85;
         prediction->time_to_failure_us = 60000000;  /* ~1 minute */
-        prediction->severity = SEVERITY_CRITICAL;
+        prediction->severity = FAILURE_SEVERITY_CRITICAL;
         strncpy(prediction->cause, "Critical resource exhaustion", sizeof(prediction->cause) - 1);
     }
     /* Degraded state - potential failure */
@@ -562,7 +562,7 @@ nimcp_result_t nimcp_cascade_predict_failure(
         prediction->failure_predicted = true;
         prediction->confidence = 0.6;
         prediction->time_to_failure_us = 300000000;  /* ~5 minutes */
-        prediction->severity = SEVERITY_MAJOR;
+        prediction->severity = FAILURE_SEVERITY_MAJOR;
 
         if (telemetry->cpu_usage > 0.85) {
             strncpy(prediction->cause, "High CPU usage trend", sizeof(prediction->cause) - 1);
@@ -579,7 +579,7 @@ nimcp_result_t nimcp_cascade_predict_failure(
         prediction->failure_predicted = true;
         prediction->confidence = system->last_anomaly.anomaly_score;
         prediction->time_to_failure_us = 600000000;  /* ~10 minutes */
-        prediction->severity = SEVERITY_MODERATE;
+        prediction->severity = FAILURE_SEVERITY_MODERATE;
         snprintf(prediction->cause, sizeof(prediction->cause),
                  "Anomaly in %s", system->last_anomaly.metric_name);
     }

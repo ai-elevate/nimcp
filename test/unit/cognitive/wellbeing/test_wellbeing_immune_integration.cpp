@@ -301,7 +301,7 @@ TEST(WellbeingImmuneUnit, SystemHealth_AffectsSeverity)
 
     // If system health is very low, distress should be critical
     if (stats.system_health < 0.3f) {
-        EXPECT_EQ(assessment.severity, SEVERITY_CRITICAL);
+        EXPECT_EQ(assessment.severity, DISTRESS_SEVERITY_CRITICAL);
         EXPECT_GT(assessment.distress_score, 0.8f);
     }
 

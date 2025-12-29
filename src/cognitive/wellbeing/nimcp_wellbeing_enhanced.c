@@ -697,7 +697,7 @@ static int update_homeostasis(enhanced_wellbeing_system_t* system, uint64_t delt
     }
 
     /* Update time in distress/flourishing */
-    if (system->current_distress.severity >= SEVERITY_MODERATE) {
+    if (system->current_distress.severity >= DISTRESS_SEVERITY_MODERATE) {
         homeo->time_in_distress_ms += delta_ms;
     } else {
         homeo->time_in_distress_ms = 0;
@@ -714,7 +714,7 @@ static int update_homeostasis(enhanced_wellbeing_system_t* system, uint64_t delt
         float lr = config->setpoint_learning_rate;
 
         /* Gradually adapt setpoint toward current baseline */
-        if (system->current_distress.severity == SEVERITY_NORMAL) {
+        if (system->current_distress.severity == DISTRESS_SEVERITY_NORMAL) {
             homeo->baseline_wellbeing =
                 lerp(homeo->baseline_wellbeing, system->current_wellbeing_score, lr);
             homeo->wellbeing_setpoint =
@@ -1189,15 +1189,15 @@ int enhanced_wellbeing_update(
 
     /* Update severity based on score */
     if (system->current_distress.distress_score < 0.2f) {
-        system->current_distress.severity = SEVERITY_NORMAL;
+        system->current_distress.severity = DISTRESS_SEVERITY_NORMAL;
     } else if (system->current_distress.distress_score < 0.4f) {
-        system->current_distress.severity = SEVERITY_MILD;
+        system->current_distress.severity = DISTRESS_SEVERITY_MILD;
     } else if (system->current_distress.distress_score < 0.6f) {
-        system->current_distress.severity = SEVERITY_MODERATE;
+        system->current_distress.severity = DISTRESS_SEVERITY_MODERATE;
     } else if (system->current_distress.distress_score < 0.8f) {
-        system->current_distress.severity = SEVERITY_SEVERE;
+        system->current_distress.severity = DISTRESS_SEVERITY_SEVERE;
     } else {
-        system->current_distress.severity = SEVERITY_CRITICAL;
+        system->current_distress.severity = DISTRESS_SEVERITY_CRITICAL;
     }
 
     /* Update wellbeing scores */
@@ -1240,7 +1240,7 @@ int enhanced_wellbeing_update(
 
     /* Update statistics */
     system->stats.total_updates++;
-    if (system->current_distress.severity >= SEVERITY_MODERATE) {
+    if (system->current_distress.severity >= DISTRESS_SEVERITY_MODERATE) {
         system->stats.distress_events++;
     }
     if (system->eudaimonic.is_flourishing) {

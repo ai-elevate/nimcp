@@ -171,7 +171,7 @@ TEST_F(DiagnosticsIntegrationTest, AutoRecoveryForNumericalErrors) {
     diagnostic_result_t result;
     memset(&result, 0, sizeof(diagnostic_result_t));
     result.error_type = ERROR_TYPE_NAN_DETECTED;
-    result.severity = SEVERITY_ERROR;
+    result.severity = DIAG_SEVERITY_ERROR;
 
     // Generate recovery suggestions
     diagnostics_suggest_recovery(&result);

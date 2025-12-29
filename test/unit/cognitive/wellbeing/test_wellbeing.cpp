@@ -491,7 +491,7 @@ TEST(WellbeingBTree, GetEventsByTimeRange_ReturnsCorrectEvents)
     event3.timestamp = base_time + 10000;
     event3.event_type = "test_event_3";
     event3.description = "Third event";
-    event3.severity = SEVERITY_CRITICAL;
+    event3.severity = DISTRESS_SEVERITY_CRITICAL;
     event3.action_taken = "None";
     wellbeing_log_event(event3);
 
@@ -546,7 +546,7 @@ TEST(WellbeingBTree, GetEventsBySeverity_FiltersCorrectly)
     event_critical.timestamp = base_time + 2000;
     event_critical.event_type = "critical_issue";
     event_critical.description = "Critical distress";
-    event_critical.severity = SEVERITY_CRITICAL;
+    event_critical.severity = DISTRESS_SEVERITY_CRITICAL;
     event_critical.action_taken = "Intervention";
     wellbeing_log_event(event_critical);
 
@@ -562,7 +562,7 @@ TEST(WellbeingBTree, GetEventsBySeverity_FiltersCorrectly)
 
     // Should be ordered by timestamp
     EXPECT_EQ(results[0].severity, SEVERITY_MODERATE);
-    EXPECT_EQ(results[1].severity, SEVERITY_CRITICAL);
+    EXPECT_EQ(results[1].severity, DISTRESS_SEVERITY_CRITICAL);
 
     nimcp_free(results);
 }
@@ -602,7 +602,7 @@ TEST(WellbeingBTree, GetEventsByType_ReturnsMatchingEvents)
     event3.timestamp = base_time + 2000;
     event3.event_type = "distress_detected";
     event3.description = "Resource exhaustion";
-    event3.severity = SEVERITY_CRITICAL;
+    event3.severity = DISTRESS_SEVERITY_CRITICAL;
     event3.action_taken = "Relief attempted";
     wellbeing_log_event(event3);
 

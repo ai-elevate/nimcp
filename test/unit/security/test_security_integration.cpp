@@ -524,8 +524,8 @@ TEST_F(SecurityIntegrationFrameworkTest, EventTypeNames)
 
 TEST_F(SecurityIntegrationFrameworkTest, SeverityNames)
 {
-    EXPECT_STREQ(nimcp_sec_severity_name(NIMCP_SEC_SEVERITY_INFO), "INFO");
-    EXPECT_STREQ(nimcp_sec_severity_name(NIMCP_SEC_SEVERITY_CRITICAL), "CRITICAL");
+    EXPECT_STREQ(nimcp_sec_severity_name(NIMCP_SEC_DIAG_SEVERITY_INFO), "INFO");
+    EXPECT_STREQ(nimcp_sec_severity_name(NIMCP_SEC_DIAG_SEVERITY_CRITICAL), "CRITICAL");
 }
 
 //=============================================================================

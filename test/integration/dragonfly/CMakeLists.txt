@@ -139,3 +139,36 @@ gtest_discover_tests(integration_dragonfly_medulla
         LABELS "integration;dragonfly;medulla"
         TIMEOUT 180
 )
+
+# ============================================================================
+# Hunting Subsystem Integration Test
+# Tests energy, learning, collision, gaze, and other hunting modules together
+# ============================================================================
+add_executable(integration_dragonfly_hunting
+    test_dragonfly_hunting_integration.cpp
+)
+
+target_link_libraries(integration_dragonfly_hunting
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_dragonfly_hunting
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(integration_dragonfly_hunting PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_dragonfly_hunting
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;dragonfly;hunting"
+        TIMEOUT 180
+)

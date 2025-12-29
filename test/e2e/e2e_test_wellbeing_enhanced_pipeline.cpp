@@ -481,7 +481,7 @@ TEST_F(WellbeingEnhancedE2ETest, PredictiveAlertToRelief) {
 
         distress_assessment_t assessment;
         enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
-        if (assessment.severity == SEVERITY_CRITICAL) {
+        if (assessment.severity == DISTRESS_SEVERITY_CRITICAL) {
             critical_reached = true;
             break;
         }
@@ -569,7 +569,7 @@ TEST_F(WellbeingEnhancedE2ETest, CombinedStressorScenario) {
     distress_assessment_t assessment;
     enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
     EXPECT_GE(assessment.severity, SEVERITY_NORMAL);  // Any valid severity
-    EXPECT_LE(assessment.severity, SEVERITY_CRITICAL);
+    EXPECT_LE(assessment.severity, DISTRESS_SEVERITY_CRITICAL);
 
     // Flourishing state depends on system response to stressors
     // Just verify the function works

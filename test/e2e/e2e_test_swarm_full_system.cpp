@@ -289,7 +289,7 @@ TEST_F(SwarmE2ETest, ThreatResponseScenario) {
 
     // 4. Cascade prevention isolates affected agent
     nimcp_failure_event_t event = {
-        10, HEALTH_OPTIMAL, HEALTH_FAILING, SEVERITY_CRITICAL, 0, "threat_detected"
+        10, HEALTH_OPTIMAL, HEALTH_FAILING, DIAG_SEVERITY_CRITICAL, 0, "threat_detected"
     };
     nimcp_cascade_record_failure(swarm_system->cascade, &event);
 

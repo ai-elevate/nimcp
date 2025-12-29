@@ -93,7 +93,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, BrainGuidesPlanCreation) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_ERROR;
+    diagnosis.severity = DIAG_SEVERITY_ERROR;
     diagnosis.confidence = 0.9f;
 
     // ACT - Let brain analyze and suggest strategy
@@ -148,7 +148,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, BrainRecallsSimilarPastFailures) {
         diagnostic_result_t diagnosis;
         memset(&diagnosis, 0, sizeof(diagnosis));
         diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-        diagnosis.severity = SEVERITY_ERROR;
+        diagnosis.severity = DIAG_SEVERITY_ERROR;
 
         // Let brain analyze and learn
         brain_recovery_decision_t* decision = brain_recovery_decide_strategy(
@@ -170,7 +170,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, BrainRecallsSimilarPastFailures) {
     diagnostic_result_t new_diagnosis;
     memset(&new_diagnosis, 0, sizeof(new_diagnosis));
     new_diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    new_diagnosis.severity = SEVERITY_ERROR;
+    new_diagnosis.severity = DIAG_SEVERITY_ERROR;
 
     brain_recovery_decision_t* decision = brain_recovery_decide_strategy(
         brain_recovery, &new_diagnosis);
@@ -201,7 +201,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, CompleteRecoveryWorkflowWithBrain) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_GRADIENT_EXPLOSION;
-    diagnosis.severity = SEVERITY_ERROR;
+    diagnosis.severity = DIAG_SEVERITY_ERROR;
     diagnosis.confidence = 0.85f;
     snprintf(diagnosis.root_cause, sizeof(diagnosis.root_cause),
              "Learning rate too high causing gradient explosion");
@@ -254,7 +254,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, AdaptiveReplanningWithBrainFeedback) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_OUT_OF_MEMORY;
-    diagnosis.severity = SEVERITY_CRITICAL;
+    diagnosis.severity = DIAG_SEVERITY_CRITICAL;
 
     // Initial plan
     brain_recovery_decision_t* initial_decision = brain_recovery_decide_strategy(
@@ -314,7 +314,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, SequentialGoalAchievement) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_SEGFAULT;
-    diagnosis.severity = SEVERITY_CRITICAL;
+    diagnosis.severity = DIAG_SEVERITY_CRITICAL;
 
     recovery_goal_t goals[] = {
         GOAL_PREVENT_DATA_LOSS,      // First: save state
@@ -372,7 +372,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, RecoveryExecutionTimeBounds) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_WARNING;
+    diagnosis.severity = DIAG_SEVERITY_WARNING;
 
     // Set strict time limit
     decision_criteria_t criteria;
@@ -419,7 +419,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, LearningImprovesFutureDecisions) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_ERROR;
+    diagnosis.severity = DIAG_SEVERITY_ERROR;
 
     float initial_confidence = 0.0f;
     float final_confidence = 0.0f;
@@ -489,7 +489,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, HandleRapidSequentialRecoveries) {
         diagnostic_result_t diagnosis;
         memset(&diagnosis, 0, sizeof(diagnosis));
         diagnosis.error_type = (i % 2 == 0) ? ERROR_TYPE_NAN_DETECTED : ERROR_TYPE_INF_DETECTED;
-        diagnosis.severity = SEVERITY_ERROR;
+        diagnosis.severity = DIAG_SEVERITY_ERROR;
 
         brain_recovery_decision_t* decision = brain_recovery_decide_strategy(
             brain_recovery, &diagnosis);
@@ -534,7 +534,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, HandleComplexMultiStepRecovery) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_SEGFAULT;
-    diagnosis.severity = SEVERITY_CRITICAL;
+    diagnosis.severity = DIAG_SEVERITY_CRITICAL;
     diagnosis.confidence = 0.95f;
     snprintf(diagnosis.root_cause, sizeof(diagnosis.root_cause),
              "Catastrophic failure requiring checkpoint restore and reconfiguration");

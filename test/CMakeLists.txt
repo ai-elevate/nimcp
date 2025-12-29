@@ -1329,6 +1329,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/dragonfly")
 endif()
 
 # ============================================================================
+# Parietal Lobe Regression Tests
+# ============================================================================
+# WHAT: Regression tests for parietal lobe FEP integration
+# WHY:  Ensure FEP parameters, numerical stability, and performance remain stable
+# HOW:  Test fixed values, boundary conditions, and performance baselines
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/parietal")
+    message(STATUS "Adding parietal lobe regression tests...")
+    add_subdirectory(regression/parietal)
+endif()
+
+# ============================================================================
 # Extended Timeout Configuration (Applied AFTER all tests are registered)
 # ============================================================================
 # WHAT: Extended timeouts for heavyweight brain tests

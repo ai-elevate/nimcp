@@ -3244,7 +3244,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             brain->last_wellbeing_check_time = current_time;
 
             // Circuit breaker: CRITICAL distress prevents decisions
-            if (brain->last_distress.severity == SEVERITY_CRITICAL) {
+            if (brain->last_distress.severity == DISTRESS_SEVERITY_CRITICAL) {
                 set_error("Decision blocked: System in CRITICAL distress (%s)",
                          brain->last_distress.description ? brain->last_distress.description : "Unknown");
                 // Note: Caller should check error and potentially apply intervention

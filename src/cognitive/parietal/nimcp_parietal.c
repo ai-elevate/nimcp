@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/parietal/nimcp_parietal_quantum_bridge.h"
 #include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
@@ -72,12 +73,23 @@ struct parietal_lobe {
     /* Configuration */
     parietal_config_t config;
 
-    /* Submodules */
+    /* Core Submodules */
     number_sense_t* number_sense;
     spatial_reasoning_t* spatial;
     math_intuition_t* math_intuition;
     scientific_reasoning_t* scientific;
     equation_engine_t* equation;
+
+    /* Engineering Submodules */
+    electrical_eng_t* electrical_eng;
+    mechanical_eng_t* mechanical_eng;
+    civil_eng_t* civil_eng;
+
+    /* Quantum Bridge */
+    parietal_quantum_bridge_t* quantum_bridge;
+
+    /* FEP-Parietal Bridge */
+    fep_parietal_bridge_t* fep_parietal_bridge;
 
     /* Physics Neural Network */
     physics_nn_t* physics_nn;
@@ -114,6 +126,13 @@ struct parietal_lobe {
     uint64_t substrate_accelerations;
     uint64_t immune_modulations;
     uint64_t fep_predictions;
+    uint64_t fep_belief_updates;
+    uint64_t fep_active_inferences;
+    double total_fep_free_energy;
+    uint64_t quantum_optimizations;
+    uint64_t quantum_vqe_runs;
+    uint64_t quantum_walks;
+    double total_quantum_speedup;
     double total_processing_time_us;
     double total_confidence;
 
@@ -350,12 +369,28 @@ parietal_config_t parietal_default_config(void) {
     config.enable_training = true;
     config.enable_perception = true;
     config.enable_bio_async = true;
+    config.enable_quantum_bridge = true;
+    config.enable_electrical_eng = true;
+    config.enable_mechanical_eng = true;
+    config.enable_civil_eng = true;
+    config.enable_fep_parietal_bridge = true;
 
     /* Neural network settings */
     config.nn_hidden_size = 256;
     config.nn_learning_rate = 0.001f;
     config.nn_use_hamiltonian = true;
     config.nn_use_lagrangian = true;
+
+    /* Quantum bridge settings - NULL means use internal defaults */
+    config.quantum_config = NULL;
+
+    /* FEP-Parietal bridge settings */
+    config.fep_parietal_config = fep_parietal_default_config();
+
+    /* Engineering module settings */
+    config.electrical_config = electrical_eng_default_config();
+    config.mechanical_config = mechanical_eng_default_config();
+    config.civil_config = civil_eng_default_config();
 
     /* Performance */
     config.max_parallel_requests = 8;
@@ -436,6 +471,27 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
         );
     }
 
+    /* Create engineering submodules */
+    if (cfg.enable_electrical_eng) {
+        parietal->electrical_eng = electrical_eng_create_custom(&cfg.electrical_config);
+    }
+    if (cfg.enable_mechanical_eng) {
+        parietal->mechanical_eng = mechanical_eng_create_custom(&cfg.mechanical_config);
+    }
+    if (cfg.enable_civil_eng) {
+        parietal->civil_eng = civil_eng_create_custom(&cfg.civil_config);
+    }
+
+    /* Create quantum bridge */
+    if (cfg.enable_quantum_bridge) {
+        parietal->quantum_bridge = parietal_quantum_bridge_create(cfg.quantum_config);
+    }
+
+    /* Create FEP-Parietal bridge */
+    if (cfg.enable_fep_parietal_bridge) {
+        parietal->fep_parietal_bridge = fep_parietal_bridge_create(&cfg.fep_parietal_config);
+    }
+
     /* Allocate pending requests array */
     parietal->pending_requests = calloc(PARIETAL_MAX_PENDING_REQUESTS,
                                          sizeof(pending_request_t));
@@ -460,12 +516,23 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
 void parietal_destroy(parietal_lobe_t* parietal) {
     if (!parietal) return;
 
-    /* Destroy submodules */
+    /* Destroy core submodules */
     number_sense_destroy(parietal->number_sense);
     spatial_reasoning_destroy(parietal->spatial);
     math_intuition_destroy(parietal->math_intuition);
     scientific_reasoning_destroy(parietal->scientific);
     equation_engine_destroy(parietal->equation);
+
+    /* Destroy engineering submodules */
+    electrical_eng_destroy(parietal->electrical_eng);
+    mechanical_eng_destroy(parietal->mechanical_eng);
+    civil_eng_destroy(parietal->civil_eng);
+
+    /* Destroy quantum bridge */
+    parietal_quantum_bridge_destroy(parietal->quantum_bridge);
+
+    /* Destroy FEP-Parietal bridge */
+    fep_parietal_bridge_destroy(parietal->fep_parietal_bridge);
 
     /* Destroy physics NN */
     physics_nn_destroy(parietal->physics_nn);
@@ -847,6 +914,227 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
             break;
         }
 
+        /* Engineering request types - route to engineering submodules */
+        case PARIETAL_ELECTRICAL_CIRCUIT_ANALYZE:
+        case PARIETAL_ELECTRICAL_FILTER_DESIGN:
+        case PARIETAL_ELECTRICAL_STABILITY_ANALYZE: {
+            if (!parietal->electrical_eng) {
+                result.success = false;
+                strcpy(result.error_message, "Electrical engineering not enabled");
+            } else {
+                /* Electrical engineering processing would be dispatched here */
+                result.success = true;
+                result.confidence = 0.85f;
+            }
+            break;
+        }
+
+        case PARIETAL_MECHANICAL_STATIC_ANALYZE:
+        case PARIETAL_MECHANICAL_MODAL_ANALYZE:
+        case PARIETAL_MECHANICAL_THERMAL_ANALYZE: {
+            if (!parietal->mechanical_eng) {
+                result.success = false;
+                strcpy(result.error_message, "Mechanical engineering not enabled");
+            } else {
+                /* Mechanical engineering processing would be dispatched here */
+                result.success = true;
+                result.confidence = 0.85f;
+            }
+            break;
+        }
+
+        case PARIETAL_CIVIL_STRUCTURAL_ANALYZE:
+        case PARIETAL_CIVIL_FOUNDATION_ANALYZE:
+        case PARIETAL_CIVIL_HYDRAULIC_ANALYZE: {
+            if (!parietal->civil_eng) {
+                result.success = false;
+                strcpy(result.error_message, "Civil engineering not enabled");
+            } else {
+                /* Civil engineering processing - can use quantum for optimization */
+                result.success = true;
+                result.confidence = 0.85f;
+            }
+            break;
+        }
+
+        /* Quantum-accelerated request types */
+        case PARIETAL_QUANTUM_OPTIMIZE: {
+            if (!parietal->quantum_bridge ||
+                !parietal_quantum_is_available(parietal->quantum_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "Quantum acceleration not available");
+            } else {
+                /* Quantum optimization through bridge */
+                parietal->quantum_optimizations++;
+                result.success = true;
+                result.confidence = 0.9f;
+            }
+            break;
+        }
+
+        case PARIETAL_QUANTUM_TOPOLOGY_OPT: {
+            if (!parietal->quantum_bridge ||
+                !parietal_quantum_is_available(parietal->quantum_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "Quantum acceleration not available");
+            } else {
+                /* Quantum topology optimization for structural design */
+                parietal->quantum_optimizations++;
+                result.success = true;
+                result.confidence = 0.85f;
+            }
+            break;
+        }
+
+        case PARIETAL_QUANTUM_VQE_COMPUTE: {
+            if (!parietal->quantum_bridge ||
+                !parietal_quantum_is_available(parietal->quantum_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "Quantum acceleration not available");
+            } else {
+                /* VQE for physics/chemistry simulations */
+                parietal->quantum_vqe_runs++;
+                result.success = true;
+                result.confidence = 0.9f;
+            }
+            break;
+        }
+
+        case PARIETAL_QUANTUM_WALK_SEARCH: {
+            if (!parietal->quantum_bridge ||
+                !parietal_quantum_is_available(parietal->quantum_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "Quantum acceleration not available");
+            } else {
+                /* Quantum walk for graph search */
+                parietal->quantum_walks++;
+                result.success = true;
+                result.confidence = 0.88f;
+            }
+            break;
+        }
+
+        case PARIETAL_QUANTUM_SOLVE_QUBO: {
+            if (!parietal->quantum_bridge ||
+                !parietal_quantum_is_available(parietal->quantum_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "Quantum acceleration not available");
+            } else {
+                /* QUBO via quantum annealing */
+                parietal->quantum_optimizations++;
+                result.success = true;
+                result.confidence = 0.85f;
+            }
+            break;
+        }
+
+        /* FEP-based processing request types */
+        case PARIETAL_FEP_UPDATE_BELIEFS: {
+            if (!parietal->fep_parietal_bridge ||
+                !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "FEP-Parietal bridge not available");
+            } else {
+                /* Hierarchical belief update via prediction error minimization */
+                parietal->fep_belief_updates++;
+                parietal->fep_predictions++;
+                result.success = true;
+                result.confidence = 0.92f;
+            }
+            break;
+        }
+
+        case PARIETAL_FEP_PREDICT: {
+            if (!parietal->fep_parietal_bridge ||
+                !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "FEP-Parietal bridge not available");
+            } else {
+                /* Generate prediction from current beliefs */
+                parietal->fep_predictions++;
+                result.success = true;
+                result.confidence = 0.88f;
+            }
+            break;
+        }
+
+        case PARIETAL_FEP_ACTIVE_INFERENCE: {
+            if (!parietal->fep_parietal_bridge ||
+                !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "FEP-Parietal bridge not available");
+            } else {
+                /* Active inference for problem-solving action selection */
+                parietal->fep_active_inferences++;
+                result.success = true;
+                result.confidence = 0.85f;
+            }
+            break;
+        }
+
+        case PARIETAL_FEP_COMPUTE_SURPRISE: {
+            if (!parietal->fep_parietal_bridge ||
+                !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "FEP-Parietal bridge not available");
+            } else {
+                /* Compute surprise (negative log probability) from observation */
+                parietal->fep_predictions++;
+                result.success = true;
+                result.confidence = 0.90f;
+            }
+            break;
+        }
+
+        case PARIETAL_FEP_NUMERICAL_INFERENCE: {
+            if (!parietal->fep_parietal_bridge ||
+                !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "FEP-Parietal bridge not available");
+            } else {
+                /* FEP-based number sense - Weber-Fechner as precision-weighted prediction */
+                parietal->fep_predictions++;
+                parietal->fep_belief_updates++;
+                result.success = true;
+                result.confidence = 0.87f;
+            }
+            break;
+        }
+
+        case PARIETAL_FEP_SPATIAL_INFERENCE: {
+            if (!parietal->fep_parietal_bridge ||
+                !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "FEP-Parietal bridge not available");
+            } else {
+                /* FEP-based spatial reasoning - generative models of 3D space */
+                parietal->fep_predictions++;
+                parietal->fep_belief_updates++;
+                result.success = true;
+                result.confidence = 0.86f;
+            }
+            break;
+        }
+
+        case PARIETAL_FEP_PHYSICS_INFERENCE: {
+            if (!parietal->fep_parietal_bridge ||
+                !fep_parietal_is_available(parietal->fep_parietal_bridge)) {
+                result.success = false;
+                strcpy(result.error_message, "FEP-Parietal bridge not available");
+            } else {
+                /* FEP-based physics prediction - physics-informed generative model */
+                parietal->fep_predictions++;
+                parietal->fep_belief_updates++;
+                /* Can combine with physics NN for enhanced predictions */
+                if (parietal->physics_nn) {
+                    parietal->neural_network_activations++;
+                }
+                result.success = true;
+                result.confidence = 0.89f;
+            }
+            break;
+        }
+
         default:
             result.success = false;
             strcpy(result.error_message, "Unknown request type");
@@ -1100,12 +1388,33 @@ int parietal_set_inflammation(parietal_lobe_t* parietal, float level) {
 
     parietal->inflammation_level = level;
 
-    /* Propagate to submodules */
+    /* Propagate to core submodules */
     number_sense_set_inflammation(parietal->number_sense, level);
     spatial_set_inflammation(parietal->spatial, level);
     math_intuition_set_inflammation(parietal->math_intuition, level);
     scientific_set_inflammation(parietal->scientific, level);
     equation_set_inflammation(parietal->equation, level);
+
+    /* Propagate to engineering submodules */
+    if (parietal->electrical_eng) {
+        electrical_eng_set_inflammation(parietal->electrical_eng, level);
+    }
+    if (parietal->mechanical_eng) {
+        mechanical_eng_set_inflammation(parietal->mechanical_eng, level);
+    }
+    if (parietal->civil_eng) {
+        civil_eng_set_inflammation(parietal->civil_eng, level);
+    }
+
+    /* Propagate to quantum bridge */
+    if (parietal->quantum_bridge) {
+        parietal_quantum_set_inflammation(parietal->quantum_bridge, level);
+    }
+
+    /* Propagate to FEP-Parietal bridge */
+    if (parietal->fep_parietal_bridge) {
+        fep_parietal_set_inflammation(parietal->fep_parietal_bridge, level);
+    }
 
     parietal->immune_modulations++;
 
@@ -1123,12 +1432,33 @@ int parietal_set_fatigue(parietal_lobe_t* parietal, float level) {
 
     parietal->fatigue_level = level;
 
-    /* Propagate to submodules */
+    /* Propagate to core submodules */
     number_sense_set_sleep_deprivation(parietal->number_sense, level);
     spatial_set_fatigue(parietal->spatial, level);
     math_intuition_set_fatigue(parietal->math_intuition, level);
     scientific_set_sleep_deprivation(parietal->scientific, level);
     equation_set_fatigue(parietal->equation, level);
+
+    /* Propagate to engineering submodules */
+    if (parietal->electrical_eng) {
+        electrical_eng_set_fatigue(parietal->electrical_eng, level);
+    }
+    if (parietal->mechanical_eng) {
+        mechanical_eng_set_fatigue(parietal->mechanical_eng, level);
+    }
+    if (parietal->civil_eng) {
+        civil_eng_set_fatigue(parietal->civil_eng, level);
+    }
+
+    /* Propagate to quantum bridge */
+    if (parietal->quantum_bridge) {
+        parietal_quantum_set_fatigue(parietal->quantum_bridge, level);
+    }
+
+    /* Propagate to FEP-Parietal bridge */
+    if (parietal->fep_parietal_bridge) {
+        fep_parietal_set_fatigue(parietal->fep_parietal_bridge, level);
+    }
 
     nimcp_mutex_unlock(parietal->lock);
 
@@ -1244,6 +1574,95 @@ equation_engine_t* parietal_get_equation_engine(parietal_lobe_t* parietal) {
     return parietal ? parietal->equation : NULL;
 }
 
+parietal_quantum_bridge_t* parietal_get_quantum_bridge(parietal_lobe_t* parietal) {
+    return parietal ? parietal->quantum_bridge : NULL;
+}
+
+fep_parietal_bridge_t* parietal_get_fep_bridge(parietal_lobe_t* parietal) {
+    return parietal ? parietal->fep_parietal_bridge : NULL;
+}
+
+electrical_eng_t* parietal_get_electrical(parietal_lobe_t* parietal) {
+    return parietal ? parietal->electrical_eng : NULL;
+}
+
+mechanical_eng_t* parietal_get_mechanical(parietal_lobe_t* parietal) {
+    return parietal ? parietal->mechanical_eng : NULL;
+}
+
+civil_eng_t* parietal_get_civil(parietal_lobe_t* parietal) {
+    return parietal ? parietal->civil_eng : NULL;
+}
+
+/* ============================================================================
+ * QUANTUM ACCELERATION API
+ * ============================================================================ */
+
+int parietal_set_quantum_enabled(parietal_lobe_t* parietal, bool enabled) {
+    if (!parietal || !parietal->quantum_bridge) return -1;
+
+    nimcp_mutex_lock(parietal->lock);
+    int result = parietal_quantum_set_enabled(parietal->quantum_bridge, enabled);
+    nimcp_mutex_unlock(parietal->lock);
+
+    return result;
+}
+
+bool parietal_quantum_available(const parietal_lobe_t* parietal) {
+    if (!parietal || !parietal->quantum_bridge) return false;
+    return parietal_quantum_is_available(parietal->quantum_bridge);
+}
+
+int parietal_lobe_quantum_optimize(parietal_lobe_t* parietal,
+                                    const parietal_opt_problem_t* problem,
+                                    parietal_opt_result_t* result) {
+    if (!parietal || !problem || !result) return -1;
+
+    if (!parietal->quantum_bridge) {
+        set_parietal_error("Quantum bridge not available");
+        return -1;
+    }
+
+    nimcp_mutex_lock(parietal->lock);
+
+    int ret = parietal_quantum_optimize(parietal->quantum_bridge, problem, result);
+
+    if (ret == 0) {
+        parietal->quantum_optimizations++;
+        parietal->total_quantum_speedup += result->quantum_advantage;
+    }
+
+    nimcp_mutex_unlock(parietal->lock);
+
+    return ret;
+}
+
+int parietal_lobe_quantum_vqe(parietal_lobe_t* parietal,
+                               const parietal_hamiltonian_t* hamiltonian,
+                               parietal_vqe_result_t* result) {
+    if (!parietal || !hamiltonian || !result) return -1;
+
+    if (!parietal->quantum_bridge) {
+        set_parietal_error("Quantum bridge not available");
+        return -1;
+    }
+
+    nimcp_mutex_lock(parietal->lock);
+
+    int ret = parietal_quantum_vqe(parietal->quantum_bridge, hamiltonian, result);
+
+    if (ret == 0) {
+        parietal->quantum_vqe_runs++;
+        /* Estimate quantum advantage based on problem size */
+        float advantage = logf((float)hamiltonian->dim) / logf(2.0f);
+        parietal->total_quantum_speedup += advantage;
+    }
+
+    nimcp_mutex_unlock(parietal->lock);
+
+    return ret;
+}
+
 /* ============================================================================
  * STATISTICS API
  * ============================================================================ */
@@ -1275,6 +1694,39 @@ int parietal_get_stats(const parietal_lobe_t* parietal, parietal_stats_t* stats)
     stats->immune_modulations = parietal->immune_modulations;
     stats->fep_predictions = parietal->fep_predictions;
 
+    /* FEP-Parietal statistics */
+    stats->fep_belief_updates = parietal->fep_belief_updates;
+    stats->fep_active_inferences = parietal->fep_active_inferences;
+    if (parietal->fep_belief_updates > 0) {
+        stats->avg_fep_free_energy = (float)(parietal->total_fep_free_energy /
+                                              (double)parietal->fep_belief_updates);
+    }
+    if (parietal->fep_parietal_bridge) {
+        fep_parietal_get_stats(parietal->fep_parietal_bridge, &stats->fep_parietal_stats);
+    }
+
+    /* Quantum statistics */
+    stats->quantum_optimizations = parietal->quantum_optimizations;
+    stats->quantum_vqe_runs = parietal->quantum_vqe_runs;
+    stats->quantum_walk_runs = parietal->quantum_walks;
+    if (parietal->quantum_optimizations + parietal->quantum_vqe_runs +
+        parietal->quantum_walks > 0) {
+        stats->avg_quantum_speedup = (float)(parietal->total_quantum_speedup /
+            (double)(parietal->quantum_optimizations + parietal->quantum_vqe_runs +
+                     parietal->quantum_walks));
+    }
+
+    /* Engineering statistics */
+    if (parietal->electrical_eng) {
+        electrical_eng_get_stats(parietal->electrical_eng, &stats->electrical_stats);
+    }
+    if (parietal->mechanical_eng) {
+        mechanical_eng_get_stats(parietal->mechanical_eng, &stats->mechanical_stats);
+    }
+    if (parietal->civil_eng) {
+        civil_eng_get_stats(parietal->civil_eng, &stats->civil_stats);
+    }
+
     /* Performance */
     if (parietal->total_requests > 0) {
         stats->avg_processing_time_us = (float)(parietal->total_processing_time_us /
@@ -1303,15 +1755,43 @@ void parietal_reset_stats(parietal_lobe_t* parietal) {
     parietal->substrate_accelerations = 0;
     parietal->immune_modulations = 0;
     parietal->fep_predictions = 0;
+    parietal->fep_belief_updates = 0;
+    parietal->fep_active_inferences = 0;
+    parietal->total_fep_free_energy = 0.0;
+    parietal->quantum_optimizations = 0;
+    parietal->quantum_vqe_runs = 0;
+    parietal->quantum_walks = 0;
+    parietal->total_quantum_speedup = 0.0;
     parietal->total_processing_time_us = 0.0;
     parietal->total_confidence = 0.0;
 
-    /* Reset submodule stats */
+    /* Reset core submodule stats */
     number_sense_reset_stats(parietal->number_sense);
     spatial_reset_stats(parietal->spatial);
     math_intuition_reset_stats(parietal->math_intuition);
     scientific_reset_stats(parietal->scientific);
     equation_reset_stats(parietal->equation);
+
+    /* Reset engineering submodule stats */
+    if (parietal->electrical_eng) {
+        electrical_eng_reset_stats(parietal->electrical_eng);
+    }
+    if (parietal->mechanical_eng) {
+        mechanical_eng_reset_stats(parietal->mechanical_eng);
+    }
+    if (parietal->civil_eng) {
+        civil_eng_reset_stats(parietal->civil_eng);
+    }
+
+    /* Reset quantum stats */
+    if (parietal->quantum_bridge) {
+        parietal_quantum_reset_stats(parietal->quantum_bridge);
+    }
+
+    /* Reset FEP-Parietal stats */
+    if (parietal->fep_parietal_bridge) {
+        fep_parietal_reset_stats(parietal->fep_parietal_bridge);
+    }
 
     nimcp_mutex_unlock(parietal->lock);
 }

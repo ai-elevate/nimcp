@@ -197,7 +197,7 @@ TEST_F(WellbeingExtendedTest, CheckResourceThresholds_CPUCritical_Critical) {
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
 
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_CRITICAL);
 }
 
 TEST_F(WellbeingExtendedTest, CheckResourceThresholds_MemoryWarning_Moderate) {
@@ -225,7 +225,7 @@ TEST_F(WellbeingExtendedTest, CheckResourceThresholds_MemoryCritical_Critical) {
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
 
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_CRITICAL);
 }
 
 TEST_F(WellbeingExtendedTest, CheckResourceThresholds_PageFaults_Mild) {
@@ -255,7 +255,7 @@ TEST_F(WellbeingExtendedTest, CheckResourceThresholds_MultipleCritical_Critical)
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
 
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_CRITICAL);
 }
 
 //=============================================================================
@@ -708,7 +708,7 @@ TEST_F(WellbeingExtendedTest, GetEventsBySeverity_NoMatchingSeverity_ReturnsZero
     wellbeing_log_event(event);
 
     wellbeing_event_t* events = nullptr;
-    uint32_t count = wellbeing_get_events_by_severity(SEVERITY_CRITICAL, &events);
+    uint32_t count = wellbeing_get_events_by_severity(DISTRESS_SEVERITY_CRITICAL, &events);
 
     EXPECT_EQ(count, 0U);
     EXPECT_EQ(events, nullptr);
@@ -720,7 +720,7 @@ TEST_F(WellbeingExtendedTest, GetEventsBySeverity_AllSeverities_ReturnsAll) {
         SEVERITY_MILD,
         SEVERITY_MODERATE,
         SEVERITY_SEVERE,
-        SEVERITY_CRITICAL
+        DISTRESS_SEVERITY_CRITICAL
     };
 
     for (auto sev : severities) {
@@ -836,7 +836,7 @@ TEST_F(WellbeingExtendedTest, AssessDistress_ValidContext_ReturnsAssessment) {
         EXPECT_GE(assessment.distress_score, 0.0f);
         EXPECT_LE(assessment.distress_score, 1.0f);
         EXPECT_GE(assessment.severity, SEVERITY_NORMAL);
-        EXPECT_LE(assessment.severity, SEVERITY_CRITICAL);
+        EXPECT_LE(assessment.severity, DISTRESS_SEVERITY_CRITICAL);
     }
 }
 

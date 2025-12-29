@@ -473,7 +473,7 @@ brain_t brain_create_custom(const brain_config_t* config)
     brain->last_wellbeing_check_time = 0;
     memset(&brain->last_distress, 0, sizeof(distress_assessment_t));
     brain->last_distress.type = DISTRESS_NONE;
-    brain->last_distress.severity = SEVERITY_NORMAL;
+    brain->last_distress.severity = DISTRESS_SEVERITY_NORMAL;
 
     // Simulation time tracking
     brain->current_time_us = 0;

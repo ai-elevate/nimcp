@@ -252,7 +252,7 @@ TEST_F(WellbeingRealTest, GetEventsBySeverity_FiltersBySeverity) {
     // Log events with various severities
     distress_severity_t severities[] = {
         SEVERITY_NORMAL, SEVERITY_MILD, SEVERITY_MODERATE,
-        SEVERITY_SEVERE, SEVERITY_CRITICAL
+        SEVERITY_SEVERE, DISTRESS_SEVERITY_CRITICAL
     };
 
     for (auto sev : severities) {

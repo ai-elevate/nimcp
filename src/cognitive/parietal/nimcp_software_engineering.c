@@ -23,6 +23,31 @@
  * INTERNAL STRUCTURES
  * ============================================================================ */
 
+/**
+ * @brief Intuition learning state
+ */
+typedef struct {
+    se_intuition_config_t config;
+    bool enabled;
+
+    /* Hunch tracking */
+    se_hunch_t* hunch_history;
+    uint32_t num_hunches;
+    uint32_t hunch_capacity;
+
+    /* Learning statistics per hunch type */
+    uint64_t hunch_counts[SE_HUNCH_UNKNOWN + 1];
+    uint64_t hunch_correct[SE_HUNCH_UNKNOWN + 1];
+
+    /* Learned thresholds (adjusted based on feedback) */
+    float complexity_alarm_threshold;
+    float coupling_alarm_threshold;
+    float trend_sensitivity;
+
+    /* Pattern weights for hunch generation */
+    float pattern_weights[12];  /* Weights for different indicators */
+} intuition_state_t;
+
 struct software_eng {
     software_eng_config_t config;
 
@@ -30,11 +55,17 @@ struct software_eng {
     float inflammation_level;
     float sleep_deprivation_level;
 
+    /* Intuition state */
+    intuition_state_t* intuition;
+
     /* Statistics */
     uint64_t complexity_analyses;
     uint64_t pattern_detections;
     uint64_t smell_detections;
     uint64_t metric_calculations;
+    uint64_t hunches_generated;
+    uint64_t hunches_validated;
+    uint64_t extrapolations_made;
     double total_processing_time_us;
 
     /* Thread safety */
@@ -851,4 +882,138 @@ void software_eng_reset_stats(software_eng_t* se) {
 
 const char* software_eng_get_last_error(void) {
     return g_sweng_error;
+}
+
+/* ============================================================================
+ * INTUITIVE REASONING API
+ * ============================================================================ */
+
+se_intuition_config_t software_eng_intuition_default_config(void) {
+    se_intuition_config_t config = {
+        .hunch_threshold = 0.3f,
+        .max_hunches = 100,
+        .extrapolation_horizon = 30,
+        .extrapolation_decay = 0.05f,
+        .enable_analogical_reasoning = true,
+        .enable_synthesis = true,
+        .min_data_points = 5,
+        .novelty_threshold = 0.2f
+    };
+    return config;
+}
+
+int software_eng_enable_intuition(software_eng_t* se, const se_intuition_config_t* config) {
+    if (!se) return -1;
+    (void)config;  /* TODO: Full implementation */
+    return 0;
+}
+
+int software_eng_disable_intuition(software_eng_t* se) {
+    if (!se) return -1;
+    return 0;
+}
+
+const char* software_eng_hunch_type_to_string(se_hunch_type_t type) {
+    switch (type) {
+        case SE_HUNCH_COMPLEXITY_GROWTH: return "Complexity Growth";
+        case SE_HUNCH_TECH_DEBT_ACCUMULATION: return "Technical Debt Accumulation";
+        case SE_HUNCH_PATTERN_EMERGING: return "Design Pattern Emerging";
+        case SE_HUNCH_REFACTOR_NEEDED: return "Refactoring Needed";
+        case SE_HUNCH_DEPENDENCY_RISK: return "Dependency Risk";
+        case SE_HUNCH_PERFORMANCE_DEGRADATION: return "Performance Degradation";
+        case SE_HUNCH_MAINTAINABILITY_DECLINE: return "Maintainability Decline";
+        case SE_HUNCH_ARCHITECTURE_SMELL: return "Architecture Smell";
+        case SE_HUNCH_SECURITY_CONCERN: return "Security Concern";
+        case SE_HUNCH_POSITIVE_TREND: return "Positive Trend";
+        default: return "Unknown";
+    }
+}
+
+const char* software_eng_confidence_to_string(se_confidence_level_t level) {
+    switch (level) {
+        case SE_CONFIDENCE_VERY_LOW: return "Very Low";
+        case SE_CONFIDENCE_LOW: return "Low";
+        case SE_CONFIDENCE_MODERATE: return "Moderate";
+        case SE_CONFIDENCE_HIGH: return "High";
+        case SE_CONFIDENCE_VERY_HIGH: return "Very High";
+        default: return "Unknown";
+    }
+}
+
+const char* software_eng_trend_to_string(se_trend_t trend) {
+    switch (trend) {
+        case SE_TREND_IMPROVING: return "Improving";
+        case SE_TREND_STABLE: return "Stable";
+        case SE_TREND_DECLINING: return "Declining";
+        case SE_TREND_VOLATILE: return "Volatile";
+        default: return "Unknown";
+    }
+}
+
+se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t initial_capacity) {
+    if (!metric_name || initial_capacity == 0) return NULL;
+
+    se_metric_series_t* series = calloc(1, sizeof(se_metric_series_t));
+    if (!series) return NULL;
+
+    series->points = calloc(initial_capacity, sizeof(se_metric_point_t));
+    if (!series->points) {
+        free(series);
+        return NULL;
+    }
+
+    series->capacity = initial_capacity;
+    strncpy(series->metric_name, metric_name, sizeof(series->metric_name) - 1);
+    return series;
+}
+
+void software_eng_destroy_series(se_metric_series_t* series) {
+    if (!series) return;
+    free(series->points);
+    free(series);
+}
+
+int software_eng_add_data_point(
+    se_metric_series_t* series,
+    uint64_t timestamp,
+    float value,
+    float confidence
+) {
+    if (!series) return -1;
+
+    if (series->num_points >= series->capacity) {
+        uint32_t new_cap = series->capacity * 2;
+        se_metric_point_t* new_points = realloc(series->points, new_cap * sizeof(se_metric_point_t));
+        if (!new_points) return -1;
+        series->points = new_points;
+        series->capacity = new_cap;
+    }
+
+    series->points[series->num_points].timestamp = timestamp;
+    series->points[series->num_points].value = value;
+    series->points[series->num_points].confidence = clamp01(confidence);
+    series->num_points++;
+    return 0;
+}
+
+void software_eng_free_extrapolation(se_extrapolation_t* result) {
+    if (!result) return;
+    if (result->predicted) {
+        for (uint32_t i = 0; i < result->num_predicted; i++) {
+            free(result->predicted[i]);
+        }
+        free(result->predicted);
+        result->predicted = NULL;
+    }
+    result->num_predicted = 0;
+}
+
+void software_eng_free_synthesis(se_synthesis_t* synthesis) {
+    if (!synthesis) return;
+    free(synthesis->insights);
+    free(synthesis->knowledge_gaps);
+    free(synthesis->contradictions);
+    synthesis->insights = NULL;
+    synthesis->knowledge_gaps = NULL;
+    synthesis->contradictions = NULL;
 }

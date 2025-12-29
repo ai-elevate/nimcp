@@ -356,7 +356,7 @@ TEST_F(GlobalWorkspaceImmuneTest, AnomalyDetection_CorruptedContent) {
     for (uint32_t i = 0; i < count; i++) {
         if (anomalies[i].type == GW_ANOMALY_CORRUPTED_CONTENT) {
             found_corruption = true;
-            EXPECT_EQ(anomalies[i].severity, GW_ANOMALY_SEVERITY_CRITICAL);
+            EXPECT_EQ(anomalies[i].severity, GW_ANOMALY_DIAG_SEVERITY_CRITICAL);
             break;
         }
     }
@@ -438,7 +438,7 @@ TEST_F(GlobalWorkspaceImmuneTest, ImmuneTrigger_SeverityMapsToAntigenSeverity) {
         GW_ANOMALY_SEVERITY_MILD,
         GW_ANOMALY_SEVERITY_MODERATE,
         GW_ANOMALY_SEVERITY_SEVERE,
-        GW_ANOMALY_SEVERITY_CRITICAL
+        GW_ANOMALY_DIAG_SEVERITY_CRITICAL
     };
 
     for (int i = 0; i < 4; i++) {
@@ -569,7 +569,7 @@ TEST_F(GlobalWorkspaceImmuneTest, UtilityFunctions_StringConversion) {
     EXPECT_STREQ(gw_anomaly_severity_to_string(GW_ANOMALY_SEVERITY_MILD), "MILD");
     EXPECT_STREQ(gw_anomaly_severity_to_string(GW_ANOMALY_SEVERITY_MODERATE), "MODERATE");
     EXPECT_STREQ(gw_anomaly_severity_to_string(GW_ANOMALY_SEVERITY_SEVERE), "SEVERE");
-    EXPECT_STREQ(gw_anomaly_severity_to_string(GW_ANOMALY_SEVERITY_CRITICAL), "CRITICAL");
+    EXPECT_STREQ(gw_anomaly_severity_to_string(GW_ANOMALY_DIAG_SEVERITY_CRITICAL), "CRITICAL");
 }
 
 /* ============================================================================

@@ -62,7 +62,10 @@ typedef struct predictive_network_s* predictive_network_t;  // Opaque pointer
 typedef struct mirror_neurons_system* mirror_neurons_t;  // Opaque pointer
 
 // Phase 7.2: Parietal Lobe (Mathematical/Scientific Reasoning)
+#ifndef NIMCP_PARIETAL_LOBE_T_DEFINED
+#define NIMCP_PARIETAL_LOBE_T_DEFINED
 typedef struct parietal_lobe parietal_lobe_t;  // Opaque pointer
+#endif
 
 // Phase 7.3: Dragonfly (Bio-inspired Target Tracking and Interception)
 typedef struct dragonfly_system_s dragonfly_system_t;  // Opaque pointer

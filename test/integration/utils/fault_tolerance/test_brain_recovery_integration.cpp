@@ -51,7 +51,7 @@ protected:
     diagnostic_result_t* create_nan_diagnosis() {
         auto* diag = (diagnostic_result_t*)calloc(1, sizeof(diagnostic_result_t));
         diag->error_type = ERROR_TYPE_NAN_DETECTED;
-        diag->severity = SEVERITY_ERROR;
+        diag->severity = DIAG_SEVERITY_ERROR;
         strncpy(diag->root_cause, "NaN detected in layer 3 weights",
                 sizeof(diag->root_cause) - 1);
         strncpy(diag->symptoms, "Training divergence, NaN propagation",
@@ -63,7 +63,7 @@ protected:
     diagnostic_result_t* create_memory_diagnosis() {
         auto* diag = (diagnostic_result_t*)calloc(1, sizeof(diagnostic_result_t));
         diag->error_type = ERROR_TYPE_OUT_OF_MEMORY;
-        diag->severity = SEVERITY_CRITICAL;
+        diag->severity = DIAG_SEVERITY_CRITICAL;
         strncpy(diag->root_cause, "Memory allocation failed",
                 sizeof(diag->root_cause) - 1);
         strncpy(diag->symptoms, "OOM during batch processing",

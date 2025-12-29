@@ -253,7 +253,7 @@ TEST_F(RecoveryExecutiveTest, CreatePlanFromDiagnostic) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_ERROR;
+    diagnosis.severity = DIAG_SEVERITY_ERROR;
     diagnosis.confidence = 0.9f;
 
     // ACT
@@ -301,7 +301,7 @@ TEST_F(RecoveryExecutiveTest, CreatePlanForDifferentErrorTypes) {
         diagnostic_result_t diagnosis;
         memset(&diagnosis, 0, sizeof(diagnosis));
         diagnosis.error_type = error_types[i];
-        diagnosis.severity = SEVERITY_ERROR;
+        diagnosis.severity = DIAG_SEVERITY_ERROR;
         diagnosis.confidence = 0.9f;
 
         recovery_plan_t* plan = recovery_executive_create_plan(
@@ -374,7 +374,7 @@ TEST_F(RecoveryExecutiveTest, ExecuteSimplePlanSuccessfully) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_WARNING;
+    diagnosis.severity = DIAG_SEVERITY_WARNING;
 
     recovery_plan_t* plan = recovery_executive_create_plan(
         exec, &diagnosis, GOAL_RESTORE_FUNCTIONALITY);
@@ -562,7 +562,7 @@ TEST_F(RecoveryExecutiveTest, ReplanWithDifferentGoal) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_SEGFAULT;
-    diagnosis.severity = SEVERITY_CRITICAL;
+    diagnosis.severity = DIAG_SEVERITY_CRITICAL;
 
     recovery_plan_t* original_plan = recovery_executive_create_plan(
         exec, &diagnosis, GOAL_RESTORE_PERFORMANCE);
@@ -844,7 +844,7 @@ TEST_F(RecoveryExecutiveTest, HandleMaximumPlanSteps) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_SEGFAULT;  // Complex error
-    diagnosis.severity = SEVERITY_CRITICAL;
+    diagnosis.severity = DIAG_SEVERITY_CRITICAL;
 
     // ACT
     recovery_plan_t* plan = recovery_executive_create_plan(
@@ -874,7 +874,7 @@ TEST_F(RecoveryExecutiveTest, HandleEmptyPlan) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NONE;  // No error
-    diagnosis.severity = SEVERITY_INFO;
+    diagnosis.severity = DIAG_SEVERITY_INFO;
 
     // ACT
     recovery_plan_t* plan = recovery_executive_create_plan(

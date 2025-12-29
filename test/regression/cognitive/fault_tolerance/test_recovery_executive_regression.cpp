@@ -75,7 +75,7 @@ TEST_F(RecoveryExecutiveRegressionTest, PlanCreationPerformance) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_WARNING;
+    diagnosis.severity = DIAG_SEVERITY_WARNING;
 
     // ACT - Create many plans and measure total time
     const int iterations = 100;
@@ -149,7 +149,7 @@ TEST_F(RecoveryExecutiveRegressionTest, PlanExecutionPerformance) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_WARNING;
+    diagnosis.severity = DIAG_SEVERITY_WARNING;
 
     recovery_plan_t* plan = recovery_executive_create_plan(
         exec, &diagnosis, GOAL_RESTORE_FUNCTIONALITY);
@@ -185,7 +185,7 @@ TEST_F(RecoveryExecutiveRegressionTest, NaNDetectionPlanCorrectness) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_ERROR;
+    diagnosis.severity = DIAG_SEVERITY_ERROR;
 
     // ACT
     recovery_plan_t* plan = recovery_executive_create_plan(
@@ -279,7 +279,7 @@ TEST_F(RecoveryExecutiveRegressionTest, ReplanningPreservesContext) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_GRADIENT_EXPLOSION;
-    diagnosis.severity = SEVERITY_CRITICAL;
+    diagnosis.severity = DIAG_SEVERITY_CRITICAL;
     snprintf(diagnosis.root_cause, sizeof(diagnosis.root_cause),
              "Learning rate 0.1 too high");
 
@@ -355,7 +355,7 @@ TEST_F(RecoveryExecutiveRegressionTest, MaximumStepCountBoundary) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_SEGFAULT;  // Complex error
-    diagnosis.severity = SEVERITY_CRITICAL;
+    diagnosis.severity = DIAG_SEVERITY_CRITICAL;
 
     // ACT
     recovery_plan_t* plan = recovery_executive_create_plan(
@@ -529,7 +529,7 @@ TEST_F(RecoveryExecutiveRegressionTest, NaNRecoverySuccessRate) {
         diagnostic_result_t diagnosis;
         memset(&diagnosis, 0, sizeof(diagnosis));
         diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-        diagnosis.severity = SEVERITY_ERROR;
+        diagnosis.severity = DIAG_SEVERITY_ERROR;
 
         recovery_plan_t* plan = recovery_executive_create_plan(
             exec, &diagnosis, GOAL_RESTORE_FUNCTIONALITY);
@@ -563,7 +563,7 @@ TEST_F(RecoveryExecutiveRegressionTest, PlanQualityMetrics) {
     diagnostic_result_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
     diagnosis.error_type = ERROR_TYPE_NAN_DETECTED;
-    diagnosis.severity = SEVERITY_WARNING;
+    diagnosis.severity = DIAG_SEVERITY_WARNING;
 
     // ACT
     recovery_plan_t* plan = recovery_executive_create_plan(

@@ -250,7 +250,7 @@ TEST_F(WellbeingImmuneIntegrationTest, CytokineStormCriticalDistress) {
     wellbeing_immune_get_inflammation_state(bridge, &state);
 
     EXPECT_EQ(state.current_level, INFLAMMATION_STORM);
-    EXPECT_EQ(state.distress_severity, SEVERITY_CRITICAL);
+    EXPECT_EQ(state.distress_severity, DISTRESS_SEVERITY_CRITICAL);
     EXPECT_GT(state.distress_score, 0.9f);
 }
 
@@ -291,7 +291,7 @@ TEST_F(WellbeingImmuneIntegrationTest, InflammationToSeverityMappings) {
     EXPECT_EQ(wellbeing_immune_inflammation_to_severity(INFLAMMATION_SYSTEMIC),
               SEVERITY_SEVERE);
     EXPECT_EQ(wellbeing_immune_inflammation_to_severity(INFLAMMATION_STORM),
-              SEVERITY_CRITICAL);
+              DISTRESS_SEVERITY_CRITICAL);
 }
 
 /* ============================================================================

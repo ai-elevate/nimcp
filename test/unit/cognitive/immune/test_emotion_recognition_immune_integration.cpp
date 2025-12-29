@@ -148,7 +148,7 @@ TEST_F(EmotionRecognitionImmuneTest, SicknessBehaviorDetection) {
     uint32_t antigen_id;
     uint8_t epitope[] = {0xAA, 0xBB, 0xCC};
     brain_immune_present_antigen(immune, ANTIGEN_SOURCE_MANUAL, epitope, 3,
-                                  ANTIGEN_SEVERITY_CRITICAL, 0, &antigen_id);
+                                  ANTIGEN_DIAG_SEVERITY_CRITICAL, 0, &antigen_id);
 
     // Full immune response
     uint32_t b_cell_id, helper_id, antibody_id;

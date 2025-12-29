@@ -59,6 +59,12 @@
 #include "cognitive/parietal/nimcp_chemistry.h"
 #include "cognitive/parietal/nimcp_biology.h"
 #include "cognitive/parietal/nimcp_software_engineering.h"
+#include "cognitive/parietal/nimcp_electrical_engineering.h"
+#include "cognitive/parietal/nimcp_mechanical_engineering.h"
+#include "cognitive/parietal/nimcp_civil_engineering.h"
+/* NOTE: nimcp_parietal_quantum_bridge.h NOT included here to avoid circular deps */
+/* Forward declarations for quantum types are provided below */
+#include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -142,6 +148,38 @@ typedef struct perception_system_struct* perception_system_t;
 typedef struct sleep_system_struct* sleep_system_t;
 #endif
 
+/* Quantum bridge types - defined in nimcp_parietal_quantum_bridge.h */
+/* Forward declarations to avoid circular include */
+#ifndef NIMCP_PARIETAL_QUANTUM_BRIDGE_T_DEFINED
+#define NIMCP_PARIETAL_QUANTUM_BRIDGE_T_DEFINED
+typedef struct parietal_quantum_bridge parietal_quantum_bridge_t;
+#endif
+
+#ifndef NIMCP_PARIETAL_OPT_PROBLEM_T_DEFINED
+#define NIMCP_PARIETAL_OPT_PROBLEM_T_DEFINED
+typedef struct parietal_opt_problem_s parietal_opt_problem_t;
+#endif
+
+#ifndef NIMCP_PARIETAL_OPT_RESULT_T_DEFINED
+#define NIMCP_PARIETAL_OPT_RESULT_T_DEFINED
+typedef struct parietal_opt_result_s parietal_opt_result_t;
+#endif
+
+#ifndef NIMCP_PARIETAL_HAMILTONIAN_T_DEFINED
+#define NIMCP_PARIETAL_HAMILTONIAN_T_DEFINED
+typedef struct parietal_hamiltonian_s parietal_hamiltonian_t;
+#endif
+
+#ifndef NIMCP_PARIETAL_VQE_RESULT_T_DEFINED
+#define NIMCP_PARIETAL_VQE_RESULT_T_DEFINED
+typedef struct parietal_vqe_result_s parietal_vqe_result_t;
+#endif
+
+#ifndef NIMCP_PARIETAL_QUANTUM_CONFIG_T_DEFINED
+#define NIMCP_PARIETAL_QUANTUM_CONFIG_T_DEFINED
+typedef struct parietal_quantum_config_s parietal_quantum_config_t;
+#endif
+
 /* ============================================================================
  * CONSTANTS
  * ============================================================================ */
@@ -201,6 +239,33 @@ typedef enum {
     /* Physics NN */
     PARIETAL_PHYSICS_PREDICT,
     PARIETAL_LEARN_DYNAMICS,
+
+    /* Engineering Domains */
+    PARIETAL_ELECTRICAL_CIRCUIT_ANALYZE,
+    PARIETAL_ELECTRICAL_FILTER_DESIGN,
+    PARIETAL_ELECTRICAL_STABILITY_ANALYZE,
+    PARIETAL_MECHANICAL_STATIC_ANALYZE,
+    PARIETAL_MECHANICAL_MODAL_ANALYZE,
+    PARIETAL_MECHANICAL_THERMAL_ANALYZE,
+    PARIETAL_CIVIL_STRUCTURAL_ANALYZE,
+    PARIETAL_CIVIL_FOUNDATION_ANALYZE,
+    PARIETAL_CIVIL_HYDRAULIC_ANALYZE,
+
+    /* Quantum-Accelerated Processing */
+    PARIETAL_QUANTUM_OPTIMIZE,
+    PARIETAL_QUANTUM_TOPOLOGY_OPT,
+    PARIETAL_QUANTUM_VQE_COMPUTE,
+    PARIETAL_QUANTUM_WALK_SEARCH,
+    PARIETAL_QUANTUM_SOLVE_QUBO,
+
+    /* Free Energy Principle Processing */
+    PARIETAL_FEP_UPDATE_BELIEFS,        /**< Hierarchical belief update */
+    PARIETAL_FEP_PREDICT,               /**< Generate prediction from beliefs */
+    PARIETAL_FEP_ACTIVE_INFERENCE,      /**< Select action via active inference */
+    PARIETAL_FEP_COMPUTE_SURPRISE,      /**< Compute surprise from observation */
+    PARIETAL_FEP_NUMERICAL_INFERENCE,   /**< FEP-based number sense */
+    PARIETAL_FEP_SPATIAL_INFERENCE,     /**< FEP-based spatial reasoning */
+    PARIETAL_FEP_PHYSICS_INFERENCE,     /**< FEP-based physics prediction */
 
     PARIETAL_REQUEST_TYPE_COUNT
 } parietal_request_type_t;
@@ -362,12 +427,28 @@ typedef struct {
     bool enable_training;               /**< Enable training integration (default: true) */
     bool enable_perception;             /**< Enable perception integration (default: true) */
     bool enable_bio_async;              /**< Enable bio-async messaging (default: true) */
+    bool enable_quantum_bridge;         /**< Enable quantum acceleration (default: true) */
+    bool enable_electrical_eng;         /**< Enable electrical engineering (default: true) */
+    bool enable_mechanical_eng;         /**< Enable mechanical engineering (default: true) */
+    bool enable_civil_eng;              /**< Enable civil engineering (default: true) */
 
     /* Neural network settings */
     uint32_t nn_hidden_size;            /**< NN hidden layer size (default: 256) */
     float nn_learning_rate;             /**< NN learning rate (default: 0.001) */
     bool nn_use_hamiltonian;            /**< Use Hamiltonian structure (default: true) */
     bool nn_use_lagrangian;             /**< Use Lagrangian constraints (default: true) */
+
+    /* Quantum bridge settings */
+    parietal_quantum_config_t* quantum_config; /**< Quantum bridge configuration (owned pointer) */
+
+    /* FEP bridge settings */
+    bool enable_fep_parietal_bridge;    /**< Enable FEP processing (default: true) */
+    fep_parietal_config_t fep_parietal_config; /**< FEP-Parietal bridge config */
+
+    /* Engineering module settings */
+    ee_config_t electrical_config;      /**< Electrical engineering config */
+    me_config_t mechanical_config;      /**< Mechanical engineering config */
+    ce_config_t civil_config;           /**< Civil engineering config */
 
     /* Performance settings */
     uint32_t max_parallel_requests;     /**< Max parallel processing (default: 8) */
@@ -396,6 +477,23 @@ typedef struct {
     uint64_t substrate_accelerations;
     uint64_t immune_modulations;
     uint64_t fep_predictions;
+
+    /* FEP-Parietal statistics */
+    uint64_t fep_belief_updates;
+    uint64_t fep_active_inferences;
+    float avg_fep_free_energy;
+    fep_parietal_stats_t fep_parietal_stats;
+
+    /* Quantum statistics */
+    uint64_t quantum_optimizations;
+    uint64_t quantum_vqe_runs;
+    uint64_t quantum_walk_runs;
+    float avg_quantum_speedup;
+
+    /* Engineering statistics */
+    ee_stats_t electrical_stats;
+    me_stats_t mechanical_stats;
+    ce_stats_t civil_stats;
 
     /* Performance */
     float avg_processing_time_us;
@@ -866,6 +964,80 @@ scientific_reasoning_t* parietal_get_scientific(parietal_lobe_t* parietal);
  */
 equation_engine_t* parietal_get_equation_engine(parietal_lobe_t* parietal);
 
+/**
+ * @brief Get quantum bridge submodule
+ */
+parietal_quantum_bridge_t* parietal_get_quantum_bridge(parietal_lobe_t* parietal);
+
+/**
+ * @brief Get FEP-Parietal bridge submodule
+ */
+fep_parietal_bridge_t* parietal_get_fep_bridge(parietal_lobe_t* parietal);
+
+/**
+ * @brief Get electrical engineering submodule
+ */
+electrical_eng_t* parietal_get_electrical(parietal_lobe_t* parietal);
+
+/**
+ * @brief Get mechanical engineering submodule
+ */
+mechanical_eng_t* parietal_get_mechanical(parietal_lobe_t* parietal);
+
+/**
+ * @brief Get civil engineering submodule
+ */
+civil_eng_t* parietal_get_civil(parietal_lobe_t* parietal);
+
+/* ============================================================================
+ * QUANTUM ACCELERATION API
+ * ============================================================================ */
+
+/**
+ * @brief Enable/disable quantum acceleration globally
+ *
+ * @param parietal Parietal lobe handle
+ * @param enabled Enable flag
+ * @return 0 on success
+ */
+int parietal_set_quantum_enabled(parietal_lobe_t* parietal, bool enabled);
+
+/**
+ * @brief Check if quantum acceleration is available
+ *
+ * @param parietal Parietal lobe handle
+ * @return true if available
+ */
+bool parietal_quantum_available(const parietal_lobe_t* parietal);
+
+/**
+ * @brief Quantum-accelerated optimization (high-level wrapper)
+ *
+ * @param parietal Parietal lobe handle
+ * @param problem Optimization problem
+ * @param result Output result
+ * @return 0 on success
+ */
+int parietal_lobe_quantum_optimize(
+    parietal_lobe_t* parietal,
+    const parietal_opt_problem_t* problem,
+    parietal_opt_result_t* result
+);
+
+/**
+ * @brief Quantum VQE for physics simulation (high-level wrapper)
+ *
+ * @param parietal Parietal lobe handle
+ * @param hamiltonian System Hamiltonian
+ * @param result VQE result
+ * @return 0 on success
+ */
+int parietal_lobe_quantum_vqe(
+    parietal_lobe_t* parietal,
+    const parietal_hamiltonian_t* hamiltonian,
+    parietal_vqe_result_t* result
+);
+
 /* ============================================================================
  * STATISTICS API
  * ============================================================================ */
@@ -911,6 +1083,19 @@ typedef enum {
     BIO_MSG_PARIETAL_EQUATION,
     BIO_MSG_PARIETAL_PHYSICS,
     BIO_MSG_PARIETAL_RESULT,
+    /* Engineering domains */
+    BIO_MSG_PARIETAL_ELECTRICAL,
+    BIO_MSG_PARIETAL_MECHANICAL,
+    BIO_MSG_PARIETAL_CIVIL,
+    /* Quantum acceleration */
+    BIO_MSG_PARIETAL_QUANTUM_OPT,
+    BIO_MSG_PARIETAL_QUANTUM_VQE,
+    BIO_MSG_PARIETAL_QUANTUM_WALK,
+    /* FEP-based processing */
+    BIO_MSG_PARIETAL_FEP_BELIEF_UPDATE,
+    BIO_MSG_PARIETAL_FEP_PREDICT,
+    BIO_MSG_PARIETAL_FEP_ACTIVE_INFERENCE,
+    BIO_MSG_PARIETAL_FEP_SURPRISE,
 } bio_msg_parietal_t;
 
 /**

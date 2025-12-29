@@ -96,7 +96,7 @@ TEST_F(MentalHealthTest, CheckReturnsValidSeverity) {
 
     // Should return a valid severity level
     EXPECT_GE(severity, DISORDER_SEVERITY_NONE);
-    EXPECT_LE(severity, DISORDER_SEVERITY_CRITICAL);
+    EXPECT_LE(severity, DISORDER_DIAG_SEVERITY_CRITICAL);
 }
 
 // =============================================================================
@@ -123,8 +123,8 @@ TEST(MentalHealthUtilityTest, SeverityClassification) {
     EXPECT_EQ(mental_health_classify_severity(0.7f, &config), DISORDER_SEVERITY_SEVERE);
 
     // Test Critical
-    EXPECT_EQ(mental_health_classify_severity(0.8f, &config), DISORDER_SEVERITY_CRITICAL);
-    EXPECT_EQ(mental_health_classify_severity(1.0f, &config), DISORDER_SEVERITY_CRITICAL);
+    EXPECT_EQ(mental_health_classify_severity(0.8f, &config), DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_EQ(mental_health_classify_severity(1.0f, &config), DISORDER_DIAG_SEVERITY_CRITICAL);
 }
 
 TEST(MentalHealthUtilityTest, SeverityClassificationBoundaries) {
@@ -141,7 +141,7 @@ TEST(MentalHealthUtilityTest, SeverityClassificationBoundaries) {
     EXPECT_EQ(mental_health_classify_severity(0.60f, &config), DISORDER_SEVERITY_SEVERE);
 
     EXPECT_EQ(mental_health_classify_severity(0.79f, &config), DISORDER_SEVERITY_SEVERE);
-    EXPECT_EQ(mental_health_classify_severity(0.80f, &config), DISORDER_SEVERITY_CRITICAL);
+    EXPECT_EQ(mental_health_classify_severity(0.80f, &config), DISORDER_DIAG_SEVERITY_CRITICAL);
 }
 
 TEST(MentalHealthUtilityTest, CustomThresholds) {
@@ -155,7 +155,7 @@ TEST(MentalHealthUtilityTest, CustomThresholds) {
     EXPECT_EQ(mental_health_classify_severity(0.3f, &config), DISORDER_SEVERITY_MILD);
     EXPECT_EQ(mental_health_classify_severity(0.5f, &config), DISORDER_SEVERITY_MODERATE);
     EXPECT_EQ(mental_health_classify_severity(0.7f, &config), DISORDER_SEVERITY_SEVERE);
-    EXPECT_EQ(mental_health_classify_severity(0.9f, &config), DISORDER_SEVERITY_CRITICAL);
+    EXPECT_EQ(mental_health_classify_severity(0.9f, &config), DISORDER_DIAG_SEVERITY_CRITICAL);
 }
 
 // =============================================================================
@@ -362,7 +362,7 @@ TEST_F(MentalHealthTest, GetReport) {
 
     // Check that report is populated
     EXPECT_GE(report.primary_severity, DISORDER_SEVERITY_NONE);
-    EXPECT_LE(report.primary_severity, DISORDER_SEVERITY_CRITICAL);
+    EXPECT_LE(report.primary_severity, DISORDER_DIAG_SEVERITY_CRITICAL);
 
     EXPECT_GE(report.primary_disorder, DISORDER_SOCIOPATHY);
     EXPECT_LT(report.primary_disorder, DISORDER_COUNT);
@@ -409,7 +409,7 @@ TEST(MentalHealthUtilityTest, SeverityToString) {
     EXPECT_STREQ(severity_to_string(DISORDER_SEVERITY_MILD), "Mild");
     EXPECT_STREQ(severity_to_string(DISORDER_SEVERITY_MODERATE), "Moderate");
     EXPECT_STREQ(severity_to_string(DISORDER_SEVERITY_SEVERE), "Severe");
-    EXPECT_STREQ(severity_to_string(DISORDER_SEVERITY_CRITICAL), "Critical");
+    EXPECT_STREQ(severity_to_string(DISORDER_DIAG_SEVERITY_CRITICAL), "Critical");
 }
 
 TEST(MentalHealthUtilityTest, DisorderToString) {
@@ -518,7 +518,7 @@ TEST_F(MentalHealthTest, UpdateAndCheckCycle) {
         if (i % 100 == 0) {
             disorder_severity_t severity = mental_health_check(monitor, brain);
             EXPECT_GE(severity, DISORDER_SEVERITY_NONE);
-            EXPECT_LE(severity, DISORDER_SEVERITY_CRITICAL);
+            EXPECT_LE(severity, DISORDER_DIAG_SEVERITY_CRITICAL);
         }
     }
 }

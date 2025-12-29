@@ -215,8 +215,8 @@ TEST_F(WellbeingTest, SeverityLevel_Severe) {
 TEST_F(WellbeingTest, SeverityLevel_Critical) {
     distress_assessment_t assessment;
     memset(&assessment, 0, sizeof(assessment));
-    assessment.severity = SEVERITY_CRITICAL;
-    EXPECT_EQ(assessment.severity, SEVERITY_CRITICAL);
+    assessment.severity = DISTRESS_SEVERITY_CRITICAL;
+    EXPECT_EQ(assessment.severity, DISTRESS_SEVERITY_CRITICAL);
 }
 
 //=============================================================================
@@ -522,7 +522,7 @@ TEST_F(WellbeingTest, GetEventsBySeverity_AllLevels) {
     // Test each severity level
     distress_severity_t levels[] = {
         SEVERITY_NORMAL, SEVERITY_MILD, SEVERITY_MODERATE,
-        SEVERITY_SEVERE, SEVERITY_CRITICAL
+        SEVERITY_SEVERE, DISTRESS_SEVERITY_CRITICAL
     };
 
     for (auto level : levels) {
@@ -753,7 +753,7 @@ TEST_F(WellbeingTest, CheckResourceThresholds_CpuCritical) {
 
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_CRITICAL);
 }
 
 TEST_F(WellbeingTest, CheckResourceThresholds_MemoryWarning) {
@@ -781,7 +781,7 @@ TEST_F(WellbeingTest, CheckResourceThresholds_MemoryCritical) {
 
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_CRITICAL);
 }
 
 TEST_F(WellbeingTest, CheckResourceThresholds_PageFaults) {
@@ -933,7 +933,7 @@ TEST_F(WellbeingTest, EventLog_CircularBufferOverflow) {
 TEST_F(WellbeingTest, LogEvent_AllSeverityLevels) {
     distress_severity_t severities[] = {
         SEVERITY_NORMAL, SEVERITY_MILD, SEVERITY_MODERATE,
-        SEVERITY_SEVERE, SEVERITY_CRITICAL
+        SEVERITY_SEVERE, DISTRESS_SEVERITY_CRITICAL
     };
 
     for (auto severity : severities) {

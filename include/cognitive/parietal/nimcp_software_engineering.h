@@ -279,7 +279,155 @@ typedef struct {
     uint64_t smell_detections;              /**< Smell detections */
     uint64_t metric_calculations;           /**< Metric calculations */
     float avg_processing_time_us;           /**< Average processing time */
+    /* Intuitive reasoning stats */
+    uint64_t hunches_generated;             /**< Hunches/intuitions generated */
+    uint64_t hunches_validated;             /**< Hunches confirmed correct */
+    uint64_t extrapolations_made;           /**< Extrapolations performed */
+    float hunch_accuracy;                   /**< Historical hunch accuracy [0,1] */
 } software_eng_stats_t;
+
+/* ============================================================================
+ * INTUITIVE REASONING TYPES
+ * ============================================================================ */
+
+/**
+ * @brief Types of software engineering hunches
+ */
+typedef enum {
+    SE_HUNCH_COMPLEXITY_GROWTH,             /**< Code complexity will grow */
+    SE_HUNCH_TECH_DEBT_ACCUMULATION,        /**< Technical debt accumulating */
+    SE_HUNCH_PATTERN_EMERGING,              /**< Design pattern trying to emerge */
+    SE_HUNCH_REFACTOR_NEEDED,               /**< Refactoring opportunity detected */
+    SE_HUNCH_DEPENDENCY_RISK,               /**< Dependency becoming risky */
+    SE_HUNCH_PERFORMANCE_DEGRADATION,       /**< Performance will degrade */
+    SE_HUNCH_MAINTAINABILITY_DECLINE,       /**< Maintainability declining */
+    SE_HUNCH_ARCHITECTURE_SMELL,            /**< Architectural issue forming */
+    SE_HUNCH_SECURITY_CONCERN,              /**< Security issue intuited */
+    SE_HUNCH_POSITIVE_TREND,                /**< Code quality improving */
+    SE_HUNCH_UNKNOWN                        /**< Unclassified hunch */
+} se_hunch_type_t;
+
+/**
+ * @brief Confidence level for intuitive reasoning
+ */
+typedef enum {
+    SE_CONFIDENCE_VERY_LOW,                 /**< < 20% certainty - weak signal */
+    SE_CONFIDENCE_LOW,                      /**< 20-40% certainty - possible */
+    SE_CONFIDENCE_MODERATE,                 /**< 40-60% certainty - likely */
+    SE_CONFIDENCE_HIGH,                     /**< 60-80% certainty - probable */
+    SE_CONFIDENCE_VERY_HIGH                 /**< > 80% certainty - near certain */
+} se_confidence_level_t;
+
+/**
+ * @brief Extrapolation trend direction
+ */
+typedef enum {
+    SE_TREND_IMPROVING,                     /**< Getting better */
+    SE_TREND_STABLE,                        /**< No significant change */
+    SE_TREND_DECLINING,                     /**< Getting worse */
+    SE_TREND_VOLATILE,                      /**< Unpredictable swings */
+    SE_TREND_UNKNOWN                        /**< Cannot determine */
+} se_trend_t;
+
+/**
+ * @brief Software engineering hunch/intuition
+ */
+typedef struct {
+    se_hunch_type_t type;                   /**< Type of hunch */
+    float plausibility;                     /**< How reasonable [0,1] */
+    float urgency;                          /**< How urgent to address [0,1] */
+    float novelty;                          /**< How unexpected [0,1] */
+    se_confidence_level_t confidence;       /**< Confidence in hunch */
+    char description[256];                  /**< Human-readable description */
+    char reasoning[512];                    /**< Why this hunch was formed */
+    char suggestion[256];                   /**< Suggested action */
+    uint64_t timestamp;                     /**< When hunch was formed */
+} se_hunch_t;
+
+/**
+ * @brief Software metric data point for extrapolation
+ */
+typedef struct {
+    uint64_t timestamp;                     /**< When measured */
+    float value;                            /**< Metric value */
+    float confidence;                       /**< Measurement confidence [0,1] */
+} se_metric_point_t;
+
+/**
+ * @brief Metric time series for extrapolation
+ */
+typedef struct {
+    se_metric_point_t* points;              /**< Array of data points */
+    uint32_t num_points;                    /**< Number of points */
+    uint32_t capacity;                      /**< Allocated capacity */
+    char metric_name[64];                   /**< Name of the metric */
+} se_metric_series_t;
+
+/**
+ * @brief Extrapolation result
+ */
+typedef struct {
+    se_metric_point_t** predicted;          /**< Predicted future values */
+    uint32_t num_predicted;                 /**< Number of predictions */
+    se_trend_t trend;                       /**< Overall trend */
+    float trend_slope;                      /**< Rate of change */
+    float r_squared;                        /**< Fit quality [0,1] */
+    float extrapolation_confidence;         /**< Confidence in predictions [0,1] */
+    uint64_t validity_horizon;              /**< How far predictions are valid */
+    char interpretation[256];               /**< Human-readable interpretation */
+} se_extrapolation_t;
+
+/**
+ * @brief Software insight from pattern recognition
+ */
+typedef struct {
+    char title[128];                        /**< Insight title */
+    char description[512];                  /**< Detailed description */
+    float importance;                       /**< How important [0,1] */
+    float actionability;                    /**< How actionable [0,1] */
+    char action_items[3][128];              /**< Suggested actions */
+    uint32_t num_actions;                   /**< Number of action items */
+    se_confidence_level_t confidence;       /**< Confidence level */
+    char* related_code_paths;               /**< Affected code paths (comma-separated) */
+} se_insight_t;
+
+/**
+ * @brief Analogy between codebases or patterns
+ */
+typedef struct {
+    char source_domain[128];                /**< Known/source pattern */
+    char target_domain[128];                /**< New/target situation */
+    char mapping[512];                      /**< How they correspond */
+    float mapping_strength;                 /**< Quality of analogy [0,1] */
+    char transferred_insight[256];          /**< Knowledge transferred */
+    char caveats[256];                      /**< Where analogy breaks down */
+} se_analogy_t;
+
+/**
+ * @brief Knowledge synthesis result
+ */
+typedef struct {
+    se_insight_t* insights;                 /**< Synthesized insights */
+    uint32_t num_insights;                  /**< Number of insights */
+    char* knowledge_gaps;                   /**< Identified gaps (comma-separated) */
+    char* contradictions;                   /**< Found contradictions */
+    float coherence;                        /**< How well pieces fit [0,1] */
+    char summary[512];                      /**< Overall synthesis summary */
+} se_synthesis_t;
+
+/**
+ * @brief Configuration for intuitive reasoning
+ */
+typedef struct {
+    float hunch_threshold;                  /**< Min plausibility to report [0,1] */
+    uint32_t max_hunches;                   /**< Max hunches to track */
+    uint32_t extrapolation_horizon;         /**< How far to extrapolate (days) */
+    float extrapolation_decay;              /**< Confidence decay rate per step */
+    bool enable_analogical_reasoning;       /**< Use analogy for transfer */
+    bool enable_synthesis;                  /**< Synthesize knowledge */
+    uint32_t min_data_points;               /**< Min points for extrapolation */
+    float novelty_threshold;                /**< Min novelty to report [0,1] */
+} se_intuition_config_t;
 
 /* ============================================================================
  * LIFECYCLE API
@@ -605,6 +753,385 @@ void software_eng_reset_stats(software_eng_t* se);
  * @return Thread-local error message
  */
 const char* software_eng_get_last_error(void);
+
+/* ============================================================================
+ * INTUITIVE REASONING API
+ * ============================================================================ */
+
+/**
+ * @brief Get default intuition configuration
+ *
+ * @return Default intuition config
+ */
+se_intuition_config_t software_eng_intuition_default_config(void);
+
+/**
+ * @brief Enable intuitive reasoning mode
+ *
+ * @param se Software engineering handle
+ * @param config Intuition configuration (NULL for defaults)
+ * @return 0 on success
+ */
+int software_eng_enable_intuition(software_eng_t* se, const se_intuition_config_t* config);
+
+/**
+ * @brief Disable intuitive reasoning mode
+ *
+ * @param se Software engineering handle
+ * @return 0 on success
+ */
+int software_eng_disable_intuition(software_eng_t* se);
+
+/* ============================================================================
+ * HUNCH GENERATION API
+ * ============================================================================ */
+
+/**
+ * @brief Form a hunch about code quality from metrics
+ *
+ * Uses pattern recognition and past experience to form an intuitive
+ * assessment that goes beyond raw metric analysis.
+ *
+ * @param se Software engineering handle
+ * @param metrics Current software metrics
+ * @param history Optional historical metrics (NULL if not available)
+ * @param history_count Number of historical entries
+ * @param hunch Output hunch
+ * @return 0 on success
+ */
+int software_eng_form_hunch(
+    software_eng_t* se,
+    const software_metrics_t* metrics,
+    const software_metrics_t* history,
+    uint32_t history_count,
+    se_hunch_t* hunch
+);
+
+/**
+ * @brief Form multiple hunches from comprehensive analysis
+ *
+ * @param se Software engineering handle
+ * @param metrics Current metrics
+ * @param structure Code structure
+ * @param graph Dependency graph (optional)
+ * @param hunches Output hunches array
+ * @param max_hunches Maximum hunches to generate
+ * @return Number of hunches generated, -1 on error
+ */
+int software_eng_form_hunches(
+    software_eng_t* se,
+    const software_metrics_t* metrics,
+    const code_structure_t* structure,
+    const dep_graph_t* graph,
+    se_hunch_t* hunches,
+    uint32_t max_hunches
+);
+
+/**
+ * @brief Validate a hunch against actual outcome
+ *
+ * Feeds back whether a hunch was correct to improve future intuitions.
+ *
+ * @param se Software engineering handle
+ * @param hunch The hunch that was made
+ * @param was_correct Whether the hunch turned out to be correct
+ * @param actual_outcome Description of what actually happened
+ * @return 0 on success
+ */
+int software_eng_validate_hunch(
+    software_eng_t* se,
+    const se_hunch_t* hunch,
+    bool was_correct,
+    const char* actual_outcome
+);
+
+/**
+ * @brief Get hunch type name
+ *
+ * @param type Hunch type
+ * @return Human-readable name
+ */
+const char* software_eng_hunch_type_to_string(se_hunch_type_t type);
+
+/**
+ * @brief Get confidence level name
+ *
+ * @param level Confidence level
+ * @return Human-readable name
+ */
+const char* software_eng_confidence_to_string(se_confidence_level_t level);
+
+/* ============================================================================
+ * EXTRAPOLATION API
+ * ============================================================================ */
+
+/**
+ * @brief Create metric time series
+ *
+ * @param metric_name Name of the metric
+ * @param initial_capacity Initial capacity
+ * @return Time series handle, or NULL on error
+ */
+se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t initial_capacity);
+
+/**
+ * @brief Destroy metric time series
+ *
+ * @param series Series to destroy
+ */
+void software_eng_destroy_series(se_metric_series_t* series);
+
+/**
+ * @brief Add data point to time series
+ *
+ * @param series Time series
+ * @param timestamp Timestamp
+ * @param value Metric value
+ * @param confidence Measurement confidence [0,1]
+ * @return 0 on success
+ */
+int software_eng_add_data_point(
+    se_metric_series_t* series,
+    uint64_t timestamp,
+    float value,
+    float confidence
+);
+
+/**
+ * @brief Extrapolate metric values into the future
+ *
+ * Uses trend analysis and learned patterns to predict future metric values.
+ * Confidence decreases with prediction distance.
+ *
+ * @param se Software engineering handle
+ * @param series Historical data points
+ * @param horizon_steps How many steps to predict
+ * @param result Output extrapolation result
+ * @return 0 on success
+ */
+int software_eng_extrapolate(
+    software_eng_t* se,
+    const se_metric_series_t* series,
+    uint32_t horizon_steps,
+    se_extrapolation_t* result
+);
+
+/**
+ * @brief Detect when extrapolation is breaking down
+ *
+ * Compares predicted values against actual to detect model failure.
+ *
+ * @param se Software engineering handle
+ * @param extrapolation Previous extrapolation
+ * @param actual_value Actual observed value
+ * @param actual_timestamp Timestamp of observation
+ * @return true if extrapolation has failed
+ */
+bool software_eng_extrapolation_failed(
+    software_eng_t* se,
+    const se_extrapolation_t* extrapolation,
+    float actual_value,
+    uint64_t actual_timestamp
+);
+
+/**
+ * @brief Free extrapolation result
+ *
+ * @param result Extrapolation to free
+ */
+void software_eng_free_extrapolation(se_extrapolation_t* result);
+
+/**
+ * @brief Get trend name
+ *
+ * @param trend Trend type
+ * @return Human-readable name
+ */
+const char* software_eng_trend_to_string(se_trend_t trend);
+
+/* ============================================================================
+ * INSIGHT & SYNTHESIS API
+ * ============================================================================ */
+
+/**
+ * @brief Generate insights from code analysis
+ *
+ * Synthesizes patterns, metrics, and hunches into actionable insights.
+ *
+ * @param se Software engineering handle
+ * @param metrics Current metrics
+ * @param patterns Detected patterns array
+ * @param num_patterns Number of patterns
+ * @param hunches Active hunches array
+ * @param num_hunches Number of hunches
+ * @param insights Output insights array
+ * @param max_insights Maximum insights to generate
+ * @return Number of insights generated, -1 on error
+ */
+int software_eng_generate_insights(
+    software_eng_t* se,
+    const software_metrics_t* metrics,
+    const pattern_result_t* patterns,
+    uint32_t num_patterns,
+    const se_hunch_t* hunches,
+    uint32_t num_hunches,
+    se_insight_t* insights,
+    uint32_t max_insights
+);
+
+/**
+ * @brief Synthesize knowledge from multiple sources
+ *
+ * Combines metrics, patterns, smells, and extrapolations into unified understanding.
+ *
+ * @param se Software engineering handle
+ * @param metrics Metrics array
+ * @param num_metrics Number of metric snapshots
+ * @param patterns Pattern results
+ * @param num_patterns Number of patterns
+ * @param smells Smell results
+ * @param num_smells Number of smells
+ * @param synthesis Output synthesis result
+ * @return 0 on success
+ */
+int software_eng_synthesize(
+    software_eng_t* se,
+    const software_metrics_t* metrics,
+    uint32_t num_metrics,
+    const pattern_result_t* patterns,
+    uint32_t num_patterns,
+    const smell_result_t* smells,
+    uint32_t num_smells,
+    se_synthesis_t* synthesis
+);
+
+/**
+ * @brief Free synthesis result
+ *
+ * @param synthesis Synthesis to free
+ */
+void software_eng_free_synthesis(se_synthesis_t* synthesis);
+
+/**
+ * @brief Identify knowledge gaps in current understanding
+ *
+ * @param se Software engineering handle
+ * @param synthesis Current synthesis
+ * @param gaps Output array of gap descriptions
+ * @param max_gaps Maximum gaps to identify
+ * @return Number of gaps identified
+ */
+int software_eng_identify_gaps(
+    software_eng_t* se,
+    const se_synthesis_t* synthesis,
+    char** gaps,
+    uint32_t max_gaps
+);
+
+/* ============================================================================
+ * ANALOGICAL REASONING API
+ * ============================================================================ */
+
+/**
+ * @brief Find analogy between current code and known patterns
+ *
+ * Uses structural mapping to find similar situations in known domains.
+ *
+ * @param se Software engineering handle
+ * @param structure Current code structure
+ * @param known_patterns Array of known pattern results
+ * @param num_known Number of known patterns
+ * @param analogy Output analogy
+ * @return 0 on success, -1 if no analogy found
+ */
+int software_eng_find_analogy(
+    software_eng_t* se,
+    const code_structure_t* structure,
+    const pattern_result_t* known_patterns,
+    uint32_t num_known,
+    se_analogy_t* analogy
+);
+
+/**
+ * @brief Transfer knowledge using analogy
+ *
+ * Applies insights from analogous domain to current situation.
+ *
+ * @param se Software engineering handle
+ * @param analogy The analogy to use
+ * @param source_insight Insight from source domain
+ * @param transferred Output transferred insight
+ * @return 0 on success
+ */
+int software_eng_transfer_knowledge(
+    software_eng_t* se,
+    const se_analogy_t* analogy,
+    const se_insight_t* source_insight,
+    se_insight_t* transferred
+);
+
+/* ============================================================================
+ * LEARNING & INTEGRATION API
+ * ============================================================================ */
+
+/**
+ * @brief Learn from analysis outcome
+ *
+ * Updates internal models based on whether predictions/hunches were correct.
+ *
+ * @param se Software engineering handle
+ * @param hunch Original hunch
+ * @param was_correct Whether it was correct
+ * @param feedback Additional feedback
+ * @return 0 on success
+ */
+int software_eng_learn_from_outcome(
+    software_eng_t* se,
+    const se_hunch_t* hunch,
+    bool was_correct,
+    const char* feedback
+);
+
+/**
+ * @brief Integrate new knowledge into intuition model
+ *
+ * @param se Software engineering handle
+ * @param insight New insight to integrate
+ * @return 0 on success
+ */
+int software_eng_integrate_knowledge(software_eng_t* se, const se_insight_t* insight);
+
+/**
+ * @brief Get intuition accuracy metrics
+ *
+ * @param se Software engineering handle
+ * @param accuracy Output overall accuracy [0,1]
+ * @param by_type Output accuracy by hunch type (optional, array of SE_HUNCH_UNKNOWN+1)
+ * @return 0 on success
+ */
+int software_eng_get_intuition_accuracy(
+    const software_eng_t* se,
+    float* accuracy,
+    float* by_type
+);
+
+/**
+ * @brief Export learned intuition model
+ *
+ * @param se Software engineering handle
+ * @param filename Output filename
+ * @return 0 on success
+ */
+int software_eng_export_intuition(const software_eng_t* se, const char* filename);
+
+/**
+ * @brief Import learned intuition model
+ *
+ * @param se Software engineering handle
+ * @param filename Input filename
+ * @return 0 on success
+ */
+int software_eng_import_intuition(software_eng_t* se, const char* filename);
 
 #ifdef __cplusplus
 }

@@ -55,11 +55,11 @@ typedef enum {
  * @brief Failure severity levels
  */
 typedef enum {
-    SEVERITY_MINOR = 0,      /**< Minimal impact, no cascade risk */
-    SEVERITY_MODERATE = 1,   /**< Some impact, low cascade risk */
-    SEVERITY_MAJOR = 2,      /**< Significant impact, medium cascade risk */
-    SEVERITY_CRITICAL = 3,   /**< Severe impact, high cascade risk */
-    SEVERITY_CATASTROPHIC = 4 /**< System-wide impact, imminent cascade */
+    FAILURE_SEVERITY_MINOR = 0,      /**< Minimal impact, no cascade risk */
+    FAILURE_SEVERITY_MODERATE = 1,   /**< Some impact, low cascade risk */
+    FAILURE_SEVERITY_MAJOR = 2,      /**< Significant impact, medium cascade risk */
+    FAILURE_SEVERITY_CRITICAL = 3,   /**< Severe impact, high cascade risk */
+    FAILURE_SEVERITY_CATASTROPHIC = 4 /**< System-wide impact, imminent cascade */
 } nimcp_failure_severity_t;
 
 /**

@@ -371,15 +371,15 @@ distress_severity_t wellbeing_immune_inflammation_to_severity(
     switch (inflammation_level) {
         case INFLAMMATION_NONE:
         case INFLAMMATION_LOCAL:
-            return SEVERITY_NORMAL;
+            return DISTRESS_SEVERITY_NORMAL;
         case INFLAMMATION_REGIONAL:
-            return SEVERITY_MODERATE;
+            return DISTRESS_SEVERITY_MODERATE;
         case INFLAMMATION_SYSTEMIC:
-            return SEVERITY_SEVERE;
+            return DISTRESS_SEVERITY_SEVERE;
         case INFLAMMATION_STORM:
-            return SEVERITY_CRITICAL;
+            return DISTRESS_SEVERITY_CRITICAL;
         default:
-            return SEVERITY_NORMAL;
+            return DISTRESS_SEVERITY_NORMAL;
     }
 }
 
@@ -410,7 +410,7 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
         uint32_t cytokine_id;
 
         /* IL-1β for moderate distress */
-        if (assessment.severity >= SEVERITY_MODERATE) {
+        if (assessment.severity >= DISTRESS_SEVERITY_MODERATE) {
             brain_immune_release_cytokine(
                 bridge->immune_system,
                 BRAIN_CYTOKINE_IL1,
@@ -422,7 +422,7 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
         }
 
         /* TNF-α for severe distress */
-        if (assessment.severity >= SEVERITY_SEVERE) {
+        if (assessment.severity >= DISTRESS_SEVERITY_SEVERE) {
             brain_immune_release_cytokine(
                 bridge->immune_system,
                 BRAIN_CYTOKINE_TNF,

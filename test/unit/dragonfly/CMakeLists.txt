@@ -493,3 +493,235 @@ gtest_discover_tests(unit_dragonfly_test_fep_bridge
         LABELS "unit;dragonfly;fep_bridge"
         TIMEOUT 60
 )
+
+# Multi-Target Priority Queue Tests
+add_executable(unit_dragonfly_test_multi_target
+    test_dragonfly_multi_target.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_multi_target
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_multi_target
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_multi_target PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_multi_target
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;multi_target"
+        TIMEOUT 60
+)
+
+# Energy-Optimal Pursuit Tests
+add_executable(unit_dragonfly_test_energy
+    test_dragonfly_energy.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_energy
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_energy
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_energy PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_energy
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;energy"
+        TIMEOUT 60
+)
+
+# Collision Avoidance Tests
+add_executable(unit_dragonfly_test_collision
+    test_dragonfly_collision.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_collision
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_collision
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_collision PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_collision
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;collision"
+        TIMEOUT 60
+)
+
+# Learning from Hunt Outcomes Tests
+add_executable(unit_dragonfly_test_learning
+    test_dragonfly_learning.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_learning
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_learning
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_learning PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_learning
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;learning"
+        TIMEOUT 60
+)
+
+# Gaze Stabilization Tests
+add_executable(unit_dragonfly_test_gaze
+    test_dragonfly_gaze.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_gaze
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_gaze
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_gaze PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_gaze
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;gaze"
+        TIMEOUT 60
+)
+
+# Sleep Bridge Tests (Circadian modulation and memory consolidation)
+add_executable(unit_dragonfly_test_sleep_bridge
+    test_dragonfly_sleep_bridge.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_sleep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_sleep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_sleep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_sleep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;sleep_bridge"
+        TIMEOUT 60
+)
+
+# Emotion Bridge Tests (Motivational drives and arousal)
+add_executable(unit_dragonfly_test_emotion_bridge
+    test_dragonfly_emotion_bridge.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_emotion_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_emotion_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_emotion_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_emotion_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;emotion_bridge"
+        TIMEOUT 60
+)
+
+# Immune Bridge Tests (Health and stress modulation)
+add_executable(unit_dragonfly_test_immune_bridge
+    test_dragonfly_immune_bridge.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_immune_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_immune_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_immune_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_immune_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;immune_bridge"
+        TIMEOUT 60
+)

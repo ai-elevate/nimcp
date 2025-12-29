@@ -419,7 +419,7 @@ TEST_F(PathTraversalTest, SeverityName) {
     EXPECT_STREQ("MEDIUM", nimcp_path_severity_name(NIMCP_PATH_SEVERITY_MEDIUM));
     EXPECT_STREQ("HIGH", nimcp_path_severity_name(NIMCP_PATH_SEVERITY_HIGH));
     EXPECT_STREQ("CRITICAL",
-                 nimcp_path_severity_name(NIMCP_PATH_SEVERITY_CRITICAL));
+                 nimcp_path_severity_name(NIMCP_PATH_DIAG_SEVERITY_CRITICAL));
 }
 
 TEST_F(PathTraversalTest, ErrorName) {

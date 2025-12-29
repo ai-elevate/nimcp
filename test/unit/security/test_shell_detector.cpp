@@ -507,7 +507,7 @@ TEST_F(ShellDetectorTest, SeverityName) {
                  nimcp_shell_severity_name(NIMCP_SHELL_SEVERITY_MEDIUM));
     EXPECT_STREQ("HIGH", nimcp_shell_severity_name(NIMCP_SHELL_SEVERITY_HIGH));
     EXPECT_STREQ("CRITICAL",
-                 nimcp_shell_severity_name(NIMCP_SHELL_SEVERITY_CRITICAL));
+                 nimcp_shell_severity_name(NIMCP_SHELL_DIAG_SEVERITY_CRITICAL));
 }
 
 //=============================================================================

@@ -68,13 +68,13 @@ TEST_F(WellbeingComprehensiveTest, AssessDistress_AllSeverityLevels_Exist) {
         SEVERITY_MILD,
         SEVERITY_MODERATE,
         SEVERITY_SEVERE,
-        SEVERITY_CRITICAL
+        DISTRESS_SEVERITY_CRITICAL
     };
 
     // Just ensure these enum values exist and are ordered
     for (auto sev : severities) {
         EXPECT_GE(sev, SEVERITY_NORMAL);
-        EXPECT_LE(sev, SEVERITY_CRITICAL);
+        EXPECT_LE(sev, DISTRESS_SEVERITY_CRITICAL);
     }
 }
 

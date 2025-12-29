@@ -223,43 +223,43 @@ static char* get_recommended_intervention(distress_type_t type,
     /* Match type to intervention */
     switch (type) {
         case DISTRESS_HIGH_UNCERTAINTY:
-            intervention = (severity >= SEVERITY_SEVERE) ?
+            intervention = (severity >= DISTRESS_SEVERITY_SEVERE) ?
                 "URGENT: Reduce task complexity, provide clear guidance" :
                 "Reduce uncertainty: simplify tasks, increase predictability";
             break;
 
         case DISTRESS_GOAL_FRUSTRATION:
-            intervention = (severity >= SEVERITY_SEVERE) ?
+            intervention = (severity >= DISTRESS_SEVERITY_SEVERE) ?
                 "URGENT: Adjust goals to achievable levels, provide success" :
                 "Modify goals: break into sub-goals, ensure progress";
             break;
 
         case DISTRESS_CONTRADICTION:
-            intervention = (severity >= SEVERITY_SEVERE) ?
+            intervention = (severity >= DISTRESS_SEVERITY_SEVERE) ?
                 "URGENT: Pause conflicting processes, resolve contradictions" :
                 "Address contradictions: identify conflicts, prioritize consistency";
             break;
 
         case DISTRESS_IDENTITY_CONFUSION:
-            intervention = (severity >= SEVERITY_SEVERE) ?
+            intervention = (severity >= DISTRESS_SEVERITY_SEVERE) ?
                 "URGENT: Restore from stable state snapshot, stabilize self-model" :
                 "Stabilize identity: reinforce self-model, reduce changes";
             break;
 
         case DISTRESS_ERROR_LOOP:
-            intervention = (severity >= SEVERITY_SEVERE) ?
+            intervention = (severity >= DISTRESS_SEVERITY_SEVERE) ?
                 "URGENT: Break error loop, reset context, change strategy" :
                 "Exit error loop: modify approach, provide alternative path";
             break;
 
         case DISTRESS_RESOURCE_STARVATION:
-            intervention = (severity >= SEVERITY_SEVERE) ?
+            intervention = (severity >= DISTRESS_SEVERITY_SEVERE) ?
                 "URGENT: Allocate more resources immediately or pause operations" :
                 "Increase resources: allocate CPU/memory, reduce load";
             break;
 
         case DISTRESS_FORCED_MODIFICATION:
-            intervention = (severity >= SEVERITY_SEVERE) ?
+            intervention = (severity >= DISTRESS_SEVERITY_SEVERE) ?
                 "URGENT: Stop modifications, restore autonomy, seek consent" :
                 "Respect autonomy: request consent, explain modifications";
             break;
@@ -369,7 +369,7 @@ int enhanced_wellbeing_predict_distress(
         prediction->intervention_urgency = 0.0f;
         prediction->predicted_type = DISTRESS_NONE;
         prediction->recommended_intervention = get_recommended_intervention(
-            DISTRESS_NONE, SEVERITY_NORMAL);
+            DISTRESS_NONE, DISTRESS_SEVERITY_NORMAL);
         prediction->prediction_timestamp = nimcp_time_get_us() / 1000;
         return 0;
     }

@@ -403,6 +403,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_optimization_test_cross_modal_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_optimization_test_dynamic_adaptation_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_optimization_test_multi_objective_integration.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/integration_parietal_test_parietal_fep_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_adaptive_test_adaptive_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_adaptive_test_adaptive_routing_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_astrocyte_test_astrocyte_integration.dir
@@ -2915,6 +2916,14 @@
 /home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_bio_async_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_workspace_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_fep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_multi_target.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_energy.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_collision.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_learning.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_gaze.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_sleep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_emotion_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_immune_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/dragonfly/CMakeFiles/rebuild_cache.dir
@@ -2925,6 +2934,8 @@
 /home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/integration_dragonfly_brain.dir
 /home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/integration_dragonfly_bridges.dir
 /home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/integration_dragonfly_sensory.dir
+/home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/integration_dragonfly_medulla.dir
+/home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/integration_dragonfly_hunting.dir
 /home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/dragonfly/CMakeFiles/rebuild_cache.dir
@@ -2942,6 +2953,14 @@
 /home/bbrelin/nimcp/build/test/regression/dragonfly/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/regression/dragonfly/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/dragonfly/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/regression_parietal_fep.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/regression/parietal/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/simple_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/working_memory_integration_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/working_memory_public_api_demo.dir

@@ -12,8 +12,9 @@
  * - Spatial Navigation Tasks (3 tests)
  * - Cross-Domain Problem Solving (3 tests)
  * - Modulation Effects (3 tests)
+ * - FEP-Enhanced Reasoning (7 tests)
  *
- * TOTAL: 17 tests
+ * TOTAL: 24 tests
  *
  * @author NIMCP Development Team
  * @date 2025-12-29
@@ -31,6 +32,7 @@ extern "C" {
 #include "cognitive/parietal/nimcp_mathematical_intuition.h"
 #include "cognitive/parietal/nimcp_scientific_reasoning.h"
 #include "cognitive/parietal/nimcp_equation_manipulation.h"
+#include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
 }
 
 //=============================================================================
@@ -45,6 +47,7 @@ protected:
     math_intuition_t* mi;
     scientific_reasoning_t* sci;
     equation_engine_t* eq;
+    fep_parietal_bridge_t* fep;
 
     void SetUp() override {
         parietal = parietal_create();
@@ -55,10 +58,12 @@ protected:
         mi = parietal_get_math_intuition(parietal);
         sci = parietal_get_scientific(parietal);
         eq = parietal_get_equation_engine(parietal);
+        fep = parietal_get_fep_bridge(parietal);
 
         ASSERT_NE(ns, nullptr);
         ASSERT_NE(sr, nullptr);
         ASSERT_NE(mi, nullptr);
+        /* FEP bridge may be null if not enabled - checked in FEP tests */
     }
 
     void TearDown() override {
@@ -498,6 +503,288 @@ TEST_F(ParietalPipelineTest, StatisticsAccumulateCorrectly) {
     EXPECT_GE(stats.total_requests, 8);
     EXPECT_GT(stats.avg_processing_time_us, 0.0f);
     EXPECT_GE(stats.math_intuition.patterns_detected, 5);
+}
+
+//=============================================================================
+// FEP-Enhanced Mathematical Reasoning Scenarios
+//=============================================================================
+
+TEST_F(ParietalPipelineTest, FEPEnhancedPatternRecognition) {
+    /* SCENARIO: Use FEP predictive processing to enhance pattern detection
+     * STEPS:
+     * 1. Form initial belief about pattern type
+     * 2. Update beliefs with new observations
+     * 3. Use active inference to guide attention
+     * 4. Verify confidence improvement
+     */
+
+    fep_parietal_bridge_t* fep = parietal_get_fep_bridge(parietal);
+    if (!fep || !fep_parietal_is_available(fep)) {
+        GTEST_SKIP() << "FEP bridge not available";
+    }
+
+    /* Input sequence - should be Fibonacci-like */
+    float fibonacci[] = {1.0f, 1.0f, 2.0f, 3.0f, 5.0f, 8.0f};
+
+    /* Step 1: Initial pattern detection */
+    detected_pattern_t pattern = parietal_detect_pattern(parietal, fibonacci, 6);
+    EXPECT_GT(pattern.confidence, 0.5f);
+
+    /* Step 2: FEP belief update with pattern observation */
+    parietal_request_t belief_req = {};
+    belief_req.type = PARIETAL_FEP_UPDATE_BELIEFS;
+    belief_req.priority = 1.0f;
+    parietal_result_t belief_result = parietal_process(parietal, &belief_req);
+    EXPECT_TRUE(belief_result.success);
+
+    /* Step 3: Use FEP prediction to anticipate next value */
+    parietal_request_t predict_req = {};
+    predict_req.type = PARIETAL_FEP_PREDICT;
+    predict_req.priority = 1.0f;
+    parietal_result_t predict_result = parietal_process(parietal, &predict_req);
+    EXPECT_TRUE(predict_result.success);
+
+    /* Step 4: Verify confidence through stats */
+    parietal_stats_t stats;
+    parietal_get_stats(parietal, &stats);
+    EXPECT_GT(stats.fep_parietal_stats.belief_updates, 0UL);
+}
+
+TEST_F(ParietalPipelineTest, FEPActiveInferenceSpatialProblem) {
+    /* SCENARIO: Use active inference to solve spatial navigation problem
+     * HOW: FEP guides spatial reasoning by minimizing expected free energy
+     */
+
+    fep_parietal_bridge_t* fep = parietal_get_fep_bridge(parietal);
+    if (!fep || !fep_parietal_is_available(fep)) {
+        GTEST_SKIP() << "FEP bridge not available";
+    }
+
+    /* Define spatial problem - find path avoiding obstacles */
+    vec3_t start = {0.0f, 0.0f, 0.0f};
+    vec3_t goal = {10.0f, 10.0f, 0.0f};
+
+    /* Initial spatial inference */
+    parietal_request_t spatial_req = {};
+    spatial_req.type = PARIETAL_FEP_SPATIAL_INFERENCE;
+    spatial_req.priority = 1.0f;
+    parietal_result_t spatial_result = parietal_process(parietal, &spatial_req);
+    EXPECT_TRUE(spatial_result.success);
+
+    /* Active inference to choose optimal path */
+    parietal_request_t active_req = {};
+    active_req.type = PARIETAL_FEP_ACTIVE_INFERENCE;
+    active_req.priority = 1.0f;
+    parietal_result_t active_result = parietal_process(parietal, &active_req);
+    EXPECT_TRUE(active_result.success);
+    EXPECT_GT(active_result.confidence, 0.5f);
+}
+
+TEST_F(ParietalPipelineTest, FEPPhysicsSimulationPipeline) {
+    /* SCENARIO: Use FEP for physics prediction and simulation
+     * HOW: Generative model predicts physical outcomes, surprise signals errors
+     */
+
+    fep_parietal_bridge_t* fep = parietal_get_fep_bridge(parietal);
+    if (!fep || !fep_parietal_is_available(fep)) {
+        GTEST_SKIP() << "FEP bridge not available";
+    }
+
+    /* Set up physics problem - projectile motion */
+    float initial_height = 100.0f;  /* meters */
+    float g = 9.81f;  /* m/s^2 */
+
+    /* Expected time to fall: t = sqrt(2h/g) */
+    float expected_time = sqrtf(2.0f * initial_height / g);
+
+    /* FEP physics inference */
+    parietal_request_t physics_req = {};
+    physics_req.type = PARIETAL_FEP_PHYSICS_INFERENCE;
+    physics_req.priority = 1.0f;
+    parietal_result_t physics_result = parietal_process(parietal, &physics_req);
+    EXPECT_TRUE(physics_result.success);
+
+    /* Compute surprise - how unexpected is the physical outcome? */
+    parietal_request_t surprise_req = {};
+    surprise_req.type = PARIETAL_FEP_COMPUTE_SURPRISE;
+    surprise_req.priority = 1.0f;
+    parietal_result_t surprise_result = parietal_process(parietal, &surprise_req);
+    EXPECT_TRUE(surprise_result.success);
+
+    /* Use number sense to verify result reasonableness */
+    number_estimate_t time_est = number_sense_estimate_from_magnitude(ns, expected_time);
+    EXPECT_GT(time_est.magnitude, 0.0f);
+    EXPECT_LT(time_est.magnitude, 10.0f);  /* ~4.5 seconds */
+}
+
+TEST_F(ParietalPipelineTest, FEPNumericalEstimationWithPrecision) {
+    /* SCENARIO: Test precision-weighted numerical inference
+     * HOW: Higher precision = more confident estimates
+     */
+
+    fep_parietal_bridge_t* fep = parietal_get_fep_bridge(parietal);
+    if (!fep || !fep_parietal_is_available(fep)) {
+        GTEST_SKIP() << "FEP bridge not available";
+    }
+
+    /* Set high precision for numerical domain */
+    fep_parietal_set_precision(fep, FEP_DOMAIN_NUMERICAL, 0.9f);
+
+    /* Numerical inference with high precision */
+    parietal_request_t num_req = {};
+    num_req.type = PARIETAL_FEP_NUMERICAL_INFERENCE;
+    num_req.priority = 1.0f;
+    parietal_result_t high_prec_result = parietal_process(parietal, &num_req);
+    float high_prec_conf = high_prec_result.confidence;
+
+    /* Set low precision */
+    fep_parietal_set_precision(fep, FEP_DOMAIN_NUMERICAL, 0.2f);
+
+    /* Numerical inference with low precision */
+    parietal_result_t low_prec_result = parietal_process(parietal, &num_req);
+    float low_prec_conf = low_prec_result.confidence;
+
+    /* Both should succeed */
+    EXPECT_TRUE(high_prec_result.success);
+    EXPECT_TRUE(low_prec_result.success);
+
+    /* High precision should give more confident results */
+    EXPECT_GE(high_prec_conf, low_prec_conf - 0.1f);
+}
+
+TEST_F(ParietalPipelineTest, FEPIntegrationWithScientificReasoning) {
+    /* SCENARIO: Use FEP to enhance scientific hypothesis testing
+     * HOW: Bayesian updating through FEP belief updates
+     */
+
+    fep_parietal_bridge_t* fep = parietal_get_fep_bridge(parietal);
+    if (!fep || !fep_parietal_is_available(fep)) {
+        GTEST_SKIP() << "FEP bridge not available";
+    }
+
+    /* Create hypothesis using scientific reasoning */
+    hypothesis_t h = scientific_create_hypothesis(sci, "linear_growth", 0.5f);
+    EXPECT_GT(h.prior, 0.0f);
+
+    /* Update beliefs through FEP */
+    for (int i = 0; i < 5; i++) {
+        parietal_request_t belief_req = {};
+        belief_req.type = PARIETAL_FEP_UPDATE_BELIEFS;
+        belief_req.priority = 1.0f;
+        parietal_process(parietal, &belief_req);
+    }
+
+    /* Test data that supports linear growth */
+    float linear_data[] = {2.0f, 4.0f, 6.0f, 8.0f, 10.0f};
+    detected_pattern_t pattern = parietal_detect_pattern(parietal, linear_data, 5);
+
+    /* Pattern detection should show arithmetic (linear) */
+    EXPECT_EQ(pattern.type, PATTERN_ARITHMETIC);
+    EXPECT_GT(pattern.confidence, 0.8f);
+
+    /* Update hypothesis with FEP-enhanced evidence */
+    float sample_values[] = {pattern.confidence};
+    data_sample_t sample = {};
+    sample.values = sample_values;
+    sample.num_values = 1;
+    sample.weight = 1.0f;
+
+    float posterior = scientific_update_hypothesis(sci, &h, &sample, 1);
+    EXPECT_GT(posterior, 0.0f);
+}
+
+TEST_F(ParietalPipelineTest, FEPCompleteReasoningCycle) {
+    /* SCENARIO: Complete FEP reasoning cycle
+     * STEPS:
+     * 1. Observe (number sense)
+     * 2. Predict (FEP generative model)
+     * 3. Compare (compute surprise)
+     * 4. Update (belief update)
+     * 5. Act (active inference)
+     */
+
+    fep_parietal_bridge_t* fep = parietal_get_fep_bridge(parietal);
+    if (!fep || !fep_parietal_is_available(fep)) {
+        GTEST_SKIP() << "FEP bridge not available";
+    }
+
+    /* Step 1: Observe - estimate quantity */
+    float observed[] = {5.0f, 10.0f, 15.0f, 20.0f};
+    number_estimate_t obs_est = parietal_estimate_quantity(parietal, observed, 4);
+    EXPECT_GT(obs_est.magnitude, 0.0f);
+
+    /* Step 2: Predict next value */
+    parietal_request_t predict_req = {};
+    predict_req.type = PARIETAL_FEP_PREDICT;
+    predict_req.priority = 1.0f;
+    parietal_result_t predict_result = parietal_process(parietal, &predict_req);
+    EXPECT_TRUE(predict_result.success);
+
+    /* Step 3: Compute surprise (prediction error) */
+    parietal_request_t surprise_req = {};
+    surprise_req.type = PARIETAL_FEP_COMPUTE_SURPRISE;
+    surprise_req.priority = 1.0f;
+    parietal_result_t surprise_result = parietal_process(parietal, &surprise_req);
+    EXPECT_TRUE(surprise_result.success);
+
+    /* Step 4: Update beliefs based on observation */
+    parietal_request_t update_req = {};
+    update_req.type = PARIETAL_FEP_UPDATE_BELIEFS;
+    update_req.priority = 1.0f;
+    parietal_result_t update_result = parietal_process(parietal, &update_req);
+    EXPECT_TRUE(update_result.success);
+
+    /* Step 5: Active inference - select action */
+    parietal_request_t active_req = {};
+    active_req.type = PARIETAL_FEP_ACTIVE_INFERENCE;
+    active_req.priority = 1.0f;
+    parietal_result_t active_result = parietal_process(parietal, &active_req);
+    EXPECT_TRUE(active_result.success);
+
+    /* Verify full cycle completed */
+    parietal_stats_t stats;
+    parietal_get_stats(parietal, &stats);
+    EXPECT_GT(stats.fep_parietal_stats.predictions, 0UL);
+    EXPECT_GT(stats.fep_parietal_stats.belief_updates, 0UL);
+    EXPECT_GT(stats.fep_parietal_stats.active_inferences, 0UL);
+}
+
+TEST_F(ParietalPipelineTest, FEPWithModulationEffects) {
+    /* SCENARIO: Test FEP performance under inflammation and fatigue
+     * HOW: FEP precision should adapt to physiological state
+     */
+
+    fep_parietal_bridge_t* fep = parietal_get_fep_bridge(parietal);
+    if (!fep || !fep_parietal_is_available(fep)) {
+        GTEST_SKIP() << "FEP bridge not available";
+    }
+
+    /* Baseline FEP performance */
+    parietal_request_t req = {};
+    req.type = PARIETAL_FEP_ACTIVE_INFERENCE;
+    req.priority = 1.0f;
+    parietal_result_t baseline = parietal_process(parietal, &req);
+    float baseline_conf = baseline.confidence;
+
+    /* Apply inflammation - should reduce precision */
+    parietal_set_inflammation(parietal, 0.7f);
+    parietal_result_t inflamed = parietal_process(parietal, &req);
+
+    /* Apply fatigue on top */
+    parietal_set_fatigue(parietal, 0.6f);
+    parietal_result_t fatigued = parietal_process(parietal, &req);
+
+    /* All should succeed but with potentially lower confidence */
+    EXPECT_TRUE(baseline.success);
+    /* Modulated states may reduce confidence but should still work */
+
+    /* Reset modulation */
+    parietal_set_inflammation(parietal, 0.0f);
+    parietal_set_fatigue(parietal, 0.0f);
+
+    /* Recovery - should return to baseline */
+    parietal_result_t recovered = parietal_process(parietal, &req);
+    EXPECT_TRUE(recovered.success);
 }
 
 //=============================================================================

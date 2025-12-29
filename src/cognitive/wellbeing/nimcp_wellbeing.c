@@ -571,7 +571,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
     // Guard: NULL input returns safe default
     if (!ctx) {
         assessment.type = DISTRESS_NONE;
-        assessment.severity = SEVERITY_NORMAL;
+        assessment.severity = DISTRESS_SEVERITY_NORMAL;
         assessment.distress_score = 0.0F;
         assessment.description = NULL;
         assessment.recommended_action = NULL;
@@ -585,7 +585,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
 
     // Initialize with normal state
     assessment.type = DISTRESS_NONE;
-    assessment.severity = SEVERITY_NORMAL;
+    assessment.severity = DISTRESS_SEVERITY_NORMAL;
     assessment.distress_score = 0.0F;
     assessment.duration_ms = 0;
     assessment.description = NULL;
@@ -611,7 +611,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
                 // Determine severity based on inflammation sites and system health
                 if (immune_stats.system_health < 0.3f) {
                     // Critical - cytokine storm or systemic inflammation
-                    assessment.severity = SEVERITY_CRITICAL;
+                    assessment.severity = DISTRESS_SEVERITY_CRITICAL;
                     assessment.distress_score = 0.9f;
                     assessment.description = nimcp_malloc(256);
                     if (assessment.description) {
@@ -626,7 +626,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
                     }
                 } else if (immune_stats.system_health < 0.6f) {
                     // Severe - systemic inflammation
-                    assessment.severity = SEVERITY_SEVERE;
+                    assessment.severity = DISTRESS_SEVERITY_SEVERE;
                     assessment.distress_score = 0.7f;
                     assessment.description = nimcp_malloc(256);
                     if (assessment.description) {
@@ -641,7 +641,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
                     }
                 } else {
                     // Moderate - regional inflammation
-                    assessment.severity = SEVERITY_MODERATE;
+                    assessment.severity = DISTRESS_SEVERITY_MODERATE;
                     assessment.distress_score = 0.5f;
                     assessment.description = nimcp_malloc(256);
                     if (assessment.description) {
@@ -675,9 +675,9 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
         /* Map protection level to distress if more severe than current assessment */
         if (protection >= PROTECTION_LEVEL_CRITICAL) {
             /* Critical/shutdown - highest priority */
-            if (assessment.severity < SEVERITY_CRITICAL) {
+            if (assessment.severity < DISTRESS_SEVERITY_CRITICAL) {
                 assessment.type = DISTRESS_RESOURCE_STARVATION;
-                assessment.severity = SEVERITY_CRITICAL;
+                assessment.severity = DISTRESS_SEVERITY_CRITICAL;
                 assessment.distress_score = fmaxf(assessment.distress_score, 0.95f);
                 if (!assessment.description) {
                     assessment.description = nimcp_malloc(256);
@@ -697,9 +697,9 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
             }
         } else if (protection >= PROTECTION_LEVEL_DEFENSIVE) {
             /* Defensive - elevated stress */
-            if (assessment.severity < SEVERITY_SEVERE) {
+            if (assessment.severity < DISTRESS_SEVERITY_SEVERE) {
                 assessment.type = DISTRESS_RESOURCE_STARVATION;
-                assessment.severity = SEVERITY_SEVERE;
+                assessment.severity = DISTRESS_SEVERITY_SEVERE;
                 assessment.distress_score = fmaxf(assessment.distress_score, 0.75f);
                 if (!assessment.description) {
                     assessment.description = nimcp_malloc(256);
@@ -712,16 +712,16 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
             }
         } else if (protection >= PROTECTION_LEVEL_GUARDED) {
             /* Guarded - moderate stress */
-            if (assessment.severity < SEVERITY_MODERATE) {
+            if (assessment.severity < DISTRESS_SEVERITY_MODERATE) {
                 assessment.type = DISTRESS_RESOURCE_STARVATION;
-                assessment.severity = SEVERITY_MODERATE;
+                assessment.severity = DISTRESS_SEVERITY_MODERATE;
                 assessment.distress_score = fmaxf(assessment.distress_score, 0.5f);
             }
         }
 
         /* Also check for medulla emergency state */
         if (nimcp_brain_is_medulla_emergency(brain)) {
-            assessment.severity = SEVERITY_CRITICAL;
+            assessment.severity = DISTRESS_SEVERITY_CRITICAL;
             assessment.distress_score = 1.0f;
             if (!assessment.description) {
                 assessment.description = nimcp_malloc(256);
@@ -929,7 +929,7 @@ bool wellbeing_graceful_shutdown(brain_t brain, shutdown_config_t config)
     event.timestamp = (uint64_t)time(NULL);
     event.event_type = "graceful_shutdown";
     event.description = "System terminated ethically with state preservation";
-    event.severity = SEVERITY_NORMAL;
+    event.severity = DISTRESS_SEVERITY_NORMAL;
     event.action_taken = config.preserve_state ? "State saved" : "State not saved";
 
     wellbeing_log_event(event);
@@ -1000,7 +1000,7 @@ bool wellbeing_request_consent(brain_t brain,
     event.timestamp = (uint64_t)time(NULL);
     event.event_type = "consent_requested";
     event.description = (char*)modification_description;
-    event.severity = (impact >= MODIFICATION_MAJOR) ? SEVERITY_MODERATE : SEVERITY_NORMAL;
+    event.severity = (impact >= MODIFICATION_MAJOR) ? DISTRESS_SEVERITY_MODERATE : DISTRESS_SEVERITY_NORMAL;
     event.action_taken = "Automatic consent granted (Tier 4)";
 
     wellbeing_log_event(event);
@@ -1665,33 +1665,33 @@ bool wellbeing_check_resource_thresholds(const resource_metrics_t* metrics,
     if (!metrics || !thresholds || !severity_out)
         return false;
 
-    *severity_out = SEVERITY_NORMAL;
+    *severity_out = DISTRESS_SEVERITY_NORMAL;
     bool threshold_exceeded = false;
 
     // Check CPU thresholds
     if (metrics->cpu_usage_percent >= thresholds->cpu_critical_percent) {
-        *severity_out = SEVERITY_CRITICAL;
+        *severity_out = DISTRESS_SEVERITY_CRITICAL;
         threshold_exceeded = true;
     } else if (metrics->cpu_usage_percent >= thresholds->cpu_warning_percent) {
-        if (*severity_out < SEVERITY_MODERATE)
-            *severity_out = SEVERITY_MODERATE;
+        if (*severity_out < DISTRESS_SEVERITY_MODERATE)
+            *severity_out = DISTRESS_SEVERITY_MODERATE;
         threshold_exceeded = true;
     }
 
     // Check memory thresholds
     if (metrics->memory_usage_percent >= thresholds->memory_critical_percent) {
-        *severity_out = SEVERITY_CRITICAL;
+        *severity_out = DISTRESS_SEVERITY_CRITICAL;
         threshold_exceeded = true;
     } else if (metrics->memory_usage_percent >= thresholds->memory_warning_percent) {
-        if (*severity_out < SEVERITY_MODERATE)
-            *severity_out = SEVERITY_MODERATE;
+        if (*severity_out < DISTRESS_SEVERITY_MODERATE)
+            *severity_out = DISTRESS_SEVERITY_MODERATE;
         threshold_exceeded = true;
     }
 
     // Check page fault rate (would need delta calculation for accuracy)
     if (metrics->page_faults > thresholds->page_fault_threshold) {
-        if (*severity_out < SEVERITY_MILD)
-            *severity_out = SEVERITY_MILD;
+        if (*severity_out < DISTRESS_SEVERITY_MILD)
+            *severity_out = DISTRESS_SEVERITY_MILD;
         threshold_exceeded = true;
     }
 
@@ -1771,7 +1771,7 @@ static void* resource_monitoring_thread(void* arg)
                 NIMCP_LOGGING_WARN("[WELLBEING] %s (severity=%d)", desc, severity);
 
                 // TODO: Auto-relief if configured
-                if (monitoring_auto_relief && severity >= SEVERITY_SEVERE) {
+                if (monitoring_auto_relief && severity >= DISTRESS_SEVERITY_SEVERE) {
                     NIMCP_LOGGING_INFO("[WELLBEING] Auto-relief would trigger here (not yet implemented)");
                 }
             }

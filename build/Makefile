@@ -4709,6 +4709,19 @@ integration_optimization_test_multi_objective_integration/fast:
 .PHONY : integration_optimization_test_multi_objective_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_parietal_test_parietal_fep_integration
+
+# Build rule for target.
+integration_parietal_test_parietal_fep_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_parietal_test_parietal_fep_integration
+.PHONY : integration_parietal_test_parietal_fep_integration
+
+# fast build rule for target.
+integration_parietal_test_parietal_fep_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_parietal_test_parietal_fep_integration.dir/build.make test/CMakeFiles/integration_parietal_test_parietal_fep_integration.dir/build
+.PHONY : integration_parietal_test_parietal_fep_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_adaptive_test_adaptive_integration
 
 # Build rule for target.
@@ -18528,6 +18541,110 @@ unit_dragonfly_test_fep_bridge/fast:
 .PHONY : unit_dragonfly_test_fep_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_dragonfly_test_multi_target
+
+# Build rule for target.
+unit_dragonfly_test_multi_target: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_multi_target
+.PHONY : unit_dragonfly_test_multi_target
+
+# fast build rule for target.
+unit_dragonfly_test_multi_target/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_multi_target.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_multi_target.dir/build
+.PHONY : unit_dragonfly_test_multi_target/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_energy
+
+# Build rule for target.
+unit_dragonfly_test_energy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_energy
+.PHONY : unit_dragonfly_test_energy
+
+# fast build rule for target.
+unit_dragonfly_test_energy/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_energy.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_energy.dir/build
+.PHONY : unit_dragonfly_test_energy/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_collision
+
+# Build rule for target.
+unit_dragonfly_test_collision: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_collision
+.PHONY : unit_dragonfly_test_collision
+
+# fast build rule for target.
+unit_dragonfly_test_collision/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_collision.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_collision.dir/build
+.PHONY : unit_dragonfly_test_collision/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_learning
+
+# Build rule for target.
+unit_dragonfly_test_learning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_learning
+.PHONY : unit_dragonfly_test_learning
+
+# fast build rule for target.
+unit_dragonfly_test_learning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_learning.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_learning.dir/build
+.PHONY : unit_dragonfly_test_learning/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_gaze
+
+# Build rule for target.
+unit_dragonfly_test_gaze: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_gaze
+.PHONY : unit_dragonfly_test_gaze
+
+# fast build rule for target.
+unit_dragonfly_test_gaze/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_gaze.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_gaze.dir/build
+.PHONY : unit_dragonfly_test_gaze/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_sleep_bridge
+
+# Build rule for target.
+unit_dragonfly_test_sleep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_sleep_bridge
+.PHONY : unit_dragonfly_test_sleep_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_sleep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_sleep_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_sleep_bridge.dir/build
+.PHONY : unit_dragonfly_test_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_emotion_bridge
+
+# Build rule for target.
+unit_dragonfly_test_emotion_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_emotion_bridge
+.PHONY : unit_dragonfly_test_emotion_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_emotion_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_emotion_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_emotion_bridge.dir/build
+.PHONY : unit_dragonfly_test_emotion_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_immune_bridge
+
+# Build rule for target.
+unit_dragonfly_test_immune_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_immune_bridge
+.PHONY : unit_dragonfly_test_immune_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_immune_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_immune_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_immune_bridge.dir/build
+.PHONY : unit_dragonfly_test_immune_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_dragonfly_brain
 
 # Build rule for target.
@@ -18567,6 +18684,32 @@ integration_dragonfly_sensory/fast:
 .PHONY : integration_dragonfly_sensory/fast
 
 #=============================================================================
+# Target rules for targets named integration_dragonfly_medulla
+
+# Build rule for target.
+integration_dragonfly_medulla: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_dragonfly_medulla
+.PHONY : integration_dragonfly_medulla
+
+# fast build rule for target.
+integration_dragonfly_medulla/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/dragonfly/CMakeFiles/integration_dragonfly_medulla.dir/build.make test/integration/dragonfly/CMakeFiles/integration_dragonfly_medulla.dir/build
+.PHONY : integration_dragonfly_medulla/fast
+
+#=============================================================================
+# Target rules for targets named integration_dragonfly_hunting
+
+# Build rule for target.
+integration_dragonfly_hunting: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_dragonfly_hunting
+.PHONY : integration_dragonfly_hunting
+
+# fast build rule for target.
+integration_dragonfly_hunting/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/dragonfly/CMakeFiles/integration_dragonfly_hunting.dir/build.make test/integration/dragonfly/CMakeFiles/integration_dragonfly_hunting.dir/build
+.PHONY : integration_dragonfly_hunting/fast
+
+#=============================================================================
 # Target rules for targets named regression_dragonfly_parameters
 
 # Build rule for target.
@@ -18604,6 +18747,19 @@ regression_dragonfly_numerical: cmake_check_build_system
 regression_dragonfly_numerical/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/dragonfly/CMakeFiles/regression_dragonfly_numerical.dir/build.make test/regression/dragonfly/CMakeFiles/regression_dragonfly_numerical.dir/build
 .PHONY : regression_dragonfly_numerical/fast
+
+#=============================================================================
+# Target rules for targets named regression_parietal_fep
+
+# Build rule for target.
+regression_parietal_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_parietal_fep
+.PHONY : regression_parietal_fep
+
+# fast build rule for target.
+regression_parietal_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/parietal/CMakeFiles/regression_parietal_fep.dir/build.make test/regression/parietal/CMakeFiles/regression_parietal_fep.dir/build
+.PHONY : regression_parietal_fep/fast
 
 #=============================================================================
 # Target rules for targets named simple_demo
@@ -19161,6 +19317,8 @@ help:
 	@echo "... integration_cortical_columns_brain"
 	@echo "... integration_dragonfly_brain"
 	@echo "... integration_dragonfly_bridges"
+	@echo "... integration_dragonfly_hunting"
+	@echo "... integration_dragonfly_medulla"
 	@echo "... integration_dragonfly_sensory"
 	@echo "... integration_emotion_immune_pipeline"
 	@echo "... integration_fault_tolerance_test_fault_tolerance_integration"
@@ -19222,6 +19380,7 @@ help:
 	@echo "... integration_optimization_test_cross_modal_integration"
 	@echo "... integration_optimization_test_dynamic_adaptation_integration"
 	@echo "... integration_optimization_test_multi_objective_integration"
+	@echo "... integration_parietal_test_parietal_fep_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_routing_integration"
 	@echo "... integration_plasticity_astrocyte_test_astrocyte_integration"
@@ -19459,6 +19618,7 @@ help:
 	@echo "... regression_optimization_test_cross_modal_backward_compat"
 	@echo "... regression_optimization_test_dynamic_adaptation_backward_compat"
 	@echo "... regression_optimization_test_multi_objective_backward_compat"
+	@echo "... regression_parietal_fep"
 	@echo "... regression_plasticity_adaptive_test_adaptive_backward_compat"
 	@echo "... regression_plasticity_adaptive_test_adaptive_routing_backward_compat"
 	@echo "... regression_plasticity_astrocyte_test_astrocyte_regression"
@@ -20037,11 +20197,19 @@ help:
 	@echo "... unit_dragonfly_test_bio_async_bridge"
 	@echo "... unit_dragonfly_test_cnn_bridge"
 	@echo "... unit_dragonfly_test_cognitive_bridge"
+	@echo "... unit_dragonfly_test_collision"
 	@echo "... unit_dragonfly_test_cortical_bridge"
+	@echo "... unit_dragonfly_test_emotion_bridge"
+	@echo "... unit_dragonfly_test_energy"
 	@echo "... unit_dragonfly_test_fep_bridge"
+	@echo "... unit_dragonfly_test_gaze"
+	@echo "... unit_dragonfly_test_immune_bridge"
 	@echo "... unit_dragonfly_test_intercept"
+	@echo "... unit_dragonfly_test_learning"
+	@echo "... unit_dragonfly_test_multi_target"
 	@echo "... unit_dragonfly_test_parietal_bridge"
 	@echo "... unit_dragonfly_test_prediction"
+	@echo "... unit_dragonfly_test_sleep_bridge"
 	@echo "... unit_dragonfly_test_snn_bridge"
 	@echo "... unit_dragonfly_test_substrate_bridge"
 	@echo "... unit_dragonfly_test_system"

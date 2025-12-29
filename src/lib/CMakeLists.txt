@@ -395,6 +395,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_chemistry.c              # Chemistry reasoning, stoichiometry, periodic table
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_biology.c                # Biology reasoning, DNA/RNA, phylogenetics
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_software_engineering.c   # Software engineering reasoning, complexity analysis
+    # Engineering domains with quantum acceleration support (Phase 7.2+)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_electrical_engineering.c  # EE: Circuit analysis, signal processing, control systems
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_mechanical_engineering.c  # ME: Structural mechanics, vibration, thermal, fatigue
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_civil_engineering.c       # CE: Geotechnical, hydraulics, structural optimization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_quantum_bridge.c # Quantum acceleration bridge (annealing, VQE, walk)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_fep_parietal_bridge.c     # FEP-Parietal bridge (predictive processing, active inference)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_physics_nn.c              # Physics-informed neural network (symplectic, HNN) - NOT YET IMPLEMENTED
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
 
     # Free Energy Principle - Karl Friston's predictive processing framework
@@ -1214,6 +1221,20 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_fep_bridge.c        # FEP bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_medulla_bridge.c    # Medulla oblongata bridge (arousal, protection, circadian)
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_swarm.c             # Swarm detection and optimal target selection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_ocelli.c            # Ocelli-based attitude stabilization (3 simple eyes)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_wing_motor.c        # 4-wing CPG motor patterns (hover, forward, pursuit, evasive)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_prey.c              # Prey classification with behavior prediction
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_territory.c         # Territorial patrol and intruder detection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_sleep_bridge.c      # Sleep-wake cycle memory consolidation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_plasticity_bridge.c # Reward-modulated TSDN/IMM adaptation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_immune_bridge.c     # Health/stress modulation of hunting
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_emotion_bridge.c    # Motivational drives (hunger, fear, curiosity)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_multi_target.c      # Priority queue for rapid target switching
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_environment.c       # Wind/light/terrain compensation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_energy.c            # ROI-based pursuit optimization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_gaze.c              # Predictive VOR stabilization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_collision.c         # TTC-based obstacle avoidance
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_learning.c          # Episodic memory with pattern recognition
 
     # Core Directives - Asimov's Laws & Ethical Foundation (Phase 1.0)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_action_history.c           # Action history tracking (combinatorial harm foundation)

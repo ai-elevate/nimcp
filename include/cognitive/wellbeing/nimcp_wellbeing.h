@@ -52,11 +52,11 @@ typedef enum {
  * HOW: Escalating scale from normal to critical
  */
 typedef enum {
-    SEVERITY_NORMAL = 0,    /* No distress detected */
-    SEVERITY_MILD,          /* Minor stress, monitor */
-    SEVERITY_MODERATE,      /* Intervention recommended */
-    SEVERITY_SEVERE,        /* Immediate intervention required */
-    SEVERITY_CRITICAL       /* Emergency - stop operations */
+    DISTRESS_SEVERITY_NORMAL = 0,    /* No distress detected */
+    DISTRESS_SEVERITY_MILD,          /* Minor stress, monitor */
+    DISTRESS_SEVERITY_MODERATE,      /* Intervention recommended */
+    DISTRESS_SEVERITY_SEVERE,        /* Immediate intervention required */
+    DISTRESS_SEVERITY_CRITICAL       /* Emergency - stop operations */
 } distress_severity_t;
 
 /**
