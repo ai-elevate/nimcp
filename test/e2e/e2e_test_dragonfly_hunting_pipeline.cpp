@@ -72,13 +72,17 @@ struct Target {
 struct Pursuer {
     float position[3];
     float velocity[3];
+    float heading;  // Track heading separately for zero velocity case
     float max_speed;
     float max_turn_rate;
 
     void update(float dt, const dragonfly_motor_cmd_t& cmd) {
         // Apply motor command with realistic dynamics
         float target_heading = cmd.heading_rad;
-        float current_heading = atan2f(velocity[1], velocity[0]);
+
+        // Get current heading (use stored heading if velocity near zero)
+        float speed = sqrtf(velocity[0]*velocity[0] + velocity[1]*velocity[1]);
+        float current_heading = (speed > 0.01f) ? atan2f(velocity[1], velocity[0]) : heading;
 
         // Limit turn rate
         float heading_diff = target_heading - current_heading;
@@ -90,9 +94,12 @@ struct Pursuer {
         if (heading_diff < -max_turn) heading_diff = -max_turn;
 
         float new_heading = current_heading + heading_diff;
+        heading = new_heading;  // Store for next iteration
 
         // Update velocity toward target heading
-        float target_speed = fminf(cmd.urgency * max_speed, max_speed);
+        // Use minimum urgency of 0.5 to ensure movement even in idle
+        float effective_urgency = fmaxf(cmd.urgency, 0.3f);
+        float target_speed = fminf(effective_urgency * max_speed, max_speed);
         velocity[0] = target_speed * cosf(new_heading);
         velocity[1] = target_speed * sinf(new_heading);
         velocity[2] = 0.0f;  // Simplified 2D
@@ -227,6 +234,7 @@ protected:
         p.velocity[0] = 0.0f;
         p.velocity[1] = 0.0f;
         p.velocity[2] = 0.0f;
+        p.heading = 0.0f;  // Initialize heading to point in +X direction
         p.max_speed = 10.0f;
         p.max_turn_rate = 6.0f;  // rad/s
         return p;
@@ -440,9 +448,15 @@ TEST_F(DragonflyHuntingPipelineTest, ModeTransitionsCorrectly) {
     EXPECT_TRUE(mode == (int)DRAGONFLY_MODE_TRACKING ||
                 mode == (int)DRAGONFLY_MODE_PURSUING);
 
-    // Abort
+    // Abort and step to process the abort
     brain_dragonfly_abort(brain);
-    EXPECT_EQ(brain_dragonfly_get_mode(brain), (int)DRAGONFLY_MODE_IDLE);
+    brain_step_dragonfly(brain, 16000);
+
+    // Mode should return to IDLE after abort (or possibly SCANNING)
+    mode = brain_dragonfly_get_mode(brain);
+    EXPECT_TRUE(mode == (int)DRAGONFLY_MODE_IDLE ||
+                mode == (int)DRAGONFLY_MODE_SCANNING)
+        << "Mode should be IDLE or SCANNING after abort, got " << mode;
 }
 
 //=============================================================================

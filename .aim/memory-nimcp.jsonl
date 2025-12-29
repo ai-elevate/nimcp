@@ -309,6 +309,70 @@
 {"type":"entity","name":"Cochlear_Model","entityType":"perception_component","observations":["Basilar membrane simulation","Frequency-to-place mapping","Hair cell transduction","Auditory nerve encoding"]}
 {"type":"entity","name":"Phoneme_Detector","entityType":"perception_component","observations":["Basic speech sound units","Language-agnostic phonemes","Categorical perception","Coarticulation handling"]}
 {"type":"entity","name":"Formant_Analyzer","entityType":"perception_component","observations":["Vocal tract resonances","F1/F2/F3 extraction","Vowel identification","Speaker normalization"]}
+{"type":"entity","name":"Training_Core_System","entityType":"training_system","observations":["17+ core training modules","3 main training types: SNN, LNN, CNN","6 primary integration bridges","Location: src/training/ and src/middleware/training/"]}
+{"type":"entity","name":"Auto_Architecture_Module","entityType":"training_module","observations":["Neural Architecture Search (NAS) system","File: nimcp_auto_architecture.c","Functions: auto_arch_create, auto_arch_search","Exports to SNN and LNN: auto_arch_export_snn, auto_arch_export_lnn"]}
+{"type":"entity","name":"SNN_Backprop_Module","entityType":"training_module","observations":["SNN gradient-based training with surrogate gradients","File: nimcp_snn_backprop.c","Algorithms: E-prop, RTRL, BPTT, SLAYER, DECOLLE","Surrogate methods: SuperSpike, Fast Sigmoid, Arctan, Triangular","Functions: snn_backprop_create, snn_backprop_forward, snn_backprop_backward"]}
+{"type":"entity","name":"Training_Infrastructure","entityType":"training_subsystem","observations":["Unified training framework","File: nimcp_training_module.c","Features: security registration, CoW memory pools","Thread pool execution for parallel updates"]}
+{"type":"entity","name":"Optimizers_Module","entityType":"training_module","observations":["SGD, Adam, RMSprop, AdaGrad, AdamW, Nadam","File: nimcp_optimizers.c","Integrates with gradient manager and LR scheduler","Thread-safe with state_mutex protection"]}
+{"type":"entity","name":"Loss_Functions_Module","entityType":"training_module","observations":["MSE, Cross-Entropy, KL-Div, Huber, Focal, Contrastive, Triplet","File: nimcp_loss_functions.c","Spike-aware losses for SNN","Integrates with auto-differentiation"]}
+{"type":"entity","name":"LR_Scheduler_Module","entityType":"training_module","observations":["StepLR, ExponentialLR, CosineAnnealing, Warmup, OneCycle","File: nimcp_lr_scheduler.c","Bridges LR modulation from cognitive/cortical systems"]}
+{"type":"entity","name":"Regularization_Module","entityType":"training_module","observations":["L1/L2, dropout, weight decay, gradient penalty","File: nimcp_regularization.c","Applied during optimizer step"]}
+{"type":"entity","name":"Training_Immune_Bridge","entityType":"critical_bridge","observations":["Training <-> Immune System","File: nimcp_training_immune_system.c","Instability detection -> scale reduction","Anomalous gradients -> health check","Weight tampering -> security rollback"]}
+{"type":"entity","name":"Training_Callbacks_Module","entityType":"training_module","observations":["Training event callbacks","File: nimcp_training_callbacks.c","Events: epoch start/end, loss update","Triggers cortical feedback and perception modulation"]}
+{"type":"entity","name":"Training_FEP_Bridge","entityType":"training_bridge","observations":["Free Energy Principle bridge for training","File: nimcp_training_module_fep_bridge.c","Connects to cortical predictive errors","Higher FE -> more learning needed"]}
+{"type":"entity","name":"Engram_System","entityType":"memory_subsystem","observations":["Phase M1: Explicit memory traces","512 active engrams capacity","256 neurons per engram max","6 consolidation states: encoding, labile, consolidating, consolidated, reconsolidating, degrading","Sleep-dependent consolidation parameters","Forgetting and interference simulation","Located in src/cognitive/memory/nimcp_engram.c"]}
+{"type":"entity","name":"Systems_Consolidation","entityType":"memory_subsystem","observations":["Phase M2: Hippocampus to cortex transfer","McClelland et al. complementary learning systems theory","2048 cortical memory nodes capacity","256-entry replay queue","Sleep-stage dependent transfer rates","Deep NREM: 5% per hour (peak)","Light NREM: 0.5% per hour","REM: 0.2% per hour (integration)","Episodic details fade, semantic gist preserved","Located in src/cognitive/memory/nimcp_systems_consolidation.c"]}
+{"type":"entity","name":"WM_Transfer_System","entityType":"memory_subsystem","observations":["Phase M3: Working Memory to engram transfer","Atkinson-Shiffrin memory model","Multi-factor transfer criteria","Rehearsal threshold: min 3 rehearsals","Attention threshold: 0.5","Emotional threshold: 0.3","Time threshold: 5000ms","Located in src/cognitive/memory/nimcp_wm_transfer.c"]}
+{"type":"entity","name":"Semantic_Memory_System","entityType":"memory_subsystem","observations":["Phase M4: Knowledge network","2048 concepts max capacity","8192 relations max capacity","32-dimensional feature vectors","Spreading activation with 0.8 decay per hop","Max 3 hops for activation spread","Concept categories: object, action, property, event, abstract, category","Relation types: IS_A, HAS_A, PROPERTY_OF, CAUSES, SIMILAR_TO, ASSOCIATED","Located in src/cognitive/memory/nimcp_semantic_memory.c"]}
+{"type":"entity","name":"Working_Memory_System","entityType":"memory_subsystem","observations":["Phase 10.1: Limited-capacity buffer","Miller's Law: 7±2 items capacity","Decay time constant: 1000ms","Salience-based priority (0.0-1.0)","Emotional tag support","Positional encoding for serial position effects","Capacity reduced by inflammation (7→3)","Sleep state modulation","Located in src/cognitive/working_memory/nimcp_working_memory.c"]}
+{"type":"entity","name":"Autobiographical_Memory","entityType":"memory_subsystem","observations":["Personal memory of experiences","10,000 episodes default capacity","Timeline-indexed episodic memory","Memory types: actions, decisions, learning, emotions, interactions, achievements, failures, insights, crises, milestones","Core memory flag for identity-defining memories","Self-relevance and importance scoring","Located in src/cognitive/autobiographical_memory/"]}
+{"type":"entity","name":"Fault_Working_Memory","entityType":"memory_subsystem","observations":["Tracks active faults (9-item capacity)","Priority-based eviction","Cascade detection (>10 faults/minute)","Multi-step recovery tracking","Located in include/cognitive/fault_tolerance/"]}
+{"type":"entity","name":"Recovery_Episodic_Memory","entityType":"memory_subsystem","observations":["10,000-episode circular buffer","LSH-based content-addressable recall","Success rate tracking by error type","Recovery strategy association","Located in include/cognitive/fault_tolerance/"]}
+{"type":"entity","name":"CNN_Training_Core","entityType":"training_module","observations":["CNN training with backpropagation","File: nimcp_cnn_training.c","Layer types: Conv2D, Pooling, BatchNorm, Dropout, Dense","CNN-to-SNN conversion for energy efficiency","Functions: cnn_trainer_fit, cnn_to_snn_convert"]}
+{"type":"entity","name":"Gradient_Manager_Module","entityType":"training_module","observations":["Gradient accumulation, scaling, health checking","File: nimcp_gradient_manager.c","Distributed training all-reduce support","NaN/Inf detection and sanitization","Thread-safe with accum_mutex"]}
+{"type":"entity","name":"Event_Plasticity_Module","entityType":"training_module","observations":["Event-based plasticity integration","File: nimcp_event_driven_plasticity.c","Listens to training loss events","Applies STDP, BCM, homeostatic rules"]}
+{"type":"entity","name":"Training_Plasticity_Integration","entityType":"critical_bridge","observations":["Training <-> Plasticity bidirectional bridge","File: nimcp_training_plasticity_bridge.c","Loss-to-RPE (Reward Prediction Error) converter","Region routing: cortical, striatal, hippocampal, cerebellar","Neuromodulator-LR: DA +0.2, ACh +0.1, 5-HT -0.15"]}
+{"type":"entity","name":"Cortical_Training_Integration","entityType":"critical_bridge","observations":["Training <-> Cortical systems bridge","File: nimcp_cortical_training_bridge.c","Free energy -> LR boost when high","Precision weights for per-layer gradient scaling","Dendritic burst rate -> stable representation check"]}
+{"type":"entity","name":"Perception_Training_Integration","entityType":"critical_bridge","observations":["Training <-> Perception cortices bridge","File: nimcp_perception_training_bridge.c","Visual confidence -> LR multiplier [0.3, 1.5]","Audio quality -> sample weight [0.1, 2.0]","Can skip low-quality samples"]}
+{"type":"entity","name":"Cognitive_Training_Integration","entityType":"critical_bridge","observations":["Training <-> Cognitive systems bridge","File: nimcp_cognitive_training_bridge.c","Executive load -> batch size scaling","Emotion state -> LR modulation","Curiosity drive -> exploration intensity","Feedback: satisfaction, frustration, alarm, novelty"]}
+{"type":"entity","name":"Logic_Training_Integration","entityType":"critical_bridge","observations":["Training <-> Logic/Reasoning bridge","File: nimcp_training_logic_bridge.c","Logic confidence -> gradient weighting","Symbolic grounding validation","Contradiction detection -> divergence alarm"]}
+{"type":"entity","name":"Three_Factor_Learning","entityType":"learning_pattern","observations":["Hebbian signal (pre x post spike)","Reward signal (dopamine from RPE)","Eligibility trace (temporal filtering)","dW = alpha * eligibility * reward","Maps gradients to biological plasticity"]}
+{"type":"entity","name":"Neuromodulator_Gated_Learning","entityType":"learning_pattern","observations":["LR = Base LR * Gain Function","Gain = 1 + k_DA*DA + k_ACh*ACh - k_5HT*5HT","Dopamine: +0.2 per unit (reward)","Acetylcholine: +0.1 per unit (attention)","Serotonin: -0.15 per unit (inhibits learning)"]}
+{"type":"entity","name":"Memory_Sleep_Bridge","entityType":"memory_bridge","observations":["Bidirectional sleep-memory integration","Sleep stage effects on replay frequency","Deep NREM: 10Hz replay, 5% transfer, 1.0 consolidation","Light NREM: 5Hz replay, 3% transfer, 0.7 consolidation","REM: 3Hz replay, 2% transfer, 1.0 semantic extraction","Awake: 0.1Hz replay, 0.1% transfer","Located in src/cognitive/memory/nimcp_memory_sleep_bridge.c"]}
+{"type":"entity","name":"Memory_FEP_Bridge","entityType":"memory_bridge","observations":["Grounds memory in free energy minimization","Precision modulates WM capacity","Prediction error triggers auto-refresh","Expected free energy guides item selection","Capacity pressure signals resource constraints","Located in src/cognitive/memory/nimcp_memory_fep_bridge.c"]}
+{"type":"entity","name":"Memory_Immune_Integration","entityType":"memory_bridge","observations":["Cross-talk between immune and cognitive memory","Inflammation reduces WM capacity (7→3)","IL-1β low: 1.3x encoding boost","IL-1β high: 0.6x encoding impair","TNF-α: 0.7x impair, IL-10: 1.2x boost","Inflamed: 2x faster decay","Located in src/cognitive/immune/nimcp_memory_immune_integration.c"]}
+{"type":"entity","name":"Systems_Consolidation_Pink_Noise_Bridge","entityType":"memory_bridge","observations":["Sleep-stage specific pink noise modulation","Modulates replay strength and quality","1/f noise characteristics vary by stage","Smooths transitions between sleep stages","Located in src/cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.c"]}
+{"type":"entity","name":"Memory_Consolidation_Substrate_Bridge","entityType":"memory_bridge","observations":["Integrates consolidation with hardware substrate","Substrate-specific optimizations","Located in src/cognitive/memory/nimcp_memory_consolidation_substrate_bridge.c"]}
+{"type":"entity","name":"Episodic_Memory_Quantum_Bridge","entityType":"memory_bridge","observations":["Quantum acceleration for episodic memory","√N speedup for memory operations","Grover-inspired amplitude search","Located in include/cognitive/memory/nimcp_episodic_memory_quantum_bridge.h"]}
+{"type":"entity","name":"Semantic_Memory_Quantum_Bridge","entityType":"memory_bridge","observations":["Quantum acceleration for semantic memory","√N speedup for concept retrieval","Quantum walk for spreading activation","QAOA for relation optimization","Located in include/cognitive/memory/nimcp_semantic_memory_quantum_bridge.h"]}
+{"type":"entity","name":"Working_Memory_Quantum_Bridge","entityType":"memory_bridge","observations":["Quantum acceleration for working memory","√N speedup for item operations","Located in include/cognitive/memory/nimcp_working_memory_quantum_bridge.h"]}
+{"type":"entity","name":"Working_Memory_Sleep_Bridge","entityType":"memory_bridge","observations":["Sleep state affects WM capacity","DROWSY: 1.5x decay","LIGHT: 2x decay","DEEP: no decay","REM: 1.2x decay","Located in include/cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"]}
+{"type":"entity","name":"Working_Memory_FEP_Bridge","entityType":"memory_bridge","observations":["Precision-capacity scaling","Extra 2 items with high precision","-2 items with low precision","PE>2.0 threshold triggers auto-refresh","EFE-based item selection","Located in include/cognitive/working_memory/nimcp_working_memory_fep_bridge.h"]}
+{"type":"entity","name":"Working_Memory_Substrate_Bridge","entityType":"memory_bridge","observations":["Optimizes WM for specific hardware substrates","Located in include/cognitive/working_memory/nimcp_working_memory_substrate_bridge.h"]}
+{"type":"entity","name":"Autobiographical_FEP_Bridge","entityType":"memory_bridge","observations":["FEP integration for autobiographical memory","Free energy optimization for self-memory","Located in include/cognitive/nimcp_autobiographical_fep_bridge.h"]}
+{"type":"entity","name":"Autobiographical_Sleep_Bridge","entityType":"memory_bridge","observations":["Sleep consolidation for autobiographical memory","Located in include/cognitive/nimcp_autobiographical_memory_sleep_bridge.h"]}
+{"type":"entity","name":"Synaptic_Consolidation","entityType":"memory_mechanism","observations":["Stage 1: Minutes to hours","Initial protein synthesis dependency","LTP/LTD at synaptic level","Engram state: ENCODING → LABILE → CONSOLIDATING","Location: Hippocampus"]}
+{"type":"entity","name":"Sleep_Replay","entityType":"memory_mechanism","observations":["Sleep-dependent hippocampal-cortical dialogue","10Hz replay during SWS","3Hz replay during REM","Features extracted during replay","Cortical nodes created from replayed content"]}
+{"type":"entity","name":"Memory_Reconsolidation","entityType":"memory_mechanism","observations":["6-hour window after recall","Recalled memories become temporarily labile","Window for memory update","Can be blocked therapeutically (PTSD treatment)","Engram state: RECONSOLIDATING → CONSOLIDATED"]}
+{"type":"entity","name":"Pattern_Completion","entityType":"memory_mechanism","observations":["Cue-based retrieval mechanism","Partial pattern activates full engram","Hippocampal CA3 function","Autoassociative network dynamics"]}
+{"type":"entity","name":"Spreading_Activation","entityType":"memory_mechanism","observations":["Semantic memory retrieval","Activate concept, spread through relations","0.8 decay per hop, max 3 hops","Threshold 0.3 for activation","Min activation 0.1"]}
+{"type":"entity","name":"Memory_Interference","entityType":"memory_mechanism","observations":["Proactive: old memories impair new learning","Retroactive: new memories disrupt old ones","Similarity-based interference","Competition between engrams"]}
+{"type":"entity","name":"Memory_Extinction","entityType":"memory_mechanism","observations":["Active unlearning","Unreinforced reactivation","New inhibitory learning","Does not erase original memory"]}
+{"type":"entity","name":"Cortical_Memory_Node","entityType":"memory_component","observations":["Memory representation in cortex","Semantic feature vector","Consolidation strength (0.0-1.0)","Hippocampal dependency (1.0-0.0)","Cortical network structure for semantic linking"]}
+{"type":"entity","name":"Replay_Event","entityType":"memory_component","observations":["Single replay during sleep","Source engram ID","Target cortical node","Priority and emotional salience","Completion status tracking"]}
+{"type":"entity","name":"Semantic_Concept","entityType":"memory_component","observations":["32-dimensional feature vector","Categories: object, action, property, event, abstract, category","Activation level for spreading","Access statistics tracking"]}
+{"type":"entity","name":"Semantic_Relation","entityType":"memory_component","observations":["Typed relation between concepts","Types: IS_A, HAS_A, PROPERTY_OF, CAUSES, SIMILAR_TO, ASSOCIATED","Strength and co-occurrence count"]}
+{"type":"entity","name":"Swarm_Memory","entityType":"memory_subsystem","observations":["Multi-agent memory systems","Distributed memory across swarm","Collective knowledge aggregation","Located in include/swarm/nimcp_swarm_memory.h"]}
+{"type":"entity","name":"Swarm_Memory_FEP_Bridge","entityType":"memory_bridge","observations":["FEP integration for swarm memory","Collective free energy minimization","Located in include/swarm/nimcp_swarm_memory_fep_bridge.h"]}
+{"type":"entity","name":"Swarm_Memory_Sleep_Bridge","entityType":"memory_bridge","observations":["Sleep consolidation for swarm memory","Distributed consolidation","Located in include/swarm/nimcp_swarm_memory_sleep_bridge.h"]}
+{"type":"entity","name":"Swarm_Memory_Immune_Bridge","entityType":"memory_bridge","observations":["Immune integration for swarm memory","Collective health tracking","Located in include/swarm/immune/nimcp_swarm_memory_immune_bridge.h"]}
+{"type":"entity","name":"Unified_Memory","entityType":"memory_utility","observations":["Copy-on-Write (CoW) support","Brain cloning efficiency","Memory tracking and debugging","Located in include/utils/memory/nimcp_unified_memory.h"]}
+{"type":"entity","name":"Memory_Pool","entityType":"memory_utility","observations":["Memory pooling for hot-path allocations","Reduced allocation overhead","Located in include/utils/memory/nimcp_memory_pool.h"]}
+{"type":"entity","name":"Memory_Guards","entityType":"memory_utility","observations":["Memory protection mechanisms","Buffer overflow detection","Located in include/utils/memory/nimcp_memory_guards.h"]}
+{"type":"entity","name":"Semantic_Compression","entityType":"memory_utility","observations":["Compress semantic memories for communication","NLP integration","Located in include/async/nimcp_semantic_compression.h"]}
+{"type":"entity","name":"Working_Memory_Adapter","entityType":"memory_utility","observations":["Working memory API adapter","Middleware integration","Located in include/middleware/cognitive/nimcp_working_memory_adapter.h"]}
+{"type":"entity","name":"Reasoning_Working_Memory","entityType":"memory_integration","observations":["Reasoning over working memory","Inference support","Located in include/cognitive/reasoning/integration/"]}
+{"type":"entity","name":"Game_Theory_Working_Memory","entityType":"memory_integration","observations":["Game theory with working memory","Strategic reasoning support","Located in include/cognitive/game_theory/integration/"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -763,3 +827,105 @@
 {"type":"relation","from":"Perception_Coordinator","to":"Cognitive_Systems","relationType":"provides_input_to"}
 {"type":"relation","from":"Visual_Cortex_Module","to":"Attention_Module","relationType":"modulated_by"}
 {"type":"relation","from":"Audio_Cortex_Module","to":"Attention_Module","relationType":"modulated_by"}
+{"type":"relation","from":"Memory_Systems","to":"Engram_System","relationType":"contains"}
+{"type":"relation","from":"Memory_Systems","to":"Systems_Consolidation","relationType":"contains"}
+{"type":"relation","from":"Memory_Systems","to":"WM_Transfer_System","relationType":"contains"}
+{"type":"relation","from":"Memory_Systems","to":"Semantic_Memory_System","relationType":"contains"}
+{"type":"relation","from":"Memory_Systems","to":"Working_Memory_System","relationType":"contains"}
+{"type":"relation","from":"Memory_Systems","to":"Autobiographical_Memory","relationType":"contains"}
+{"type":"relation","from":"Memory_Systems","to":"Fault_Working_Memory","relationType":"contains"}
+{"type":"relation","from":"Memory_Systems","to":"Recovery_Episodic_Memory","relationType":"contains"}
+{"type":"relation","from":"Working_Memory_System","to":"WM_Transfer_System","relationType":"feeds_into"}
+{"type":"relation","from":"WM_Transfer_System","to":"Engram_System","relationType":"creates_in"}
+{"type":"relation","from":"Engram_System","to":"Systems_Consolidation","relationType":"feeds_into"}
+{"type":"relation","from":"Systems_Consolidation","to":"Semantic_Memory_System","relationType":"extracts_to"}
+{"type":"relation","from":"Engram_System","to":"Synaptic_Consolidation","relationType":"uses"}
+{"type":"relation","from":"Systems_Consolidation","to":"Sleep_Replay","relationType":"uses"}
+{"type":"relation","from":"Systems_Consolidation","to":"Cortical_Memory_Node","relationType":"creates"}
+{"type":"relation","from":"Systems_Consolidation","to":"Replay_Event","relationType":"processes"}
+{"type":"relation","from":"Semantic_Memory_System","to":"Semantic_Concept","relationType":"contains"}
+{"type":"relation","from":"Semantic_Memory_System","to":"Semantic_Relation","relationType":"contains"}
+{"type":"relation","from":"Semantic_Memory_System","to":"Spreading_Activation","relationType":"uses"}
+{"type":"relation","from":"Engram_System","to":"Pattern_Completion","relationType":"uses"}
+{"type":"relation","from":"Engram_System","to":"Memory_Reconsolidation","relationType":"uses"}
+{"type":"relation","from":"Engram_System","to":"Memory_Extinction","relationType":"uses"}
+{"type":"relation","from":"Engram_System","to":"Memory_Interference","relationType":"models"}
+{"type":"relation","from":"Engram_System","to":"Memory_Sleep_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Systems_Consolidation","to":"Memory_Sleep_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Systems_Consolidation","to":"Systems_Consolidation_Pink_Noise_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Systems_Consolidation","to":"Memory_Consolidation_Substrate_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Working_Memory_System","to":"Memory_FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Working_Memory_System","to":"Working_Memory_FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Working_Memory_System","to":"Working_Memory_Sleep_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Working_Memory_System","to":"Working_Memory_Substrate_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Working_Memory_System","to":"Working_Memory_Quantum_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Working_Memory_System","to":"Memory_Immune_Integration","relationType":"bridges_via"}
+{"type":"relation","from":"Semantic_Memory_System","to":"Semantic_Memory_Quantum_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Engram_System","to":"Episodic_Memory_Quantum_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Autobiographical_Memory","to":"Autobiographical_FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Autobiographical_Memory","to":"Autobiographical_Sleep_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Training_Core_System","to":"Training_Module","relationType":"implements"}
+{"type":"relation","from":"Training_Core_System","to":"Auto_Architecture_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"SNN_Backprop_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"CNN_Training_Core","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"Training_Infrastructure","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"Optimizers_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"Gradient_Manager_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"Loss_Functions_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"LR_Scheduler_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"Regularization_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"Event_Plasticity_Module","relationType":"contains"}
+{"type":"relation","from":"Training_Core_System","to":"Training_Callbacks_Module","relationType":"contains"}
+{"type":"relation","from":"Auto_Architecture_Module","to":"SNN_Module","relationType":"exports_to"}
+{"type":"relation","from":"Auto_Architecture_Module","to":"LNN_Module","relationType":"exports_to"}
+{"type":"relation","from":"SNN_Backprop_Module","to":"SNN_Module","relationType":"trains"}
+{"type":"relation","from":"SNN_Backprop_Module","to":"STDP_Module","relationType":"converts_gradients_to"}
+{"type":"relation","from":"CNN_Training_Core","to":"SNN_Module","relationType":"converts_to"}
+{"type":"relation","from":"CNN_Training_Core","to":"Perception_Module","relationType":"integrates_with"}
+{"type":"relation","from":"Optimizers_Module","to":"Gradient_Manager_Module","relationType":"uses"}
+{"type":"relation","from":"Optimizers_Module","to":"LR_Scheduler_Module","relationType":"uses"}
+{"type":"relation","from":"Loss_Functions_Module","to":"SNN_Backprop_Module","relationType":"provides_spike_losses_to"}
+{"type":"relation","from":"Event_Plasticity_Module","to":"Plasticity_Systems","relationType":"triggers"}
+{"type":"relation","from":"Training_Plasticity_Integration","to":"Plasticity_Systems","relationType":"bridges_to"}
+{"type":"relation","from":"Training_Plasticity_Integration","to":"Training_Core_System","relationType":"bridges_from"}
+{"type":"relation","from":"Training_Plasticity_Integration","to":"Three_Factor_Learning","relationType":"implements"}
+{"type":"relation","from":"Training_Plasticity_Integration","to":"Neuromodulator_Gated_Learning","relationType":"implements"}
+{"type":"relation","from":"Cortical_Training_Integration","to":"Cortical_Columns","relationType":"bridges_to"}
+{"type":"relation","from":"Cortical_Training_Integration","to":"Training_Core_System","relationType":"bridges_from"}
+{"type":"relation","from":"Cortical_Training_Integration","to":"FEP_Orchestrator","relationType":"uses_free_energy_from"}
+{"type":"relation","from":"Perception_Training_Integration","to":"Perception_Module","relationType":"bridges_to"}
+{"type":"relation","from":"Perception_Training_Integration","to":"Training_Core_System","relationType":"bridges_from"}
+{"type":"relation","from":"Cognitive_Training_Integration","to":"Cognitive_Systems","relationType":"bridges_to"}
+{"type":"relation","from":"Cognitive_Training_Integration","to":"Training_Core_System","relationType":"bridges_from"}
+{"type":"relation","from":"Logic_Training_Integration","to":"Reasoning","relationType":"bridges_to"}
+{"type":"relation","from":"Logic_Training_Integration","to":"Training_Core_System","relationType":"bridges_from"}
+{"type":"relation","from":"Swarm_Memory","to":"Swarm_Memory_FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Swarm_Memory","to":"Swarm_Memory_Sleep_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Swarm_Memory","to":"Swarm_Memory_Immune_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"SNN_Module","to":"SNN_Memory_Bridge","relationType":"uses"}
+{"type":"relation","from":"SNN_Module","to":"SNN_Hippocampus_Bridge","relationType":"uses"}
+{"type":"relation","from":"SNN_Hippocampus_Bridge","to":"Engram_System","relationType":"integrates_with"}
+{"type":"relation","from":"SNN_Memory_Bridge","to":"Working_Memory_System","relationType":"integrates_with"}
+{"type":"relation","from":"Reasoning_Working_Memory","to":"Working_Memory_System","relationType":"uses"}
+{"type":"relation","from":"Game_Theory_Working_Memory","to":"Working_Memory_System","relationType":"uses"}
+{"type":"relation","from":"Working_Memory_Adapter","to":"Working_Memory_System","relationType":"adapts"}
+{"type":"relation","from":"Semantic_Compression","to":"Semantic_Memory_System","relationType":"compresses"}
+{"type":"relation","from":"Unified_Memory","to":"Engram_System","relationType":"supports"}
+{"type":"relation","from":"Memory_Pool","to":"Working_Memory_System","relationType":"optimizes"}
+{"type":"relation","from":"Memory_Guards","to":"Memory_Systems","relationType":"protects"}
+{"type":"relation","from":"Memory_Sleep_Bridge","to":"Sleep_Bridge","relationType":"integrates_with"}
+{"type":"relation","from":"Memory_FEP_Bridge","to":"FEP_Bridge","relationType":"integrates_with"}
+{"type":"relation","from":"Memory_Immune_Integration","to":"Immune_Bridge","relationType":"integrates_with"}
+{"type":"relation","from":"Systems_Consolidation_Pink_Noise_Bridge","to":"Pink_Noise_Bridge","relationType":"integrates_with"}
+{"type":"relation","from":"Working_Memory_System","to":"Amygdala_Module","relationType":"receives_tags_from"}
+{"type":"relation","from":"Engram_System","to":"Amygdala_Module","relationType":"receives_tags_from"}
+{"type":"relation","from":"Autobiographical_Memory","to":"Self_Awareness_Module","relationType":"provides_identity_to"}
+{"type":"relation","from":"Working_Memory_System","to":"Reasoning_Module","relationType":"supports"}
+{"type":"relation","from":"Semantic_Memory_System","to":"Reasoning_Module","relationType":"supports"}
+{"type":"relation","from":"Semantic_Memory_System","to":"Knowledge_Graph_Module","relationType":"integrates_with"}
+{"type":"relation","from":"Plasticity_Systems","to":"Engram_System","relationType":"modifies"}
+{"type":"relation","from":"STDP_Plasticity","to":"Engram_System","relationType":"strengthens"}
+{"type":"relation","from":"Protein_Synthesis","to":"Synaptic_Consolidation","relationType":"required_for"}
+{"type":"relation","from":"Sleep_Bridge","to":"Sleep_Replay","relationType":"controls"}
+{"type":"relation","from":"Working_Memory_System","to":"Attention_Module","relationType":"modulated_by"}
+{"type":"relation","from":"Cognitive_Systems","to":"Memory_Systems","relationType":"contains"}
