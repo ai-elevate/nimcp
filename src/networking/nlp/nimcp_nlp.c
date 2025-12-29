@@ -857,7 +857,13 @@ int nlp_send(nlp_node_t node, uint32_t peer_id, nlp_msg_type_t msg_type,
     msg->header.msg_type = msg_type;
     msg->header.sender_id = node->brain_id;
     msg->header.timestamp = (uint32_t)time(NULL);
-    msg->header.dest_id = peer_id;
+
+    // Always set dest_id = 0 for now.
+    // For initiated connections, peer_id is hash(address:port), which doesn't
+    // match the remote brain_id, causing dest_id check failures on the receiver.
+    // Unicast is determined by destination address:port, not dest_id.
+    // TODO: Track remote brain_id separately and use it for dest_id in mesh mode.
+    msg->header.dest_id = 0;
 
     // Generate nonce using node's crypto state
     nlp_crypto_generate_nonce(node, msg->header.nonce);
@@ -946,10 +952,20 @@ int nlp_send(nlp_node_t node, uint32_t peer_id, nlp_msg_type_t msg_type,
             return -ENOKEY;
         }
 
-        // Encrypt with node's crypto state, using header as AAD for authentication
+        // Set payload length BEFORE serializing header (needed for AAD)
+        msg->header.payload_len = (uint16_t)payload_len;
+
+        // Serialize header to get wire format for AAD
+        // We need the exact bytes that will be sent on the wire
+        nlp_header_t wire_header;
+        memcpy(&wire_header, &msg->header, sizeof(nlp_header_t));
+        nlp_header_serialize(&wire_header);
+
+        // Encrypt with node's crypto state, using SERIALIZED header as AAD
+        // IMPORTANT: Must use wire format to match what receiver sees
         int rc = nlp_crypto_encrypt(node, key, msg->header.nonce,
                                     payload, payload_len,
-                                    (const uint8_t*)&msg->header, sizeof(nlp_header_t),
+                                    (const uint8_t*)&wire_header, sizeof(nlp_header_t),
                                     msg->payload, payload_len + NLP_TAG_SIZE,
                                     msg->auth_tag);
         if (rc < 0) {
@@ -957,8 +973,6 @@ int nlp_send(nlp_node_t node, uint32_t peer_id, nlp_msg_type_t msg_type,
             nlp_message_destroy(msg);
             return rc;
         }
-
-        msg->header.payload_len = (uint16_t)payload_len;
     } else {
         msg->header.payload_len = 0;
     }
@@ -1908,11 +1922,37 @@ static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
     uint32_t peer_id = sender_id;
     nlp_peer_t* peer = NULL;
 
+    // Extract source address:port from incoming packet
+    char from_addr_str[INET_ADDRSTRLEN] = {0};
+    uint16_t from_port = 0;
+    if (from) {
+        inet_ntop(AF_INET, &from->sin_addr, from_addr_str, sizeof(from_addr_str));
+        from_port = ntohs(from->sin_port);
+    }
+
     nimcp_mutex_lock(&node->peer_mutex);
-    for (uint32_t i = 0; i < node->peer_count; i++) {
-        if (node->peers[i].peer_id == sender_id) {
-            peer = &node->peers[i];
-            break;
+
+    // Always look up peer by address:port first for consistency
+    // This works for both initiated connections (hash-based peer_id) and
+    // received connections (brain_id-based peer_id)
+    if (from) {
+        for (uint32_t i = 0; i < node->peer_count; i++) {
+            if (strcmp(node->peers[i].address, from_addr_str) == 0 &&
+                node->peers[i].port == from_port) {
+                peer = &node->peers[i];
+                break;
+            }
+        }
+    }
+
+    // Fallback to peer_id lookup if address:port lookup failed
+    // This handles cases where address might differ (NAT, etc.)
+    if (!peer) {
+        for (uint32_t i = 0; i < node->peer_count; i++) {
+            if (node->peers[i].peer_id == sender_id) {
+                peer = &node->peers[i];
+                break;
+            }
         }
     }
 
@@ -1978,10 +2018,12 @@ static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
         const uint8_t* auth_tag = data + len - NLP_TAG_SIZE;
         const uint8_t* encrypted = data + NLP_HEADER_SIZE;
 
-        // Decrypt with node's crypto state, using header as AAD
+        // Decrypt with node's crypto state, using raw wire header as AAD
+        // IMPORTANT: Use the original wire bytes (data), not the local header struct,
+        // because the sender used the serialized header bytes for AAD
         int rc = nlp_crypto_decrypt(node, key, header.nonce,
                                     encrypted, payload_len,
-                                    (const uint8_t*)&header, sizeof(nlp_header_t),
+                                    data, NLP_HEADER_SIZE,
                                     auth_tag,
                                     decrypted, payload_len);
         if (rc < 0) {

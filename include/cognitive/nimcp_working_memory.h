@@ -130,6 +130,7 @@ extern "C" {
  * Internal structure defined in .c file
  */
 typedef struct working_memory working_memory_t;
+#define NIMCP_WORKING_MEMORY_T_DEFINED
 
 /**
  * @brief Working memory configuration

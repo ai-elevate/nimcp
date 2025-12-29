@@ -72,6 +72,7 @@ extern "C" {
 
 // Forward declare neural_network_t (defined in core/neuralnet/nimcp_neuralnet.h)
 typedef struct neural_network_struct* neural_network_t;
+#define NIMCP_NEURAL_NETWORK_T_DEFINED
 
 //=============================================================================
 // Community Detection Types

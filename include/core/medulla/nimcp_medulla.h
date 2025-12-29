@@ -92,6 +92,7 @@ typedef struct nimcp_recovery_struct* nimcp_recovery_t;
 
 // Sleep-wake cycle (existing)
 typedef struct sleep_system_struct* sleep_system_t;
+#define NIMCP_SLEEP_SYSTEM_T_DEFINED
 
 // Neuromodulator system (existing)
 typedef struct neuromodulator_system_struct* neuromodulator_system_t;

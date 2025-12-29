@@ -68,41 +68,79 @@ extern "C" {
 
 /* ============================================================================
  * FORWARD DECLARATIONS (Integration Dependencies)
+ * Use guards to avoid conflicts with existing type definitions
+ * Match existing type definitions from the codebase (pointer types)
  * ============================================================================ */
 
-/* Brain regions */
-typedef struct brain_module brain_module_t;
-typedef struct brain_region brain_region_t;
+/* Brain regions - defined in nimcp_brain_regions.h */
+#ifndef NIMCP_BRAIN_MODULE_T_DEFINED
+#define NIMCP_BRAIN_MODULE_T_DEFINED
+typedef struct brain_module_struct* brain_module_t;
+#endif
+#ifndef NIMCP_BRAIN_REGION_T_DEFINED
+#define NIMCP_BRAIN_REGION_T_DEFINED
+typedef struct brain_region_struct* brain_region_t;
+#endif
 
-/* Neural network */
-typedef struct neural_network neural_network_t;
+/* Neural network - defined in nimcp_neuralnet.h as pointer */
+#ifndef NIMCP_NEURAL_NETWORK_T_DEFINED
+#define NIMCP_NEURAL_NETWORK_T_DEFINED
+typedef struct neural_network_struct* neural_network_t;
+#endif
 
 /* Immune system */
-typedef struct code_immune_system code_immune_system_t;
+#ifndef NIMCP_CODE_IMMUNE_SYSTEM_T_DEFINED
+#define NIMCP_CODE_IMMUNE_SYSTEM_T_DEFINED
+typedef struct code_immune_system_struct* code_immune_system_t;
+#endif
 
 /* Thalamic routing */
-typedef struct thalamic_router thalamic_router_t;
+#ifndef NIMCP_THALAMIC_ROUTER_T_DEFINED
+#define NIMCP_THALAMIC_ROUTER_T_DEFINED
+typedef struct thalamic_router_struct* thalamic_router_t;
+#endif
 
 /* Substrate layer */
-typedef struct substrate_interface substrate_interface_t;
+#ifndef NIMCP_SUBSTRATE_INTERFACE_T_DEFINED
+#define NIMCP_SUBSTRATE_INTERFACE_T_DEFINED
+typedef struct substrate_interface_struct* substrate_interface_t;
+#endif
 
 /* FEP bridge */
-typedef struct fep_brain fep_brain_t;
+#ifndef NIMCP_FEP_BRAIN_T_DEFINED
+#define NIMCP_FEP_BRAIN_T_DEFINED
+typedef struct fep_brain_struct* fep_brain_t;
+#endif
 
-/* Working memory */
+/* Working memory - defined in nimcp_working_memory.h as struct, not pointer */
+#ifndef NIMCP_WORKING_MEMORY_T_DEFINED
+#define NIMCP_WORKING_MEMORY_T_DEFINED
 typedef struct working_memory working_memory_t;
+#endif
 
 /* Logic gates */
-typedef struct logic_gate_network logic_gate_network_t;
+#ifndef NIMCP_LOGIC_GATE_NETWORK_T_DEFINED
+#define NIMCP_LOGIC_GATE_NETWORK_T_DEFINED
+typedef struct logic_gate_network_struct* logic_gate_network_t;
+#endif
 
 /* Training */
-typedef struct training_engine training_engine_t;
+#ifndef NIMCP_TRAINING_ENGINE_T_DEFINED
+#define NIMCP_TRAINING_ENGINE_T_DEFINED
+typedef struct training_engine_struct* training_engine_t;
+#endif
 
 /* Perception */
-typedef struct perception_system perception_system_t;
+#ifndef NIMCP_PERCEPTION_SYSTEM_T_DEFINED
+#define NIMCP_PERCEPTION_SYSTEM_T_DEFINED
+typedef struct perception_system_struct* perception_system_t;
+#endif
 
-/* Sleep modulation */
-typedef struct sleep_system sleep_system_t;
+/* Sleep modulation - defined in nimcp_medulla.h */
+#ifndef NIMCP_SLEEP_SYSTEM_T_DEFINED
+#define NIMCP_SLEEP_SYSTEM_T_DEFINED
+typedef struct sleep_system_struct* sleep_system_t;
+#endif
 
 /* ============================================================================
  * CONSTANTS

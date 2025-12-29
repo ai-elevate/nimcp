@@ -196,6 +196,7 @@ typedef struct {
     // Thread safety
     nimcp_mutex_t lock;
 } brain_region_t;
+#define NIMCP_BRAIN_REGION_T_DEFINED
 
 /**
  * @brief Inter-region connection
@@ -244,6 +245,7 @@ typedef struct {
     // Thread safety
     nimcp_mutex_t lock;
 } brain_module_t;
+#define NIMCP_BRAIN_MODULE_T_DEFINED
 
 // ============================================================================
 // BRAIN MODULE MANAGEMENT
