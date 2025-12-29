@@ -100,6 +100,11 @@ bool nimcp_brain_factory_init_swarm_module_registry_subsystem(brain_t brain);
 // Must be initialized early - provides foundational regulation
 bool nimcp_brain_factory_init_medulla_subsystem(brain_t brain);
 
+// === PARIETAL LOBE SUBSYSTEM (Phase 7.2) ===
+// Mathematical/Scientific reasoning (number sense, spatial, equations)
+// Provides quantitative and scientific cognition capabilities
+bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

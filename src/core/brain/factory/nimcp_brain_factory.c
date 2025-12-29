@@ -185,6 +185,9 @@ extern void set_error(const char* format, ...);
 // Medulla Oblongata subsystem macro (brainstem autonomic regulation)
 #define init_medulla_subsystem                      nimcp_brain_factory_init_medulla_subsystem
 
+// Parietal Lobe subsystem macro (mathematical/scientific reasoning)
+#define init_parietal_subsystem                     nimcp_brain_factory_init_parietal_subsystem
+
 //=============================================================================
 // Main Factory Functions
 //=============================================================================
@@ -666,6 +669,18 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Circadian Rhythm: 24-hour biological clock simulation
     // - Brainstem Coupling: Coordination with other brainstem nuclei
     if (!init_medulla_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // PARIETAL LOBE (MATHEMATICAL/SCIENTIFIC REASONING)
+    // ========================================================================
+
+    // Initialize parietal lobe for quantitative cognition:
+    // - Number Sense: Weber-Fechner magnitude estimation, subitizing
+    // - Spatial Reasoning: Mental rotation, coordinate transforms
+    // - Mathematical Intuition: Pattern detection, analogical reasoning
+    // - Scientific Reasoning: Hypothesis testing, dimensional analysis
+    // - Equation Manipulation: Symbolic math, differentiation
+    if (!init_parietal_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // CORE DIRECTIVES (ETHICAL FOUNDATION)

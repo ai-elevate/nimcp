@@ -163,6 +163,9 @@
 // Medulla Oblongata Integration (Brainstem Autonomic Regulation)
 #include "core/medulla/nimcp_medulla.h"
 
+// Parietal Lobe Integration (Mathematical/Scientific Reasoning - Phase 7.2)
+#include "cognitive/parietal/nimcp_parietal.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -692,6 +695,26 @@ struct brain_struct {
     medulla_t medulla;                                    // Medulla oblongata brainstem regulator
     bool medulla_enabled;                                 // Medulla enabled for this brain
     uint64_t last_medulla_update_us;                      // Last medulla update timestamp
+
+    // === PARIETAL LOBE INTEGRATION (Phase 7.2: Mathematical/Scientific Reasoning) ===
+    //
+    // The Parietal Lobe provides mathematical and scientific reasoning capabilities:
+    // - Number Sense: Weber-Fechner law, subitizing, magnitude estimation
+    // - Spatial Reasoning: Mental rotation, coordinate transforms, symmetry detection
+    // - Mathematical Intuition: Pattern detection, analogical reasoning, extrapolation
+    // - Scientific Reasoning: Hypothesis testing, dimensional analysis, causal inference
+    // - Equation Manipulation: Symbolic math, differentiation, evaluation
+    // - Domain Extensions: Chemistry, Biology, Software Engineering
+    //
+    // The parietal integrates with:
+    // - Dragonfly Bridge: Parietal-motor coordination for spatial actions
+    // - FEP Orchestrator: Mathematical reasoning modulates free energy
+    // - Brain Immune System: Inflammation affects numerical precision
+    // - Working Memory: Mathematical problem-solving requires WM resources
+    //
+    parietal_lobe_t* parietal;                            // Parietal lobe for math/science reasoning
+    bool parietal_enabled;                                // Parietal enabled for this brain
+    uint64_t last_parietal_update_us;                     // Last parietal update timestamp
 };
 
 //=============================================================================

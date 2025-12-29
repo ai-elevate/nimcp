@@ -47,6 +47,7 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/ethics/nimcp_core_directives.h"
 #include "core/medulla/nimcp_medulla.h"
+#include "cognitive/parietal/nimcp_parietal.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 
 /* Coordinator/Orchestrator headers for cleanup */
@@ -827,6 +828,15 @@ void brain_destroy(brain_t brain)
         brain->directive_immune_bridge = NULL;  // Managed internally by directives
         brain->directive_fep_bridge = NULL;     // Managed internally by directives
         brain->core_directives_enabled = false;
+    }
+
+    // -1. Cleanup Parietal Lobe (mathematical/scientific reasoning)
+    // Parietal is destroyed before medulla since it's a higher cognitive function
+    if (brain->parietal) {
+        parietal_destroy(brain->parietal);
+        brain->parietal = NULL;
+        brain->parietal_enabled = false;
+        brain->last_parietal_update_us = 0;
     }
 
     // -2. Cleanup Medulla Oblongata (brainstem autonomic regulation)

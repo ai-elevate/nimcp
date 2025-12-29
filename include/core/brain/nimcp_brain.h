@@ -61,6 +61,9 @@ typedef struct predictive_network_s* predictive_network_t;  // Opaque pointer
 // Phase 10.11: Mirror Neurons (Social Cognition & Imitation Learning)
 typedef struct mirror_neurons_system* mirror_neurons_t;  // Opaque pointer
 
+// Phase 7.2: Parietal Lobe (Mathematical/Scientific Reasoning)
+typedef struct parietal_lobe parietal_lobe_t;  // Opaque pointer
+
 // Global Workspace Architecture (Global Workspace Theory - Baars, Dehaene)
 #ifndef GLOBAL_WORKSPACE_T_DEFINED
 #define GLOBAL_WORKSPACE_T_DEFINED
@@ -947,6 +950,35 @@ typedef struct {
     bool immune_enable_swarm_integration; /**< Integrate with swarm immune if available (default: true) */
     bool immune_enable_bio_async;         /**< Enable cytokine signaling via bio-async (default: true) */
 
+    // === PHASE 7.2: PARIETAL LOBE (Mathematical/Scientific Reasoning) ===
+    /**
+     * Parietal Lobe Configuration
+     *
+     * WHAT: Mathematical and scientific reasoning capabilities
+     * WHY:  Provides numerical cognition, spatial reasoning, and scientific inference
+     * HOW:  Integrates number sense, spatial processing, and symbolic manipulation
+     *
+     * CAPABILITIES:
+     * - Number Sense: Magnitude estimation (Weber-Fechner), subitizing, comparison
+     * - Spatial Reasoning: Mental rotation (Shepard), coordinate transforms, symmetry
+     * - Mathematical Intuition: Pattern detection, analogical reasoning, extrapolation
+     * - Scientific Reasoning: Hypothesis testing, dimensional analysis, causality
+     * - Equation Manipulation: Parsing, differentiation, symbolic evaluation
+     * - Domain Extensions: Chemistry, Biology, Software Engineering
+     *
+     * INTEGRATION:
+     * - Brain Immune: Inflammation reduces numerical precision (cytokine modulation)
+     * - FEP Orchestrator: Mathematical reasoning integrated with free energy
+     * - Working Memory: Problem-solving uses WM for intermediate results
+     * - Dragonfly Bridge: Spatial actions coordinated with motor system
+     */
+    bool enable_parietal;                 /**< Enable parietal lobe for math/science reasoning (default: false) */
+
+    // Parietal performance tuning
+    float parietal_weber_fraction;        /**< Weber fraction for magnitude comparison (default: 0.1) */
+    uint32_t parietal_subitizing_limit;   /**< Instant recognition limit (default: 4) */
+    float parietal_rotation_rate_deg_ms;  /**< Mental rotation speed deg/ms (default: 0.053) */
+
     // === PHASE T1: BIOLOGICAL FRAMEWORK ENHANCEMENTS (Training Pipeline) ===
     /**
      * Biological Plasticity Mechanisms
@@ -1220,6 +1252,59 @@ working_memory_t* brain_get_working_memory(brain_t brain);
  * @return Global workspace pointer or NULL if not enabled
  */
 global_workspace_t* brain_get_global_workspace(brain_t brain);
+
+/**
+ * @brief Get parietal lobe from brain (Phase 7.2 accessor)
+ *
+ * WHAT: Retrieve pointer to brain's parietal lobe subsystem
+ * WHY:  Allow access to mathematical/scientific reasoning capabilities
+ * HOW:  Return brain->parietal field
+ *
+ * CAPABILITIES:
+ * - Number Sense: Magnitude estimation, subitizing, comparison
+ * - Spatial Reasoning: Mental rotation, coordinate transforms
+ * - Mathematical Intuition: Pattern detection, analogical reasoning
+ * - Scientific Reasoning: Hypothesis testing, dimensional analysis
+ * - Equation Manipulation: Symbolic math, differentiation
+ *
+ * @param brain Brain instance
+ * @return Parietal lobe pointer or NULL if not enabled
+ */
+parietal_lobe_t* brain_get_parietal(brain_t brain);
+
+/**
+ * @brief Update parietal from immune system state
+ *
+ * Synchronizes inflammation levels with parietal precision.
+ * Higher inflammation increases Weber fraction (reduces numerical accuracy).
+ *
+ * @param brain Brain instance
+ * @return 0 on success, -1 on error
+ */
+int brain_update_parietal_from_immune(brain_t brain);
+
+/**
+ * @brief Update parietal from sleep system state
+ *
+ * Synchronizes fatigue levels with parietal accuracy.
+ * Sleep deprivation reduces spatial and numerical reasoning performance.
+ *
+ * @param brain Brain instance
+ * @return 0 on success, -1 on error
+ */
+int brain_update_parietal_from_sleep(brain_t brain);
+
+/**
+ * @brief Step parietal lobe forward in time
+ *
+ * Processes pending parietal requests and updates neural state.
+ * Call this during brain stepping for continuous parietal processing.
+ *
+ * @param brain Brain instance
+ * @param delta_t Time step in microseconds
+ * @return 0 on success, -1 on error
+ */
+int brain_step_parietal(brain_t brain, uint64_t delta_t);
 
 /**
  * WHAT: Retrieve pointer to brain's sleep/wake subsystem (Phase 10.4)
