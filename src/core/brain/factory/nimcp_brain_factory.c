@@ -194,6 +194,9 @@ extern void set_error(const char* format, ...);
 // Knowledge Graph Reader subsystem macro (self-awareness)
 #define init_kg_reader_subsystem                    nimcp_brain_factory_init_kg_reader_subsystem
 
+// Fault Tolerance subsystem macro (intelligent recovery with parietal integration)
+#define init_fault_tolerance_subsystem              nimcp_brain_factory_init_fault_tolerance_subsystem
+
 //=============================================================================
 // Main Factory Functions
 //=============================================================================
@@ -698,6 +701,16 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Interception: Proportional navigation guidance
     // BIOLOGICAL: Achieves 95%+ success rate matching Hemicordulia tau behavior
     if (!init_dragonfly_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // FAULT TOLERANCE SUBSYSTEM (INTELLIGENT RECOVERY)
+    // ========================================================================
+    // Initialize fault tolerance with parietal integration for intelligent repair:
+    // - Recovery Executive: Multi-step recovery planning and execution
+    // - Parietal Bridge: Code analysis, pattern matching, spatial reasoning
+    // - Metacognitive monitoring: Self-awareness during recovery
+    // DEPENDS ON: Parietal lobe (for code analysis), Working memory (fault tracking)
+    if (!init_fault_tolerance_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // CORE DIRECTIVES (ETHICAL FOUNDATION)

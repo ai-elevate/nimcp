@@ -66,6 +66,11 @@ typedef struct parietal_lobe parietal_lobe_t;  // Opaque pointer
 
 // Phase 7.3: Dragonfly (Bio-inspired Target Tracking and Interception)
 typedef struct dragonfly_system_s dragonfly_system_t;  // Opaque pointer
+typedef struct dragonfly_medulla_bridge_s* dragonfly_medulla_bridge_t;  // Dragonfly-Medulla bridge
+typedef struct dragonfly_medulla_modulation_s dragonfly_medulla_modulation_t;  // Dragonfly-Medulla modulation state
+
+// Medulla Oblongata (Brainstem regulation)
+typedef struct medulla_struct* medulla_t;  // Opaque pointer
 
 // Knowledge Graph Reader (Self-Awareness - Runtime introspection of NIMCP structure)
 typedef struct kg_reader kg_reader_t;  // Opaque pointer
@@ -1114,6 +1119,24 @@ typedef struct {
     uint32_t gradient_accumulation_steps; /**< Steps to accumulate before update (default: 1) */
     float gradient_clip_value;            /**< Max gradient value for clipping (default: 0.0 = disabled) */
     float gradient_clip_norm;             /**< Max gradient norm for clipping (default: 0.0 = disabled) */
+
+    // === FAULT TOLERANCE (Intelligent Recovery with Parietal Integration) ===
+    /**
+     * Fault Tolerance Subsystem Configuration
+     *
+     * WHAT: Intelligent code repair and recovery using parietal lobe capabilities
+     * WHY:  Self-healing through spatial reasoning, pattern detection, code analysis
+     * HOW:  Recovery executive with parietal bridge for enhanced diagnostics
+     *
+     * INTEGRATION BENEFITS:
+     * - Software engineering analysis at failure locations
+     * - Pattern matching against historical failures
+     * - Spatial reasoning for dependency impact analysis
+     * - Mathematical estimation of recovery success probability
+     */
+    bool enable_fault_tolerance;          /**< Enable fault tolerance subsystem (default: false) */
+    uint32_t fault_tolerance_max_steps;   /**< Max recovery plan steps (default: 10, 0=use default) */
+    float fault_tolerance_replanning_threshold; /**< Confidence threshold for replanning (default: 0.3) */
 } brain_config_t;
 
 /**
@@ -1458,6 +1481,52 @@ int brain_dragonfly_get_mode(brain_t brain);
 int brain_dragonfly_abort(brain_t brain);
 
 //=============================================================================
+// Dragonfly-Medulla Integration
+//=============================================================================
+
+/**
+ * @brief Get dragonfly-medulla integration bridge
+ *
+ * Returns the bridge that connects dragonfly target tracking to medulla
+ * oblongata states for arousal/protection-based modulation.
+ *
+ * @param brain Brain instance
+ * @return Bridge handle or NULL if not connected
+ */
+dragonfly_medulla_bridge_t brain_get_dragonfly_medulla_bridge(brain_t brain);
+
+/**
+ * @brief Get current dragonfly modulation state from medulla
+ *
+ * Returns the current modulation factors applied to dragonfly based on
+ * arousal level, protection level, and circadian phase.
+ *
+ * MODULATION EFFECTS:
+ * - Arousal: Scales nav gain, urgency, reaction time, accuracy
+ * - Protection: Can block/abort hunting, limit pursuit duration
+ * - Circadian: Performance modulation (peak at morning, low at night)
+ *
+ * @param brain Brain instance
+ * @param modulation Output modulation state
+ * @return 0 on success, -1 on error
+ */
+int brain_dragonfly_get_modulation(brain_t brain,
+                                   dragonfly_medulla_modulation_t* modulation);
+
+/**
+ * @brief Check if dragonfly hunting is currently allowed
+ *
+ * Quick check based on current medulla states. Returns false if:
+ * - Protection level is CRITICAL or SHUTDOWN
+ * - Arousal level is too low (COMA, DEEP_SLEEP)
+ * - Circadian phase indicates nighttime inactivity
+ *
+ * @param brain Brain instance
+ * @return true if hunting is allowed based on medulla state
+ */
+bool brain_dragonfly_hunting_allowed(brain_t brain);
+
+//=============================================================================
 // Knowledge Graph Reader (Self-Awareness)
 //=============================================================================
 
@@ -1526,6 +1595,19 @@ int brain_generate_self_description(brain_t brain, char* buffer, size_t buffer_s
  * @return Sleep system pointer or NULL if invalid brain
  */
 sleep_system_t brain_get_sleep_system(brain_t brain);
+
+/**
+ * WHAT: Retrieve pointer to brain's medulla oblongata subsystem
+ * WHY:  Allow external access to autonomic regulation (arousal, protection, circadian)
+ * HOW:  Return brain->medulla field
+ *
+ * NOTE: Primarily used for testing. Use specific accessor functions for
+ * querying arousal level, protection level, circadian phase etc.
+ *
+ * @param brain Brain instance
+ * @return Medulla pointer or NULL if not enabled/invalid brain
+ */
+medulla_t brain_get_medulla(brain_t brain);
 
 /**
  * WHAT: Retrieve pointer to brain's Theory of Mind subsystem (Phase 10.6)

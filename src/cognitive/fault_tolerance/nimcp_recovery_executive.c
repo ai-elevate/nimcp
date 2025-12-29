@@ -172,7 +172,7 @@ static void decompose_prevent_recurrence(
  * HOW:  Checkpoint → Reset → Reduce precision → Verify
  */
 static uint32_t select_actions_for_nan(
-    plan_step_t* steps,
+    recovery_plan_step_t* steps,
     uint32_t max_steps,
     const decision_criteria_t* criteria
 ) {
@@ -233,7 +233,7 @@ static uint32_t select_actions_for_nan(
  * HOW:  Isolate → Clear cache → Verify → Checkpoint
  */
 static uint32_t select_actions_for_memory_error(
-    plan_step_t* steps,
+    recovery_plan_step_t* steps,
     uint32_t max_steps,
     const decision_criteria_t* criteria
 ) {
@@ -294,7 +294,7 @@ static uint32_t select_actions_for_memory_error(
  * HOW:  Checkpoint → Reduce learning rate → Reduce batch size → Verify
  */
 static uint32_t select_actions_for_gradient_error(
-    plan_step_t* steps,
+    recovery_plan_step_t* steps,
     uint32_t max_steps,
     const decision_criteria_t* criteria
 ) {
@@ -355,7 +355,7 @@ static uint32_t select_actions_for_gradient_error(
  * HOW:  Analyze → Checkpoint restore or graceful shutdown
  */
 static uint32_t select_actions_for_critical_error(
-    plan_step_t* steps,
+    recovery_plan_step_t* steps,
     uint32_t max_steps,
     const decision_criteria_t* criteria
 ) {
@@ -406,7 +406,7 @@ static uint32_t select_actions_for_critical_error(
  */
 static uint32_t select_actions_for_error(
     error_type_t error_type,
-    plan_step_t* steps,
+    recovery_plan_step_t* steps,
     uint32_t max_steps,
     const decision_criteria_t* criteria
 ) {
@@ -461,7 +461,7 @@ static uint32_t select_actions_for_error(
  * HOW:  Combines step success rates and diagnostic confidence
  */
 static float calculate_plan_confidence(
-    const plan_step_t* steps,
+    const recovery_plan_step_t* steps,
     uint32_t step_count,
     float diagnostic_confidence
 ) {
@@ -493,7 +493,7 @@ static float calculate_plan_confidence(
  * HOW:  Add step timeouts
  */
 static uint32_t estimate_plan_time(
-    const plan_step_t* steps,
+    const recovery_plan_step_t* steps,
     uint32_t step_count
 ) {
     uint32_t total_time = 0;

@@ -486,6 +486,34 @@ int medulla_connect_neuromodulators(medulla_t medulla, neuromodulator_system_t n
 float medulla_get_arousal_level(const medulla_t medulla);
 
 /**
+ * WHAT: Boost arousal level
+ * WHY:  Increase arousal in response to stimulating events (pursuit, threat)
+ * HOW:  Add delta to current arousal, clamped to [min, max] range
+ *
+ * @param medulla Medulla handle
+ * @param delta Arousal increase amount (typically 0.05-0.2)
+ * @return 0 on success, negative error code on failure
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+int medulla_boost_arousal(medulla_t medulla, float delta);
+
+/**
+ * WHAT: Reduce arousal level
+ * WHY:  Decrease arousal in response to calming events (rest, failure recovery)
+ * HOW:  Subtract delta from current arousal, clamped to [min, max] range
+ *
+ * @param medulla Medulla handle
+ * @param delta Arousal decrease amount (typically 0.05-0.2)
+ * @return 0 on success, negative error code on failure
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+int medulla_reduce_arousal(medulla_t medulla, float delta);
+
+/**
  * WHAT: Get current protection level
  * WHY:  Query protection state
  * HOW:  Read current protection level from protection subsystem
@@ -611,6 +639,46 @@ const char* medulla_circadian_phase_to_string(circadian_phase_t phase);
  * @return String representation
  */
 const char* medulla_state_to_string(medulla_state_t state);
+
+//=============================================================================
+// Test Helper Functions (for integration testing only)
+//=============================================================================
+
+/**
+ * WHAT: Force arousal level for testing
+ * WHY:  Allow integration tests to verify arousal-dependent behavior
+ * HOW:  Directly set internal arousal state
+ * WARNING: This bypasses normal arousal state transitions
+ *
+ * @param medulla Medulla handle
+ * @param level Target arousal level [0.0-1.0]
+ * @return 0 on success, negative error code on failure
+ */
+int medulla_test_set_arousal(medulla_t medulla, float level);
+
+/**
+ * WHAT: Force protection level for testing
+ * WHY:  Allow integration tests to verify protection-dependent behavior
+ * HOW:  Directly set internal protection state
+ * WARNING: This bypasses normal protection escalation
+ *
+ * @param medulla Medulla handle
+ * @param level Target protection level
+ * @return 0 on success, negative error code on failure
+ */
+int medulla_test_set_protection(medulla_t medulla, protection_level_t level);
+
+/**
+ * WHAT: Force circadian phase for testing
+ * WHY:  Allow integration tests to verify circadian-dependent behavior
+ * HOW:  Directly set internal circadian phase
+ * WARNING: This bypasses normal circadian rhythm progression
+ *
+ * @param medulla Medulla handle
+ * @param phase Target circadian phase
+ * @return 0 on success, negative error code on failure
+ */
+int medulla_test_set_circadian(medulla_t medulla, circadian_phase_t phase);
 
 #ifdef __cplusplus
 }

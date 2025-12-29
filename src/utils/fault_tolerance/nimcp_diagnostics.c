@@ -127,14 +127,14 @@ const char* diagnostics_get_error_type_name(error_type_t type) {
     }
 }
 
-const char* diagnostics_get_severity_name(error_severity_t severity) {
+const char* diagnostics_get_severity_name(diag_severity_t severity) {
     switch (severity) {
-        case SEVERITY_INFO:     return "INFO";
-        case SEVERITY_WARNING:  return "WARNING";
-        case SEVERITY_ERROR:    return "ERROR";
-        case SEVERITY_CRITICAL: return "CRITICAL";
-        case SEVERITY_FATAL:    return "FATAL";
-        default:                return "UNKNOWN";
+        case DIAG_SEVERITY_INFO:     return "INFO";
+        case DIAG_SEVERITY_WARNING:  return "WARNING";
+        case DIAG_SEVERITY_ERROR:    return "ERROR";
+        case DIAG_SEVERITY_CRITICAL: return "CRITICAL";
+        case DIAG_SEVERITY_FATAL:    return "FATAL";
+        default:                     return "UNKNOWN";
     }
 }
 
@@ -292,7 +292,7 @@ diagnostic_result_t* diagnostics_analyze_stack_trace(void** trace, int depth) {
 
     // Initialize result
     result->error_type = ERROR_TYPE_UNKNOWN;
-    result->severity = SEVERITY_ERROR;
+    result->severity = DIAG_SEVERITY_ERROR;
     result->confidence = 0.5F;
     result->timestamp = time(NULL);
     result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
@@ -338,24 +338,24 @@ static error_type_t signal_to_error_type(int signal) {
     }
 }
 
-static error_severity_t error_type_to_severity(error_type_t type) {
+static diag_severity_t error_type_to_severity(error_type_t type) {
     // Map error types to severity levels
     if (type >= ERROR_TYPE_SEGFAULT && type <= ERROR_TYPE_ABORT) {
-        return SEVERITY_FATAL;
+        return DIAG_SEVERITY_FATAL;
     }
     if (type == ERROR_TYPE_OUT_OF_MEMORY || type == ERROR_TYPE_STACK_OVERFLOW) {
-        return SEVERITY_CRITICAL;
+        return DIAG_SEVERITY_CRITICAL;
     }
     if (type >= ERROR_TYPE_NULL_POINTER && type <= ERROR_TYPE_ALIGNMENT_ERROR) {
-        return SEVERITY_CRITICAL;
+        return DIAG_SEVERITY_CRITICAL;
     }
     if (type >= ERROR_TYPE_NAN_DETECTED && type <= ERROR_TYPE_PRECISION_LOSS) {
-        return SEVERITY_ERROR;
+        return DIAG_SEVERITY_ERROR;
     }
     if (type >= ERROR_TYPE_GRADIENT_EXPLOSION && type <= ERROR_TYPE_PLASTICITY_FAILURE) {
-        return SEVERITY_ERROR;
+        return DIAG_SEVERITY_ERROR;
     }
-    return SEVERITY_WARNING;
+    return DIAG_SEVERITY_WARNING;
 }
 
 diagnostic_result_t* diagnostics_analyze_crash(int signal, crash_context_t* crash_context) {
@@ -459,7 +459,7 @@ diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
 
     // Initialize result
     result->error_type = ERROR_TYPE_NONE;
-    result->severity = SEVERITY_INFO;
+    result->severity = DIAG_SEVERITY_INFO;
     result->confidence = 0.8F;
     result->timestamp = time(NULL);
     result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
@@ -481,7 +481,7 @@ diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
 
         if (leaked_blocks > 100) {
             result->error_type = ERROR_TYPE_MEMORY_LEAK;
-            result->severity = SEVERITY_WARNING;
+            result->severity = DIAG_SEVERITY_WARNING;
             result->confidence = 0.7F;
 
             snprintf(result->root_cause, sizeof(result->root_cause),
@@ -493,7 +493,7 @@ diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
     // Check for NULL brain (potential issue)
     if (!brain) {
         result->error_type = ERROR_TYPE_NULL_POINTER;
-        result->severity = SEVERITY_ERROR;
+        result->severity = DIAG_SEVERITY_ERROR;
         result->confidence = 1.0F;
 
         snprintf(result->root_cause, sizeof(result->root_cause),
@@ -527,7 +527,7 @@ diagnostic_result_t* diagnostics_analyze_numerical_stability(brain_t brain) {
 
     // Initialize result
     result->error_type = ERROR_TYPE_NONE;
-    result->severity = SEVERITY_INFO;
+    result->severity = DIAG_SEVERITY_INFO;
     result->confidence = 0.9F;
     result->timestamp = time(NULL);
     result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
@@ -537,7 +537,7 @@ diagnostic_result_t* diagnostics_analyze_numerical_stability(brain_t brain) {
     // Check for NULL brain
     if (!brain) {
         result->error_type = ERROR_TYPE_NULL_POINTER;
-        result->severity = SEVERITY_ERROR;
+        result->severity = DIAG_SEVERITY_ERROR;
         snprintf(result->root_cause, sizeof(result->root_cause),
                  "Cannot analyze NULL brain");
         return result;

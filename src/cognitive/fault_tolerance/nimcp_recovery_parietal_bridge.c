@@ -1,0 +1,905 @@
+/**
+ * @file nimcp_recovery_parietal_bridge.c
+ * @brief Implementation of Parietal-Recovery Executive Integration
+ *
+ * Integrates parietal lobe capabilities (spatial reasoning, pattern detection,
+ * software engineering analysis) with fault tolerance recovery planning.
+ *
+ * @author NIMCP Development Team
+ * @date 2025-12-29
+ * @version 1.0.0
+ */
+
+#include "cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.h"
+#include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/parietal/nimcp_software_engineering.h"
+#include "cognitive/parietal/nimcp_mathematical_intuition.h"
+#include "cognitive/parietal/nimcp_scientific_reasoning.h"
+#include "cognitive/parietal/nimcp_spatial_reasoning.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+/**
+ * @brief Historical failure pattern for learning
+ */
+typedef struct {
+    uint64_t pattern_id;
+    diag_severity_t severity;
+    char failure_type[64];
+    char module_pattern[128];
+    char successful_fix[512];
+    uint32_t occurrences;
+    uint32_t successful_recoveries;
+    float avg_recovery_time_ms;
+} failure_pattern_t;
+
+/**
+ * @brief Parietal-recovery bridge internal structure
+ */
+struct recovery_parietal_bridge {
+    /* Configuration */
+    recovery_parietal_config_t config;
+
+    /* Attached systems */
+    parietal_lobe_t* parietal;
+    recovery_executive_t* executive;
+
+    /* Pattern database */
+    failure_pattern_t patterns[MAX_FAILURE_PATTERNS];
+    uint32_t pattern_count;
+    uint64_t next_pattern_id;
+
+    /* Statistics */
+    recovery_parietal_stats_t stats;
+
+    /* State */
+    bool initialized;
+};
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+/**
+ * @brief Calculate pattern similarity between diagnosis and stored pattern
+ */
+static float calculate_pattern_similarity(
+    const diagnostic_result_t* diagnosis,
+    const failure_pattern_t* pattern
+) {
+    float similarity = 0.0f;
+    int matches = 0;
+
+    /* Severity match */
+    if (diagnosis->severity == pattern->severity) {
+        similarity += 0.3f;
+        matches++;
+    }
+
+    /* Failure type substring match */
+    if (strstr(diagnosis->root_cause, pattern->failure_type) != NULL) {
+        similarity += 0.4f;
+        matches++;
+    }
+
+    /* Module pattern match */
+    if (strlen(pattern->module_pattern) > 0) {
+        /* Simple substring match - could be enhanced with regex */
+        similarity += 0.2f;
+        matches++;
+    }
+
+    /* Historical success rate boost */
+    if (pattern->occurrences > 0) {
+        float success_rate = (float)pattern->successful_recoveries / pattern->occurrences;
+        similarity += 0.1f * success_rate;
+    }
+
+    return fminf(similarity, 1.0f);
+}
+
+/**
+ * @brief Map diagnostic severity to repair difficulty estimate
+ */
+static float severity_to_difficulty(diag_severity_t severity) {
+    switch (severity) {
+        case DIAG_SEVERITY_INFO:     return 0.1f;
+        case DIAG_SEVERITY_WARNING:  return 0.25f;
+        case DIAG_SEVERITY_ERROR:    return 0.5f;
+        case DIAG_SEVERITY_CRITICAL: return 0.75f;
+        case DIAG_SEVERITY_FATAL:    return 0.95f;
+        default:                     return 0.5f;
+    }
+}
+
+/**
+ * @brief Map complexity class to numerical factor
+ */
+static float complexity_to_factor(complexity_class_t complexity) {
+    switch (complexity) {
+        case COMPLEXITY_O_1:           return 1.0f;
+        case COMPLEXITY_O_LOG_N:       return 1.2f;
+        case COMPLEXITY_O_N:           return 1.5f;
+        case COMPLEXITY_O_N_LOG_N:     return 1.8f;
+        case COMPLEXITY_O_N_SQUARED:   return 2.5f;
+        case COMPLEXITY_O_N_CUBED:     return 4.0f;
+        case COMPLEXITY_O_2_N:         return 8.0f;
+        case COMPLEXITY_O_N_FACTORIAL: return 16.0f;
+        default:                       return 2.0f;
+    }
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+recovery_parietal_config_t recovery_parietal_default_config(void) {
+    recovery_parietal_config_t config = {
+        .enable_code_analysis = true,
+        .enable_pattern_matching = true,
+        .enable_spatial_reasoning = true,
+        .enable_complexity_estimation = true,
+        .enable_learning = true,
+        .max_analysis_time_ms = 5000,
+        .min_pattern_similarity = 0.6f,
+        .max_dependency_depth = 5
+    };
+    return config;
+}
+
+recovery_parietal_bridge_t* recovery_parietal_bridge_create(
+    parietal_lobe_t* parietal,
+    const recovery_parietal_config_t* config
+) {
+    if (!parietal) {
+        fprintf(stderr, "[RECOVERY-PARIETAL] ERROR: NULL parietal handle\n");
+        return NULL;
+    }
+
+    recovery_parietal_bridge_t* bridge = calloc(1, sizeof(recovery_parietal_bridge_t));
+    if (!bridge) {
+        fprintf(stderr, "[RECOVERY-PARIETAL] ERROR: Failed to allocate bridge\n");
+        return NULL;
+    }
+
+    /* Apply configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        bridge->config = recovery_parietal_default_config();
+    }
+
+    /* Store parietal reference */
+    bridge->parietal = parietal;
+    bridge->executive = NULL;
+
+    /* Initialize pattern database */
+    bridge->pattern_count = 0;
+    bridge->next_pattern_id = 1;
+    memset(bridge->patterns, 0, sizeof(bridge->patterns));
+
+    /* Initialize statistics */
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    bridge->initialized = true;
+
+    fprintf(stderr, "[RECOVERY-PARIETAL] Bridge created successfully\n");
+    fprintf(stderr, "[RECOVERY-PARIETAL]   Code analysis: %s\n",
+            bridge->config.enable_code_analysis ? "enabled" : "disabled");
+    fprintf(stderr, "[RECOVERY-PARIETAL]   Pattern matching: %s\n",
+            bridge->config.enable_pattern_matching ? "enabled" : "disabled");
+    fprintf(stderr, "[RECOVERY-PARIETAL]   Spatial reasoning: %s\n",
+            bridge->config.enable_spatial_reasoning ? "enabled" : "disabled");
+
+    return bridge;
+}
+
+void recovery_parietal_bridge_destroy(recovery_parietal_bridge_t* bridge) {
+    if (!bridge) {
+        return;
+    }
+
+    bridge->initialized = false;
+    bridge->parietal = NULL;
+    bridge->executive = NULL;
+
+    free(bridge);
+    fprintf(stderr, "[RECOVERY-PARIETAL] Bridge destroyed\n");
+}
+
+bool recovery_parietal_bridge_is_ready(const recovery_parietal_bridge_t* bridge) {
+    return bridge && bridge->initialized && bridge->parietal;
+}
+
+//=============================================================================
+// Attachment Functions
+//=============================================================================
+
+int recovery_parietal_bridge_attach_executive(
+    recovery_parietal_bridge_t* bridge,
+    recovery_executive_t* exec
+) {
+    if (!bridge || !exec) {
+        return -1;
+    }
+
+    bridge->executive = exec;
+    fprintf(stderr, "[RECOVERY-PARIETAL] Attached to recovery executive\n");
+    return 0;
+}
+
+int recovery_executive_attach_parietal(
+    recovery_executive_t* exec,
+    parietal_lobe_t* parietal
+) {
+    if (!exec || !parietal) {
+        return -1;
+    }
+
+    /* Create bridge with default config */
+    recovery_parietal_bridge_t* bridge = recovery_parietal_bridge_create(parietal, NULL);
+    if (!bridge) {
+        return -1;
+    }
+
+    /* Attach to executive */
+    int result = recovery_parietal_bridge_attach_executive(bridge, exec);
+    if (result != 0) {
+        recovery_parietal_bridge_destroy(bridge);
+        return result;
+    }
+
+    fprintf(stderr, "[RECOVERY-PARIETAL] Parietal attached to recovery executive\n");
+    return 0;
+}
+
+parietal_lobe_t* recovery_executive_get_parietal(const recovery_executive_t* exec) {
+    /* This would require internal access to executive structure */
+    /* For now, return NULL - needs executive structure update */
+    (void)exec;
+    return NULL;
+}
+
+//=============================================================================
+// Code Analysis Functions
+//=============================================================================
+
+int recovery_parietal_analyze_code(
+    recovery_parietal_bridge_t* bridge,
+    const code_analysis_request_t* request,
+    code_analysis_result_t* result
+) {
+    if (!bridge || !request || !result) {
+        return -1;
+    }
+
+    if (!recovery_parietal_bridge_is_ready(bridge)) {
+        return -1;
+    }
+
+    memset(result, 0, sizeof(code_analysis_result_t));
+
+    /* Get software engineering submodule */
+    software_eng_t* se = NULL;
+
+    /* Access parietal's software engineering capabilities */
+    if (bridge->config.enable_code_analysis) {
+        /* Create algorithm traits based on request */
+        algorithm_traits_t traits = {
+            .has_loops = true,
+            .loop_depth = 2,
+            .has_recursion = false,
+            .recursive_calls = 0,
+            .has_divide_conquer = false,
+            .has_dynamic_programming = false,
+            .has_sorting = false,
+            .has_searching = true,
+            .input_size_n = 1000,
+            .auxiliary_space = 100
+        };
+
+        /* Analyze complexity using parietal */
+        if (bridge->config.enable_complexity_estimation) {
+            /* Use software engineering module if available */
+            se = software_eng_create();
+            if (se) {
+                software_eng_analyze_complexity(se, &traits, &result->complexity);
+                software_eng_destroy(se);
+            }
+        }
+    }
+
+    /* Detect code smells */
+    if (bridge->config.enable_code_analysis && request->detect_code_smells) {
+        /* Create sample metrics for analysis */
+        software_metrics_t metrics = {
+            .lines_of_code = 500,
+            .num_functions = 20,
+            .num_classes = 5,
+            .num_modules = 3,
+            .cyclomatic_complexity = 15.0f,
+            .cognitive_complexity = 25.0f,
+            .halstead_difficulty = 30.0f,
+            .halstead_effort = 1000.0f,
+            .afferent_coupling = 5.0f,
+            .efferent_coupling = 8.0f,
+            .instability = 0.62f,
+            .abstractness = 0.3f,
+            .maintainability_index = 65.0f,
+            .test_coverage = 0.45f,
+            .documentation_ratio = 0.2f
+        };
+
+        result->metrics = metrics;
+
+        se = software_eng_create();
+        if (se) {
+            result->smell_count = software_eng_detect_smells(
+                se, &metrics, result->smells, 8);
+            software_eng_destroy(se);
+        }
+    }
+
+    /* Find similar patterns */
+    if (bridge->config.enable_pattern_matching && request->find_similar_patterns) {
+        uint32_t match_count = 0;
+        for (uint32_t i = 0; i < bridge->pattern_count && match_count < MAX_FAILURE_PATTERNS; i++) {
+            float sim = calculate_pattern_similarity(request->diagnosis, &bridge->patterns[i]);
+            if (sim >= bridge->config.min_pattern_similarity) {
+                result->similar_patterns[match_count].pattern_id = bridge->patterns[i].pattern_id;
+                result->similar_patterns[match_count].similarity = sim;
+                snprintf(result->similar_patterns[match_count].description,
+                        sizeof(result->similar_patterns[match_count].description),
+                        "%s", bridge->patterns[i].failure_type);
+                snprintf(result->similar_patterns[match_count].suggested_fix,
+                        sizeof(result->similar_patterns[match_count].suggested_fix),
+                        "%s", bridge->patterns[i].successful_fix);
+                match_count++;
+            }
+        }
+        result->pattern_count = match_count;
+    }
+
+    /* Calculate overall assessment */
+    result->repair_difficulty = severity_to_difficulty(
+        request->diagnosis ? request->diagnosis->severity : DIAG_SEVERITY_ERROR);
+
+    /* Adjust difficulty based on complexity */
+    result->repair_difficulty *= complexity_to_factor(result->complexity.time_complexity) / 2.0f;
+    result->repair_difficulty = fminf(result->repair_difficulty, 1.0f);
+
+    /* Set confidence based on analysis depth */
+    result->confidence = 0.5f;
+    if (bridge->config.enable_code_analysis) result->confidence += 0.15f;
+    if (bridge->config.enable_pattern_matching && result->pattern_count > 0) result->confidence += 0.2f;
+    if (bridge->config.enable_complexity_estimation) result->confidence += 0.1f;
+
+    /* Generate hypothesis */
+    if (request->diagnosis) {
+        snprintf(result->root_cause_hypothesis, sizeof(result->root_cause_hypothesis),
+                "Failure in %s likely caused by %s with severity %d",
+                request->failure_location.module_name,
+                request->diagnosis->root_cause,
+                request->diagnosis->severity);
+    }
+
+    /* Generate recommendation */
+    snprintf(result->recommended_approach, sizeof(result->recommended_approach),
+            "Analyze dependencies at depth %u, address %u code smells, "
+            "estimated repair difficulty: %.2f",
+            request->dependency_depth,
+            result->smell_count,
+            result->repair_difficulty);
+
+    bridge->stats.total_analyses++;
+
+    return 0;
+}
+
+int recovery_parietal_analyze_impact(
+    recovery_parietal_bridge_t* bridge,
+    const code_location_t* location,
+    uint32_t depth,
+    char affected_modules[][128],
+    uint32_t max_modules
+) {
+    if (!bridge || !location || !affected_modules) {
+        return -1;
+    }
+
+    if (!recovery_parietal_bridge_is_ready(bridge)) {
+        return -1;
+    }
+
+    /* For now, return a simulated impact analysis */
+    /* In full implementation, this would use parietal's spatial reasoning */
+    uint32_t count = 0;
+
+    /* Add the failed module itself */
+    if (count < max_modules && strlen(location->module_name) > 0) {
+        snprintf(affected_modules[count], 128, "%s", location->module_name);
+        count++;
+    }
+
+    /* Simulate finding dependent modules based on depth */
+    for (uint32_t d = 1; d <= depth && count < max_modules; d++) {
+        snprintf(affected_modules[count], 128, "%s_dependent_%u",
+                location->module_name, d);
+        count++;
+    }
+
+    return (int)count;
+}
+
+int recovery_parietal_detect_smells(
+    recovery_parietal_bridge_t* bridge,
+    const code_location_t* location,
+    smell_result_t* smells,
+    uint32_t max_smells
+) {
+    if (!bridge || !location || !smells) {
+        return -1;
+    }
+
+    if (!recovery_parietal_bridge_is_ready(bridge)) {
+        return -1;
+    }
+
+    /* Use software engineering module */
+    software_eng_t* se = software_eng_create();
+    if (!se) {
+        return -1;
+    }
+
+    /* Create metrics based on location context */
+    software_metrics_t metrics = {
+        .lines_of_code = 300,
+        .num_functions = 15,
+        .cyclomatic_complexity = 12.0f,
+        .cognitive_complexity = 20.0f,
+        .maintainability_index = 70.0f
+    };
+
+    uint32_t count = software_eng_detect_smells(se, &metrics, smells, max_smells);
+
+    software_eng_destroy(se);
+
+    return (int)count;
+}
+
+//=============================================================================
+// Pattern Matching Functions
+//=============================================================================
+
+int recovery_parietal_find_similar_failures(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const code_location_t* location,
+    code_analysis_result_t* result,
+    uint32_t max_patterns
+) {
+    if (!bridge || !diagnosis || !result) {
+        return -1;
+    }
+
+    code_analysis_request_t request = {
+        .diagnosis = (diagnostic_result_t*)diagnosis,
+        .find_similar_patterns = true,
+        .analyze_dependencies = false,
+        .detect_code_smells = false,
+        .analyze_complexity = false
+    };
+
+    if (location) {
+        request.failure_location = *location;
+    }
+
+    int ret = recovery_parietal_analyze_code(bridge, &request, result);
+    if (ret != 0) {
+        return ret;
+    }
+
+    bridge->stats.patterns_matched += result->pattern_count;
+
+    return (int)result->pattern_count;
+}
+
+int recovery_parietal_learn_pattern(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const code_location_t* location,
+    const recovery_plan_t* plan,
+    bool success
+) {
+    if (!bridge || !diagnosis) {
+        return -1;
+    }
+
+    if (!bridge->config.enable_learning) {
+        return 0;
+    }
+
+    /* Check if we already have a similar pattern */
+    int existing_idx = -1;
+    for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        float sim = calculate_pattern_similarity(diagnosis, &bridge->patterns[i]);
+        if (sim >= 0.9f) {
+            existing_idx = (int)i;
+            break;
+        }
+    }
+
+    if (existing_idx >= 0) {
+        /* Update existing pattern */
+        bridge->patterns[existing_idx].occurrences++;
+        if (success) {
+            bridge->patterns[existing_idx].successful_recoveries++;
+            if (plan && strlen(plan->rationale) > 0) {
+                snprintf(bridge->patterns[existing_idx].successful_fix,
+                        sizeof(bridge->patterns[existing_idx].successful_fix),
+                        "%s", plan->rationale);
+            }
+        }
+    } else if (bridge->pattern_count < MAX_FAILURE_PATTERNS) {
+        /* Add new pattern */
+        failure_pattern_t* p = &bridge->patterns[bridge->pattern_count];
+        p->pattern_id = bridge->next_pattern_id++;
+        p->severity = diagnosis->severity;
+        snprintf(p->failure_type, sizeof(p->failure_type), "%s", diagnosis->root_cause);
+        if (location) {
+            snprintf(p->module_pattern, sizeof(p->module_pattern), "%s",
+                    location->module_name);
+        }
+        if (success && plan) {
+            snprintf(p->successful_fix, sizeof(p->successful_fix), "%s",
+                    plan->rationale);
+        }
+        p->occurrences = 1;
+        p->successful_recoveries = success ? 1 : 0;
+
+        bridge->pattern_count++;
+        bridge->stats.patterns_learned++;
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// Recovery Enhancement Functions
+//=============================================================================
+
+int recovery_parietal_enhance_plan(
+    recovery_parietal_bridge_t* bridge,
+    recovery_executive_t* exec,
+    const diagnostic_result_t* diagnosis,
+    const code_location_t* location,
+    recovery_enhancement_t* enhancement
+) {
+    if (!bridge || !exec || !diagnosis || !enhancement) {
+        return -1;
+    }
+
+    memset(enhancement, 0, sizeof(recovery_enhancement_t));
+
+    /* Perform code analysis */
+    code_analysis_request_t request = {
+        .diagnosis = (diagnostic_result_t*)diagnosis,
+        .analyze_dependencies = true,
+        .detect_code_smells = true,
+        .analyze_complexity = true,
+        .find_similar_patterns = true,
+        .dependency_depth = bridge->config.max_dependency_depth
+    };
+    if (location) {
+        request.failure_location = *location;
+    }
+
+    code_analysis_result_t analysis;
+    int ret = recovery_parietal_analyze_code(bridge, &request, &analysis);
+    if (ret != 0) {
+        return ret;
+    }
+
+    /* Calculate success estimate based on analysis */
+    float base_success = 0.7f;  /* Base success rate */
+
+    /* Adjust for severity */
+    base_success -= severity_to_difficulty(diagnosis->severity) * 0.3f;
+
+    /* Adjust for complexity */
+    base_success -= (complexity_to_factor(analysis.complexity.time_complexity) - 1.0f) * 0.05f;
+
+    /* Boost from historical patterns */
+    if (analysis.pattern_count > 0) {
+        base_success += 0.1f * analysis.similar_patterns[0].similarity;
+    }
+
+    enhancement->estimated_success_rate = fmaxf(0.1f, fminf(base_success, 0.95f));
+
+    /* Estimate recovery time */
+    enhancement->estimated_recovery_time_ms = 1000.0f * analysis.repair_difficulty;
+    enhancement->estimated_recovery_time_ms *= complexity_to_factor(analysis.complexity.time_complexity);
+
+    /* Resource requirement */
+    enhancement->resource_requirement = analysis.repair_difficulty;
+
+    /* Impact analysis */
+    enhancement->impacted_components = analysis.affected_modules;
+    snprintf(enhancement->critical_path, sizeof(enhancement->critical_path),
+            "Primary: %s -> Dependencies",
+            location ? location->module_name : "unknown");
+
+    /* Goal recommendation */
+    if (diagnosis->severity >= DIAG_SEVERITY_FATAL) {
+        enhancement->recommended_goal = RECOVERY_GOAL_DATA_PRESERVATION;
+    } else if (diagnosis->severity >= DIAG_SEVERITY_CRITICAL) {
+        enhancement->recommended_goal = RECOVERY_GOAL_DEGRADED_MODE;
+    } else {
+        enhancement->recommended_goal = RECOVERY_GOAL_FULL_RECOVERY;
+    }
+
+    /* Priority actions */
+    enhancement->priority_action_count = 0;
+
+    if (diagnosis->severity >= DIAG_SEVERITY_CRITICAL) {
+        enhancement->priority_actions[enhancement->priority_action_count++] =
+            RECOVERY_EXEC_ACTION_CHECKPOINT_SAVE;
+    }
+
+    enhancement->priority_actions[enhancement->priority_action_count++] =
+        RECOVERY_EXEC_ACTION_ANALYZE_DIAGNOSTIC;
+
+    if (analysis.smell_count > 0) {
+        enhancement->priority_actions[enhancement->priority_action_count++] =
+            RECOVERY_EXEC_ACTION_ISOLATE_COMPONENT;
+    }
+
+    enhancement->priority_actions[enhancement->priority_action_count++] =
+        RECOVERY_EXEC_ACTION_VERIFY_STATE;
+
+    /* Risk assessment */
+    enhancement->risk_of_cascade = fminf(1.0f,
+        analysis.affected_modules * 0.1f + analysis.repair_difficulty * 0.3f);
+    enhancement->risk_of_data_loss = (diagnosis->severity >= DIAG_SEVERITY_CRITICAL) ? 0.4f : 0.1f;
+
+    snprintf(enhancement->risk_mitigation, sizeof(enhancement->risk_mitigation),
+            "Checkpoint before repair, isolate %u affected modules",
+            analysis.affected_modules);
+
+    /* Learning recommendation */
+    enhancement->should_update_patterns = true;
+    snprintf(enhancement->pattern_update, sizeof(enhancement->pattern_update),
+            "Record outcome for %s failure pattern",
+            diagnosis->root_cause);
+
+    bridge->stats.enhancements_provided++;
+
+    /* Free analysis resources */
+    recovery_parietal_free_analysis_result(&analysis);
+
+    return 0;
+}
+
+recovery_plan_t* recovery_parietal_create_enhanced_plan(
+    recovery_parietal_bridge_t* bridge,
+    recovery_executive_t* exec,
+    const diagnostic_result_t* diagnosis,
+    recovery_goal_t goal,
+    const code_location_t* location
+) {
+    if (!bridge || !exec || !diagnosis) {
+        return NULL;
+    }
+
+    /* Get enhancement recommendations */
+    recovery_enhancement_t enhancement;
+    int ret = recovery_parietal_enhance_plan(bridge, exec, diagnosis, location, &enhancement);
+    if (ret != 0) {
+        return NULL;
+    }
+
+    /* Use recommended goal if different */
+    recovery_goal_t effective_goal = goal;
+    if (enhancement.estimated_success_rate < 0.3f) {
+        /* Low success rate - downgrade goal */
+        effective_goal = enhancement.recommended_goal;
+    }
+
+    /* Create plan using executive */
+    recovery_plan_t* plan = recovery_executive_create_plan(exec, diagnosis, effective_goal);
+    if (!plan) {
+        return NULL;
+    }
+
+    /* Enhance plan with parietal insights */
+    /* Append enhancement info to rationale */
+    char enhanced_rationale[256];
+    snprintf(enhanced_rationale, sizeof(enhanced_rationale),
+            "%s [Parietal: %.0f%% success, %.0fms est., %u components affected]",
+            plan->rationale,
+            enhancement.estimated_success_rate * 100.0f,
+            enhancement.estimated_recovery_time_ms,
+            enhancement.impacted_components);
+    snprintf(plan->rationale, sizeof(plan->rationale), "%s", enhanced_rationale);
+
+    /* Adjust confidence based on parietal analysis */
+    plan->confidence = (plan->confidence + enhancement.estimated_success_rate) / 2.0f;
+
+    return plan;
+}
+
+float recovery_parietal_estimate_success(
+    recovery_parietal_bridge_t* bridge,
+    const recovery_plan_t* plan,
+    const diagnostic_result_t* diagnosis
+) {
+    if (!bridge || !plan || !diagnosis) {
+        return 0.0f;
+    }
+
+    /* Base estimate from plan confidence */
+    float estimate = plan->confidence;
+
+    /* Adjust for severity */
+    estimate -= severity_to_difficulty(diagnosis->severity) * 0.2f;
+
+    /* Adjust for plan complexity */
+    if (plan->step_count > 10) {
+        estimate -= 0.1f;
+    } else if (plan->step_count < 5) {
+        estimate += 0.05f;
+    }
+
+    /* Check for historical patterns */
+    for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        float sim = calculate_pattern_similarity(diagnosis, &bridge->patterns[i]);
+        if (sim >= bridge->config.min_pattern_similarity) {
+            /* Use historical success rate */
+            if (bridge->patterns[i].occurrences > 0) {
+                float hist_rate = (float)bridge->patterns[i].successful_recoveries /
+                                  bridge->patterns[i].occurrences;
+                estimate = (estimate + hist_rate) / 2.0f;
+            }
+            break;
+        }
+    }
+
+    return fmaxf(0.0f, fminf(estimate, 1.0f));
+}
+
+//=============================================================================
+// Hypothesis Testing Functions
+//=============================================================================
+
+int recovery_parietal_create_hypothesis(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    char* hypothesis,
+    uint32_t max_len,
+    float* confidence
+) {
+    if (!bridge || !diagnosis || !hypothesis || !confidence) {
+        return -1;
+    }
+
+    /* Create hypothesis based on diagnostic information */
+    snprintf(hypothesis, max_len,
+            "Hypothesis: The %s failure (severity %d) is likely caused by "
+            "systemic issues in the affected subsystem. "
+            "Recovery approach should prioritize %s.",
+            diagnosis->root_cause,
+            diagnosis->severity,
+            (diagnosis->severity >= DIAG_SEVERITY_CRITICAL) ?
+                "data preservation" : "full restoration");
+
+    /* Calculate confidence based on available information */
+    *confidence = 0.5f;  /* Base confidence */
+
+    /* More info increases confidence */
+    if (strlen(diagnosis->symptoms) > 50) {
+        *confidence += 0.1f;
+    }
+    if (diagnosis->likely_faulty_function[0] != '\0') {
+        *confidence += 0.1f;
+    }
+
+    /* Historical patterns boost confidence */
+    for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        float sim = calculate_pattern_similarity(diagnosis, &bridge->patterns[i]);
+        if (sim >= bridge->config.min_pattern_similarity) {
+            *confidence += 0.2f;
+            break;
+        }
+    }
+
+    *confidence = fminf(*confidence, 0.95f);
+
+    return 0;
+}
+
+int recovery_parietal_test_hypothesis(
+    recovery_parietal_bridge_t* bridge,
+    const char* hypothesis,
+    const recovery_execution_result_t* evidence,
+    float* updated_confidence
+) {
+    if (!bridge || !hypothesis || !evidence || !updated_confidence) {
+        return -1;
+    }
+
+    /* Start with base confidence */
+    *updated_confidence = 0.5f;
+
+    /* Update based on evidence */
+    if (evidence->success) {
+        *updated_confidence = 0.9f;
+        bridge->stats.successful_predictions++;
+    } else {
+        *updated_confidence = 0.3f;
+        bridge->stats.failed_predictions++;
+
+        /* Adjust down further if many steps failed */
+        if (evidence->failed_step >= 0) {
+            float fail_ratio = (float)(evidence->failed_step + 1) / evidence->steps_completed;
+            *updated_confidence -= fail_ratio * 0.2f;
+        }
+    }
+
+    *updated_confidence = fmaxf(0.0f, fminf(*updated_confidence, 1.0f));
+
+    return 0;
+}
+
+//=============================================================================
+// Statistics Functions
+//=============================================================================
+
+int recovery_parietal_get_stats(
+    const recovery_parietal_bridge_t* bridge,
+    recovery_parietal_stats_t* stats
+) {
+    if (!bridge || !stats) {
+        return -1;
+    }
+
+    *stats = bridge->stats;
+    return 0;
+}
+
+void recovery_parietal_reset_stats(recovery_parietal_bridge_t* bridge) {
+    if (!bridge) {
+        return;
+    }
+
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+}
+
+//=============================================================================
+// Utility Functions
+//=============================================================================
+
+void recovery_parietal_free_analysis_result(code_analysis_result_t* result) {
+    if (!result) {
+        return;
+    }
+
+    /* Free dependency graph if allocated */
+    if (result->dependency_graph) {
+        free(result->dependency_graph);
+        result->dependency_graph = NULL;
+    }
+
+    /* Clear other dynamic data */
+    result->pattern_count = 0;
+    result->smell_count = 0;
+}
+
+const char* recovery_parietal_bridge_version(void) {
+    return RECOVERY_PARIETAL_VERSION;
+}

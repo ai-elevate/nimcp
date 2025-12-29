@@ -35,6 +35,8 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "dragonfly/nimcp_dragonfly.h"
+#include "dragonfly/nimcp_dragonfly_medulla_bridge.h"
+#include "core/medulla/nimcp_medulla.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -68,6 +70,7 @@ bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain) {
     brain->dragonfly = NULL;
     brain->dragonfly_enabled = false;
     brain->last_dragonfly_update_us = 0;
+    brain->dragonfly_medulla_bridge = NULL;
 
     /* Check if dragonfly is disabled in config */
     if (!brain->config.enable_dragonfly) {
@@ -121,6 +124,47 @@ bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain) {
     fprintf(stderr, "[DRAGONFLY] Dragonfly system created successfully\n");
     fprintf(stderr, "[DRAGONFLY]   Prediction horizon: %.1f ms\n", config.prediction_config.max_prediction_ms);
     fprintf(stderr, "[DRAGONFLY]   Navigation gain: %.1f\n", config.intercept_config.pn_gain);
+
+    /* =========================================================================
+     * DRAGONFLY-MEDULLA INTEGRATION BRIDGE
+     * =========================================================================
+     * Create and connect the bridge to integrate dragonfly with medulla states.
+     * The bridge modulates hunting behavior based on:
+     * - Arousal level: Alert dragonflies hunt better than drowsy ones
+     * - Protection level: Can block or abort hunting (prioritize survival)
+     * - Circadian phase: Diurnal hunters are inactive at night
+     */
+    if (brain->medulla) {
+        fprintf(stderr, "[DRAGONFLY] Creating dragonfly-medulla integration bridge...\n");
+
+        /* Create bridge with default configuration */
+        dragonfly_medulla_config_t bridge_config = dragonfly_medulla_default_config();
+        bridge_config.enable_logging = false;  /* Reduce verbosity */
+
+        brain->dragonfly_medulla_bridge = dragonfly_medulla_bridge_create(&bridge_config);
+        if (brain->dragonfly_medulla_bridge) {
+            /* Connect bridge to both systems */
+            int result = dragonfly_medulla_bridge_connect(
+                brain->dragonfly_medulla_bridge,
+                brain->dragonfly,
+                brain->medulla
+            );
+            if (result == 0) {
+                fprintf(stderr, "[DRAGONFLY] Dragonfly-medulla bridge connected\n");
+                fprintf(stderr, "[DRAGONFLY]   Arousal modulation: enabled\n");
+                fprintf(stderr, "[DRAGONFLY]   Protection modulation: enabled\n");
+                fprintf(stderr, "[DRAGONFLY]   Circadian modulation: enabled\n");
+            } else {
+                fprintf(stderr, "[DRAGONFLY] WARNING: Failed to connect dragonfly-medulla bridge\n");
+                dragonfly_medulla_bridge_destroy(brain->dragonfly_medulla_bridge);
+                brain->dragonfly_medulla_bridge = NULL;
+            }
+        } else {
+            fprintf(stderr, "[DRAGONFLY] WARNING: Failed to create dragonfly-medulla bridge\n");
+        }
+    } else {
+        fprintf(stderr, "[DRAGONFLY] Note: Medulla not available, skipping dragonfly-medulla integration\n");
+    }
 
     return true;
 }
@@ -213,6 +257,8 @@ int brain_dragonfly_get_command(brain_t brain, float* heading_rad,
 /**
  * @brief Step dragonfly system forward in time
  *
+ * Also updates the dragonfly-medulla bridge if connected.
+ *
  * @param brain Brain instance
  * @param delta_t Time step in microseconds
  * @return 0 on success, -1 on error
@@ -223,6 +269,18 @@ int brain_step_dragonfly(brain_t brain, uint64_t delta_t) {
     }
 
     float dt_seconds = (float)delta_t / 1000000.0f;
+
+    /* Update dragonfly-medulla bridge first to apply modulations */
+    if (brain->dragonfly_medulla_bridge) {
+        dragonfly_medulla_bridge_update(brain->dragonfly_medulla_bridge, dt_seconds);
+
+        /* Check if hunting is blocked by protection level */
+        if (!dragonfly_medulla_bridge_hunting_allowed(brain->dragonfly_medulla_bridge)) {
+            /* Don't process dragonfly updates when hunting is blocked */
+            return 0;
+        }
+    }
+
     int result = dragonfly_update(brain->dragonfly, dt_seconds);
     if (result == 0) {
         brain->last_dragonfly_update_us = brain->current_time_us;
@@ -256,4 +314,74 @@ int brain_dragonfly_abort(brain_t brain) {
     }
 
     return dragonfly_abort_pursuit(brain->dragonfly);
+}
+
+//=============================================================================
+// Dragonfly-Medulla Bridge Functions
+//=============================================================================
+
+/**
+ * @brief Get dragonfly-medulla bridge from brain
+ *
+ * @param brain Brain instance
+ * @return Bridge handle or NULL if not connected
+ */
+dragonfly_medulla_bridge_t brain_get_dragonfly_medulla_bridge(brain_t brain) {
+    if (!brain || !brain->dragonfly_enabled) {
+        return NULL;
+    }
+    return brain->dragonfly_medulla_bridge;
+}
+
+/**
+ * @brief Get current dragonfly modulation state from medulla
+ *
+ * Returns the current modulation factors applied to dragonfly
+ * based on arousal, protection, and circadian states.
+ *
+ * @param brain Brain instance
+ * @param modulation Output modulation state
+ * @return 0 on success, -1 on error
+ */
+int brain_dragonfly_get_modulation(brain_t brain,
+                                   dragonfly_medulla_modulation_t* modulation) {
+    if (!brain || !modulation) {
+        return -1;
+    }
+
+    if (!brain->dragonfly_medulla_bridge) {
+        /* No bridge - return default (unmodulated) values */
+        modulation->nav_gain_scale = 1.0f;
+        modulation->urgency_scale = 1.0f;
+        modulation->reaction_scale = 1.0f;
+        modulation->accuracy_scale = 1.0f;
+        modulation->max_duration_scale = 1.0f;
+        modulation->hunting_allowed = true;
+        modulation->should_abort = false;
+        modulation->arousal_level = 4;  /* AWAKE */
+        modulation->protection_level = 0;  /* NORMAL */
+        modulation->circadian_phase = 1;  /* MORNING */
+        return 0;
+    }
+
+    return dragonfly_medulla_bridge_get_modulation(
+        brain->dragonfly_medulla_bridge, modulation);
+}
+
+/**
+ * @brief Check if dragonfly hunting is currently allowed
+ *
+ * @param brain Brain instance
+ * @return true if hunting is allowed based on medulla state
+ */
+bool brain_dragonfly_hunting_allowed(brain_t brain) {
+    if (!brain || !brain->dragonfly_enabled) {
+        return false;
+    }
+
+    if (!brain->dragonfly_medulla_bridge) {
+        return true;  /* No bridge - always allowed */
+    }
+
+    return dragonfly_medulla_bridge_hunting_allowed(brain->dragonfly_medulla_bridge);
 }

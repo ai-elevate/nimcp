@@ -106,3 +106,36 @@ gtest_discover_tests(integration_dragonfly_sensory
         LABELS "integration;dragonfly;sensory"
         TIMEOUT 180
 )
+
+# ============================================================================
+# Medulla Integration Test
+# Tests dragonfly-medulla bridge modulation effects
+# ============================================================================
+add_executable(integration_dragonfly_medulla
+    test_dragonfly_medulla_integration.cpp
+)
+
+target_link_libraries(integration_dragonfly_medulla
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_dragonfly_medulla
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(integration_dragonfly_medulla PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_dragonfly_medulla
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;dragonfly;medulla"
+        TIMEOUT 180
+)

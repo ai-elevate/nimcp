@@ -162,11 +162,13 @@ typedef enum {
 //=============================================================================
 
 /**
- * @brief Plan step - single action in recovery plan
+ * @brief Recovery plan step - single action in recovery plan
  *
  * WHAT: One step in multi-step recovery sequence
  * WHY:  Plans decompose complex recovery into steps
  * HOW:  Action + metadata (timeout, confidence, description)
+ *
+ * NOTE: Uses recovery_plan_step_t to avoid conflict with executive's plan_step_t
  */
 typedef struct {
     recovery_exec_action_t action;   /**< Action to execute */
@@ -174,7 +176,7 @@ typedef struct {
     char description[128];            /**< Human-readable description */
     float expected_success_rate;     /**< Expected probability of success */
     bool is_critical;                /**< If true, plan fails if step fails */
-} plan_step_t;
+} recovery_plan_step_t;
 
 /**
  * @brief Decision criteria for plan creation
@@ -218,7 +220,7 @@ typedef struct {
 typedef struct {
     uint64_t plan_id;                /**< Unique plan identifier */
     recovery_goal_t goal;            /**< Recovery goal this plan achieves */
-    plan_step_t steps[MAX_PLAN_STEPS]; /**< Action sequence */
+    recovery_plan_step_t steps[MAX_PLAN_STEPS]; /**< Action sequence */
     uint32_t step_count;             /**< Number of steps */
     float confidence;                /**< Estimated success probability */
     uint32_t estimated_time_ms;      /**< Estimated execution time */

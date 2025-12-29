@@ -116,6 +116,11 @@
 
 // Phase E: Higher-Order Cognitive & Social Systems
 #include "cognitive/nimcp_shadow_emotions.h"
+
+// Fault Tolerance (Recovery Executive with Parietal Integration)
+// NOTE: Forward declaration to avoid header conflicts with diagnostics.h
+struct recovery_executive_internal;
+
 #include "cognitive/nimcp_bias_detection.h"
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "cognitive/nimcp_grief_and_loss.h"
@@ -169,6 +174,7 @@
 
 // Dragonfly Integration (Bio-inspired Target Tracking and Interception)
 #include "dragonfly/nimcp_dragonfly.h"
+#include "dragonfly/nimcp_dragonfly_medulla_bridge.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -765,6 +771,37 @@ struct brain_struct {
     dragonfly_system_t* dragonfly;                        // Dragonfly target tracking system
     bool dragonfly_enabled;                               // Dragonfly enabled for this brain
     uint64_t last_dragonfly_update_us;                    // Last dragonfly update timestamp
+
+    // Dragonfly-Medulla Integration Bridge
+    // BIOLOGICAL: Hunting behavior is modulated by arousal state, circadian rhythm,
+    // and protection level. Alert dragonflies hunt better than drowsy ones.
+    // - Arousal Level: Affects nav gain, urgency, reaction time
+    // - Protection Level: Can block or abort hunting (prioritize survival)
+    // - Circadian Phase: Diurnal hunters are inactive at night
+    dragonfly_medulla_bridge_t dragonfly_medulla_bridge;  // Dragonfly-medulla integration
+
+    // === FAULT TOLERANCE SUBSYSTEM (Intelligent Recovery with Parietal Integration) ===
+    //
+    // The Fault Tolerance module provides intelligent error recovery through:
+    // - Recovery Executive: Multi-step recovery planning and execution
+    // - Failure Prediction: Proactive fault detection
+    // - Metacognitive Monitoring: "Is this working?" self-assessment
+    // - Pattern Learning: Learn from past failures and recoveries
+    //
+    // BIOLOGICAL BASIS: Maps to brain's error detection and correction:
+    // - Anterior Cingulate Cortex: Error monitoring
+    // - Prefrontal Cortex: Recovery planning (executive function)
+    // - Hippocampus: Episodic memory of past failures
+    //
+    // PARIETAL INTEGRATION: Uses parietal lobe for:
+    // - Software Engineering Analysis: Code structure at failure location
+    // - Pattern Detection: Match against historical failures
+    // - Spatial Reasoning: Dependency graph analysis
+    // - Mathematical Intuition: Recovery feasibility estimation
+    //
+    struct recovery_executive_internal* recovery_executive; // Recovery planning and execution
+    bool fault_tolerance_enabled;                          // Fault tolerance enabled for this brain
+    uint64_t last_fault_check_us;                          // Last fault check timestamp
 };
 
 //=============================================================================

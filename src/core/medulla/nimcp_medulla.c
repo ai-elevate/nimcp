@@ -732,6 +732,38 @@ float medulla_get_arousal_level(const medulla_t medulla) {
     return medulla->current_arousal;
 }
 
+int medulla_boost_arousal(medulla_t medulla, float delta) {
+    if (!medulla || delta < 0.0f) {
+        return -1;
+    }
+
+    float new_arousal = medulla->current_arousal + delta;
+
+    /* Clamp to configured range */
+    if (new_arousal > medulla->config.arousal.max_arousal) {
+        new_arousal = medulla->config.arousal.max_arousal;
+    }
+
+    medulla->current_arousal = new_arousal;
+    return 0;
+}
+
+int medulla_reduce_arousal(medulla_t medulla, float delta) {
+    if (!medulla || delta < 0.0f) {
+        return -1;
+    }
+
+    float new_arousal = medulla->current_arousal - delta;
+
+    /* Clamp to configured range */
+    if (new_arousal < medulla->config.arousal.min_arousal) {
+        new_arousal = medulla->config.arousal.min_arousal;
+    }
+
+    medulla->current_arousal = new_arousal;
+    return 0;
+}
+
 protection_level_t medulla_get_protection_level(const medulla_t medulla) {
     if (!medulla) {
         return PROTECTION_LEVEL_NORMAL;
@@ -861,4 +893,73 @@ const char* medulla_state_to_string(medulla_state_t state) {
         case MEDULLA_STATE_STOPPING: return "STOPPING";
         default: return "UNKNOWN";
     }
+}
+
+//=============================================================================
+// Test Helper Functions
+//=============================================================================
+
+int medulla_test_set_arousal(medulla_t medulla, float level) {
+    if (!medulla) {
+        return -1;
+    }
+
+    /* Clamp level to valid range */
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+
+    nimcp_platform_mutex_lock(medulla->mutex);
+
+    /* Set current arousal directly */
+    medulla->current_arousal = level;
+
+    /* Update arousal level enum based on level */
+    if (level < 0.05f) {
+        medulla->arousal_level = AROUSAL_LEVEL_COMA;
+    } else if (level < 0.15f) {
+        medulla->arousal_level = AROUSAL_LEVEL_DEEP_SLEEP;
+    } else if (level < 0.30f) {
+        medulla->arousal_level = AROUSAL_LEVEL_LIGHT_SLEEP;
+    } else if (level < 0.45f) {
+        medulla->arousal_level = AROUSAL_LEVEL_DROWSY;
+    } else if (level < 0.65f) {
+        medulla->arousal_level = AROUSAL_LEVEL_AWAKE;
+    } else if (level < 0.85f) {
+        medulla->arousal_level = AROUSAL_LEVEL_ALERT;
+    } else {
+        medulla->arousal_level = AROUSAL_LEVEL_HYPERAROUSAL;
+    }
+
+    nimcp_platform_mutex_unlock(medulla->mutex);
+    return 0;
+}
+
+int medulla_test_set_protection(medulla_t medulla, protection_level_t level) {
+    if (!medulla) {
+        return -1;
+    }
+
+    if (level < PROTECTION_LEVEL_NORMAL || level > PROTECTION_LEVEL_SHUTDOWN) {
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(medulla->mutex);
+    medulla->protection_level = level;
+    nimcp_platform_mutex_unlock(medulla->mutex);
+    return 0;
+}
+
+int medulla_test_set_circadian(medulla_t medulla, circadian_phase_t phase) {
+    if (!medulla) {
+        return -1;
+    }
+
+    if (phase < CIRCADIAN_PHASE_EARLY_MORNING || phase > CIRCADIAN_PHASE_PRE_DAWN) {
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(medulla->mutex);
+    medulla->circadian_phase = phase;
+    nimcp_platform_mutex_unlock(medulla->mutex);
+    return 0;
 }

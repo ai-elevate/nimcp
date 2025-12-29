@@ -92,15 +92,17 @@ typedef enum {
 } error_type_t;
 
 /**
- * @brief Error severity classification
+ * @brief Error severity classification for fault diagnostics
+ *
+ * NOTE: Uses DIAG_SEVERITY prefix to avoid conflict with wellbeing severity levels
  */
 typedef enum {
-    SEVERITY_INFO,       /**< Informational, no action needed */
-    SEVERITY_WARNING,    /**< Warning, monitor but continue */
-    SEVERITY_ERROR,      /**< Error, recovery may be possible */
-    SEVERITY_CRITICAL,   /**< Critical, immediate action required */
-    SEVERITY_FATAL       /**< Fatal, system must shut down */
-} error_severity_t;
+    DIAG_SEVERITY_INFO,       /**< Informational, no action needed */
+    DIAG_SEVERITY_WARNING,    /**< Warning, monitor but continue */
+    DIAG_SEVERITY_ERROR,      /**< Error, recovery may be possible */
+    DIAG_SEVERITY_CRITICAL,   /**< Critical, immediate action required */
+    DIAG_SEVERITY_FATAL       /**< Fatal, system must shut down */
+} diag_severity_t;
 
 //=============================================================================
 // Recovery Action Recommendations
@@ -189,7 +191,7 @@ typedef struct {
 typedef struct diagnostic_result {
     // Error Classification
     error_type_t error_type;           /**< Primary error type */
-    error_severity_t severity;         /**< Error severity */
+    diag_severity_t severity;          /**< Error severity */
     float confidence;                  /**< Confidence in diagnosis (0.0-1.0) */
 
     // Root Cause Analysis
@@ -566,7 +568,7 @@ const char* diagnostics_get_error_type_name(error_type_t type);
  * @param severity Severity level
  * @return String name (static, do not free)
  */
-const char* diagnostics_get_severity_name(error_severity_t severity);
+const char* diagnostics_get_severity_name(diag_severity_t severity);
 
 /**
  * @brief Get recovery action name

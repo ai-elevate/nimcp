@@ -1171,6 +1171,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_task_queue.c     # Per-agent task queues
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_task_scheduler.c # Capability-aware scheduling
 
+    # Swarm Dragonfly Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_dragonfly_bridge.c # Coordinated multi-drone pursuit
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_protocol_metrics.c # Protocol metrics dashboard
 
     # Platform Tier System (Portia Spider Foundation)

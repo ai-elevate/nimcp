@@ -236,6 +236,13 @@ bool nimcp_brain_is_medulla_emergency(brain_t brain) {
             stats.protection_level >= PROTECTION_LEVEL_CRITICAL);
 }
 
+medulla_t brain_get_medulla(brain_t brain) {
+    if (!brain || !brain->medulla_enabled) {
+        return NULL;
+    }
+    return brain->medulla;
+}
+
 //=============================================================================
 // Control Functions
 //=============================================================================

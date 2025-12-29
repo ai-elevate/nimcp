@@ -115,6 +115,11 @@ bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain);
 // Enables structural introspection: "What modules do I have?" "How am I organized?"
 bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain);
 
+// === FAULT TOLERANCE SUBSYSTEM (Intelligent Recovery) ===
+// Recovery executive with parietal integration for intelligent code repair
+// Uses software engineering analysis, pattern detection, and spatial reasoning
+bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

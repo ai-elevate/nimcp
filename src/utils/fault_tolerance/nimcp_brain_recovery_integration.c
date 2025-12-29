@@ -274,7 +274,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
             .signal = 0,  // Not signal-driven
             .failure_type = diagnosis->root_cause,
             .severity = (uint32_t)diagnosis->severity,
-            .is_recoverable = (diagnosis->severity < SEVERITY_FATAL),
+            .is_recoverable = (diagnosis->severity < DIAG_SEVERITY_FATAL),
             .context = NULL
         };
 
@@ -296,7 +296,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
     }
 
     decision->estimated_time_us = 1000;  // 1ms estimate
-    decision->requires_user_confirmation = (diagnosis->severity >= SEVERITY_CRITICAL);
+    decision->requires_user_confirmation = (diagnosis->severity >= DIAG_SEVERITY_CRITICAL);
 
     ctx->brain_decisions++;
 
