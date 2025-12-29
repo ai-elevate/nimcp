@@ -237,6 +237,48 @@
 {"type":"entity","name":"Memory_Consolidation_Pipeline","entityType":"init_pattern","observations":["Complex 4-system initialization pipeline","Working Memory -> WM Transfer System","WM Transfer -> Engram System","Engram System -> Systems Consolidation","Systems Consolidation -> Semantic Memory","Sleep System triggers replay"]}
 {"type":"entity","name":"Security_Layer_Architecture","entityType":"init_pattern","observations":["Three-layer security initialization","Layer 1: Security Recovery Bridge (SRB) - auto-repair","Layer 2: Security Integration (SC-4) - monitoring","Layer 3: Blood-Brain Barrier (IS-1) - perimeter","Immune system connects to BBB and bio-async"]}
 {"type":"entity","name":"Personality_Neuromodulation","entityType":"init_pattern","observations":["Neuromodulator baselines from Big Five personality","Extraversion -> Dopamine (0.3 + trait*0.5)","Neuroticism -> Serotonin (0.7 - trait*0.4)","Openness -> Acetylcholine (0.3 + trait*0.5)","Conscientiousness -> Norepinephrine (0.4 + trait*0.4)"]}
+{"type":"entity","name":"Cognitive_Module_System","entityType":"module_system","observations":["49 primary cognitive modules","249 header files total","88 bridge files (35% of cognitive codebase)","5 integration tiers from Foundation to Consciousness"]}
+{"type":"entity","name":"Attention_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/attention/","FEP precision-weighted gain modulation","Salience-based focus allocation","Game theory auctions for resource allocation","Immune bridge: inflammation reduces focus capacity"]}
+{"type":"entity","name":"Executive_Functions","entityType":"cognitive_module","observations":["Location: include/cognitive/executive/","Task scheduling, inhibitory control, planning","Middleware adapter for system integration","Quantum bridge for quantum-inspired planning","Controls WM allocation, attention shifts, task switching"]}
+{"type":"entity","name":"Emotion_System","entityType":"cognitive_module","observations":["Location: include/cognitive/emotion/","Includes emotion recognition, emotional tagging, emotion tensor","FEP valenced prediction errors","Modulates WM salience, executive urgency, attention gain","Joy, grief, love, remorse, shadow emotions subsystems"]}
+{"type":"entity","name":"Memory_Systems","entityType":"cognitive_module","observations":["Location: include/cognitive/memory/","Semantic memory with spreading activation","Episodic memory via consolidation","Engram physical trace substrate","Systems consolidation for cortical transfer","WM transfer for WM→LTM pipeline","Quantum semantic search capability"]}
+{"type":"entity","name":"Reasoning_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/reasoning/","Forward chaining, backward chaining, unification engine","Quantum-accelerated search","Integration hooks: Attention, Curiosity, WM, Executive, Consolidation","Publishes logic events (novel fact, contradiction, proof complete)"]}
+{"type":"entity","name":"Knowledge_System","entityType":"cognitive_module","observations":["Location: include/cognitive/knowledge/","Knowledge graph storage and retrieval","Copy-on-Write optimization","Fractal knowledge hierarchy","Hyperbolic embeddings","KG reader interface for runtime self-awareness"]}
+{"type":"entity","name":"Introspection_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/introspection/","Internal state querying (neuron activity, state vectors, uncertainty)","Consciousness metrics (Phi/IIT, integrated information)","Ensemble uncertainty (epistemic + aleatoric)","Temporal patterns and connectivity health"]}
+{"type":"entity","name":"Ethics_Engine_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/ethics/","Golden Rule foundation","Asimov's Laws, Laws of War, Mercy directives","Combinatorial harm assessment","Core directives are memory-protected/immutable","Integrates with ToM, Empathy, Executive"]}
+{"type":"entity","name":"Curiosity_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/curiosity/","Core exploration drive","Enhanced curiosity mechanisms","Quantum surprise detection","Triggered by reasoning failures, novel facts, prediction errors","Minimizes expected free energy via info-seeking"]}
+{"type":"entity","name":"Theory_of_Mind_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/theory_of_mind/","Agent belief/intention modeling (BDI)","False belief tracking, perspective-taking","Integrates with Mirror Neurons, Empathy, Ethics","ToM substrate bridge for mirror neuron integration"]}
+{"type":"entity","name":"Mirror_Neurons_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/mirror_neurons/","Core mirror system for empathy and imitation","Hierarchical action understanding","Motor resonance with observed action","STDP integration for learning","Immune integration for empathy regulation"]}
+{"type":"entity","name":"Game_Theory_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/game_theory/","Auction, bargaining, credit assignment modules","Coalition formation, equilibrium computation","Fairness principles (Jain, Gini, Theil)","Learning in games (Q-learning, CFR, fictitious play)","Hemispheric, neuromod, ToM, WM integration submodules"]}
+{"type":"entity","name":"Global_Workspace_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/global_workspace/","Central broadcast architecture for consciousness","Shannon information metrics","All cognitive modules can compete for access","Content = conscious access","Middleware adapter for system integration"]}
+{"type":"entity","name":"Free_Energy_Module","entityType":"cognitive_module","observations":["Location: include/cognitive/free_energy/","Core FEP mathematics and orchestration","FEP consciousness, context, curiosity, evidence, learning","FEP planning via active inference","45+ module bridges - theoretical foundation","Precision weighting modulates all prediction errors"]}
+{"type":"entity","name":"Consolidation_System","entityType":"cognitive_module","observations":["WM→LTM transfer mechanisms","Sleep-dependent consolidation","Emotion-weighted priority","Recovery/fault-tolerant consolidation","FEP-guided consolidation decisions"]}
+{"type":"entity","name":"Wellbeing_System","entityType":"cognitive_module","observations":["Life satisfaction and eudaimonia metrics","Homeostatic balance tracking","FEP wellbeing optimization","Immune bridge for health-wellbeing link"]}
+{"type":"entity","name":"Self_Model_System","entityType":"cognitive_module","observations":["Body model and agency representation","Extended self (body+environment)","Recursive self-monitoring via feedback","FEP self-prediction","Immune bridge for self-threat detection"]}
+{"type":"entity","name":"Mental_Health_Monitor","entityType":"cognitive_module","observations":["Mental state monitoring system","9 disorder type detectors","FEP mental health optimization","Sleep-dependent mental recovery","Immune bridge for psychosomatic link"]}
+{"type":"entity","name":"Training_Module_System","entityType":"module_system","observations":["17+ core training modules","3 main training types: SNN, LNN, CNN","6 primary bridges: plasticity, cortical, perception, cognitive, logic, immune","50+ interconnection points across bridges"]}
+{"type":"entity","name":"SNN_Backprop_Training","entityType":"training_module","observations":["Location: src/training/nimcp_snn_backprop.c","Surrogate gradients: SuperSpike, Fast Sigmoid, Arctan, Triangular","Algorithms: BPTT, E-prop, RTRL, SLAYER, DECOLLE, Hybrid","Spike-aware loss functions (count MSE, first spike, van Rossum)"]}
+{"type":"entity","name":"CNN_Training","entityType":"training_module","observations":["Location: src/training/nimcp_cnn_training.c","Conv2D/1D, Depthwise Separable, Pooling, BatchNorm","CNN-to-SNN conversion with rate/population/temporal coding","STDP fine-tuning after conversion"]}
+{"type":"entity","name":"LNN_Training","entityType":"training_module","observations":["Trained via standard backprop (RNN-like dynamics)","Time constants (tau), ODE solver integration","Auto-architecture can discover LNN topologies","Combinable with STDP via training-plasticity bridge"]}
+{"type":"entity","name":"Auto_Architecture_NAS","entityType":"training_module","observations":["Location: src/training/nimcp_auto_architecture.c","Neural Architecture Search system","Exports to SNN and LNN formats","Imports from hand-designed networks"]}
+{"type":"entity","name":"Training_Optimizers","entityType":"training_module","observations":["Location: src/middleware/training/nimcp_optimizers.c","SGD, Adam, RMSprop, AdaGrad, AdamW, Nadam","Thread-safe buffer reallocation with state_mutex","Custom optimizer support"]}
+{"type":"entity","name":"Gradient_Manager","entityType":"training_module","observations":["Location: src/middleware/training/nimcp_gradient_manager.c","Accumulation, scaling, health checking, clipping","Distributed training all-reduce support","NaN/Inf detection and handling","Thread-safe with accum_mutex"]}
+{"type":"entity","name":"Loss_Functions","entityType":"training_module","observations":["Location: src/middleware/training/nimcp_loss_functions.c","MSE, Cross-Entropy, KL-Div, Huber, Focal","Contrastive, Triplet losses","Spike-aware losses for SNN"]}
+{"type":"entity","name":"LR_Scheduler","entityType":"training_module","observations":["Location: src/middleware/training/nimcp_lr_scheduler.c","StepLR, ExponentialLR, CosineAnnealing","Warmup, OneCycle, Custom schedulers","Bridges LR modulation from cognitive/cortical systems"]}
+{"type":"entity","name":"Training_Plasticity_Bridge","entityType":"training_bridge","observations":["Bidirectional Training <-> Plasticity bridge","Loss-to-RPE (Reward Prediction Error) converter","Region-specific routing: cortical, striatal, hippocampal, cerebellar, thalamic, amygdala, prefrontal","Neuromodulator-LR modulation: DA, ACh, 5-HT"]}
+{"type":"entity","name":"Cortical_Training_Bridge","entityType":"training_bridge","observations":["Training <-> Cortical (Predictive Coding, Dendritic, Columns)","Free energy -> LR modulation","Precision weights for per-layer gradient scaling","Prediction error gain adjustment"]}
+{"type":"entity","name":"Perception_Training_Bridge","entityType":"training_bridge","observations":["Training <-> Visual/Audio/Speech Cortex","Visual confidence -> LR multiplier [0.3, 1.5]","Novelty -> sample weight [0.1, 2.0]","Can skip low-quality samples"]}
+{"type":"entity","name":"Cognitive_Training_Bridge","entityType":"training_bridge","observations":["Training <-> Executive/Introspection/Attention/Emotion","Executive load -> batch size","Emotion -> LR (frustration down, satisfaction up)","Curiosity -> exploration intensity"]}
+{"type":"entity","name":"Training_Logic_Bridge","entityType":"training_bridge","observations":["Training <-> Logic/Reasoning","Logic confidence -> gradient weighting","Inference quality -> LR adjustment","Symbolic grounding of learned predictions"]}
+{"type":"entity","name":"Brain_Training_Integration","entityType":"training_bridge","observations":["Aggregates all training bridges","Region-specific routing hub","DA/ACh/5-HT modulation coordination","Central training-brain interface"]}
+{"type":"entity","name":"Event_Driven_Plasticity","entityType":"training_module","observations":["Location: src/middleware/training/nimcp_event_driven_plasticity.c","Listens to training loss events","Applies STDP, BCM, homeostatic rules","Spike-based plasticity from training signals"]}
+{"type":"entity","name":"Neural_Logic_Module","entityType":"logic_module","observations":["Location: include/core/logic/nimcp_neural_logic.h","Spiking neural logic gates","AND, OR, NOT, NAND, NOR, XOR, XNOR gates","Temporal logic with spike timing","Integrated with cortical columns"]}
+{"type":"entity","name":"Symbolic_Logic_Module","entityType":"logic_module","observations":["Location: include/cognitive/reasoning/nimcp_symbolic_logic.h","First-order logic (FOL) reasoning","Forward chaining inference","Backward chaining goal-directed","Sleep bridge for rule consolidation"]}
+{"type":"entity","name":"Logic_Sleep_Bridge","entityType":"logic_bridge","observations":["Sleep-dependent logic consolidation","Rule strengthening during NREM","Logic pattern replay"]}
+{"type":"entity","name":"Logic_Parietal_Integration","entityType":"logic_integration","observations":["Parietal mathematical reasoning uses logic gates","Equation manipulation via symbolic logic","Scientific reasoning inference chains"]}
+{"type":"entity","name":"Logic_Knowledge_Integration","entityType":"logic_integration","observations":["Knowledge graph queries via logic","Fact retrieval through inference","Consistency checking with reasoning"]}
+{"type":"entity","name":"Logic_Reasoning_Integration","entityType":"logic_integration","observations":["Unification engine for pattern matching","Forward/backward chaining orchestration","Quantum-accelerated search for complex proofs"]}
+{"type":"entity","name":"Ternary_Logic_System","entityType":"logic_module","observations":["Location: include/cognitive/ethics/nimcp_trit_ethics.h","Three-valued ethics logic","True/False/Unknown states","Uncertainty-aware ethical reasoning"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -511,3 +553,104 @@
 {"type":"relation","from":"Init_Phase_7_Security_Full","to":"Immune_System","relationType":"initializes"}
 {"type":"relation","from":"Init_Phase_7_Security_Full","to":"BBB_System","relationType":"initializes"}
 {"type":"relation","from":"Init_Phase_8_Ethics","to":"Ethics_Engine","relationType":"initializes"}
+{"type":"relation","from":"Cognitive_Module_System","to":"Cognitive_Systems","relationType":"implements"}
+{"type":"relation","from":"Attention_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Executive_Functions","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Emotion_System","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Memory_Systems","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Reasoning_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Knowledge_System","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Introspection_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Ethics_Engine_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Curiosity_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Theory_of_Mind_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Mirror_Neurons_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Game_Theory_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Global_Workspace_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Free_Energy_Module","to":"Cognitive_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Working_Memory","to":"Attention_Module","relationType":"bidirectional_with"}
+{"type":"relation","from":"Working_Memory","to":"Executive_Functions","relationType":"bidirectional_with"}
+{"type":"relation","from":"Attention_Module","to":"Executive_Functions","relationType":"bidirectional_with"}
+{"type":"relation","from":"Emotion_System","to":"Working_Memory","relationType":"modulates_salience_of"}
+{"type":"relation","from":"Emotion_System","to":"Executive_Functions","relationType":"modulates_urgency_of"}
+{"type":"relation","from":"Emotion_System","to":"Attention_Module","relationType":"modulates_gain_of"}
+{"type":"relation","from":"Reasoning_Module","to":"Knowledge_System","relationType":"queries"}
+{"type":"relation","from":"Knowledge_System","to":"Memory_Systems","relationType":"extracts_concepts_from"}
+{"type":"relation","from":"Curiosity_Module","to":"Attention_Module","relationType":"drives_novelty_in"}
+{"type":"relation","from":"Curiosity_Module","to":"Executive_Functions","relationType":"creates_exploration_tasks_for"}
+{"type":"relation","from":"Theory_of_Mind_Module","to":"Mirror_Neurons_Module","relationType":"simulates_via"}
+{"type":"relation","from":"Theory_of_Mind_Module","to":"Ethics_Engine_Module","relationType":"provides_perspective_to"}
+{"type":"relation","from":"Mirror_Neurons_Module","to":"Emotion_System","relationType":"generates_empathy_in"}
+{"type":"relation","from":"Ethics_Engine_Module","to":"Executive_Functions","relationType":"evaluates_decisions_of"}
+{"type":"relation","from":"Global_Workspace_Module","to":"Attention_Module","relationType":"receives_broadcast_from"}
+{"type":"relation","from":"Global_Workspace_Module","to":"Executive_Functions","relationType":"receives_broadcast_from"}
+{"type":"relation","from":"Global_Workspace_Module","to":"Reasoning_Module","relationType":"receives_broadcast_from"}
+{"type":"relation","from":"Global_Workspace_Module","to":"Ethics_Engine_Module","relationType":"receives_broadcast_from"}
+{"type":"relation","from":"Free_Energy_Module","to":"Attention_Module","relationType":"provides_precision_to"}
+{"type":"relation","from":"Free_Energy_Module","to":"Curiosity_Module","relationType":"drives_info_seeking_in"}
+{"type":"relation","from":"Free_Energy_Module","to":"Executive_Functions","relationType":"guides_planning_in"}
+{"type":"relation","from":"Consolidation_System","to":"Memory_Systems","relationType":"transfers_to_LTM"}
+{"type":"relation","from":"Consolidation_System","to":"Working_Memory","relationType":"consolidates_from"}
+{"type":"relation","from":"Sleep_System","to":"Consolidation_System","relationType":"triggers_replay_in"}
+{"type":"relation","from":"Introspection_Module","to":"Self_Model_System","relationType":"updates"}
+{"type":"relation","from":"Wellbeing_System","to":"Immune_System","relationType":"receives_health_from"}
+{"type":"relation","from":"Mental_Health_Monitor","to":"Emotion_System","relationType":"monitors"}
+{"type":"relation","from":"Mental_Health_Monitor","to":"Wellbeing_System","relationType":"reports_to"}
+{"type":"relation","from":"Training_Module_System","to":"Training_Module","relationType":"implements"}
+{"type":"relation","from":"SNN_Backprop_Training","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"CNN_Training","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"LNN_Training","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Auto_Architecture_NAS","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Training_Optimizers","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Gradient_Manager","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Loss_Functions","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"LR_Scheduler","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"Event_Driven_Plasticity","to":"Training_Module_System","relationType":"belongs_to"}
+{"type":"relation","from":"SNN_Backprop_Training","to":"SNN_Module","relationType":"trains"}
+{"type":"relation","from":"CNN_Training","to":"SNN_Module","relationType":"converts_to"}
+{"type":"relation","from":"LNN_Training","to":"LNN_Module","relationType":"trains"}
+{"type":"relation","from":"Auto_Architecture_NAS","to":"SNN_Module","relationType":"discovers_architecture_for"}
+{"type":"relation","from":"Auto_Architecture_NAS","to":"LNN_Module","relationType":"discovers_architecture_for"}
+{"type":"relation","from":"Training_Optimizers","to":"Gradient_Manager","relationType":"uses"}
+{"type":"relation","from":"Loss_Functions","to":"Gradient_Manager","relationType":"feeds"}
+{"type":"relation","from":"LR_Scheduler","to":"Training_Optimizers","relationType":"modulates"}
+{"type":"relation","from":"Event_Driven_Plasticity","to":"STDP_Module","relationType":"applies"}
+{"type":"relation","from":"Event_Driven_Plasticity","to":"Plasticity_Systems","relationType":"triggers"}
+{"type":"relation","from":"Training_Plasticity_Bridge","to":"Training_Module_System","relationType":"bridges"}
+{"type":"relation","from":"Training_Plasticity_Bridge","to":"Plasticity_Systems","relationType":"bridges"}
+{"type":"relation","from":"Cortical_Training_Bridge","to":"Training_Module_System","relationType":"bridges"}
+{"type":"relation","from":"Cortical_Training_Bridge","to":"Cortical_Columns","relationType":"bridges"}
+{"type":"relation","from":"Perception_Training_Bridge","to":"Training_Module_System","relationType":"bridges"}
+{"type":"relation","from":"Perception_Training_Bridge","to":"Perception_Module","relationType":"bridges"}
+{"type":"relation","from":"Cognitive_Training_Bridge","to":"Training_Module_System","relationType":"bridges"}
+{"type":"relation","from":"Cognitive_Training_Bridge","to":"Cognitive_Module_System","relationType":"bridges"}
+{"type":"relation","from":"Training_Logic_Bridge","to":"Training_Module_System","relationType":"bridges"}
+{"type":"relation","from":"Training_Logic_Bridge","to":"Reasoning_Module","relationType":"bridges"}
+{"type":"relation","from":"Brain_Training_Integration","to":"Training_Module_System","relationType":"aggregates"}
+{"type":"relation","from":"Brain_Training_Integration","to":"Brain","relationType":"bridges"}
+{"type":"relation","from":"CNN_Cortex_Bridge","to":"CNN_Training","relationType":"extends"}
+{"type":"relation","from":"CNN_Cortex_Bridge","to":"Perception_Module","relationType":"bridges"}
+{"type":"relation","from":"Neural_Logic_Module","to":"Cortical_Columns","relationType":"integrates_with"}
+{"type":"relation","from":"Neural_Logic_Module","to":"SNN_Module","relationType":"uses_spikes_from"}
+{"type":"relation","from":"Symbolic_Logic_Module","to":"Reasoning_Module","relationType":"provides_inference_to"}
+{"type":"relation","from":"Symbolic_Logic_Module","to":"Knowledge_System","relationType":"queries"}
+{"type":"relation","from":"Logic_Sleep_Bridge","to":"Symbolic_Logic_Module","relationType":"consolidates"}
+{"type":"relation","from":"Logic_Sleep_Bridge","to":"Sleep_System","relationType":"bridges"}
+{"type":"relation","from":"Logic_Parietal_Integration","to":"Neural_Logic_Module","relationType":"uses"}
+{"type":"relation","from":"Logic_Parietal_Integration","to":"Parietal_Lobe","relationType":"enables_math_in"}
+{"type":"relation","from":"Logic_Knowledge_Integration","to":"Symbolic_Logic_Module","relationType":"uses"}
+{"type":"relation","from":"Logic_Knowledge_Integration","to":"Knowledge_System","relationType":"queries_via"}
+{"type":"relation","from":"Logic_Reasoning_Integration","to":"Reasoning_Module","relationType":"orchestrates"}
+{"type":"relation","from":"Ternary_Logic_System","to":"Ethics_Engine_Module","relationType":"provides_uncertainty_to"}
+{"type":"relation","from":"Reasoning_Module","to":"Neural_Logic_Module","relationType":"uses_gates_from"}
+{"type":"relation","from":"Parietal_Lobe","to":"Symbolic_Logic_Module","relationType":"uses_for_equations"}
+{"type":"relation","from":"Game_Theory_Module","to":"Attention_Module","relationType":"auctions_resources_in"}
+{"type":"relation","from":"Game_Theory_Module","to":"Working_Memory","relationType":"tracks_strategies_in"}
+{"type":"relation","from":"Game_Theory_Module","to":"Theory_of_Mind_Module","relationType":"enhanced_by"}
+{"type":"relation","from":"Game_Theory_Module","to":"Global_Workspace_Module","relationType":"broadcasts_consensus_to"}
+{"type":"relation","from":"Parietal_Lobe","to":"Free_Energy_Module","relationType":"provides_physics_to"}
+{"type":"relation","from":"Parietal_Lobe","to":"Working_Memory","relationType":"stores_spatial_in"}
+{"type":"relation","from":"Reasoning_Module","to":"Attention_Module","relationType":"boosts_salience_in"}
+{"type":"relation","from":"Reasoning_Module","to":"Curiosity_Module","relationType":"triggers_exploration_in"}
+{"type":"relation","from":"Reasoning_Module","to":"Executive_Functions","relationType":"plans_proofs_with"}
+{"type":"relation","from":"Reasoning_Module","to":"Consolidation_System","relationType":"stores_rules_in"}
