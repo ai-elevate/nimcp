@@ -20,6 +20,7 @@ struct dragonfly_bio_future_s {
     bool ready;
     float start_time_ms;
     float priority;
+    struct dragonfly_bio_async_bridge_s* parent;  /* Back-pointer for cleanup */
 };
 
 struct dragonfly_bio_async_bridge_s {
@@ -189,6 +190,7 @@ dragonfly_bio_future_t* dragonfly_bio_async_start(
     dragonfly_bio_future_t* future = calloc(1, sizeof(dragonfly_bio_future_t));
     if (!future) return NULL;
 
+    future->parent = bridge;
     future->operation = operation;
     future->input_size = (input_size > 16) ? 16 : input_size;
     if (input && future->input_size > 0) {
@@ -253,6 +255,23 @@ float dragonfly_bio_future_get_confidence(const dragonfly_bio_future_t* future) 
 
 void dragonfly_bio_future_destroy(dragonfly_bio_future_t* future) {
     if (!future) return;
+
+    /* Remove from parent's futures list to prevent double-free */
+    if (future->parent) {
+        dragonfly_bio_async_bridge_t* bridge = future->parent;
+        for (uint32_t i = 0; i < bridge->num_futures; i++) {
+            if (bridge->futures[i] == future) {
+                /* Shift remaining futures down */
+                for (uint32_t j = i; j < bridge->num_futures - 1; j++) {
+                    bridge->futures[j] = bridge->futures[j + 1];
+                }
+                bridge->futures[bridge->num_futures - 1] = NULL;
+                bridge->num_futures--;
+                break;
+            }
+        }
+    }
+
     free(future);
 }
 

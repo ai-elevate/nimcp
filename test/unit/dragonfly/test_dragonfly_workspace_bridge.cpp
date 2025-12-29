@@ -329,18 +329,21 @@ TEST_F(DragonflyWorkspaceBridgeTest, UpdateDecaysBroadcast) {
     /* Create a broadcast */
     dragonfly_ws_broadcast_target(bridge, 1.0f, 2.0f, 3.0f, 0.1f, 0.2f, 0.3f);
 
+    /* Run one update to trigger initial occupancy computation */
+    dragonfly_ws_update(bridge, 1.0f);
+
     dragonfly_ws_stats_t initial_stats;
     dragonfly_ws_bridge_get_stats(bridge, &initial_stats);
 
-    /* Update many times */
+    /* Update many times with large dt to force decay */
     for (int i = 0; i < 100; i++) {
-        dragonfly_ws_update(bridge, 100.0f);  /* Large dt to force decay */
+        dragonfly_ws_update(bridge, 100.0f);
     }
 
     dragonfly_ws_stats_t final_stats;
     dragonfly_ws_bridge_get_stats(bridge, &final_stats);
 
-    /* Workspace occupancy should have decreased */
+    /* Workspace occupancy should have decreased after decay */
     EXPECT_LE(final_stats.workspace_occupancy_pct, initial_stats.workspace_occupancy_pct);
 }
 
