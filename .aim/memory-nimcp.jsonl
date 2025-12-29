@@ -373,6 +373,21 @@
 {"type":"entity","name":"Working_Memory_Adapter","entityType":"memory_utility","observations":["Working memory API adapter","Middleware integration","Located in include/middleware/cognitive/nimcp_working_memory_adapter.h"]}
 {"type":"entity","name":"Reasoning_Working_Memory","entityType":"memory_integration","observations":["Reasoning over working memory","Inference support","Located in include/cognitive/reasoning/integration/"]}
 {"type":"entity","name":"Game_Theory_Working_Memory","entityType":"memory_integration","observations":["Game theory with working memory","Strategic reasoning support","Located in include/cognitive/game_theory/integration/"]}
+{"type":"entity","name":"Cognitive_Core_System","entityType":"cognitive_system","observations":["248 source files - largest NIMCP module","50+ cognitive features implemented","Location: src/cognitive/","All subsystems have FEP, Sleep, and Immune bridges"]}
+{"type":"entity","name":"Executive_Controller","entityType":"cognitive_module","observations":["Location: src/cognitive/executive/","Opaque type: executive_controller_t","Task management and scheduling","Inhibitory control and cognitive flexibility","Planning and goal-directed behavior","Handles BIO_MSG_DECISION_REQUEST"]}
+{"type":"entity","name":"Working_Memory_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/working_memory/","Opaque type: working_memory_t","Miller's 7±2 capacity limit","Decay tau: 1000ms default","FEP bridge for predictive updating","Substrate bridge for hardware acceleration"]}
+{"type":"entity","name":"Emotion_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/emotion/","Emotional processing and regulation","Subsystems: grief, joy, love, empathy","Emotional tagging for memory","Emotional contagion in swarms"]}
+{"type":"entity","name":"Salience_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/","Salience evaluation for attention","Handles BIO_MSG_SALIENCE_QUERY","Responds with BIO_MSG_SALIENCE_RESPONSE"]}
+{"type":"entity","name":"Knowledge_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/knowledge/","Knowledge base management","Handles BIO_MSG_KNOWLEDGE_QUERY","KG reader for runtime self-awareness","Semantic memory integration"]}
+{"type":"entity","name":"Epistemic_Filter","entityType":"cognitive_module","observations":["Location: src/cognitive/epistemic/","Bias prevention system","Skepticism level: 0.6F","Prevents conspiracy thinking","Cognitive bias detection"]}
+{"type":"entity","name":"Meta_Learning_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/meta_learning/","MAML-based few-shot learning","Modes: 1-shot, 5-shot, 10-shot","3 regions: Sensory, Association, Prefrontal","Rapid adaptation from examples"]}
+{"type":"entity","name":"Predictive_Network","entityType":"cognitive_module","observations":["Location: src/cognitive/predictive/","Hierarchical prediction error minimization","Multi-layer predictive coding","Free energy minimization"]}
+{"type":"entity","name":"Self_Model_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/self_model/","Identity: NIMCP","Purpose: Help humans + maintain ethics + healthy boundaries","Personality integration via self_model_set_personality()","Self-description: AI learning with self-awareness"]}
+{"type":"entity","name":"Empathy_Network","entityType":"cognitive_module","observations":["Location: src/cognitive/empathy/","Observation window: 1000ms","Empathy threshold: 0.5F","Perspective-taking for affected agents","Requires ethics enabled"]}
+{"type":"entity","name":"Empathetic_Response_Engine","entityType":"cognitive_module","observations":["Location: src/cognitive/empathetic_response/","CRITICAL SAFETY: Never produce negative reactions","Crisis detection: suicide, self-harm, abuse","Response: validation, empathy, escalation","Created from ethics + empathy_network"]}
+{"type":"entity","name":"Natural_Explanations","entityType":"cognitive_module","observations":["Location: src/cognitive/explanations/","Explanation generator for interpretability","Flags: enable_what, enable_why, enable_how","Uses symbolic_logic if available","Human-readable decision output"]}
+{"type":"entity","name":"Consolidation_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/memory/","Memory consolidation orchestrator","Handles BIO_MSG_CONSOLIDATION_TRIGGER","Sleep system integration","Engram system connection"]}
+{"type":"entity","name":"Semantic_Memory_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/memory/","Conceptual knowledge storage","Connected to systems consolidation","Knowledge base integration"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -929,3 +944,69 @@
 {"type":"relation","from":"Sleep_Bridge","to":"Sleep_Replay","relationType":"controls"}
 {"type":"relation","from":"Working_Memory_System","to":"Attention_Module","relationType":"modulated_by"}
 {"type":"relation","from":"Cognitive_Systems","to":"Memory_Systems","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Cognitive_Systems","relationType":"implements"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Attention_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Executive_Controller","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Working_Memory_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Reasoning_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Emotion_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Ethics_Engine_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Theory_of_Mind_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Introspection_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Global_Workspace_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Curiosity_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Mirror_Neurons_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Salience_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Knowledge_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Epistemic_Filter","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Meta_Learning_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Mental_Health_Monitor","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Predictive_Network","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Self_Model_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Empathy_Network","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Empathetic_Response_Engine","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Natural_Explanations","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Symbolic_Logic_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Consolidation_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Autobiographical_Memory","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Semantic_Memory_Module","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Core_System","to":"Game_Theory_Module","relationType":"contains"}
+{"type":"relation","from":"Executive_Controller","to":"Working_Memory_Module","relationType":"manages"}
+{"type":"relation","from":"Executive_Controller","to":"Attention_Module","relationType":"directs"}
+{"type":"relation","from":"Executive_Controller","to":"Global_Workspace_Module","relationType":"broadcasts_via"}
+{"type":"relation","from":"Working_Memory_Module","to":"Consolidation_Module","relationType":"transfers_to"}
+{"type":"relation","from":"Working_Memory_Module","to":"Emotion_Module","relationType":"tagged_by"}
+{"type":"relation","from":"Consolidation_Module","to":"Autobiographical_Memory","relationType":"consolidates_to"}
+{"type":"relation","from":"Consolidation_Module","to":"Semantic_Memory_Module","relationType":"consolidates_to"}
+{"type":"relation","from":"Consolidation_Module","to":"Sleep_System","relationType":"triggered_by"}
+{"type":"relation","from":"Ethics_Engine_Module","to":"Empathy_Network","relationType":"uses"}
+{"type":"relation","from":"Empathetic_Response_Engine","to":"Ethics_Engine_Module","relationType":"validates_with"}
+{"type":"relation","from":"Empathetic_Response_Engine","to":"Empathy_Network","relationType":"understands_via"}
+{"type":"relation","from":"Mirror_Neurons_Module","to":"Working_Memory_Module","relationType":"integrates_with"}
+{"type":"relation","from":"Mirror_Neurons_Module","to":"Theory_of_Mind_Module","relationType":"integrates_with"}
+{"type":"relation","from":"Mirror_Neurons_Module","to":"Predictive_Network","relationType":"integrates_with"}
+{"type":"relation","from":"Curiosity_Module","to":"Training_Core_System","relationType":"modulates_exploration_in"}
+{"type":"relation","from":"Emotion_Module","to":"Training_Core_System","relationType":"modulates_lr_in"}
+{"type":"relation","from":"Executive_Controller","to":"Training_Core_System","relationType":"modulates_batch_size_in"}
+{"type":"relation","from":"Attention_Module","to":"Training_Core_System","relationType":"modulates_feature_gradients_in"}
+{"type":"relation","from":"Introspection_Module","to":"Training_Core_System","relationType":"provides_uncertainty_to"}
+{"type":"relation","from":"Natural_Explanations","to":"Symbolic_Logic_Module","relationType":"uses"}
+{"type":"relation","from":"Predictive_Network","to":"FEP_Orchestrator","relationType":"minimizes_free_energy_via"}
+{"type":"relation","from":"Self_Model_Module","to":"Introspection_Module","relationType":"informed_by"}
+{"type":"relation","from":"Knowledge_Module","to":"Semantic_Memory_Module","relationType":"queries"}
+{"type":"relation","from":"Knowledge_Module","to":"Reasoning_Module","relationType":"provides_facts_to"}
+{"type":"relation","from":"Game_Theory_Module","to":"Working_Memory_Module","relationType":"uses_for_state"}
+{"type":"relation","from":"Game_Theory_Module","to":"Theory_of_Mind_Module","relationType":"uses_for_opponent_modeling"}
+{"type":"relation","from":"Salience_Module","to":"Attention_Module","relationType":"guides"}
+{"type":"relation","from":"Epistemic_Filter","to":"Reasoning_Module","relationType":"validates"}
+{"type":"relation","from":"Training_Core_System","to":"Emotion_Module","relationType":"sends_satisfaction_to"}
+{"type":"relation","from":"Training_Core_System","to":"Emotion_Module","relationType":"sends_frustration_to"}
+{"type":"relation","from":"Training_Core_System","to":"Curiosity_Module","relationType":"sends_novelty_to"}
+{"type":"relation","from":"Meta_Learning_Module","to":"Training_Core_System","relationType":"enables_few_shot_in"}
+{"type":"relation","from":"Cognitive_Training_Integration","to":"Executive_Controller","relationType":"monitors_load_from"}
+{"type":"relation","from":"Cognitive_Training_Integration","to":"Emotion_Module","relationType":"monitors_state_from"}
+{"type":"relation","from":"Cognitive_Training_Integration","to":"Curiosity_Module","relationType":"monitors_drive_from"}
+{"type":"relation","from":"Cognitive_Training_Integration","to":"Attention_Module","relationType":"monitors_salience_from"}
+{"type":"relation","from":"Mental_Health_Monitor","to":"Bio_Module_Neuromodulator","relationType":"tracks_baselines_from"}
+{"type":"relation","from":"Global_Workspace_Module","to":"Attention_Module","relationType":"receives_shifts_from"}
+{"type":"relation","from":"Global_Workspace_Module","to":"Cognitive_Core_System","relationType":"broadcasts_to_all"}
