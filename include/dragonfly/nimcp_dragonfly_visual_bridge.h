@@ -31,7 +31,6 @@ extern "C" {
 
 /* Forward declarations */
 typedef struct visual_cortex_struct visual_cortex_t;
-typedef struct attention_map_struct attention_map_t;
 typedef struct dragonfly_visual_bridge_s dragonfly_visual_bridge_t;
 
 //=============================================================================
@@ -39,6 +38,65 @@ typedef struct dragonfly_visual_bridge_s dragonfly_visual_bridge_t;
 //=============================================================================
 
 #define VISUAL_BRIDGE_MAX_DETECTIONS 16    /**< Max detections per frame */
+#define MAX_MOTION_REGIONS           32    /**< Max motion regions per frame */
+#define MAX_ATTENTION_PEAKS          16    /**< Max attention peaks */
+
+//=============================================================================
+// Visual Feature Types (for visual cortex integration)
+//=============================================================================
+
+/**
+ * @brief Motion region detected in visual field
+ *
+ * Represents a region with coherent motion from visual cortex V5/MT output.
+ */
+typedef struct {
+    float center_x;        /**< Center X in normalized coords [0,1] */
+    float center_y;        /**< Center Y in normalized coords [0,1] */
+    float size;            /**< Region size (area in pixels) */
+    float velocity_x;      /**< Motion velocity X (pixels/frame) */
+    float velocity_y;      /**< Motion velocity Y (pixels/frame) */
+    float contrast;        /**< Contrast against background [0,1] */
+    float salience;        /**< Computed salience [0,1] */
+} visual_motion_region_t;
+
+/**
+ * @brief Visual features extracted by visual cortex
+ *
+ * Contains motion regions and other features for dragonfly processing.
+ */
+typedef struct {
+    visual_motion_region_t motion_regions[MAX_MOTION_REGIONS];
+    uint32_t num_motion_regions;
+    float global_motion_x;    /**< Global optic flow X */
+    float global_motion_y;    /**< Global optic flow Y */
+    float avg_luminance;      /**< Average luminance */
+    uint64_t timestamp_us;    /**< Extraction timestamp */
+} visual_features_t;
+
+/**
+ * @brief Attention peak location
+ */
+typedef struct {
+    float x;               /**< Peak X in normalized coords [0,1] */
+    float y;               /**< Peak Y in normalized coords [0,1] */
+    float salience;        /**< Salience at peak [0,1] */
+    float sigma;           /**< Attention spread (Gaussian sigma) */
+} attention_peak_t;
+
+/**
+ * @brief Attention map from visual cortex
+ *
+ * Top-down and bottom-up attention combined.
+ */
+typedef struct attention_map_struct {
+    attention_peak_t peaks[MAX_ATTENTION_PEAKS];
+    uint32_t num_peaks;
+    float* saliency_map;      /**< Optional full saliency map (width*height) */
+    uint32_t map_width;       /**< Saliency map width */
+    uint32_t map_height;      /**< Saliency map height */
+    float peak_threshold;     /**< Threshold for peak detection */
+} attention_map_t;
 
 //=============================================================================
 // Type Definitions
@@ -119,6 +177,41 @@ typedef struct {
     float avg_blobs_per_frame;
     uint32_t current_tracked;
 } visual_bridge_stats_t;
+
+//=============================================================================
+// Visual Cortex Integration Functions
+//=============================================================================
+
+/**
+ * @brief Extract visual features from image
+ *
+ * Wrapper to extract motion regions and features from visual cortex.
+ * If visual cortex is NULL, returns empty features.
+ *
+ * @param cortex Visual cortex handle (can be NULL)
+ * @param image Raw image data
+ * @param width Image width
+ * @param height Image height
+ * @param channels Number of channels (1=grayscale, 3=RGB)
+ * @param features Output features structure
+ * @return 0 on success, -1 on error
+ */
+int visual_cortex_extract_features(
+    visual_cortex_t* cortex,
+    const uint8_t* image,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels,
+    visual_features_t* features
+);
+
+/**
+ * @brief Get attention map from visual cortex
+ *
+ * @param cortex Visual cortex handle
+ * @return Attention map or NULL if unavailable
+ */
+const attention_map_t* visual_cortex_get_attention_map(visual_cortex_t* cortex);
 
 //=============================================================================
 // Configuration Functions

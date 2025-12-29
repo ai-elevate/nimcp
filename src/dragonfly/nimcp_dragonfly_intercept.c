@@ -411,8 +411,42 @@ int dragonfly_intercept_compute(
         solution->required_accel[2] *= scale;
     }
 
-    /* Compute miss distance (simplified) */
-    solution->miss_distance = 0.0f;  /* TODO: proper miss distance */
+    /* Compute miss distance - closest point of approach (CPA) */
+    /* Miss distance = perpendicular distance between trajectories at CPA */
+    {
+        float rel_pos[3], rel_vel[3];
+        vec3_sub(rel_pos, target->position, self->position);
+        vec3_sub(rel_vel, target->velocity, self->velocity);
+
+        /* Time to CPA: t_cpa = -(r · v) / |v|^2 */
+        float rel_vel_sq = vec3_dot(rel_vel, rel_vel);
+        float t_cpa = 0.0f;
+        if (rel_vel_sq > 1e-6f) {
+            t_cpa = -vec3_dot(rel_pos, rel_vel) / rel_vel_sq;
+            t_cpa = clampf(t_cpa, 0.0f, solution->intercept_time_s * 2.0f);
+        }
+
+        /* Position at CPA (without maneuvering) */
+        float self_cpa[3] = {
+            self->position[0] + self->velocity[0] * t_cpa,
+            self->position[1] + self->velocity[1] * t_cpa,
+            self->position[2] + self->velocity[2] * t_cpa
+        };
+        float target_cpa[3] = {
+            target->position[0] + target->velocity[0] * t_cpa,
+            target->position[1] + target->velocity[1] * t_cpa,
+            target->position[2] + target->velocity[2] * t_cpa
+        };
+
+        /* Miss distance is separation at CPA */
+        float miss_vec[3];
+        vec3_sub(miss_vec, target_cpa, self_cpa);
+        solution->miss_distance = vec3_length(miss_vec);
+
+        /* Account for maneuver capability - can reduce miss distance */
+        float accel_capability = self->max_accel * t_cpa * t_cpa * 0.5f;
+        solution->miss_distance = fmaxf(0.0f, solution->miss_distance - accel_capability);
+    }
 
     /* Confidence based on target confidence and closing speed */
     solution->confidence = target->confidence *

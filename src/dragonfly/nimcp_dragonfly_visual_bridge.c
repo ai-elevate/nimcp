@@ -71,6 +71,52 @@ static float distance_2d(float x1, float y1, float x2, float y2) {
 }
 
 //=============================================================================
+// Visual Cortex Integration Functions
+//=============================================================================
+
+int visual_cortex_extract_features(
+    visual_cortex_t* cortex,
+    const uint8_t* image,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels,
+    visual_features_t* features
+) {
+    if (!features) return -1;
+
+    memset(features, 0, sizeof(*features));
+    features->timestamp_us = get_time_us();
+
+    /* If no visual cortex, return empty features */
+    if (!cortex || !image) {
+        return 0;
+    }
+
+    /* TODO: Integrate with actual visual_cortex_extract_features_tensor
+     * For now, provide stub implementation that can be replaced when
+     * full visual cortex integration is available.
+     *
+     * The expected integration would be:
+     * 1. Call visual_cortex_extract_features_tensor() to get tensor output
+     * 2. Parse tensor output into motion regions
+     * 3. Compute salience and velocity from temporal differences
+     */
+
+    (void)image;
+    (void)width;
+    (void)height;
+    (void)channels;
+
+    return 0;
+}
+
+const attention_map_t* visual_cortex_get_attention_map(visual_cortex_t* cortex) {
+    /* TODO: Return attention map from visual cortex when available */
+    (void)cortex;
+    return NULL;
+}
+
+//=============================================================================
 // Configuration Functions
 //=============================================================================
 
@@ -207,11 +253,79 @@ int dragonfly_visual_bridge_process_frame(
     bridge->current_result.timestamp_us = start_time;
     bridge->current_result.frame_number = bridge->frame_count;
 
-    /* TODO: If visual_cortex is available, use it for feature extraction
-     * For now, implement simple motion detection directly on image */
+    /* Use visual cortex for feature extraction if available */
+    if (bridge->visual_cortex) {
+        /* Get visual cortex feature extraction */
+        visual_features_t features;
+        if (visual_cortex_extract_features(bridge->visual_cortex, image, width, height,
+                                           channels, &features) == 0) {
+            /* Extract motion blobs from V1/V2/MT hierarchy */
+            for (uint32_t i = 0; i < features.num_motion_regions &&
+                 bridge->current_result.num_blobs < VISUAL_BRIDGE_MAX_DETECTIONS; i++) {
+                motion_blob_t blob;
+                memset(&blob, 0, sizeof(blob));
 
-    /* Simple intensity-based blob detection (placeholder) */
-    /* In a full implementation, this would use visual_cortex_process */
+                blob.center_x = features.motion_regions[i].center_x;
+                blob.center_y = features.motion_regions[i].center_y;
+                blob.size_pixels = features.motion_regions[i].size;
+                blob.velocity_x = features.motion_regions[i].velocity_x;
+                blob.velocity_y = features.motion_regions[i].velocity_y;
+                blob.contrast = features.motion_regions[i].contrast;
+                blob.salience = features.motion_regions[i].salience;
+                blob.track_id = bridge->next_track_id++;
+
+                /* Filter by configuration thresholds */
+                float speed = sqrtf(blob.velocity_x * blob.velocity_x +
+                                    blob.velocity_y * blob.velocity_y);
+                if (speed >= bridge->config.min_motion_speed &&
+                    blob.size_pixels >= bridge->config.min_blob_size &&
+                    blob.size_pixels <= bridge->config.max_blob_size &&
+                    blob.contrast >= bridge->config.contrast_threshold) {
+
+                    bridge->current_result.blobs[bridge->current_result.num_blobs++] = blob;
+                    bridge->stats.blobs_detected++;
+
+                    /* Update attention peak */
+                    if (blob.salience > bridge->current_result.peak_salience) {
+                        bridge->current_result.attention_peak_x = blob.center_x;
+                        bridge->current_result.attention_peak_y = blob.center_y;
+                        bridge->current_result.peak_salience = blob.salience;
+                    }
+                }
+            }
+        }
+    } else {
+        /* Fallback: simple intensity-based blob detection */
+        /* Scan image for high-contrast moving regions */
+        float prev_intensity = 0.0f;
+        for (uint32_t y = 1; y < height - 1 &&
+             bridge->current_result.num_blobs < VISUAL_BRIDGE_MAX_DETECTIONS; y++) {
+            for (uint32_t x = 1; x < width - 1; x++) {
+                uint32_t idx = (y * width + x) * channels;
+                float intensity = image[idx];
+                if (channels > 1) {
+                    intensity = 0.299f * image[idx] + 0.587f * image[idx+1] + 0.114f * image[idx+2];
+                }
+
+                /* Detect local maxima above contrast threshold */
+                float local_contrast = fabsf(intensity - prev_intensity);
+                if (local_contrast > bridge->config.contrast_threshold * 2.0f) {
+                    motion_blob_t blob;
+                    memset(&blob, 0, sizeof(blob));
+                    blob.center_x = (float)x;
+                    blob.center_y = (float)y;
+                    blob.size_pixels = bridge->config.min_blob_size;
+                    blob.contrast = local_contrast;
+                    blob.salience = local_contrast;
+                    blob.track_id = bridge->next_track_id++;
+
+                    bridge->current_result.blobs[bridge->current_result.num_blobs++] = blob;
+                    bridge->stats.blobs_detected++;
+                }
+                prev_intensity = intensity;
+            }
+        }
+    }
 
     /* Update statistics */
     uint64_t elapsed = get_time_us() - start_time;
@@ -234,8 +348,78 @@ int dragonfly_visual_bridge_process_features(
 
     nimcp_mutex_lock(bridge->mutex);
 
-    /* TODO: Extract motion information from visual cortex features */
-    /* This would analyze the feature vector for motion-related activations */
+    /* Extract motion information from visual cortex features */
+    /* Feature vector layout (assuming MT-style features):
+     * [0-31]: Direction-selective responses (32 directions)
+     * [32-63]: Speed-selective responses (32 speeds)
+     * [64-95]: Size-selective responses (32 sizes)
+     * [96-127]: Contrast responses
+     */
+
+    if (feature_dim >= 128) {
+        /* Find peak direction */
+        float max_dir_response = 0.0f;
+        uint32_t peak_dir_idx = 0;
+        for (uint32_t i = 0; i < 32 && i < feature_dim; i++) {
+            if (features[i] > max_dir_response) {
+                max_dir_response = features[i];
+                peak_dir_idx = i;
+            }
+        }
+
+        /* Find peak speed */
+        float max_speed_response = 0.0f;
+        uint32_t peak_speed_idx = 0;
+        for (uint32_t i = 32; i < 64 && i < feature_dim; i++) {
+            if (features[i] > max_speed_response) {
+                max_speed_response = features[i];
+                peak_speed_idx = i - 32;
+            }
+        }
+
+        /* Convert to motion blob if responses are strong enough */
+        if (max_dir_response > 0.3f && max_speed_response > 0.2f) {
+            motion_blob_t blob;
+            memset(&blob, 0, sizeof(blob));
+
+            /* Direction: 0-31 maps to 0-2*PI */
+            float direction = (float)peak_dir_idx * (2.0f * 3.14159f / 32.0f);
+            /* Speed: 0-31 maps to min_motion_speed to 100 pixels/frame */
+            float speed = bridge->config.min_motion_speed +
+                         (float)peak_speed_idx * (100.0f / 32.0f);
+
+            blob.velocity_x = speed * cosf(direction);
+            blob.velocity_y = speed * sinf(direction);
+            blob.salience = max_dir_response * max_speed_response;
+            blob.contrast = (feature_dim > 96) ? features[96] : 0.5f;
+
+            /* Apply attention filter if enabled and attention map provided */
+            if (bridge->config.use_attention_filter && attention) {
+                /* Find attention-weighted centroid */
+                float weighted_x = 0.0f, weighted_y = 0.0f, total_weight = 0.0f;
+                for (uint32_t i = 0; i < attention->num_peaks; i++) {
+                    if (attention->peaks[i].salience > bridge->config.attention_threshold) {
+                        weighted_x += attention->peaks[i].x * attention->peaks[i].salience;
+                        weighted_y += attention->peaks[i].y * attention->peaks[i].salience;
+                        total_weight += attention->peaks[i].salience;
+                    }
+                }
+                if (total_weight > 0.0f) {
+                    blob.center_x = weighted_x / total_weight;
+                    blob.center_y = weighted_y / total_weight;
+                }
+            }
+
+            blob.track_id = bridge->next_track_id++;
+            blob.size_pixels = bridge->config.min_blob_size * 2.0f;  /* Default size */
+
+            /* Inject this blob into the pipeline */
+            if (bridge->current_result.num_blobs < VISUAL_BRIDGE_MAX_DETECTIONS) {
+                bridge->current_result.blobs[bridge->current_result.num_blobs++] = blob;
+                bridge->stats.blobs_detected++;
+            }
+        }
+    }
 
     nimcp_mutex_unlock(bridge->mutex);
     return 0;

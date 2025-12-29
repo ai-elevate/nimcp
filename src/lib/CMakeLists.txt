@@ -77,6 +77,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_parietal.c            # Parietal lobe subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_dragonfly.c           # Dragonfly target tracking subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -248,6 +249,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_episodic_memory.c  # Phase 10: Episodic Memory for Recovery History
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_fault_working_memory.c  # Phase 10: Working Memory for Active Fault Context
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_executive.c  # Phase 10: Executive Function for Recovery Planning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.c  # Phase 10: Parietal Integration for Recovery
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_metacognition.c  # Phase 10: Metacognition for Self-Monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_fault_attention.c  # Phase 10: Attention Mechanism for Error Prioritization
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_failure_prediction.c  # Phase 10: Predictive Coding for Failure Prediction
@@ -1207,6 +1209,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_bio_async_bridge.c  # Bio-async bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_workspace_bridge.c  # Global workspace bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_fep_bridge.c        # FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_medulla_bridge.c    # Medulla oblongata bridge (arousal, protection, circadian)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_swarm.c             # Swarm detection and optimal target selection
 
     # Core Directives - Asimov's Laws & Ethical Foundation (Phase 1.0)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_action_history.c           # Action history tracking (combinatorial harm foundation)
