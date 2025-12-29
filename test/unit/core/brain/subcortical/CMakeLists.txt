@@ -65,3 +65,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala_fep_bridge.cpp
     unit
 )
+
+# Test: Basal Ganglia-FEP Bridge Tests (action selection as free energy minimization)
+add_test_binary(
+    unit_core_brain_subcortical_basal_ganglia_fep_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_basal_ganglia_fep_bridge.cpp
+    unit
+)
