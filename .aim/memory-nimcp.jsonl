@@ -60,6 +60,93 @@
 {"type":"entity","name":"FixSession_Dec27_2025","entityType":"fix_session","observations":["COMPLETED: Cache ref_count atomics - replaced with __atomic_fetch_add/sub and __atomic_load_n","COMPLETED: Security hash timing oracle - added constant-time comparison using nimcp_ct_memcmp","COMPLETED: SNN mutex memory leak - added nimcp_free after nimcp_mutex_destroy","COMPLETED: Glial astrocyte memory leak - added nimcp_free after nimcp_platform_mutex_destroy","COMPLETED: JEPA CRC32 race condition - replaced bool flag with pthread_once","COMPLETED: JEPA uninitialized variable - fixed spatial_idx in tube mask generation","COMPLETED: Forward chaining stats bug - fixed incorrect time calculation","COMPLETED: Middleware mutex protection - added thread-safety to attention_gate and adaptive_normalizer","COMPLETED: GPU P2P copy bug - added actual memcpy in mock backend","IN_PROGRESS: LNN/Portia global state races","IN_PROGRESS: Error code consistency","IN_PROGRESS: Plasticity unsafe API","IN_PROGRESS: Game theory tests","IN_PROGRESS: Empty SUCCEED() test fixes","COMPLETED: Portia degradation thread safety - added mutex protection with nimcp_platform_once","COMPLETED: Adaptive pool race condition - used nimcp_platform_once and atomic pointer","COMPLETED: Reasoning factory bio-async race - used atomics and nimcp_platform_once","COMPLETED: JEPA latent comment fix - corrected misleading TLS comment to atomics","COMPLETED: Self heal forward declaration - added signal_crash_context_t typedef","COMPLETED: Gemini settings.json MCP args format fix","Commit c2fc59a8 - 7 files changed, 177 insertions, 29 deletions"]}
 {"type":"entity","name":"GameTheoryIntegration","entityType":"module","observations":["Implemented in commit 82062c82 with 27 files changed (+8730/-1069 lines)","Core modules: nimcp_auction.c, nimcp_bargaining.c, nimcp_credit_assignment.c, nimcp_mechanism_design.c","Integration modules: gt_global_workspace.c, gt_working_memory.c, gt_neuromod.c, gt_hemispheric.c","Uses second-price auctions for GW broadcast access","Uses priority auctions for WM slot allocation","Maps game outcomes to neuromodulator release (DA for wins, 5-HT for losses, NE for unfairness)","Uses Nash bargaining and Shapley credit for hemispheric coordination","Missing test coverage - tests being added"]}
 {"type":"entity","name":"HealBridgeModule","entityType":"module","observations":["Enhanced self-healing bridge implemented 2025-12-27","Header: include/cognitive/immune/nimcp_heal_bridge.h","Implementation: src/cognitive/immune/nimcp_heal_bridge.c (~1100 lines)","Connects self_heal engine with code_immune system","Four major enhancements: sandbox validation, pattern evolution, multi-step fix chains, rollback support","36 unit tests (test/unit/cognitive/immune/test_heal_bridge.cpp)","16 integration tests (test/integration/cognitive/immune/test_heal_bridge_integration.cpp)","All 52 tests passing","Sandbox Validation: Fork-based isolation tests fixes before injection, validates code structure (balanced braces), detects infinite loops","Pattern Evolution: Tracks LNN-generated fixes as candidates, promotes to pattern library after threshold successes (default 3), rejects on low success rate","Multi-Step Fix Chains: Supports up to 8 fixes per chain with dependencies (NONE, SEQUENTIAL, PREREQUISITE, MUTEX, COMPLEMENTARY)","Rollback Support: Maintains history of applied fixes with configurable time window (default 60s), supports chain rollback","Uses biological model: germinal center reaction, affinity maturation, clonal selection","Key APIs: heal_bridge_process_crash(), heal_bridge_validate_fix(), heal_bridge_register_candidate(), heal_bridge_create_chain(), heal_bridge_rollback()"]}
+{"type":"entity","name":"game_theory_module","entityType":"module","observations":["Contains 8 sub-modules: equilibrium, learning, mechanism, coalition, repeated, fairness, auction_ext, spatial","All 283 unit tests pass across 8 test suites","Fixed deadlock in nimcp_spatial_run by adding is_ess_unlocked() helper","Fixed deadlock in coalition formation by adding is_individually_rational_unlocked() and is_in_core_unlocked() helpers","Deadlock pattern: Never call public mutex-locking functions from within locked code - create *_unlocked() helpers"]}
+{"type":"entity","name":"NIMCP_System","entityType":"system","observations":["Neuromorphic Intelligent Model for Cognitive Processing","1041 header files across 24 major module subsystems","Built on Bridge Pattern Integration with 300+ bridge files","Uses Factory Pattern for centralized brain creation","Hierarchical modularity with specialized subsystems","Main entry point: include/nimcp.h","Primary build: Linux x86_64 with AVX2 SIMD optimizations"]}
+{"type":"entity","name":"Brain","entityType":"core_module","observations":["Location: src/core/brain/","Main implementation: nimcp_brain.c (225KB)","Lifecycle management: nimcp_brain_lifecycle.c","Distributed support: nimcp_brain_distributed.c with Copy-on-Write","Multimodal integration: nimcp_brain_multimodal.c","Bio-async processing: nimcp_brain_bio_async.c","Primary opaque type: brain_t","Orchestrates all neural systems and cognitive functions"]}
+{"type":"entity","name":"Brain_Factory","entityType":"subsystem","observations":["Location: src/core/brain/factory/","Main orchestrator: nimcp_brain_factory.c (685 lines)","17 initialization modules in factory/init/","Validation: factory/validation/nimcp_brain_validation.c","Creates and initializes all brain subsystems","Coordinates dependency injection between modules"]}
+{"type":"entity","name":"Hemispheric_Brain","entityType":"subsystem","observations":["Location: src/core/brain/hemispheric/","Main: nimcp_hemispheric_brain.c - bilateral processing","Corpus callosum: nimcp_corpus_callosum.c - inter-hemispheric bridge","Lateralization: nimcp_lateralization.c - hemisphere specialization","Implements left/right brain specialization patterns"]}
+{"type":"entity","name":"Parietal_Lobe_Module","entityType":"Module","observations":["Phase 7.2: Mathematical and Scientific Reasoning module","Located at include/cognitive/parietal/ and src/cognitive/parietal/","Core capabilities: Number Sense, Spatial Reasoning, Mathematical Intuition, Scientific Reasoning, Equation Manipulation","Domain extensions: Chemistry, Biology, Software Engineering","418 unit tests, 23 integration tests, 17 e2e tests all passing","Integrated into brain_struct with parietal_lobe_t* parietal field","brain_config_t has enable_parietal, parietal_weber_fraction, parietal_subitizing_limit, parietal_rotation_rate_deg_ms","Init file: src/core/brain/factory/init/nimcp_brain_init_parietal.c","Accessor: brain_get_parietal(brain_t brain)","Runtime functions: brain_update_parietal_from_immune(), brain_update_parietal_from_sleep(), brain_step_parietal()"]}
+{"type":"entity","name":"Parietal_Brain_Integration","entityType":"Integration","observations":["Parietal connects to 9 brain subsystems during initialization","Working Memory: parietal_attach_working_memory() - mathematical problem-solving, spatial WM","Training Layer: parietal_attach_training() - learning optimization, pattern-based curriculum","Immune System: parietal_attach_immune() - inflammation affects Weber fraction (numerical precision)","FEP Orchestrator: parietal_attach_fep() - free energy computation, prediction error quantification","Sleep/Medulla: parietal_attach_sleep() - fatigue modulation, circadian effects on accuracy","Logic Gates: parietal_attach_logic_gates() - neural logic operations for mathematical reasoning","Perception: parietal_attach_perception() - visual numerosity, spatial perception","Brain Regions: parietal_attach_to_brain() - cortical architecture integration","Global Workspace: MODULE_PARIETAL subscription for conscious access","Dragonfly bridge is external: dragonfly_parietal_bridge_create(dragonfly, spatial, parietal, NULL)","Commit 70c75b62: feat(parietal): Integrate parietal lobe with all brain subsystems"]}
+{"type":"entity","name":"Core_Neural_Architecture","entityType":"core_module","observations":["Location: src/core/","166 source files total","Includes: neurons, synapses, axons, dendrites","Cortical columns with Layer I-VI architecture","Brain oscillations and frequency analysis","Neural substrate for hardware abstraction","Brain regions: visual cortex, prefrontal, etc."]}
+{"type":"entity","name":"Neurons","entityType":"subsystem","observations":["Location: src/core/neuron_models/","Multiple neuron models: LIF, Hodgkin-Huxley, Izhikevich","Opaque type: neuron_t","Integrates with plasticity and neuromodulation","Supports spiking and rate-based models"]}
+{"type":"entity","name":"Axons","entityType":"subsystem","observations":["Location: src/core/axon/","Opaque type: axon_t","Models axonal segments with myelin support","Action potential propagation","Integrates with glial system for myelination"]}
+{"type":"entity","name":"Dendrites","entityType":"subsystem","observations":["Location: src/core/dendrite/","Opaque type: dendrite_t","Dendritic trees with compartmental modeling","Local dendritic computation","Integrates with plasticity mechanisms"]}
+{"type":"entity","name":"Synapses","entityType":"subsystem","observations":["Location: src/core/synapses/","Opaque type: synapse_t","Excitatory and inhibitory types","Plasticity integration point","Short-term and long-term plasticity support"]}
+{"type":"entity","name":"Cortical_Columns","entityType":"subsystem","observations":["Location: src/core/cortical_columns/","Opaque type: cortical_column_t","Layer I-VI architecture","Feedforward and feedback connections","Substrate bridge for hardware acceleration"]}
+{"type":"entity","name":"Brain_Oscillations","entityType":"subsystem","observations":["Location: src/core/oscillations/","Opaque type: brain_oscillation_analyzer_t","Frequency bands: delta, theta, alpha, beta, gamma","Sleep-wake cycle integration","Pink noise bridges for stochastic exploration"]}
+{"type":"entity","name":"Brain_Regions","entityType":"subsystem","observations":["Location: src/core/brain_regions/","Visual cortex, auditory cortex, prefrontal cortex","Broca's area, Wernicke's area for language","Hippocampus for memory","Thalamus for routing"]}
+{"type":"entity","name":"Cognitive_Systems","entityType":"core_module","observations":["Location: src/cognitive/","248 source files - largest module","50+ cognitive features implemented","Includes: working memory, attention, reasoning, emotions","Theory of mind, ethics, introspection, curiosity","Global workspace for consciousness integration","All subsystems have FEP, Sleep, and Immune bridges"]}
+{"type":"entity","name":"Working_Memory","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/working_memory/","Opaque type: working_memory_t","Capacity-limited temporary storage","FEP bridge for predictive updating","Substrate bridge for hardware acceleration"]}
+{"type":"entity","name":"Attention","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/attention/","Selective attention mechanisms","FEP integration for predictive attention","Top-down and bottom-up attention pathways"]}
+{"type":"entity","name":"Executive_Function","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/executive/","Opaque type: executive_controller_t","Planning and goal-directed behavior","Inhibitory control and cognitive flexibility"]}
+{"type":"entity","name":"Reasoning","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/reasoning/","Symbolic and intuitive reasoning","Forward and backward chaining","Unification engine for logic","Knowledge base interface"]}
+{"type":"entity","name":"Emotions","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/emotion/","Emotional processing and regulation","Grief, joy, love, empathy systems","Emotional tagging for memory","Emotional contagion in swarms"]}
+{"type":"entity","name":"Ethics_Engine","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/ethics/","Opaque type: ethics_engine_t","Ethical reasoning and decision-making","Immune bridge for ethical anomaly detection"]}
+{"type":"entity","name":"Theory_of_Mind","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/theory_of_mind/","Opaque type: theory_of_mind_t","Social reasoning and perspective-taking","Mental state attribution"]}
+{"type":"entity","name":"Introspection","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/introspection/","Self-awareness and metacognition","Internal state monitoring","Immune bridge for self-detection"]}
+{"type":"entity","name":"Global_Workspace","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/global_workspace/","Opaque type: global_workspace_t","Consciousness integration point","Broadcast mechanism for awareness","SNN bridge for spiking integration"]}
+{"type":"entity","name":"Curiosity","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/curiosity/","Intrinsic motivation system","Exploration vs exploitation balance","Enhanced curiosity with FEP integration"]}
+{"type":"entity","name":"Mirror_Neurons","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/mirror_neurons/","Empathy and imitation learning","Action understanding through simulation"]}
+{"type":"entity","name":"Parietal_Lobe","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/parietal/","NEW module - December 2024","Spatial reasoning and mental rotation","Mathematical intuition and number sense","Scientific reasoning and equation manipulation","Chemistry and biology reasoning","Software engineering reasoning"]}
+{"type":"entity","name":"Game_Theory","entityType":"cognitive_subsystem","observations":["Location: src/cognitive/game_theory/","NEW module - strategic reasoning","Hemispheric integration","Working memory integration"]}
+{"type":"entity","name":"Plasticity_Systems","entityType":"core_module","observations":["Location: src/plasticity/","109 source files","25+ plasticity mechanisms implemented","All mechanisms have FEP, Sleep, and Immune bridges","Core learning substrate for the brain"]}
+{"type":"entity","name":"STDP","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/stdp/","Spike-Timing Dependent Plasticity","Hebbian learning: neurons that fire together wire together","FEP, Sleep, Immune, Pink Noise bridges"]}
+{"type":"entity","name":"BCM","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/bcm/","Bienenstock-Cooper-Munro theory","Sliding threshold for LTP/LTD","FEP, Sleep, Immune bridges"]}
+{"type":"entity","name":"Homeostatic_Plasticity","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/homeostatic/","Synaptic scaling mechanisms","Maintains neural activity in healthy range","FEP, Sleep, Immune bridges"]}
+{"type":"entity","name":"Structural_Plasticity","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/structural/","Axon and dendrite growth/pruning","Spine formation and elimination","FEP, Sleep, Immune bridges"]}
+{"type":"entity","name":"Metaplasticity","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/metaplasticity/","Plasticity of plasticity","Learning rate modulation","FEP, Sleep, Immune bridges"]}
+{"type":"entity","name":"Eligibility_Traces","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/eligibility/","E-learning traces for reinforcement","Temporal credit assignment","FEP, Sleep, Immune bridges"]}
+{"type":"entity","name":"Calcium_Plasticity","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/calcium/","Calcium-dependent mechanisms","Intracellular signaling cascades"]}
+{"type":"entity","name":"Protein_Synthesis","entityType":"plasticity_mechanism","observations":["Location: src/plasticity/protein/","Protein synthesis for long-term memory","Synaptic tagging and capture"]}
+{"type":"entity","name":"Security_Module","entityType":"core_module","observations":["Location: src/security/","44 source files","Blood-Brain Barrier (BBB) for input gating","Anomaly detection and rate limiting","Post-quantum cryptography (Dilithium, Kyber)","Continuous runtime monitoring","Code signing and verification"]}
+{"type":"entity","name":"Blood_Brain_Barrier","entityType":"security_subsystem","observations":["Location: src/security/nimcp_blood_brain_barrier.c (32KB)","Selective input control - gates all perception and networking","Pattern-based filtering","Code signing verification: nimcp_bbb_code_signing.c"]}
+{"type":"entity","name":"Anomaly_Detector","entityType":"security_subsystem","observations":["Location: src/security/nimcp_anomaly_detector.c","Pattern anomaly detection","Attack pattern database: nimcp_pattern_db.c (32KB)","Runtime behavior monitoring"]}
+{"type":"entity","name":"Cryptography","entityType":"security_subsystem","observations":["Post-quantum algorithms: Dilithium, Kyber","Key derivation: nimcp_key_derivation.c","Encrypted audit logging: nimcp_encrypted_audit.c","Integration with networking NLP protocol"]}
+{"type":"entity","name":"Networking_Module","entityType":"core_module","observations":["Location: src/networking/","17 source files","P2P communication protocols","Distributed consensus mechanisms","Neural Link Protocol (NLP) for brain-to-brain communication"]}
+{"type":"entity","name":"Neural_Link_Protocol","entityType":"networking_subsystem","observations":["Location: src/networking/nlp/","UDP-based peer-to-peer protocol","3-way handshake: REQ, RESP, FINAL","Encrypted messaging with session keys","Broadcast and unicast support","Immune bridge for network anomaly detection"]}
+{"type":"entity","name":"Distributed_Cognition","entityType":"networking_subsystem","observations":["Location: src/networking/distributed/","Distributed brain coordination","Consensus protocols","Copy-on-Write replication"]}
+{"type":"entity","name":"Swarm_Intelligence","entityType":"core_module","observations":["Location: src/swarm/","64 source files","Collective intelligence and emergence","10+ immune bridges for distributed anomaly detection","FEP and Sleep bridges for collective learning"]}
+{"type":"entity","name":"Swarm_Brain","entityType":"swarm_subsystem","observations":["Location: src/swarm/nimcp_swarm_brain.c","Collective brain coordination","Shared consciousness across nodes"]}
+{"type":"entity","name":"Swarm_Consensus","entityType":"swarm_subsystem","observations":["Location: src/swarm/nimcp_swarm_consensus.c","Distributed consensus protocols","Byzantine fault tolerance"]}
+{"type":"entity","name":"Swarm_Flocking","entityType":"swarm_subsystem","observations":["Location: src/swarm/nimcp_swarm_flocking.c","Coordinated movement behaviors","Emergent group patterns"]}
+{"type":"entity","name":"Swarm_Pheromone","entityType":"swarm_subsystem","observations":["Location: src/swarm/nimcp_swarm_pheromone.c","Chemical signaling simulation","Trail-based communication"]}
+{"type":"entity","name":"Swarm_Consciousness","entityType":"swarm_subsystem","observations":["Location: src/swarm/nimcp_swarm_consciousness.c","Collective consciousness emergence","Shared global workspace"]}
+{"type":"entity","name":"Emotional_Contagion","entityType":"swarm_subsystem","observations":["Location: src/swarm/nimcp_emotional_contagion.c","Emotion spreading across swarm","Collective mood synchronization"]}
+{"type":"entity","name":"Gossip_Beliefs","entityType":"swarm_subsystem","observations":["Location: src/swarm/nimcp_gossip_beliefs.c","Distributed belief propagation","Epidemic-style information spread"]}
+{"type":"entity","name":"Perception_Module","entityType":"core_module","observations":["Location: src/perception/","20 source files","Visual, audio, speech processing","JEPA (Joint Embedding Predictive Architecture) models","FEP bridges for predictive perception","Gated by Blood-Brain Barrier for security"]}
+{"type":"entity","name":"Visual_Cortex","entityType":"perception_subsystem","observations":["Visual processing pipeline","FEP bridge: nimcp_visual_cortex_fep_bridge.c","JEPA bridge: nimcp_visual_jepa_bridge.c","Sleep consolidation for visual learning"]}
+{"type":"entity","name":"Audio_Cortex","entityType":"perception_subsystem","observations":["Auditory processing pipeline","FEP bridge: nimcp_audio_cortex_fep_bridge.c","Frequency and temporal analysis"]}
+{"type":"entity","name":"Speech_Cortex","entityType":"perception_subsystem","observations":["Speech recognition and production","FEP bridge: nimcp_speech_cortex_fep_bridge.c","Integration with Broca's and Wernicke's areas"]}
+{"type":"entity","name":"Glial_System","entityType":"core_module","observations":["Location: src/glial/","24 source files","Support cells for neural substrate","Astrocytes, microglia, oligodendrocytes","Myelin production and maintenance","Neuromodulation support"]}
+{"type":"entity","name":"Astrocytes","entityType":"glial_subsystem","observations":["Metabolic support for neurons","Calcium signaling","Synaptic modulation","Blood-brain barrier component"]}
+{"type":"entity","name":"Microglia","entityType":"glial_subsystem","observations":["Immune cells of the brain","Synaptic pruning during development","Neuroinflammation response"]}
+{"type":"entity","name":"Oligodendrocytes","entityType":"glial_subsystem","observations":["Myelin production in CNS","Axon support and insulation","Integration with axon module"]}
+{"type":"entity","name":"Myelin","entityType":"glial_subsystem","observations":["Location: src/glial/myelin/","Myelination modeling","Conduction velocity optimization"]}
+{"type":"entity","name":"Bio_Async_System","entityType":"core_module","observations":["Location: src/async/","16 source files","Asynchronous message passing with biological timescales","Bio-router for inter-module communication","Semantic compression for efficient messaging","FEP-integrated predictive protocol"]}
+{"type":"entity","name":"Bio_Router","entityType":"async_subsystem","observations":["Location: src/async/nimcp_bio_router.c","Central message routing hub","Routes: neuromodulation, plasticity signals, emotional contagion","Priority-based message queuing"]}
+{"type":"entity","name":"LNN_Module","entityType":"core_module","observations":["Location: src/lnn/","15 source files","Liquid Neural Networks","Dynamic reservoir computing","Continuous-time dynamics","Sleep bridge for consolidation"]}
+{"type":"entity","name":"SNN_Module","entityType":"core_module","observations":["Location: src/snn/","48 source files","Spiking Neural Networks","28+ specialized bridges to other modules","Temporal coding and spike timing","STDP integration for learning"]}
+{"type":"entity","name":"SNN_Bridges","entityType":"snn_subsystem","observations":["28+ bridge files connecting SNN to all major modules","Visual, audio, speech bridges for perception","Emotion bridges: grief, joy, love, empathy","Consciousness bridges: global workspace, introspection","Memory bridges: hippocampus, autobiographical","Plasticity bridges: STDP, BCM, homeostatic"]}
+{"type":"entity","name":"Middleware_Module","entityType":"core_module","observations":["Location: src/middleware/","84 source files","Integration routing between subsystems","Feature extraction and buffering","Portia spider integration for sensor fusion"]}
+{"type":"entity","name":"Portia_Spider","entityType":"middleware_subsystem","observations":["Location: src/portia/","18 source files","Spider-inspired vision system","Sensor fusion and attention","Planning and deception detection","Swarm bridge integration"]}
+{"type":"entity","name":"Utils_Module","entityType":"core_module","observations":["Location: src/utils/","113 source files - foundational utilities","No dependencies on other NIMCP modules","Math, memory, tensor, config, platform abstractions"]}
+{"type":"entity","name":"Math_Utils","entityType":"utils_subsystem","observations":["Location: src/utils/math/","Linear algebra operations","Numerical optimization","Complex number support"]}
+{"type":"entity","name":"Tensor_Utils","entityType":"utils_subsystem","observations":["Location: src/utils/tensor/","Tensor operations and broadcasting","nimcp_tensor_create(dims, rank, dtype)","nimcp_tensor_sum returns nimcp_tensor_t* not scalar"]}
+{"type":"entity","name":"Memory_Utils","entityType":"utils_subsystem","observations":["Location: src/utils/memory/","Unified memory management","Pool allocators","Memory tracking and debugging"]}
+{"type":"entity","name":"Platform_Utils","entityType":"utils_subsystem","observations":["Location: src/utils/platform/","Platform abstractions","Tiers: FULL, MEDIUM, CONSTRAINED, MINIMAL","Thread management and mutexes"]}
+{"type":"entity","name":"Training_Module","entityType":"core_module","observations":["Location: src/training/","4 source files","CNN training with backpropagation","STDP-based unsupervised learning","Integration with plasticity systems"]}
+{"type":"entity","name":"Dragonfly_Framework","entityType":"core_module","observations":["Location: src/dragonfly/","17 source files - NEW framework","Distributed processing coordination","Bio-async bridge integration","Parietal lobe bridge for spatial processing","Alternative to traditional P2P networking"]}
+{"type":"entity","name":"GPU_Module","entityType":"core_module","observations":["Location: src/gpu/","8 source files","GPU acceleration layer","Multi-GPU support","CUDA integration","Immune bridge for GPU anomaly detection"]}
+{"type":"entity","name":"FEP_Orchestrator","entityType":"integration_framework","observations":["Free Energy Principle orchestration","Predictive coding and variational inference","Connects to ALL major modules via FEP bridges","Minimizes prediction error across the system","Init: nimcp_brain_init_fep_orchestrator.c"]}
+{"type":"entity","name":"Sleep_System","entityType":"integration_framework","observations":["Opaque type: sleep_system_t","Location: src/core/medulla/ for sleep-wake cycles","Consolidates learning during sleep phases","Implements synaptic pruning and scaling","Sleep bridges connect to: plasticity, perception, swarm, cognitive, glial"]}
+{"type":"entity","name":"Immune_System","entityType":"integration_framework","observations":["Cross-cutting anomaly detection","Bridges in: swarm (10+), plasticity, perception, security, networking, NLP","Init: nimcp_brain_init_immune_bridge_coordinator.c","Detects and responds to abnormal patterns"]}
+{"type":"entity","name":"Pink_Noise_System","entityType":"integration_framework","observations":["Beneficial stochastic noise for exploration","Pink noise bridges in: plasticity, oscillations, population coding, neuromodulation","Enhances learning through controlled randomness"]}
+{"type":"entity","name":"FEP_Bridges","entityType":"bridge_pattern","observations":["Pattern: *_fep_bridge.c files","Connect modules to Free Energy Principle","Found in: plasticity, cognitive, perception, swarm, middleware, security","Implement predictive coding interface"]}
+{"type":"entity","name":"Sleep_Bridges","entityType":"bridge_pattern","observations":["Pattern: *_sleep_bridge.c files","Consolidate learning during sleep","Found in: plasticity, perception, swarm, cognitive, oscillations, glial","Implement sleep-dependent plasticity"]}
+{"type":"entity","name":"Immune_Bridges","entityType":"bridge_pattern","observations":["Pattern: *_immune_bridge.c files","Cross-cut anomaly detection","Found in: swarm (10+), plasticity, perception, security, networking, NLP","Detect abnormal activation patterns"]}
+{"type":"entity","name":"Training_Bridges","entityType":"bridge_pattern","observations":["Pattern: *_training_bridge.c files","Learning system integration","Connect plasticity to training algorithms","SNN training bridges for spiking networks"]}
+{"type":"entity","name":"KG_Update_Convention","entityType":"Convention","observations":["Knowledge Graph must be updated whenever new functionality is added to NIMCP","KG stored in project: /home/bbrelin/nimcp/.aim/memory-nimcp.jsonl","Use context='nimcp' and location='project' for all memory operations","New modules should have entities created with: name, type, file locations, capabilities, test status","Integration points should document: attach functions, biological effects, commit references","Link new modules to related existing entities (e.g., Brain Immune System, FEP, etc.)"]}
+{"type":"entity","name":"Self_Awareness_Architecture","entityType":"Architecture","observations":["NIMCP requires runtime KG access for true self-awareness","KG contains system's knowledge about itself: modules, capabilities, integrations, conventions","Self-model system (brain->self_model) should integrate with KG for introspection","Introspection module (brain->introspection) needs KG queries for capability reflection","KG file: .aim/memory-nimcp.jsonl (JSONL format - line-delimited JSON)","Runtime KG reader needed: load entities, relations, query by name/type","Enables: 'What modules do I have?', 'How does parietal connect to immune?', 'What are my capabilities?'","Connects autobiographical memory (brain->autobio) with structural self-knowledge","Key integration points: self_model_system_t, introspection_context_t, autobiographical_memory_t"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -110,3 +197,125 @@
 {"type":"relation","from":"SelfHealingImmuneSystem","to":"HealBridgeModule","relationType":"enhanced_by"}
 {"type":"relation","from":"HealBridgeModule","to":"nimcp_self_heal","relationType":"integrates"}
 {"type":"relation","from":"HealBridgeModule","to":"nimcp_code_immune","relationType":"integrates"}
+{"type":"relation","from":"Parietal_Lobe_Module","to":"Parietal_Brain_Integration","relationType":"has_integration"}
+{"type":"relation","from":"Parietal_Brain_Integration","to":"Brain Immune System","relationType":"connects_to"}
+{"type":"relation","from":"NIMCP_System","to":"Brain","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Cognitive_Systems","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Plasticity_Systems","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Security_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Networking_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Swarm_Intelligence","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Perception_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Glial_System","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Bio_Async_System","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"LNN_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"SNN_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Middleware_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Utils_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Training_Module","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"Dragonfly_Framework","relationType":"contains"}
+{"type":"relation","from":"NIMCP_System","to":"GPU_Module","relationType":"contains"}
+{"type":"relation","from":"Self_Awareness_Architecture","to":"Parietal_Lobe_Module","relationType":"provides_knowledge_about"}
+{"type":"relation","from":"Self_Awareness_Architecture","to":"Brain Immune System","relationType":"provides_knowledge_about"}
+{"type":"relation","from":"Self_Awareness_Architecture","to":"KG_Update_Convention","relationType":"implements"}
+{"type":"relation","from":"Brain","to":"Core_Neural_Architecture","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Brain_Factory","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Brain_Regions","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"FEP_Orchestrator","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Sleep_System","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Immune_System","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Pink_Noise_System","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Thalamic_Router","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Global_Workspace","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Theory_of_Mind","relationType":"contains"}
+{"type":"relation","from":"Brain","to":"Medulla","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Working_Memory","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Parietal_Lobe","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Temporal_Cortex","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Prefrontal_Cortex","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Motor_Cortex","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Cerebellum","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Limbic_System","relationType":"contains"}
+{"type":"relation","from":"Cognitive_Systems","to":"Logic_Gates","relationType":"contains"}
+{"type":"relation","from":"Plasticity_Systems","to":"STDP_Module","relationType":"contains"}
+{"type":"relation","from":"Plasticity_Systems","to":"Hebbian_Learning","relationType":"contains"}
+{"type":"relation","from":"Plasticity_Systems","to":"Homeostatic_Plasticity","relationType":"contains"}
+{"type":"relation","from":"Plasticity_Systems","to":"Synaptic_Tagging","relationType":"contains"}
+{"type":"relation","from":"Plasticity_Systems","to":"Metaplasticity","relationType":"contains"}
+{"type":"relation","from":"Security_Module","to":"Crypto_Core","relationType":"contains"}
+{"type":"relation","from":"Security_Module","to":"Key_Management","relationType":"contains"}
+{"type":"relation","from":"Security_Module","to":"BBB_System","relationType":"contains"}
+{"type":"relation","from":"Networking_Module","to":"NLP_Protocol","relationType":"contains"}
+{"type":"relation","from":"Networking_Module","to":"Peer_Discovery","relationType":"contains"}
+{"type":"relation","from":"Networking_Module","to":"Session_Management","relationType":"contains"}
+{"type":"relation","from":"FEP_Orchestrator","to":"FEP_Bridges","relationType":"uses"}
+{"type":"relation","from":"Sleep_System","to":"Sleep_Bridges","relationType":"uses"}
+{"type":"relation","from":"Immune_System","to":"Immune_Bridges","relationType":"uses"}
+{"type":"relation","from":"Training_Module","to":"Training_Bridges","relationType":"uses"}
+{"type":"relation","from":"FEP_Bridges","to":"Cognitive_Systems","relationType":"connects"}
+{"type":"relation","from":"FEP_Bridges","to":"Plasticity_Systems","relationType":"connects"}
+{"type":"relation","from":"Sleep_Bridges","to":"Cognitive_Systems","relationType":"connects"}
+{"type":"relation","from":"Sleep_Bridges","to":"Plasticity_Systems","relationType":"connects"}
+{"type":"relation","from":"Immune_Bridges","to":"Cognitive_Systems","relationType":"connects"}
+{"type":"relation","from":"Training_Bridges","to":"Plasticity_Systems","relationType":"connects"}
+{"type":"relation","from":"Brain","to":"Cognitive_Systems","relationType":"integrates"}
+{"type":"relation","from":"Brain","to":"Plasticity_Systems","relationType":"integrates"}
+{"type":"relation","from":"Brain","to":"Perception_Module","relationType":"integrates"}
+{"type":"relation","from":"Brain","to":"LNN_Module","relationType":"integrates"}
+{"type":"relation","from":"Brain","to":"SNN_Module","relationType":"integrates"}
+{"type":"relation","from":"Working_Memory","to":"Parietal_Lobe","relationType":"collaborates_with"}
+{"type":"relation","from":"Working_Memory","to":"Prefrontal_Cortex","relationType":"collaborates_with"}
+{"type":"relation","from":"Parietal_Lobe","to":"FEP_Orchestrator","relationType":"integrates_with"}
+{"type":"relation","from":"Parietal_Lobe","to":"Sleep_System","relationType":"modulated_by"}
+{"type":"relation","from":"Parietal_Lobe","to":"Immune_System","relationType":"modulated_by"}
+{"type":"relation","from":"Glial_System","to":"Astrocytes","relationType":"contains"}
+{"type":"relation","from":"Glial_System","to":"Microglia","relationType":"contains"}
+{"type":"relation","from":"Glial_System","to":"Oligodendrocytes","relationType":"contains"}
+{"type":"relation","from":"Swarm_Intelligence","to":"Ant_Colony","relationType":"contains"}
+{"type":"relation","from":"Swarm_Intelligence","to":"Bee_Colony","relationType":"contains"}
+{"type":"relation","from":"Swarm_Intelligence","to":"Particle_Swarm","relationType":"contains"}
+{"type":"relation","from":"Perception_Module","to":"Visual_Cortex","relationType":"contains"}
+{"type":"relation","from":"Perception_Module","to":"Auditory_Cortex","relationType":"contains"}
+{"type":"relation","from":"Perception_Module","to":"Sensory_Integration","relationType":"contains"}
+{"type":"relation","from":"Bio_Async_System","to":"Async_Executor","relationType":"contains"}
+{"type":"relation","from":"Bio_Async_System","to":"Event_Loop","relationType":"contains"}
+{"type":"relation","from":"LNN_Module","to":"Liquid_Neurons","relationType":"contains"}
+{"type":"relation","from":"LNN_Module","to":"ODE_Solver","relationType":"contains"}
+{"type":"relation","from":"LNN_Module","to":"Continuous_Time","relationType":"contains"}
+{"type":"relation","from":"SNN_Module","to":"Spiking_Neurons","relationType":"contains"}
+{"type":"relation","from":"SNN_Module","to":"LIF_Model","relationType":"contains"}
+{"type":"relation","from":"SNN_Module","to":"Spike_Timing","relationType":"contains"}
+{"type":"relation","from":"GPU_Module","to":"CUDA_Backend","relationType":"contains"}
+{"type":"relation","from":"GPU_Module","to":"Tensor_Operations","relationType":"contains"}
+{"type":"relation","from":"Dragonfly_Framework","to":"Optimization_Core","relationType":"contains"}
+{"type":"relation","from":"Dragonfly_Framework","to":"Search_Algorithms","relationType":"contains"}
+{"type":"relation","from":"Security_Module","to":"NLP_Protocol","relationType":"secures"}
+{"type":"relation","from":"BBB_System","to":"Networking_Module","relationType":"protects"}
+{"type":"relation","from":"Glial_System","to":"Core_Neural_Architecture","relationType":"supports"}
+{"type":"relation","from":"Astrocytes","to":"Plasticity_Systems","relationType":"modulates"}
+{"type":"relation","from":"Microglia","to":"Immune_System","relationType":"integrates_with"}
+{"type":"relation","from":"Thalamic_Router","to":"Global_Workspace","relationType":"feeds"}
+{"type":"relation","from":"Global_Workspace","to":"Cognitive_Systems","relationType":"broadcasts_to"}
+{"type":"relation","from":"Medulla","to":"Sleep_System","relationType":"controls"}
+{"type":"relation","from":"Bio_Async_System","to":"Brain","relationType":"enables_async_for"}
+{"type":"relation","from":"GPU_Module","to":"LNN_Module","relationType":"accelerates"}
+{"type":"relation","from":"GPU_Module","to":"SNN_Module","relationType":"accelerates"}
+{"type":"relation","from":"GPU_Module","to":"Tensor_Operations","relationType":"provides"}
+{"type":"relation","from":"Training_Module","to":"Plasticity_Systems","relationType":"drives"}
+{"type":"relation","from":"Training_Module","to":"STDP_Module","relationType":"configures"}
+{"type":"relation","from":"Pink_Noise_System","to":"Core_Neural_Architecture","relationType":"modulates"}
+{"type":"relation","from":"Pink_Noise_System","to":"Plasticity_Systems","relationType":"modulates"}
+{"type":"relation","from":"Limbic_System","to":"Theory_of_Mind","relationType":"informs"}
+{"type":"relation","from":"Prefrontal_Cortex","to":"Working_Memory","relationType":"manages"}
+{"type":"relation","from":"Cerebellum","to":"Motor_Cortex","relationType":"coordinates_with"}
+{"type":"relation","from":"Temporal_Cortex","to":"Perception_Module","relationType":"processes_from"}
+{"type":"relation","from":"Middleware_Module","to":"Brain","relationType":"wraps"}
+{"type":"relation","from":"Middleware_Module","to":"Security_Module","relationType":"uses"}
+{"type":"relation","from":"Utils_Module","to":"NIMCP_System","relationType":"supports"}
+{"type":"relation","from":"Brain_Factory","to":"Brain","relationType":"creates"}
+{"type":"relation","from":"Brain_Factory","to":"Cognitive_Systems","relationType":"initializes"}
+{"type":"relation","from":"Brain_Factory","to":"Plasticity_Systems","relationType":"initializes"}
+{"type":"relation","from":"Brain_Regions","to":"Cognitive_Systems","relationType":"organizes"}
+{"type":"relation","from":"Core_Neural_Architecture","to":"SNN_Module","relationType":"built_on"}
+{"type":"relation","from":"Core_Neural_Architecture","to":"LNN_Module","relationType":"built_on"}
+{"type":"relation","from":"Dragonfly_Framework","to":"Training_Module","relationType":"optimizes"}

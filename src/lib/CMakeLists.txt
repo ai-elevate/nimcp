@@ -222,6 +222,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_hyperbolic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_cow.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_fractal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_kg_reader.c  # KG Reader for runtime self-awareness
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_enhanced.c  # Enhanced Curiosity (10 enhancements: boredom, interest decay, types, anxiety, social, meta, contagion, surprise, fatigue, counterfactual)

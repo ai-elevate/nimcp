@@ -166,6 +166,9 @@
 // Parietal Lobe Integration (Mathematical/Scientific Reasoning - Phase 7.2)
 #include "cognitive/parietal/nimcp_parietal.h"
 
+// Dragonfly Integration (Bio-inspired Target Tracking and Interception)
+#include "dragonfly/nimcp_dragonfly.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -715,6 +718,34 @@ struct brain_struct {
     parietal_lobe_t* parietal;                            // Parietal lobe for math/science reasoning
     bool parietal_enabled;                                // Parietal enabled for this brain
     uint64_t last_parietal_update_us;                     // Last parietal update timestamp
+
+    // === DRAGONFLY INTEGRATION (Bio-inspired Target Tracking and Interception) ===
+    //
+    // The Dragonfly module provides bio-inspired target tracking and interception:
+    // - TSDN: Population vector encoding of target direction (16 neurons, 360°)
+    // - CSTMD1: Winner-take-all selective attention for single target lock
+    // - Prediction: IMM filter trajectory prediction with evasion detection
+    // - Interception: Proportional navigation guidance for optimal pursuit
+    //
+    // Biological basis: Dragonflies achieve 95% hunting success through:
+    // - Internal models predicting prey trajectory
+    // - Parallel processing in small target motion detector neurons
+    // - Predictive gain modulation along expected target path
+    //
+    // The dragonfly integrates with:
+    // - Visual Cortex Bridge: Target detection from visual processing
+    // - Audio Cortex Bridge: Directional cueing from sound localization
+    // - Parietal Bridge: Spatial reasoning for interception planning
+    // - Cognitive Bridge: Attention allocation and salience detection
+    // - Thalamic Bridge: Signal routing and gating
+    // - Substrate Bridge: Metabolic costs and fatigue modeling
+    // - FEP Bridge: Free energy minimization for prediction
+    // - Bio-Async Bridge: Asynchronous neural processing
+    // - Global Workspace Bridge: Conscious target awareness
+    //
+    dragonfly_system_t* dragonfly;                        // Dragonfly target tracking system
+    bool dragonfly_enabled;                               // Dragonfly enabled for this brain
+    uint64_t last_dragonfly_update_us;                    // Last dragonfly update timestamp
 };
 
 //=============================================================================

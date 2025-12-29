@@ -979,6 +979,45 @@ typedef struct {
     uint32_t parietal_subitizing_limit;   /**< Instant recognition limit (default: 4) */
     float parietal_rotation_rate_deg_ms;  /**< Mental rotation speed deg/ms (default: 0.053) */
 
+    // === DRAGONFLY INTEGRATION (Bio-inspired Target Tracking) ===
+    /**
+     * Dragonfly-Inspired Target Tracking and Interception
+     *
+     * WHAT: Bio-inspired target tracking using dragonfly neural circuits
+     * WHY:  Dragonflies achieve 95% hunting success through predictive interception
+     * HOW:  TSDN population vectors, CSTMD1 attention, IMM prediction, PN guidance
+     *
+     * BIOLOGICAL BASIS:
+     * - Gonzalez-Bellido et al. (2013): Eight pairs of descending visual neurons
+     * - Mischiati et al. (2015): Internal models direct dragonfly interception
+     * - Wiederman & O'Carroll (2017): STMD neuron computational principles
+     *
+     * INTEGRATION POINTS:
+     * - Visual Cortex: Target detection from visual processing pipeline
+     * - Parietal Lobe: Spatial reasoning for trajectory prediction
+     * - Motor System: Movement commands for pursuit and interception
+     * - Attention System: Selective focus on single target (CSTMD1)
+     */
+    bool enable_dragonfly;                /**< Enable dragonfly target tracking (default: false) */
+
+    // Dragonfly TSDN (Target-Selective Descending Neurons) tuning
+    uint32_t dragonfly_tsdn_neurons;      /**< Number of TSDN neurons (default: 16) */
+    float dragonfly_tsdn_tuning_width;    /**< Direction tuning width in radians (default: 0.5) */
+
+    // Dragonfly tracking (CSTMD1) tuning
+    float dragonfly_attention_threshold;  /**< Attention lock threshold (default: 0.7) */
+    float dragonfly_size_selectivity_min; /**< Min target angular size in radians (default: 0.01) */
+    float dragonfly_size_selectivity_max; /**< Max target angular size in radians (default: 0.1) */
+
+    // Dragonfly prediction tuning
+    bool dragonfly_enable_imm;            /**< Enable IMM filter for prediction (default: true) */
+    float dragonfly_prediction_horizon_ms;/**< Prediction lookahead in ms (default: 200) */
+    float dragonfly_evasion_threshold;    /**< Evasion detection threshold (default: 0.5) */
+
+    // Dragonfly interception tuning
+    float dragonfly_nav_gain;             /**< Proportional navigation gain N (default: 3.0) */
+    float dragonfly_max_turn_rate;        /**< Maximum turn rate rad/s (default: 6.0) */
+
     // === PHASE T1: BIOLOGICAL FRAMEWORK ENHANCEMENTS (Training Pipeline) ===
     /**
      * Biological Plasticity Mechanisms
@@ -1305,6 +1344,96 @@ int brain_update_parietal_from_sleep(brain_t brain);
  * @return 0 on success, -1 on error
  */
 int brain_step_parietal(brain_t brain, uint64_t delta_t);
+
+//=============================================================================
+// Dragonfly Integration (Bio-inspired Target Tracking)
+//=============================================================================
+
+/**
+ * @brief Get dragonfly system from brain
+ *
+ * WHAT: Retrieve pointer to brain's dragonfly target tracking subsystem
+ * WHY:  Allow access to bio-inspired target tracking and interception
+ * HOW:  Return brain->dragonfly field
+ *
+ * CAPABILITIES:
+ * - TSDN: Population vector encoding of target direction (16 neurons)
+ * - CSTMD1: Winner-take-all selective attention for target lock
+ * - Prediction: IMM filter trajectory prediction with evasion detection
+ * - Interception: Proportional navigation guidance for pursuit
+ *
+ * BIOLOGICAL BASIS:
+ * Dragonflies achieve 95% hunting success through:
+ * - Internal models predicting prey trajectory
+ * - Parallel processing in small target motion detector neurons
+ * - Predictive gain modulation along expected target path
+ *
+ * @param brain Brain instance
+ * @return Dragonfly system pointer or NULL if not enabled
+ */
+dragonfly_system_t* brain_get_dragonfly(brain_t brain);
+
+/**
+ * @brief Update dragonfly with visual detection
+ *
+ * Process a new visual detection through the dragonfly tracking system.
+ * This feeds the TSDN and CSTMD1 networks with target information.
+ *
+ * @param brain Brain instance
+ * @param position Target position [x, y, z]
+ * @param size Target angular size in radians
+ * @param contrast Target contrast against background [0-1]
+ * @return 0 on success, -1 on error
+ */
+int brain_dragonfly_detect(brain_t brain, const float position[3],
+                           float size, float contrast);
+
+/**
+ * @brief Get current dragonfly motor command
+ *
+ * Retrieve the current pursuit/interception motor command from dragonfly.
+ * Commands include heading, pitch, velocity, and urgency.
+ *
+ * @param brain Brain instance
+ * @param heading_rad Output: desired heading angle
+ * @param pitch_rad Output: desired pitch angle
+ * @param velocity Output: desired velocity [3]
+ * @param urgency Output: command urgency [0-1]
+ * @return 0 on success, -1 on error or no active pursuit
+ */
+int brain_dragonfly_get_command(brain_t brain, float* heading_rad,
+                                float* pitch_rad, float velocity[3],
+                                float* urgency);
+
+/**
+ * @brief Step dragonfly system forward in time
+ *
+ * Processes tracking, prediction, and interception planning.
+ * Call this during brain stepping for continuous dragonfly processing.
+ *
+ * @param brain Brain instance
+ * @param delta_t Time step in microseconds
+ * @return 0 on success, -1 on error
+ */
+int brain_step_dragonfly(brain_t brain, uint64_t delta_t);
+
+/**
+ * @brief Get dragonfly operating mode
+ *
+ * @param brain Brain instance
+ * @return Current mode (IDLE, SCANNING, TRACKING, PURSUING, INTERCEPTING)
+ */
+int brain_dragonfly_get_mode(brain_t brain);
+
+/**
+ * @brief Abort current dragonfly hunt
+ *
+ * Immediately terminates any active pursuit and returns to scanning mode.
+ *
+ * @param brain Brain instance
+ * @return 0 on success, -1 on error
+ */
+int brain_dragonfly_abort(brain_t brain);
 
 /**
  * WHAT: Retrieve pointer to brain's sleep/wake subsystem (Phase 10.4)
