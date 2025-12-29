@@ -380,6 +380,17 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_spatial.c  # Population/spatial games, replicator dynamics, network effects
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_learning.c  # Q-learning, CFR, fictitious play, opponent modeling
 
+    # Parietal Lobe - Mathematical/Scientific Reasoning (Phase 7.2)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_number_sense.c           # Approximate Number System (Weber-Fechner, subitizing)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_spatial_reasoning.c      # Mental rotation, coordinate transforms, K-D tree indexing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_mathematical_intuition.c # Pattern detection, symmetry, analogies
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_scientific_reasoning.c   # Hypothesis testing, dimensional analysis, causal inference
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_equation_manipulation.c  # Symbolic math, differentiation, expression trees
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_chemistry.c              # Chemistry reasoning, stoichiometry, periodic table
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_biology.c                # Biology reasoning, DNA/RNA, phylogenetics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_software_engineering.c   # Software engineering reasoning, complexity analysis
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
+
     # Free Energy Principle - Karl Friston's predictive processing framework
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy.c  # Core FEP implementation (variational free energy, active inference)
 
@@ -1172,6 +1183,26 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_sensor_fusion.c   # Multi-sensor fusion
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_swarm_bridge.c    # Portia-Swarm integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_tier_switch.c     # Tier switching
+
+    # Dragonfly Interception Module - Bio-inspired target tracking and interception
+    # Based on dragonfly neuroscience: 95% prey interception success
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_tsdn.c       # TSDN population vector encoding (16 neurons, 360 degrees)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_tracking.c   # CSTMD1-inspired target tracking (winner-take-all)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_prediction.c # Trajectory prediction with IMM filter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_intercept.c  # Interception planning (PN guidance)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly.c            # Main coordinator (unified pipeline)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_visual_bridge.c  # Visual cortex bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_audio_bridge.c   # Audio cortex bridge (multi-modal)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_parietal_bridge.c  # Parietal lobe bridge (spatial, visuomotor)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_cortical_bridge.c  # Cortical column bridge (TSDN as hypercolumn)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_cognitive_bridge.c  # Cognitive systems bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_thalamic_bridge.c   # Thalamic nuclei bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_substrate_bridge.c  # Neural substrate bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_cnn_bridge.c        # CNN training bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_snn_bridge.c        # SNN backprop bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_bio_async_bridge.c  # Bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_workspace_bridge.c  # Global workspace bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_fep_bridge.c        # FEP bridge
 
     # Core Directives - Asimov's Laws & Ethical Foundation (Phase 1.0)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/directives/nimcp_action_history.c           # Action history tracking (combinatorial harm foundation)

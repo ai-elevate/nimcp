@@ -1293,6 +1293,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/training")
 endif()
 
 # ============================================================================
+# Dragonfly Interception Module Tests (Bio-Inspired Target Tracking)
+# ============================================================================
+# WHAT: Tests for dragonfly-inspired predictive interception module
+# WHY:  Verify TSDN population vector encoding, target tracking, prediction
+# HOW:  Based on dragonfly neuroscience - 95% prey interception success
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/dragonfly")
+    message(STATUS "Adding dragonfly unit tests...")
+    add_subdirectory(unit/dragonfly)
+endif()
+
+# ============================================================================
 # Extended Timeout Configuration (Applied AFTER all tests are registered)
 # ============================================================================
 # WHAT: Extended timeouts for heavyweight brain tests

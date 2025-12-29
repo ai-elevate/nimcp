@@ -387,6 +387,7 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
         node->config = nlp_config_default();
     }
 
+    node->magic = NLP_NODE_MAGIC;  // Set validation magic number
     node->brain_id = node->config.brain_id;
     node->is_master = node->config.is_master;
     node->current_mode = node->config.default_mode;
@@ -666,8 +667,23 @@ uint32_t nlp_connect_peer(nlp_node_t node, const char* address, uint16_t port) {
 
     // Initiate handshake based on mode
     if (node->current_mode == NLP_MODE_STANDARD) {
-        // Start 3-way handshake
+        // Start 3-way handshake - transition state first
         nlp_session_start_handshake(node, peer);
+
+        // Actually send the handshake request message over the network
+        // This is necessary because nlp_session_start_handshake only manages state,
+        // it doesn't send the actual network message
+        int send_rc = nlp_send(node, peer->peer_id, NLP_MSG_HANDSHAKE_REQ,
+                               NULL, 0, NLP_PRIORITY_HIGH);
+        if (send_rc < 0) {
+            NIMCP_LOGGING_WARN(NLP_MODULE_NAME,
+                "Failed to send handshake request to peer 0x%08X: %d",
+                peer->peer_id, send_rc);
+            // Don't fail peer creation - peer will retry or timeout
+        } else {
+            NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                "Sent handshake request to peer 0x%08X", peer->peer_id);
+        }
     } else {
         // Tactical/Stealth: use PSK, mark as established immediately
         peer->session_state = NLP_SESSION_ESTABLISHED;
@@ -810,6 +826,14 @@ int nlp_send(nlp_node_t node, uint32_t peer_id, nlp_msg_type_t msg_type,
         }
     }
 
+    // For broadcasts (peer_id == 0) in STANDARD mode, directly call nlp_broadcast
+    // which will iterate over all established peers and send to each with their
+    // individual session keys. We can't encrypt a single broadcast message in
+    // STANDARD mode because each peer has a different session key.
+    if (peer_id == 0 && node->current_mode == NLP_MODE_STANDARD) {
+        return nlp_broadcast(node, msg_type, payload, payload_len, priority);
+    }
+
     // Build message (pass NULL payload - we handle encryption separately)
     nlp_message_t* msg = nlp_message_create(msg_type, NULL, 0);
     if (!msg) {
@@ -828,17 +852,19 @@ int nlp_send(nlp_node_t node, uint32_t peer_id, nlp_msg_type_t msg_type,
     }
     NLP_SET_FLAGS(&msg->header, flags);
 
-    msg->header.msg_type = htons(msg_type);
-    msg->header.sender_id = htonl(node->brain_id);
-    msg->header.timestamp = htonl((uint32_t)time(NULL));
-    msg->header.dest_id = htonl(peer_id);
+    // Set header fields in HOST byte order
+    // nlp_header_serialize will convert to network byte order
+    msg->header.msg_type = msg_type;
+    msg->header.sender_id = node->brain_id;
+    msg->header.timestamp = (uint32_t)time(NULL);
+    msg->header.dest_id = peer_id;
 
     // Generate nonce using node's crypto state
     nlp_crypto_generate_nonce(node, msg->header.nonce);
 
     // Get sequence number
     nimcp_mutex_lock(&node->seq_mutex);
-    msg->header.sequence = htons(node->tx_sequence++);
+    msg->header.sequence = node->tx_sequence++;
     nimcp_mutex_unlock(&node->seq_mutex);
 
     // Select key slot based on mode
@@ -847,6 +873,43 @@ int nlp_send(nlp_node_t node, uint32_t peer_id, nlp_msg_type_t msg_type,
         nlp_session_select_psk(node, &key_slot);
     }
     NLP_SET_KEY_SLOT(&msg->header, key_slot);
+
+    // Check if this is a handshake message (sent before session key is established)
+    // Handshake messages in standard mode cannot be encrypted because
+    // session keys don't exist yet - they're negotiated during handshake
+    bool is_handshake_msg = (msg_type == NLP_MSG_HANDSHAKE_REQ ||
+                             msg_type == NLP_MSG_HANDSHAKE_RESP ||
+                             msg_type == NLP_MSG_HANDSHAKE_FINAL);
+
+    // For standard mode handshake messages, skip encryption
+    if (is_handshake_msg && node->current_mode == NLP_MODE_STANDARD) {
+        // Clear encrypted flag for handshake messages
+        uint8_t flags = NLP_GET_FLAGS(&msg->header);
+        flags &= ~NLP_FLAG_ENCRYPTED;
+        NLP_SET_FLAGS(&msg->header, flags);
+
+        // Copy unencrypted payload if present
+        if (payload && payload_len > 0) {
+            msg->payload = (uint8_t*)nimcp_malloc(payload_len);
+            if (!msg->payload) {
+                nlp_message_destroy(msg);
+                return -ENOMEM;
+            }
+            memcpy(msg->payload, payload, payload_len);
+            msg->header.payload_len = (uint16_t)payload_len;
+        } else {
+            msg->header.payload_len = 0;
+        }
+
+        // Clear auth tag (no encryption = no auth tag)
+        memset(msg->auth_tag, 0, NLP_TAG_SIZE);
+
+        NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+            "Sending unencrypted handshake message type=0x%04X to peer 0x%08X",
+            msg_type, peer_id);
+
+        goto serialize_and_send;
+    }
 
     // Encrypt payload
     if (payload && payload_len > 0) {
@@ -895,13 +958,13 @@ int nlp_send(nlp_node_t node, uint32_t peer_id, nlp_msg_type_t msg_type,
             return rc;
         }
 
-        msg->header.payload_len = htons((uint16_t)payload_len);
+        msg->header.payload_len = (uint16_t)payload_len;
     } else {
         msg->header.payload_len = 0;
     }
 
-    // Calculate header CRC
-    msg->header.header_crc = htons(nlp_header_crc(&msg->header));
+serialize_and_send:
+    // Note: Header CRC is calculated in nlp_header_serialize, called from nlp_message_serialize
 
     // Serialize message
     uint8_t wire_buffer[NLP_MAX_PAYLOAD + NLP_HEADER_SIZE + NLP_TAG_SIZE];
@@ -1623,7 +1686,9 @@ static void* nlp_recv_thread(void* arg) {
             continue;
         }
 
-        if (len < NLP_MIN_MESSAGE_SIZE) {
+        // Minimum size is header only for unencrypted handshake messages
+        // Encrypted messages need header + auth tag (NLP_MIN_MESSAGE_SIZE)
+        if (len < NLP_HEADER_SIZE) {
             NIMCP_LOGGING_WARN(NLP_MODULE_NAME, "Message too short: %zd", len);
             continue;
         }
@@ -1850,6 +1915,40 @@ static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
             break;
         }
     }
+
+    // Auto-create peer for handshake requests from unknown senders
+    if (!peer && msg_type == NLP_MSG_HANDSHAKE_REQ && from != NULL) {
+        if (node->peer_count < node->config.max_peers) {
+            // Extract address from sockaddr
+            char addr_str[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &from->sin_addr, addr_str, sizeof(addr_str));
+            uint16_t port = ntohs(from->sin_port);
+
+            // Create new peer
+            peer = &node->peers[node->peer_count];
+            memset(peer, 0, sizeof(nlp_peer_t));
+
+            peer->peer_id = sender_id;
+            strncpy(peer->address, addr_str, sizeof(peer->address) - 1);
+            peer->port = port;
+            peer->session_state = NLP_SESSION_DISCONNECTED;
+            peer->healthy = false;
+
+            uint64_t now_ms = nimcp_platform_time_monotonic_ms();
+            peer->last_seen_ms = now_ms;
+            peer->last_sent_ms = now_ms;
+
+            node->peer_count++;
+
+            NIMCP_LOGGING_INFO(NLP_MODULE_NAME,
+                "Auto-created peer 0x%08X from handshake request at %s:%u",
+                sender_id, addr_str, port);
+        } else {
+            NIMCP_LOGGING_WARN(NLP_MODULE_NAME,
+                "Cannot auto-create peer 0x%08X: max peers reached", sender_id);
+        }
+    }
+
     nimcp_mutex_unlock(&node->peer_mutex);
 
     // Decrypt payload if present
@@ -1914,19 +2013,37 @@ static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
     switch (msg_type) {
         case NLP_MSG_HANDSHAKE_REQ:
             if (peer) {
-                nlp_session_handle_handshake_req(node, peer, &header);
+                int req_rc = nlp_session_handle_handshake_req(node, peer, &header);
+                if (req_rc == NIMCP_SUCCESS && node->current_mode == NLP_MODE_STANDARD) {
+                    // Send handshake response
+                    nlp_send(node, peer->peer_id, NLP_MSG_HANDSHAKE_RESP,
+                             NULL, 0, NLP_PRIORITY_HIGH);
+                    NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                        "Sent handshake response to peer 0x%08X", peer->peer_id);
+                }
             }
             break;
 
         case NLP_MSG_HANDSHAKE_RESP:
             if (peer) {
-                nlp_session_handle_handshake_resp(node, peer, &header);
+                int resp_rc = nlp_session_handle_handshake_resp(node, peer, &header);
+                if (resp_rc == NIMCP_SUCCESS && node->current_mode == NLP_MODE_STANDARD) {
+                    // Send final handshake to complete 3-way handshake
+                    nlp_send(node, peer->peer_id, NLP_MSG_HANDSHAKE_FINAL,
+                             NULL, 0, NLP_PRIORITY_HIGH);
+                    NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                        "Sent handshake final to peer 0x%08X", peer->peer_id);
+
+                    // Establish session on our side after sending final
+                    nlp_session_establish(node, peer);
+                }
             }
             break;
 
         case NLP_MSG_HANDSHAKE_FINAL:
             if (peer) {
                 nlp_session_handle_handshake_final(node, peer, &header);
+                // nlp_session_handle_handshake_final calls nlp_session_establish internally
             }
             break;
 

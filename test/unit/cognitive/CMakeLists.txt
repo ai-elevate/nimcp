@@ -359,6 +359,9 @@ add_subdirectory(memory)
 # Theory of Mind tests (includes substrate bridge)
 add_subdirectory(tom)
 
+# Parietal Lobe tests (Phase 7.2 - Mathematical/Scientific Reasoning)
+add_subdirectory(parietal)
+
 # ============================================================================
 # Self-Awareness Coordinator Tests (Phase 1: Self-Awareness Unification)
 # ============================================================================

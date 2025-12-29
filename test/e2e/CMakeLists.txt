@@ -394,6 +394,12 @@ add_e2e_test(e2e_test_game_theory_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_game_theory_pipeline.cpp
 )
 
+# Parietal Lobe Pipeline E2E Test (Mathematical/Scientific Reasoning)
+add_e2e_test(e2e_test_parietal_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_parietal_pipeline.cpp
+)
+
 # Code Immune Pipeline E2E Test (Self-Healing: Crash -> Fix -> Recompile -> Hot-Inject)
 add_e2e_test(e2e_test_code_immune_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
