@@ -431,6 +431,32 @@
 {"type":"entity","name":"Audio_Cortical_Bridge","entityType":"perception_bridge","observations":["File: nimcp_audio_cortical_bridge.c","Tonotopic cortical organization"]}
 {"type":"entity","name":"Speech_Cortical_Bridge","entityType":"perception_bridge","observations":["File: nimcp_speech_cortical_bridge.c","Speech cortical column organization"]}
 {"type":"entity","name":"Security_Perception_Bridge","entityType":"perception_bridge","observations":["File: nimcp_security_perception_bridge.c","Visual anomaly detection (adversarial images)","Audio anomaly detection (inaudible attacks)","Cross-modal consistency checks","BBB validation for sensory inputs","Attack signature database"]}
+{"type":"entity","name":"Motor_Core_System","entityType":"system","observations":["Comprehensive motor control architecture","Includes basal ganglia, thalamus relay, motor cortex output","Biologically-inspired action selection and execution"]}
+{"type":"entity","name":"Basal_Ganglia","entityType":"module","observations":["Action selection among competing candidates","Direct/Indirect/Hyperdirect pathways","Operating modes: GOAL_DIRECTED, HABITUAL, EXPLORATORY, SUPPRESSED","Habit learning and formation","Dopamine modulation via SNc"]}
+{"type":"entity","name":"Striatum","entityType":"component","observations":["Input nucleus of basal ganglia","D1 neurons (direct pathway, facilitates movement)","D2 neurons (indirect pathway, inhibits movement)","95% medium spiny neurons (MSNs)","Dopamine sensitivity (D1 gain: 1.5x, D2 gain: 1.2x)","Regions: Dorsal (sensorimotor), Ventral (limbic), Anterior (associative)"]}
+{"type":"entity","name":"Globus_Pallidus","entityType":"component","observations":["GPe (external) - indirect pathway","GPi (internal) - main output nucleus","High tonic firing (70 Hz constant inhibition)","Receives striatum inhibition and STN excitation","Projects to thalamus VA/VL"]}
+{"type":"entity","name":"Substantia_Nigra","entityType":"component","observations":["SNc (pars compacta) - dopamine production","SNr (pars reticulata) - motor output","SNc tonic firing: 4.5 Hz, burst: 18 Hz, pause: 0.5 Hz","Reward prediction error (RPE) computation","Phasic dopamine release for learning"]}
+{"type":"entity","name":"Subthalamic_Nucleus","entityType":"component","observations":["STN - global action suppression","Hyperdirect pathway (fast 3ms): emergency stops","Indirect pathway (slower 10ms): selective suppression","Baseline activity: 25 Hz, max: 300 Hz","Hold your horses signal"]}
+{"type":"entity","name":"Thalamus_Motor","entityType":"component","observations":["VA (ventral anterior) - receives basal ganglia output","VL (ventral lateral) - receives cerebellar output","Both relay to motor cortex (M1, premotor)","Firing modes: TONIC (awake) vs BURST (drowsy)","Thalamic Reticular Nucleus (TRN) inhibitory gating"]}
+{"type":"entity","name":"Speech_Motor_System","entityType":"module","observations":["Broca's region motor planning","5 articulators: LIPS, TONGUE, JAW, LARYNX, VELUM","Motor planning window: ~200ms","Coarticulation with 0.7 strength default","Cubic Hermite spline trajectory interpolation","Command queue up to 256 commands"]}
+{"type":"entity","name":"Parietal_Motor_Bridge","entityType":"bridge","observations":["Dragonfly visuomotor coordination","Posterior Parietal Cortex (PPC) coordinate transforms","LIP: visual spatial attention","PRR: target-to-motor transforms","K-D tree spatial indexing"]}
+{"type":"entity","name":"Motor_Command_Types","entityType":"component","observations":["SACCADE: rapid eye movements","SMOOTH_PURSUIT: tracking movements","HEAD_TURN: head orientation","BODY_ORIENT: body orientation","INTERCEPT_PATH: full body interception"]}
+{"type":"entity","name":"Motor_Coordinate_Frames","entityType":"component","observations":["Eye-centered (retinal)","Head-centered","Body-centered (egocentric)","World-centered (allocentric)","Camera/sensor-centered"]}
+{"type":"entity","name":"Corpus_Callosum_Motor","entityType":"bridge","observations":["CALLOSUM_CHANNEL_MOTOR for interhemispheric coordination","Neurotransmitter: Acetylcholine (ACh)","Contralateral mapping for crossed motor control"]}
+{"type":"entity","name":"Action_History_Tracker","entityType":"module","observations":["Circular buffer tracking recent actions (1024 entries)","Time-windowed queries (default 1 minute)","Type filtering for action pattern analysis","Harm score prediction per action","Bio-async integration"]}
+{"type":"entity","name":"Language_Core_System","entityType":"system","observations":["Comprehensive language processing architecture","Broca (production) + Wernicke (comprehension)","NLP integration with neuromodulation","Immune system modulation for aphasia modeling"]}
+{"type":"entity","name":"Broca_Adapter","entityType":"module","observations":["Unified orchestrator for Broca's region","Integrates Syntax, Phonological, Speech Motor","Config: 64 max words, 256 phonemes, 1000 lexicon","Bio-async messaging for lexical access","Tracks utterances, errors, latency metrics"]}
+{"type":"entity","name":"Syntax_Processor","entityType":"module","observations":["Biological model: BA44/BA45","14 POS categories (noun, verb, adj, etc.)","Phrase types: NP, VP, AP, PP, ADVP, CP, IP, DP","Grammatical features: number, person, tense, aspect, mood, case","CYK parsing for phrase structure","Morphological inflection (walk -> walked)"]}
+{"type":"entity","name":"Phonological_Processor","entityType":"module","observations":["Biological model: BA44/45 phonological working memory","256 phonemes (IPA-based)","Categories: VOWEL, CONSONANT, SEMIVOWEL, SILENCE","Syllable structure: onset (max 3) + nucleus (max 2) + coda (max 4)","Prosody: stress levels, F0 80-300Hz, intonation patterns","States: IDLE -> BUFFERING -> SYLLABIFYING -> APPLYING_STRESS -> READY"]}
+{"type":"entity","name":"Language_Production_Bridge","entityType":"bridge","observations":["Wernicke-Broca connection via arcuate fasciculus","Pipeline: Semantic Intent -> Lexical Selection -> Broca -> Motor","Self-monitoring for error detection","Positional encoding: sinusoidal or RoPE","Second messenger integration (dopamine fluency)"]}
+{"type":"entity","name":"Broca_Immune_Bridge","entityType":"bridge","observations":["Neuroinflammation causes expressive aphasia","Cytokines: IL-1β (anomia), IL-6 (agrammatism), TNF-α (phonological), IFN-γ (motor speech)","Severity levels: mild (0.1), moderate (0.4), severe (0.7), storm (0.95)","Aphasia types: ANOMIA, AGRAMMATISM, PHONOLOGICAL, MOTOR_SPEECH, NONFLUENT","Speech errors trigger immune response"]}
+{"type":"entity","name":"Wernicke_Speech_Cortex","entityType":"module","observations":["Speech comprehension (STG, BA22)","44 IPA phoneme inventory for English","12 vowels + 6 stops + 8 fricatives + 3 nasals + 4 approximants + 2 affricates","Phoneme features: articulatory (categorical) + acoustic (continuous)","Categorical perception for speaker variation tolerance","Position embedding for phoneme sequences"]}
+{"type":"entity","name":"NLP_Network","entityType":"module","observations":["Neural network + attention + neuromodulation facade","Synapse modes: attention-modulated, semantic similarity, gating","Bio-async integration","Neuromodulator channels: dopamine, acetylcholine"]}
+{"type":"entity","name":"Contextual_Language","entityType":"module","observations":["6 communication contexts: FORMAL, CASUAL, TECHNICAL, EMOTIONAL, URGENT, LEARNING","Automatic context detection","Smooth adaptation between contexts","Metrics: formality, precision, emotional_tone, urgency"]}
+{"type":"entity","name":"Neural_Language","entityType":"module","observations":["256 cognitive primitives (16 categories x 16)","Categories: Perception, Action, Spatial, Temporal, etc.","Bandwidth-efficient: 7 bytes vs 60 bytes traditional","PAD emotion model (Pleasure-Arousal-Dominance)","Checksum-validated expressions"]}
+{"type":"entity","name":"Semantic_Memory_Language","entityType":"module","observations":["Word meanings and semantic relationships","Integration with production and comprehension","FEP-based semantic compression"]}
+{"type":"entity","name":"NLP_Immune_Bridge","entityType":"bridge","observations":["Language understanding under inflammatory stress","Comprehension impairment from inflammation"]}
+{"type":"entity","name":"Lateralization_Language","entityType":"module","observations":["Left hemisphere: Broca, Wernicke, temporal language","Right hemisphere: prosody, emotional speech, metaphor","Inter-hemispheric via corpus callosum"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -1165,3 +1191,55 @@
 {"type":"relation","from":"Visual_JEPA_Bridge","to":"JEPA_Core","relationType":"connects_to"}
 {"type":"relation","from":"Speech_JEPA_Bridge","to":"JEPA_Core","relationType":"connects_to"}
 {"type":"relation","from":"Plasticity_Core_System","to":"Perception_Core_System","relationType":"modifies"}
+{"type":"relation","from":"Motor_Core_System","to":"Basal_Ganglia","relationType":"contains"}
+{"type":"relation","from":"Motor_Core_System","to":"Thalamus_Motor","relationType":"contains"}
+{"type":"relation","from":"Motor_Core_System","to":"Speech_Motor_System","relationType":"contains"}
+{"type":"relation","from":"Motor_Core_System","to":"Parietal_Motor_Bridge","relationType":"contains"}
+{"type":"relation","from":"Motor_Core_System","to":"Action_History_Tracker","relationType":"contains"}
+{"type":"relation","from":"Basal_Ganglia","to":"Striatum","relationType":"contains"}
+{"type":"relation","from":"Basal_Ganglia","to":"Globus_Pallidus","relationType":"contains"}
+{"type":"relation","from":"Basal_Ganglia","to":"Substantia_Nigra","relationType":"contains"}
+{"type":"relation","from":"Basal_Ganglia","to":"Subthalamic_Nucleus","relationType":"contains"}
+{"type":"relation","from":"Striatum","to":"Globus_Pallidus","relationType":"inhibits"}
+{"type":"relation","from":"Subthalamic_Nucleus","to":"Globus_Pallidus","relationType":"excites"}
+{"type":"relation","from":"Globus_Pallidus","to":"Thalamus_Motor","relationType":"inhibits"}
+{"type":"relation","from":"Substantia_Nigra","to":"Striatum","relationType":"modulates"}
+{"type":"relation","from":"Thalamus_Motor","to":"Speech_Motor_System","relationType":"relays_to"}
+{"type":"relation","from":"Parietal_Motor_Bridge","to":"Motor_Command_Types","relationType":"generates"}
+{"type":"relation","from":"Parietal_Motor_Bridge","to":"Motor_Coordinate_Frames","relationType":"uses"}
+{"type":"relation","from":"Corpus_Callosum_Motor","to":"Motor_Core_System","relationType":"coordinates"}
+{"type":"relation","from":"Language_Core_System","to":"Broca_Adapter","relationType":"contains"}
+{"type":"relation","from":"Language_Core_System","to":"Wernicke_Speech_Cortex","relationType":"contains"}
+{"type":"relation","from":"Language_Core_System","to":"NLP_Network","relationType":"contains"}
+{"type":"relation","from":"Language_Core_System","to":"Contextual_Language","relationType":"contains"}
+{"type":"relation","from":"Language_Core_System","to":"Neural_Language","relationType":"contains"}
+{"type":"relation","from":"Language_Core_System","to":"Semantic_Memory_Language","relationType":"contains"}
+{"type":"relation","from":"Language_Core_System","to":"Lateralization_Language","relationType":"contains"}
+{"type":"relation","from":"Broca_Adapter","to":"Syntax_Processor","relationType":"contains"}
+{"type":"relation","from":"Broca_Adapter","to":"Phonological_Processor","relationType":"contains"}
+{"type":"relation","from":"Broca_Adapter","to":"Speech_Motor_System","relationType":"contains"}
+{"type":"relation","from":"Broca_Adapter","to":"Language_Production_Bridge","relationType":"uses"}
+{"type":"relation","from":"Broca_Adapter","to":"Broca_Immune_Bridge","relationType":"uses"}
+{"type":"relation","from":"Wernicke_Speech_Cortex","to":"Speech_Cortical_Bridge","relationType":"uses"}
+{"type":"relation","from":"NLP_Network","to":"NLP_Immune_Bridge","relationType":"uses"}
+{"type":"relation","from":"Language_Production_Bridge","to":"Wernicke_Speech_Cortex","relationType":"connects_to"}
+{"type":"relation","from":"Language_Production_Bridge","to":"Broca_Adapter","relationType":"connects_to"}
+{"type":"relation","from":"Syntax_Processor","to":"Phonological_Processor","relationType":"feeds_into"}
+{"type":"relation","from":"Phonological_Processor","to":"Speech_Motor_System","relationType":"feeds_into"}
+{"type":"relation","from":"Speech_Motor_System","to":"Motor_Core_System","relationType":"part_of"}
+{"type":"relation","from":"Language_Core_System","to":"Motor_Core_System","relationType":"drives"}
+{"type":"relation","from":"Broca_Adapter","to":"Thalamus_Motor","relationType":"receives_from"}
+{"type":"relation","from":"Broca_Immune_Bridge","to":"BBB_System","relationType":"connects_to"}
+{"type":"relation","from":"NLP_Immune_Bridge","to":"BBB_System","relationType":"connects_to"}
+{"type":"relation","from":"Wernicke_Speech_Cortex","to":"Speech_Cortex_Module","relationType":"extends"}
+{"type":"relation","from":"Language_Core_System","to":"Cognitive_Core_System","relationType":"integrates_with"}
+{"type":"relation","from":"Language_Core_System","to":"Working_Memory","relationType":"uses"}
+{"type":"relation","from":"Semantic_Memory_Language","to":"Semantic_Memory","relationType":"integrates_with"}
+{"type":"relation","from":"Lateralization_Language","to":"Hemispheric_Brain","relationType":"part_of"}
+{"type":"relation","from":"Basal_Ganglia","to":"Habit_Formation","relationType":"enables"}
+{"type":"relation","from":"Motor_Core_System","to":"Perception_Core_System","relationType":"responds_to"}
+{"type":"relation","from":"Parietal_Motor_Bridge","to":"Visual_Cortex_Module","relationType":"receives_from"}
+{"type":"relation","from":"Motor_Core_System","to":"Plasticity_Core_System","relationType":"triggers"}
+{"type":"relation","from":"Language_Core_System","to":"Plasticity_Core_System","relationType":"triggers"}
+{"type":"relation","from":"Neuromodulator_System","to":"Basal_Ganglia","relationType":"modulates"}
+{"type":"relation","from":"Neuromodulator_System","to":"Language_Core_System","relationType":"modulates"}
