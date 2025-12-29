@@ -279,6 +279,36 @@
 {"type":"entity","name":"Logic_Knowledge_Integration","entityType":"logic_integration","observations":["Knowledge graph queries via logic","Fact retrieval through inference","Consistency checking with reasoning"]}
 {"type":"entity","name":"Logic_Reasoning_Integration","entityType":"logic_integration","observations":["Unification engine for pattern matching","Forward/backward chaining orchestration","Quantum-accelerated search for complex proofs"]}
 {"type":"entity","name":"Ternary_Logic_System","entityType":"logic_module","observations":["Location: include/cognitive/ethics/nimcp_trit_ethics.h","Three-valued ethics logic","True/False/Unknown states","Uncertainty-aware ethical reasoning"]}
+{"type":"entity","name":"STDP_Plasticity","entityType":"plasticity_mechanism","observations":["Spike-Timing Dependent Plasticity","Core timing-based learning rule","Pre-before-post causes LTP","Post-before-pre causes LTD","Exponential timing windows","Located in src/core/plasticity/stdp/"]}
+{"type":"entity","name":"Triplet_STDP","entityType":"plasticity_mechanism","observations":["Extended STDP with triplet spike interactions","Better captures frequency dependence","BCM-like behavior emerges naturally","Models pairing experiments more accurately"]}
+{"type":"entity","name":"BCM_Plasticity","entityType":"plasticity_mechanism","observations":["Bienenstock-Cooper-Munro rule","Sliding threshold mechanism","Threshold adapts based on postsynaptic activity","Prevents runaway potentiation/depression","Homeostatic component"]}
+{"type":"entity","name":"Calcium_Dynamics","entityType":"plasticity_mechanism","observations":["Calcium as second messenger","NMDA receptor calcium influx","Voltage-gated calcium channels","Calcium-dependent enzymes (CaMKII, calcineurin)","Determines LTP vs LTD direction"]}
+{"type":"entity","name":"Dendritic_Plasticity","entityType":"plasticity_mechanism","observations":["Branch-specific plasticity","Dendritic integration rules","Nonlinear dendritic computation","Local dendritic spikes","Compartmentalized learning"]}
+{"type":"entity","name":"Heterosynaptic_Plasticity","entityType":"plasticity_mechanism","observations":["Changes at non-active synapses","Spread of plasticity signals","Competition between synapses","Normalization mechanism","Balances homosynaptic changes"]}
+{"type":"entity","name":"Short_Term_Plasticity","entityType":"plasticity_mechanism","observations":["Facilitation and depression","Millisecond to second timescales","Presynaptic vesicle dynamics","Frequency-dependent filtering","Working memory substrate"]}
+{"type":"entity","name":"Astrocyte_Plasticity","entityType":"plasticity_mechanism","observations":["Gliotransmitter release","Tripartite synapse model","Calcium waves in astrocytes","Glutamate/ATP signaling","Modulates synaptic transmission"]}
+{"type":"entity","name":"Pink_Noise_Plasticity","entityType":"plasticity_mechanism","observations":["1/f noise characteristics","Optimal learning noise","Bridges LNN and plasticity","Temporal correlation structure","Stochastic resonance effects"]}
+{"type":"entity","name":"Neuromodulator_Plasticity","entityType":"plasticity_mechanism","observations":["Dopamine reward signals","Acetylcholine attention gating","Norepinephrine arousal","Serotonin mood/valence","Gating of eligibility traces"]}
+{"type":"entity","name":"Second_Messenger_Cascades","entityType":"plasticity_mechanism","observations":["cAMP/PKA pathway","IP3/DAG signaling","MAPK cascades","Gene expression regulation","Synaptic consolidation"]}
+{"type":"entity","name":"Predictive_Coding_Plasticity","entityType":"plasticity_mechanism","observations":["Prediction error minimization","Hierarchical inference","Top-down and bottom-up learning","FEP-aligned plasticity","Precision weighting"]}
+{"type":"entity","name":"Adaptive_Plasticity","entityType":"plasticity_mechanism","observations":["Context-dependent learning rates","Task-specific adaptation","Transfer learning support","Meta-learning components"]}
+{"type":"entity","name":"Metabolic_Plasticity","entityType":"plasticity_mechanism","observations":["Energy-dependent plasticity","Glucose/lactate availability","Mitochondrial dynamics","ATP-gated plasticity","Metabolic constraints on learning"]}
+{"type":"entity","name":"Plasticity_Coordinator","entityType":"plasticity_subsystem","observations":["Orchestrates all plasticity mechanisms","Conflict resolution between mechanisms","Priority scheduling","Resource allocation","Located in src/core/plasticity/coordinator/"]}
+{"type":"entity","name":"Retina_Module","entityType":"perception_subsystem","observations":["7-channel multispectral processing","Extended spectrum: UV, RGB, NIR, Thermal, Depth","Photoreceptor adaptation","Retinal ganglion cell types (ON/OFF/parasol/midget)","Foveation and peripheral processing","Located in src/core/perception/retina/"]}
+{"type":"entity","name":"Visual_Cortex_Module","entityType":"perception_subsystem","observations":["V1 primary visual processing","Gabor filter banks for orientation/spatial frequency","Retinotopic mapping","Feature extraction hierarchy","Attention integration","Memory-guided visual processing","Located in src/core/perception/visual_cortex/"]}
+{"type":"entity","name":"Audio_Cortex_Module","entityType":"perception_subsystem","observations":["Cochlear model preprocessing","MFCC feature extraction","Mel-frequency spectrogram","Temporal integration","Pitch and timbre processing","Located in src/core/perception/audio_cortex/"]}
+{"type":"entity","name":"Speech_Cortex_Module","entityType":"perception_subsystem","observations":["Phoneme recognition","Formant analysis","Prosody extraction","Speech-to-text pipeline","Language-specific processing","Located in src/core/perception/speech_cortex/"]}
+{"type":"entity","name":"JEPA_Visual","entityType":"perception_subsystem","observations":["Joint Embedding Predictive Architecture for vision","Self-supervised visual learning","Latent space prediction","Contrastive learning alternative","Vision transformer integration"]}
+{"type":"entity","name":"JEPA_Speech","entityType":"perception_subsystem","observations":["JEPA for speech/audio","Self-supervised audio learning","Temporal prediction in latent space","Audio representation learning"]}
+{"type":"entity","name":"Perception_Coordinator","entityType":"perception_subsystem","observations":["Orchestrates all perception modules","Multi-modal fusion","Attention routing","Resource allocation","Sensory integration"]}
+{"type":"entity","name":"UV_Channel","entityType":"perception_component","observations":["Ultraviolet spectrum processing","Extended beyond human vision","Pattern detection in UV"]}
+{"type":"entity","name":"NIR_Channel","entityType":"perception_component","observations":["Near-infrared processing","Beyond visible spectrum","Heat signature detection"]}
+{"type":"entity","name":"Thermal_Channel","entityType":"perception_component","observations":["Thermal/far-infrared processing","Temperature mapping","Living organism detection"]}
+{"type":"entity","name":"Depth_Channel","entityType":"perception_component","observations":["Depth perception processing","Stereo vision support","Distance estimation"]}
+{"type":"entity","name":"Gabor_Filter_Bank","entityType":"perception_component","observations":["Orientation-selective filters","Spatial frequency tuning","V1 simple cell model","Edge and texture detection"]}
+{"type":"entity","name":"Cochlear_Model","entityType":"perception_component","observations":["Basilar membrane simulation","Frequency-to-place mapping","Hair cell transduction","Auditory nerve encoding"]}
+{"type":"entity","name":"Phoneme_Detector","entityType":"perception_component","observations":["Basic speech sound units","Language-agnostic phonemes","Categorical perception","Coarticulation handling"]}
+{"type":"entity","name":"Formant_Analyzer","entityType":"perception_component","observations":["Vocal tract resonances","F1/F2/F3 extraction","Vowel identification","Speaker normalization"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -654,3 +684,82 @@
 {"type":"relation","from":"Reasoning_Module","to":"Curiosity_Module","relationType":"triggers_exploration_in"}
 {"type":"relation","from":"Reasoning_Module","to":"Executive_Functions","relationType":"plans_proofs_with"}
 {"type":"relation","from":"Reasoning_Module","to":"Consolidation_System","relationType":"stores_rules_in"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"STDP_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Triplet_STDP","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"BCM_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Homeostatic_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Eligibility_Traces","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Calcium_Dynamics","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Protein_Synthesis","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Structural_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Dendritic_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Heterosynaptic_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Metaplasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Short_Term_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Astrocyte_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Pink_Noise_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Neuromodulator_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Second_Messenger_Cascades","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Predictive_Coding_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Adaptive_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Plasticity_Coordinator","to":"Metabolic_Plasticity","relationType":"orchestrates"}
+{"type":"relation","from":"Triplet_STDP","to":"STDP_Plasticity","relationType":"extends"}
+{"type":"relation","from":"BCM_Plasticity","to":"Metaplasticity","relationType":"implements"}
+{"type":"relation","from":"Calcium_Dynamics","to":"STDP_Plasticity","relationType":"mediates"}
+{"type":"relation","from":"Calcium_Dynamics","to":"Second_Messenger_Cascades","relationType":"activates"}
+{"type":"relation","from":"Second_Messenger_Cascades","to":"Protein_Synthesis","relationType":"triggers"}
+{"type":"relation","from":"Protein_Synthesis","to":"Structural_Plasticity","relationType":"enables"}
+{"type":"relation","from":"Eligibility_Traces","to":"Neuromodulator_Plasticity","relationType":"integrates_with"}
+{"type":"relation","from":"Homeostatic_Plasticity","to":"STDP_Plasticity","relationType":"balances"}
+{"type":"relation","from":"Heterosynaptic_Plasticity","to":"Homeostatic_Plasticity","relationType":"contributes_to"}
+{"type":"relation","from":"Dendritic_Plasticity","to":"Structural_Plasticity","relationType":"specializes"}
+{"type":"relation","from":"Astrocyte_Plasticity","to":"Calcium_Dynamics","relationType":"modulates"}
+{"type":"relation","from":"Pink_Noise_Plasticity","to":"LNN_Module","relationType":"bridges_to"}
+{"type":"relation","from":"Predictive_Coding_Plasticity","to":"FEP_Bridge","relationType":"aligned_with"}
+{"type":"relation","from":"Metabolic_Plasticity","to":"Sleep_Bridge","relationType":"coordinates_with"}
+{"type":"relation","from":"Plasticity_Systems","to":"Plasticity_Coordinator","relationType":"contains"}
+{"type":"relation","from":"Plasticity_Systems","to":"STDP_Plasticity","relationType":"contains"}
+{"type":"relation","from":"Plasticity_Systems","to":"BCM_Plasticity","relationType":"contains"}
+{"type":"relation","from":"Training_System","to":"Plasticity_Coordinator","relationType":"uses"}
+{"type":"relation","from":"Training_System","to":"STDP_Plasticity","relationType":"applies"}
+{"type":"relation","from":"Training_System","to":"Eligibility_Traces","relationType":"uses"}
+{"type":"relation","from":"Perception_Coordinator","to":"Retina_Module","relationType":"orchestrates"}
+{"type":"relation","from":"Perception_Coordinator","to":"Visual_Cortex_Module","relationType":"orchestrates"}
+{"type":"relation","from":"Perception_Coordinator","to":"Audio_Cortex_Module","relationType":"orchestrates"}
+{"type":"relation","from":"Perception_Coordinator","to":"Speech_Cortex_Module","relationType":"orchestrates"}
+{"type":"relation","from":"Perception_Coordinator","to":"JEPA_Visual","relationType":"orchestrates"}
+{"type":"relation","from":"Perception_Coordinator","to":"JEPA_Speech","relationType":"orchestrates"}
+{"type":"relation","from":"Retina_Module","to":"Visual_Cortex_Module","relationType":"feeds_into"}
+{"type":"relation","from":"Retina_Module","to":"UV_Channel","relationType":"contains"}
+{"type":"relation","from":"Retina_Module","to":"NIR_Channel","relationType":"contains"}
+{"type":"relation","from":"Retina_Module","to":"Thermal_Channel","relationType":"contains"}
+{"type":"relation","from":"Retina_Module","to":"Depth_Channel","relationType":"contains"}
+{"type":"relation","from":"Visual_Cortex_Module","to":"Gabor_Filter_Bank","relationType":"uses"}
+{"type":"relation","from":"Visual_Cortex_Module","to":"JEPA_Visual","relationType":"trains_with"}
+{"type":"relation","from":"Audio_Cortex_Module","to":"Cochlear_Model","relationType":"uses"}
+{"type":"relation","from":"Audio_Cortex_Module","to":"Speech_Cortex_Module","relationType":"feeds_into"}
+{"type":"relation","from":"Speech_Cortex_Module","to":"Phoneme_Detector","relationType":"uses"}
+{"type":"relation","from":"Speech_Cortex_Module","to":"Formant_Analyzer","relationType":"uses"}
+{"type":"relation","from":"Speech_Cortex_Module","to":"JEPA_Speech","relationType":"trains_with"}
+{"type":"relation","from":"JEPA_Visual","to":"Plasticity_Systems","relationType":"integrates_with"}
+{"type":"relation","from":"JEPA_Speech","to":"Plasticity_Systems","relationType":"integrates_with"}
+{"type":"relation","from":"Perception_Systems","to":"Perception_Coordinator","relationType":"contains"}
+{"type":"relation","from":"Perception_Systems","to":"Retina_Module","relationType":"contains"}
+{"type":"relation","from":"Perception_Systems","to":"Visual_Cortex_Module","relationType":"contains"}
+{"type":"relation","from":"Perception_Systems","to":"Audio_Cortex_Module","relationType":"contains"}
+{"type":"relation","from":"Perception_Systems","to":"Speech_Cortex_Module","relationType":"contains"}
+{"type":"relation","from":"Perception_Systems","to":"JEPA_Visual","relationType":"contains"}
+{"type":"relation","from":"Perception_Systems","to":"JEPA_Speech","relationType":"contains"}
+{"type":"relation","from":"Retina_Module","to":"FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Visual_Cortex_Module","to":"FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Audio_Cortex_Module","to":"FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Speech_Cortex_Module","to":"FEP_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Visual_Cortex_Module","to":"Sleep_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Audio_Cortex_Module","to":"Sleep_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Retina_Module","to":"Immune_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Visual_Cortex_Module","to":"Immune_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"JEPA_Visual","to":"Pink_Noise_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"JEPA_Speech","to":"Pink_Noise_Bridge","relationType":"bridges_via"}
+{"type":"relation","from":"Perception_Coordinator","to":"Cognitive_Systems","relationType":"provides_input_to"}
+{"type":"relation","from":"Visual_Cortex_Module","to":"Attention_Module","relationType":"modulated_by"}
+{"type":"relation","from":"Audio_Cortex_Module","to":"Attention_Module","relationType":"modulated_by"}

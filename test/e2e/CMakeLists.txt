@@ -958,6 +958,70 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_amygdala_pipeline.cpp)
     message(STATUS "  Added Amygdala E2E test: e2e_test_amygdala_pipeline")
 endif()
 
+# ============================================================================
+# Dragonfly Hunting Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for complete dragonfly hunting pipeline
+# WHY:  Verify 95% interception success rate with realistic physics
+# HOW:  Simulate full hunt from detection to interception
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_dragonfly_hunting_pipeline.cpp)
+    add_executable(e2e_test_dragonfly_hunting_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_dragonfly_hunting_pipeline.cpp
+    )
+    target_include_directories(e2e_test_dragonfly_hunting_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/dragonfly
+    )
+    target_link_libraries(e2e_test_dragonfly_hunting_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_dragonfly_hunting_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_dragonfly_hunting_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;dragonfly;hunting"
+            TIMEOUT 300
+    )
+    message(STATUS "  Added Dragonfly Hunting E2E test: e2e_test_dragonfly_hunting_pipeline")
+endif()
+
+# ============================================================================
+# Dragonfly Multi-Target E2E Test
+# ============================================================================
+# WHAT: E2E tests for dragonfly handling multiple simultaneous targets
+# WHY:  Real scenarios have multiple prey items - CSTMD1 must select one
+# HOW:  Present multiple targets, verify winner-take-all selection
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_dragonfly_multi_target.cpp)
+    add_executable(e2e_test_dragonfly_multi_target
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_dragonfly_multi_target.cpp
+    )
+    target_include_directories(e2e_test_dragonfly_multi_target PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/dragonfly
+    )
+    target_link_libraries(e2e_test_dragonfly_multi_target PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_dragonfly_multi_target PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_dragonfly_multi_target
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;dragonfly;multi-target"
+            TIMEOUT 300
+    )
+    message(STATUS "  Added Dragonfly Multi-Target E2E test: e2e_test_dragonfly_multi_target")
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

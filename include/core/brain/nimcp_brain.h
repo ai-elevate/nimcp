@@ -64,6 +64,12 @@ typedef struct mirror_neurons_system* mirror_neurons_t;  // Opaque pointer
 // Phase 7.2: Parietal Lobe (Mathematical/Scientific Reasoning)
 typedef struct parietal_lobe parietal_lobe_t;  // Opaque pointer
 
+// Phase 7.3: Dragonfly (Bio-inspired Target Tracking and Interception)
+typedef struct dragonfly_system_s dragonfly_system_t;  // Opaque pointer
+
+// Knowledge Graph Reader (Self-Awareness - Runtime introspection of NIMCP structure)
+typedef struct kg_reader kg_reader_t;  // Opaque pointer
+
 // Global Workspace Architecture (Global Workspace Theory - Baars, Dehaene)
 #ifndef GLOBAL_WORKSPACE_T_DEFINED
 #define GLOBAL_WORKSPACE_T_DEFINED
@@ -979,6 +985,22 @@ typedef struct {
     uint32_t parietal_subitizing_limit;   /**< Instant recognition limit (default: 4) */
     float parietal_rotation_rate_deg_ms;  /**< Mental rotation speed deg/ms (default: 0.053) */
 
+    // === KNOWLEDGE GRAPH READER (Self-Awareness Infrastructure) ===
+    /**
+     * Knowledge Graph Reader for Runtime Self-Awareness
+     *
+     * WHAT: Enables NIMCP to access its own structural self-knowledge at runtime
+     * WHY:  Self-awareness requires the system to know about its own modules/capabilities
+     * HOW:  Loads .aim/memory-nimcp.jsonl and provides query API
+     *
+     * Enables introspection queries:
+     * - "What modules do I have?"
+     * - "How does X connect to Y?"
+     * - "What are my capabilities?"
+     */
+    bool enable_kg_reader;                /**< Enable KG reader for self-awareness (default: true) */
+    char kg_file_path[512];               /**< Path to KG file (default: .aim/memory-nimcp.jsonl) */
+
     // === DRAGONFLY INTEGRATION (Bio-inspired Target Tracking) ===
     /**
      * Dragonfly-Inspired Target Tracking and Interception
@@ -1434,6 +1456,66 @@ int brain_dragonfly_get_mode(brain_t brain);
  * @return 0 on success, -1 on error
  */
 int brain_dragonfly_abort(brain_t brain);
+
+//=============================================================================
+// Knowledge Graph Reader (Self-Awareness)
+//=============================================================================
+
+/**
+ * @brief Get knowledge graph reader from brain
+ *
+ * WHAT: Retrieve pointer to brain's KG reader for self-awareness queries
+ * WHY:  Enable runtime introspection of NIMCP's structural knowledge
+ * HOW:  Return brain->kg_reader field
+ *
+ * SELF-AWARENESS CAPABILITIES:
+ * - "What modules do I have?" - Component enumeration
+ * - "How am I organized?" - Structural relationships
+ * - "What can I do?" - Capability introspection
+ *
+ * The KG reader loads from .aim/memory-nimcp.jsonl which contains:
+ * - Entities: Modules, integrations, conventions, architectures
+ * - Relations: How components connect and interact
+ * - Observations: Capabilities, file locations, test status
+ *
+ * @param brain Brain instance
+ * @return KG reader pointer or NULL if not enabled
+ */
+kg_reader_t* brain_get_kg_reader(brain_t brain);
+
+/**
+ * @brief Reload knowledge graph from file
+ *
+ * Call this if the KG file has been updated externally to refresh
+ * the brain's structural self-knowledge.
+ *
+ * @param brain Brain instance
+ * @return 0 on success, -1 on error
+ */
+int brain_reload_kg(brain_t brain);
+
+/**
+ * @brief Check if KG file has been modified since last load
+ *
+ * Useful for detecting when external updates require a reload.
+ *
+ * @param brain Brain instance
+ * @return true if file was modified, false otherwise
+ */
+bool brain_is_kg_modified(brain_t brain);
+
+/**
+ * @brief Generate self-description from KG
+ *
+ * Creates a human-readable description of the system based on KG contents.
+ * Useful for self-model verbalization and debugging.
+ *
+ * @param brain Brain instance
+ * @param buffer Output buffer
+ * @param buffer_size Buffer size
+ * @return Number of characters written, or -1 on error
+ */
+int brain_generate_self_description(brain_t brain, char* buffer, size_t buffer_size);
 
 /**
  * WHAT: Retrieve pointer to brain's sleep/wake subsystem (Phase 10.4)

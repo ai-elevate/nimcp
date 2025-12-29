@@ -105,6 +105,16 @@ bool nimcp_brain_factory_init_medulla_subsystem(brain_t brain);
 // Provides quantitative and scientific cognition capabilities
 bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain);
 
+// === DRAGONFLY SUBSYSTEM (Bio-inspired Target Tracking) ===
+// Target tracking and interception (TSDN, CSTMD1, prediction, navigation)
+// Provides 95% success rate bio-inspired hunting capabilities
+bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain);
+
+// === KNOWLEDGE GRAPH READER (Self-Awareness) ===
+// Runtime access to NIMCP's self-knowledge stored in .aim/memory-nimcp.jsonl
+// Enables structural introspection: "What modules do I have?" "How am I organized?"
+bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

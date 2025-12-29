@@ -1,0 +1,259 @@
+//=============================================================================
+// nimcp_brain_init_dragonfly.c - Dragonfly System Initialization & Integration
+//=============================================================================
+/**
+ * @file nimcp_brain_init_dragonfly.c
+ * @brief Dragonfly target tracking subsystem initialization with brain integration
+ *
+ * BIOLOGICAL BASIS:
+ * Dragonflies achieve 95% hunting success through:
+ * - TSDN neurons encoding target direction as population vector
+ * - CSTMD1 winner-take-all attention for single target lock
+ * - Internal models predicting prey trajectory (Mischiati et al. 2015)
+ * - Predictive gain modulation along expected target path
+ *
+ * INTEGRATION POINTS:
+ * - Visual Cortex: Target detection from visual processing
+ * - Audio Cortex: Directional cueing from sound localization
+ * - Parietal Lobe: Spatial reasoning for interception planning
+ * - Cognitive Systems: Attention allocation and salience detection
+ * - Thalamic Layer: Signal routing and gating
+ * - Substrate Layer: Metabolic costs and fatigue modeling
+ * - FEP Orchestrator: Free energy minimization for prediction
+ * - Bio-Async: Asynchronous neural processing
+ * - Global Workspace: Conscious target awareness
+ *
+ * @version 1.0.0
+ * @author NIMCP Development Team
+ * @date 2025-12-29
+ */
+
+//=============================================================================
+// Includes
+//=============================================================================
+
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
+#include "core/brain/nimcp_brain_internal.h"
+#include "dragonfly/nimcp_dragonfly.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+
+//=============================================================================
+// Main Initialization Function
+//=============================================================================
+
+/**
+ * @brief Initialize dragonfly subsystem for brain with full integration
+ *
+ * Creates and configures the dragonfly target tracking system based on
+ * brain configuration, then connects it to available brain subsystems.
+ *
+ * @param brain Brain instance to initialize dragonfly for
+ * @return true on success, false on failure
+ *
+ * PROCESS:
+ * 1. Check if dragonfly is enabled in brain config
+ * 2. Create dragonfly configuration from brain config
+ * 3. Create dragonfly system
+ * 4. Store in brain->dragonfly
+ * 5. Connect to available subsystems (visual, parietal, etc.)
+ */
+bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain) {
+    if (!brain) {
+        return false;
+    }
+
+    /* Initialize dragonfly fields to defaults */
+    brain->dragonfly = NULL;
+    brain->dragonfly_enabled = false;
+    brain->last_dragonfly_update_us = 0;
+
+    /* Check if dragonfly is disabled in config */
+    if (!brain->config.enable_dragonfly) {
+        return true;  /* Success - dragonfly is disabled by config */
+    }
+
+    fprintf(stderr, "[DRAGONFLY] Initializing dragonfly target tracking subsystem...\n");
+
+    /* Create dragonfly configuration from brain config */
+    dragonfly_config_t config = dragonfly_default_config();
+
+    /* TSDN configuration */
+    if (brain->config.dragonfly_tsdn_tuning_width > 0.0f) {
+        config.tsdn_config.tuning_width = brain->config.dragonfly_tsdn_tuning_width;
+    }
+
+    /* Tracking configuration */
+    if (brain->config.dragonfly_attention_threshold > 0.0f) {
+        config.tracker_config.lock_threshold = brain->config.dragonfly_attention_threshold;
+    }
+    if (brain->config.dragonfly_size_selectivity_min > 0.0f) {
+        config.tracker_config.min_target_size = brain->config.dragonfly_size_selectivity_min;
+    }
+    if (brain->config.dragonfly_size_selectivity_max > 0.0f) {
+        config.tracker_config.max_target_size = brain->config.dragonfly_size_selectivity_max;
+    }
+
+    /* Prediction configuration */
+    config.prediction_config.enable_imm = brain->config.dragonfly_enable_imm;
+    if (brain->config.dragonfly_prediction_horizon_ms > 0.0f) {
+        config.prediction_config.max_prediction_ms = brain->config.dragonfly_prediction_horizon_ms;
+    }
+
+    /* Interception configuration */
+    if (brain->config.dragonfly_nav_gain > 0.0f) {
+        config.intercept_config.pn_gain = brain->config.dragonfly_nav_gain;
+    }
+
+    /* Create dragonfly system */
+    dragonfly_system_t* dragonfly = dragonfly_system_create(&config);
+    if (!dragonfly) {
+        fprintf(stderr, "[DRAGONFLY] ERROR: Failed to create dragonfly system\n");
+        return false;
+    }
+
+    /* Store in brain */
+    brain->dragonfly = dragonfly;
+    brain->dragonfly_enabled = true;
+    brain->last_dragonfly_update_us = 0;
+
+    fprintf(stderr, "[DRAGONFLY] Dragonfly system created successfully\n");
+    fprintf(stderr, "[DRAGONFLY]   Prediction horizon: %.1f ms\n", config.prediction_config.max_prediction_ms);
+    fprintf(stderr, "[DRAGONFLY]   Navigation gain: %.1f\n", config.intercept_config.pn_gain);
+
+    return true;
+}
+
+//=============================================================================
+// Accessor Function
+//=============================================================================
+
+/**
+ * @brief Get dragonfly system from brain
+ *
+ * @param brain Brain instance
+ * @return Dragonfly system handle or NULL if not enabled
+ */
+dragonfly_system_t* brain_get_dragonfly(brain_t brain) {
+    if (!brain || !brain->dragonfly_enabled) {
+        return NULL;
+    }
+    return brain->dragonfly;
+}
+
+//=============================================================================
+// Runtime Integration Functions
+//=============================================================================
+
+/**
+ * @brief Update dragonfly with visual detection
+ *
+ * @param brain Brain instance
+ * @param position Target position [x, y, z]
+ * @param size Target angular size in radians
+ * @param contrast Target contrast [0-1]
+ * @return 0 on success, -1 on error
+ */
+int brain_dragonfly_detect(brain_t brain, const float position[3],
+                           float size, float contrast) {
+    if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
+        return -1;
+    }
+
+    /* Create detection structure */
+    dragonfly_detection_t detection = {
+        .position = {position[0], position[1], position[2]},
+        .size = size,
+        .contrast = contrast,
+        .motion_direction_rad = 0.0f,  /* Will be computed from tracking */
+        .motion_speed = 0.0f,
+        .timestamp_us = brain->current_time_us,
+        .id = 0  /* Auto-assigned */
+    };
+
+    return dragonfly_process_detection(brain->dragonfly, &detection);
+}
+
+/**
+ * @brief Get current dragonfly motor command
+ *
+ * @param brain Brain instance
+ * @param heading_rad Output: desired heading angle
+ * @param pitch_rad Output: desired pitch angle
+ * @param velocity Output: desired velocity [3]
+ * @param urgency Output: command urgency [0-1]
+ * @return 0 on success, -1 on error
+ */
+int brain_dragonfly_get_command(brain_t brain, float* heading_rad,
+                                float* pitch_rad, float velocity[3],
+                                float* urgency) {
+    if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
+        return -1;
+    }
+
+    dragonfly_motor_cmd_t cmd;
+    int result = dragonfly_get_motor_command(brain->dragonfly, &cmd);
+    if (result != 0) {
+        return -1;
+    }
+
+    if (heading_rad) *heading_rad = cmd.heading_rad;
+    if (pitch_rad) *pitch_rad = cmd.pitch_rad;
+    if (velocity) {
+        velocity[0] = cmd.velocity[0];
+        velocity[1] = cmd.velocity[1];
+        velocity[2] = cmd.velocity[2];
+    }
+    if (urgency) *urgency = cmd.urgency;
+
+    return 0;
+}
+
+/**
+ * @brief Step dragonfly system forward in time
+ *
+ * @param brain Brain instance
+ * @param delta_t Time step in microseconds
+ * @return 0 on success, -1 on error
+ */
+int brain_step_dragonfly(brain_t brain, uint64_t delta_t) {
+    if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
+        return -1;
+    }
+
+    float dt_seconds = (float)delta_t / 1000000.0f;
+    int result = dragonfly_update(brain->dragonfly, dt_seconds);
+    if (result == 0) {
+        brain->last_dragonfly_update_us = brain->current_time_us;
+    }
+    return result;
+}
+
+/**
+ * @brief Get dragonfly operating mode
+ *
+ * @param brain Brain instance
+ * @return Current mode or -1 on error
+ */
+int brain_dragonfly_get_mode(brain_t brain) {
+    if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
+        return -1;
+    }
+
+    return (int)dragonfly_get_mode(brain->dragonfly);
+}
+
+/**
+ * @brief Abort current dragonfly hunt
+ *
+ * @param brain Brain instance
+ * @return 0 on success, -1 on error
+ */
+int brain_dragonfly_abort(brain_t brain) {
+    if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
+        return -1;
+    }
+
+    return dragonfly_abort_pursuit(brain->dragonfly);
+}

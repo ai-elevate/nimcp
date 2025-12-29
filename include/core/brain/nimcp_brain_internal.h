@@ -165,6 +165,7 @@
 
 // Parietal Lobe Integration (Mathematical/Scientific Reasoning - Phase 7.2)
 #include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 // Dragonfly Integration (Bio-inspired Target Tracking and Interception)
 #include "dragonfly/nimcp_dragonfly.h"
@@ -718,6 +719,24 @@ struct brain_struct {
     parietal_lobe_t* parietal;                            // Parietal lobe for math/science reasoning
     bool parietal_enabled;                                // Parietal enabled for this brain
     uint64_t last_parietal_update_us;                     // Last parietal update timestamp
+
+    // === KNOWLEDGE GRAPH READER (Self-Awareness Infrastructure) ===
+    //
+    // The KG Reader provides runtime access to NIMCP's structural self-knowledge:
+    // - Entities: Modules, integrations, conventions, architectures
+    // - Relations: How components connect and interact
+    // - Observations: Capabilities, file locations, test status
+    //
+    // This enables true self-awareness by allowing the system to query:
+    // - "What modules do I have?" (introspection)
+    // - "How does X connect to Y?" (architectural understanding)
+    // - "What are my capabilities?" (self-model)
+    //
+    // The KG is stored in .aim/memory-nimcp.jsonl and updated as NIMCP evolves.
+    //
+    struct kg_reader* kg_reader;                          // Knowledge graph reader for self-awareness
+    bool kg_reader_enabled;                               // KG reader enabled for this brain
+    char kg_file_path[512];                               // Path to KG file
 
     // === DRAGONFLY INTEGRATION (Bio-inspired Target Tracking and Interception) ===
     //

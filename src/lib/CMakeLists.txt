@@ -75,6 +75,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_swarm_module_registry.c  # Swarm Module Registry
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_core_directives.c     # Core Directives subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_parietal.c            # Parietal lobe subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_dragonfly.c           # Dragonfly target tracking subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -1231,6 +1233,9 @@ set(NIMCP_CORE_SOURCES
 
     # Brain factory parietal initialization (stub - full implementation pending)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_parietal.c
+
+    # Brain factory KG reader initialization (self-awareness)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c
 )
 
 # Core library

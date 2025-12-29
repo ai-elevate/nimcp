@@ -48,6 +48,7 @@
 #include "cognitive/ethics/nimcp_core_directives.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 
 /* Coordinator/Orchestrator headers for cleanup */
@@ -837,6 +838,15 @@ void brain_destroy(brain_t brain)
         brain->parietal = NULL;
         brain->parietal_enabled = false;
         brain->last_parietal_update_us = 0;
+    }
+
+    // -1.5. Cleanup Knowledge Graph Reader (self-awareness)
+    // KG reader is destroyed after parietal but before medulla
+    if (brain->kg_reader) {
+        kg_reader_destroy(brain->kg_reader);
+        brain->kg_reader = NULL;
+        brain->kg_reader_enabled = false;
+        memset(brain->kg_file_path, 0, sizeof(brain->kg_file_path));
     }
 
     // -2. Cleanup Medulla Oblongata (brainstem autonomic regulation)

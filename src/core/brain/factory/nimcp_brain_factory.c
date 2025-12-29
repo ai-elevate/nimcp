@@ -188,6 +188,12 @@ extern void set_error(const char* format, ...);
 // Parietal Lobe subsystem macro (mathematical/scientific reasoning)
 #define init_parietal_subsystem                     nimcp_brain_factory_init_parietal_subsystem
 
+// Dragonfly subsystem macro (bio-inspired target tracking)
+#define init_dragonfly_subsystem                    nimcp_brain_factory_init_dragonfly_subsystem
+
+// Knowledge Graph Reader subsystem macro (self-awareness)
+#define init_kg_reader_subsystem                    nimcp_brain_factory_init_kg_reader_subsystem
+
 //=============================================================================
 // Main Factory Functions
 //=============================================================================
@@ -683,6 +689,17 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_parietal_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
+    // DRAGONFLY SUBSYSTEM (BIO-INSPIRED TARGET TRACKING)
+    // ========================================================================
+    // Initialize dragonfly target tracking system:
+    // - TSDN: Target-selective descending neurons (motion detection)
+    // - CSTMD1: Winner-take-all target selection
+    // - Prediction: IMM-based multi-model trajectory prediction
+    // - Interception: Proportional navigation guidance
+    // BIOLOGICAL: Achieves 95%+ success rate matching Hemicordulia tau behavior
+    if (!init_dragonfly_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
     // CORE DIRECTIVES (ETHICAL FOUNDATION)
     // ========================================================================
 
@@ -694,6 +711,14 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!brain->config.minimal_mode) {
         if (!init_core_directives_subsystem(brain)) { brain_destroy(brain); return NULL; }
     }
+
+    // ========================================================================
+    // KNOWLEDGE GRAPH READER (SELF-AWARENESS FOUNDATION)
+    // ========================================================================
+    // Initialize KG reader early - provides structural self-knowledge that
+    // other subsystems (introspection, self_model, autobiographical) may query.
+    // Loads from .aim/memory-nimcp.jsonl or custom path in config.
+    if (!init_kg_reader_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // COORDINATOR/ORCHESTRATOR SUBSYSTEMS

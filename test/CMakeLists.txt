@@ -1305,6 +1305,30 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/dragonfly")
 endif()
 
 # ============================================================================
+# Dragonfly Integration Tests
+# ============================================================================
+# WHAT: Integration tests for dragonfly with brain and other subsystems
+# WHY:  Verify cross-module coordination and signal flow
+# HOW:  Test bridge coordination, brain integration, sensory fusion
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/dragonfly")
+    message(STATUS "Adding dragonfly integration tests...")
+    add_subdirectory(integration/dragonfly)
+endif()
+
+# ============================================================================
+# Dragonfly Regression Tests
+# ============================================================================
+# WHAT: Regression tests for dragonfly parameter stability and performance
+# WHY:  Ensure biological parameters remain stable across versions
+# HOW:  Test fixed values, performance benchmarks, numerical stability
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/dragonfly")
+    message(STATUS "Adding dragonfly regression tests...")
+    add_subdirectory(regression/dragonfly)
+endif()
+
+# ============================================================================
 # Extended Timeout Configuration (Applied AFTER all tests are registered)
 # ============================================================================
 # WHAT: Extended timeouts for heavyweight brain tests

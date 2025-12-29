@@ -939,6 +939,123 @@ unit_cognitive_game_theory_test_credit_assignment/fast:
 .PHONY : unit_cognitive_game_theory_test_credit_assignment/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_auction_ext
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_auction_ext: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_auction_ext
+.PHONY : unit_cognitive_game_theory_test_gt_auction_ext
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_auction_ext/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_auction_ext.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_auction_ext.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_auction_ext/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_coalition
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_coalition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_coalition
+.PHONY : unit_cognitive_game_theory_test_gt_coalition
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_coalition/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_coalition.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_coalition.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_coalition/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_equilibrium
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_equilibrium: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_equilibrium
+.PHONY : unit_cognitive_game_theory_test_gt_equilibrium
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_equilibrium/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_equilibrium.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_equilibrium.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_equilibrium/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_fairness
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_fairness: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_fairness
+.PHONY : unit_cognitive_game_theory_test_gt_fairness
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_fairness/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_fairness.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_fairness.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_fairness/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_integration
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_integration
+.PHONY : unit_cognitive_game_theory_test_gt_integration
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_integration.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_integration.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_integration/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_learning
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_learning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_learning
+.PHONY : unit_cognitive_game_theory_test_gt_learning
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_learning/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_learning.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_learning.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_learning/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_mechanism
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_mechanism: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_mechanism
+.PHONY : unit_cognitive_game_theory_test_gt_mechanism
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_mechanism/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_mechanism.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_mechanism.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_mechanism/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_repeated
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_repeated: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_repeated
+.PHONY : unit_cognitive_game_theory_test_gt_repeated
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_repeated/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_repeated.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_repeated.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_repeated/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_gt_spatial
+
+# Build rule for target.
+unit_cognitive_game_theory_test_gt_spatial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_gt_spatial
+.PHONY : unit_cognitive_game_theory_test_gt_spatial
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_gt_spatial/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_gt_spatial.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_gt_spatial.dir/build
+.PHONY : unit_cognitive_game_theory_test_gt_spatial/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_global_workspace_test_global_workspace
 
 # Build rule for target.
@@ -6815,6 +6932,45 @@ e2e_test_medulla_pipeline/fast:
 .PHONY : e2e_test_medulla_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_game_theory_pipeline
+
+# Build rule for target.
+e2e_test_game_theory_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_game_theory_pipeline
+.PHONY : e2e_test_game_theory_pipeline
+
+# fast build rule for target.
+e2e_test_game_theory_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_game_theory_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_game_theory_pipeline.dir/build
+.PHONY : e2e_test_game_theory_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_parietal_pipeline
+
+# Build rule for target.
+e2e_test_parietal_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_parietal_pipeline
+.PHONY : e2e_test_parietal_pipeline
+
+# fast build rule for target.
+e2e_test_parietal_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_parietal_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_parietal_pipeline.dir/build
+.PHONY : e2e_test_parietal_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_code_immune_pipeline
+
+# Build rule for target.
+e2e_test_code_immune_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_code_immune_pipeline
+.PHONY : e2e_test_code_immune_pipeline
+
+# fast build rule for target.
+e2e_test_code_immune_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_code_immune_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_code_immune_pipeline.dir/build
+.PHONY : e2e_test_code_immune_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_bridge_pipelines
 
 # Build rule for target.
@@ -7086,6 +7242,32 @@ e2e_test_amygdala_pipeline: cmake_check_build_system
 e2e_test_amygdala_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_amygdala_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_amygdala_pipeline.dir/build
 .PHONY : e2e_test_amygdala_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_dragonfly_hunting_pipeline
+
+# Build rule for target.
+e2e_test_dragonfly_hunting_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_dragonfly_hunting_pipeline
+.PHONY : e2e_test_dragonfly_hunting_pipeline
+
+# fast build rule for target.
+e2e_test_dragonfly_hunting_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_dragonfly_hunting_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_dragonfly_hunting_pipeline.dir/build
+.PHONY : e2e_test_dragonfly_hunting_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_dragonfly_multi_target
+
+# Build rule for target.
+e2e_test_dragonfly_multi_target: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_dragonfly_multi_target
+.PHONY : e2e_test_dragonfly_multi_target
+
+# fast build rule for target.
+e2e_test_dragonfly_multi_target/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_dragonfly_multi_target.dir/build.make test/e2e/CMakeFiles/e2e_test_dragonfly_multi_target.dir/build
+.PHONY : e2e_test_dragonfly_multi_target/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -9857,6 +10039,123 @@ unit_cognitive_test_game_theory_credit/fast:
 .PHONY : unit_cognitive_test_game_theory_credit/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_game_theory_integration
+
+# Build rule for target.
+unit_cognitive_test_game_theory_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_game_theory_integration
+.PHONY : unit_cognitive_test_game_theory_integration
+
+# fast build rule for target.
+unit_cognitive_test_game_theory_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_integration.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory_integration.dir/build
+.PHONY : unit_cognitive_test_game_theory_integration/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_equilibrium
+
+# Build rule for target.
+unit_cognitive_test_gt_equilibrium: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_equilibrium
+.PHONY : unit_cognitive_test_gt_equilibrium
+
+# fast build rule for target.
+unit_cognitive_test_gt_equilibrium/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_equilibrium.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_equilibrium.dir/build
+.PHONY : unit_cognitive_test_gt_equilibrium/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_learning
+
+# Build rule for target.
+unit_cognitive_test_gt_learning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_learning
+.PHONY : unit_cognitive_test_gt_learning
+
+# fast build rule for target.
+unit_cognitive_test_gt_learning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_learning.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_learning.dir/build
+.PHONY : unit_cognitive_test_gt_learning/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_coalition
+
+# Build rule for target.
+unit_cognitive_test_gt_coalition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_coalition
+.PHONY : unit_cognitive_test_gt_coalition
+
+# fast build rule for target.
+unit_cognitive_test_gt_coalition/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_coalition.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_coalition.dir/build
+.PHONY : unit_cognitive_test_gt_coalition/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_repeated
+
+# Build rule for target.
+unit_cognitive_test_gt_repeated: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_repeated
+.PHONY : unit_cognitive_test_gt_repeated
+
+# fast build rule for target.
+unit_cognitive_test_gt_repeated/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_repeated.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_repeated.dir/build
+.PHONY : unit_cognitive_test_gt_repeated/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_fairness
+
+# Build rule for target.
+unit_cognitive_test_gt_fairness: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_fairness
+.PHONY : unit_cognitive_test_gt_fairness
+
+# fast build rule for target.
+unit_cognitive_test_gt_fairness/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_fairness.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_fairness.dir/build
+.PHONY : unit_cognitive_test_gt_fairness/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_mechanism
+
+# Build rule for target.
+unit_cognitive_test_gt_mechanism: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_mechanism
+.PHONY : unit_cognitive_test_gt_mechanism
+
+# fast build rule for target.
+unit_cognitive_test_gt_mechanism/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_mechanism.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_mechanism.dir/build
+.PHONY : unit_cognitive_test_gt_mechanism/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_auction_ext
+
+# Build rule for target.
+unit_cognitive_test_gt_auction_ext: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_auction_ext
+.PHONY : unit_cognitive_test_gt_auction_ext
+
+# fast build rule for target.
+unit_cognitive_test_gt_auction_ext/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_auction_ext.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_auction_ext.dir/build
+.PHONY : unit_cognitive_test_gt_auction_ext/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_spatial
+
+# Build rule for target.
+unit_cognitive_test_gt_spatial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_spatial
+.PHONY : unit_cognitive_test_gt_spatial
+
+# fast build rule for target.
+unit_cognitive_test_gt_spatial/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_spatial.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_spatial.dir/build
+.PHONY : unit_cognitive_test_gt_spatial/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -10338,6 +10637,123 @@ unit_cognitive_tom_substrate_bridge/fast:
 .PHONY : unit_cognitive_tom_substrate_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_parietal_number_sense
+
+# Build rule for target.
+unit_parietal_number_sense: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_number_sense
+.PHONY : unit_parietal_number_sense
+
+# fast build rule for target.
+unit_parietal_number_sense/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_number_sense.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_number_sense.dir/build
+.PHONY : unit_parietal_number_sense/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_spatial_reasoning
+
+# Build rule for target.
+unit_parietal_spatial_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_spatial_reasoning
+.PHONY : unit_parietal_spatial_reasoning
+
+# fast build rule for target.
+unit_parietal_spatial_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_spatial_reasoning.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_spatial_reasoning.dir/build
+.PHONY : unit_parietal_spatial_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_mathematical_intuition
+
+# Build rule for target.
+unit_parietal_mathematical_intuition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_mathematical_intuition
+.PHONY : unit_parietal_mathematical_intuition
+
+# fast build rule for target.
+unit_parietal_mathematical_intuition/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_mathematical_intuition.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_mathematical_intuition.dir/build
+.PHONY : unit_parietal_mathematical_intuition/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_scientific_reasoning
+
+# Build rule for target.
+unit_parietal_scientific_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_scientific_reasoning
+.PHONY : unit_parietal_scientific_reasoning
+
+# fast build rule for target.
+unit_parietal_scientific_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_scientific_reasoning.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_scientific_reasoning.dir/build
+.PHONY : unit_parietal_scientific_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_equation_manipulation
+
+# Build rule for target.
+unit_parietal_equation_manipulation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_equation_manipulation
+.PHONY : unit_parietal_equation_manipulation
+
+# fast build rule for target.
+unit_parietal_equation_manipulation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_equation_manipulation.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_equation_manipulation.dir/build
+.PHONY : unit_parietal_equation_manipulation/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_chemistry
+
+# Build rule for target.
+unit_parietal_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_chemistry
+.PHONY : unit_parietal_chemistry
+
+# fast build rule for target.
+unit_parietal_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_chemistry.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_chemistry.dir/build
+.PHONY : unit_parietal_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_biology
+
+# Build rule for target.
+unit_parietal_biology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_biology
+.PHONY : unit_parietal_biology
+
+# fast build rule for target.
+unit_parietal_biology/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_biology.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_biology.dir/build
+.PHONY : unit_parietal_biology/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_software_engineering
+
+# Build rule for target.
+unit_parietal_software_engineering: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_software_engineering
+.PHONY : unit_parietal_software_engineering
+
+# fast build rule for target.
+unit_parietal_software_engineering/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_software_engineering.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_software_engineering.dir/build
+.PHONY : unit_parietal_software_engineering/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_orchestrator
+
+# Build rule for target.
+unit_parietal_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_orchestrator
+.PHONY : unit_parietal_orchestrator
+
+# fast build rule for target.
+unit_parietal_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_orchestrator.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_orchestrator.dir/build
+.PHONY : unit_parietal_orchestrator/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
 
 # Build rule for target.
@@ -10689,6 +11105,32 @@ unit_cognitive_immune_bridge_coordinator/fast:
 .PHONY : unit_cognitive_immune_bridge_coordinator/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_immune_code_immune
+
+# Build rule for target.
+unit_cognitive_immune_code_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_code_immune
+.PHONY : unit_cognitive_immune_code_immune
+
+# fast build rule for target.
+unit_cognitive_immune_code_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_code_immune.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_code_immune.dir/build
+.PHONY : unit_cognitive_immune_code_immune/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_heal_bridge
+
+# Build rule for target.
+unit_cognitive_immune_heal_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_heal_bridge
+.PHONY : unit_cognitive_immune_heal_bridge
+
+# fast build rule for target.
+unit_cognitive_immune_heal_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_heal_bridge.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_heal_bridge.dir/build
+.PHONY : unit_cognitive_immune_heal_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_immune_brain_immune
 
 # Build rule for target.
@@ -10767,6 +11209,32 @@ integration_cognitive_immune_modules/fast:
 .PHONY : integration_cognitive_immune_modules/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_immune_code_immune
+
+# Build rule for target.
+integration_cognitive_immune_code_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_immune_code_immune
+.PHONY : integration_cognitive_immune_code_immune
+
+# fast build rule for target.
+integration_cognitive_immune_code_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_code_immune.dir/build.make test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_code_immune.dir/build
+.PHONY : integration_cognitive_immune_code_immune/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_immune_heal_bridge
+
+# Build rule for target.
+integration_cognitive_immune_heal_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_immune_heal_bridge
+.PHONY : integration_cognitive_immune_heal_bridge
+
+# fast build rule for target.
+integration_cognitive_immune_heal_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_heal_bridge.dir/build.make test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_heal_bridge.dir/build
+.PHONY : integration_cognitive_immune_heal_bridge/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_immune_brain_immune
 
 # Build rule for target.
@@ -10791,6 +11259,19 @@ regression_cognitive_immune_modules: cmake_check_build_system
 regression_cognitive_immune_modules/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_modules.dir/build.make test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_modules.dir/build
 .PHONY : regression_cognitive_immune_modules/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_immune_code_immune
+
+# Build rule for target.
+regression_cognitive_immune_code_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_immune_code_immune
+.PHONY : regression_cognitive_immune_code_immune
+
+# fast build rule for target.
+regression_cognitive_immune_code_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_code_immune.dir/build.make test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_code_immune.dir/build
+.PHONY : regression_cognitive_immune_code_immune/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_wellbeing_enhanced
@@ -10856,6 +11337,19 @@ regression_jepa: cmake_check_build_system
 regression_jepa/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/jepa/CMakeFiles/regression_jepa.dir/build.make test/regression/cognitive/jepa/CMakeFiles/regression_jepa.dir/build
 .PHONY : regression_jepa/fast
+
+#=============================================================================
+# Target rules for targets named regression_game_theory
+
+# Build rule for target.
+regression_game_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_game_theory
+.PHONY : regression_game_theory
+
+# fast build rule for target.
+regression_game_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/game_theory/CMakeFiles/regression_game_theory.dir/build.make test/regression/cognitive/game_theory/CMakeFiles/regression_game_theory.dir/build
+.PHONY : regression_game_theory/fast
 
 #=============================================================================
 # Target rules for targets named test_protocol_control_message
@@ -12728,6 +13222,45 @@ integration_cognitive_substrate_bridges: cmake_check_build_system
 integration_cognitive_substrate_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/substrate/CMakeFiles/integration_cognitive_substrate_bridges.dir/build.make test/integration/cognitive/substrate/CMakeFiles/integration_cognitive_substrate_bridges.dir/build
 .PHONY : integration_cognitive_substrate_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_gt_global_workspace
+
+# Build rule for target.
+integration_cognitive_gt_global_workspace: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_gt_global_workspace
+.PHONY : integration_cognitive_gt_global_workspace
+
+# fast build rule for target.
+integration_cognitive_gt_global_workspace/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_global_workspace.dir/build.make test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_global_workspace.dir/build
+.PHONY : integration_cognitive_gt_global_workspace/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_gt_hemispheric
+
+# Build rule for target.
+integration_cognitive_gt_hemispheric: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_gt_hemispheric
+.PHONY : integration_cognitive_gt_hemispheric
+
+# fast build rule for target.
+integration_cognitive_gt_hemispheric/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_hemispheric.dir/build.make test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_hemispheric.dir/build
+.PHONY : integration_cognitive_gt_hemispheric/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_parietal
+
+# Build rule for target.
+integration_cognitive_parietal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_parietal
+.PHONY : integration_cognitive_parietal
+
+# fast build rule for target.
+integration_cognitive_parietal/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_cognitive_parietal.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_cognitive_parietal.dir/build
+.PHONY : integration_cognitive_parietal/fast
 
 #=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
@@ -17774,6 +18307,305 @@ integration_training_test_cnn_cortex_integration/fast:
 .PHONY : integration_training_test_cnn_cortex_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_dragonfly_test_tsdn
+
+# Build rule for target.
+unit_dragonfly_test_tsdn: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_tsdn
+.PHONY : unit_dragonfly_test_tsdn
+
+# fast build rule for target.
+unit_dragonfly_test_tsdn/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_tsdn.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_tsdn.dir/build
+.PHONY : unit_dragonfly_test_tsdn/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_tracking
+
+# Build rule for target.
+unit_dragonfly_test_tracking: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_tracking
+.PHONY : unit_dragonfly_test_tracking
+
+# fast build rule for target.
+unit_dragonfly_test_tracking/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_tracking.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_tracking.dir/build
+.PHONY : unit_dragonfly_test_tracking/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_prediction
+
+# Build rule for target.
+unit_dragonfly_test_prediction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_prediction
+.PHONY : unit_dragonfly_test_prediction
+
+# fast build rule for target.
+unit_dragonfly_test_prediction/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_prediction.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_prediction.dir/build
+.PHONY : unit_dragonfly_test_prediction/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_intercept
+
+# Build rule for target.
+unit_dragonfly_test_intercept: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_intercept
+.PHONY : unit_dragonfly_test_intercept
+
+# fast build rule for target.
+unit_dragonfly_test_intercept/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_intercept.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_intercept.dir/build
+.PHONY : unit_dragonfly_test_intercept/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_system
+
+# Build rule for target.
+unit_dragonfly_test_system: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_system
+.PHONY : unit_dragonfly_test_system
+
+# fast build rule for target.
+unit_dragonfly_test_system/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_system.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_system.dir/build
+.PHONY : unit_dragonfly_test_system/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_visual_bridge
+
+# Build rule for target.
+unit_dragonfly_test_visual_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_visual_bridge
+.PHONY : unit_dragonfly_test_visual_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_visual_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_visual_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_visual_bridge.dir/build
+.PHONY : unit_dragonfly_test_visual_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_audio_bridge
+
+# Build rule for target.
+unit_dragonfly_test_audio_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_audio_bridge
+.PHONY : unit_dragonfly_test_audio_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_audio_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_audio_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_audio_bridge.dir/build
+.PHONY : unit_dragonfly_test_audio_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_parietal_bridge
+
+# Build rule for target.
+unit_dragonfly_test_parietal_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_parietal_bridge
+.PHONY : unit_dragonfly_test_parietal_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_parietal_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_parietal_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_parietal_bridge.dir/build
+.PHONY : unit_dragonfly_test_parietal_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_cortical_bridge
+
+# Build rule for target.
+unit_dragonfly_test_cortical_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_cortical_bridge
+.PHONY : unit_dragonfly_test_cortical_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_cortical_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_cortical_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_cortical_bridge.dir/build
+.PHONY : unit_dragonfly_test_cortical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_cognitive_bridge
+
+# Build rule for target.
+unit_dragonfly_test_cognitive_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_cognitive_bridge
+.PHONY : unit_dragonfly_test_cognitive_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_cognitive_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_cognitive_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_cognitive_bridge.dir/build
+.PHONY : unit_dragonfly_test_cognitive_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_thalamic_bridge
+
+# Build rule for target.
+unit_dragonfly_test_thalamic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_thalamic_bridge
+.PHONY : unit_dragonfly_test_thalamic_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_thalamic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_thalamic_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_thalamic_bridge.dir/build
+.PHONY : unit_dragonfly_test_thalamic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_substrate_bridge
+
+# Build rule for target.
+unit_dragonfly_test_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_substrate_bridge
+.PHONY : unit_dragonfly_test_substrate_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_substrate_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_substrate_bridge.dir/build
+.PHONY : unit_dragonfly_test_substrate_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_cnn_bridge
+
+# Build rule for target.
+unit_dragonfly_test_cnn_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_cnn_bridge
+.PHONY : unit_dragonfly_test_cnn_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_cnn_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_cnn_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_cnn_bridge.dir/build
+.PHONY : unit_dragonfly_test_cnn_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_snn_bridge
+
+# Build rule for target.
+unit_dragonfly_test_snn_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_snn_bridge
+.PHONY : unit_dragonfly_test_snn_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_snn_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_snn_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_snn_bridge.dir/build
+.PHONY : unit_dragonfly_test_snn_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_bio_async_bridge
+
+# Build rule for target.
+unit_dragonfly_test_bio_async_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_bio_async_bridge
+.PHONY : unit_dragonfly_test_bio_async_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_bio_async_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_bio_async_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_bio_async_bridge.dir/build
+.PHONY : unit_dragonfly_test_bio_async_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_workspace_bridge
+
+# Build rule for target.
+unit_dragonfly_test_workspace_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_workspace_bridge
+.PHONY : unit_dragonfly_test_workspace_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_workspace_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_workspace_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_workspace_bridge.dir/build
+.PHONY : unit_dragonfly_test_workspace_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_dragonfly_test_fep_bridge
+
+# Build rule for target.
+unit_dragonfly_test_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_test_fep_bridge
+.PHONY : unit_dragonfly_test_fep_bridge
+
+# fast build rule for target.
+unit_dragonfly_test_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_fep_bridge.dir/build.make test/unit/dragonfly/CMakeFiles/unit_dragonfly_test_fep_bridge.dir/build
+.PHONY : unit_dragonfly_test_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_dragonfly_brain
+
+# Build rule for target.
+integration_dragonfly_brain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_dragonfly_brain
+.PHONY : integration_dragonfly_brain
+
+# fast build rule for target.
+integration_dragonfly_brain/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/dragonfly/CMakeFiles/integration_dragonfly_brain.dir/build.make test/integration/dragonfly/CMakeFiles/integration_dragonfly_brain.dir/build
+.PHONY : integration_dragonfly_brain/fast
+
+#=============================================================================
+# Target rules for targets named integration_dragonfly_bridges
+
+# Build rule for target.
+integration_dragonfly_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_dragonfly_bridges
+.PHONY : integration_dragonfly_bridges
+
+# fast build rule for target.
+integration_dragonfly_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/dragonfly/CMakeFiles/integration_dragonfly_bridges.dir/build.make test/integration/dragonfly/CMakeFiles/integration_dragonfly_bridges.dir/build
+.PHONY : integration_dragonfly_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_dragonfly_sensory
+
+# Build rule for target.
+integration_dragonfly_sensory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_dragonfly_sensory
+.PHONY : integration_dragonfly_sensory
+
+# fast build rule for target.
+integration_dragonfly_sensory/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/dragonfly/CMakeFiles/integration_dragonfly_sensory.dir/build.make test/integration/dragonfly/CMakeFiles/integration_dragonfly_sensory.dir/build
+.PHONY : integration_dragonfly_sensory/fast
+
+#=============================================================================
+# Target rules for targets named regression_dragonfly_parameters
+
+# Build rule for target.
+regression_dragonfly_parameters: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_dragonfly_parameters
+.PHONY : regression_dragonfly_parameters
+
+# fast build rule for target.
+regression_dragonfly_parameters/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/dragonfly/CMakeFiles/regression_dragonfly_parameters.dir/build.make test/regression/dragonfly/CMakeFiles/regression_dragonfly_parameters.dir/build
+.PHONY : regression_dragonfly_parameters/fast
+
+#=============================================================================
+# Target rules for targets named regression_dragonfly_performance
+
+# Build rule for target.
+regression_dragonfly_performance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_dragonfly_performance
+.PHONY : regression_dragonfly_performance
+
+# fast build rule for target.
+regression_dragonfly_performance/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/dragonfly/CMakeFiles/regression_dragonfly_performance.dir/build.make test/regression/dragonfly/CMakeFiles/regression_dragonfly_performance.dir/build
+.PHONY : regression_dragonfly_performance/fast
+
+#=============================================================================
+# Target rules for targets named regression_dragonfly_numerical
+
+# Build rule for target.
+regression_dragonfly_numerical: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_dragonfly_numerical
+.PHONY : regression_dragonfly_numerical
+
+# fast build rule for target.
+regression_dragonfly_numerical/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/dragonfly/CMakeFiles/regression_dragonfly_numerical.dir/build.make test/regression/dragonfly/CMakeFiles/regression_dragonfly_numerical.dir/build
+.PHONY : regression_dragonfly_numerical/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -18183,6 +19015,7 @@ help:
 	@echo "... e2e_test_bridge_pipelines"
 	@echo "... e2e_test_cnn_backprop"
 	@echo "... e2e_test_cnn_cortex_bridge"
+	@echo "... e2e_test_code_immune_pipeline"
 	@echo "... e2e_test_cognitive_bio_async"
 	@echo "... e2e_test_cognitive_pipeline"
 	@echo "... e2e_test_cognitive_training_pipeline"
@@ -18193,9 +19026,12 @@ help:
 	@echo "... e2e_test_cortical_training_pipeline"
 	@echo "... e2e_test_curiosity_enhanced_pipeline"
 	@echo "... e2e_test_distributed_pipeline"
+	@echo "... e2e_test_dragonfly_hunting_pipeline"
+	@echo "... e2e_test_dragonfly_multi_target"
 	@echo "... e2e_test_emotion_tensor_pipeline"
 	@echo "... e2e_test_fep_bridges_pipeline"
 	@echo "... e2e_test_fep_orchestrator_pipeline"
+	@echo "... e2e_test_game_theory_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_master_connectivity"
 	@echo "... e2e_test_medulla_pipeline"
@@ -18204,6 +19040,7 @@ help:
 	@echo "... e2e_test_nlp_neural_distributed"
 	@echo "... e2e_test_nlp_swarm_coordination"
 	@echo "... e2e_test_nlp_war_zone"
+	@echo "... e2e_test_parietal_pipeline"
 	@echo "... e2e_test_perception_cortical"
 	@echo "... e2e_test_perception_training_pipeline"
 	@echo "... e2e_test_phase1_bridges_pipeline"
@@ -18273,8 +19110,12 @@ help:
 	@echo "... integration_cognitive_global_workspace_test_global_workspace_integration"
 	@echo "... integration_cognitive_global_workspace_test_global_workspace_shannon_integration"
 	@echo "... integration_cognitive_grief_test_grief_and_loss_integration"
+	@echo "... integration_cognitive_gt_global_workspace"
+	@echo "... integration_cognitive_gt_hemispheric"
 	@echo "... integration_cognitive_immune_bbb"
 	@echo "... integration_cognitive_immune_brain_immune"
+	@echo "... integration_cognitive_immune_code_immune"
+	@echo "... integration_cognitive_immune_heal_bridge"
 	@echo "... integration_cognitive_immune_memory"
 	@echo "... integration_cognitive_immune_modules"
 	@echo "... integration_cognitive_immune_perception_immune"
@@ -18287,6 +19128,7 @@ help:
 	@echo "... integration_cognitive_memory_test_engram_integration"
 	@echo "... integration_cognitive_memory_test_semantic_memory_integration"
 	@echo "... integration_cognitive_mirror_neurons_substrate"
+	@echo "... integration_cognitive_parietal"
 	@echo "... integration_cognitive_salience_test_salience_fep_bridge_integration"
 	@echo "... integration_cognitive_sleep_bridge"
 	@echo "... integration_cognitive_sleep_test_cognitive_sleep_integration"
@@ -18317,6 +19159,9 @@ help:
 	@echo "... integration_core_test_core_immune_integration"
 	@echo "... integration_core_topology_topology_integration_tests"
 	@echo "... integration_cortical_columns_brain"
+	@echo "... integration_dragonfly_brain"
+	@echo "... integration_dragonfly_bridges"
+	@echo "... integration_dragonfly_sensory"
 	@echo "... integration_emotion_immune_pipeline"
 	@echo "... integration_fault_tolerance_test_fault_tolerance_integration"
 	@echo "... integration_fep_enhanced"
@@ -18493,6 +19338,7 @@ help:
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_shannon_regression"
 	@echo "... regression_cognitive_grief_test_grief_and_loss_backward_compat"
 	@echo "... regression_cognitive_immune_brain_immune"
+	@echo "... regression_cognitive_immune_code_immune"
 	@echo "... regression_cognitive_immune_modules"
 	@echo "... regression_cognitive_introspection_auto_activity_history"
 	@echo "... regression_cognitive_introspection_connectivity_health"
@@ -18540,8 +19386,12 @@ help:
 	@echo "... regression_core_test_wm_transfer_backward_compat"
 	@echo "... regression_core_topology_test_fractal_topology_backward_compat"
 	@echo "... regression_cortical_columns_performance"
+	@echo "... regression_dragonfly_numerical"
+	@echo "... regression_dragonfly_parameters"
+	@echo "... regression_dragonfly_performance"
 	@echo "... regression_fault_tolerance_test_fault_tolerance_regression"
 	@echo "... regression_fep_bridges"
+	@echo "... regression_game_theory"
 	@echo "... regression_glial_performance"
 	@echo "... regression_gpu_test_execution_mode_regression"
 	@echo "... regression_gpu_test_gpu_execution_mode_backward_compat"
@@ -18948,6 +19798,15 @@ help:
 	@echo "... unit_cognitive_game_theory_test_auction"
 	@echo "... unit_cognitive_game_theory_test_bargaining"
 	@echo "... unit_cognitive_game_theory_test_credit_assignment"
+	@echo "... unit_cognitive_game_theory_test_gt_auction_ext"
+	@echo "... unit_cognitive_game_theory_test_gt_coalition"
+	@echo "... unit_cognitive_game_theory_test_gt_equilibrium"
+	@echo "... unit_cognitive_game_theory_test_gt_fairness"
+	@echo "... unit_cognitive_game_theory_test_gt_integration"
+	@echo "... unit_cognitive_game_theory_test_gt_learning"
+	@echo "... unit_cognitive_game_theory_test_gt_mechanism"
+	@echo "... unit_cognitive_game_theory_test_gt_repeated"
+	@echo "... unit_cognitive_game_theory_test_gt_spatial"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_fep_bridge"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_immune_integration"
@@ -18956,9 +19815,11 @@ help:
 	@echo "... unit_cognitive_immune_attention_bridge"
 	@echo "... unit_cognitive_immune_brain_immune"
 	@echo "... unit_cognitive_immune_bridge_coordinator"
+	@echo "... unit_cognitive_immune_code_immune"
 	@echo "... unit_cognitive_immune_complement_system"
 	@echo "... unit_cognitive_immune_emotion_bridge"
 	@echo "... unit_cognitive_immune_exhaustion"
+	@echo "... unit_cognitive_immune_heal_bridge"
 	@echo "... unit_cognitive_immune_memory_integration"
 	@echo "... unit_cognitive_immune_memory_subsystem_integration"
 	@echo "... unit_cognitive_immune_mucosal"
@@ -19029,7 +19890,16 @@ help:
 	@echo "... unit_cognitive_test_game_theory_auction"
 	@echo "... unit_cognitive_test_game_theory_bargaining"
 	@echo "... unit_cognitive_test_game_theory_credit"
+	@echo "... unit_cognitive_test_game_theory_integration"
 	@echo "... unit_cognitive_test_global_workspace_immune"
+	@echo "... unit_cognitive_test_gt_auction_ext"
+	@echo "... unit_cognitive_test_gt_coalition"
+	@echo "... unit_cognitive_test_gt_equilibrium"
+	@echo "... unit_cognitive_test_gt_fairness"
+	@echo "... unit_cognitive_test_gt_learning"
+	@echo "... unit_cognitive_test_gt_mechanism"
+	@echo "... unit_cognitive_test_gt_repeated"
+	@echo "... unit_cognitive_test_gt_spatial"
 	@echo "... unit_cognitive_test_jepa_context"
 	@echo "... unit_cognitive_test_jepa_predictor"
 	@echo "... unit_cognitive_test_meta_controller"
@@ -19163,6 +20033,23 @@ help:
 	@echo "... unit_core_topology_test_fractal_topology_metrics"
 	@echo "... unit_core_topology_test_fractal_topology_real"
 	@echo "... unit_core_topology_topology_tests"
+	@echo "... unit_dragonfly_test_audio_bridge"
+	@echo "... unit_dragonfly_test_bio_async_bridge"
+	@echo "... unit_dragonfly_test_cnn_bridge"
+	@echo "... unit_dragonfly_test_cognitive_bridge"
+	@echo "... unit_dragonfly_test_cortical_bridge"
+	@echo "... unit_dragonfly_test_fep_bridge"
+	@echo "... unit_dragonfly_test_intercept"
+	@echo "... unit_dragonfly_test_parietal_bridge"
+	@echo "... unit_dragonfly_test_prediction"
+	@echo "... unit_dragonfly_test_snn_bridge"
+	@echo "... unit_dragonfly_test_substrate_bridge"
+	@echo "... unit_dragonfly_test_system"
+	@echo "... unit_dragonfly_test_thalamic_bridge"
+	@echo "... unit_dragonfly_test_tracking"
+	@echo "... unit_dragonfly_test_tsdn"
+	@echo "... unit_dragonfly_test_visual_bridge"
+	@echo "... unit_dragonfly_test_workspace_bridge"
 	@echo "... unit_fep_consciousness"
 	@echo "... unit_fep_context"
 	@echo "... unit_fep_curiosity"
@@ -19304,6 +20191,15 @@ help:
 	@echo "... unit_optimization_test_cross_modal"
 	@echo "... unit_optimization_test_dynamic_adaptation"
 	@echo "... unit_optimization_test_multi_objective"
+	@echo "... unit_parietal_biology"
+	@echo "... unit_parietal_chemistry"
+	@echo "... unit_parietal_equation_manipulation"
+	@echo "... unit_parietal_mathematical_intuition"
+	@echo "... unit_parietal_number_sense"
+	@echo "... unit_parietal_orchestrator"
+	@echo "... unit_parietal_scientific_reasoning"
+	@echo "... unit_parietal_software_engineering"
+	@echo "... unit_parietal_spatial_reasoning"
 	@echo "... unit_perception_cortical_test_audio_cortical_bridge"
 	@echo "... unit_perception_cortical_test_speech_cortical_bridge"
 	@echo "... unit_perception_cortical_test_visual_cortical_bridge"
