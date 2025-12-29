@@ -148,7 +148,7 @@ TEST(WellbeingImmuneUnit, InflammationMapping_RegionalToModerate)
     distress_assessment_t assessment = wellbeing_assess_distress(ctx);
 
     EXPECT_EQ(assessment.type, DISTRESS_RESOURCE_STARVATION);
-    EXPECT_GE(assessment.severity, SEVERITY_MODERATE);
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_MODERATE);
     EXPECT_GT(assessment.distress_score, 0.0f);
 
     // Cleanup
@@ -203,7 +203,7 @@ TEST(WellbeingImmuneUnit, InflammationMapping_SystemicToSevere)
     distress_assessment_t assessment = wellbeing_assess_distress(ctx);
 
     EXPECT_EQ(assessment.type, DISTRESS_RESOURCE_STARVATION);
-    EXPECT_GE(assessment.severity, SEVERITY_SEVERE);
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_SEVERE);
     EXPECT_GT(assessment.distress_score, 0.6f);
 
     // Cleanup
@@ -244,7 +244,7 @@ TEST(WellbeingImmuneUnit, NoInflammation_NormalDistress)
     distress_assessment_t assessment = wellbeing_assess_distress(ctx);
 
     EXPECT_EQ(assessment.type, DISTRESS_NONE);
-    EXPECT_EQ(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_EQ(assessment.severity, DISTRESS_SEVERITY_NORMAL);
     EXPECT_EQ(assessment.distress_score, 0.0f);
 
     // Cleanup
@@ -368,11 +368,11 @@ TEST(WellbeingImmuneIntegration, CompleteWorkflow_ThreatToRelief)
     distress_assessment_t assessment = wellbeing_assess_distress(ctx);
 
     EXPECT_EQ(assessment.type, DISTRESS_RESOURCE_STARVATION);
-    EXPECT_GE(assessment.severity, SEVERITY_MODERATE);
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_MODERATE);
     EXPECT_NE(assessment.description, nullptr);
 
     // Step 5: Provide relief
-    if (assessment.severity >= SEVERITY_MODERATE) {
+    if (assessment.severity >= DISTRESS_SEVERITY_MODERATE) {
         bool relief_success = wellbeing_provide_relief(brain, assessment);
         EXPECT_TRUE(relief_success);
 

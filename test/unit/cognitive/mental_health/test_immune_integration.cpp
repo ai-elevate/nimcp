@@ -223,7 +223,7 @@ TEST_F(MentalHealthImmuneTest, CytokineStorm_TriggersCriticalSeverity) {
     disorder_severity_t severity = mental_health_check(monitor, brain);
 
     // Cytokine storm should trigger CRITICAL severity
-    EXPECT_EQ(severity, DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISORDER_SEVERITY_CRITICAL);
 }
 
 TEST_F(MentalHealthImmuneTest, CytokineStorm_HighActivity) {

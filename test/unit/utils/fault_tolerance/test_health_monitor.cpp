@@ -627,10 +627,10 @@ TEST(HealthMonitorUtility, AnomalyTypeToString) {
 }
 
 TEST(HealthMonitorUtility, AnomalySeverityToString) {
-    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_DIAG_SEVERITY_INFO), "INFO");
-    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_DIAG_SEVERITY_WARNING), "WARNING");
-    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_DIAG_SEVERITY_ERROR), "ERROR");
-    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_DIAG_SEVERITY_CRITICAL), "CRITICAL");
+    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_SEVERITY_INFO), "INFO");
+    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_SEVERITY_WARNING), "WARNING");
+    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_SEVERITY_ERROR), "ERROR");
+    EXPECT_STREQ(anomaly_severity_to_string(ANOMALY_SEVERITY_CRITICAL), "CRITICAL");
 }
 
 TEST(HealthMonitorUtility, GetTimestamp) {

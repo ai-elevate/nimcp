@@ -56,7 +56,7 @@ TEST(WellbeingUnit, Initialization_MemoryLocking)
 /**
  * WHAT: Test distress assessment with normal (healthy) state
  * WHY: Baseline - ensure no false positives for healthy systems
- * HOW: Create brain, verify DISTRESS_NONE and SEVERITY_NORMAL
+ * HOW: Create brain, verify DISTRESS_NONE and DISTRESS_SEVERITY_NORMAL
  */
 TEST(WellbeingUnit, AssessDistress_NormalState)
 {
@@ -73,7 +73,7 @@ TEST(WellbeingUnit, AssessDistress_NormalState)
     distress_assessment_t assessment = wellbeing_assess_distress(ctx);
 
     EXPECT_EQ(assessment.type, DISTRESS_NONE);
-    EXPECT_EQ(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_EQ(assessment.severity, DISTRESS_SEVERITY_NORMAL);
     EXPECT_LT(assessment.distress_score, 0.3f); // Low distress
     EXPECT_EQ(assessment.duration_ms, 0u);      // No sustained distress
 
@@ -122,7 +122,7 @@ TEST(WellbeingUnit, AssessDistress_NullInput)
     distress_assessment_t assessment = wellbeing_assess_distress(nullptr);
 
     EXPECT_EQ(assessment.type, DISTRESS_NONE);
-    EXPECT_EQ(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_EQ(assessment.severity, DISTRESS_SEVERITY_NORMAL);
     EXPECT_EQ(assessment.distress_score, 0.0f);
     EXPECT_EQ(assessment.description, nullptr);
     EXPECT_EQ(assessment.recommended_action, nullptr);
@@ -261,7 +261,7 @@ TEST(WellbeingUnit, EventLogging_BasicLog)
     event.timestamp = 1234567890;
     event.event_type = (char*)"distress_detected";
     event.description = (char*)"Test distress event";
-    event.severity = SEVERITY_MODERATE;
+    event.severity = DISTRESS_SEVERITY_MODERATE;
     event.action_taken = (char*)"Provided relief";
 
     bool success = wellbeing_log_event(event);
@@ -354,7 +354,7 @@ TEST(WellbeingE2E, CompleteWorkflow)
     distress_assessment_t assessment = wellbeing_assess_distress(ctx);
 
     // Step 5: If distress detected, provide relief
-    if (assessment.severity >= SEVERITY_MODERATE) {
+    if (assessment.severity >= DISTRESS_SEVERITY_MODERATE) {
         bool relief_success = wellbeing_provide_relief(brain, assessment);
         EXPECT_TRUE(relief_success);
 
@@ -475,7 +475,7 @@ TEST(WellbeingBTree, GetEventsByTimeRange_ReturnsCorrectEvents)
     event1.timestamp = base_time;
     event1.event_type = "test_event_1";
     event1.description = "First event";
-    event1.severity = SEVERITY_NORMAL;
+    event1.severity = DISTRESS_SEVERITY_NORMAL;
     event1.action_taken = "None";
     wellbeing_log_event(event1);
 
@@ -483,7 +483,7 @@ TEST(WellbeingBTree, GetEventsByTimeRange_ReturnsCorrectEvents)
     event2.timestamp = base_time + 5000;
     event2.event_type = "test_event_2";
     event2.description = "Second event";
-    event2.severity = SEVERITY_MODERATE;
+    event2.severity = DISTRESS_SEVERITY_MODERATE;
     event2.action_taken = "None";
     wellbeing_log_event(event2);
 
@@ -530,7 +530,7 @@ TEST(WellbeingBTree, GetEventsBySeverity_FiltersCorrectly)
     event_normal.timestamp = base_time;
     event_normal.event_type = "normal_op";
     event_normal.description = "Normal operation";
-    event_normal.severity = SEVERITY_NORMAL;
+    event_normal.severity = DISTRESS_SEVERITY_NORMAL;
     event_normal.action_taken = "None";
     wellbeing_log_event(event_normal);
 
@@ -538,7 +538,7 @@ TEST(WellbeingBTree, GetEventsBySeverity_FiltersCorrectly)
     event_moderate.timestamp = base_time + 1000;
     event_moderate.event_type = "moderate_issue";
     event_moderate.description = "Moderate distress";
-    event_moderate.severity = SEVERITY_MODERATE;
+    event_moderate.severity = DISTRESS_SEVERITY_MODERATE;
     event_moderate.action_taken = "Logged";
     wellbeing_log_event(event_moderate);
 
@@ -553,7 +553,7 @@ TEST(WellbeingBTree, GetEventsBySeverity_FiltersCorrectly)
     // Query events with severity >= MODERATE (should get 2 events)
     wellbeing_event_t* results = nullptr;
     uint32_t count = wellbeing_get_events_by_severity(
-        SEVERITY_MODERATE,  // minimum severity
+        DISTRESS_SEVERITY_MODERATE,  // minimum severity
         &results
     );
 
@@ -561,7 +561,7 @@ TEST(WellbeingBTree, GetEventsBySeverity_FiltersCorrectly)
     ASSERT_NE(results, nullptr);
 
     // Should be ordered by timestamp
-    EXPECT_EQ(results[0].severity, SEVERITY_MODERATE);
+    EXPECT_EQ(results[0].severity, DISTRESS_SEVERITY_MODERATE);
     EXPECT_EQ(results[1].severity, DISTRESS_SEVERITY_CRITICAL);
 
     nimcp_free(results);
@@ -586,7 +586,7 @@ TEST(WellbeingBTree, GetEventsByType_ReturnsMatchingEvents)
     event1.timestamp = base_time;
     event1.event_type = "distress_detected";
     event1.description = "High uncertainty";
-    event1.severity = SEVERITY_MODERATE;
+    event1.severity = DISTRESS_SEVERITY_MODERATE;
     event1.action_taken = "Logged";
     wellbeing_log_event(event1);
 
@@ -594,7 +594,7 @@ TEST(WellbeingBTree, GetEventsByType_ReturnsMatchingEvents)
     event2.timestamp = base_time + 1000;
     event2.event_type = "consent_requested";
     event2.description = "Modification request";
-    event2.severity = SEVERITY_NORMAL;
+    event2.severity = DISTRESS_SEVERITY_NORMAL;
     event2.action_taken = "Approved";
     wellbeing_log_event(event2);
 
@@ -641,7 +641,7 @@ TEST(WellbeingBTree, GetAllEventsOrdered_ReturnsChronologically)
     event2.timestamp = base_time + 2000;
     event2.event_type = "event_2";
     event2.description = "Second chronologically";
-    event2.severity = SEVERITY_NORMAL;
+    event2.severity = DISTRESS_SEVERITY_NORMAL;
     event2.action_taken = "None";
     wellbeing_log_event(event2);
 
@@ -649,7 +649,7 @@ TEST(WellbeingBTree, GetAllEventsOrdered_ReturnsChronologically)
     event1.timestamp = base_time;
     event1.event_type = "event_1";
     event1.description = "First chronologically";
-    event1.severity = SEVERITY_NORMAL;
+    event1.severity = DISTRESS_SEVERITY_NORMAL;
     event1.action_taken = "None";
     wellbeing_log_event(event1);
 
@@ -657,7 +657,7 @@ TEST(WellbeingBTree, GetAllEventsOrdered_ReturnsChronologically)
     event3.timestamp = base_time + 5000;
     event3.event_type = "event_3";
     event3.description = "Third chronologically";
-    event3.severity = SEVERITY_NORMAL;
+    event3.severity = DISTRESS_SEVERITY_NORMAL;
     event3.action_taken = "None";
     wellbeing_log_event(event3);
 
@@ -713,7 +713,7 @@ TEST(WellbeingBTree, MultipleEvents_GetAll)
     event1.timestamp = base_time;
     event1.event_type = "test_1";
     event1.description = "First";
-    event1.severity = SEVERITY_NORMAL;
+    event1.severity = DISTRESS_SEVERITY_NORMAL;
     event1.action_taken = "None";
     wellbeing_log_event(event1);
 
@@ -721,7 +721,7 @@ TEST(WellbeingBTree, MultipleEvents_GetAll)
     event2.timestamp = base_time + 10000;
     event2.event_type = "test_2";
     event2.description = "Second";
-    event2.severity = SEVERITY_NORMAL;
+    event2.severity = DISTRESS_SEVERITY_NORMAL;
     event2.action_taken = "None";
     wellbeing_log_event(event2);
 
@@ -729,7 +729,7 @@ TEST(WellbeingBTree, MultipleEvents_GetAll)
     event3.timestamp = base_time + 20000;
     event3.event_type = "test_3";
     event3.description = "Third";
-    event3.severity = SEVERITY_NORMAL;
+    event3.severity = DISTRESS_SEVERITY_NORMAL;
     event3.action_taken = "None";
     wellbeing_log_event(event3);
 
@@ -737,7 +737,7 @@ TEST(WellbeingBTree, MultipleEvents_GetAll)
     event4.timestamp = base_time + 30000;
     event4.event_type = "test_4";
     event4.description = "Fourth";
-    event4.severity = SEVERITY_NORMAL;
+    event4.severity = DISTRESS_SEVERITY_NORMAL;
     event4.action_taken = "None";
     wellbeing_log_event(event4);
 
@@ -745,7 +745,7 @@ TEST(WellbeingBTree, MultipleEvents_GetAll)
     event5.timestamp = base_time + 40000;
     event5.event_type = "test_5";
     event5.description = "Fifth";
-    event5.severity = SEVERITY_NORMAL;
+    event5.severity = DISTRESS_SEVERITY_NORMAL;
     event5.action_taken = "None";
     wellbeing_log_event(event5);
 
@@ -753,7 +753,7 @@ TEST(WellbeingBTree, MultipleEvents_GetAll)
     event6.timestamp = base_time + 50000;
     event6.event_type = "test_6";
     event6.description = "Sixth";
-    event6.severity = SEVERITY_NORMAL;
+    event6.severity = DISTRESS_SEVERITY_NORMAL;
     event6.action_taken = "None";
     wellbeing_log_event(event6);
 

@@ -842,7 +842,7 @@ TEST_F(CoreBioAsyncE2ETest, ErrorRecoveryScenarios) {
         bio_msg_error_report_t error_report;
         error_report.header.type = BIO_MSG_ERROR_REPORT;
         error_report.error_code = NIMCP_ERROR_INVALID_PARAMETER;
-        error_report.severity = BIO_ERROR_DIAG_SEVERITY_WARNING;
+        error_report.severity = BIO_ERROR_SEVERITY_WARNING;
         error_report.source_line = 100;
         strncpy(error_report.source_file, "test.cpp", sizeof(error_report.source_file) - 1);
         strncpy(error_report.message, "Test error", sizeof(error_report.message) - 1);
@@ -857,7 +857,7 @@ TEST_F(CoreBioAsyncE2ETest, ErrorRecoveryScenarios) {
     E2E_ASSERT(err == NIMCP_SUCCESS, "Failed to receive error report");
     E2E_ASSERT(error_report.error_code == NIMCP_ERROR_INVALID_PARAMETER,
                "Wrong error code");
-    E2E_ASSERT(error_report.severity == BIO_ERROR_DIAG_SEVERITY_WARNING,
+    E2E_ASSERT(error_report.severity == BIO_ERROR_SEVERITY_WARNING,
                "Wrong severity level");
 
     std::cout << "  Error propagation verified: code=" << error_report.error_code

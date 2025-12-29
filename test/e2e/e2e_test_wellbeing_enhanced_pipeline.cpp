@@ -260,7 +260,7 @@ TEST_F(WellbeingEnhancedE2ETest, DistressDetectionToIntervention) {
     // PHASE 2: Detect distress
     distress_assessment_t assessment;
     enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
-    EXPECT_GE(assessment.severity, SEVERITY_NORMAL);  // Valid severity
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_NORMAL);  // Valid severity
 
     float peak_distress = enhanced_wellbeing_get_distress_score(wellbeing);
     EXPECT_GE(peak_distress, baseline_distress);  // Should be same or higher
@@ -288,7 +288,7 @@ TEST_F(WellbeingEnhancedE2ETest, DistressDetectionToIntervention) {
 
     // Final assessment should be valid
     enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
-    EXPECT_GE(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_NORMAL);
 }
 
 //=============================================================================
@@ -348,7 +348,7 @@ TEST_F(WellbeingEnhancedE2ETest, FlourishingStateAchievement) {
     distress_assessment_t assessment;
     enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
     EXPECT_EQ(assessment.type, DISTRESS_NONE);
-    EXPECT_EQ(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_EQ(assessment.severity, DISTRESS_SEVERITY_NORMAL);
 
     // PHASE 4: Verify homeostasis state is retrievable
     wellbeing_homeostasis_t homeostasis;
@@ -568,7 +568,7 @@ TEST_F(WellbeingEnhancedE2ETest, CombinedStressorScenario) {
     // Should have valid severity assessment
     distress_assessment_t assessment;
     enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
-    EXPECT_GE(assessment.severity, SEVERITY_NORMAL);  // Any valid severity
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_NORMAL);  // Any valid severity
     EXPECT_LE(assessment.severity, DISTRESS_SEVERITY_CRITICAL);
 
     // Flourishing state depends on system response to stressors

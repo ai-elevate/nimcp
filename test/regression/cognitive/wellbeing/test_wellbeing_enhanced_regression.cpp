@@ -166,7 +166,7 @@ TEST_F(EnhancedWellbeingRegressionTest, NoDistressAtOptimalConditions) {
     distress_assessment_t assessment;
     enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
     EXPECT_EQ(assessment.type, DISTRESS_NONE);
-    EXPECT_EQ(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_EQ(assessment.severity, DISTRESS_SEVERITY_NORMAL);
 
     // Should be capable of flourishing
     eudaimonic_wellbeing_t eudaimonic;

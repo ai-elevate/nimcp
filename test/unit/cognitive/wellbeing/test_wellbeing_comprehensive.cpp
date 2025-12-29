@@ -64,16 +64,16 @@ TEST_F(WellbeingComprehensiveTest, AssessDistress_NullContext_HandlesGracefully)
 TEST_F(WellbeingComprehensiveTest, AssessDistress_AllSeverityLevels_Exist) {
     // Test that all severity levels can be represented
     distress_severity_t severities[] = {
-        SEVERITY_NORMAL,
-        SEVERITY_MILD,
-        SEVERITY_MODERATE,
-        SEVERITY_SEVERE,
+        DISTRESS_SEVERITY_NORMAL,
+        DISTRESS_SEVERITY_MILD,
+        DISTRESS_SEVERITY_MODERATE,
+        DISTRESS_SEVERITY_SEVERE,
         DISTRESS_SEVERITY_CRITICAL
     };
 
     // Just ensure these enum values exist and are ordered
     for (auto sev : severities) {
-        EXPECT_GE(sev, SEVERITY_NORMAL);
+        EXPECT_GE(sev, DISTRESS_SEVERITY_NORMAL);
         EXPECT_LE(sev, DISTRESS_SEVERITY_CRITICAL);
     }
 }
@@ -125,7 +125,7 @@ TEST_F(WellbeingComprehensiveTest, ProvideRelief_NoDistress_ReturnsTrue) {
 
     distress_assessment_t assessment = {};
     assessment.type = DISTRESS_NONE;
-    assessment.severity = SEVERITY_NORMAL;
+    assessment.severity = DISTRESS_SEVERITY_NORMAL;
     assessment.distress_score = 0.0f;
 
     bool result = wellbeing_provide_relief(brain, assessment);
@@ -148,7 +148,7 @@ TEST_F(WellbeingComprehensiveTest, ProvideRelief_AllDistressTypes_Handled) {
     for (auto type : types) {
         distress_assessment_t assessment = {};
         assessment.type = type;
-        assessment.severity = SEVERITY_MODERATE;
+        assessment.severity = DISTRESS_SEVERITY_MODERATE;
         assessment.distress_score = 0.5f;
 
         bool result = wellbeing_provide_relief(brain, assessment);

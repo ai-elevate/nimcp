@@ -158,7 +158,7 @@ TEST_F(EnhancedWellbeingIntegrationTest, SubstrateWellbeingBidirectional) {
     result = enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
     EXPECT_EQ(result, 0);
     // Assessment type and severity depend on implementation
-    EXPECT_GE(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_NORMAL);
 }
 
 //=============================================================================
@@ -336,7 +336,7 @@ TEST_F(EnhancedWellbeingIntegrationTest, ImmuneWellbeingBidirectional) {
     result = enhanced_wellbeing_get_distress_assessment(wellbeing, &assessment);
     EXPECT_EQ(result, 0);
     // Verify assessment is valid
-    EXPECT_GE(assessment.severity, SEVERITY_NORMAL);
+    EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_NORMAL);
 
     // DIRECTION 2: Wellbeing → Immune
     // High distress should be detectable by immune system

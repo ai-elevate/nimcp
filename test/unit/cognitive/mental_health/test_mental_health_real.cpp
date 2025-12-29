@@ -114,7 +114,7 @@ TEST_F(MentalHealthRealTest, Check_WithRealBrain) {
 
     // Should return valid severity (likely NONE for a fresh brain)
     EXPECT_GE(severity, DISORDER_SEVERITY_NONE);
-    EXPECT_LE(severity, DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_LE(severity, DISORDER_SEVERITY_CRITICAL);
 }
 
 TEST_F(MentalHealthRealTest, CheckSpecific_AllDisorders) {
@@ -174,14 +174,14 @@ TEST_F(MentalHealthRealTest, ClassifySeverity_WithDefaultThresholds) {
     EXPECT_EQ(mental_health_classify_severity(0.3f, &config), DISORDER_SEVERITY_MILD);
     EXPECT_EQ(mental_health_classify_severity(0.5f, &config), DISORDER_SEVERITY_MODERATE);
     EXPECT_EQ(mental_health_classify_severity(0.7f, &config), DISORDER_SEVERITY_SEVERE);
-    EXPECT_EQ(mental_health_classify_severity(0.9f, &config), DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_EQ(mental_health_classify_severity(0.9f, &config), DISORDER_SEVERITY_CRITICAL);
 }
 
 TEST_F(MentalHealthRealTest, ClassifySeverity_BoundaryValues) {
     mental_health_config_t config = create_valid_config();
 
     EXPECT_EQ(mental_health_classify_severity(0.0f, &config), DISORDER_SEVERITY_NONE);
-    EXPECT_EQ(mental_health_classify_severity(1.0f, &config), DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_EQ(mental_health_classify_severity(1.0f, &config), DISORDER_SEVERITY_CRITICAL);
 }
 
 //=============================================================================
@@ -218,7 +218,7 @@ TEST_F(MentalHealthRealTest, GetReport_WithRealMonitor) {
 
     // Report should have valid structure with primary_severity (NOT overall_severity)
     EXPECT_GE(report.primary_severity, DISORDER_SEVERITY_NONE);
-    EXPECT_LE(report.primary_severity, DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_LE(report.primary_severity, DISORDER_SEVERITY_CRITICAL);
 }
 
 TEST_F(MentalHealthRealTest, GetReport_AllScoresValid) {
@@ -302,7 +302,7 @@ TEST_F(MentalHealthRealTest, SeverityToString_AllLevels) {
     EXPECT_NE(severity_to_string(DISORDER_SEVERITY_MILD), nullptr);
     EXPECT_NE(severity_to_string(DISORDER_SEVERITY_MODERATE), nullptr);
     EXPECT_NE(severity_to_string(DISORDER_SEVERITY_SEVERE), nullptr);
-    EXPECT_NE(severity_to_string(DISORDER_DIAG_SEVERITY_CRITICAL), nullptr);
+    EXPECT_NE(severity_to_string(DISORDER_SEVERITY_CRITICAL), nullptr);
 }
 
 //=============================================================================

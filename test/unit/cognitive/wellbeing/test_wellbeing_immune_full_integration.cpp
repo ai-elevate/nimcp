@@ -212,7 +212,7 @@ TEST_F(WellbeingImmuneIntegrationTest, InflammationMapsToDistress) {
     wellbeing_immune_get_inflammation_state(bridge, &state);
 
     EXPECT_EQ(state.current_level, INFLAMMATION_SYSTEMIC);
-    EXPECT_EQ(state.distress_severity, SEVERITY_SEVERE);
+    EXPECT_EQ(state.distress_severity, DISTRESS_SEVERITY_SEVERE);
     EXPECT_EQ(state.primary_distress_type, DISTRESS_RESOURCE_STARVATION);
     EXPECT_GT(state.distress_score, 0.5f);
 }
@@ -229,7 +229,7 @@ TEST_F(WellbeingImmuneIntegrationTest, LocalInflammationMinimalDistress) {
     wellbeing_immune_get_inflammation_state(bridge, &state);
 
     EXPECT_EQ(state.current_level, INFLAMMATION_LOCAL);
-    EXPECT_EQ(state.distress_severity, SEVERITY_NORMAL);
+    EXPECT_EQ(state.distress_severity, DISTRESS_SEVERITY_NORMAL);
     EXPECT_LT(state.distress_score, 0.2f);
 }
 
@@ -283,13 +283,13 @@ TEST_F(WellbeingImmuneIntegrationTest, InflammationToDistressTypeMappings) {
 
 TEST_F(WellbeingImmuneIntegrationTest, InflammationToSeverityMappings) {
     EXPECT_EQ(wellbeing_immune_inflammation_to_severity(INFLAMMATION_NONE),
-              SEVERITY_NORMAL);
+              DISTRESS_SEVERITY_NORMAL);
     EXPECT_EQ(wellbeing_immune_inflammation_to_severity(INFLAMMATION_LOCAL),
-              SEVERITY_NORMAL);
+              DISTRESS_SEVERITY_NORMAL);
     EXPECT_EQ(wellbeing_immune_inflammation_to_severity(INFLAMMATION_REGIONAL),
-              SEVERITY_MODERATE);
+              DISTRESS_SEVERITY_MODERATE);
     EXPECT_EQ(wellbeing_immune_inflammation_to_severity(INFLAMMATION_SYSTEMIC),
-              SEVERITY_SEVERE);
+              DISTRESS_SEVERITY_SEVERE);
     EXPECT_EQ(wellbeing_immune_inflammation_to_severity(INFLAMMATION_STORM),
               DISTRESS_SEVERITY_CRITICAL);
 }

@@ -304,7 +304,7 @@ TEST_F(RecoveryObservabilityTest, MtbfStats) {
 TEST_F(RecoveryObservabilityTest, LogEvent) {
     ro_event_t event; memset(&event, 0, sizeof(event));
     event.type = RO_EVENT_FAILURE_DETECTED;
-    event.severity = RO_DIAG_SEVERITY_ERROR;
+    event.severity = RO_SEVERITY_ERROR;
     event.timestamp_ns = ro_timestamp_ns();
     event.node_id = 1;
     event.fault_type = 1;
@@ -318,7 +318,7 @@ TEST_F(RecoveryObservabilityTest, GetEvents) {
     for (int i = 0; i < 5; i++) {
         ro_event_t event; memset(&event, 0, sizeof(event));
         event.type = RO_EVENT_RECOVERY_STARTED;
-        event.severity = RO_DIAG_SEVERITY_INFO;
+        event.severity = RO_SEVERITY_INFO;
         event.timestamp_ns = ro_timestamp_ns();
         ro_log_event(ctx, &event);
     }
@@ -455,8 +455,8 @@ TEST(RoStringTest, SpanStatusToString) {
 
 TEST(RoStringTest, SeverityToString) {
     EXPECT_STREQ("Trace", ro_severity_to_string(RO_SEVERITY_TRACE));
-    EXPECT_STREQ("Error", ro_severity_to_string(RO_DIAG_SEVERITY_ERROR));
-    EXPECT_STREQ("Fatal", ro_severity_to_string(RO_DIAG_SEVERITY_FATAL));
+    EXPECT_STREQ("Error", ro_severity_to_string(RO_SEVERITY_ERROR));
+    EXPECT_STREQ("Fatal", ro_severity_to_string(RO_SEVERITY_FATAL));
 }
 
 TEST(RoStringTest, EventTypeToString) {

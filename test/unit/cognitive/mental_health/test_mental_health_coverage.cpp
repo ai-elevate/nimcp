@@ -172,7 +172,7 @@ TEST_F(MentalHealthTest, SeverityToString_Severe) {
 }
 
 TEST_F(MentalHealthTest, SeverityToString_Critical) {
-    EXPECT_STREQ(severity_to_string(DISORDER_DIAG_SEVERITY_CRITICAL), "Critical");
+    EXPECT_STREQ(severity_to_string(DISORDER_SEVERITY_CRITICAL), "Critical");
 }
 
 TEST_F(MentalHealthTest, SeverityToString_Invalid) {
@@ -206,7 +206,7 @@ TEST_F(MentalHealthTest, ClassifySeverity_Severe) {
 
 TEST_F(MentalHealthTest, ClassifySeverity_Critical) {
     disorder_severity_t severity = mental_health_classify_severity(0.9f, nullptr);
-    EXPECT_EQ(severity, DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISORDER_SEVERITY_CRITICAL);
 }
 
 TEST_F(MentalHealthTest, ClassifySeverity_BoundaryLow) {
@@ -216,7 +216,7 @@ TEST_F(MentalHealthTest, ClassifySeverity_BoundaryLow) {
 
 TEST_F(MentalHealthTest, ClassifySeverity_BoundaryHigh) {
     disorder_severity_t severity = mental_health_classify_severity(1.0f, nullptr);
-    EXPECT_EQ(severity, DISORDER_DIAG_SEVERITY_CRITICAL);
+    EXPECT_EQ(severity, DISORDER_SEVERITY_CRITICAL);
 }
 
 TEST_F(MentalHealthTest, ClassifySeverity_CustomThresholds) {

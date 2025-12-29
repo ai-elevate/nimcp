@@ -169,7 +169,7 @@ TEST_F(WellbeingExtendedTest, CheckResourceThresholds_BelowThresholds_Normal) {
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
 
     EXPECT_FALSE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_NORMAL);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_NORMAL);
 }
 
 TEST_F(WellbeingExtendedTest, CheckResourceThresholds_CPUWarning_Moderate) {
@@ -183,7 +183,7 @@ TEST_F(WellbeingExtendedTest, CheckResourceThresholds_CPUWarning_Moderate) {
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
 
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_MODERATE);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_MODERATE);
 }
 
 TEST_F(WellbeingExtendedTest, CheckResourceThresholds_CPUCritical_Critical) {
@@ -211,7 +211,7 @@ TEST_F(WellbeingExtendedTest, CheckResourceThresholds_MemoryWarning_Moderate) {
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
 
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_MODERATE);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_MODERATE);
 }
 
 TEST_F(WellbeingExtendedTest, CheckResourceThresholds_MemoryCritical_Critical) {
@@ -240,7 +240,7 @@ TEST_F(WellbeingExtendedTest, CheckResourceThresholds_PageFaults_Mild) {
     bool exceeded = wellbeing_check_resource_thresholds(&metrics, &thresholds, &severity);
 
     EXPECT_TRUE(exceeded);
-    EXPECT_EQ(severity, SEVERITY_MILD);
+    EXPECT_EQ(severity, DISTRESS_SEVERITY_MILD);
 }
 
 TEST_F(WellbeingExtendedTest, CheckResourceThresholds_MultipleCritical_Critical) {
@@ -382,7 +382,7 @@ TEST_F(WellbeingExtendedTest, GetPerformanceStats_WithMonitoring_Success) {
 TEST_F(WellbeingExtendedTest, ProvideRelief_NullBrain_ReturnsFalse) {
     distress_assessment_t assessment;
     assessment.type = DISTRESS_HIGH_UNCERTAINTY;
-    assessment.severity = SEVERITY_MODERATE;
+    assessment.severity = DISTRESS_SEVERITY_MODERATE;
     assessment.description = (char*)"Test distress";
 
     bool success = wellbeing_provide_relief(nullptr, assessment);
@@ -392,7 +392,7 @@ TEST_F(WellbeingExtendedTest, ProvideRelief_NullBrain_ReturnsFalse) {
 TEST_F(WellbeingExtendedTest, ProvideRelief_NoDistress_ReturnsTrue) {
     distress_assessment_t assessment;
     assessment.type = DISTRESS_NONE;
-    assessment.severity = SEVERITY_NORMAL;
+    assessment.severity = DISTRESS_SEVERITY_NORMAL;
 
     bool success = wellbeing_provide_relief(brain, assessment);
     EXPECT_TRUE(success);
@@ -401,7 +401,7 @@ TEST_F(WellbeingExtendedTest, ProvideRelief_NoDistress_ReturnsTrue) {
 TEST_F(WellbeingExtendedTest, ProvideRelief_HighUncertainty_LogsEvent) {
     distress_assessment_t assessment;
     assessment.type = DISTRESS_HIGH_UNCERTAINTY;
-    assessment.severity = SEVERITY_MODERATE;
+    assessment.severity = DISTRESS_SEVERITY_MODERATE;
     assessment.distress_score = 0.75f;
     assessment.description = (char*)"High epistemic uncertainty";
     assessment.recommended_action = (char*)"Reduce task complexity";
@@ -433,7 +433,7 @@ TEST_F(WellbeingExtendedTest, ProvideRelief_AllDistressTypes_Handled) {
     for (auto type : types) {
         distress_assessment_t assessment;
         assessment.type = type;
-        assessment.severity = SEVERITY_MODERATE;
+        assessment.severity = DISTRESS_SEVERITY_MODERATE;
         assessment.distress_score = 0.5f;
         assessment.description = (char*)"Test distress";
         assessment.recommended_action = (char*)"Test action";
@@ -557,7 +557,7 @@ TEST_F(WellbeingExtendedTest, RequestConsent_MajorModification_HighSeverity) {
     uint32_t count = wellbeing_get_recent_events(1, &events);
 
     if (count > 0) {
-        EXPECT_EQ(events[0].severity, SEVERITY_MODERATE);
+        EXPECT_EQ(events[0].severity, DISTRESS_SEVERITY_MODERATE);
         nimcp_free(events);
     }
 }
@@ -573,7 +573,7 @@ TEST_F(WellbeingExtendedTest, RequestConsent_FundamentalModification_HighSeverit
     uint32_t count = wellbeing_get_recent_events(1, &events);
 
     if (count > 0) {
-        EXPECT_EQ(events[0].severity, SEVERITY_MODERATE);
+        EXPECT_EQ(events[0].severity, DISTRESS_SEVERITY_MODERATE);
         nimcp_free(events);
     }
 }
@@ -589,7 +589,7 @@ TEST_F(WellbeingExtendedTest, LogEvent_CircularBufferWrap_HandlesCorrectly) {
         event.timestamp = 1000000ULL + i;
         event.event_type = (char*)"test_event";
         event.description = (char*)"Circular buffer test";
-        event.severity = SEVERITY_NORMAL;
+        event.severity = DISTRESS_SEVERITY_NORMAL;
         event.action_taken = (char*)"None";
 
         bool success = wellbeing_log_event(event);
@@ -623,7 +623,7 @@ TEST_F(WellbeingExtendedTest, GetRecentEvents_MoreThanAvailable_ReturnsAll) {
         event.timestamp = 2000000ULL + i;
         event.event_type = (char*)"test";
         event.description = (char*)"Test";
-        event.severity = SEVERITY_NORMAL;
+        event.severity = DISTRESS_SEVERITY_NORMAL;
         event.action_taken = (char*)"None";
         wellbeing_log_event(event);
     }
@@ -655,7 +655,7 @@ TEST_F(WellbeingExtendedTest, GetEventsByTimeRange_EmptyRange_ReturnsZero) {
     event.timestamp = 1000000ULL;
     event.event_type = (char*)"test";
     event.description = (char*)"Test";
-    event.severity = SEVERITY_NORMAL;
+    event.severity = DISTRESS_SEVERITY_NORMAL;
     event.action_taken = (char*)"None";
     wellbeing_log_event(event);
 
@@ -673,7 +673,7 @@ TEST_F(WellbeingExtendedTest, GetEventsByTimeRange_ExactBoundaries_IncludesEvent
     event1.timestamp = base;
     event1.event_type = (char*)"test1";
     event1.description = (char*)"At start";
-    event1.severity = SEVERITY_NORMAL;
+    event1.severity = DISTRESS_SEVERITY_NORMAL;
     event1.action_taken = (char*)"None";
     wellbeing_log_event(event1);
 
@@ -681,7 +681,7 @@ TEST_F(WellbeingExtendedTest, GetEventsByTimeRange_ExactBoundaries_IncludesEvent
     event2.timestamp = base + 1000;
     event2.event_type = (char*)"test2";
     event2.description = (char*)"At end";
-    event2.severity = SEVERITY_NORMAL;
+    event2.severity = DISTRESS_SEVERITY_NORMAL;
     event2.action_taken = (char*)"None";
     wellbeing_log_event(event2);
 
@@ -703,7 +703,7 @@ TEST_F(WellbeingExtendedTest, GetEventsBySeverity_NoMatchingSeverity_ReturnsZero
     event.timestamp = 4000000ULL;
     event.event_type = (char*)"test";
     event.description = (char*)"Normal event";
-    event.severity = SEVERITY_NORMAL;
+    event.severity = DISTRESS_SEVERITY_NORMAL;
     event.action_taken = (char*)"None";
     wellbeing_log_event(event);
 
@@ -716,10 +716,10 @@ TEST_F(WellbeingExtendedTest, GetEventsBySeverity_NoMatchingSeverity_ReturnsZero
 
 TEST_F(WellbeingExtendedTest, GetEventsBySeverity_AllSeverities_ReturnsAll) {
     distress_severity_t severities[] = {
-        SEVERITY_NORMAL,
-        SEVERITY_MILD,
-        SEVERITY_MODERATE,
-        SEVERITY_SEVERE,
+        DISTRESS_SEVERITY_NORMAL,
+        DISTRESS_SEVERITY_MILD,
+        DISTRESS_SEVERITY_MODERATE,
+        DISTRESS_SEVERITY_SEVERE,
         DISTRESS_SEVERITY_CRITICAL
     };
 
@@ -734,7 +734,7 @@ TEST_F(WellbeingExtendedTest, GetEventsBySeverity_AllSeverities_ReturnsAll) {
     }
 
     wellbeing_event_t* events = nullptr;
-    uint32_t count = wellbeing_get_events_by_severity(SEVERITY_NORMAL, &events);
+    uint32_t count = wellbeing_get_events_by_severity(DISTRESS_SEVERITY_NORMAL, &events);
 
     EXPECT_EQ(count, 5U);
     if (count > 0) {
@@ -759,7 +759,7 @@ TEST_F(WellbeingExtendedTest, GetEventsByType_NonexistentType_ReturnsZero) {
     event.timestamp = 6000000ULL;
     event.event_type = (char*)"distress";
     event.description = (char*)"Test";
-    event.severity = SEVERITY_NORMAL;
+    event.severity = DISTRESS_SEVERITY_NORMAL;
     event.action_taken = (char*)"None";
     wellbeing_log_event(event);
 
@@ -776,7 +776,7 @@ TEST_F(WellbeingExtendedTest, GetEventsByType_MultipleMatches_ReturnsAll) {
         event.timestamp = 7000000ULL + i;
         event.event_type = (char*)"specific_type";
         event.description = (char*)"Test";
-        event.severity = SEVERITY_NORMAL;
+        event.severity = DISTRESS_SEVERITY_NORMAL;
         event.action_taken = (char*)"None";
         wellbeing_log_event(event);
     }
@@ -811,7 +811,7 @@ TEST_F(WellbeingExtendedTest, GetAllEventsOrdered_SingleEvent_ReturnsOne) {
     event.timestamp = 8000000ULL;
     event.event_type = (char*)"single";
     event.description = (char*)"Single event";
-    event.severity = SEVERITY_NORMAL;
+    event.severity = DISTRESS_SEVERITY_NORMAL;
     event.action_taken = (char*)"None";
     wellbeing_log_event(event);
 
@@ -835,7 +835,7 @@ TEST_F(WellbeingExtendedTest, AssessDistress_ValidContext_ReturnsAssessment) {
 
         EXPECT_GE(assessment.distress_score, 0.0f);
         EXPECT_LE(assessment.distress_score, 1.0f);
-        EXPECT_GE(assessment.severity, SEVERITY_NORMAL);
+        EXPECT_GE(assessment.severity, DISTRESS_SEVERITY_NORMAL);
         EXPECT_LE(assessment.severity, DISTRESS_SEVERITY_CRITICAL);
     }
 }
@@ -937,7 +937,7 @@ TEST_F(WellbeingExtendedTest, FullWorkflow_MonitorAssessReliefShutdown) {
         distress_assessment_t assessment = wellbeing_assess_distress(ctx);
 
         // 6. Provide relief if needed
-        if (assessment.severity >= SEVERITY_MODERATE) {
+        if (assessment.severity >= DISTRESS_SEVERITY_MODERATE) {
             wellbeing_provide_relief(brain, assessment);
         }
     }
@@ -972,7 +972,7 @@ TEST_F(WellbeingExtendedTest, StressTest_RapidEventLogging) {
         event.timestamp = 9000000ULL + i;
         event.event_type = (char*)"stress_test";
         event.description = (char*)"Rapid logging test";
-        event.severity = SEVERITY_NORMAL;
+        event.severity = DISTRESS_SEVERITY_NORMAL;
         event.action_taken = (char*)"None";
 
         bool success = wellbeing_log_event(event);
@@ -996,7 +996,7 @@ TEST_F(WellbeingExtendedTest, StressTest_ConcurrentQueries) {
         event.timestamp = 10000000ULL + i;
         event.event_type = (char*)"concurrent";
         event.description = (char*)"Test";
-        event.severity = (i % 2 == 0) ? SEVERITY_NORMAL : SEVERITY_MODERATE;
+        event.severity = (i % 2 == 0) ? DISTRESS_SEVERITY_NORMAL : DISTRESS_SEVERITY_MODERATE;
         event.action_taken = (char*)"None";
         wellbeing_log_event(event);
     }
@@ -1007,7 +1007,7 @@ TEST_F(WellbeingExtendedTest, StressTest_ConcurrentQueries) {
     wellbeing_event_t* events3 = nullptr;
 
     uint32_t count1 = wellbeing_get_events_by_type("concurrent", &events1);
-    uint32_t count2 = wellbeing_get_events_by_severity(SEVERITY_MODERATE, &events2);
+    uint32_t count2 = wellbeing_get_events_by_severity(DISTRESS_SEVERITY_MODERATE, &events2);
     uint32_t count3 = wellbeing_get_events_by_time_range(10000000ULL, 10000100ULL, &events3);
 
     EXPECT_GT(count1, 0U);
@@ -1046,7 +1046,7 @@ TEST_F(WellbeingExtendedTest, EdgeCase_ZeroTimestampEvents) {
     event.timestamp = 0ULL;
     event.event_type = (char*)"zero_time";
     event.description = (char*)"Zero timestamp test";
-    event.severity = SEVERITY_NORMAL;
+    event.severity = DISTRESS_SEVERITY_NORMAL;
     event.action_taken = (char*)"None";
 
     bool success = wellbeing_log_event(event);
@@ -1067,7 +1067,7 @@ TEST_F(WellbeingExtendedTest, EdgeCase_MaxTimestampEvents) {
     event.timestamp = UINT64_MAX;
     event.event_type = (char*)"max_time";
     event.description = (char*)"Max timestamp test";
-    event.severity = SEVERITY_NORMAL;
+    event.severity = DISTRESS_SEVERITY_NORMAL;
     event.action_taken = (char*)"None";
 
     bool success = wellbeing_log_event(event);
