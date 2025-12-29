@@ -388,6 +388,22 @@
 {"type":"entity","name":"Natural_Explanations","entityType":"cognitive_module","observations":["Location: src/cognitive/explanations/","Explanation generator for interpretability","Flags: enable_what, enable_why, enable_how","Uses symbolic_logic if available","Human-readable decision output"]}
 {"type":"entity","name":"Consolidation_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/memory/","Memory consolidation orchestrator","Handles BIO_MSG_CONSOLIDATION_TRIGGER","Sleep system integration","Engram system connection"]}
 {"type":"entity","name":"Semantic_Memory_Module","entityType":"cognitive_module","observations":["Location: src/cognitive/memory/","Conceptual knowledge storage","Connected to systems consolidation","Knowledge base integration"]}
+{"type":"entity","name":"Bio_Async_Router","entityType":"async_subsystem","observations":["Central hub-and-spoke message router","Max 256 concurrent modules","256 handlers per module","Broadcast via target_id=0","Category-based multicast routing","5-20μs broadcast latency for 256 modules","Located in src/async/nimcp_bio_router.c (2300+ lines)"]}
+{"type":"entity","name":"Bio_Async_Orchestrator","entityType":"async_subsystem","observations":["Manages 256+ modules","Health monitoring with periodic pings","Startup sequencing respects dependencies","Statistics tracking (latency, throughput)","10 module categories with independent health checks","Located in include/async/nimcp_bio_async_orchestrator.h"]}
+{"type":"entity","name":"Module_Inbox","entityType":"async_component","observations":["Per-module message queue","4-32 base capacity (tier-dependent)","Grows dynamically up to 1024 messages","Ring buffer with automatic expansion","Independent mutex per queue","Enables true parallel message delivery"]}
+{"type":"entity","name":"Broadcast_Mechanism","entityType":"async_pattern","observations":["One-to-many message delivery","Set target_module=0 to trigger","Router loops through ALL modules","Each recipient gets independent copy","~100ns per module delivery","Excludes sender from broadcast"]}
+{"type":"entity","name":"Category_Multicast","entityType":"async_pattern","observations":["Send to message category range","0x0100-0x01FF: Brain messages","0x0200-0x02FF: Plasticity messages","0x0300-0x03FF: Cognitive messages","Modules register category handlers","Catches entire 256-type ranges"]}
+{"type":"entity","name":"Signal_PubSub","entityType":"async_pattern","observations":["256 concurrent signal observers","Publish signals to all observers","Callbacks triggered on prediction error","Named signals (e.g., reinforcement_signal)","bio_router_observe_signal() to subscribe","bio_router_publish_signal() to broadcast"]}
+{"type":"entity","name":"Neuromodulator_Channels","entityType":"async_pattern","observations":["4 semantic channels","Dopamine: reward signaling","Serotonin: mood/valence","Norepinephrine: alertness","Acetylcholine: attention gating","Response via bio-promise mechanism","Different decay characteristics per channel"]}
+{"type":"entity","name":"Blocking_Queue","entityType":"queue_type","observations":["Mutex + condition variable","1-10μs latency","General purpose use","Thread-safe blocking operations"]}
+{"type":"entity","name":"SPSC_Queue","entityType":"queue_type","observations":["Single-Producer Single-Consumer","Lock-free implementation","50-100ns latency","Pipeline stage communication","Lowest latency option"]}
+{"type":"entity","name":"MPMC_Queue","entityType":"queue_type","observations":["Multi-Producer Multi-Consumer","Vyukov algorithm implementation","200-500ns latency","Work stealing patterns","Highest concurrency support"]}
+{"type":"entity","name":"Thread_Pool","entityType":"concurrency_subsystem","observations":["1-64 worker threads (NIMCP_POOL_MAX_THREADS=64)","Fixed-size pool with circular task queue","Max 1024 tasks in queue","Automatic work distribution","Located in include/utils/thread/nimcp_thread_pool.h"]}
+{"type":"entity","name":"Priority_Event_Queue","entityType":"async_component","observations":["Min-heap implementation","O(log n) enqueue/dequeue","Configurable overflow policies","Drop oldest/lowest/newest or block","Batch dequeue for efficiency","Thread-safe via mutex","Located in include/middleware/events/nimcp_event_queue.h"]}
+{"type":"entity","name":"Glial_Wave_Communication","entityType":"async_pattern","observations":["Slow global coordination","Calcium wave propagation","Network-wide signaling","Bio-inspired coordination mechanism"]}
+{"type":"entity","name":"Point_To_Point_Message","entityType":"async_pattern","observations":["Direct module-to-module communication","Specify target module ID","1-5μs latency","Most common pattern"]}
+{"type":"entity","name":"Mutex_Hierarchy","entityType":"concurrency_mechanism","observations":["Router-level mutex (modules_mutex)","Per-queue mutexes (inbox.mutex)","Handler mutex per module","Stats mutex for statistics","Prevents deadlocks via ordering"]}
+{"type":"entity","name":"Module_Registration","entityType":"async_mechanism","observations":["Modules register once with router","Get unique module_id","Register up to 256 message handlers","Can handle specific types or categories","No direct peer connections needed"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -1010,3 +1026,36 @@
 {"type":"relation","from":"Mental_Health_Monitor","to":"Bio_Module_Neuromodulator","relationType":"tracks_baselines_from"}
 {"type":"relation","from":"Global_Workspace_Module","to":"Attention_Module","relationType":"receives_shifts_from"}
 {"type":"relation","from":"Global_Workspace_Module","to":"Cognitive_Core_System","relationType":"broadcasts_to_all"}
+{"type":"relation","from":"Bio_Async_Router","to":"Module_Inbox","relationType":"manages"}
+{"type":"relation","from":"Bio_Async_Router","to":"Broadcast_Mechanism","relationType":"implements"}
+{"type":"relation","from":"Bio_Async_Router","to":"Category_Multicast","relationType":"implements"}
+{"type":"relation","from":"Bio_Async_Router","to":"Point_To_Point_Message","relationType":"implements"}
+{"type":"relation","from":"Bio_Async_Router","to":"Signal_PubSub","relationType":"implements"}
+{"type":"relation","from":"Bio_Async_Router","to":"Neuromodulator_Channels","relationType":"implements"}
+{"type":"relation","from":"Bio_Async_Router","to":"Module_Registration","relationType":"uses"}
+{"type":"relation","from":"Bio_Async_Router","to":"Mutex_Hierarchy","relationType":"uses"}
+{"type":"relation","from":"Bio_Async_Orchestrator","to":"Bio_Async_Router","relationType":"coordinates"}
+{"type":"relation","from":"Bio_Async_Orchestrator","to":"Thread_Pool","relationType":"uses"}
+{"type":"relation","from":"Module_Inbox","to":"Blocking_Queue","relationType":"can_use"}
+{"type":"relation","from":"Module_Inbox","to":"SPSC_Queue","relationType":"can_use"}
+{"type":"relation","from":"Module_Inbox","to":"MPMC_Queue","relationType":"can_use"}
+{"type":"relation","from":"Thread_Pool","to":"MPMC_Queue","relationType":"uses"}
+{"type":"relation","from":"Priority_Event_Queue","to":"Blocking_Queue","relationType":"uses"}
+{"type":"relation","from":"Glial_Wave_Communication","to":"Broadcast_Mechanism","relationType":"uses"}
+{"type":"relation","from":"Neuromodulator_Channels","to":"Neuromodulator_Plasticity","relationType":"integrates_with"}
+{"type":"relation","from":"Brain","to":"Bio_Async_Router","relationType":"uses"}
+{"type":"relation","from":"Brain","to":"Bio_Async_Orchestrator","relationType":"uses"}
+{"type":"relation","from":"Cognitive_Systems","to":"Bio_Async_Router","relationType":"communicates_via"}
+{"type":"relation","from":"Plasticity_Systems","to":"Bio_Async_Router","relationType":"communicates_via"}
+{"type":"relation","from":"Memory_Systems","to":"Bio_Async_Router","relationType":"communicates_via"}
+{"type":"relation","from":"Perception_Systems","to":"Bio_Async_Router","relationType":"communicates_via"}
+{"type":"relation","from":"Working_Memory_System","to":"Module_Inbox","relationType":"has"}
+{"type":"relation","from":"Engram_System","to":"Module_Inbox","relationType":"has"}
+{"type":"relation","from":"Semantic_Memory_System","to":"Module_Inbox","relationType":"has"}
+{"type":"relation","from":"STDP_Plasticity","to":"Category_Multicast","relationType":"receives_via"}
+{"type":"relation","from":"Attention_Module","to":"Signal_PubSub","relationType":"publishes_to"}
+{"type":"relation","from":"Reasoning_Module","to":"Point_To_Point_Message","relationType":"uses"}
+{"type":"relation","from":"Amygdala_Module","to":"Broadcast_Mechanism","relationType":"uses"}
+{"type":"relation","from":"FEP_Bridge","to":"Signal_PubSub","relationType":"publishes_to"}
+{"type":"relation","from":"Sleep_Bridge","to":"Broadcast_Mechanism","relationType":"uses"}
+{"type":"relation","from":"Immune_Bridge","to":"Neuromodulator_Channels","relationType":"modulates_via"}

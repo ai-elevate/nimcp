@@ -183,6 +183,19 @@ protected:
                 return HUNT_ESCAPED;
             }
 
+            // Update dragonfly self-state with pursuer position
+            // This is CRITICAL - without this, the intercept computation can't work!
+            dragonfly_self_state_t self_state = {};
+            memcpy(self_state.position, pursuer.position, sizeof(self_state.position));
+            memcpy(self_state.velocity, pursuer.velocity, sizeof(self_state.velocity));
+            self_state.heading_rad = pursuer.heading;
+            self_state.pitch_rad = 0.0f;
+            self_state.max_speed = pursuer.max_speed;
+            self_state.max_accel = 20.0f;
+            self_state.max_turn_rate = pursuer.max_turn_rate;
+            self_state.energy_level = 1.0f;
+            dragonfly_update_self_state(dragonfly, &self_state);
+
             // Send detection to dragonfly through brain API
             int result = brain_dragonfly_detect(brain, target.position,
                                                 target.size, target.contrast);
@@ -352,6 +365,18 @@ TEST_F(DragonflyHuntingPipelineTest, PursuitTimeRealistic) {
 
         while (elapsed < 5.0f && !intercepted) {
             target.update(dt);
+
+            // Update self-state
+            dragonfly_self_state_t self_state = {};
+            memcpy(self_state.position, pursuer.position, sizeof(self_state.position));
+            memcpy(self_state.velocity, pursuer.velocity, sizeof(self_state.velocity));
+            self_state.heading_rad = pursuer.heading;
+            self_state.max_speed = pursuer.max_speed;
+            self_state.max_accel = 20.0f;
+            self_state.max_turn_rate = pursuer.max_turn_rate;
+            self_state.energy_level = 1.0f;
+            dragonfly_update_self_state(dragonfly, &self_state);
+
             brain_dragonfly_detect(brain, target.position, target.size, target.contrast);
             brain_step_dragonfly(brain, (uint64_t)(dt * 1000000));
 
@@ -393,6 +418,18 @@ TEST_F(DragonflyHuntingPipelineTest, LeadsTarget) {
     // Run for a few frames to establish tracking
     for (int i = 0; i < 10; i++) {
         target.update(0.016f);
+
+        // Update self-state
+        dragonfly_self_state_t self_state = {};
+        memcpy(self_state.position, pursuer.position, sizeof(self_state.position));
+        memcpy(self_state.velocity, pursuer.velocity, sizeof(self_state.velocity));
+        self_state.heading_rad = pursuer.heading;
+        self_state.max_speed = pursuer.max_speed;
+        self_state.max_accel = 20.0f;
+        self_state.max_turn_rate = pursuer.max_turn_rate;
+        self_state.energy_level = 1.0f;
+        dragonfly_update_self_state(dragonfly, &self_state);
+
         brain_dragonfly_detect(brain, target.position, target.size, target.contrast);
         brain_step_dragonfly(brain, 16000);
     }
@@ -422,9 +459,21 @@ TEST_F(DragonflyHuntingPipelineTest, LeadsTarget) {
 
 TEST_F(DragonflyHuntingPipelineTest, ModeTransitionsCorrectly) {
     Target target = create_straight_line_target(20.0f, 5.0f, -3.0f, -0.5f);
+    Pursuer pursuer = create_pursuer();
 
     // Initially IDLE
     EXPECT_EQ(brain_dragonfly_get_mode(brain), (int)DRAGONFLY_MODE_IDLE);
+
+    // Setup self-state
+    dragonfly_self_state_t self_state = {};
+    memcpy(self_state.position, pursuer.position, sizeof(self_state.position));
+    memcpy(self_state.velocity, pursuer.velocity, sizeof(self_state.velocity));
+    self_state.heading_rad = pursuer.heading;
+    self_state.max_speed = pursuer.max_speed;
+    self_state.max_accel = 20.0f;
+    self_state.max_turn_rate = pursuer.max_turn_rate;
+    self_state.energy_level = 1.0f;
+    dragonfly_update_self_state(dragonfly, &self_state);
 
     // After detection, should transition
     brain_dragonfly_detect(brain, target.position, target.size, target.contrast);
@@ -439,6 +488,7 @@ TEST_F(DragonflyHuntingPipelineTest, ModeTransitionsCorrectly) {
     // Continue tracking for a while
     for (int i = 0; i < 30; i++) {
         target.update(0.016f);
+        dragonfly_update_self_state(dragonfly, &self_state);  // Keep updating
         brain_dragonfly_detect(brain, target.position, target.size, target.contrast);
         brain_step_dragonfly(brain, 16000);
     }
@@ -475,6 +525,17 @@ TEST_F(DragonflyHuntingPipelineTest, RecoverFromBriefOcclusion) {
 
     while (elapsed < 5.0f && !intercepted) {
         target.update(dt);
+
+        // Update self-state
+        dragonfly_self_state_t self_state = {};
+        memcpy(self_state.position, pursuer.position, sizeof(self_state.position));
+        memcpy(self_state.velocity, pursuer.velocity, sizeof(self_state.velocity));
+        self_state.heading_rad = pursuer.heading;
+        self_state.max_speed = pursuer.max_speed;
+        self_state.max_accel = 20.0f;
+        self_state.max_turn_rate = pursuer.max_turn_rate;
+        self_state.energy_level = 1.0f;
+        dragonfly_update_self_state(dragonfly, &self_state);
 
         // Simulate brief occlusion (no detection for 5 frames every 30 frames)
         int frame = (int)(elapsed / dt);
@@ -527,6 +588,18 @@ TEST_F(DragonflyHuntingPipelineTest, AbortUnfeasiblePursuit) {
 
     while (elapsed < 3.0f) {
         target.update(dt);
+
+        // Update self-state
+        dragonfly_self_state_t self_state = {};
+        memcpy(self_state.position, pursuer.position, sizeof(self_state.position));
+        memcpy(self_state.velocity, pursuer.velocity, sizeof(self_state.velocity));
+        self_state.heading_rad = pursuer.heading;
+        self_state.max_speed = pursuer.max_speed;
+        self_state.max_accel = 20.0f;
+        self_state.max_turn_rate = pursuer.max_turn_rate;
+        self_state.energy_level = 1.0f;
+        dragonfly_update_self_state(dragonfly, &self_state);
+
         brain_dragonfly_detect(brain, target.position, target.size, target.contrast);
         brain_step_dragonfly(brain, (uint64_t)(dt * 1000000));
 
