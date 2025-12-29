@@ -58,3 +58,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala_stress_bridge.cpp
     unit
 )
+
+# Test: Amygdala-FEP Bridge Tests (threat as prediction error)
+add_test_binary(
+    unit_core_brain_subcortical_amygdala_fep_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_amygdala_fep_bridge.cpp
+    unit
+)

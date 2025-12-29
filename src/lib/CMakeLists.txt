@@ -174,6 +174,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_attention_bridge.c  # Amygdala-attention integration (threat salience)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_stress_bridge.c  # Amygdala-stress/wellbeing integration (stress-anxiety feedback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_autobio_bridge.c  # Amygdala-autobiographical memory integration (emotional tagging, recall reactivation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_fep_bridge.c  # Amygdala-FEP integration (threat as prediction error)
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
@@ -401,6 +402,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_civil_engineering.c       # CE: Geotechnical, hydraulics, structural optimization
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_quantum_bridge.c # Quantum acceleration bridge (annealing, VQE, walk)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_fep_parietal_bridge.c     # FEP-Parietal bridge (predictive processing, active inference)
+    # Phase 6: Intuitive Reasoning & Discovery Engines
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuitive_reasoning.c    # Core intuitive reasoning (hunches, plausibility, leaps)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_analogical_reasoning.c   # Cross-domain transfer (structure mapping, analogy)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_insight_discovery.c      # Insight generation (incubation, eureka moments)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_hypothesis_generation.c  # Theory formation (abduction, prediction)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_conceptual_blending.c    # Creative combination (mental spaces, emergence)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_counterfactual.c         # What-if reasoning (causal analysis)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_meta_reasoning.c         # Reasoning about reasoning (strategy selection)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuition_integrations.c # Phase 6.0: Integration & Extrapolation Framework
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_physics_nn.c              # Physics-informed neural network (symplectic, HNN) - NOT YET IMPLEMENTED
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
 
