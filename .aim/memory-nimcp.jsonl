@@ -147,6 +147,96 @@
 {"type":"entity","name":"Training_Bridges","entityType":"bridge_pattern","observations":["Pattern: *_training_bridge.c files","Learning system integration","Connect plasticity to training algorithms","SNN training bridges for spiking networks"]}
 {"type":"entity","name":"KG_Update_Convention","entityType":"Convention","observations":["Knowledge Graph must be updated whenever new functionality is added to NIMCP","KG stored in project: /home/bbrelin/nimcp/.aim/memory-nimcp.jsonl","Use context='nimcp' and location='project' for all memory operations","New modules should have entities created with: name, type, file locations, capabilities, test status","Integration points should document: attach functions, biological effects, commit references","Link new modules to related existing entities (e.g., Brain Immune System, FEP, etc.)"]}
 {"type":"entity","name":"Self_Awareness_Architecture","entityType":"Architecture","observations":["NIMCP requires runtime KG access for true self-awareness","KG contains system's knowledge about itself: modules, capabilities, integrations, conventions","Self-model system (brain->self_model) should integrate with KG for introspection","Introspection module (brain->introspection) needs KG queries for capability reflection","KG file: .aim/memory-nimcp.jsonl (JSONL format - line-delimited JSON)","Runtime KG reader needed: load entities, relations, query by name/type","Enables: 'What modules do I have?', 'How does parietal connect to immune?', 'What are my capabilities?'","Connects autobiographical memory (brain->autobio) with structural self-knowledge","Key integration points: self_model_system_t, introspection_context_t, autobiographical_memory_t"]}
+{"type":"entity","name":"FEP_Cognitive_Bridges","entityType":"bridge_group","observations":["190 total FEP bridge files","Connects cognitive/neural systems to Free Energy Principle","Enables predictive processing across all modules","Pattern: *_fep_bridge.c files"]}
+{"type":"entity","name":"FEP_Attention_Bridge","entityType":"fep_bridge","observations":["nimcp_attention_fep_bridge.c","Connects Attention to FEP for predictive attention allocation"]}
+{"type":"entity","name":"FEP_Emotion_Bridge","entityType":"fep_bridge","observations":["nimcp_emotion_fep_bridge.c","Connects Emotion to FEP for predictive emotional processing"]}
+{"type":"entity","name":"FEP_Memory_Bridge","entityType":"fep_bridge","observations":["nimcp_memory_fep_bridge.c","Connects Memory to FEP for predictive memory retrieval"]}
+{"type":"entity","name":"FEP_Executive_Bridge","entityType":"fep_bridge","observations":["nimcp_executive_fep_bridge.c","Connects Executive Control to FEP for predictive planning"]}
+{"type":"entity","name":"FEP_Hemispheric_Bridge","entityType":"fep_bridge","observations":["nimcp_hemispheric_fep_bridge.c","Connects Hemispheric Brain to FEP for bilateral predictive processing"]}
+{"type":"entity","name":"FEP_Cortical_Bridge","entityType":"fep_bridge","observations":["nimcp_cortical_column_fep_bridge.c","Connects Cortical Columns to FEP for hierarchical prediction"]}
+{"type":"entity","name":"FEP_Visual_Cortex_Bridge","entityType":"fep_bridge","observations":["nimcp_visual_cortex_fep_bridge.c","Connects Visual Cortex to FEP for visual prediction error"]}
+{"type":"entity","name":"FEP_Audio_Cortex_Bridge","entityType":"fep_bridge","observations":["nimcp_audio_cortex_fep_bridge.c","Connects Audio Cortex to FEP for auditory prediction"]}
+{"type":"entity","name":"FEP_STDP_Bridge","entityType":"fep_bridge","observations":["nimcp_stdp_fep_bridge.c","Connects STDP plasticity to FEP for prediction-driven learning"]}
+{"type":"entity","name":"FEP_BCM_Bridge","entityType":"fep_bridge","observations":["nimcp_bcm_fep_bridge.c","Connects BCM plasticity to FEP"]}
+{"type":"entity","name":"FEP_Swarm_Brain_Bridge","entityType":"fep_bridge","observations":["Module ID 0x0F2D","Connects Swarm Brain to FEP for collective prediction"]}
+{"type":"entity","name":"FEP_Swarm_Flocking_Bridge","entityType":"fep_bridge","observations":["Module ID 0x0F24","Connects Swarm Flocking to FEP"]}
+{"type":"entity","name":"FEP_Swarm_Consensus_Bridge","entityType":"fep_bridge","observations":["Module ID 0x0F25","Connects Swarm Consensus to FEP"]}
+{"type":"entity","name":"FEP_Dragonfly_Bridge","entityType":"fep_bridge","observations":["nimcp_dragonfly_fep_bridge.c","Connects Dragonfly Framework to FEP"]}
+{"type":"entity","name":"Immune_System_Bridges","entityType":"bridge_group","observations":["150 total Immune bridge files","Connects modules to brain immune system for health and threat detection","Pattern: *_immune_bridge.c files","Categories: cognitive, perception, plasticity, swarm, middleware, networking, glial"]}
+{"type":"entity","name":"Immune_Attention_Bridge","entityType":"immune_bridge","observations":["nimcp_attention_immune_bridge.c","Detects anomalous attention patterns"]}
+{"type":"entity","name":"Immune_STDP_Bridge","entityType":"immune_bridge","observations":["nimcp_stdp_immune_bridge.c","Detects abnormal plasticity patterns"]}
+{"type":"entity","name":"Immune_Swarm_Consciousness_Bridge","entityType":"immune_bridge","observations":["nimcp_swarm_consciousness_immune_bridge.c","Detects collective anomalies in swarm"]}
+{"type":"entity","name":"Immune_Networking_Bridge","entityType":"immune_bridge","observations":["nimcp_networking_immune_bridge.c","Detects network intrusion attempts"]}
+{"type":"entity","name":"Immune_Glial_Astrocyte_Bridge","entityType":"immune_bridge","observations":["nimcp_astrocyte_immune_bridge.c","Monitors glial cell health"]}
+{"type":"entity","name":"Immune_Glial_Microglia_Bridge","entityType":"immune_bridge","observations":["nimcp_microglia_immune_bridge.c","Microglia coordinate with brain immune system"]}
+{"type":"entity","name":"Immune_GPU_Bridge","entityType":"immune_bridge","observations":["nimcp_gpu_immune_bridge.c","Detects GPU anomalies and failures"]}
+{"type":"entity","name":"Sleep_System_Bridges","entityType":"bridge_group","observations":["142 total Sleep bridge files","Connects modules to sleep/wake cycle for consolidation","Pattern: *_sleep_bridge.c files","Categories: cognitive, perception, plasticity, glial, core, middleware, swarm, security"]}
+{"type":"entity","name":"Sleep_Attention_Bridge","entityType":"sleep_bridge","observations":["nimcp_attention_sleep_bridge.c","Modulates attention during sleep phases"]}
+{"type":"entity","name":"Sleep_Memory_Bridge","entityType":"sleep_bridge","observations":["nimcp_memory_sleep_bridge.c","Enables memory consolidation during sleep"]}
+{"type":"entity","name":"Sleep_STDP_Bridge","entityType":"sleep_bridge","observations":["nimcp_stdp_sleep_bridge.c","Modulates STDP learning during sleep"]}
+{"type":"entity","name":"Sleep_Visual_Cortex_Bridge","entityType":"sleep_bridge","observations":["nimcp_visual_cortex_sleep_bridge.c","Visual processing during REM sleep"]}
+{"type":"entity","name":"Sleep_Cortical_Column_Bridge","entityType":"sleep_bridge","observations":["nimcp_cortical_column_sleep_bridge.c","Cortical consolidation during slow-wave sleep"]}
+{"type":"entity","name":"Sleep_Swarm_Memory_Bridge","entityType":"sleep_bridge","observations":["nimcp_swarm_memory_sleep_bridge.c","Collective memory consolidation"]}
+{"type":"entity","name":"Sleep_BBB_Bridge","entityType":"sleep_bridge","observations":["nimcp_bbb_sleep_bridge.c","Security relaxation during safe sleep states"]}
+{"type":"entity","name":"Quantum_Bridges","entityType":"bridge_group","observations":["18 total Quantum bridge files","Connects modules to quantum computational systems","Pattern: *_quantum_bridge.c files","Categories: cognitive, plasticity, middleware, swarm"]}
+{"type":"entity","name":"Quantum_Curiosity_Bridge","entityType":"quantum_bridge","observations":["nimcp_curiosity_quantum_bridge.c","Quantum-enhanced exploration"]}
+{"type":"entity","name":"Quantum_BCM_Bridge","entityType":"quantum_bridge","observations":["nimcp_bcm_quantum_bridge.c","Quantum-enhanced plasticity threshold"]}
+{"type":"entity","name":"Quantum_Feature_Extractor_Bridge","entityType":"quantum_bridge","observations":["nimcp_feature_extractor_quantum_bridge.c","Quantum feature extraction"]}
+{"type":"entity","name":"Pink_Noise_Bridges","entityType":"bridge_group","observations":["40 total Pink Noise bridge files","Connects modules to stochastic resonance system","Pattern: *_pink_noise_bridge.c files","Enhances signal processing through controlled noise"]}
+{"type":"entity","name":"Pink_Noise_STDP_Bridge","entityType":"pink_noise_bridge","observations":["nimcp_stdp_pink_noise_bridge.c","Stochastic enhancement of STDP learning"]}
+{"type":"entity","name":"Pink_Noise_Calcium_Bridge","entityType":"pink_noise_bridge","observations":["nimcp_calcium_pink_noise_bridge.c","Calcium signaling noise modulation"]}
+{"type":"entity","name":"Pink_Noise_Population_Coding_Bridge","entityType":"pink_noise_bridge","observations":["nimcp_population_coding_pink_noise_bridge.c","Population coding noise modulation"]}
+{"type":"entity","name":"Substrate_Bridges","entityType":"bridge_group","observations":["34 total Substrate bridge files","Connects modules to neuromorphic hardware substrate","Pattern: *_substrate_bridge.c files","Enables hardware acceleration"]}
+{"type":"entity","name":"Substrate_Axon_Dendrite_Bridge","entityType":"substrate_bridge","observations":["nimcp_axon_dendrite_substrate_bridge.c","Hardware acceleration for axon-dendrite computation"]}
+{"type":"entity","name":"Substrate_Emotion_Bridge","entityType":"substrate_bridge","observations":["nimcp_emotion_substrate_bridge.c","Hardware-accelerated emotional processing"]}
+{"type":"entity","name":"Substrate_Working_Memory_Bridge","entityType":"substrate_bridge","observations":["nimcp_working_memory_substrate_bridge.c","Hardware-accelerated working memory"]}
+{"type":"entity","name":"SNN_Bridge_System","entityType":"bridge_group","observations":["45 total SNN bridge files","Connects SNN to all major NIMCP modules","Location: include/snn/bridges/","Enables spiking neural network integration"]}
+{"type":"entity","name":"SNN_Attention_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_attention_bridge.c","Spiking attention mechanisms"]}
+{"type":"entity","name":"SNN_Audio_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_audio_bridge.c","Spiking auditory processing"]}
+{"type":"entity","name":"SNN_Emotion_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_emotion_bridge.c","Spiking emotional processing"]}
+{"type":"entity","name":"SNN_Memory_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_memory_bridge.c","Spiking memory encoding"]}
+{"type":"entity","name":"SNN_Reasoning_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_reasoning_bridge.c","Spiking symbolic reasoning"]}
+{"type":"entity","name":"SNN_Sleep_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_sleep_bridge.c","Spiking sleep consolidation"]}
+{"type":"entity","name":"SNN_Training_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_training_bridge.c","SNN-specific training integration"]}
+{"type":"entity","name":"SNN_STDP_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_stdp_bridge.c","Spike-timing dependent plasticity integration"]}
+{"type":"entity","name":"SNN_Global_Workspace_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_gw_bridge.c","Spiking global workspace integration"]}
+{"type":"entity","name":"SNN_Hippocampus_Bridge","entityType":"snn_bridge","observations":["nimcp_snn_hippocampus_bridge.c","Spiking hippocampal memory"]}
+{"type":"entity","name":"Bio_Async_Routing","entityType":"routing_system","observations":["Central message routing hub for NIMCP","Location: src/async/nimcp_bio_router.c","Max 64 modules supported","Priority-based message queuing","Predictive protocol for prefetch optimization"]}
+{"type":"entity","name":"Bio_Module_Brain","entityType":"bio_async_module","observations":["Module ID 0x0100","Sends BIO_MSG_BRAIN_STATE_QUERY","Receives BIO_MSG_BRAIN_STATE_RESPONSE"]}
+{"type":"entity","name":"Bio_Module_Working_Memory","entityType":"bio_async_module","observations":["Module ID 0x0204","Handles BIO_MSG_WORKING_MEMORY_STORE","Handles BIO_MSG_WORKING_MEMORY_RETRIEVE","Receives BIO_MSG_NEUROMODULATOR_RELEASE"]}
+{"type":"entity","name":"Bio_Module_Executive","entityType":"bio_async_module","observations":["Module ID 0x0209","Handles BIO_MSG_ATTENTION_SHIFT","Handles BIO_MSG_DECISION_REQUEST","Handles BIO_MSG_PORTIA_DEGRADATION_EVENT"]}
+{"type":"entity","name":"Bio_Module_Global_Workspace","entityType":"bio_async_module","observations":["Module ID 0x020A","Handles BIO_MSG_ATTENTION_SHIFT","Broadcasts to all cognitive modules"]}
+{"type":"entity","name":"Bio_Module_Knowledge","entityType":"bio_async_module","observations":["Module ID 0x0205","Handles BIO_MSG_KNOWLEDGE_QUERY","Sends BIO_MSG_KNOWLEDGE_RESPONSE"]}
+{"type":"entity","name":"Bio_Module_Ethics","entityType":"bio_async_module","observations":["Module ID 0x0201","Handles BIO_MSG_ETHICS_EVALUATION_REQUEST","Sends BIO_MSG_ETHICS_EVALUATION_RESPONSE"]}
+{"type":"entity","name":"Bio_Module_Introspection","entityType":"bio_async_module","observations":["Module ID 0x0200","Handles BIO_MSG_INTROSPECTION_QUERY","Sends BIO_MSG_INTROSPECTION_RESPONSE"]}
+{"type":"entity","name":"Bio_Module_Curiosity","entityType":"bio_async_module","observations":["Module ID 0x0206","Handles BIO_MSG_CURIOSITY_SIGNAL","Receives BIO_MSG_ETHICS_EVALUATION_RESPONSE"]}
+{"type":"entity","name":"Bio_Module_Consolidation","entityType":"bio_async_module","observations":["Module ID for memory consolidation","Handles BIO_MSG_CONSOLIDATION_TRIGGER","Triggers autobiographical memory integration"]}
+{"type":"entity","name":"Bio_Module_STDP","entityType":"bio_async_module","observations":["Module ID 0x0401","Handles plasticity signals","Updates weights based on spike timing"]}
+{"type":"entity","name":"Bio_Module_Neuromodulator","entityType":"bio_async_module","observations":["Module ID 0x0409","Routes dopamine, serotonin, norepinephrine, acetylcholine","Volume transmission enabled"]}
+{"type":"entity","name":"Bio_Module_Event_Bus","entityType":"bio_async_module","observations":["Module ID 0x0502","Handles BIO_MSG_HEALTH_CHECK","Handles BIO_MSG_SECURITY_ALERT","Handles BIO_MSG_SHUTDOWN_REQUEST"]}
+{"type":"entity","name":"Bio_Module_NLP","entityType":"bio_async_module","observations":["Module ID for NLP networking","Handles BIO_MSG_ATTENTION_SHIFT","Handles security alerts"]}
+{"type":"entity","name":"Bio_Module_Swarm_Coordinator","entityType":"bio_async_module","observations":["Central swarm coordinator","Handles BIO_MSG_SWARM_ENERGY_UPDATE","Handles BIO_MSG_SWARM_FORMATION_STATE","Handles BIO_MSG_SWARM_QUORUM_VOTE"]}
+{"type":"entity","name":"Bio_Async_Message_Categories","entityType":"message_schema","observations":["12 major message categories","Brain (0x0100-0x01FF): Neural state, activation, topology","Plasticity (0x0200-0x02FF): Weight updates, STDP, learning","Cognitive (0x0300-0x03FF): Introspection, ethics, salience","Glial (0x0400-0x04FF): Astrocyte, metabolic signals","Middleware (0x0500-0x05FF): Pipeline, encoding, routing","Training (0x0600-0x06FF): Loss, gradients, optimization","System (0x0700-0x07FF): Health, config, shutdown","Perception (0x0800-0x08FF): Visual, audio, multimodal","Language (0x0900-0x09FF): Speech, NLP, syntax","NLP Networking (0x0A00-0x0AFF): Session, crypto, compression","Swarm (0x0B00-0x0BFF): Energy, formation, consensus","Portia (0x0C00-0x0CFF): Planning, adaptation, degradation"]}
+{"type":"entity","name":"Swarm_FEP_Bio_Routes","entityType":"routing_pattern","observations":["All swarm modules route through FEP bridges","Swarm_Flocking -> FEP_Swarm_Flocking (0x0F24)","Swarm_Consensus -> FEP_Swarm_Consensus (0x0F25)","Swarm_Brain -> FEP_Swarm_Brain (0x0F2D)","Swarm_Memory -> FEP_Swarm_Memory","Swarm_Consciousness -> FEP_Swarm_Consciousness"]}
+{"type":"entity","name":"Cognitive_Hub_Pattern","entityType":"routing_pattern","observations":["Cognitive modules route to Executive/Global Workspace","Knowledge -> Executive for decisions","Salience -> Executive for priority","Ethics -> Executive for moral evaluation","Attention shift broadcasts to Global Workspace"]}
+{"type":"entity","name":"Memory_Consolidation_Pattern","entityType":"routing_pattern","observations":["Memory consolidation triggers across modules","Any module -> BIO_MSG_CONSOLIDATION_TRIGGER","Consolidation -> Autobiographical Memory","Sleep system triggers consolidation replay"]}
+{"type":"entity","name":"Broadcast_Message_Pattern","entityType":"routing_pattern","observations":["System messages broadcast to all modules","BIO_MSG_HEALTH_CHECK - periodic health check","BIO_MSG_SHUTDOWN_REQUEST - graceful shutdown","BIO_MSG_SECURITY_ALERT - security broadcast"]}
+{"type":"entity","name":"KG_Reader_Module","entityType":"Module","observations":["Knowledge Graph Reader for runtime self-awareness and introspection","Located at include/cognitive/knowledge/nimcp_kg_reader.h and src/cognitive/knowledge/nimcp_kg_reader.c","Loads and parses .aim/memory-nimcp.jsonl JSONL format","Provides entity/relation queries: kg_reader_get_entity(), kg_reader_get_entities_by_type(), kg_reader_search_entities()","Provides introspection helpers: kg_reader_get_module_names(), kg_reader_get_module_capabilities(), kg_reader_generate_self_description()","Integrated into brain_struct with kg_reader field and enable_kg_reader config flag","Init file: src/core/brain/factory/init/nimcp_brain_init_kg_reader.c","Brain accessors: brain_get_kg_reader(), brain_reload_kg(), brain_is_kg_modified(), brain_generate_self_description()","Connects to self_model, introspection, and autobiographical memory subsystems","Enables answers to: 'What modules do I have?', 'How am I organized?', 'What can I do?'"]}
+{"type":"entity","name":"Medulla_Module","entityType":"Module","observations":["Brainstem autonomic regulation module (Phase 6.1)","Located at include/core/medulla/ and src/core/medulla/","Controls arousal, protection, circadian rhythms","Manages sleep-wake coupling with all brain subsystems","Init file: src/core/brain/factory/init/nimcp_brain_init_medulla.c","Integrated into brain_struct with medulla field and medulla_enabled config flag","Provides: medulla_step(), medulla_get_arousal(), medulla_get_circadian_phase()","Connected to immune system via nimcp_medulla_immune_bridge.c"]}
+{"type":"entity","name":"Dragonfly_Module","entityType":"Module","observations":["Bio-inspired target tracking and interception system (Phase 7.3)","Located at include/dragonfly/ and src/dragonfly/","Implements dragonfly visual hunting with 95% biological success rate","Components: TSDN (population vector), CSTMD1 (selective attention), IMM filter (prediction), PN guidance (interception)","Init file: src/core/brain/factory/init/nimcp_brain_init_dragonfly.c","Integrated into brain_struct with dragonfly field","Brain accessors: brain_get_dragonfly(), brain_dragonfly_detect(), brain_dragonfly_get_command(), brain_dragonfly_abort()","Bridges to parietal lobe for spatial processing: dragonfly_parietal_bridge_create()"]}
+{"type":"entity","name":"Brain_Factory_Init_System","entityType":"init_system","observations":["8 modular init files refactored from 4107-line monolith","Location: src/core/brain/factory/init/","50+ initialization functions","Single Responsibility Principle design"]}
+{"type":"entity","name":"Init_Phase_1_Core","entityType":"init_phase","observations":["Phase 1: Core Infrastructure","allocate_brain - creates brain_t","create_brain_network - creates adaptive_network_t","init_event_bus - enables cross-module events"]}
+{"type":"entity","name":"Init_Phase_2_Security","entityType":"init_phase","observations":["Phase 2: Global Security (Singleton)","get_global_bbb_system - Blood-Brain Barrier","Thread-safe lazy initialization","Reference counted singleton"]}
+{"type":"entity","name":"Init_Phase_3_Perception","entityType":"init_phase","observations":["Phase 3: Perception & Sensory Input","init_glial_subsystem - glial integration","init_multimodal_subsystems - visual/audio/speech cortex","init_pink_noise_subsystem - 1/f noise modulation"]}
+{"type":"entity","name":"Init_Phase_4_Cognitive","entityType":"init_phase","observations":["Phase 4: Cognitive Core Architecture","init_working_memory_subsystem - WM + consolidation pipeline","init_executive_subsystem - task management","init_symbolic_reasoning_subsystem - FOL logic","init_theory_of_mind_subsystem - BDI model","init_meta_learning_subsystem - MAML few-shot"]}
+{"type":"entity","name":"Init_Phase_5_Neuromod","entityType":"init_phase","observations":["Phase 5: Neuromodulation & Attention","init_neuromodulator_system - DA/5HT/ACh/NE with personality","init_spatial_neuromod_system - quantum walk diffusion","init_attention_subsystem - multihead attention"]}
+{"type":"entity","name":"Init_Phase_6_Structural","entityType":"init_phase","observations":["Phase 6: Structural Organization","init_brain_regions_subsystem - V1/A1/M1/PFC regions","init_axon_subsystem - myelinated signal propagation","init_dendrite_subsystem - compartmental integration","init_cortical_columns_subsystem - 6-layer cortex"]}
+{"type":"entity","name":"Init_Phase_7_Security_Full","entityType":"init_phase","observations":["Phase 7: Security & Health","init_security_subsystem - SRB + SC-4 + IS-1 layers","init_immune_subsystem - B cells, T cells, antibodies","brain_immune_connect_bbb integration"]}
+{"type":"entity","name":"Init_Phase_8_Ethics","entityType":"init_phase","observations":["Phase 8: Ethics & Self-Awareness","init_ethics_engine_subsystem - Golden Rule foundation","init_empathy_network_subsystem - perspective taking","init_self_model_subsystem - identity and purpose"]}
+{"type":"entity","name":"Init_Phase_9_Monitoring","entityType":"init_phase","observations":["Phase 9: Monitoring & Control","init_introspection_subsystem - self-awareness","init_connectivity_health_subsystem - topology metrics","init_middleware_controller_subsystem - cognitive-middleware bridge"]}
+{"type":"entity","name":"Memory_Consolidation_Pipeline","entityType":"init_pattern","observations":["Complex 4-system initialization pipeline","Working Memory -> WM Transfer System","WM Transfer -> Engram System","Engram System -> Systems Consolidation","Systems Consolidation -> Semantic Memory","Sleep System triggers replay"]}
+{"type":"entity","name":"Security_Layer_Architecture","entityType":"init_pattern","observations":["Three-layer security initialization","Layer 1: Security Recovery Bridge (SRB) - auto-repair","Layer 2: Security Integration (SC-4) - monitoring","Layer 3: Blood-Brain Barrier (IS-1) - perimeter","Immune system connects to BBB and bio-async"]}
+{"type":"entity","name":"Personality_Neuromodulation","entityType":"init_pattern","observations":["Neuromodulator baselines from Big Five personality","Extraversion -> Dopamine (0.3 + trait*0.5)","Neuroticism -> Serotonin (0.7 - trait*0.4)","Openness -> Acetylcholine (0.3 + trait*0.5)","Conscientiousness -> Norepinephrine (0.4 + trait*0.4)"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -319,3 +409,105 @@
 {"type":"relation","from":"Core_Neural_Architecture","to":"SNN_Module","relationType":"built_on"}
 {"type":"relation","from":"Core_Neural_Architecture","to":"LNN_Module","relationType":"built_on"}
 {"type":"relation","from":"Dragonfly_Framework","to":"Training_Module","relationType":"optimizes"}
+{"type":"relation","from":"KG_Reader_Module","to":"Self_Awareness_Architecture","relationType":"implements"}
+{"type":"relation","from":"KG_Reader_Module","to":"Brain","relationType":"integrated_into"}
+{"type":"relation","from":"KG_Reader_Module","to":"Introspection","relationType":"enables"}
+{"type":"relation","from":"Self_Awareness_Architecture","to":"KG_Reader_Module","relationType":"requires"}
+{"type":"relation","from":"Medulla_Module","to":"Brain","relationType":"integrated_into"}
+{"type":"relation","from":"Medulla_Module","to":"Sleep_System","relationType":"controls"}
+{"type":"relation","from":"Dragonfly_Module","to":"Brain","relationType":"integrated_into"}
+{"type":"relation","from":"Dragonfly_Module","to":"Parietal_Lobe_Module","relationType":"bridges_to"}
+{"type":"relation","from":"FEP_Cognitive_Bridges","to":"FEP_Orchestrator","relationType":"connects_to"}
+{"type":"relation","from":"FEP_Attention_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Emotion_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Memory_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Executive_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Hemispheric_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Cortical_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Visual_Cortex_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Audio_Cortex_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_STDP_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_BCM_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Swarm_Brain_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"FEP_Dragonfly_Bridge","to":"FEP_Cognitive_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Immune_System_Bridges","to":"Immune_System","relationType":"connects_to"}
+{"type":"relation","from":"Immune_Attention_Bridge","to":"Immune_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Immune_STDP_Bridge","to":"Immune_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Immune_Swarm_Consciousness_Bridge","to":"Immune_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Immune_Networking_Bridge","to":"Immune_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Immune_Glial_Astrocyte_Bridge","to":"Immune_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Immune_Glial_Microglia_Bridge","to":"Immune_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Immune_GPU_Bridge","to":"Immune_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Sleep_System_Bridges","to":"Sleep_System","relationType":"connects_to"}
+{"type":"relation","from":"Sleep_Attention_Bridge","to":"Sleep_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Sleep_Memory_Bridge","to":"Sleep_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Sleep_STDP_Bridge","to":"Sleep_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Sleep_Visual_Cortex_Bridge","to":"Sleep_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Sleep_Cortical_Column_Bridge","to":"Sleep_System_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Quantum_Bridges","to":"NIMCP_System","relationType":"extends"}
+{"type":"relation","from":"Pink_Noise_Bridges","to":"Pink_Noise_System","relationType":"connects_to"}
+{"type":"relation","from":"Substrate_Bridges","to":"GPU_Module","relationType":"connects_to"}
+{"type":"relation","from":"SNN_Bridge_System","to":"SNN_Module","relationType":"extends"}
+{"type":"relation","from":"SNN_Attention_Bridge","to":"SNN_Bridge_System","relationType":"belongs_to"}
+{"type":"relation","from":"SNN_Emotion_Bridge","to":"SNN_Bridge_System","relationType":"belongs_to"}
+{"type":"relation","from":"SNN_Memory_Bridge","to":"SNN_Bridge_System","relationType":"belongs_to"}
+{"type":"relation","from":"SNN_STDP_Bridge","to":"SNN_Bridge_System","relationType":"belongs_to"}
+{"type":"relation","from":"SNN_Global_Workspace_Bridge","to":"SNN_Bridge_System","relationType":"belongs_to"}
+{"type":"relation","from":"SNN_Hippocampus_Bridge","to":"SNN_Bridge_System","relationType":"belongs_to"}
+{"type":"relation","from":"Bio_Async_Routing","to":"Bio_Async_System","relationType":"implements"}
+{"type":"relation","from":"Bio_Module_Brain","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Working_Memory","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Executive","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Global_Workspace","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Knowledge","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Ethics","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Introspection","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Curiosity","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_STDP","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Neuromodulator","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Event_Bus","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Swarm_Coordinator","to":"Bio_Async_Routing","relationType":"registers_with"}
+{"type":"relation","from":"Bio_Module_Working_Memory","to":"Bio_Module_Neuromodulator","relationType":"receives_from"}
+{"type":"relation","from":"Bio_Module_Executive","to":"Bio_Module_Global_Workspace","relationType":"broadcasts_to"}
+{"type":"relation","from":"Bio_Module_Knowledge","to":"Bio_Module_Executive","relationType":"informs"}
+{"type":"relation","from":"Bio_Module_Ethics","to":"Bio_Module_Executive","relationType":"evaluates_for"}
+{"type":"relation","from":"Bio_Module_Ethics","to":"Bio_Module_Curiosity","relationType":"sends_response_to"}
+{"type":"relation","from":"Bio_Module_Consolidation","to":"Bio_Module_Working_Memory","relationType":"consolidates_from"}
+{"type":"relation","from":"Swarm_FEP_Bio_Routes","to":"Bio_Async_Routing","relationType":"routing_pattern_of"}
+{"type":"relation","from":"Cognitive_Hub_Pattern","to":"Bio_Async_Routing","relationType":"routing_pattern_of"}
+{"type":"relation","from":"Memory_Consolidation_Pattern","to":"Bio_Async_Routing","relationType":"routing_pattern_of"}
+{"type":"relation","from":"Broadcast_Message_Pattern","to":"Bio_Async_Routing","relationType":"routing_pattern_of"}
+{"type":"relation","from":"Brain_Factory_Init_System","to":"Brain_Factory","relationType":"implements"}
+{"type":"relation","from":"Init_Phase_1_Core","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_2_Security","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_3_Perception","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_4_Cognitive","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_5_Neuromod","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_6_Structural","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_7_Security_Full","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_8_Ethics","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_9_Monitoring","to":"Brain_Factory_Init_System","relationType":"phase_of"}
+{"type":"relation","from":"Init_Phase_1_Core","to":"Init_Phase_2_Security","relationType":"precedes"}
+{"type":"relation","from":"Init_Phase_2_Security","to":"Init_Phase_3_Perception","relationType":"precedes"}
+{"type":"relation","from":"Init_Phase_3_Perception","to":"Init_Phase_4_Cognitive","relationType":"precedes"}
+{"type":"relation","from":"Init_Phase_4_Cognitive","to":"Init_Phase_5_Neuromod","relationType":"precedes"}
+{"type":"relation","from":"Init_Phase_5_Neuromod","to":"Init_Phase_6_Structural","relationType":"precedes"}
+{"type":"relation","from":"Init_Phase_6_Structural","to":"Init_Phase_7_Security_Full","relationType":"precedes"}
+{"type":"relation","from":"Init_Phase_7_Security_Full","to":"Init_Phase_8_Ethics","relationType":"precedes"}
+{"type":"relation","from":"Init_Phase_8_Ethics","to":"Init_Phase_9_Monitoring","relationType":"precedes"}
+{"type":"relation","from":"Memory_Consolidation_Pipeline","to":"Init_Phase_4_Cognitive","relationType":"pattern_of"}
+{"type":"relation","from":"Security_Layer_Architecture","to":"Init_Phase_7_Security_Full","relationType":"pattern_of"}
+{"type":"relation","from":"Personality_Neuromodulation","to":"Init_Phase_5_Neuromod","relationType":"pattern_of"}
+{"type":"relation","from":"Init_Phase_3_Perception","to":"Glial_System","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_3_Perception","to":"Perception_Module","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_3_Perception","to":"Pink_Noise_System","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_4_Cognitive","to":"Working_Memory","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_4_Cognitive","to":"Theory_of_Mind","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_5_Neuromod","to":"Bio_Module_Neuromodulator","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_6_Structural","to":"Brain_Regions","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_6_Structural","to":"Axons","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_6_Structural","to":"Dendrites","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_6_Structural","to":"Cortical_Columns","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_7_Security_Full","to":"Immune_System","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_7_Security_Full","to":"BBB_System","relationType":"initializes"}
+{"type":"relation","from":"Init_Phase_8_Ethics","to":"Ethics_Engine","relationType":"initializes"}
