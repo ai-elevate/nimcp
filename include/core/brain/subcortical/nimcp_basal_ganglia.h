@@ -157,7 +157,7 @@ typedef struct {
 /**
  * @brief Main basal ganglia system
  */
-typedef struct {
+typedef struct basal_ganglia {
     /* Component nuclei */
     striatum_t* striatum;                   /**< Striatum (input) */
     globus_pallidus_t* gpi;                 /**< Internal segment (output) */
