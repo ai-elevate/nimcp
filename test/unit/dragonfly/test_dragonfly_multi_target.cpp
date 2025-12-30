@@ -66,24 +66,24 @@ protected:
 //=============================================================================
 
 TEST_F(MultiTargetTest, DefaultConfig) {
-    multi_target_config_t config = dragonfly_multi_target_default_config();
+    multi_target_config_t config = multi_target_default_config();
     EXPECT_GT(config.max_queue_size, 0u);
     EXPECT_GT(config.min_confidence_threshold, 0.0f);
     EXPECT_LE(config.min_confidence_threshold, 1.0f);
 }
 
 TEST_F(MultiTargetTest, ValidateConfig) {
-    multi_target_config_t config = dragonfly_multi_target_default_config();
-    EXPECT_TRUE(dragonfly_multi_target_validate_config(&config));
+    multi_target_config_t config = multi_target_default_config();
+    EXPECT_TRUE(multi_target_validate_config(&config));
 
     config.max_queue_size = 0;
-    EXPECT_FALSE(dragonfly_multi_target_validate_config(&config));
+    EXPECT_FALSE(multi_target_validate_config(&config));
 
-    EXPECT_FALSE(dragonfly_multi_target_validate_config(nullptr));
+    EXPECT_FALSE(multi_target_validate_config(nullptr));
 }
 
 TEST_F(MultiTargetTest, CreateWithCustomConfig) {
-    multi_target_config_t config = dragonfly_multi_target_default_config();
+    multi_target_config_t config = multi_target_default_config();
     config.max_queue_size = 4;
     config.switch_hysteresis = 0.2f;
 
@@ -118,7 +118,7 @@ TEST_F(MultiTargetTest, AddSingleTarget) {
     dragonfly_detection_t det = make_detection(1, 100, 0, 0, 0, 5.0f, 0.05f);
     dragonfly_self_state_t self = make_self_state(0, 0, 0);
 
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self, 0.016f), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self), 0);
 
     multi_target_state_t state;
     EXPECT_EQ(dragonfly_multi_target_get_state(mt, &state), 0);
@@ -131,7 +131,7 @@ TEST_F(MultiTargetTest, AddMultipleTargets) {
     for (uint32_t i = 0; i < 4; i++) {
         dragonfly_detection_t det = make_detection(i + 1, 100.0f + i * 10, i * 5.0f, 0,
                                                     0.5f, 3.0f, 0.04f);
-        EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self, 0.016f), 0);
+        EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self), 0);
     }
 
     multi_target_state_t state;
@@ -143,11 +143,11 @@ TEST_F(MultiTargetTest, UpdateExistingTarget) {
     dragonfly_self_state_t self = make_self_state(0, 0, 0);
     dragonfly_detection_t det = make_detection(1, 100, 0, 0, 0, 5.0f, 0.05f);
 
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self, 0.016f), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self), 0);
 
     // Update same target with new position
     det.position[0] = 95.0f;
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self, 0.016f), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self), 0);
 
     multi_target_state_t state;
     EXPECT_EQ(dragonfly_multi_target_get_state(mt, &state), 0);
@@ -163,23 +163,26 @@ TEST_F(MultiTargetTest, PriorityByDistance) {
 
     // Add far target first
     dragonfly_detection_t far = make_detection(1, 200, 0, 0, 0, 3.0f, 0.05f);
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &far, &self, 0.016f), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &far, &self), 0);
 
     // Add close target
     dragonfly_detection_t close = make_detection(2, 50, 0, 0, 0, 3.0f, 0.05f);
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &close, &self, 0.016f), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &close, &self), 0);
+
+    // Evaluate to sort by priority
+    dragonfly_multi_target_evaluate(mt, &self);
 
     // Close target should have higher priority
-    queued_target_t best;
-    EXPECT_EQ(dragonfly_multi_target_get_best(mt, &best), 0);
-    EXPECT_EQ(best.id, 2u);  // Close target should be best
+    queued_target_t primary;
+    EXPECT_EQ(dragonfly_multi_target_get_primary(mt, &primary), 0);
+    EXPECT_EQ(primary.id, 2u);  // Close target should be best
 }
 
 TEST_F(MultiTargetTest, GetTargetById) {
     dragonfly_self_state_t self = make_self_state(0, 0, 0);
     dragonfly_detection_t det = make_detection(42, 100, 50, 0, 0.5f, 4.0f, 0.04f);
 
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self, 0.016f), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, &self), 0);
 
     queued_target_t target;
     EXPECT_EQ(dragonfly_multi_target_get_by_id(mt, 42, &target), 0);
@@ -190,36 +193,51 @@ TEST_F(MultiTargetTest, GetTargetById) {
 // Target Switching Tests
 //=============================================================================
 
-TEST_F(MultiTargetTest, SelectPrimary) {
+TEST_F(MultiTargetTest, SetPrimary) {
     dragonfly_self_state_t self = make_self_state(0, 0, 0);
 
     dragonfly_detection_t det1 = make_detection(1, 100, 0, 0, 0, 3.0f, 0.05f);
     dragonfly_detection_t det2 = make_detection(2, 80, 0, 0, 0, 3.0f, 0.05f);
 
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det1, &self, 0.016f), 0);
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det2, &self, 0.016f), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det1, &self), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det2, &self), 0);
 
-    EXPECT_EQ(dragonfly_multi_target_select_primary(mt, 1), 0);
+    EXPECT_EQ(dragonfly_multi_target_set_primary(mt, 1), 0);
 
     multi_target_state_t state;
     EXPECT_EQ(dragonfly_multi_target_get_state(mt, &state), 0);
     EXPECT_EQ(state.primary_target_id, 1u);
 }
 
-TEST_F(MultiTargetTest, SwitchToBackup) {
+TEST_F(MultiTargetTest, SwitchTarget) {
     dragonfly_self_state_t self = make_self_state(0, 0, 0);
 
     dragonfly_detection_t det1 = make_detection(1, 100, 0, 0, 0, 3.0f, 0.05f);
     dragonfly_detection_t det2 = make_detection(2, 80, 0, 0, 0, 3.0f, 0.05f);
 
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det1, &self, 0.016f), 0);
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det2, &self, 0.016f), 0);
-    EXPECT_EQ(dragonfly_multi_target_select_primary(mt, 1), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det1, &self), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det2, &self), 0);
+    EXPECT_EQ(dragonfly_multi_target_set_primary(mt, 1), 0);
 
     switch_event_t event;
-    EXPECT_EQ(dragonfly_multi_target_switch_to_backup(mt, SWITCH_TARGET_ESCAPED, &event), 0);
+    EXPECT_EQ(dragonfly_multi_target_switch(mt, SWITCH_TARGET_ESCAPED, &event), 0);
     EXPECT_EQ(event.from_target_id, 1u);
     EXPECT_EQ(event.reason, SWITCH_TARGET_ESCAPED);
+}
+
+TEST_F(MultiTargetTest, GetBackup) {
+    dragonfly_self_state_t self = make_self_state(0, 0, 0);
+
+    dragonfly_detection_t det1 = make_detection(1, 100, 0, 0, 0, 3.0f, 0.05f);
+    dragonfly_detection_t det2 = make_detection(2, 80, 0, 0, 0, 3.0f, 0.05f);
+
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det1, &self), 0);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det2, &self), 0);
+    EXPECT_EQ(dragonfly_multi_target_set_primary(mt, 1), 0);
+
+    queued_target_t backup;
+    EXPECT_EQ(dragonfly_multi_target_get_backup(mt, &backup), 0);
+    EXPECT_NE(backup.id, 1u);  // Backup should not be primary
 }
 
 //=============================================================================
@@ -232,16 +250,14 @@ TEST_F(MultiTargetTest, GetStats) {
     EXPECT_EQ(stats.targets_queued, 0u);
 }
 
-TEST_F(MultiTargetTest, ResetStats) {
+TEST_F(MultiTargetTest, StatsAfterOperations) {
     dragonfly_self_state_t self = make_self_state(0, 0, 0);
     dragonfly_detection_t det = make_detection(1, 100, 0, 0, 0, 5.0f, 0.05f);
-    dragonfly_multi_target_update(mt, &det, &self, 0.016f);
-
-    EXPECT_EQ(dragonfly_multi_target_reset_stats(mt), 0);
+    dragonfly_multi_target_update(mt, &det, &self);
 
     multi_target_stats_t stats;
     dragonfly_multi_target_get_stats(mt, &stats);
-    EXPECT_EQ(stats.targets_queued, 0u);
+    EXPECT_GE(stats.targets_queued, 1u);
 }
 
 //=============================================================================
@@ -252,9 +268,9 @@ TEST_F(MultiTargetTest, NullPointerHandling) {
     dragonfly_detection_t det = make_detection(1, 100, 0, 0, 0, 5.0f, 0.05f);
     dragonfly_self_state_t self = make_self_state(0, 0, 0);
 
-    EXPECT_EQ(dragonfly_multi_target_update(nullptr, &det, &self, 0.016f), -1);
-    EXPECT_EQ(dragonfly_multi_target_update(mt, nullptr, &self, 0.016f), -1);
-    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, nullptr, 0.016f), -1);
+    EXPECT_EQ(dragonfly_multi_target_update(nullptr, &det, &self), -1);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, nullptr, &self), -1);
+    EXPECT_EQ(dragonfly_multi_target_update(mt, &det, nullptr), -1);
     EXPECT_EQ(dragonfly_multi_target_get_state(nullptr, nullptr), -1);
-    EXPECT_EQ(dragonfly_multi_target_get_best(nullptr, nullptr), -1);
+    EXPECT_EQ(dragonfly_multi_target_get_primary(nullptr, nullptr), -1);
 }
