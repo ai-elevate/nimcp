@@ -268,11 +268,8 @@ int bgtc_update_trace(bg_temporal_credit_t* tc,
     return 0;
 }
 
-int bgtc_decay_traces(bg_temporal_credit_t* tc) {
-    if (!tc) return -1;
-
-    nimcp_mutex_lock(tc->mutex);
-
+/* Internal unlocked version - caller must hold mutex */
+static void bgtc_decay_traces_unlocked(bg_temporal_credit_t* tc) {
     float decay = tc->config.gamma * tc->config.lambda;
     uint32_t write_idx = 0;
 
@@ -297,7 +294,13 @@ int bgtc_decay_traces(bg_temporal_credit_t* tc) {
         sum += tc->traces[i].trace;
     }
     tc->stats.avg_trace_value = (tc->num_traces > 0) ? sum / tc->num_traces : 0.0f;
+}
 
+int bgtc_decay_traces(bg_temporal_credit_t* tc) {
+    if (!tc) return -1;
+
+    nimcp_mutex_lock(tc->mutex);
+    bgtc_decay_traces_unlocked(tc);
     nimcp_mutex_unlock(tc->mutex);
     return 0;
 }
@@ -467,11 +470,8 @@ int bgtc_start_timing(bg_temporal_credit_t* tc) {
     return 0;
 }
 
-int bgtc_update_timing(bg_temporal_credit_t* tc, float dt_ms) {
-    if (!tc || !tc->timing_active) return -1;
-
-    nimcp_mutex_lock(tc->mutex);
-
+/* Internal unlocked version - caller must hold mutex */
+static void bgtc_update_timing_unlocked(bg_temporal_credit_t* tc, float dt_ms) {
     tc->elapsed_time += dt_ms;
 
     /* Update each timing cell */
@@ -505,7 +505,13 @@ int bgtc_update_timing(bg_temporal_credit_t* tc, float dt_ms) {
                 break;
         }
     }
+}
 
+int bgtc_update_timing(bg_temporal_credit_t* tc, float dt_ms) {
+    if (!tc || !tc->timing_active) return -1;
+
+    nimcp_mutex_lock(tc->mutex);
+    bgtc_update_timing_unlocked(tc, dt_ms);
     nimcp_mutex_unlock(tc->mutex);
     return 0;
 }
@@ -628,12 +634,12 @@ int bgtc_step(bg_temporal_credit_t* tc, float dt_ms) {
 
     tc->current_timestamp++;
 
-    /* Decay traces */
-    bgtc_decay_traces(tc);
+    /* Decay traces (use unlocked version since we hold mutex) */
+    bgtc_decay_traces_unlocked(tc);
 
-    /* Update timing if active */
+    /* Update timing if active (use unlocked version since we hold mutex) */
     if (tc->timing_active) {
-        bgtc_update_timing(tc, dt_ms);
+        bgtc_update_timing_unlocked(tc, dt_ms);
     }
 
     /* Compute effective horizon */

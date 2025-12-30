@@ -1261,20 +1261,7 @@ int enhanced_wellbeing_update(
     return 0;
 }
 
-/**
- * @brief Update substrate effects only
- *
- * WHAT: Isolated substrate wellbeing update
- * WHY:  Allow targeted updates
- * HOW:  Call substrate bridge update
- */
-int enhanced_wellbeing_update_substrate(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
-    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
-    int result = update_substrate_effects(system);
-    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
-    return result;
-}
+/* enhanced_wellbeing_update_substrate defined in nimcp_wellbeing_substrate_bridge.c */
 
 /**
  * @brief Update sleep effects only
@@ -1691,23 +1678,7 @@ int enhanced_wellbeing_get_distress_assessment(
     return 0;
 }
 
-/**
- * @brief Get substrate effects
- *
- * WHAT: Copy substrate effects to output
- * WHY:  Query substrate integration state
- * HOW:  Thread-safe copy
- */
-int enhanced_wellbeing_get_substrate_effects(
-    const enhanced_wellbeing_system_t* system,
-    substrate_wellbeing_effects_t* effects
-) {
-    if (!system || !effects) return -1;
-    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
-    memcpy(effects, &system->substrate_effects, sizeof(substrate_wellbeing_effects_t));
-    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
-    return 0;
-}
+/* enhanced_wellbeing_get_substrate_effects defined in nimcp_wellbeing_substrate_bridge.c */
 
 /**
  * @brief Get sleep effects

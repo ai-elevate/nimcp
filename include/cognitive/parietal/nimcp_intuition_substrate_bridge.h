@@ -260,7 +260,7 @@ int intuition_substrate_bridge_register_bio_async(
  */
 int intuition_substrate_bridge_handle_message(
     intuition_substrate_bridge_t* bridge,
-    const bio_message_t* msg
+    const bio_message_header_t* msg
 );
 
 /* ============================================================================

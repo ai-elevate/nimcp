@@ -309,11 +309,8 @@ int bgcb_update_cb_error(bg_cerebellar_coord_t* coord, float error) {
  * COORDINATION IMPLEMENTATION
  * ============================================================================ */
 
-int bgcb_coordinate(bg_cerebellar_coord_t* coord) {
-    if (!coord) return -1;
-
-    nimcp_mutex_lock(coord->mutex);
-
+/* Internal unlocked version - caller must hold mutex */
+static void bgcb_coordinate_unlocked(bg_cerebellar_coord_t* coord) {
     float bg_w = coord->thalamic.bg_weight;
     float cb_w = coord->thalamic.cb_weight;
 
@@ -335,7 +332,13 @@ int bgcb_coordinate(bg_cerebellar_coord_t* coord) {
     }
     coord->stats.bg_contribution_avg /= coord->num_channels;
     coord->stats.cb_contribution_avg /= coord->num_channels;
+}
 
+int bgcb_coordinate(bg_cerebellar_coord_t* coord) {
+    if (!coord) return -1;
+
+    nimcp_mutex_lock(coord->mutex);
+    bgcb_coordinate_unlocked(coord);
     nimcp_mutex_unlock(coord->mutex);
     return 0;
 }
@@ -461,8 +464,8 @@ int bgcb_step(bg_cerebellar_coord_t* coord, float dt_ms) {
             break;
     }
 
-    /* Coordinate outputs */
-    bgcb_coordinate(coord);
+    /* Coordinate outputs (use unlocked version since we hold mutex) */
+    bgcb_coordinate_unlocked(coord);
 
     /* Compute coordination quality */
     float quality = 1.0f;

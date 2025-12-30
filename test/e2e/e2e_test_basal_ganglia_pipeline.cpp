@@ -103,15 +103,15 @@ E2E_TEST(BasalGangliaPipelineTest, ActionSelectionPipeline) {
     }
     E2E_STAGE_END();
 
-    // Stage 6: BG step (skip for now - step function has issues)
-    // E2E_STAGE_BEGIN("BG step update", 5000);
-    // {
-    //     for (int i = 0; i < 10; i++) {
-    //         int result = nimcp_brain_bg_step(brain, 1.0f);  // 1ms timestep
-    //         E2E_ASSERT(result == 0, "BG step should succeed");
-    //     }
-    // }
-    // E2E_STAGE_END();
+    // Stage 6: BG step update
+    E2E_STAGE_BEGIN("BG step update", 5000);
+    {
+        for (int i = 0; i < 10; i++) {
+            int result = nimcp_brain_bg_step(brain, 1.0f);  // 1ms timestep
+            E2E_ASSERT(result == 0, "BG step should succeed");
+        }
+    }
+    E2E_STAGE_END();
 
     // Stage 7: Check motivation
     E2E_STAGE_BEGIN("Check motivation", 10);
@@ -171,37 +171,37 @@ E2E_TEST(BasalGangliaPipelineTest, EmotionalIntegrationPipeline) {
     }
     E2E_STAGE_END();
 
-    // Stage 4: Test arousal modulation (skip bg_step due to hanging issues)
-    E2E_STAGE_BEGIN("Arousal modulation", 100);
+    // Stage 4: Test arousal modulation
+    E2E_STAGE_BEGIN("Arousal modulation", 500);
     {
         // High arousal
         nimcp_brain_bg_on_arousal_change(brain, 0.9f);
-        // nimcp_brain_bg_step(brain, 1.0f);  // Skipped - step function hangs
+        nimcp_brain_bg_step(brain, 1.0f);
 
         // Low arousal (fatigue)
         nimcp_brain_bg_on_arousal_change(brain, 0.1f);
-        // nimcp_brain_bg_step(brain, 1.0f);
+        nimcp_brain_bg_step(brain, 1.0f);
 
         // Normal arousal
         nimcp_brain_bg_on_arousal_change(brain, 0.5f);
-        // nimcp_brain_bg_step(brain, 1.0f);
+        nimcp_brain_bg_step(brain, 1.0f);
     }
     E2E_STAGE_END();
 
-    // Stage 5: Test goal changes (skip bg_step due to hanging issues)
-    E2E_STAGE_BEGIN("Goal changes", 100);
+    // Stage 5: Test goal changes
+    E2E_STAGE_BEGIN("Goal changes", 500);
     {
         // Activate goal
         nimcp_brain_bg_on_goal_change(brain, 1, true);
-        // nimcp_brain_bg_step(brain, 1.0f);
+        nimcp_brain_bg_step(brain, 1.0f);
 
         // Activate another goal
         nimcp_brain_bg_on_goal_change(brain, 2, true);
-        // nimcp_brain_bg_step(brain, 1.0f);
+        nimcp_brain_bg_step(brain, 1.0f);
 
         // Deactivate first goal
         nimcp_brain_bg_on_goal_change(brain, 1, false);
-        // nimcp_brain_bg_step(brain, 1.0f);
+        nimcp_brain_bg_step(brain, 1.0f);
     }
     E2E_STAGE_END();
 
@@ -272,9 +272,9 @@ E2E_TEST(BasalGangliaPipelineTest, ContinuousLearningPipeline) {
             result = nimcp_brain_bg_process_reward(brain, reward, predicted);
             E2E_ASSERT(result == 0, "Reward processing should succeed");
 
-            // Step BG dynamics (skipped - step function hangs)
-            // result = nimcp_brain_bg_step(brain, 10.0f);  // 10ms per trial
-            // E2E_ASSERT(result == 0, "BG step should succeed");
+            // Step BG dynamics
+            result = nimcp_brain_bg_step(brain, 10.0f);  // 10ms per trial
+            E2E_ASSERT(result == 0, "BG step should succeed");
         }
     }
     E2E_STAGE_END();
