@@ -1022,6 +1022,18 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_dragonfly_multi_target.cpp)
     message(STATUS "  Added Dragonfly Multi-Target E2E test: e2e_test_dragonfly_multi_target")
 endif()
 
+# ============================================================================
+# Basal Ganglia Integration E2E Test
+# ============================================================================
+# WHAT: Test enhanced BG integration with brain lifecycle
+# WHY:  Validate action selection, reward processing, emotional integration
+# HOW:  Create brain → init BG → select actions → process rewards
+# ============================================================================
+add_e2e_test(e2e_test_basal_ganglia_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_basal_ganglia_pipeline.cpp
+)
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

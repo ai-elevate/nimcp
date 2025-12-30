@@ -77,3 +77,22 @@ target_include_directories(unit_core_brain_factory_init_coordinators
 add_test(NAME unit_core_brain_factory_init_coordinators
          COMMAND unit_core_brain_factory_init_coordinators)
 set_tests_properties(unit_core_brain_factory_init_coordinators PROPERTIES LABELS "unit")
+
+# Test: Basal Ganglia Brain Init
+add_executable(unit_core_brain_factory_init_basal_ganglia
+    init/test_brain_init_basal_ganglia.cpp
+)
+target_link_libraries(unit_core_brain_factory_init_basal_ganglia
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_core_brain_factory_init_basal_ganglia
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME unit_core_brain_factory_init_basal_ganglia
+         COMMAND unit_core_brain_factory_init_basal_ganglia)
+set_tests_properties(unit_core_brain_factory_init_basal_ganglia PROPERTIES LABELS "unit")
