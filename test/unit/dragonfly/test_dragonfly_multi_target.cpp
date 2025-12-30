@@ -170,12 +170,14 @@ TEST_F(MultiTargetTest, PriorityByDistance) {
     EXPECT_EQ(dragonfly_multi_target_update(mt, &close, &self), 0);
 
     // Evaluate to sort by priority
-    dragonfly_multi_target_evaluate(mt, &self);
+    EXPECT_EQ(dragonfly_multi_target_evaluate(mt, &self), 0);
 
-    // Close target should have higher priority
-    queued_target_t primary;
-    EXPECT_EQ(dragonfly_multi_target_get_primary(mt, &primary), 0);
-    EXPECT_EQ(primary.id, 2u);  // Close target should be best
+    // Get sorted queue - close target should be first (highest priority)
+    queued_target_t targets[4];
+    uint32_t num_targets = 0;
+    EXPECT_EQ(dragonfly_multi_target_get_queue(mt, targets, 4, &num_targets), 0);
+    EXPECT_EQ(num_targets, 2u);
+    EXPECT_EQ(targets[0].id, 2u);  // Close target should be first (highest priority)
 }
 
 TEST_F(MultiTargetTest, GetTargetById) {

@@ -85,7 +85,12 @@ TEST_F(EnergyTest, ValidateConfig) {
 TEST_F(EnergyTest, CreateWithCustomConfig) {
     energy_config_t config = energy_default_config();
     config.max_energy_j = 2000.0f;
+    // Maintain power hierarchy: rest < hover < patrol < pursuit < max
+    config.rest_power_w = 10.0f;
+    config.hover_power_w = 30.0f;
+    config.patrol_power_w = 60.0f;
     config.pursuit_power_w = 100.0f;
+    config.max_power_w = 150.0f;
 
     dragonfly_energy_t custom = dragonfly_energy_create(&config);
     ASSERT_NE(custom, nullptr);

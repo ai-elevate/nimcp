@@ -90,7 +90,8 @@ TEST_F(LearningTest, ValidateConfig) {
 
 TEST_F(LearningTest, CreateWithCustomConfig) {
     learning_config_t config = learning_default_config();
-    config.max_episodes = 500;
+    // max_episodes must be <= LEARNING_MAX_EPISODES (256)
+    config.max_episodes = 200;
     config.strategy_learning_rate = 0.05f;
 
     dragonfly_learning_t custom = dragonfly_learning_create(&config);
