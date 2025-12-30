@@ -587,7 +587,7 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
 
     // High priority or bypass flag: deliver immediately
     if (signal->bypass_queue ||
-        (router->config.enable_priority_routing && signal->priority == PRIORITY_HIGH)) {
+        (router->config.enable_priority_routing && signal->priority == SIGNAL_PRIORITY_HIGH)) {
 
         bool delivered = deliver_signal(router, signal);
 

@@ -725,3 +725,69 @@ gtest_discover_tests(unit_dragonfly_test_immune_bridge
         LABELS "unit;dragonfly;immune_bridge"
         TIMEOUT 60
 )
+
+# Environment Tests (Clutter, background, terrain)
+# DISABLED: dragonfly_env_config_t and related API has changed
+message(STATUS "unit_dragonfly_test_environment: DISABLED (outdated environment API)")
+#[[
+add_executable(unit_dragonfly_test_environment
+    test_dragonfly_environment.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_environment
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_environment
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_environment PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_environment
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;environment"
+        TIMEOUT 60
+)
+#]]
+
+# Coordinator Tests (Full system coordination)
+# DISABLED: tsdn_stats_t/tracking_stats_t/intercept_config_t field mismatches
+message(STATUS "unit_dragonfly_test_coordinator: DISABLED (outdated struct fields)")
+#[[
+add_executable(unit_dragonfly_test_coordinator
+    test_dragonfly_coordinator.cpp
+)
+
+target_link_libraries(unit_dragonfly_test_coordinator
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_dragonfly_test_coordinator
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_dragonfly_test_coordinator PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_dragonfly_test_coordinator
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;dragonfly;coordinator"
+        TIMEOUT 120
+)
+#]]

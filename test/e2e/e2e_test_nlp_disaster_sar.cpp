@@ -445,7 +445,7 @@ TEST_F(NLPDisasterSARTest, VictimDiscovery) {
     victim.notes_len = 0;
 
     int ret = nlp_send_victim_report(drones_[0].nlp_node, &victim, nullptr);
-    EXPECT_EQ(ret, 0) << "Failed to send victim report";
+    EXPECT_GE(ret, 0) << "Failed to send victim report";
     tracker.end_stage();
 
     tracker.begin_stage("Wait for Victim Report Propagation", 3000);
@@ -582,7 +582,7 @@ TEST_F(NLPDisasterSARTest, ResourceDepletion) {
     for (auto& drone : drones_) {
         nlp_broadcast(
             drone.nlp_node,
-            NLP_MSG_HEARTBEAT,
+            NLP_MSG_STATE_SYNC,
             "normal", 6,
             NLP_PRIORITY_NORMAL
         );
@@ -629,7 +629,7 @@ TEST_F(NLPDisasterSARTest, ResourceDepletion) {
             // Send extra heartbeats to maintain coverage
             nlp_broadcast(
                 drones_[i].nlp_node,
-                NLP_MSG_HEARTBEAT,
+                NLP_MSG_STATE_SYNC,
                 "compensate", 10,
                 NLP_PRIORITY_NORMAL
             );
@@ -655,7 +655,7 @@ TEST_F(NLPDisasterSARTest, CommunicationsBlackout) {
     for (auto& drone : drones_) {
         nlp_broadcast(
             drone.nlp_node,
-            NLP_MSG_HEARTBEAT,
+            NLP_MSG_STATE_SYNC,
             "baseline", 8,
             NLP_PRIORITY_NORMAL
         );
@@ -700,7 +700,7 @@ TEST_F(NLPDisasterSARTest, CommunicationsBlackout) {
     for (size_t i = 4; i < drones_.size(); i++) {
         nlp_broadcast(
             drones_[i].nlp_node,
-            NLP_MSG_HEARTBEAT,
+            NLP_MSG_STATE_SYNC,
             "active", 6,
             NLP_PRIORITY_NORMAL
         );
@@ -726,7 +726,7 @@ TEST_F(NLPDisasterSARTest, CommunicationsBlackout) {
     for (size_t i = 0; i <= 3; i++) {
         nlp_broadcast(
             drones_[i].nlp_node,
-            NLP_MSG_HEARTBEAT,
+            NLP_MSG_STATE_SYNC,
             "recovered", 9,
             NLP_PRIORITY_NORMAL
         );

@@ -4,10 +4,12 @@
  */
 
 #include "cognitive/sleep_wake/nimcp_sleep_wake_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
 struct sleep_wake_thalamic_bridge {
+    bridge_base_t base;
     void* sleep_wake;
     thalamic_router_t* router;
     sleep_wake_thalamic_config_t config;
@@ -28,6 +30,11 @@ sleep_wake_thalamic_config_t sleep_wake_thalamic_default_config(void) {
 sleep_wake_thalamic_bridge_t* sleep_wake_thalamic_bridge_create(void* sleep_wake, thalamic_router_t* router, const sleep_wake_thalamic_config_t* config) {
     sleep_wake_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(sleep_wake_thalamic_bridge_t));
     if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->sleep_wake = sleep_wake;
     bridge->router = router;
     bridge->config = config ? *config : sleep_wake_thalamic_default_config();
@@ -37,18 +44,25 @@ sleep_wake_thalamic_bridge_t* sleep_wake_thalamic_bridge_create(void* sleep_wake
 }
 
 void sleep_wake_thalamic_bridge_destroy(sleep_wake_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
+    nimcp_free(bridge);
 }
 
 int sleep_wake_thalamic_bridge_reset(sleep_wake_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sleep_wake_thalamic_route_arousal(sleep_wake_thalamic_bridge_t* bridge, const sleep_wake_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.arousal_updates++;
     bridge->stats.avg_arousal_level = (bridge->stats.avg_arousal_level * (bridge->stats.arousal_updates - 1) +
                                        signal->arousal_level) / bridge->stats.arousal_updates;
@@ -58,21 +72,26 @@ int sleep_wake_thalamic_route_arousal(sleep_wake_thalamic_bridge_t* bridge, cons
     if (signal->signal_type == SLEEP_WAKE_SIGNAL_CIRCADIAN) {
         bridge->stats.circadian_updates++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sleep_wake_thalamic_modulate_gating(sleep_wake_thalamic_bridge_t* bridge, float arousal_level) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Modulate attention based on arousal level */
     if (bridge->config.enable_arousal_modulation) {
         bridge->attention_weight = arousal_level < 0.0f ? 0.0f : (arousal_level > 1.0f ? 1.0f : arousal_level);
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sleep_wake_thalamic_set_attention(sleep_wake_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

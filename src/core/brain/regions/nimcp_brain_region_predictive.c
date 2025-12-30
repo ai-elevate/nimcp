@@ -461,7 +461,7 @@ nimcp_result_t brain_region_predict_lower(brain_region_t* region,
     // Get current representations from hierarchy
     if (pred->hierarchy) {
         // Generate prediction from top level to bottom level
-        float* top_level = nimcp_alloc(region->total_neurons / 2 * sizeof(float));
+        float* top_level = nimcp_malloc(region->total_neurons / 2 * sizeof(float));
         if (!top_level) {
             nimcp_mutex_unlock(&pred->lock);
             return NIMCP_ERROR_OUT_OF_MEMORY;
@@ -630,7 +630,7 @@ nimcp_result_t brain_region_hierarchical_step(brain_region_t* region,
     nimcp_mutex_lock(&pred->lock);
 
     // Step 1: Get current activity (from sensory input or neural network)
-    float* current_activity = nimcp_alloc(region->total_neurons * sizeof(float));
+    float* current_activity = nimcp_malloc(region->total_neurons * sizeof(float));
     if (!current_activity) {
         nimcp_mutex_unlock(&pred->lock);
         return NIMCP_ERROR_OUT_OF_MEMORY;
@@ -668,7 +668,7 @@ nimcp_result_t brain_region_hierarchical_step(brain_region_t* region,
     if (pred->config.generate_predictions && pred->num_output_regions > 0) {
         for (uint32_t i = 0; i < pred->num_output_regions; i++) {
             uint32_t lower_id = pred->output_region_ids[i];
-            float* lower_pred = nimcp_alloc(region->total_neurons * sizeof(float));
+            float* lower_pred = nimcp_malloc(region->total_neurons * sizeof(float));
             if (lower_pred) {
                 brain_region_predict_lower(region, lower_id,
                                             lower_pred, region->total_neurons);

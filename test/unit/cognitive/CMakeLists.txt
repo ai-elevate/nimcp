@@ -18,6 +18,7 @@ target_include_directories(unit_cognitive_test_bio_async
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_bio_async PRIVATE cxx_std_17)
@@ -62,6 +63,7 @@ target_include_directories(unit_cognitive_test_meta_controller
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_meta_controller PRIVATE cxx_std_17)
@@ -108,6 +110,7 @@ target_include_directories(unit_cognitive_test_working_memory_immune
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_working_memory_immune PRIVATE cxx_std_17)
@@ -149,6 +152,7 @@ target_include_directories(unit_cognitive_test_global_workspace_immune
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_global_workspace_immune PRIVATE cxx_std_17)
@@ -178,6 +182,7 @@ target_include_directories(unit_cognitive_test_curiosity_immune
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_curiosity_immune PRIVATE cxx_std_17)
@@ -207,6 +212,7 @@ target_include_directories(unit_cognitive_test_curiosity_fep_bridge
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_curiosity_fep_bridge PRIVATE cxx_std_17)
@@ -244,6 +250,7 @@ target_include_directories(unit_cognitive_test_curiosity_enhanced
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_curiosity_enhanced PRIVATE cxx_std_17)
@@ -281,6 +288,7 @@ target_include_directories(unit_cognitive_test_fep_bridges
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_fep_bridges PRIVATE cxx_std_17)
@@ -380,6 +388,7 @@ target_include_directories(unit_cognitive_self_awareness_coordinator
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 target_compile_features(unit_cognitive_self_awareness_coordinator PRIVATE cxx_std_17)
 gtest_discover_tests(unit_cognitive_self_awareness_coordinator
@@ -772,6 +781,7 @@ target_include_directories(unit_cognitive_test_gt_equilibrium
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_equilibrium PRIVATE cxx_std_17)
@@ -801,6 +811,7 @@ target_include_directories(unit_cognitive_test_gt_learning
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_learning PRIVATE cxx_std_17)
@@ -830,6 +841,7 @@ target_include_directories(unit_cognitive_test_gt_coalition
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_coalition PRIVATE cxx_std_17)
@@ -859,6 +871,7 @@ target_include_directories(unit_cognitive_test_gt_repeated
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_repeated PRIVATE cxx_std_17)
@@ -888,6 +901,7 @@ target_include_directories(unit_cognitive_test_gt_fairness
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_fairness PRIVATE cxx_std_17)
@@ -917,6 +931,7 @@ target_include_directories(unit_cognitive_test_gt_mechanism
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_mechanism PRIVATE cxx_std_17)
@@ -946,6 +961,7 @@ target_include_directories(unit_cognitive_test_gt_auction_ext
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_auction_ext PRIVATE cxx_std_17)
@@ -975,6 +991,7 @@ target_include_directories(unit_cognitive_test_gt_spatial
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
 target_compile_features(unit_cognitive_test_gt_spatial PRIVATE cxx_std_17)
@@ -984,4 +1001,396 @@ gtest_discover_tests(unit_cognitive_test_gt_spatial
     PROPERTIES
         LABELS "unit;cognitive;game_theory;spatial"
         TIMEOUT 180
+)
+
+# ============================================================================
+# Phase 7 Substrate/Thalamic Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for Phase 7 cognitive bridges
+# WHY:  Validate substrate and thalamic bridges for additional cognitive modules
+#       (consolidation, emotion_tensor, empathetic_response, fault_tolerance,
+#        fractal_cognitive, free_energy, game_theory, brain_immune, social,
+#        theory_of_mind, predictive_immune, self_awareness_extended)
+# HOW:  Test lifecycle, effects computation, attention gating, signal routing
+# ============================================================================
+
+add_executable(unit_cognitive_test_phase7_bridges
+    test_phase7_bridges.cpp
+)
+
+target_link_libraries(unit_cognitive_test_phase7_bridges
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_phase7_bridges
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_phase7_bridges PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_phase7_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;bridges;phase7"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Cognitive Thalamic Bridges Tests
+# ============================================================================
+add_executable(unit_cognitive_test_cognitive_thalamic_bridges
+    test_cognitive_thalamic_bridges.cpp
+)
+
+target_link_libraries(unit_cognitive_test_cognitive_thalamic_bridges
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_cognitive_thalamic_bridges
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_cognitive_thalamic_bridges PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_cognitive_thalamic_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;thalamic;bridges"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Consolidation Tests
+# ============================================================================
+add_executable(unit_cognitive_test_consolidation
+    test_consolidation.cpp
+)
+
+target_link_libraries(unit_cognitive_test_consolidation
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_consolidation
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_consolidation PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_consolidation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;consolidation"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Emotion Tensor Tests
+# ============================================================================
+add_executable(unit_cognitive_test_emotion_tensor
+    test_emotion_tensor.cpp
+)
+
+target_link_libraries(unit_cognitive_test_emotion_tensor
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_emotion_tensor
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_emotion_tensor PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_emotion_tensor
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;emotion;tensor"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Empathetic Response Tests
+# ============================================================================
+add_executable(unit_cognitive_test_empathetic_response
+    test_empathetic_response.cpp
+)
+
+target_link_libraries(unit_cognitive_test_empathetic_response
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_empathetic_response
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_empathetic_response PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_empathetic_response
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;empathetic;response"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Fault Tolerance Tests
+# ============================================================================
+add_executable(unit_cognitive_test_fault_tolerance
+    test_fault_tolerance.cpp
+)
+
+target_link_libraries(unit_cognitive_test_fault_tolerance
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_fault_tolerance
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_fault_tolerance PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_fault_tolerance
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;fault_tolerance"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Fractal Cognitive Tests
+# ============================================================================
+add_executable(unit_cognitive_test_fractal_cognitive
+    test_fractal_cognitive.cpp
+)
+
+target_link_libraries(unit_cognitive_test_fractal_cognitive
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_fractal_cognitive
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_fractal_cognitive PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_fractal_cognitive
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;fractal"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Free Energy Tests
+# ============================================================================
+add_executable(unit_cognitive_test_free_energy
+    test_free_energy.cpp
+)
+
+target_link_libraries(unit_cognitive_test_free_energy
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_free_energy
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_free_energy PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_free_energy
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;free_energy"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Game Theory Main Tests
+# ============================================================================
+add_executable(unit_cognitive_test_game_theory
+    test_game_theory.cpp
+)
+
+target_link_libraries(unit_cognitive_test_game_theory
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_game_theory
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_game_theory PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_game_theory
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Predictive Immune Tests - DISABLED: requires nimcp_predictive_immune.c which is disabled
+# ============================================================================
+# add_executable(unit_cognitive_test_predictive_immune
+#     test_predictive_immune.cpp
+# )
+#
+# target_link_libraries(unit_cognitive_test_predictive_immune
+#     PRIVATE
+#         nimcp
+#         GTest::gtest
+#         GTest::gtest_main
+#         Threads::Threads
+#         m
+# )
+#
+# target_include_directories(unit_cognitive_test_predictive_immune
+#     PRIVATE
+#         ${PROJECT_SOURCE_DIR}/include
+#         ${PROJECT_SOURCE_DIR}/src
+#         ${PROJECT_SOURCE_DIR}/test
+# )
+#
+# target_compile_features(unit_cognitive_test_predictive_immune PRIVATE cxx_std_17)
+#
+# gtest_discover_tests(unit_cognitive_test_predictive_immune
+#     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#     PROPERTIES
+#         LABELS "unit;cognitive;predictive;immune"
+#         TIMEOUT 120
+# )
+
+# ============================================================================
+# Self-Awareness Extended Tests
+# ============================================================================
+add_executable(unit_cognitive_test_self_awareness_extended
+    test_self_awareness_extended.cpp
+)
+
+target_link_libraries(unit_cognitive_test_self_awareness_extended
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_self_awareness_extended
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_self_awareness_extended PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_self_awareness_extended
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;self_awareness;extended"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Social Tests
+# ============================================================================
+add_executable(unit_cognitive_test_social
+    test_social.cpp
+)
+
+target_link_libraries(unit_cognitive_test_social
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_social
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_social PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_social
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;social"
+        TIMEOUT 120
 )

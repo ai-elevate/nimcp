@@ -4,10 +4,12 @@
  */
 
 #include "cognitive/remorse/nimcp_remorse_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
 struct remorse_thalamic_bridge {
+    bridge_base_t base;
     void* remorse;
     thalamic_router_t* router;
     remorse_thalamic_config_t config;
@@ -28,6 +30,11 @@ remorse_thalamic_config_t remorse_thalamic_default_config(void) {
 remorse_thalamic_bridge_t* remorse_thalamic_bridge_create(void* remorse, thalamic_router_t* router, const remorse_thalamic_config_t* config) {
     remorse_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(remorse_thalamic_bridge_t));
     if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->remorse = remorse;
     bridge->router = router;
     bridge->config = config ? *config : remorse_thalamic_default_config();
@@ -37,19 +44,27 @@ remorse_thalamic_bridge_t* remorse_thalamic_bridge_create(void* remorse, thalami
 }
 
 void remorse_thalamic_bridge_destroy(remorse_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
+    nimcp_free(bridge);
 }
 
 int remorse_thalamic_bridge_reset(remorse_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int remorse_thalamic_route_guilt(remorse_thalamic_bridge_t* bridge, const remorse_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->guilt_intensity < bridge->config.min_guilt_threshold) {
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.guilt_signals_routed++;
@@ -58,20 +73,25 @@ int remorse_thalamic_route_guilt(remorse_thalamic_bridge_t* bridge, const remors
     if (signal->signal_type == REMORSE_SIGNAL_FORGIVENESS) {
         bridge->stats.forgiveness_achieved++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int remorse_thalamic_route_repair(remorse_thalamic_bridge_t* bridge, const void* action, float motivation) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_repair_routing && motivation >= bridge->config.repair_threshold) {
         bridge->stats.repair_actions++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int remorse_thalamic_set_attention(remorse_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

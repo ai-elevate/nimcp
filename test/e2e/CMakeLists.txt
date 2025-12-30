@@ -1034,6 +1034,191 @@ add_e2e_test(e2e_test_basal_ganglia_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_basal_ganglia_pipeline.cpp
 )
 
+# ============================================================================
+# Quantum Reasoning Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for quantum reasoning with brain integration
+# WHY:  Verify Grover-accelerated SAT solving in cognitive pipelines
+# HOW:  Test transitive/disjunctive reasoning, conflict detection, planning
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_quantum_reasoning_pipeline.cpp)
+    add_executable(e2e_test_quantum_reasoning_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_quantum_reasoning_pipeline.cpp
+    )
+    target_include_directories(e2e_test_quantum_reasoning_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/reasoning
+        ${CMAKE_SOURCE_DIR}/include/core/brain/inference
+    )
+    target_link_libraries(e2e_test_quantum_reasoning_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_quantum_reasoning_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_quantum_reasoning_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;quantum;reasoning"
+            TIMEOUT 180
+    )
+    message(STATUS "  Added Quantum Reasoning E2E test: e2e_test_quantum_reasoning_pipeline")
+endif()
+
+# ============================================================================
+# Quantum Language Processing Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for quantum-accelerated language production
+# WHY:  Verify Broca quantum bridge in full language pipelines
+# HOW:  Test word retrieval, syntax planning, phoneme optimization
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_quantum_language_processing.cpp)
+    add_executable(e2e_test_quantum_language_processing
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_quantum_language_processing.cpp
+    )
+    target_include_directories(e2e_test_quantum_language_processing PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/core/brain/regions/broca
+    )
+    target_link_libraries(e2e_test_quantum_language_processing PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_quantum_language_processing PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_quantum_language_processing
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;quantum;language;broca"
+            TIMEOUT 180
+    )
+    message(STATUS "  Added Quantum Language E2E test: e2e_test_quantum_language_processing")
+endif()
+
+# ============================================================================
+# Auditory Processing Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for auditory cortex processing pipeline
+# WHY:  Verify complete audio sensory-to-cognitive flow
+# HOW:  Test sound localization, speech processing, auditory attention
+# ============================================================================
+add_e2e_test(e2e_test_auditory_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_auditory_pipeline.cpp
+)
+
+# ============================================================================
+# Cerebellum Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for cerebellar motor coordination pipeline
+# WHY:  Verify motor learning, timing, and coordination
+# HOW:  Test forward models, error correction, predictive timing
+# ============================================================================
+add_e2e_test(e2e_test_cerebellum_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cerebellum_pipeline.cpp
+)
+
+# ============================================================================
+# Dragonfly Multimodal E2E Test
+# ============================================================================
+# WHAT: E2E tests for dragonfly multi-sensory integration
+# WHY:  Verify visual-audio-motor coordination for hunting
+# HOW:  Test cross-modal binding, attention switching, pursuit
+# ============================================================================
+add_e2e_test(e2e_test_dragonfly_multimodal
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_dragonfly_multimodal.cpp
+)
+
+# ============================================================================
+# Dragonfly Main Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for complete dragonfly hunting pipeline
+# WHY:  Verify target detection, tracking, interception
+# HOW:  Test TSDN, CSTMD1, prediction, motor output
+# ============================================================================
+add_e2e_test(e2e_test_dragonfly_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_dragonfly_pipeline.cpp
+)
+
+# ============================================================================
+# Hippocampus Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for hippocampal memory and navigation
+# WHY:  Verify spatial memory, episodic encoding, consolidation
+# HOW:  Test place cells, grid cells, memory formation
+# ============================================================================
+add_e2e_test(e2e_test_hippocampus_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hippocampus_pipeline.cpp
+)
+
+# ============================================================================
+# Limbic System Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for limbic emotional processing
+# WHY:  Verify emotion-cognition integration, motivation, reward
+# HOW:  Test amygdala, reward circuits, emotional memory
+# ============================================================================
+add_e2e_test(e2e_test_limbic_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_limbic_pipeline.cpp
+)
+
+# ============================================================================
+# Motor Control Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for motor control and execution
+# WHY:  Verify motor planning, execution, feedback control
+# HOW:  Test motor cortex, basal ganglia, motor learning
+# ============================================================================
+add_e2e_test(e2e_test_motor_control_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_motor_control_pipeline.cpp
+)
+
+# ============================================================================
+# Prefrontal Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for prefrontal executive functions
+# WHY:  Verify decision making, working memory, planning
+# HOW:  Test executive control, goal maintenance, cognitive flexibility
+# ============================================================================
+add_e2e_test(e2e_test_prefrontal_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_prefrontal_pipeline.cpp
+)
+
+# ============================================================================
+# Somatosensory Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for somatosensory processing
+# WHY:  Verify touch, proprioception, body awareness
+# HOW:  Test tactile processing, body schema, sensorimotor integration
+# ============================================================================
+add_e2e_test(e2e_test_somatosensory_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_somatosensory_pipeline.cpp
+)
+
+# ============================================================================
+# Visual Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for visual processing pipeline
+# WHY:  Verify visual cortex hierarchy, object recognition, attention
+# HOW:  Test V1-V4, IT cortex, visual attention, scene understanding
+# ============================================================================
+add_e2e_test(e2e_test_visual_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_visual_pipeline.cpp
+)
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

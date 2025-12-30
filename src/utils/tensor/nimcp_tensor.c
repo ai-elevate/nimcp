@@ -15,6 +15,7 @@
  */
 
 #include "utils/tensor/nimcp_tensor.h"
+#include "utils/tensor/nimcp_tensor_simd.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -1257,11 +1258,9 @@ nimcp_tensor_t* nimcp_tensor_sum(const nimcp_tensor_t* t)
 {
     if (!tensor_is_valid(t)) return NULL;
 
-    double sum = 0.0;
+    // Use SIMD-optimized sum for large tensors
     float* data = (float*)t->data;
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        sum += data[i];
-    }
+    double sum = tensor_simd_sum_f32(data, t->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, t->dtype);
     if (!result) return NULL;
@@ -1289,16 +1288,14 @@ nimcp_tensor_t* nimcp_tensor_max(const nimcp_tensor_t* t)
     if (!tensor_is_valid(t)) return NULL;
     if (t->shape.numel == 0) return NULL;
 
+    // Use SIMD-optimized max
     float* data = (float*)t->data;
-    double max_val = data[0];
-    for (size_t i = 1; i < t->shape.numel; i++) {
-        if (data[i] > max_val) max_val = data[i];
-    }
+    float max_val = tensor_simd_max_f32(data, t->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, t->dtype);
     if (!result) return NULL;
 
-    nimcp_tensor_set_flat(result, 0, max_val);
+    nimcp_tensor_set_flat(result, 0, (double)max_val);
     stats_update_op(&g_stats.ops_reduction);
     return result;
 }
@@ -1308,16 +1305,14 @@ nimcp_tensor_t* nimcp_tensor_min(const nimcp_tensor_t* t)
     if (!tensor_is_valid(t)) return NULL;
     if (t->shape.numel == 0) return NULL;
 
+    // Use SIMD-optimized min
     float* data = (float*)t->data;
-    double min_val = data[0];
-    for (size_t i = 1; i < t->shape.numel; i++) {
-        if (data[i] < min_val) min_val = data[i];
-    }
+    float min_val = tensor_simd_min_f32(data, t->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, t->dtype);
     if (!result) return NULL;
 
-    nimcp_tensor_set_flat(result, 0, min_val);
+    nimcp_tensor_set_flat(result, 0, (double)min_val);
     stats_update_op(&g_stats.ops_reduction);
     return result;
 }
@@ -1565,13 +1560,10 @@ nimcp_tensor_t* nimcp_tensor_dot(const nimcp_tensor_t* a, const nimcp_tensor_t* 
     if (!tensor_is_valid(a) || !tensor_is_valid(b)) return NULL;
     if (a->shape.numel != b->shape.numel) return NULL;
 
-    double dot = 0.0;
+    // Use SIMD-optimized dot product
     float* da = (float*)a->data;
     float* db = (float*)b->data;
-
-    for (size_t i = 0; i < a->shape.numel; i++) {
-        dot += da[i] * db[i];
-    }
+    double dot = tensor_simd_dot_f32(da, db, a->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, a->dtype);
     if (!result) return NULL;
@@ -1641,12 +1633,9 @@ double nimcp_tensor_norm_fro(const nimcp_tensor_t* t)
 {
     if (!tensor_is_valid(t)) return 0.0;
 
+    // Use SIMD-optimized sum of squares
     float* data = (float*)t->data;
-    double sum_sq = 0.0;
-
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        sum_sq += data[i] * data[i];
-    }
+    double sum_sq = tensor_simd_sum_sq_f32(data, t->shape.numel);
 
     return sqrt(sum_sq);
 }
@@ -2180,7 +2169,7 @@ nimcp_tensor_t* nimcp_tensor_laplacian(
 }
 
 //=============================================================================
-// In-place Operations
+// In-place Operations (SIMD-optimized)
 //=============================================================================
 
 int nimcp_tensor_add_(nimcp_tensor_t* t, const nimcp_tensor_t* other)
@@ -2188,11 +2177,10 @@ int nimcp_tensor_add_(nimcp_tensor_t* t, const nimcp_tensor_t* other)
     if (!tensor_is_valid(t) || !tensor_is_valid(other)) return NIMCP_TENSOR_ERR_NULL;
     if (!shapes_equal(&t->shape, &other->shape)) return NIMCP_TENSOR_ERR_SHAPE;
 
+    // Use SIMD-optimized element-wise add
     float* td = (float*)t->data;
     float* od = (float*)other->data;
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        td[i] += od[i];
-    }
+    tensor_simd_add_f32(td, od, t->shape.numel);
 
     return NIMCP_TENSOR_OK;
 }
@@ -2202,11 +2190,10 @@ int nimcp_tensor_sub_(nimcp_tensor_t* t, const nimcp_tensor_t* other)
     if (!tensor_is_valid(t) || !tensor_is_valid(other)) return NIMCP_TENSOR_ERR_NULL;
     if (!shapes_equal(&t->shape, &other->shape)) return NIMCP_TENSOR_ERR_SHAPE;
 
+    // Use SIMD-optimized element-wise subtract
     float* td = (float*)t->data;
     float* od = (float*)other->data;
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        td[i] -= od[i];
-    }
+    tensor_simd_sub_f32(td, od, t->shape.numel);
 
     return NIMCP_TENSOR_OK;
 }
@@ -2216,11 +2203,10 @@ int nimcp_tensor_mul_(nimcp_tensor_t* t, const nimcp_tensor_t* other)
     if (!tensor_is_valid(t) || !tensor_is_valid(other)) return NIMCP_TENSOR_ERR_NULL;
     if (!shapes_equal(&t->shape, &other->shape)) return NIMCP_TENSOR_ERR_SHAPE;
 
+    // Use SIMD-optimized element-wise multiply
     float* td = (float*)t->data;
     float* od = (float*)other->data;
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        td[i] *= od[i];
-    }
+    tensor_simd_mul_f32(td, od, t->shape.numel);
 
     return NIMCP_TENSOR_OK;
 }
@@ -2229,11 +2215,9 @@ int nimcp_tensor_mul_scalar_(nimcp_tensor_t* t, double s)
 {
     if (!tensor_is_valid(t)) return NIMCP_TENSOR_ERR_NULL;
 
+    // Use SIMD-optimized scalar multiply
     float* td = (float*)t->data;
-    float sf = (float)s;
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        td[i] *= sf;
-    }
+    tensor_simd_mul_scalar_f32(td, (float)s, t->shape.numel);
 
     return NIMCP_TENSOR_OK;
 }
@@ -2242,11 +2226,9 @@ int nimcp_tensor_add_scalar_(nimcp_tensor_t* t, double s)
 {
     if (!tensor_is_valid(t)) return NIMCP_TENSOR_ERR_NULL;
 
+    // Use SIMD-optimized scalar add
     float* td = (float*)t->data;
-    float sf = (float)s;
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        td[i] += sf;
-    }
+    tensor_simd_add_scalar_f32(td, (float)s, t->shape.numel);
 
     return NIMCP_TENSOR_OK;
 }

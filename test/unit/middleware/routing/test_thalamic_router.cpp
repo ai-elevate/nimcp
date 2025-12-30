@@ -117,13 +117,13 @@ TEST_F(ThalamicRouterTest, CreateSignal_Success) {
     float data[] = {1.0f, 2.0f, 3.0f};
 
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, dests, 2, data, 3, PRIORITY_NORMAL);
+        1, dests, 2, data, 3, SIGNAL_PRIORITY_NORMAL);
 
     ASSERT_NE(signal, nullptr);
     EXPECT_EQ(signal->source_id, 1);
     EXPECT_EQ(signal->num_dests, 2);
     EXPECT_EQ(signal->signal_size, 3);
-    EXPECT_EQ(signal->priority, PRIORITY_NORMAL);
+    EXPECT_EQ(signal->priority, SIGNAL_PRIORITY_NORMAL);
     EXPECT_FLOAT_EQ(signal->attention_weight, 1.0f);
     EXPECT_FALSE(signal->bypass_queue);
 
@@ -142,7 +142,7 @@ TEST_F(ThalamicRouterTest, CreateSignal_Success_SingleDest) {
     float data[] = {5.0f};
 
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
 
     ASSERT_NE(signal, nullptr);
     EXPECT_EQ(signal->num_dests, 1);
@@ -154,7 +154,7 @@ TEST_F(ThalamicRouterTest, CreateSignal_Success_SingleDest) {
 TEST_F(ThalamicRouterTest, CreateSignal_Failure_NullDests) {
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, nullptr, 1, data, 1, PRIORITY_NORMAL);
+        1, nullptr, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
     EXPECT_EQ(signal, nullptr);
 }
 
@@ -162,14 +162,14 @@ TEST_F(ThalamicRouterTest, CreateSignal_Failure_ZeroDests) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 0, data, 1, PRIORITY_NORMAL);
+        1, &dest, 0, data, 1, SIGNAL_PRIORITY_NORMAL);
     EXPECT_EQ(signal, nullptr);
 }
 
 TEST_F(ThalamicRouterTest, CreateSignal_Failure_NullData) {
     uint32_t dest = 100;
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, nullptr, 1, PRIORITY_NORMAL);
+        1, &dest, 1, nullptr, 1, SIGNAL_PRIORITY_NORMAL);
     EXPECT_EQ(signal, nullptr);
 }
 
@@ -177,7 +177,7 @@ TEST_F(ThalamicRouterTest, CreateSignal_Failure_ZeroSize) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 0, PRIORITY_NORMAL);
+        1, &dest, 1, data, 0, SIGNAL_PRIORITY_NORMAL);
     EXPECT_EQ(signal, nullptr);
 }
 
@@ -205,7 +205,7 @@ TEST_F(ThalamicRouterTest, RouteSignal_Success_HighPriority_Bypass) {
     uint32_t dest = 100;
     float data[] = {1.0f, 2.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 2, PRIORITY_HIGH);
+        1, &dest, 1, data, 2, SIGNAL_PRIORITY_HIGH);
 
     bool result = thalamic_router_route_signal(router, signal);
     EXPECT_TRUE(result);
@@ -236,7 +236,7 @@ TEST_F(ThalamicRouterTest, RouteSignal_Success_NormalPriority_Enqueue) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_NORMAL);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
 
     bool result = thalamic_router_route_signal(router, signal);
     EXPECT_TRUE(result);
@@ -264,7 +264,7 @@ TEST_F(ThalamicRouterTest, RouteSignal_Success_BypassFlag) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_LOW);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_LOW);
     signal->bypass_queue = true;
 
     bool result = thalamic_router_route_signal(router, signal);
@@ -281,7 +281,7 @@ TEST_F(ThalamicRouterTest, RouteSignal_Failure_NullRouter) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_NORMAL);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
 
     bool result = thalamic_router_route_signal(nullptr, signal);
     EXPECT_FALSE(result);
@@ -332,7 +332,7 @@ TEST_F(ThalamicRouterTest, ProcessQueue_Success) {
     uint32_t dest = 100;
     float data[] = {5.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_NORMAL);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
     thalamic_router_route_signal(router, signal);
 
     // Process queue
@@ -365,7 +365,7 @@ TEST_F(ThalamicRouterTest, ProcessQueue_Success_MaxSignalsLimit) {
     float data[] = {1.0f};
     for (int i = 0; i < 5; i++) {
         routed_signal_t* signal = thalamic_router_create_signal(
-            1, &dest, 1, data, 1, PRIORITY_NORMAL);
+            1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
         thalamic_router_route_signal(router, signal);
         thalamic_router_free_signal(signal);
     }
@@ -398,13 +398,13 @@ TEST_F(ThalamicRouterTest, ProcessQueue_Success_PriorityOrder) {
     // Enqueue low priority
     float data_low[] = {1.0f};
     routed_signal_t* sig_low = thalamic_router_create_signal(
-        1, &dest, 1, data_low, 1, PRIORITY_LOW);
+        1, &dest, 1, data_low, 1, SIGNAL_PRIORITY_LOW);
     thalamic_router_route_signal(router, sig_low);
 
     // Enqueue normal priority (should jump ahead)
     float data_normal[] = {2.0f};
     routed_signal_t* sig_normal = thalamic_router_create_signal(
-        1, &dest, 1, data_normal, 1, PRIORITY_NORMAL);
+        1, &dest, 1, data_normal, 1, SIGNAL_PRIORITY_NORMAL);
     thalamic_router_route_signal(router, sig_normal);
 
     // Process one signal
@@ -485,7 +485,7 @@ TEST_F(ThalamicRouterTest, Callback_Invoked_OnSignalDelivery) {
     uint32_t dest = 100;
     float data[] = {3.14f, 2.71f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 2, PRIORITY_HIGH);
+        1, &dest, 1, data, 2, SIGNAL_PRIORITY_HIGH);
 
     thalamic_router_route_signal(router, signal);
 
@@ -512,7 +512,7 @@ TEST_F(ThalamicRouterTest, Callback_MultipleDestinations) {
     uint32_t dests[] = {100, 101};
     float data[] = {5.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, dests, 2, data, 1, PRIORITY_HIGH);
+        1, dests, 2, data, 1, SIGNAL_PRIORITY_HIGH);
 
     thalamic_router_route_signal(router, signal);
 
@@ -580,7 +580,7 @@ TEST_F(ThalamicRouterTest, Attention_ModulatesSignal) {
     uint32_t dest = 100;
     float data[] = {10.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
 
     thalamic_router_route_signal(router, signal);
 
@@ -608,7 +608,7 @@ TEST_F(ThalamicRouterTest, Attention_ThresholdFiltering) {
     uint32_t dest = 100;
     float data[] = {10.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
 
     thalamic_router_route_signal(router, signal);
 
@@ -630,7 +630,7 @@ TEST_F(ThalamicRouterTest, Attention_DisabledConfig) {
     uint32_t dest = 100;
     float data[] = {10.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
 
     thalamic_router_route_signal(router, signal);
 
@@ -695,7 +695,7 @@ TEST_F(ThalamicRouterTest, Stats_TracksRouted) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
     thalamic_router_route_signal(router, signal);
 
     routing_stats_t stats;
@@ -718,7 +718,7 @@ TEST_F(ThalamicRouterTest, Stats_TracksQueueDepth) {
     // Enqueue 3 normal priority signals
     for (int i = 0; i < 3; i++) {
         routed_signal_t* signal = thalamic_router_create_signal(
-            1, &dest, 1, data, 1, PRIORITY_NORMAL);
+            1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
         thalamic_router_route_signal(router, signal);
         thalamic_router_free_signal(signal);
     }
@@ -742,7 +742,7 @@ TEST_F(ThalamicRouterTest, ResetStats_Success) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
     thalamic_router_route_signal(router, signal);
 
     thalamic_router_reset_stats(router);
@@ -778,7 +778,7 @@ TEST_F(ThalamicRouterTest, ClearQueue_Success) {
     // Enqueue signals
     for (int i = 0; i < 5; i++) {
         routed_signal_t* signal = thalamic_router_create_signal(
-            1, &dest, 1, data, 1, PRIORITY_NORMAL);
+            1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
         thalamic_router_route_signal(router, signal);
         thalamic_router_free_signal(signal);
     }
@@ -814,15 +814,15 @@ TEST_F(ThalamicRouterTest, Regression_QueueFull_SignalDropped) {
 
     // Fill queue
     routed_signal_t* sig1 = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_NORMAL);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
     routed_signal_t* sig2 = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_NORMAL);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
     thalamic_router_route_signal(router, sig1);
     thalamic_router_route_signal(router, sig2);
 
     // Overflow queue
     routed_signal_t* sig3 = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_NORMAL);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_NORMAL);
     bool result = thalamic_router_route_signal(router, sig3);
     EXPECT_FALSE(result);  // Should fail to enqueue
 
@@ -849,7 +849,7 @@ TEST_F(ThalamicRouterTest, Regression_MultipleDests_AllDeliver) {
     uint32_t dests[] = {100, 101, 102};
     float data[] = {7.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, dests, 3, data, 1, PRIORITY_HIGH);
+        1, dests, 3, data, 1, SIGNAL_PRIORITY_HIGH);
 
     thalamic_router_route_signal(router, signal);
 
@@ -871,7 +871,7 @@ TEST_F(ThalamicRouterTest, Regression_NoCallback_NoDelivery) {
     uint32_t dest = 100;
     float data[] = {1.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
 
     // Should not crash, but delivery fails when no callback registered
     bool result = thalamic_router_route_signal(router, signal);
@@ -892,7 +892,7 @@ TEST_F(ThalamicRouterTest, Regression_CombinedAttention_SignalAndGate) {
     uint32_t dest = 100;
     float data[] = {10.0f};
     routed_signal_t* signal = thalamic_router_create_signal(
-        1, &dest, 1, data, 1, PRIORITY_HIGH);
+        1, &dest, 1, data, 1, SIGNAL_PRIORITY_HIGH);
     signal->attention_weight = 0.8f;  // Signal attention
 
     thalamic_router_route_signal(router, signal);

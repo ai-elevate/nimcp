@@ -73,3 +73,65 @@ add_subdirectory(jepa)
 add_subdirectory(game_theory)
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)
+
+# ============================================================================
+# Cognitive Bridge Completeness Tests
+# ============================================================================
+add_executable(regression_cognitive_bridge_completeness
+    test_cognitive_bridge_completeness.cpp
+)
+
+target_link_libraries(regression_cognitive_bridge_completeness
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_bridge_completeness
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_cognitive_bridge_completeness PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_bridge_completeness
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;bridge;completeness"
+        TIMEOUT 180
+)
+
+# ============================================================================
+# Cognitive Thalamic Routing Tests
+# ============================================================================
+add_executable(regression_cognitive_thalamic_routing
+    test_cognitive_thalamic_routing.cpp
+)
+
+target_link_libraries(regression_cognitive_thalamic_routing
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_thalamic_routing
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_cognitive_thalamic_routing PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_thalamic_routing
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;thalamic;routing"
+        TIMEOUT 180
+)

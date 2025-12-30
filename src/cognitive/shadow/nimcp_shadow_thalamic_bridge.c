@@ -4,10 +4,12 @@
  */
 
 #include "cognitive/shadow/nimcp_shadow_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
 struct shadow_thalamic_bridge {
+    bridge_base_t base;
     void* shadow;
     thalamic_router_t* router;
     shadow_thalamic_config_t config;
@@ -28,6 +30,11 @@ shadow_thalamic_config_t shadow_thalamic_default_config(void) {
 shadow_thalamic_bridge_t* shadow_thalamic_bridge_create(void* shadow, thalamic_router_t* router, const shadow_thalamic_config_t* config) {
     shadow_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(shadow_thalamic_bridge_t));
     if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->shadow = shadow;
     bridge->router = router;
     bridge->config = config ? *config : shadow_thalamic_default_config();
@@ -37,19 +44,27 @@ shadow_thalamic_bridge_t* shadow_thalamic_bridge_create(void* shadow, thalamic_r
 }
 
 void shadow_thalamic_bridge_destroy(shadow_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
+    nimcp_free(bridge);
 }
 
 int shadow_thalamic_bridge_reset(shadow_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shadow_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->emergence_strength < bridge->config.min_emergence_threshold) {
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.emergences_routed++;
@@ -58,20 +73,25 @@ int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shad
     if (signal->signal_type == SHADOW_SIGNAL_PROJECTION) {
         bridge->stats.projections_detected++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_thalamic_route_integration(shadow_thalamic_bridge_t* bridge, const void* content, float readiness) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     if (readiness >= bridge->config.integration_threshold) {
         bridge->stats.integrations_achieved++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_thalamic_set_attention(shadow_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

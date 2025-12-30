@@ -4,10 +4,12 @@
  */
 
 #include "cognitive/love_loyalty_friendship/nimcp_llf_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
 struct llf_thalamic_bridge {
+    bridge_base_t base;
     void* llf;
     thalamic_router_t* router;
     llf_thalamic_config_t config;
@@ -28,6 +30,11 @@ llf_thalamic_config_t llf_thalamic_default_config(void) {
 llf_thalamic_bridge_t* llf_thalamic_bridge_create(void* llf, thalamic_router_t* router, const llf_thalamic_config_t* config) {
     llf_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(llf_thalamic_bridge_t));
     if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->llf = llf;
     bridge->router = router;
     bridge->config = config ? *config : llf_thalamic_default_config();
@@ -37,19 +44,27 @@ llf_thalamic_bridge_t* llf_thalamic_bridge_create(void* llf, thalamic_router_t* 
 }
 
 void llf_thalamic_bridge_destroy(llf_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
+    nimcp_free(bridge);
 }
 
 int llf_thalamic_bridge_reset(llf_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int llf_thalamic_route_attachment(llf_thalamic_bridge_t* bridge, const llf_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->bond_strength < bridge->config.min_bond_threshold) {
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.attachments_routed++;
@@ -58,18 +73,23 @@ int llf_thalamic_route_attachment(llf_thalamic_bridge_t* bridge, const llf_thala
     if (signal->signal_type == LLF_SIGNAL_TRUST) {
         bridge->stats.trust_updates++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int llf_thalamic_route_care(llf_thalamic_bridge_t* bridge, const void* target, float motivation) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.care_expressions++;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int llf_thalamic_set_attention(llf_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

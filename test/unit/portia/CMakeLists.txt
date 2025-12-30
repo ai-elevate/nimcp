@@ -251,6 +251,32 @@ set_tests_properties(PortiaLogicBridge PROPERTIES
 )
 
 # ============================================================================
+# Portia Monitoring Tests
+# ============================================================================
+# DISABLED: portia_monitor_* functions not yet implemented
+message(STATUS "test_portia_monitoring: DISABLED (portia monitoring not implemented)")
+#[[
+add_executable(test_portia_monitoring
+    test_portia_monitoring.cpp
+)
+
+target_link_libraries(test_portia_monitoring
+    nimcp_portia
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+add_test(NAME PortiaMonitoring COMMAND test_portia_monitoring)
+set_tests_properties(PortiaMonitoring PROPERTIES
+    TIMEOUT 60
+    LABELS "unit;portia;monitoring"
+)
+#]]
+
+# ============================================================================
 # Portia-Immune Bridge Tests
 # ============================================================================
 add_subdirectory(immune)

@@ -77,7 +77,7 @@ double benchmark_router_cow() {
             NUM_DESTS,
             data.signal_data.data(),
             SIGNAL_SIZE,
-            PRIORITY_NORMAL);
+            SIGNAL_PRIORITY_NORMAL);
 
         if (signal) {
             thalamic_router_route_signal(router, signal);

@@ -4,10 +4,12 @@
  */
 
 #include "cognitive/grief/nimcp_grief_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
 struct grief_thalamic_bridge {
+    bridge_base_t base;
     void* grief;
     thalamic_router_t* router;
     grief_thalamic_config_t config;
@@ -28,6 +30,8 @@ grief_thalamic_config_t grief_thalamic_default_config(void) {
 grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_router_t* router, const grief_thalamic_config_t* config) {
     grief_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(grief_thalamic_bridge_t));
     if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     bridge->grief = grief;
     bridge->router = router;
     bridge->config = config ? *config : grief_thalamic_default_config();
@@ -37,19 +41,25 @@ grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_rout
 }
 
 void grief_thalamic_bridge_destroy(grief_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    nimcp_free(bridge);
 }
 
 int grief_thalamic_bridge_reset(grief_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->grief_intensity < bridge->config.min_intensity_threshold) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.losses_processed++;
@@ -58,29 +68,38 @@ int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thala
     if (signal->signal_type == GRIEF_SIGNAL_ADAPTATION && signal->adaptation_progress >= bridge->config.adaptation_threshold) {
         bridge->stats.adaptations_achieved++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int grief_thalamic_route_processing(grief_thalamic_bridge_t* bridge, const void* stage, float progress) {
     if (!bridge) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.processing_stages++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int grief_thalamic_set_attention(grief_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int grief_thalamic_get_attention(const grief_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int grief_thalamic_bridge_get_stats(const grief_thalamic_bridge_t* bridge, grief_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }

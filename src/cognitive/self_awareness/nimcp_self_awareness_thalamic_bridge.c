@@ -4,10 +4,12 @@
  */
 
 #include "cognitive/self_awareness/nimcp_self_awareness_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
 struct self_awareness_thalamic_bridge {
+    bridge_base_t base;
     void* self_awareness;
     thalamic_router_t* router;
     self_awareness_thalamic_config_t config;
@@ -28,6 +30,11 @@ self_awareness_thalamic_config_t self_awareness_thalamic_default_config(void) {
 self_awareness_thalamic_bridge_t* self_awareness_thalamic_bridge_create(void* self_awareness, thalamic_router_t* router, const self_awareness_thalamic_config_t* config) {
     self_awareness_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(self_awareness_thalamic_bridge_t));
     if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->self_awareness = self_awareness;
     bridge->router = router;
     bridge->config = config ? *config : self_awareness_thalamic_default_config();
@@ -37,19 +44,27 @@ self_awareness_thalamic_bridge_t* self_awareness_thalamic_bridge_create(void* se
 }
 
 void self_awareness_thalamic_bridge_destroy(self_awareness_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
+    nimcp_free(bridge);
 }
 
 int self_awareness_thalamic_bridge_reset(self_awareness_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int self_awareness_thalamic_route_introspection(self_awareness_thalamic_bridge_t* bridge, const self_awareness_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->introspection_depth < bridge->config.min_introspection_depth) {
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.introspections_routed++;
@@ -58,18 +73,23 @@ int self_awareness_thalamic_route_introspection(self_awareness_thalamic_bridge_t
     if (signal->signal_type == SELF_SIGNAL_IDENTITY) {
         bridge->stats.identity_updates++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int self_awareness_thalamic_route_metacognition(self_awareness_thalamic_bridge_t* bridge, const void* metacog, float accuracy) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.metacognitions_routed++;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int self_awareness_thalamic_set_attention(self_awareness_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

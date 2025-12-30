@@ -992,7 +992,10 @@ serialize_and_send:
 
     // In stealth mode, pad to fixed size or queue for burst
     if (node->current_mode == NLP_MODE_STEALTH) {
-        if (node->emcon_level >= NLP_EMCON_REDUCED) {
+        // Queue for burst UNLESS emergency override or critical priority
+        if (node->emcon_level >= NLP_EMCON_REDUCED &&
+            node->emcon_level != NLP_EMCON_EMERGENCY &&
+            priority != NLP_PRIORITY_CRITICAL) {
             // Queue for burst transmission
             nimcp_mutex_lock(&node->burst_mutex);
             if (node->burst_buffer_used + wire_len <= node->burst_buffer_size) {
@@ -2015,8 +2018,11 @@ static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
             return -ENOKEY;
         }
 
-        const uint8_t* auth_tag = data + len - NLP_TAG_SIZE;
         const uint8_t* encrypted = data + NLP_HEADER_SIZE;
+        // Auth tag position is AFTER the encrypted payload, NOT at end of buffer
+        // In STEALTH mode, messages are padded to fixed size so len > actual message size
+        // The actual auth_tag is at NLP_HEADER_SIZE + payload_len
+        const uint8_t* auth_tag = data + NLP_HEADER_SIZE + payload_len;
 
         // Decrypt with node's crypto state, using raw wire header as AAD
         // IMPORTANT: Use the original wire bytes (data), not the local header struct,

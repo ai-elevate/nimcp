@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/curiosity/nimcp_curiosity_substrate_bridge.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
@@ -12,9 +13,11 @@ struct curiosity_substrate_bridge {
     neural_substrate_t* substrate;
     curiosity_substrate_config_t config;
     curiosity_substrate_effects_t effects;
+    bio_module_context_t ctx;
     bio_router_t* router;
     bool bio_async_connected;
     uint64_t update_count;
+    float prev_overall_capacity;
 };
 
 static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
@@ -40,7 +43,13 @@ curiosity_substrate_bridge_t* curiosity_substrate_bridge_create(void* curiosity,
     return bridge;
 }
 
-void curiosity_substrate_bridge_destroy(curiosity_substrate_bridge_t* bridge) { if (bridge) nimcp_free(bridge); }
+void curiosity_substrate_bridge_destroy(curiosity_substrate_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->bio_async_connected && bridge->ctx) {
+        bio_router_unregister_module(bridge->ctx);
+    }
+    nimcp_free(bridge);
+}
 
 int curiosity_substrate_bridge_update(curiosity_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
@@ -67,11 +76,60 @@ int curiosity_substrate_bridge_get_effects(const curiosity_substrate_bridge_t* b
     return 0;
 }
 
-int curiosity_substrate_bridge_apply_effects(curiosity_substrate_bridge_t* bridge) { return bridge ? 0 : -1; }
+int curiosity_substrate_bridge_apply_effects(curiosity_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->bio_async_connected || !bridge->ctx) return 0;
+
+    substrate_metabolic_state_t metabolic;
+    float atp_level = 1.0f, fatigue_level = 0.0f;
+    if (bridge->substrate && substrate_get_metabolic_state(bridge->substrate, &metabolic) == 0) {
+        atp_level = metabolic.atp_level;
+        fatigue_level = 1.0f - metabolic.metabolic_capacity;
+    }
+
+    bio_msg_substrate_modulation_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header, BIO_MSG_SUBSTRATE_MODULATION, BIO_MODULE_SUBSTRATE_CURIOSITY, 0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_DOPAMINE;  /* Curiosity uses dopamine for exploration reward */
+    msg.bridge_module_id = BIO_MODULE_SUBSTRATE_CURIOSITY;
+    msg.processing_capacity = bridge->effects.exploration_drive;
+    msg.overall_capacity = bridge->effects.overall_capacity;
+    msg.effect_values[0] = bridge->effects.exploration_drive;
+    msg.effect_values[1] = bridge->effects.novelty_seeking;
+    msg.effect_values[2] = bridge->effects.information_gain;
+    msg.effect_values[3] = bridge->effects.uncertainty_tolerance;
+    msg.atp_level = atp_level;
+    msg.fatigue_level = fatigue_level;
+    msg.update_count = bridge->update_count;
+    msg.critical_low = (atp_level < bridge->config.min_capacity);
+    bio_router_broadcast(bridge->ctx, &msg, sizeof(msg));
+
+    float delta = bridge->effects.overall_capacity - bridge->prev_overall_capacity;
+    if (delta < -0.1f || delta > 0.1f) {
+        bio_msg_substrate_capacity_update_t update_msg;
+        memset(&update_msg, 0, sizeof(update_msg));
+        bio_msg_init_header(&update_msg.header, BIO_MSG_SUBSTRATE_CAPACITY_UPDATE, BIO_MODULE_SUBSTRATE_CURIOSITY, 0, sizeof(update_msg));
+        update_msg.bridge_module_id = BIO_MODULE_SUBSTRATE_CURIOSITY;
+        update_msg.old_capacity = bridge->prev_overall_capacity;
+        update_msg.new_capacity = bridge->effects.overall_capacity;
+        update_msg.delta = delta;
+        update_msg.significant_change = true;
+        bio_router_broadcast(bridge->ctx, &update_msg, sizeof(update_msg));
+    }
+    bridge->prev_overall_capacity = bridge->effects.overall_capacity;
+    return 0;
+}
 
 int curiosity_substrate_bridge_register_bio_async(curiosity_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
-    bridge->router = router;
-    bridge->bio_async_connected = (router != NULL);
+    if (bridge->bio_async_connected && bridge->ctx) {
+        bio_router_unregister_module(bridge->ctx);
+        bridge->ctx = NULL;
+        bridge->bio_async_connected = false;
+    }
+    if (!router) return 0;
+    bio_module_info_t info = { .module_id = BIO_MODULE_SUBSTRATE_CURIOSITY, .module_name = "curiosity_substrate_bridge", .inbox_capacity = 16, .user_data = bridge };
+    bridge->ctx = bio_router_register_module(&info);
+    if (bridge->ctx) bridge->bio_async_connected = true;
     return 0;
 }

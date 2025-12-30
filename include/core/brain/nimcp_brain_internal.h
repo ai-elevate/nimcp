@@ -180,6 +180,12 @@ struct recovery_executive_internal;
 // Enhanced Basal Ganglia Integration (Action Selection & Motor Control)
 #include "core/brain/subcortical/nimcp_basal_ganglia_enhanced.h"
 
+// Cerebellum Integration (Motor Coordination, Timing, Error-Based Learning)
+#include "core/brain/internal/nimcp_brain_internal_cerebellum.h"
+
+// Hippocampus Integration (Episodic Memory, Spatial Navigation, Pattern Separation/Completion)
+#include "core/brain/internal/nimcp_brain_internal_hippocampus.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -887,6 +893,269 @@ struct brain_struct {
     struct broca_quantum_bridge* broca_quantum_bridge;      // Quantum-accelerated language
     bool broca_enabled;                                     // Broca's region enabled for this brain
     uint64_t last_broca_update_us;                          // Last Broca update timestamp
+
+    // =========================================================================
+    // BRAINSTEM INTEGRATION (Midbrain, Pons, Medulla, Reticular Formation)
+    // =========================================================================
+    // The Brainstem provides vital functions and reflex control:
+    // - Midbrain: Superior/inferior colliculus for visual/auditory orienting
+    // - Pons: Relay between cortex and cerebellum, arousal control
+    // - Medulla: Vital functions (respiration, heart rate), protective reflexes
+    // - Reticular Formation: ARAS arousal control, sleep-wake regulation
+    //
+    // Integrates with:
+    // - Thalamus: Sensory relay to cortex
+    // - Cerebellum: Motor coordination via cerebellar peduncles
+    // - Spinal Motor: Descending motor pathway control
+    // - Medulla: Vital function coordination
+    // - Quantum Bridge: Reflex optimization, arousal state optimization
+    //
+    struct brainstem_adapter* brainstem;                      // Brainstem region adapter
+    struct brainstem_substrate_bridge* brainstem_substrate_bridge;  // Substrate metabolic integration
+    struct brainstem_thalamic_bridge* brainstem_thalamic_bridge;    // Thalamic signal routing
+    struct brainstem_quantum_bridge* brainstem_quantum_bridge;      // Quantum-accelerated processing
+    bool brainstem_enabled;                                   // Brainstem enabled for this brain
+    uint64_t last_brainstem_update_us;                        // Last brainstem update timestamp
+
+    // =========================================================================
+    // CEREBELLUM INTEGRATION (Motor Coordination & Timing)
+    // =========================================================================
+    // The Cerebellum provides motor coordination using Marr-Albus-Ito model:
+    // - Granule cells: Sparse coding of mossy fiber inputs (~50B cells)
+    // - Purkinje cells: Integrate parallel fibers, inhibit deep nuclei
+    // - Deep nuclei: Dentate (planning), Interposed (execution), Fastigial (balance)
+    // - Climbing fibers: Error signals from inferior olive trigger LTD
+    //
+    // Integrates with:
+    // - Motor Cortex: Motor command execution
+    // - Basal Ganglia: Action selection coordination
+    // - Brainstem: Postural control and balance
+    // - Thalamic Router: VL nucleus for cortical relay
+    // - Quantum Reasoner: Grover-accelerated timing optimization
+    //
+    struct cerebellum_adapter* cerebellum;                      // Cerebellum adapter
+    struct cerebellum_substrate_bridge* cerebellum_substrate_bridge;  // Substrate metabolic integration
+    struct cerebellum_thalamic_bridge* cerebellum_thalamic_bridge;    // Thalamic signal routing
+    struct cerebellum_quantum_bridge* cerebellum_quantum_bridge;      // Quantum-accelerated timing
+    bool cerebellum_enabled;                                    // Cerebellum enabled for this brain
+    uint64_t last_cerebellum_update_us;                         // Last Cerebellum update timestamp
+
+    // =========================================================================
+    // HIPPOCAMPUS INTEGRATION (Episodic Memory & Spatial Navigation)
+    // =========================================================================
+    // The Hippocampus provides memory encoding, consolidation, and spatial navigation:
+    // - CA1/CA3: Pyramidal cells for memory encoding/retrieval
+    // - Dentate Gyrus: Pattern separation (sparse coding, reduce interference)
+    // - Entorhinal Cortex: Grid cells for path integration
+    // - Place Cells: Location-specific firing for cognitive spatial map
+    // - Pattern Completion: Reconstruct full patterns from partial cues (CA3)
+    //
+    // Integrates with:
+    // - Neural Substrate: Metabolic modulation of consolidation
+    // - Thalamic Router: Anterior nucleus routing of memory signals
+    // - Quantum Reasoner: Grover-accelerated memory search (O(sqrt(N)))
+    // - Cortical Areas: Systems consolidation to neocortex
+    // - Amygdala: Emotional memory tagging
+    // - Sleep System: Memory consolidation during sleep stages
+    // - Training System: Experience-dependent learning
+    //
+    struct hippocampus_adapter* hippocampus;                        // Hippocampus adapter
+    struct hippocampus_substrate_bridge* hippocampus_substrate_bridge;  // Substrate metabolic integration
+    struct hippocampus_thalamic_bridge* hippocampus_thalamic_bridge;    // Thalamic signal routing
+    struct hippocampus_quantum_bridge* hippocampus_quantum_bridge;      // Quantum-accelerated memory
+    bool hippocampus_enabled;                                       // Hippocampus enabled for this brain
+    uint64_t last_hippocampus_update_us;                            // Last hippocampus update timestamp
+
+    // =========================================================================
+    // HYPOTHALAMUS INTEGRATION (Homeostatic Regulation & Autonomic Control)
+    // =========================================================================
+    // The Hypothalamus regulates homeostasis, circadian rhythms, and autonomic functions:
+    // - SCN: Suprachiasmatic nucleus - master circadian clock
+    // - Thermoregulation: Body temperature control centers
+    // - Appetite/Satiety: Feeding behavior and energy balance
+    // - HPA Axis: Stress response (CRH -> ACTH -> cortisol)
+    // - Sleep-wake: Orexin neurons for arousal, VLPO for sleep
+    //
+    // Integrates with:
+    // - Medulla: Autonomic reflex control
+    // - Pituitary: Hormonal release coordination
+    // - Brainstem: Arousal and sleep regulation
+    // - Immune System: Neuroimmune interactions
+    // - Wellbeing Module: Affective state modulation
+    //
+    struct hypothalamus_adapter* hypothalamus;                        // Hypothalamus adapter
+    struct hypothalamus_substrate_bridge* hypothalamus_substrate_bridge;  // Substrate metabolic integration
+    struct hypothalamus_thalamic_bridge* hypothalamus_thalamic_bridge;    // Thalamic signal routing
+    struct hypothalamus_quantum_bridge* hypothalamus_quantum_bridge;      // Quantum-accelerated optimization
+    bool hypothalamus_enabled;                                        // Hypothalamus enabled for this brain
+    uint64_t last_hypothalamus_update_us;                             // Last hypothalamus update timestamp
+
+    // =========================================================================
+    // MOTOR CORTEX INTEGRATION (Primary Motor Control - M1)
+    // =========================================================================
+    // The Motor Cortex provides voluntary movement control:
+    // - Primary Motor Cortex (M1): Movement execution, somatotopic organization
+    // - Premotor Cortex (PMC): Movement planning and preparation
+    // - Supplementary Motor Area (SMA): Complex movement sequencing
+    // - Motor Homunculus: Body part representation in motor strip
+    //
+    // Integrates with:
+    // - Basal Ganglia: Action selection coordination
+    // - Cerebellum: Motor timing and error correction
+    // - Thalamus: VA/VL nucleus motor relay
+    // - Prefrontal Cortex: Goal-directed movement planning
+    // - Spinal Motor Neurons: Final motor output pathway
+    //
+    struct motor_adapter* motor;                                      // Motor cortex adapter
+    struct motor_substrate_bridge* motor_substrate_bridge;            // Substrate metabolic integration
+    struct motor_thalamic_bridge* motor_thalamic_bridge;              // Thalamic signal routing
+    struct motor_quantum_bridge* motor_quantum_bridge;                // Quantum-accelerated optimization
+    bool motor_enabled;                                               // Motor cortex enabled for this brain
+    uint64_t last_motor_update_us;                                    // Last motor update timestamp
+
+    // =========================================================================
+    // OCCIPITAL CORTEX INTEGRATION (Visual Processing - V1-V5)
+    // =========================================================================
+    // The Occipital Cortex provides visual processing:
+    // - V1 (Primary Visual): Edge detection, orientation selectivity
+    // - V2: Texture, color, illusory contours
+    // - V3/V3A: Form processing, dynamic shape
+    // - V4: Color constancy, object recognition
+    // - V5/MT: Motion detection, optic flow
+    //
+    // Integrates with:
+    // - Temporal Cortex: Object recognition (ventral stream)
+    // - Parietal Cortex: Spatial processing (dorsal stream)
+    // - Superior Colliculus: Eye movement coordination
+    // - LGN (Thalamus): Visual input relay
+    // - Dragonfly: Target tracking for pursuit
+    //
+    struct occipital_adapter* occipital;                              // Occipital cortex adapter
+    struct occipital_substrate_bridge* occipital_substrate_bridge;    // Substrate metabolic integration
+    struct occipital_thalamic_bridge* occipital_thalamic_bridge;      // Thalamic signal routing
+    struct occipital_quantum_bridge* occipital_quantum_bridge;        // Quantum-accelerated vision
+    bool occipital_enabled;                                           // Occipital cortex enabled for this brain
+    uint64_t last_occipital_update_us;                                // Last occipital update timestamp
+
+    // =========================================================================
+    // TEMPORAL CORTEX INTEGRATION (Auditory & Object Recognition)
+    // =========================================================================
+    // The Temporal Cortex provides auditory and object processing:
+    // - A1 (Primary Auditory): Tonotopic sound processing
+    // - Superior Temporal Gyrus (STG): Speech comprehension (Wernicke's)
+    // - Middle Temporal Gyrus (MTG): Semantic processing
+    // - Inferior Temporal (IT): Object recognition, face processing
+    // - Fusiform Face Area (FFA): Face-specific processing
+    //
+    // Integrates with:
+    // - Hippocampus: Memory encoding of objects/events
+    // - Amygdala: Emotional valence of sounds/faces
+    // - Prefrontal Cortex: Working memory for auditory/visual info
+    // - Occipital Cortex: Visual object information (ventral stream)
+    // - Broca's Area: Language production connection
+    //
+    struct temporal_adapter* temporal;                                // Temporal cortex adapter
+    struct temporal_substrate_bridge* temporal_substrate_bridge;      // Substrate metabolic integration
+    struct temporal_thalamic_bridge* temporal_thalamic_bridge;        // Thalamic signal routing
+    struct temporal_quantum_bridge* temporal_quantum_bridge;          // Quantum-accelerated recognition
+    bool temporal_enabled;                                            // Temporal cortex enabled for this brain
+    uint64_t last_temporal_update_us;                                 // Last temporal update timestamp
+
+    // =========================================================================
+    // PREFRONTAL CORTEX INTEGRATION (Executive Functions - PFC)
+    // =========================================================================
+    // The Prefrontal Cortex provides executive control:
+    // - DLPFC (Dorsolateral): Working memory, cognitive control
+    // - VLPFC (Ventrolateral): Response inhibition, rule learning
+    // - OFC (Orbitofrontal): Value-based decision making
+    // - mPFC (Medial): Self-referential processing, social cognition
+    // - ACC Integration: Error monitoring and conflict resolution
+    //
+    // Integrates with:
+    // - Basal Ganglia: Goal-directed action selection
+    // - Working Memory: Active maintenance and manipulation
+    // - Thalamus: MD nucleus bidirectional relay
+    // - Hippocampus: Episodic memory retrieval
+    // - Amygdala: Emotional regulation
+    //
+    struct prefrontal_adapter* prefrontal;                            // Prefrontal cortex adapter
+    struct prefrontal_substrate_bridge* prefrontal_substrate_bridge;  // Substrate metabolic integration
+    struct prefrontal_thalamic_bridge* prefrontal_thalamic_bridge;    // Thalamic signal routing
+    struct prefrontal_quantum_bridge* prefrontal_quantum_bridge;      // Quantum-accelerated planning
+    bool prefrontal_enabled;                                          // Prefrontal cortex enabled for this brain
+    uint64_t last_prefrontal_update_us;                               // Last prefrontal update timestamp
+
+    // =========================================================================
+    // INSULA INTEGRATION (Interoception & Emotional Awareness)
+    // =========================================================================
+    // The Insula provides interoceptive and emotional awareness:
+    // - Anterior Insula: Subjective feelings, empathy, awareness
+    // - Posterior Insula: Somatosensory integration, pain processing
+    // - Interoception: Internal body state monitoring (heart, gut)
+    // - Disgust Processing: Both physical and moral disgust
+    // - Addiction/Craving: Drug seeking and withdrawal states
+    //
+    // Integrates with:
+    // - ACC: Emotional salience and motivation
+    // - Amygdala: Emotional processing coordination
+    // - Hypothalamus: Autonomic regulation
+    // - Somatosensory Cortex: Body state integration
+    // - Social Cognition: Empathy and social emotions
+    //
+    struct insula_adapter* insula;                                    // Insula adapter
+    struct insula_quantum_bridge* insula_quantum_bridge;              // Quantum-accelerated interoception
+    bool insula_enabled;                                              // Insula enabled for this brain
+    uint64_t last_insula_update_us;                                   // Last insula update timestamp
+
+    // =========================================================================
+    // CINGULATE CORTEX INTEGRATION (Error Monitoring & Cognitive Control)
+    // =========================================================================
+    // The Cingulate Cortex provides error monitoring and control:
+    // - ACC (Anterior Cingulate): Error detection, conflict monitoring
+    // - MCC (Midcingulate): Motor intention, pain processing
+    // - PCC (Posterior Cingulate): Autobiographical memory, DMN hub
+    // - Error-Related Negativity (ERN): Real-time error signals
+    // - Conflict Adaptation: Adjusting control after errors
+    //
+    // Integrates with:
+    // - Prefrontal Cortex: Executive control coordination
+    // - Insula: Emotional salience integration
+    // - Motor Cortex: Action monitoring
+    // - Emotional System: Affective state influence
+    // - Autobiographical Memory: Self-referential processing
+    //
+    struct cingulate_adapter* cingulate;                              // Cingulate cortex adapter
+    struct cingulate_quantum_bridge* cingulate_quantum_bridge;        // Quantum-accelerated monitoring
+    bool cingulate_enabled;                                           // Cingulate enabled for this brain
+    uint64_t last_cingulate_update_us;                                // Last cingulate update timestamp
+
+    // =========================================================================
+    // PARIETAL CORTEX INTEGRATION (Spatial Processing & Attention)
+    // =========================================================================
+    // The Parietal Cortex provides spatial processing and attention:
+    // - SPL (Superior Parietal Lobule): Spatial attention, reaching
+    // - IPL (Inferior Parietal Lobule): Semantic integration, tool use
+    // - IPS (Intraparietal Sulcus): Number sense, eye movements
+    // - Precuneus: Spatial imagery, episodic memory
+    // - Angular Gyrus: Language, semantic memory
+    //
+    // NOTE: This is distinct from cognitive/parietal which handles
+    // mathematical and scientific reasoning. This is the sensorimotor
+    // parietal cortex for spatial attention and body awareness.
+    //
+    // Integrates with:
+    // - Motor Cortex: Reaching and grasping coordination
+    // - Occipital Cortex: Dorsal visual stream (where pathway)
+    // - Prefrontal Cortex: Attention control
+    // - Cerebellum: Spatial coordination
+    // - Dragonfly: Target spatial tracking
+    //
+    struct parietal_adapter* parietal_cortex;                  // Parietal cortex adapter
+    struct parietal_cortex_substrate_bridge* parietal_cortex_substrate_bridge;  // Substrate integration
+    struct parietal_cortex_thalamic_bridge* parietal_cortex_thalamic_bridge;    // Thalamic routing
+    struct parietal_quantum_bridge* parietal_cortex_quantum_bridge;      // Quantum-accelerated spatial
+    bool parietal_cortex_enabled;                                     // Parietal cortex enabled for this brain
+    uint64_t last_parietal_cortex_update_us;                          // Last parietal cortex update timestamp
 };
 
 //=============================================================================

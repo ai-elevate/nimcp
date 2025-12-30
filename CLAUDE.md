@@ -8,6 +8,7 @@
 
 | Topic | File |
 |-------|------|
+| **External API Guide** | [EXTERNAL_API_GUIDE.md](docs/EXTERNAL_API_GUIDE.md) |
 | Project Vision & Motivation | [00-overview.md](docs/claude/00-overview.md) |
 | Build & Test Commands | [01-build-test.md](docs/claude/01-build-test.md) |
 | Coding Standards & Protocols | [02-coding-standards.md](docs/claude/02-coding-standards.md) |

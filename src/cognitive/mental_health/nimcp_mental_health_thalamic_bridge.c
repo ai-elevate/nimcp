@@ -4,10 +4,12 @@
  */
 
 #include "cognitive/mental_health/nimcp_mental_health_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
 struct mental_health_thalamic_bridge {
+    bridge_base_t base;
     void* mental_health;
     thalamic_router_t* router;
     mental_health_thalamic_config_t config;
@@ -28,6 +30,11 @@ mental_health_thalamic_config_t mental_health_thalamic_default_config(void) {
 mental_health_thalamic_bridge_t* mental_health_thalamic_bridge_create(void* mental_health, thalamic_router_t* router, const mental_health_thalamic_config_t* config) {
     mental_health_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(mental_health_thalamic_bridge_t));
     if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->mental_health = mental_health;
     bridge->router = router;
     bridge->config = config ? *config : mental_health_thalamic_default_config();
@@ -37,18 +44,25 @@ mental_health_thalamic_bridge_t* mental_health_thalamic_bridge_create(void* ment
 }
 
 void mental_health_thalamic_bridge_destroy(mental_health_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
+    nimcp_free(bridge);
 }
 
 int mental_health_thalamic_bridge_reset(mental_health_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int mental_health_thalamic_route_wellbeing(mental_health_thalamic_bridge_t* bridge, const mental_health_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.wellbeing_updates++;
     bridge->stats.avg_wellbeing_level = (bridge->stats.avg_wellbeing_level * (bridge->stats.wellbeing_updates - 1) +
                                          signal->wellbeing_level) / bridge->stats.wellbeing_updates;
@@ -58,20 +72,25 @@ int mental_health_thalamic_route_wellbeing(mental_health_thalamic_bridge_t* brid
     if (signal->signal_type == MENTAL_HEALTH_SIGNAL_WARNING) {
         bridge->stats.warnings_issued++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int mental_health_thalamic_route_warning(mental_health_thalamic_bridge_t* bridge, const void* concern, float severity) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_warning_priority) {
         bridge->stats.warnings_issued++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int mental_health_thalamic_set_attention(mental_health_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

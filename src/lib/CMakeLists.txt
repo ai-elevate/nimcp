@@ -166,6 +166,46 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_substrate_bridge.c  # Broca-neural substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_thalamic_bridge.c   # Broca-thalamic routing integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_quantum_bridge.c    # Broca-quantum reasoning integration
+
+    # Cerebellum - Motor coordination, timing, error-based learning (Marr-Albus-Ito model)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cerebellum/nimcp_cerebellum_adapter.c       # Cerebellum core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.c # Quantum timing optimization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cerebellum.c          # Cerebellum factory init
+
+    # Brainstem - Midbrain, pons, medulla, reticular formation (vital functions, reflexes, arousal)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_brainstem_adapter.c         # Brainstem core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.c  # Quantum-accelerated processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_brainstem_immune_bridge.c   # Brainstem-immune integration (arousal-immune)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_brainstem.c           # Brainstem factory init
+
+    # Cingulate Cortex - Conflict monitoring, error detection, cognitive control (Phase B4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cingulate/nimcp_cingulate_adapter.c         # Cingulate core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.c  # Quantum-accelerated conflict resolution
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cingulate/nimcp_cingulate_immune_bridge.c   # Cingulate-immune integration (error/conflict-immune)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cingulate.c           # Cingulate factory init
+
+    # Hypothalamus - Homeostatic regulation, circadian rhythms, stress response (Phase H1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.c         # Hypothalamus core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_quantum_bridge.c  # Quantum homeostatic optimization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hypothalamus.c              # Hypothalamus factory init
+
+    # Hippocampus - Episodic memory, spatial navigation, pattern separation/completion (Phase H1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus_adapter.c           # Hippocampus core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.c    # Hippocampus quantum bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hippocampus.c               # Hippocampus init
+
+    # Parietal Cortex - Spatial processing, somatosensory, sensorimotor integration (Phase PC1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/parietal/nimcp_parietal_adapter.c                 # Parietal cortex core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/parietal/nimcp_parietal_quantum_bridge.c          # Parietal quantum optimization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_parietal_cortex.c           # Parietal cortex factory init
+
+    # Temporal Cortex - Auditory processing, semantic memory, object recognition (Phase TC1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/temporal/nimcp_temporal_adapter.c                 # Temporal cortex core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/temporal/nimcp_temporal_quantum_bridge.c          # Temporal quantum bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/temporal/nimcp_temporal_substrate_bridge.c        # Temporal substrate bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c         # Temporal thalamic bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_temporal.c                  # Temporal factory init
+
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # DISABLED: needs API updates  # Predictive coding brain region extension - DISABLED: needs refactoring
 
     # Subcortical brain structures (basal ganglia, thalamus, etc.)
@@ -424,7 +464,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_electrical_engineering.c  # EE: Circuit analysis, signal processing, control systems
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_mechanical_engineering.c  # ME: Structural mechanics, vibration, thermal, fatigue
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_civil_engineering.c       # CE: Geotechnical, hydraulics, structural optimization
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_quantum_bridge.c # Quantum acceleration bridge (annealing, VQE, walk)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_quantum_bridge.c # Parietal quantum bridge API (different from core/brain/regions version)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_fep_parietal_bridge.c     # FEP-Parietal bridge (predictive processing, active inference)
     # Phase 6: Intuitive Reasoning & Discovery Engines
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuitive_reasoning.c    # Core intuitive reasoning (hunches, plausibility, leaps)
@@ -693,7 +733,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_emotion_substrate_bridge.c  # Emotion-substrate integration (intensity, regulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_substrate_bridge.c  # Executive-substrate integration (decision, inhibition)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection_substrate_bridge.c  # Introspection-substrate integration (self-awareness)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_consolidation_substrate_bridge.c  # Memory-substrate integration (consolidation rate)
+    # Note: Using consolidation/nimcp_consolidation_substrate_bridge.c instead of memory version (more complete API)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_substrate_bridge.c  # Consolidation-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_substrate_bridge.c  # Reasoning-substrate integration (inference depth)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_substrate_bridge.c  # ToM-substrate integration (mentalizing capacity)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_substrate_bridge.c  # Working memory-substrate integration (capacity, decay)
@@ -759,6 +800,51 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_thalamic_bridge.c  # Shadow-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_thalamic_bridge.c  # Mental-health-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuition_thalamic_bridge.c  # Intuition-thalamic integration
+
+    # Additional Cognitive Substrate Bridges (Phase 7: Complete Coverage)
+    # Note: nimcp_memory_consolidation_substrate_bridge.c removed - using consolidation version (more complete API)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_substrate_bridge.c  # Emotion-tensor-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/empathetic_response/nimcp_empathetic_response_substrate_bridge.c  # Empathetic-response-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_fault_tolerance_substrate_bridge.c  # Fault-tolerance-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fractal_cognitive/nimcp_fractal_cognitive_substrate_bridge.c  # Fractal-cognitive-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy_substrate_bridge.c  # Free-energy-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_substrate_bridge.c  # Game-theory-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_substrate_bridge.c  # Brain-immune-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_substrate_bridge.c  # Social-substrate integration
+    # Note: nimcp_theory_of_mind_substrate_bridge.c removed - duplicate of nimcp_tom_substrate_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune_substrate_bridge.c  # Predictive-immune-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness_extended/nimcp_self_awareness_extended_substrate_bridge.c  # Self-awareness-ext-substrate integration
+
+    # Additional Cognitive Thalamic Bridges (Phase 7: Complete Coverage)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_thalamic_bridge.c  # Consolidation-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_thalamic_bridge.c  # Emotion-tensor-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/empathetic_response/nimcp_empathetic_response_thalamic_bridge.c  # Empathetic-response-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_fault_tolerance_thalamic_bridge.c  # Fault-tolerance-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fractal_cognitive/nimcp_fractal_cognitive_thalamic_bridge.c  # Fractal-cognitive-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy_thalamic_bridge.c  # Free-energy-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_thalamic_bridge.c  # Game-theory-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_thalamic_bridge.c  # Brain-immune-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_thalamic_bridge.c  # Social-thalamic integration
+    # Note: Using tom thalamic bridge instead of theory_of_mind (more complete implementation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_thalamic_bridge.c  # ToM-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune_thalamic_bridge.c  # Predictive-immune-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness_extended/nimcp_self_awareness_extended_thalamic_bridge.c  # Self-awareness-ext-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_analysis_thalamic_bridge.c  # Analysis-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_thalamic_bridge.c  # Attention-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_emotion_thalamic_bridge.c  # Emotion-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_thalamic_bridge.c  # Executive-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_thalamic_bridge.c  # Memory-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_thalamic_bridge.c  # Reasoning-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_thalamic_bridge.c  # Working-memory-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_thalamic_bridge.c  # Wellbeing-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection_thalamic_bridge.c  # Introspection-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_thalamic_bridge.c  # Self-model-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_thalamic_bridge.c  # Epistemic-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_thalamic_bridge.c  # Symbolic-logic-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow_emotions/nimcp_shadow_emotions_thalamic_bridge.c  # Shadow-emotions-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotional_tagging/nimcp_emotional_tagging_thalamic_bridge.c  # Emotional-tagging-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations_thalamic_bridge.c  # Explanations-thalamic integration
+    # Note: ToM thalamic bridge already included via theory_of_mind
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
@@ -1016,6 +1102,7 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Tensor Operations (General-Purpose Tensor Library)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor/nimcp_tensor.c  # Core tensor operations and tensor calculus
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor/nimcp_tensor_simd.c  # SIMD-optimized tensor operations (AVX2/AVX-512/NEON)
 
     # Utils - Positional Encoding (Transformer-style encodings)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/encoding/nimcp_positional_encoding.c  # Sinusoidal, learned, RoPE, ALiBi encodings
@@ -1085,6 +1172,7 @@ set(NIMCP_CORE_SOURCES
 
     # GPU Support (CPU fallback when CUDA unavailable)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_simd_detect.c  # SIMD capability detection (AVX2/AVX-512/NEON)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/spike_event/nimcp_spike_event.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_neuron.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/nimcp_multigpu.c
@@ -1372,7 +1460,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/prefrontal/nimcp_prefrontal_substrate_bridge.c  # Prefrontal-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cingulate/nimcp_cingulate_substrate_bridge.c  # Cingulate-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/insula/nimcp_insula_substrate_bridge.c  # Insula-substrate integration
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/temporal/nimcp_temporal_substrate_bridge.c  # Temporal-substrate integration
+    # NOTE: temporal_substrate_bridge moved to core/brain/regions/temporal/
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/parietal/nimcp_parietal_substrate_bridge.c  # Parietal-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/occipital/nimcp_occipital_substrate_bridge.c  # Occipital-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_substrate_bridge.c  # Hypothalamus-substrate integration
@@ -1388,7 +1476,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/prefrontal/nimcp_prefrontal_thalamic_bridge.c  # Prefrontal-thalamic integration (MD)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cingulate/nimcp_cingulate_thalamic_bridge.c  # Cingulate-thalamic integration (Anterior)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/insula/nimcp_insula_thalamic_bridge.c  # Insula-thalamic integration (VMPo)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/temporal/nimcp_temporal_thalamic_bridge.c  # Temporal-thalamic integration (Pulvinar)
+    # NOTE: temporal_thalamic_bridge moved to core/brain/regions/temporal/
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/parietal/nimcp_parietal_thalamic_bridge.c  # Parietal-thalamic integration (Pulvinar)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/occipital/nimcp_occipital_thalamic_bridge.c  # Occipital-thalamic integration (LGN)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_thalamic_bridge.c  # Hypothalamus-thalamic integration (Midline)

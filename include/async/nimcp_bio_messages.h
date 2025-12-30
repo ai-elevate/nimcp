@@ -140,6 +140,14 @@ typedef enum {
     BIO_MSG_AGENT_BELIEF_UPDATE,        /**< Theory of Mind: Agent belief changed */
     BIO_MSG_AGENT_INTENTION_INFERRED,   /**< Theory of Mind: Agent intention detected */
 
+    /* Cingulate cortex messages (0x0360 - 0x037F) */
+    BIO_MSG_CONFLICT_DETECTED = 0x0360,     /**< Cingulate: Conflict between responses detected */
+    BIO_MSG_CONFLICT_RESOLVED,              /**< Cingulate: Conflict resolved */
+    BIO_MSG_ERROR_DETECTED,                 /**< Cingulate: Error detected (ERN) */
+    BIO_MSG_CONTROL_ADJUSTMENT,             /**< Cingulate: Cognitive control adjustment */
+    BIO_MSG_CINGULATE_STATE_QUERY,          /**< Query cingulate state */
+    BIO_MSG_CINGULATE_STATE_RESPONSE,       /**< Response with cingulate state */
+
     /* Emotion tensor messages (0x0380 - 0x039F) */
     BIO_MSG_EMOTION_TENSOR_UPDATE = 0x0380,     /**< Tensor state broadcast */
     BIO_MSG_EMOTION_TENSOR_QUERY,               /**< Query tensor state */
@@ -159,6 +167,12 @@ typedef enum {
     BIO_MSG_METABOLIC_DEMAND,
     BIO_MSG_METABOLIC_SUPPLY,
     BIO_MSG_GLIAL_SYNC_REQUEST,
+
+    /* Substrate bridge messages (0x0410 - 0x041F) - Metabolic modulation */
+    BIO_MSG_SUBSTRATE_MODULATION = 0x0410,      /**< Substrate bridge effects broadcast */
+    BIO_MSG_SUBSTRATE_CAPACITY_UPDATE,          /**< Capacity modulation update */
+    BIO_MSG_SUBSTRATE_ATP_CRITICAL,             /**< ATP level critically low */
+    BIO_MSG_SUBSTRATE_FATIGUE_ALERT,            /**< Fatigue threshold exceeded */
 
     /* Middleware messages (0x0500 - 0x05FF) */
     BIO_MSG_PIPELINE_STAGE_COMPLETE = 0x0500,
@@ -373,6 +387,32 @@ typedef enum {
     BIO_MSG_CONTRALATERAL_MOTOR,                  /**< Contralateral motor command */
     BIO_MSG_CONTRALATERAL_SENSORY,                /**< Contralateral sensory input */
 
+    /* Hypothalamus messages (0x1110 - 0x111F) */
+    BIO_MSG_CIRCADIAN_PHASE_CHANGE = 0x1110,      /**< Circadian phase transition */
+    BIO_MSG_STRESS_RESPONSE,                      /**< HPA axis stress response */
+    BIO_MSG_HOMEOSTATIC_ALERT,                    /**< Homeostatic deviation alert */
+    BIO_MSG_AUTONOMIC_STATE_CHANGE,               /**< Autonomic nervous system change */
+    BIO_MSG_TEMPERATURE_REGULATION,               /**< Temperature regulation update */
+    BIO_MSG_HUNGER_SATIETY,                       /**< Hunger/satiety state change */
+    BIO_MSG_THIRST_HYDRATION,                     /**< Thirst/hydration state change */
+    BIO_MSG_HORMONE_RELEASE,                      /**< Hormone release notification */
+
+    /* Hippocampus messages (0x1120 - 0x112F) */
+    BIO_MSG_MEMORY_ENCODE_REQUEST = 0x1120,       /**< Request memory encoding */
+    BIO_MSG_MEMORY_ENCODE_RESPONSE,               /**< Memory encoding result */
+    BIO_MSG_MEMORY_RETRIEVE_REQUEST,              /**< Request memory retrieval */
+    BIO_MSG_MEMORY_RETRIEVE_RESPONSE,             /**< Memory retrieval result */
+    BIO_MSG_CONSOLIDATION_REQUEST,                /**< Request memory consolidation */
+    BIO_MSG_CONSOLIDATION_RESPONSE,               /**< Consolidation result */
+    BIO_MSG_POSITION_UPDATE,                      /**< Position update for place cells */
+    BIO_MSG_REPLAY_REQUEST,                       /**< Request replay sequence */
+    BIO_MSG_MEMORY_ENCODED,                       /**< Memory encoding complete */
+
+    /* Hypothalamus input messages (0x1130 - 0x113F) */
+    BIO_MSG_STRESS_INPUT = 0x1130,                /**< Stress input signal */
+    BIO_MSG_TEMPERATURE_INPUT,                    /**< Temperature sensor input */
+    BIO_MSG_STATE_QUERY,                          /**< State query request */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -487,6 +527,16 @@ typedef enum {
     BIO_MODULE_SUBTHALAMIC_NUCLEUS,          /**< Subthalamic nucleus */
     BIO_MODULE_THALAMUS,                     /**< Thalamus relay nuclei */
     BIO_MODULE_AMYGDALA,                     /**< Amygdala emotion/fear processing */
+    BIO_MODULE_BRAINSTEM,                    /**< Brainstem (midbrain, pons, medulla) */
+    BIO_MODULE_CEREBELLUM,                   /**< Cerebellum motor coordination */
+    BIO_MODULE_MOTOR_CORTEX,                 /**< Motor cortex for movement planning */
+    BIO_MODULE_HIPPOCAMPUS,                  /**< Hippocampus memory formation */
+    BIO_MODULE_HYPOTHALAMUS,                 /**< Hypothalamus homeostatic regulation */
+    BIO_MODULE_CINGULATE,                    /**< Cingulate cortex conflict/error monitoring */
+    BIO_MODULE_PREFRONTAL,                   /**< Prefrontal cortex executive function */
+    BIO_MODULE_INSULA,                       /**< Insular cortex interoception */
+    BIO_MODULE_PARIETAL_CORTEX,              /**< Parietal cortex spatial processing */
+    BIO_MODULE_TEMPORAL_CORTEX,              /**< Temporal cortex auditory/semantic processing */
 
     /* Cognitive modules */
     BIO_MODULE_INTROSPECTION = 0x0200,
@@ -2651,6 +2701,63 @@ typedef struct {
     float priority;                 /**< Decision priority [0,1] */
     uint64_t execution_deadline_ms; /**< Execution deadline */
 } bio_msg_executive_decision_broadcast_t;
+
+/*=============================================================================
+ * SUBSTRATE BRIDGE MESSAGES
+ *============================================================================*/
+
+/**
+ * @brief Substrate metabolic modulation broadcast
+ *
+ * WHAT: Broadcast metabolic modulation effects from substrate bridges
+ * WHY:  Cognitive modules need to adjust processing based on ATP/fatigue
+ * HOW:  Substrate bridges broadcast effects after update calculations
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint16_t bridge_module_id;      /**< Source bridge module ID */
+    float processing_capacity;      /**< Processing capacity [0-1] */
+    float overall_capacity;         /**< Overall modulation [0-1] */
+    float effect_values[4];         /**< Module-specific effect values */
+    float atp_level;                /**< Current ATP level [0-1] */
+    float fatigue_level;            /**< Current fatigue level [0-1] */
+    uint64_t update_count;          /**< Bridge update counter */
+    bool critical_low;              /**< ATP critically low flag */
+} bio_msg_substrate_modulation_t;
+
+/**
+ * @brief Substrate capacity update notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint16_t bridge_module_id;      /**< Source bridge module ID */
+    float old_capacity;             /**< Previous overall capacity */
+    float new_capacity;             /**< New overall capacity */
+    float delta;                    /**< Change magnitude */
+    bool significant_change;        /**< Change exceeds threshold */
+} bio_msg_substrate_capacity_update_t;
+
+/**
+ * @brief ATP critically low alert
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint16_t bridge_module_id;      /**< Source bridge module ID */
+    float atp_level;                /**< Current ATP level */
+    float threshold;                /**< Critical threshold */
+    float min_capacity;             /**< Minimum capacity being enforced */
+} bio_msg_substrate_atp_critical_t;
+
+/**
+ * @brief Fatigue threshold exceeded alert
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint16_t bridge_module_id;      /**< Source bridge module ID */
+    float fatigue_level;            /**< Current fatigue level */
+    float threshold;                /**< Alert threshold */
+    float capacity_reduction;       /**< Amount of capacity reduction */
+} bio_msg_substrate_fatigue_alert_t;
 
 /*=============================================================================
  * MESSAGE UTILITIES

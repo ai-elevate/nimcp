@@ -48,7 +48,7 @@ thalamic_router_fep_bridge_t* thalamic_router_fep_bridge_create(
     bridge->config = *config;
 
     bridge->effects.routing_gain_modifier = 1.0f;
-    bridge->effects.pe_priority_level = PRIORITY_NORMAL;
+    bridge->effects.pe_priority_level = SIGNAL_PRIORITY_NORMAL;
     bridge->state.current_precision = 0.5f;
 
     bridge->base.mutex = nimcp_platform_mutex_create();
@@ -162,12 +162,12 @@ int thalamic_router_fep_boost_pe_priority(
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     signal_priority_t priority = (prediction_error > FEP_PE_HIGH_PRIORITY_THRESHOLD) ?
-                                 PRIORITY_HIGH : PRIORITY_NORMAL;
+                                 SIGNAL_PRIORITY_HIGH : SIGNAL_PRIORITY_NORMAL;
 
     bridge->state.current_pe = prediction_error;
     bridge->effects.pe_priority_level = priority;
 
-    if (priority == PRIORITY_HIGH) {
+    if (priority == SIGNAL_PRIORITY_HIGH) {
         bridge->stats.pe_priority_boosts++;
     }
 

@@ -20,7 +20,7 @@ void snn_routing_config_default(snn_routing_config_t* config) {
     memset(config, 0, sizeof(snn_routing_config_t));
 
     config->attention_threshold = 0.1f;
-    config->default_priority = PRIORITY_NORMAL;
+    config->default_priority = SIGNAL_PRIORITY_NORMAL;
     config->max_queue_size = 1000;
     config->max_destinations = 8;
 

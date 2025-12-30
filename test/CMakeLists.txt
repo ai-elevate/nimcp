@@ -603,6 +603,22 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/brain")
 endif()
 
 # ============================================================================
+# Brain Regions Regression Tests
+# ============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/brain_regions/CMakeLists.txt")
+    message(STATUS "Adding brain regions regression tests...")
+    add_subdirectory(regression/brain_regions)
+endif()
+
+# ============================================================================
+# Bridges Regression Tests
+# ============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/bridges/CMakeLists.txt")
+    message(STATUS "Adding bridges regression tests...")
+    add_subdirectory(regression/bridges)
+endif()
+
+# ============================================================================
 # Core Neuron Types Bio-Async Integration Tests
 # ============================================================================
 

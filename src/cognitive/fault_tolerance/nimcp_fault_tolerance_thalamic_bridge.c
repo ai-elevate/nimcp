@@ -1,0 +1,105 @@
+/**
+ * @file nimcp_fault_tolerance_thalamic_bridge.c
+ * @brief Fault Tolerance-Thalamic Bridge Implementation
+ */
+
+#include "cognitive/fault_tolerance/nimcp_fault_tolerance_thalamic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/memory/nimcp_memory.h"
+#include <string.h>
+
+struct fault_tolerance_thalamic_bridge {
+    bridge_base_t base;
+    void* fault_tolerance;
+    thalamic_router_t* router;
+    fault_tolerance_thalamic_config_t config;
+    fault_tolerance_thalamic_stats_t stats;
+    float attention_weight;
+};
+
+fault_tolerance_thalamic_config_t fault_tolerance_thalamic_default_config(void) {
+    fault_tolerance_thalamic_config_t cfg = {
+        .enable_attention_gating = true,
+        .enable_severity_boost = true,
+        .min_severity_threshold = 0.15f,  /* Lower threshold for faults */
+        .escalation_boost = 0.5f
+    };
+    return cfg;
+}
+
+fault_tolerance_thalamic_bridge_t* fault_tolerance_thalamic_bridge_create(void* fault_tolerance, thalamic_router_t* router, const fault_tolerance_thalamic_config_t* config) {
+    fault_tolerance_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(fault_tolerance_thalamic_bridge_t));
+    if (!bridge) return NULL;
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    bridge->fault_tolerance = fault_tolerance;
+    bridge->router = router;
+    bridge->config = config ? *config : fault_tolerance_thalamic_default_config();
+    bridge->attention_weight = 1.0f;
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    return bridge;
+}
+
+void fault_tolerance_thalamic_bridge_destroy(fault_tolerance_thalamic_bridge_t* bridge) {
+    if (!bridge) return;
+    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    nimcp_free(bridge);
+}
+
+int fault_tolerance_thalamic_bridge_reset(fault_tolerance_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    bridge->attention_weight = 1.0f;
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int fault_tolerance_thalamic_route_detection(fault_tolerance_thalamic_bridge_t* bridge, const fault_tolerance_thalamic_signal_t* signal) {
+    if (!bridge || !signal) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    /* Critical faults bypass attention gating */
+    if (bridge->config.enable_attention_gating &&
+        signal->severity < bridge->config.min_severity_threshold &&
+        signal->criticality < 0.8f) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        return 0;
+    }
+    bridge->stats.detections_routed++;
+    bridge->stats.avg_severity = (bridge->stats.avg_severity * (bridge->stats.detections_routed - 1) +
+                                  signal->severity) / bridge->stats.detections_routed;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int fault_tolerance_thalamic_route_recovery(fault_tolerance_thalamic_bridge_t* bridge, const void* recovery_plan, float priority) {
+    if (!bridge) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    bridge->stats.recoveries_initiated++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int fault_tolerance_thalamic_set_attention(fault_tolerance_thalamic_bridge_t* bridge, float attention) {
+    if (!bridge) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int fault_tolerance_thalamic_get_attention(const fault_tolerance_thalamic_bridge_t* bridge, float* attention) {
+    if (!bridge || !attention) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int fault_tolerance_thalamic_bridge_get_stats(const fault_tolerance_thalamic_bridge_t* bridge, fault_tolerance_thalamic_stats_t* stats) {
+    if (!bridge || !stats) return -1;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return 0;
+}

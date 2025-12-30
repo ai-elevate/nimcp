@@ -104,7 +104,7 @@ typedef enum {
 /**
  * @brief Detected emotional state
  */
-typedef struct {
+typedef struct emotional_state {
     negative_emotion_type_t emotion_type;    /**< Primary negative emotion */
     emotion_intensity_t intensity;           /**< Intensity level */
     float valence;                           /**< Valence (-1 = negative, +1 = positive) */

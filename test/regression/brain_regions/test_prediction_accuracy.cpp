@@ -114,7 +114,7 @@ TEST_F(PredictionAccuracyRegressionTest, ConstantInputPredictionAccuracy) {
     EXPECT_LT(fe_avg, 2.0f)
         << "Free energy minimization degraded! FE: " << fe_avg;
 
-    LOG_MODULE_INFO("Constant input regression: mean_error=%.4f, FE=%.4f",
+    LOG_MODULE_INFO("PredictiveTest", "Constant input regression: mean_error=%.4f, FE=%.4f",
                     mean_error_avg, fe_avg);
 }
 
@@ -166,7 +166,7 @@ TEST_F(PredictionAccuracyRegressionTest, SinusoidalInputPredictionAccuracy) {
     EXPECT_LT(fe_avg, 5.0f)
         << "Free energy minimization degraded! FE: " << fe_avg;
 
-    LOG_MODULE_INFO("Sinusoidal regression: mean_error=%.4f, FE=%.4f",
+    LOG_MODULE_INFO("PredictiveTest", "Sinusoidal regression: mean_error=%.4f, FE=%.4f",
                     mean_error_avg, fe_avg);
 }
 
@@ -211,7 +211,7 @@ TEST_F(PredictionAccuracyRegressionTest, ConvergenceSpeedRegression) {
     EXPECT_LT(avg_iterations, 25.0f)
         << "Convergence speed regressed! Avg iterations: " << avg_iterations;
 
-    LOG_MODULE_INFO("Convergence speed regression: avg_iterations=%.1f", avg_iterations);
+    LOG_MODULE_INFO("PredictiveTest", "Convergence speed regression: avg_iterations=%.1f", avg_iterations);
 }
 
 //=============================================================================
@@ -262,7 +262,7 @@ TEST_F(PredictionAccuracyRegressionTest, PrecisionLearningStability) {
     EXPECT_LT(std_precision, 20.0f)
         << "Precision variance too high: " << std_precision;
 
-    LOG_MODULE_INFO("Precision learning regression: mean=%.4f, std=%.4f",
+    LOG_MODULE_INFO("PredictiveTest", "Precision learning regression: mean=%.4f, std=%.4f",
                     mean_precision, std_precision);
 }
 
@@ -313,7 +313,7 @@ TEST_F(PredictionAccuracyRegressionTest, FreeEnergyMinimizationTrend) {
     EXPECT_GE(decrease_ratio, -0.2f)  // Allow small increases
         << "Free energy increased too much! Ratio: " << decrease_ratio;
 
-    LOG_MODULE_INFO("Free energy trend regression: early=%.4f, late=%.4f, decrease=%.2f%%",
+    LOG_MODULE_INFO("PredictiveTest", "Free energy trend regression: early=%.4f, late=%.4f, decrease=%.2f%%",
                     early_fe_avg, late_fe_avg, decrease_ratio * 100.0f);
 }
 
@@ -372,7 +372,7 @@ TEST_F(PredictionAccuracyRegressionTest, DeterministicBehavior) {
             << " (diff=" << diff << ", rel=" << relative_diff << ")";
     }
 
-    LOG_MODULE_INFO("Deterministic behavior regression: passed");
+    LOG_MODULE_INFO("PredictiveTest", "Deterministic behavior regression: passed");
 }
 
 //=============================================================================
@@ -407,7 +407,7 @@ TEST_F(PredictionAccuracyRegressionTest, MemoryUsageStability) {
     // If we got here without crashes, basic stability is OK
     SUCCEED() << "Memory stability check passed (100 iterations)";
 
-    LOG_MODULE_INFO("Memory usage stability regression: passed");
+    LOG_MODULE_INFO("PredictiveTest", "Memory usage stability regression: passed");
 }
 
 //=============================================================================
