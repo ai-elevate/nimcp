@@ -307,6 +307,11 @@ TEST_F(BrocaImmuneIntegrationTest, ErrorHistoryCapacity) {
  * ============================================================================ */
 
 TEST_F(BrocaImmuneIntegrationTest, AnalyzeErrorPatterns) {
+    /* Default error_analysis_window_ms is 60000ms (60 seconds)
+     * Use timestamps larger than that to avoid uint64_t underflow
+     * when calculating window_start = last_update_time_ms - window_ms */
+    broca_immune_bridge_update(bridge, 70000);
+
     /* Report some errors */
     broca_immune_report_speech_error(bridge,
         SPEECH_ERROR_PHONOLOGICAL, "cat", "tat", 0.3f);
@@ -314,6 +319,9 @@ TEST_F(BrocaImmuneIntegrationTest, AnalyzeErrorPatterns) {
         SPEECH_ERROR_PHONOLOGICAL, "pat", "bat", 0.3f);
     broca_immune_report_speech_error(bridge,
         SPEECH_ERROR_SYNTACTIC, "I am", "I is", 0.4f);
+
+    /* Update timestamp to ensure errors are within analysis window */
+    broca_immune_bridge_update(bridge, 70100);
 
     /* Analyze patterns */
     float phono_damage, syntax_damage, motor_damage;

@@ -261,9 +261,10 @@ TEST_F(LanguageProductionPETest, EncodeMotorSequence_InPlace) {
 //=============================================================================
 
 TEST_F(LanguageProductionPETest, EncodeGesture_SingleGesture) {
-    // WHAT: Apply RoPE to single articulatory gesture
+    // WHAT: Apply RoPE to articulatory gestures
     // WHY:  Basic gesture encoding functionality
-    // HOW:  Rotate query/key pair for position 0
+    // HOW:  Rotate query/key pair - use seq_len=2 because RoPE at position 0
+    //       has rotation angle = 0 (no change), so we need position 1 to see rotation
 
     lpb_config_t config = lpb_default_config();
     config.enable_positional_encoding = true;
@@ -276,33 +277,34 @@ TEST_F(LanguageProductionPETest, EncodeGesture_SingleGesture) {
 
     language_production_set_pe_config(bridge, &config.pe_config);
 
-    float query[64], key[64];
-    for (int i = 0; i < 64; i++) {
+    // Use seq_len = 2 to test position 1 (position 0 has no rotation in RoPE)
+    float query[2 * 64], key[2 * 64];
+    for (int i = 0; i < 2 * 64; i++) {
         query[i] = (i % 2 == 0) ? 1.0f : 0.0f;
         key[i] = (i % 2 == 0) ? 0.0f : 1.0f;
     }
 
-    float query_out[64], key_out[64];
+    float query_out[2 * 64], key_out[2 * 64];
     bool result = language_production_encode_gesture(
         bridge,
         query,
         key,
-        1,  // Single gesture
+        2,  // Two gestures to test position 1
         query_out,
         key_out
     );
 
-    EXPECT_TRUE(result) << "Single gesture encoding should succeed";
+    EXPECT_TRUE(result) << "Gesture encoding should succeed";
 
-    // Output should differ from input (rotated)
+    // Check position 1 (index 64-127) - should differ from input (rotated)
     bool query_changed = false;
-    for (int i = 0; i < 64; i++) {
+    for (int i = 64; i < 2 * 64; i++) {
         if (std::abs(query_out[i] - query[i]) > EPSILON) {
             query_changed = true;
             break;
         }
     }
-    EXPECT_TRUE(query_changed) << "RoPE should rotate gesture vectors";
+    EXPECT_TRUE(query_changed) << "RoPE should rotate gesture vectors at position 1";
 }
 
 TEST_F(LanguageProductionPETest, EncodeGesture_MultipleGestures) {
@@ -477,23 +479,37 @@ TEST_F(LanguageProductionPETest, EdgeCase_NullOutputBuffers) {
 }
 
 TEST_F(LanguageProductionPETest, EdgeCase_PENotConfigured) {
-    // WHAT: Use PE functions before configuration
-    // WHY:  Verify initialization checking
-    // HOW:  Call encode functions without set_pe_config
+    // WHAT: Use PE functions when PE is disabled
+    // WHY:  Verify passthrough mode when PE not configured
+    // HOW:  Call encode functions with enable_positional_encoding = false
 
     lpb_config_t config = lpb_default_config();
     config.enable_positional_encoding = false;
+    // Default motor_seq_embedding_dim is 128, use matching buffer size
 
     bridge = lpb_create(&config, broca);
     ASSERT_NE(bridge, nullptr);
 
-    float data[64];
-    for (int i = 0; i < 64; i++) {
+    const int dim = 128;  // Must match default motor_seq_embedding_dim
+    float data[dim];
+    float output[dim];
+    for (int i = 0; i < dim; i++) {
         data[i] = 0.5f;
     }
 
-    bool result = language_production_encode_motor_sequence(bridge, data, 1, data);
-    EXPECT_FALSE(result) << "Unconfigured PE should fail";
+    // When PE is disabled, function operates in passthrough mode (returns true)
+    bool result = language_production_encode_motor_sequence(bridge, data, 1, output);
+    EXPECT_TRUE(result) << "PE disabled should succeed in passthrough mode";
+
+    // In passthrough mode, output should match input (no encoding applied)
+    bool unchanged = true;
+    for (int i = 0; i < dim; i++) {
+        if (std::abs(output[i] - data[i]) > EPSILON) {
+            unchanged = false;
+            break;
+        }
+    }
+    EXPECT_TRUE(unchanged) << "Passthrough mode should not modify data";
 }
 
 TEST_F(LanguageProductionPETest, EdgeCase_ZeroDimension) {
