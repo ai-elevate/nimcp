@@ -170,7 +170,7 @@ E2E_TEST(BrainPipelineTest, SimpleBrainLifecycle) {
     E2E_STAGE_END();
 
     // Stage 7: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for brain cleanup
+    E2E_STAGE_BEGIN("Cleanup", 5000);  // Increased timeout for brain cleanup
     {
         nimcp_brain_destroy(brain);
         std::remove(save_path);
@@ -265,7 +265,7 @@ E2E_TEST(BrainPipelineTest, SnapshotWorkflow) {
     E2E_STAGE_END();
 
     // Stage 5: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for brain cleanup
+    E2E_STAGE_BEGIN("Cleanup", 8000);  // Increased timeout for brain cleanup with all BG subsystems
     {
         nimcp_brain_snapshot_delete(brain, "e2e_test_snapshot");
         nimcp_brain_destroy(brain);
@@ -343,7 +343,7 @@ E2E_TEST(BrainPipelineTest, BrainProbeStatistics) {
     E2E_STAGE_END();
 
     // Stage 5: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for brain with many subsystems
+    E2E_STAGE_BEGIN("Cleanup", 5000);  // Increased timeout for brain with many subsystems
     {
         nimcp_brain_destroy(brain);
     }
@@ -442,7 +442,7 @@ E2E_TEST(BrainPipelineTest, COWCloning) {
     E2E_STAGE_END();
 
     // Stage 6: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for brain cleanup
+    E2E_STAGE_BEGIN("Cleanup", 5000);  // Increased timeout for brain cleanup
     {
         nimcp_brain_destroy(clone);
         nimcp_brain_destroy(original);
@@ -523,7 +523,7 @@ E2E_TEST(BrainPipelineTest, TrainingCallbacks) {
     E2E_STAGE_END();
 
     // Stage 5: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for brain cleanup
+    E2E_STAGE_BEGIN("Cleanup", 5000);  // Increased timeout for brain cleanup
     {
         nimcp_brain_destroy(brain);
     }

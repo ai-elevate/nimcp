@@ -54,6 +54,9 @@ void nimcp_brain_bg_default_config(brain_t brain, bg_enhanced_config_t* config) 
     /* Temporal credit assignment - always enable for learning */
     config->features.enable_temporal_credit = true;
 
+    /* Training plasticity - always enable for reinforcement learning */
+    config->features.enable_training_plasticity = true;
+
     /* Core BG config based on brain size */
     uint32_t num_actions = b->config.num_outputs;
     if (num_actions == 0) num_actions = 16;  /* Default */
@@ -61,7 +64,7 @@ void nimcp_brain_bg_default_config(brain_t brain, bg_enhanced_config_t* config) 
 
     config->core_config.num_actions = num_actions;
 
-    NIMCP_LOGGING_DEBUG("BG config: %u actions, beta=%d, neuromod=%d, hrl=%d, mb=%d, nac=%d, sc=%d, int=%d, cb=%d, od=%d, tc=%d",
+    NIMCP_LOGGING_DEBUG("BG config: %u actions, beta=%d, neuromod=%d, hrl=%d, mb=%d, nac=%d, sc=%d, int=%d, cb=%d, od=%d, tc=%d, tr=%d",
         num_actions,
         config->features.enable_beta_oscillations,
         config->features.enable_multi_neuromod,
@@ -72,7 +75,8 @@ void nimcp_brain_bg_default_config(brain_t brain, bg_enhanced_config_t* config) 
         config->features.enable_interneurons,
         config->features.enable_cerebellar_coord,
         config->features.enable_outcome_deval,
-        config->features.enable_temporal_credit);
+        config->features.enable_temporal_credit,
+        config->features.enable_training_plasticity);
 }
 
 //=============================================================================
@@ -123,6 +127,7 @@ bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain) {
     if (config.features.enable_cerebellar_coord) NIMCP_LOGGING_DEBUG("  - Cerebellar coordination");
     if (config.features.enable_outcome_deval) NIMCP_LOGGING_DEBUG("  - Outcome devaluation");
     if (config.features.enable_temporal_credit) NIMCP_LOGGING_DEBUG("  - Temporal credit assignment");
+    if (config.features.enable_training_plasticity) NIMCP_LOGGING_DEBUG("  - Training plasticity");
 
     return true;
 }
@@ -328,4 +333,91 @@ float nimcp_brain_bg_get_motivation(brain_t brain) {
     }
 
     return bg_enhanced_get_motivation(b->basal_ganglia);
+}
+
+//=============================================================================
+// Training Integration API
+//=============================================================================
+
+bgtr_bridge_t* nimcp_brain_bg_get_training_bridge(brain_t brain) {
+    if (!brain) return NULL;
+
+    struct brain_struct* b = (struct brain_struct*)brain;
+
+    if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
+        return NULL;
+    }
+
+    return bg_enhanced_get_training_bridge(b->basal_ganglia);
+}
+
+int nimcp_brain_bg_get_training_stats(brain_t brain, bgtr_bridge_stats_t* stats) {
+    if (!brain || !stats) return -1;
+
+    struct brain_struct* b = (struct brain_struct*)brain;
+
+    if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
+        memset(stats, 0, sizeof(*stats));
+        return -1;
+    }
+
+    bgtr_bridge_t* training = bg_enhanced_get_training_bridge(b->basal_ganglia);
+    if (!training) {
+        memset(stats, 0, sizeof(*stats));
+        return -1;
+    }
+
+    return bgtr_bridge_get_stats(training, stats);
+}
+
+int nimcp_brain_bg_connect_training_context(brain_t brain,
+                                             nimcp_training_context_t* training) {
+    if (!brain) return -1;
+
+    struct brain_struct* b = (struct brain_struct*)brain;
+
+    if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
+        return -1;
+    }
+
+    bgtr_bridge_t* bridge = bg_enhanced_get_training_bridge(b->basal_ganglia);
+    if (!bridge) {
+        return -1;
+    }
+
+    return bgtr_bridge_connect_training(bridge, training);
+}
+
+float nimcp_brain_bg_get_last_rpe(brain_t brain) {
+    if (!brain) return 0.0f;
+
+    struct brain_struct* b = (struct brain_struct*)brain;
+
+    if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
+        return 0.0f;
+    }
+
+    bgtr_bridge_t* bridge = bg_enhanced_get_training_bridge(b->basal_ganglia);
+    if (!bridge) {
+        return 0.0f;
+    }
+
+    return bridge->last_rpe;
+}
+
+uint32_t nimcp_brain_bg_get_active_traces(brain_t brain) {
+    if (!brain) return 0;
+
+    struct brain_struct* b = (struct brain_struct*)brain;
+
+    if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
+        return 0;
+    }
+
+    bgtr_bridge_t* bridge = bg_enhanced_get_training_bridge(b->basal_ganglia);
+    if (!bridge) {
+        return 0;
+    }
+
+    return bgtr_bridge_get_trace_count(bridge);
 }

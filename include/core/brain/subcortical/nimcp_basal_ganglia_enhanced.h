@@ -40,6 +40,7 @@
 #include "core/brain/subcortical/nimcp_bg_cerebellar_coord.h"
 #include "core/brain/subcortical/nimcp_bg_outcome_devaluation.h"
 #include "core/brain/subcortical/nimcp_bg_temporal_credit.h"
+#include "core/brain/subcortical/nimcp_basal_ganglia_training_bridge.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,6 +72,7 @@ typedef struct {
     bool enable_cerebellar_coord;       /**< Cerebellar coordination */
     bool enable_outcome_deval;          /**< Outcome devaluation */
     bool enable_temporal_credit;        /**< Temporal credit assignment */
+    bool enable_training_plasticity;    /**< Training pipeline plasticity */
 } bg_enhanced_features_t;
 
 /* ============================================================================
@@ -98,6 +100,7 @@ typedef struct {
     bgcb_config_t cerebellar_config;
     bgod_config_t outcome_deval_config;
     bgtc_config_t temporal_credit_config;
+    bgtr_bridge_config_t training_config;
 } bg_enhanced_config_t;
 
 /* ============================================================================
@@ -138,6 +141,11 @@ typedef struct {
     bgod_behavior_type_t behavior_type;
     float goal_weight;
     float habit_weight;
+
+    /* Training plasticity */
+    bgtr_bridge_stats_t training_stats;
+    float last_rpe;
+    uint32_t active_traces;
 } bg_enhanced_stats_t;
 
 /* ============================================================================
@@ -231,6 +239,11 @@ bg_outcome_deval_t* bg_enhanced_get_outcome_deval(bg_enhanced_t* bge);
  * @brief Get temporal credit system
  */
 bg_temporal_credit_t* bg_enhanced_get_temporal_credit(bg_enhanced_t* bge);
+
+/**
+ * @brief Get training bridge
+ */
+bgtr_bridge_t* bg_enhanced_get_training_bridge(bg_enhanced_t* bge);
 
 /* ============================================================================
  * ACTION SELECTION API

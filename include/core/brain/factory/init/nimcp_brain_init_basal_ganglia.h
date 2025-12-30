@@ -211,6 +211,73 @@ bgod_behavior_type_t nimcp_brain_bg_get_behavior_type(brain_t brain);
  */
 float nimcp_brain_bg_get_motivation(brain_t brain);
 
+//=============================================================================
+// Training Integration API
+//=============================================================================
+
+/**
+ * @brief Get the training bridge from basal ganglia
+ *
+ * WHAT: Returns the BG-training integration bridge
+ * WHY:  Allows direct access to training plasticity system
+ * HOW:  Retrieves bridge from enhanced BG subsystem
+ *
+ * @param brain The brain containing the BG
+ * @return Training bridge pointer, or NULL if not available
+ */
+bgtr_bridge_t* nimcp_brain_bg_get_training_bridge(brain_t brain);
+
+/**
+ * @brief Get training plasticity statistics
+ *
+ * WHAT: Returns statistics about BG training/learning
+ * WHY:  Allows monitoring of reinforcement learning progress
+ * HOW:  Queries training bridge for accumulated stats
+ *
+ * @param brain The brain containing the BG
+ * @param stats Output: training statistics
+ * @return 0 on success, -1 on error
+ */
+int nimcp_brain_bg_get_training_stats(brain_t brain, bgtr_bridge_stats_t* stats);
+
+/**
+ * @brief Connect external training context to BG training bridge
+ *
+ * WHAT: Links training module to BG plasticity
+ * WHY:  Enables training module control of BG learning
+ * HOW:  Registers training context with training bridge
+ *
+ * @param brain The brain containing the BG
+ * @param training Training context to connect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_brain_bg_connect_training_context(brain_t brain,
+                                             nimcp_training_context_t* training);
+
+/**
+ * @brief Get last reward prediction error
+ *
+ * WHAT: Returns the most recent RPE from training bridge
+ * WHY:  Useful for monitoring learning signals
+ * HOW:  Queries training bridge's last_rpe field
+ *
+ * @param brain The brain containing the BG
+ * @return Last RPE value, or 0.0 if unavailable
+ */
+float nimcp_brain_bg_get_last_rpe(brain_t brain);
+
+/**
+ * @brief Get count of active eligibility traces
+ *
+ * WHAT: Returns number of active eligibility traces
+ * WHY:  Indicates how many actions are being tracked for credit assignment
+ * HOW:  Queries training bridge's trace count
+ *
+ * @param brain The brain containing the BG
+ * @return Number of active traces
+ */
+uint32_t nimcp_brain_bg_get_active_traces(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

@@ -29,6 +29,9 @@ struct bg_enhanced {
     bg_outcome_deval_t* outcome_deval;
     bg_temporal_credit_t* temporal_credit;
 
+    /* Training integration */
+    bgtr_bridge_t* training_bridge;
+
     /* Configuration */
     bg_enhanced_config_t config;
 
@@ -63,6 +66,7 @@ void bg_enhanced_default_config(bg_enhanced_config_t* config) {
     config->features.enable_cerebellar_coord = true;
     config->features.enable_outcome_deval = true;
     config->features.enable_temporal_credit = true;
+    config->features.enable_training_plasticity = true;
 
     /* Module configs */
     bg_beta_default_config(&config->beta_config);
@@ -75,6 +79,7 @@ void bg_enhanced_default_config(bg_enhanced_config_t* config) {
     bgcb_default_config(&config->cerebellar_config);
     bgod_default_config(&config->outcome_deval_config);
     bgtc_default_config(&config->temporal_credit_config);
+    bgtr_bridge_default_config(&config->training_config);
 }
 
 bg_enhanced_t* bg_enhanced_create(const bg_enhanced_config_t* config) {
@@ -152,6 +157,17 @@ bg_enhanced_t* bg_enhanced_create(const bg_enhanced_config_t* config) {
         if (!bge->temporal_credit) NIMCP_LOGGING_WARN("Failed to create temporal credit");
     }
 
+    if (cfg.features.enable_training_plasticity) {
+        uint32_t num_actions = cfg.core_config.num_actions > 0 ? cfg.core_config.num_actions : 16;
+        bge->training_bridge = bgtr_bridge_create(&cfg.training_config, num_actions);
+        if (bge->training_bridge) {
+            /* Connect training bridge to core BG */
+            bgtr_bridge_connect_bg(bge->training_bridge, bge->core);
+        } else {
+            NIMCP_LOGGING_WARN("Failed to create training bridge");
+        }
+    }
+
     /* Create mutex */
     bge->mutex = nimcp_mutex_create(NULL);
     if (!bge->mutex) {
@@ -189,6 +205,7 @@ void bg_enhanced_destroy(bg_enhanced_t* bge) {
     if (bge->cerebellar) bgcb_destroy(bge->cerebellar);
     if (bge->outcome_deval) bgod_destroy(bge->outcome_deval);
     if (bge->temporal_credit) bgtc_destroy(bge->temporal_credit);
+    if (bge->training_bridge) bgtr_bridge_destroy(bge->training_bridge);
 
     /* Destroy core */
     if (bge->core) basal_ganglia_destroy(bge->core);
@@ -219,6 +236,7 @@ int bg_enhanced_reset(bg_enhanced_t* bge) {
     if (bge->cerebellar) bgcb_reset(bge->cerebellar);
     if (bge->outcome_deval) bgod_reset(bge->outcome_deval);
     if (bge->temporal_credit) bgtc_reset(bge->temporal_credit);
+    if (bge->training_bridge) bgtr_bridge_reset(bge->training_bridge);
 
     bge->in_option = false;
     bge->current_option = 0;
@@ -273,6 +291,10 @@ bg_outcome_deval_t* bg_enhanced_get_outcome_deval(bg_enhanced_t* bge) {
 
 bg_temporal_credit_t* bg_enhanced_get_temporal_credit(bg_enhanced_t* bge) {
     return bge ? bge->temporal_credit : NULL;
+}
+
+bgtr_bridge_t* bg_enhanced_get_training_bridge(bg_enhanced_t* bge) {
+    return bge ? bge->training_bridge : NULL;
 }
 
 /* ============================================================================
@@ -357,6 +379,11 @@ int bg_enhanced_select_action(bg_enhanced_t* bge,
     /* 9. Update temporal credit traces */
     if (bge->temporal_credit) {
         bgtc_update_trace(bge->temporal_credit, 0, *selected_action);
+    }
+
+    /* 10. Record action for training plasticity */
+    if (bge->training_bridge) {
+        bgtr_bridge_record_action(bge->training_bridge, *selected_action, 0, 0);
     }
 
     nimcp_mutex_unlock(bge->mutex);
@@ -459,6 +486,11 @@ int bg_enhanced_process_reward(bg_enhanced_t* bge, float reward, float predicted
         float updates[BGTC_MAX_STATES];
         uint32_t num_updates;
         bgtc_apply_credit(bge->temporal_credit, td_error, 0.1f, updates, &num_updates);
+    }
+
+    /* Process reward through training bridge for plasticity */
+    if (bge->training_bridge) {
+        bgtr_bridge_process_reward(bge->training_bridge, reward, predicted_reward);
     }
 
     nimcp_mutex_unlock(bge->mutex);
@@ -627,6 +659,7 @@ int bg_enhanced_step(bg_enhanced_t* bge, float dt_ms) {
     if (bge->cerebellar) bgcb_step(bge->cerebellar, dt_ms);
     if (bge->outcome_deval) bgod_step(bge->outcome_deval, dt_ms);
     if (bge->temporal_credit) bgtc_step(bge->temporal_credit, dt_ms);
+    if (bge->training_bridge) bgtr_bridge_decay_traces(bge->training_bridge, dt_ms);
 
     nimcp_mutex_unlock(bge->mutex);
     return 0;
@@ -703,6 +736,13 @@ int bg_enhanced_get_stats(const bg_enhanced_t* bge, bg_enhanced_stats_t* stats) 
         stats->habit_weight = bgod_get_habit_weight(bge->outcome_deval);
     }
 
+    /* Training plasticity stats */
+    if (bge->training_bridge) {
+        bgtr_bridge_get_stats(bge->training_bridge, &stats->training_stats);
+        stats->last_rpe = bge->training_bridge->last_rpe;
+        stats->active_traces = bgtr_bridge_get_trace_count(bge->training_bridge);
+    }
+
     nimcp_mutex_unlock((nimcp_mutex_t*)bge->mutex);
     return 0;
 }
@@ -720,6 +760,8 @@ bool bg_enhanced_feature_enabled(const bg_enhanced_t* bge, const char* feature_n
     if (strcmp(feature_name, "cerebellar") == 0) return bge->cerebellar != NULL;
     if (strcmp(feature_name, "outcome_deval") == 0) return bge->outcome_deval != NULL;
     if (strcmp(feature_name, "temporal_credit") == 0) return bge->temporal_credit != NULL;
+    if (strcmp(feature_name, "training") == 0 || strcmp(feature_name, "training_plasticity") == 0)
+        return bge->training_bridge != NULL;
 
     return false;
 }
