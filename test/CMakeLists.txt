@@ -573,6 +573,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/factory")
     add_subdirectory(unit/core/brain/factory)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/inference")
+    message(STATUS "Adding brain inference unit tests...")
+    add_subdirectory(unit/core/brain/inference)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/brain/factory")
     message(STATUS "Adding brain factory integration tests...")
     add_subdirectory(integration/core/brain/factory)

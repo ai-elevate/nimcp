@@ -392,6 +392,10 @@ struct brain_struct {
     // Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
     quantum_annealer_t quantum_annealer;         // Quantum annealing optimizer for escaping local minima
 
+    // Phase 11.1: Quantum Reasoning (Grover SAT solving for logical inference)
+    void* quantum_reasoner;                      // brain_qreason_ctx_t* (opaque to avoid circular dependency)
+    bool quantum_reasoning_enabled;              // Enable quantum-accelerated reasoning
+
     // Phase C4: Shannon Information Theory (Channel Capacity & Bottleneck Analysis)
     shannon_config_t shannon_config;              // Shannon analysis configuration
     bool enable_shannon_monitoring;               // Enable real-time information flow monitoring

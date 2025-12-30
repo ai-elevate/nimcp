@@ -3,10 +3,13 @@
  * @brief Parietal quantum bridge stub implementation
  *
  * Stub implementation providing minimal functionality for linking.
+ * Uses bridge_base_t OO pattern for consistent bridge infrastructure.
  * Full implementation pending.
  */
 
 #include "cognitive/parietal/nimcp_parietal_quantum_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,8 +18,8 @@
  * ============================================================================ */
 
 struct parietal_quantum_bridge {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
     parietal_quantum_config_t config;
-    bool enabled;
     float inflammation_level;
     float fatigue_level;
     parietal_quantum_stats_t stats;
@@ -58,30 +61,40 @@ parietal_quantum_config_t parietal_quantum_default_config(void) {
 parietal_quantum_bridge_t* parietal_quantum_bridge_create(
     const parietal_quantum_config_t* config
 ) {
-    parietal_quantum_bridge_t* bridge = calloc(1, sizeof(parietal_quantum_bridge_t));
+    parietal_quantum_bridge_t* bridge = nimcp_malloc(sizeof(parietal_quantum_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate parietal_quantum_bridge");
         return NULL;
     }
+    memset(bridge, 0, sizeof(parietal_quantum_bridge_t));
+
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, BIO_MODULE_PARIETAL_QUANTUM, "parietal_quantum") != 0) {
+        set_error("Failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     bridge->config = config ? *config : parietal_quantum_default_config();
-    bridge->enabled = bridge->config.enabled;
+    bridge->base.bridge_active = bridge->config.enabled;
     return bridge;
 }
 
 void parietal_quantum_bridge_destroy(parietal_quantum_bridge_t* bridge) {
     if (bridge) {
-        free(bridge);
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
     }
 }
 
 int parietal_quantum_set_enabled(parietal_quantum_bridge_t* bridge, bool enabled) {
     if (!bridge) return -1;
-    bridge->enabled = enabled;
+    bridge->base.bridge_active = enabled;
     return 0;
 }
 
 bool parietal_quantum_is_available(const parietal_quantum_bridge_t* bridge) {
-    return bridge && bridge->enabled;
+    return bridge && bridge->base.bridge_active;
 }
 
 /* ============================================================================

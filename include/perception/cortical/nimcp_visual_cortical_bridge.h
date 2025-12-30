@@ -98,8 +98,8 @@ extern "C" {
 /** Default number of orientations per hypercolumn */
 #define VISUAL_CORTICAL_DEFAULT_ORIENTATIONS 8
 
-/** Default spatial frequency for Gabor filters */
-#define VISUAL_CORTICAL_DEFAULT_SPATIAL_FREQ 2.0f
+/** Default spatial frequency for Gabor filters (wavelength = 1/freq, so 0.5 = 2 pixels) */
+#define VISUAL_CORTICAL_DEFAULT_SPATIAL_FREQ 0.5f
 
 /** Default tuning width in degrees */
 #define VISUAL_CORTICAL_DEFAULT_TUNING_WIDTH 30.0f

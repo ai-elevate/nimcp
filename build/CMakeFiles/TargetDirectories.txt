@@ -936,6 +936,7 @@
 /home/bbrelin/nimcp/build/test/regression/middleware/integration/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/core/logic/CMakeFiles/test_neural_logic_brain_integration.dir
 /home/bbrelin/nimcp/build/test/unit/core/logic/CMakeFiles/test_neural_logic_circuit_builder.dir
+/home/bbrelin/nimcp/build/test/unit/core/logic/CMakeFiles/test_neural_logic_quantum_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/core/logic/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/logic/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/logic/CMakeFiles/rebuild_cache.dir
@@ -1570,6 +1571,14 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/test_brain_quantum_reasoning.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/inference/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/factory/CMakeFiles/integration_core_brain_factory_test_factory_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/factory/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/factory/CMakeFiles/edit_cache.dir

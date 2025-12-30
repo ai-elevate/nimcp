@@ -8657,6 +8657,30 @@ __/core/brain/inference/nimcp_brain_inference.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/inference/nimcp_brain_inference.c.s
 .PHONY : __/core/brain/inference/nimcp_brain_inference.c.s
 
+__/core/brain/inference/nimcp_brain_quantum_reasoning.o: __/core/brain/inference/nimcp_brain_quantum_reasoning.c.o
+.PHONY : __/core/brain/inference/nimcp_brain_quantum_reasoning.o
+
+# target to build an object file
+__/core/brain/inference/nimcp_brain_quantum_reasoning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/inference/nimcp_brain_quantum_reasoning.c.o
+.PHONY : __/core/brain/inference/nimcp_brain_quantum_reasoning.c.o
+
+__/core/brain/inference/nimcp_brain_quantum_reasoning.i: __/core/brain/inference/nimcp_brain_quantum_reasoning.c.i
+.PHONY : __/core/brain/inference/nimcp_brain_quantum_reasoning.i
+
+# target to preprocess a source file
+__/core/brain/inference/nimcp_brain_quantum_reasoning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/inference/nimcp_brain_quantum_reasoning.c.i
+.PHONY : __/core/brain/inference/nimcp_brain_quantum_reasoning.c.i
+
+__/core/brain/inference/nimcp_brain_quantum_reasoning.s: __/core/brain/inference/nimcp_brain_quantum_reasoning.c.s
+.PHONY : __/core/brain/inference/nimcp_brain_quantum_reasoning.s
+
+# target to generate assembly for a file
+__/core/brain/inference/nimcp_brain_quantum_reasoning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/inference/nimcp_brain_quantum_reasoning.c.s
+.PHONY : __/core/brain/inference/nimcp_brain_quantum_reasoning.c.s
+
 __/core/brain/information/nimcp_brain_shannon.o: __/core/brain/information/nimcp_brain_shannon.c.o
 .PHONY : __/core/brain/information/nimcp_brain_shannon.o
 
@@ -25690,6 +25714,9 @@ help:
 	@echo "... __/core/brain/inference/nimcp_brain_inference.o"
 	@echo "... __/core/brain/inference/nimcp_brain_inference.i"
 	@echo "... __/core/brain/inference/nimcp_brain_inference.s"
+	@echo "... __/core/brain/inference/nimcp_brain_quantum_reasoning.o"
+	@echo "... __/core/brain/inference/nimcp_brain_quantum_reasoning.i"
+	@echo "... __/core/brain/inference/nimcp_brain_quantum_reasoning.s"
 	@echo "... __/core/brain/information/nimcp_brain_shannon.o"
 	@echo "... __/core/brain/information/nimcp_brain_shannon.i"
 	@echo "... __/core/brain/information/nimcp_brain_shannon.s"

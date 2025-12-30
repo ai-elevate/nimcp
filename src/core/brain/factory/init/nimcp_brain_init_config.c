@@ -207,7 +207,7 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
 
     // Global Workspace Architecture defaults (Global Workspace Theory - Baars 1988)
     config->enable_global_workspace = !minimal;
-    config->workspace_capacity_dim = 256;
+    config->workspace_capacity_dim = 0;  // 0 = auto-derive from brain's input dimension
     config->workspace_ignition_threshold = 0.6F;
     config->workspace_refractory_ms = 50;
     config->workspace_enable_history = !minimal;

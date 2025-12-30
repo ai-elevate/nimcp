@@ -9090,6 +9090,19 @@ test_neural_logic_circuit_builder/fast:
 .PHONY : test_neural_logic_circuit_builder/fast
 
 #=============================================================================
+# Target rules for targets named test_neural_logic_quantum_bridge
+
+# Build rule for target.
+test_neural_logic_quantum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_neural_logic_quantum_bridge
+.PHONY : test_neural_logic_quantum_bridge
+
+# fast build rule for target.
+test_neural_logic_quantum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/logic/CMakeFiles/test_neural_logic_quantum_bridge.dir/build.make test/unit/core/logic/CMakeFiles/test_neural_logic_quantum_bridge.dir/build
+.PHONY : test_neural_logic_quantum_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_directives_action_history
 
 # Build rule for target.
@@ -11779,6 +11792,19 @@ unit_core_brain_factory_init_basal_ganglia: cmake_check_build_system
 unit_core_brain_factory_init_basal_ganglia/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_basal_ganglia.dir/build.make test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_basal_ganglia.dir/build
 .PHONY : unit_core_brain_factory_init_basal_ganglia/fast
+
+#=============================================================================
+# Target rules for targets named test_brain_quantum_reasoning
+
+# Build rule for target.
+test_brain_quantum_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_brain_quantum_reasoning
+.PHONY : test_brain_quantum_reasoning
+
+# fast build rule for target.
+test_brain_quantum_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/inference/CMakeFiles/test_brain_quantum_reasoning.dir/build.make test/unit/core/brain/inference/CMakeFiles/test_brain_quantum_reasoning.dir/build
+.PHONY : test_brain_quantum_reasoning/fast
 
 #=============================================================================
 # Target rules for targets named integration_core_brain_factory_test_factory_integration
@@ -19950,6 +19976,7 @@ help:
 	@echo "... test_attention_bioasync"
 	@echo "... test_autobiographical_fep_bridge_integration"
 	@echo "... test_backward_chaining"
+	@echo "... test_brain_quantum_reasoning"
 	@echo "... test_brain_reasoning_api"
 	@echo "... test_brain_swarm_immune_integration"
 	@echo "... test_calcium_dynamics"
@@ -19977,6 +20004,7 @@ help:
 	@echo "... test_neural_logic"
 	@echo "... test_neural_logic_brain_integration"
 	@echo "... test_neural_logic_circuit_builder"
+	@echo "... test_neural_logic_quantum_bridge"
 	@echo "... test_neural_logic_real"
 	@echo "... test_neural_symbolic_bridge"
 	@echo "... test_nlp_disaster_scenario"

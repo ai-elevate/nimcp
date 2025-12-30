@@ -613,6 +613,10 @@ bool init_global_workspace_subsystem(brain_t brain)
     // Override defaults with brain config if specified
     if (brain->config.workspace_capacity_dim > 0) {
         gw_config.capacity_dim = brain->config.workspace_capacity_dim;
+    } else if (brain->config.num_inputs > 0) {
+        // Default to brain's input dimension if workspace capacity not specified
+        // This ensures workspace accepts same-sized content as brain inputs
+        gw_config.capacity_dim = brain->config.num_inputs;
     }
     if (brain->config.workspace_ignition_threshold > 0.0F) {
         gw_config.ignition_threshold = brain->config.workspace_ignition_threshold;

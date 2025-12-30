@@ -122,6 +122,8 @@ typedef struct curiosity_topic_node_s {
  * HOW:  Maintain topic graph, use quantum walk for exploration
  */
 typedef struct curiosity_quantum_bridge_s {
+    bridge_base_t base;                      /**< MUST be first: base bridge infrastructure */
+
     curiosity_quantum_config_t config;       /**< Configuration */
     curiosity_quantum_stats_t stats;         /**< Statistics */
 
@@ -137,10 +139,6 @@ typedef struct curiosity_quantum_bridge_s {
     uint32_t current_topic_id;               /**< Current exploration topic */
     float* exploration_probabilities;        /**< Exploration probability distribution */
     bool exploration_active;                 /**< Currently exploring */
-
-    /* Timing */
-    uint64_t creation_time_ms;               /**< Creation timestamp */
-    uint64_t last_exploration_ms;            /**< Last exploration timestamp */
 } curiosity_quantum_bridge_t;
 
 /* ============================================================================
@@ -456,6 +454,12 @@ curiosity_quantum_bridge_t* curiosity_quantum_create(
         return NULL;
     }
 
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, BIO_MODULE_CURIOSITY, "curiosity_quantum") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Store config */
     if (config) {
         bridge->config = *config;
@@ -506,7 +510,6 @@ curiosity_quantum_bridge_t* curiosity_quantum_create(
         }
     }
 
-    bridge->creation_time_ms = cq_get_time_ms();
     bridge->num_topics = 0;
     bridge->current_topic_id = 0;
     bridge->exploration_active = false;
@@ -536,6 +539,9 @@ void curiosity_quantum_destroy(curiosity_quantum_bridge_t* bridge) {
     if (bridge->topics) {
         nimcp_free(bridge->topics);
     }
+
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed curiosity quantum bridge");
@@ -734,10 +740,10 @@ float curiosity_quantum_explore(
     /* Update bridge state */
     bridge->current_topic_id = best_id;
     bridge->exploration_active = true;
-    bridge->last_exploration_ms = cq_get_time_ms();
+    bridge_base_record_update(&bridge->base);
 
     /* Update topic state */
-    bridge->topics[best_id].last_explored_ms = bridge->last_exploration_ms;
+    bridge->topics[best_id].last_explored_ms = bridge->base.last_update_time_ms;
     bridge->topics[best_id].exploration_count++;
 
     /* Output novel topic */

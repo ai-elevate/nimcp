@@ -85,6 +85,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_association_learning.c  # Association learning (A→B implications)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_circuit_compilation.c   # Neural circuit compilation (symbolic→neural)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_inference.c   # Prediction, forward propagation, results (502 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_quantum_reasoning.c # Quantum SAT solving for logical inference
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_persistence.c # Save/load, snapshots, checkpoints (1,187 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/distributed/nimcp_brain_distributed.c # Copy-on-write, P2P sync, consensus (561 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/strategy/nimcp_brain_strategy.c     # Strategy pattern, monitoring, optimization (770 lines)

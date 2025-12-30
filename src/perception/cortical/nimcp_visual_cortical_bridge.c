@@ -122,6 +122,11 @@ static uint32_t compute_hypercolumn_index(
 
 /**
  * @brief Apply immune modulation to hypercolumn gain
+ *
+ * Immune factor interpretation:
+ * - 1.0 = baseline (no modulation, full response)
+ * - <1.0 = suppressed (inflammation reducing sensitivity)
+ * - >1.0 = hyper-sensitive
  */
 static float apply_immune_modulation(
     const visual_cortical_bridge_t* bridge,
@@ -132,9 +137,8 @@ static float apply_immune_modulation(
         return response;
     }
 
-    /* Base modulation from global immune factor */
-    float modulation = 1.0f - (bridge->immune_modulation_factor *
-                               bridge->config.immune_modulation_factor);
+    /* Base modulation is the immune factor itself */
+    float modulation = bridge->immune_modulation_factor;
 
     /* Per-hypercolumn gain if available */
     if (bridge->hypercolumn_gains) {
@@ -246,7 +250,7 @@ visual_cortical_bridge_t* visual_cortical_bridge_create(
     memcpy(&bridge->config, config, sizeof(visual_cortical_config_t));
     bridge->visual_cortex = visual_cortex;
     bridge->state = VISUAL_CORTICAL_STATE_UNINITIALIZED;
-    bridge->immune_modulation_factor = 0.0f;
+    bridge->immune_modulation_factor = config->immune_modulation_factor;
     bridge->umm_enabled = config->use_umm;
 
     /* Initialize mutex */
@@ -563,27 +567,17 @@ int visual_cortical_process(
         }
     } else {
         /* Use hypercolumn processing */
-        /* Compute average response across central hypercolumns */
+        /* Compute average response across hypercolumns */
         float* avg_responses = (float*)nimcp_calloc(
             bridge->orientations_per_hypercolumn, sizeof(float)
         );
         uint32_t processed_count = 0;
 
-        /* Process a subset of hypercolumns (center and corners) */
         uint32_t grid_size = (uint32_t)sqrtf((float)bridge->num_hypercolumns);
         if (grid_size == 0) grid_size = 1;
 
-        /* Sample hypercolumn positions */
-        uint32_t center = bridge->num_hypercolumns / 2;
-        uint32_t sample_indices[] = {
-            0, grid_size - 1, center,
-            bridge->num_hypercolumns - grid_size, bridge->num_hypercolumns - 1
-        };
-        uint32_t num_samples = sizeof(sample_indices) / sizeof(sample_indices[0]);
-
-        for (uint32_t s = 0; s < num_samples && s < bridge->num_hypercolumns; s++) {
-            uint32_t idx = sample_indices[s];
-            if (idx >= bridge->num_hypercolumns) continue;
+        /* Process all hypercolumns for comprehensive orientation detection */
+        for (uint32_t idx = 0; idx < bridge->num_hypercolumns; idx++) {
 
             orientation_hypercolumn_t* hcol = bridge->hypercolumns[idx];
             if (!hcol) continue;
@@ -609,7 +603,8 @@ int visual_cortical_process(
             }
 
             /* Process through hypercolumn */
-            if (orientation_hypercolumn_process(hcol, patch, patch_w, patch_h)) {
+            bool processed = orientation_hypercolumn_process(hcol, patch, patch_w, patch_h);
+            if (processed) {
                 orientation_hypercolumn_normalize(hcol);
 
                 /* Accumulate responses */
@@ -656,6 +651,7 @@ int visual_cortical_process(
 
             bridge->stats.active_hypercolumns = processed_count;
         } else {
+            NIMCP_LOGGING_DEBUG("No hypercolumns processed or no responses!");
             if (avg_responses) nimcp_free(avg_responses);
         }
     }
@@ -900,8 +896,8 @@ int visual_cortical_set_immune_factor(
 {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
+    /* Clamp to valid range: >= 0, no upper limit (allows hyper-sensitivity) */
     if (factor < 0.0f) factor = 0.0f;
-    if (factor > 1.0f) factor = 1.0f;
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_modulation_factor = factor;

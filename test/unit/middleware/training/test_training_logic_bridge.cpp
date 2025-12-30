@@ -83,7 +83,7 @@ TEST_F(TrainingLogicBridgeTest, StartBridge) {
 
 TEST_F(TrainingLogicBridgeTest, StartNullBridge) {
     int result = training_logic_start(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 }
 
 TEST_F(TrainingLogicBridgeTest, StopBridge) {
@@ -94,7 +94,7 @@ TEST_F(TrainingLogicBridgeTest, StopBridge) {
 
 TEST_F(TrainingLogicBridgeTest, StopNullBridge) {
     int result = training_logic_stop(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 }
 
 TEST_F(TrainingLogicBridgeTest, StartStopCycle) {
@@ -757,13 +757,13 @@ TEST_F(TrainingLogicBridgeTest, CustomGateNullPointers) {
     uint32_t gate_id = 0;
 
     int result1 = training_logic_add_custom_gate(nullptr, "A AND B", &gate_id);
-    EXPECT_LT(result1, 0);
+    EXPECT_NE(result1, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 
     int result2 = training_logic_add_custom_gate(bridge, nullptr, &gate_id);
-    EXPECT_LT(result2, 0);
+    EXPECT_NE(result2, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 
     int result3 = training_logic_add_custom_gate(bridge, "A AND B", nullptr);
-    EXPECT_LT(result3, 0);
+    EXPECT_NE(result3, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 }
 
 /*=============================================================================
@@ -858,14 +858,14 @@ TEST_F(TrainingLogicBridgeTest, StatsAccumulation) {
 
 TEST_F(TrainingLogicBridgeTest, StatsNullPointer) {
     int result1 = training_logic_get_stats(nullptr, nullptr);
-    EXPECT_LT(result1, 0);
+    EXPECT_NE(result1, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 
     training_logic_stats_t stats;
     int result2 = training_logic_get_stats(nullptr, &stats);
-    EXPECT_LT(result2, 0);
+    EXPECT_NE(result2, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 
     int result3 = training_logic_get_stats(bridge, nullptr);
-    EXPECT_LT(result3, 0);
+    EXPECT_NE(result3, 0);  /* Returns NIMCP_ERROR_NULL_POINTER (positive) */
 }
 
 /*=============================================================================
