@@ -23,7 +23,14 @@ add_test_binary(
     unit
 )
 
-# Test 4: Logic Sleep Bridge
+# Test 4: Sensory-Logic Bridges (Visual, Somatosensory, Audio)
+add_test_binary(
+    test_sensory_logic_bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_sensory_logic_bridges.cpp
+    unit
+)
+
+# Test 5: Logic Sleep Bridge
 add_executable(unit_cognitive_logic_test_logic_sleep_bridge
     test_logic_sleep_bridge.cpp
 )

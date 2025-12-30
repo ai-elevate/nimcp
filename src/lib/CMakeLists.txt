@@ -730,6 +730,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_thalamic_bridge.c  # Ethics-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c  # Knowledge-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_logic_thalamic_bridge.c  # Logic-thalamic integration
+
+    # Sensory-Logic Bridges (Direct sensory-to-reasoning pathways)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_visual_logic_bridge.c  # Visual perception to symbolic reasoning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_somatosensory_logic_bridge.c  # Tactile/proprioceptive to reasoning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_audio_logic_bridge.c  # Auditory perception to reasoning
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.c  # Mirror-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_thalamic_bridge.c  # Personality-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_thalamic_bridge.c  # Self-awareness-thalamic integration
