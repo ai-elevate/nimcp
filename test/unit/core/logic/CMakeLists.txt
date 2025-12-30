@@ -43,3 +43,10 @@ add_test_binary(
 #    ${CMAKE_CURRENT_SOURCE_DIR}/test_neural_logic_neuromodulation.cpp
 #    unit
 #)
+
+# Test 7: Neural Logic Quantum Bridge
+add_test_binary(
+    test_neural_logic_quantum_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_neural_logic_quantum_bridge.cpp
+    unit
+)
