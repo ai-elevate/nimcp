@@ -74,12 +74,15 @@ typedef struct {
 /**
  * @brief Pattern match result
  */
-typedef struct {
+#ifndef NIMCP_PATTERN_MATCH_T_DEFINED
+#define NIMCP_PATTERN_MATCH_T_DEFINED
+typedef struct pattern_match_t {
     uint32_t pattern_id;         // Matched pattern ID
     float similarity;            // Match similarity [0.0, 1.0]
     uint32_t num_mismatches;     // Elements below threshold
     bool is_exact;               // Perfect match (similarity = 1.0)
 } pattern_match_t;
+#endif
 
 /**
  * @brief Pattern library configuration

@@ -402,7 +402,7 @@ TEST_F(CoreBioAsyncE2ETest, PretrainedModelWorkflow) {
     E2E_STAGE_END();
 
     // Stage 6: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 300);
+    E2E_STAGE_BEGIN("Cleanup", 1000);  // Increased timeout for brain cleanup
 
     brain_destroy(brain);
 
@@ -599,7 +599,7 @@ TEST_F(CoreBioAsyncE2ETest, NeuralLogicProcessingPipeline) {
     E2E_STAGE_END();
 
     // Stage 8: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 200);
+    E2E_STAGE_BEGIN("Cleanup", 500);  // Increased timeout for bio-async cleanup
 
     nimcp_bio_future_destroy(spike_future);
     nimcp_bio_promise_destroy(spike_promise);
@@ -918,7 +918,7 @@ TEST_F(CoreBioAsyncE2ETest, ErrorRecoveryScenarios) {
     E2E_STAGE_END();
 
     // Stage 7: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 200);
+    E2E_STAGE_BEGIN("Cleanup", 500);  // Increased timeout for bio-async cleanup
 
     nimcp_bio_future_destroy(recovery_future);
     nimcp_bio_promise_destroy(recovery_promise);

@@ -240,7 +240,7 @@ typedef struct {
     float overall_similarity;       /**< Weighted overall [0,1] */
     char* matched_pattern_name;     /**< Name of matched pattern */
     uint32_t matched_pattern_id;    /**< ID of matched pattern */
-} pattern_match_t;
+} intuitive_pattern_match_t;
 
 /**
  * @brief Intuitive reasoning strategy
@@ -642,7 +642,7 @@ int intuitive_match_patterns(
     intuitive_engine_t* engine,
     const float* input,
     uint32_t input_dim,
-    pattern_match_t* matches,
+    intuitive_pattern_match_t* matches,
     uint32_t max_matches,
     uint32_t* num_found
 );

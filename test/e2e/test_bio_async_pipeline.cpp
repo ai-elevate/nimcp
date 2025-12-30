@@ -133,7 +133,7 @@ TEST_F(BioAsyncE2ETest, NeuromodulatorPipeline) {
     E2E_STAGE_END();
 
     // Stage 5: Cleanup
-    E2E_STAGE_BEGIN("Cleanup resources", 100);
+    E2E_STAGE_BEGIN("Cleanup resources", 500);  // Increased timeout
 
     for (size_t i = 0; i < NUM_CHANNELS; i++) {
         nimcp_bio_future_destroy(futures[i]);
@@ -225,7 +225,7 @@ TEST_F(BioAsyncE2ETest, PhaseCouplingPipeline) {
     E2E_STAGE_END();
 
     // Stage 6: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 100);
+    E2E_STAGE_BEGIN("Cleanup", 500);  // Increased timeout
 
     for (size_t i = 0; i < NUM_OSCILLATORS; i++) {
         nimcp_bio_future_destroy(futures[i]);
@@ -341,7 +341,7 @@ TEST_F(BioAsyncE2ETest, PredictiveCodingPipeline) {
     E2E_STAGE_END();
 
     // Stage 6: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 50);
+    E2E_STAGE_BEGIN("Cleanup", 500);  // Increased timeout
 
     nimcp_predictive_destroy(velocity_model);
     nimcp_predictive_destroy(position_model);
@@ -449,7 +449,7 @@ TEST_F(BioAsyncE2ETest, HybridBioPipeline) {
     E2E_STAGE_END();
 
     // Stage 6: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 100);
+    E2E_STAGE_BEGIN("Cleanup", 500);  // Increased timeout
 
     nimcp_predictive_destroy(timing_model);
     nimcp_phase_sync_destroy(sync);

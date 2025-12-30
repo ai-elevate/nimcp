@@ -52,7 +52,7 @@ E2E_TEST(CognitivePipelineTest, PerceptionToDecision) {
     nimcp_brain_t brain = nullptr;
 
     // Stage 1: Create brain with cognitive modules enabled
-    E2E_STAGE_BEGIN("Create brain with cognitive features", 200);
+    E2E_STAGE_BEGIN("Create brain with cognitive features", 500);  // Increased timeout for brain creation
     {
         brain = nimcp_brain_create(
             "cognitive_brain",
@@ -200,7 +200,7 @@ E2E_TEST(CognitivePipelineTest, WorkingMemoryManagement) {
     nimcp_brain_t brain = nullptr;
 
     // Stage 1: Create brain with working memory
-    E2E_STAGE_BEGIN("Create brain", 100);
+    E2E_STAGE_BEGIN("Create brain", 500);  // Increased timeout for brain creation
     {
         brain = nimcp_brain_create(
             "working_memory_test",

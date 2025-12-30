@@ -157,6 +157,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_factory_init_CMakeFiles_3.28.3_CompilerIdC_CMakeCCompilerId.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_factory_init_CMakeFiles_3.28.3_CompilerIdCXX_CMakeCXXCompilerId.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_factory_init_test_brain_init_allocation.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_factory_init_test_brain_init_basal_ganglia.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_factory_init_test_brain_init_builders.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_factory_init_test_brain_init_config.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_factory_init_test_brain_init_coordinators.dir
@@ -608,6 +609,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_amygdala_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_dragonfly_hunting_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_dragonfly_multi_target.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_basal_ganglia_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1560,6 +1562,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_test_brain_create_custom.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_test_personality.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_coordinators.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_basal_ganglia.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/factory/CMakeFiles/rebuild_cache.dir

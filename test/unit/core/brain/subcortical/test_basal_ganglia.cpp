@@ -370,9 +370,9 @@ TEST_F(SubstantiaNigraTest, PartNames) {
 }
 
 TEST_F(SubstantiaNigraTest, DopamineStateNames) {
-    EXPECT_STREQ(dopamine_state_name(DA_STATE_TONIC), "Tonic");
-    EXPECT_STREQ(dopamine_state_name(DA_STATE_BURST), "Burst");
-    EXPECT_STREQ(dopamine_state_name(DA_STATE_PAUSE), "Pause");
+    EXPECT_STREQ(da_firing_state_name(DA_STATE_TONIC), "Tonic");
+    EXPECT_STREQ(da_firing_state_name(DA_STATE_BURST), "Burst");
+    EXPECT_STREQ(da_firing_state_name(DA_STATE_PAUSE), "Pause");
 }
 
 //=============================================================================

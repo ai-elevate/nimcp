@@ -1223,7 +1223,7 @@ int intuitive_match_patterns(
     intuitive_engine_t* engine,
     const float* input,
     uint32_t input_dim,
-    pattern_match_t* matches,
+    intuitive_pattern_match_t* matches,
     uint32_t max_matches,
     uint32_t* num_found
 ) {
@@ -1242,7 +1242,7 @@ int intuitive_match_patterns(
         float similarity = cosine_similarity(input, pattern->data, input_dim);
 
         if (similarity > PATTERN_MATCH_THRESHOLD) {
-            pattern_match_t* match = &matches[*num_found];
+            intuitive_pattern_match_t* match = &matches[*num_found];
 
             match->structural_similarity = similarity;
             match->surface_similarity = similarity;

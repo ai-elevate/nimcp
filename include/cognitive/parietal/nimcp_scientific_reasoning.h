@@ -92,6 +92,8 @@ typedef struct {
 /**
  * @brief Hypothesis structure for Bayesian updating
  */
+#ifndef NIMCP_HYPOTHESIS_T_DEFINED
+#define NIMCP_HYPOTHESIS_T_DEFINED
 typedef struct {
     uint32_t id;                                /**< Unique hypothesis ID */
     char description[SCIENTIFIC_MAX_DESCRIPTION]; /**< Human-readable description */
@@ -104,6 +106,7 @@ typedef struct {
     uint32_t num_parameters;                    /**< Number of parameters */
     bool active;                                /**< Is hypothesis still viable? */
 } hypothesis_t;
+#endif
 
 /**
  * @brief Data sample for hypothesis testing

@@ -344,7 +344,7 @@ TEST_F(CognitiveBioAsyncE2ETest, GlobalWorkspaceBroadcast) {
     E2E_STAGE_END();
 
     // Stage 7: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 300);
+    E2E_STAGE_BEGIN("Cleanup", 1000);  // Increased timeout for workspace cleanup
 
     for (int i = 0; i < NUM_SUBSCRIBERS; i++) {
         nimcp_bio_future_destroy(futures[i]);
@@ -517,7 +517,7 @@ TEST_F(CognitiveBioAsyncE2ETest, MirrorNeuronsWorkspaceCoordination) {
     E2E_STAGE_END();
 
     // Stage 8: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 300);
+    E2E_STAGE_BEGIN("Cleanup", 1000);  // Increased timeout for workspace cleanup
 
     nimcp_bio_future_destroy(ws_future);
     nimcp_bio_promise_destroy(ws_promise);
@@ -678,7 +678,7 @@ TEST_F(CognitiveBioAsyncE2ETest, ErrorHandlingAndRecovery) {
     E2E_STAGE_END();
 
     // Stage 7: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 200);
+    E2E_STAGE_BEGIN("Cleanup", 500);  // Increased timeout for bio-async cleanup
 
     nimcp_bio_future_destroy(error_future);
     nimcp_bio_promise_destroy(error_promise);

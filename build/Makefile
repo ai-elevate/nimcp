@@ -1511,6 +1511,19 @@ unit_core_brain_factory_init_test_brain_init_allocation/fast:
 .PHONY : unit_core_brain_factory_init_test_brain_init_allocation/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_factory_init_test_brain_init_basal_ganglia
+
+# Build rule for target.
+unit_core_brain_factory_init_test_brain_init_basal_ganglia: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_factory_init_test_brain_init_basal_ganglia
+.PHONY : unit_core_brain_factory_init_test_brain_init_basal_ganglia
+
+# fast build rule for target.
+unit_core_brain_factory_init_test_brain_init_basal_ganglia/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_factory_init_test_brain_init_basal_ganglia.dir/build.make test/CMakeFiles/unit_core_brain_factory_init_test_brain_init_basal_ganglia.dir/build
+.PHONY : unit_core_brain_factory_init_test_brain_init_basal_ganglia/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_factory_init_test_brain_init_builders
 
 # Build rule for target.
@@ -7283,6 +7296,19 @@ e2e_test_dragonfly_multi_target/fast:
 .PHONY : e2e_test_dragonfly_multi_target/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_basal_ganglia_pipeline
+
+# Build rule for target.
+e2e_test_basal_ganglia_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_basal_ganglia_pipeline
+.PHONY : e2e_test_basal_ganglia_pipeline
+
+# fast build rule for target.
+e2e_test_basal_ganglia_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_basal_ganglia_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_basal_ganglia_pipeline.dir/build
+.PHONY : e2e_test_basal_ganglia_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -11740,6 +11766,19 @@ unit_core_brain_factory_init_coordinators: cmake_check_build_system
 unit_core_brain_factory_init_coordinators/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_coordinators.dir/build.make test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_coordinators.dir/build
 .PHONY : unit_core_brain_factory_init_coordinators/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_factory_init_basal_ganglia
+
+# Build rule for target.
+unit_core_brain_factory_init_basal_ganglia: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_factory_init_basal_ganglia
+.PHONY : unit_core_brain_factory_init_basal_ganglia
+
+# fast build rule for target.
+unit_core_brain_factory_init_basal_ganglia/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_basal_ganglia.dir/build.make test/unit/core/brain/factory/CMakeFiles/unit_core_brain_factory_init_basal_ganglia.dir/build
+.PHONY : unit_core_brain_factory_init_basal_ganglia/fast
 
 #=============================================================================
 # Target rules for targets named integration_core_brain_factory_test_factory_integration
@@ -19343,6 +19382,7 @@ help:
 	@echo "... distributed_cow_demo"
 	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_asymmetric_swarm"
+	@echo "... e2e_test_basal_ganglia_pipeline"
 	@echo "... e2e_test_bio_async_cognitive_pipeline"
 	@echo "... e2e_test_bio_async_pipeline"
 	@echo "... e2e_test_bio_async_plasticity_pipeline"
@@ -20268,8 +20308,10 @@ help:
 	@echo "... unit_core_axon_test_axon_enhanced"
 	@echo "... unit_core_brain_factory_init_CMakeFiles_3.28.3_CompilerIdCXX_CMakeCXXCompilerId"
 	@echo "... unit_core_brain_factory_init_CMakeFiles_3.28.3_CompilerIdC_CMakeCCompilerId"
+	@echo "... unit_core_brain_factory_init_basal_ganglia"
 	@echo "... unit_core_brain_factory_init_coordinators"
 	@echo "... unit_core_brain_factory_init_test_brain_init_allocation"
+	@echo "... unit_core_brain_factory_init_test_brain_init_basal_ganglia"
 	@echo "... unit_core_brain_factory_init_test_brain_init_builders"
 	@echo "... unit_core_brain_factory_init_test_brain_init_config"
 	@echo "... unit_core_brain_factory_init_test_brain_init_coordinators"

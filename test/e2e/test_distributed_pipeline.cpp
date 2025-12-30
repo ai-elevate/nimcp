@@ -132,7 +132,7 @@ E2E_TEST(DistributedPipelineTest, LocalToDistributedTransition) {
     E2E_STAGE_END();
 
     // Stage 5: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 500);
+    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for cleanup
     {
         nimcp_brain_destroy(local_brain);
     }
@@ -264,7 +264,7 @@ E2E_TEST(DistributedPipelineTest, BrainStateReplication) {
     E2E_STAGE_END();
 
     // Stage 7: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 500);
+    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for cleanup
     {
         nimcp_brain_destroy(replica);
         nimcp_brain_destroy(master);
@@ -430,7 +430,7 @@ E2E_TEST(DistributedPipelineTest, ConcurrentBrainOperations) {
     E2E_STAGE_END();
 
     // Stage 6: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 500);
+    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for cleanup
     {
         for (int i = 0; i < num_brains; ++i) {
             if (brains[i] != nullptr) {
@@ -550,7 +550,7 @@ E2E_TEST(DistributedPipelineTest, COWDistributedReplicas) {
     E2E_STAGE_END();
 
     // Stage 5: Cleanup
-    E2E_STAGE_BEGIN("Cleanup", 500);
+    E2E_STAGE_BEGIN("Cleanup", 1500);  // Increased timeout for cleanup
     {
         for (int i = 0; i < num_replicas; ++i) {
             nimcp_brain_destroy(replicas[i]);

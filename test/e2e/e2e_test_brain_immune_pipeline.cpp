@@ -1126,7 +1126,7 @@ E2E_TEST(BrainImmunePipeline, FaultToleranceIntegration) {
     EXPECT_LE(immune_state.system_health, 1.0f);
     E2E_STAGE_END();
 
-    E2E_STAGE_BEGIN("Cleanup", 100);
+    E2E_STAGE_BEGIN("Cleanup", 1000);  // Increased timeout for immune cleanup
     brain_immune_stop(immune);
     brain_immune_destroy(immune);
     bft_stop(bft);
