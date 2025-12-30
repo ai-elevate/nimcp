@@ -859,6 +859,34 @@ struct brain_struct {
     struct recovery_executive_internal* recovery_executive; // Recovery planning and execution
     bool fault_tolerance_enabled;                          // Fault tolerance enabled for this brain
     uint64_t last_fault_check_us;                          // Last fault check timestamp
+
+    // === BROCA'S REGION INTEGRATION (Language Production) ===
+    //
+    // Broca's Region (BA44/45) provides language production capabilities:
+    // - Syntax Processing: Hierarchical phrase structure generation
+    // - Phonological Processing: Sound sequence planning
+    // - Speech Motor Planning: Articulatory trajectory generation
+    // - Working Memory Integration: Lexical access and retrieval
+    //
+    // The Broca adapter unifies:
+    // - Syntax Processor: Grammatical structure generation
+    // - Phonological Processor: Phoneme sequence optimization
+    // - Speech Motor Planner: Motor command sequencing
+    //
+    // Integrates with:
+    // - Neural Substrate: Metabolic modulation of speech fluency
+    // - Thalamic Router: Motor speech routing through VA/VL nuclei
+    // - Quantum Reasoner: Grover-accelerated lexical search
+    // - Working Memory: Lexical access buffer
+    // - Brain Immune System: Inflammation affects fluency
+    // - Training System: Language production learning
+    //
+    struct broca_adapter* broca;                            // Broca's region adapter
+    struct broca_substrate_bridge* broca_substrate_bridge;  // Substrate metabolic integration
+    struct broca_thalamic_bridge* broca_thalamic_bridge;    // Thalamic signal routing
+    struct broca_quantum_bridge* broca_quantum_bridge;      // Quantum-accelerated language
+    bool broca_enabled;                                     // Broca's region enabled for this brain
+    uint64_t last_broca_update_us;                          // Last Broca update timestamp
 };
 
 //=============================================================================

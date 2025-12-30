@@ -79,6 +79,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -162,6 +163,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_adapter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_language_production_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_immune.c  # Broca's region-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_substrate_bridge.c  # Broca-neural substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_thalamic_bridge.c   # Broca-thalamic routing integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_quantum_bridge.c    # Broca-quantum reasoning integration
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # DISABLED: needs API updates  # Predictive coding brain region extension - DISABLED: needs refactoring
 
     # Subcortical brain structures (basal ganglia, thalamus, etc.)

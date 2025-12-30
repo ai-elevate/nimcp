@@ -30,3 +30,6 @@ add_broca_test(test_nimcp_language_production_bridge)
 add_broca_test(test_nimcp_phonological)
 add_broca_test(test_nimcp_speech_motor)
 add_broca_test(test_nimcp_syntax_processor)
+
+# Broca integration bridges tests (Phase B3)
+add_broca_test(test_broca_bridges)
